@@ -171,7 +171,7 @@ internal data class PreparedTransfer(
     val changesSetup: Boolean
         get() =
             received.hasConnection || settings.terminal != original.terminal ||
-                importedSecrets.keys.any { it in setOf(Secret.ADYEN_API_KEY, Secret.TERMINAL_PASSPHRASE, Secret.PAYMENTS_APP_API_KEY) }
+                importedSecrets.keys.any { it in setOf(Secret.ADYEN_API_KEY, Secret.TERMINAL_PASSPHRASE) }
 
     fun withTerminal(terminal: TerminalSettings): PreparedTransfer = copy(settings = settings.copy(terminal = terminal))
 
@@ -208,7 +208,8 @@ private class PendingSetupImport(
     val payload: String,
     val mode: ImportMode,
     val settings: AppSettings,
-    val secrets: Map<Secret, String>,
+    // By name, so a journal naming a secret this version no longer has still resumes.
+    val secrets: Map<String, String>,
     val changesSetup: Boolean,
     val businessWarning: Boolean,
     val paymentsAppChecked: Boolean,
@@ -242,7 +243,7 @@ data class TransferResult(
  *
  * Shared settings omit device-bound fields as defined by [AppSettings.withDeviceFieldsOf]; imported shared values
  * replace this device's values, including defaults. The default tax rate travels as its name and rate and is matched
- * to a local rate after catalogue import. All configured secrets, including both API credentials, the shared-key
+ * to a local rate after catalogue import. All configured secrets, including the Adyen API key, the shared-key
  * passphrase, SMTP password and both PIN verifiers, are sealed separately with a transfer code by [TransferSeal].
  * Transfers do not include transaction history or synchronize subsequent changes.
  *
@@ -371,13 +372,14 @@ class SetupTransfer(
             } catch (ignored: SerializationException) {
                 return null
             }
-        return values
-            .mapNotNull { (name, value) -> Secret.entries.firstOrNull { it.name == name }?.let { it to value } }
-            .filter { (secret, value) ->
-                value.isNotEmpty() &&
-                    (secret !in setOf(Secret.PIN_VERIFIER, Secret.MANAGER_PIN_VERIFIER) || PinManager.isValidVerifier(value))
-            }.toMap()
+        return known(values).filter { (secret, value) ->
+            value.isNotEmpty() && (secret !in setOf(Secret.PIN_VERIFIER, Secret.MANAGER_PIN_VERIFIER) || PinManager.isValidVerifier(value))
+        }
     }
+
+    /** The [values] (by [Secret.name]) of the secrets this version has; the others are left out. */
+    private fun known(values: Map<String, String>): Map<Secret, String> =
+        values.mapNotNull { (name, value) -> Secret.entries.firstOrNull { it.name == name }?.let { it to value } }.toMap()
 
     /**
      * Imports [received] with [mode] after authenticating every section with the required transfer [code]. A missing
@@ -410,7 +412,7 @@ class SetupTransfer(
                         TransferCodec.encode(prepared.received.transfer),
                         mode,
                         prepared.settings,
-                        prepared.importedSecrets.toMap(),
+                        prepared.importedSecrets.mapKeys { it.key.name },
                         prepared.changesSetup,
                         prepared.businessWarning,
                         prepared.paymentsAppChecked,
@@ -436,7 +438,8 @@ class SetupTransfer(
     ): ImportOutcome {
         val received = receive(TransferCodec.decode(entry.payload))
         val summary = received.catalogue?.let { catalog.import(it, entry.mode, entry.id) }
-        secrets.setAll(entry.secrets)
+        val imported = known(entry.secrets)
+        secrets.setAll(imported)
         if (entry.purgeHistory) checkNotNull(history).purgeForEnvironmentSwitch(entry.settings.terminal)
         if (received.settings != null) apply(received.settings, entry.settings) else settings.update { entry.settings }
         if (entry.changesSetup && !verified()) return ImportOutcome.Rejected(SetupProblem.SETUP_CHANGED)
@@ -446,7 +449,7 @@ class SetupTransfer(
             TransferResult(
                 summary,
                 received.hasSettings,
-                entry.secrets.keys,
+                imported.keys,
                 connection = received.hasConnection,
                 businessWarning = entry.businessWarning,
                 paymentsAppChecked = entry.paymentsAppChecked,

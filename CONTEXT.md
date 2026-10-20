@@ -81,7 +81,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Verified setup import | Authenticated QR candidate checked before activation; encrypted commit journal resumes interrupted saves, with an atomic catalog import receipt. | `terminal/SetupImport`, `data/transfer/SetupTransfer` |
 | Unlocked setup | Resolved setup with required secrets decrypted once. | `UnlockedSetup` |
 | Setup fence | What work begun on one setup checks before its result applies: connection fields, plus the API key, or the exact secret snapshot. | `TerminalSetupSource.SetupFence`, `SetupFreshness` |
-| Setup problem | Missing/unreadable information or other local condition to enter, install, approve or reconcile first, reported typed rather than thrown. What Adyen refuses or fails to answer is a fault, not a setup problem; retired entries are kept only so stored names read. | `SetupProblem` |
+| Setup problem | Missing/unreadable information or other local condition to enter, install, approve or reconcile first, reported typed rather than thrown. What Adyen refuses or fails to answer is a fault, not a setup problem. | `SetupProblem` |
 | Connection | Open with a client, or blocked as not set up/unreachable. | `Connection`, `Destination.connect` |
 | Connection check | Checks reachability/setup and learns printer availability when supported. | `TerminalStatus` |
 | Delivery | One message was answered, or failed with a fault; a fault that may have taken effect requires recovery. | `transport/Delivery` |
@@ -91,8 +91,8 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | POIID | Terminal ID (`<model>-<serial>`), device name on terminals, boarded installation ID for Tap to Pay. | `poiId` |
 | Shared key | Identifier, passphrase and version encrypting local and Payments app messages. | Terminal settings + `SecretStore` |
 | Shared-key creation | Confirmed terminal-specific creation after read-only checks; encrypted recovery retains one generated key per context until setup verifies. Never replaces an existing effective key. Saved-setup completion includes a fenced save and exact-key connection verification; setup import keeps its separate verify-before-activation journal. | `terminal/SharedKeySetup`, `SetupDiscovery.setupKey` |
-| Adyen API key | Credential shared by Checkout/cloud operations and optional Management reads; distinct from the boarding credential. | `ADYEN_API_KEY` |
-| Boarding | Registers/revokes the Payments app installation for Tap to Pay. | `TapToPaySetup`, `PAYMENTS_APP_API_KEY` |
+| Adyen API key | Credential shared by Checkout/cloud operations and optional Management reads; for Tap to Pay it also creates the boarding credential, which stays distinct from it. | `ADYEN_API_KEY` |
+| Boarding | Registers/revokes the Payments app installation for Tap to Pay with a boarding credential: a dedicated merchant-scoped credential and client key that the Adyen API key creates automatically; generated secrets stay device-local. | `TapToPaySetup`, `BoardingCredential` |
 | Tap to Pay troubleshooting | Advisory boarding-credential/client-key checks and redacted, manually shared diagnostics; never proof of payment readiness. | `terminal/TapToPayDiagnostics`, `TapToPayCheck`, `BoardingIdentity` |
 | Checkout API | Captures, adjustments, links and saved cards, required before real payments; made once per credential, and access eligibility belongs to the target. | `ApiSetup`, `AdyenApi`, `ApiTarget`, `CheckoutApi`, `AdyenCheckout` |
 

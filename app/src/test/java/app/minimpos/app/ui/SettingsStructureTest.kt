@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
@@ -67,13 +68,18 @@ class SettingsStructureTest {
         compose.onNodeWithTag("shareTapReport").assertDoesNotExist()
         repeat(2) {
             compose.onNodeWithTag("tapTroubleshootingDetails").performScrollTo().performClick()
-            compose.waitUntilAtLeastOneExists(hasText("integration=${mode.name}"), 15_000)
-            compose.waitUntilAtLeastOneExists(hasText("merchantAccount=HarbourCoffeeCOM"), 15_000)
+            compose.waitUntilAtLeastOneExists(hasTestTag("diagnostic_integration") and hasText(mode.name), 15_000)
+            compose.waitUntilAtLeastOneExists(
+                hasTestTag("diagnostic_merchantAccount") and hasText("HarbourCoffeeCOM"),
+                15_000,
+            )
             compose.waitUntilDoesNotExist(hasTestTag("diagnosticsLoading"), 15_000)
             compose.onNodeWithTag("shareTapReport").performScrollTo().assertIsDisplayed()
             compose.onNodeWithTag("testConnection").assertDoesNotExist()
             compose.onNodeWithTag("connectionResult").assertDoesNotExist()
             compose.onNodeWithTag("tapClientKeyStatus").assertDoesNotExist()
+            compose.onNodeWithText("Read-only checks do not prove", substring = true).assertDoesNotExist()
+            compose.onNodeWithText("Test API access and the connection before taking payments.").assertDoesNotExist()
             compose.onNodeWithTag("tapTroubleshootingDetails").performScrollTo().performClick()
             compose.onNodeWithTag("shareTapReport").assertDoesNotExist()
         }

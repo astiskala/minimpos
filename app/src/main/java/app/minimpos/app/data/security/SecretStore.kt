@@ -26,7 +26,10 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import kotlin.io.encoding.Base64
 
-/** The credentials the app keeps; each is stored under its enum name in [SecretBlob]. */
+/**
+ * The credentials the app keeps; each is stored under its enum name in [SecretBlob]. A stored name this version no
+ * longer has is ignored, and the next secret write deletes it.
+ */
 enum class Secret {
     /** Passphrase of the terminal's shared key, which encrypts Terminal API messages (NexoCrypto). */
     TERMINAL_PASSPHRASE,
@@ -45,10 +48,10 @@ enum class Secret {
      * Cloud device API when payments go to a terminal in the cloud.
      */
     ADYEN_API_KEY,
-
-    /** API key with the Adyen Payments app role, for boarding and revoking the Payments app on this phone. */
-    PAYMENTS_APP_API_KEY,
 }
+
+/** Non-secret SHA-256 fingerprint (Base64) of [value], to recognize a secret again without keeping it. */
+internal fun secretFingerprint(value: String): String = Base64.encode(MessageDigest.getInstance("SHA-256").digest(value.toByteArray()))
 
 /** Encrypts secrets at rest. Implementations may block (Keystore calls), so [SecretStore] calls them off the main thread. */
 interface SecretCipher {
@@ -117,6 +120,7 @@ class KeystoreSecretCipher(
  * @property pendingImport Encrypted verified import journal; null when no commit needs recovery.
  * @property boardingRecovery Encrypted phone registration recovery facts; never transferred.
  * @property keyCreationRecovery Encrypted terminal-key creation records; never transferred.
+ * @property boardingCredential Encrypted device-local generated boarding credential and creation intent; never transferred.
  */
 @Serializable
 data class SecretBlob(
@@ -124,6 +128,7 @@ data class SecretBlob(
     val pendingImport: String? = null,
     val boardingRecovery: String? = null,
     val keyCreationRecovery: String? = null,
+    val boardingCredential: String? = null,
 )
 
 internal class SetupSecrets(
@@ -135,6 +140,16 @@ internal class SetupSecrets(
 
 /** Which encrypted recovery journal in [SecretBlob] an operation reads or writes. */
 enum class RecoveryJournal {
+    /** Device-local Payments app credential, including an interrupted creation's identity. */
+    BOARDING_CREDENTIAL {
+        override fun get(blob: SecretBlob): String? = blob.boardingCredential
+
+        override fun set(
+            blob: SecretBlob,
+            encrypted: String?,
+        ): SecretBlob = blob.copy(boardingCredential = encrypted)
+    },
+
     /** Verified setup import commit journal. */
     SETUP_IMPORT {
         override fun get(blob: SecretBlob): String? = blob.pendingImport
@@ -310,27 +325,26 @@ class SecretStore(
         tag: String,
         requested: Set<Secret>,
         read: Boolean,
+        journal: RecoveryJournal? = null,
     ): SetupSecrets {
         val blob = store.data.first()
         val configured = Secret.entries.filter { it.name in blob.values }.toSet()
         val identity =
             withContext(io) {
-                val text =
+                val stored =
+                    requested.sortedBy { it.name }.map { it.name to blob.values[it.name] } +
+                        listOfNotNull(journal?.let { it.name to it.get(blob) })
+                secretFingerprint(
                     buildString {
                         append(tag.length).append(':').append(tag)
-                        requested.sortedBy { it.name }.forEach { secret ->
-                            val value = blob.values[secret.name].orEmpty()
-                            append(secret.name)
+                        stored.forEach { (name, value) ->
+                            append(name)
                                 .append(':')
-                                .append(value.length)
+                                .append(value.orEmpty().length)
                                 .append(':')
-                                .append(value)
+                                .append(value.orEmpty())
                         }
-                    }
-                Base64.encode(
-                    MessageDigest
-                        .getInstance("SHA-256")
-                        .digest(text.toByteArray()),
+                    },
                 )
             }
         val values = if (read) requested.intersect(configured).associateWith { decrypt(checkNotNull(blob.values[it.name])) } else emptyMap()
@@ -339,7 +353,7 @@ class SecretStore(
 
     internal suspend fun setAll(values: Map<Secret, String>) {
         val encrypted = values.mapKeys { it.key.name }.mapValues { encrypt(it.value) }
-        store.update { it.copy(values = it.values + encrypted) }
+        store.update { it.copy(values = it.known() + encrypted) }
     }
 
     /** Stores [value], or clears the secret when it is null or empty. Throws [SecretStoreException] if it cannot be encrypted. */
@@ -349,9 +363,13 @@ class SecretStore(
     ) {
         val encrypted = value?.takeIf { it.isNotEmpty() }?.let { encrypt(it) }
         store.update { blob ->
-            blob.copy(values = if (encrypted == null) blob.values - secret.name else blob.values + (secret.name to encrypted))
+            val known = blob.known()
+            blob.copy(values = if (encrypted == null) known - secret.name else known + (secret.name to encrypted))
         }
     }
+
+    /** The stored values of the secrets this version has, so that a write deletes any it no longer reads. */
+    private fun SecretBlob.known(): Map<String, String> = values.filterKeys { name -> Secret.entries.any { it.name == name } }
 
     private suspend fun encrypt(value: String): String =
         withContext(io) {

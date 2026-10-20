@@ -76,6 +76,6 @@ class TerminalSetupPlanTest {
     fun `any saved connection detail of any destination counts as entered`() {
         assertThat(TerminalSetupPlan.savedConnectionDetails(TerminalSettings(), emptySet())).isFalse()
         assertThat(TerminalSetupPlan.savedConnectionDetails(TerminalSettings(storeId = "S1"), emptySet())).isTrue()
-        assertThat(TerminalSetupPlan.savedConnectionDetails(TerminalSettings(), setOf(Secret.PAYMENTS_APP_API_KEY))).isTrue()
+        assertThat(TerminalSetupPlan.savedConnectionDetails(TerminalSettings(), setOf(Secret.TERMINAL_PASSPHRASE))).isTrue()
     }
 }

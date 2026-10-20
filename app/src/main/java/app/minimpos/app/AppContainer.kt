@@ -95,8 +95,10 @@ import app.minimpos.terminal.checkout.AdyenCheckout
 import app.minimpos.terminal.checkout.CheckoutApi
 import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.client.PosApplication
+import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppCredentials
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
+import app.minimpos.terminal.paymentsapp.PaymentsAppCredentials
 import app.minimpos.terminal.paymentsapp.PaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.PaymentsAppTransport
 import app.minimpos.terminal.simulator.SimulatedPaymentLinks
@@ -151,6 +153,7 @@ internal val Context.locale: Locale get() = resources.configuration.locales[0] ?
  * @param cloudDevices Reaches terminals in the cloud with an API key.
  * @param paymentsAppExchange Opens the Adyen Payments app; null uses [paymentsApp], which the activity serves.
  * @param paymentsAppManagement Boards and revokes the Payments app with an API key, in an environment.
+ * @param paymentsAppCredentials Provisions the device-local boarding credential with the primary API key.
  * @param checkout Makes the Checkout API (modifications, payment links and saved cards) for one credential; null uses
  *   Adyen's.
  * @param storeDetails Reads Management API store or merchant details for reviewed receipt-business import.
@@ -178,6 +181,9 @@ class AppContainer(
     paymentsAppExchange: AppLinkExchange? = null,
     paymentsAppManagement: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement = { key, environment ->
         AdyenPaymentsAppManagement(key, environment, baseClient = http)
+    },
+    paymentsAppCredentials: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppCredentials = { key, environment ->
+        AdyenPaymentsAppCredentials(key, environment, baseClient = http)
     },
     checkout: ((CheckoutCredentials) -> CheckoutApi)? = null,
     storeDetails: (String, TerminalEnvironment) -> StoreDetailsApi = { key, environment ->
@@ -336,7 +342,9 @@ class AppContainer(
             paymentsAppLinks,
             paymentsAppManagement,
             TapToPayDiagnostics(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement, appScope),
-        ) { api.verify() }
+            { api.verify() },
+            paymentsAppCredentials,
+        )
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
     val terminalStatus =

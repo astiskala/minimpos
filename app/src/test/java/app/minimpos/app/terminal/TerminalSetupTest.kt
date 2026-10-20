@@ -3,6 +3,7 @@ package app.minimpos.app.terminal
 import app.minimpos.app.FakeDevice
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
+import app.minimpos.app.data.security.secretFingerprint
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.TerminalMode
@@ -190,28 +191,27 @@ class TerminalSetupTest {
     }
 
     @Test
-    fun `Tap to Pay is boarded on a phone with one Payments app, for the merchant account, with its API key`() {
+    fun `Tap to Pay is boarded on a phone with one Payments app, for the merchant account, with the Adyen API key`() {
         val phone = FakeDevice(paymentsApps = setOf(TerminalEnvironment.LIVE))
-        val merchant = AppSettings().let { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
-        val key = setOf(Secret.PAYMENTS_APP_API_KEY)
+        val merchant = AppSettings().let { it.copy(terminal = it.terminal.copy(merchantAccount = " Merchant ")) }
 
         fun boarding(
             device: DeviceInfo = phone,
             settings: AppSettings = merchant,
-            saved: Set<Secret> = key,
-            read: String? = "pa-key",
-        ) = TerminalSetup.boarding(settings, saved, device, read)
-        val ready = boarding()
-        assertThat(ready).isEqualTo(BoardingSetup.Ready(TerminalEnvironment.LIVE, "pa-key"))
-        assertThat(ready.toString()).doesNotContain("pa-key")
-        assertThat(boarding(onTerminal)).isEqualTo(BoardingSetup.Blocked(SetupProblem.PAYMENTS_APP_ON_TERMINAL))
-        assertThat(boarding(FakeDevice())).isEqualTo(BoardingSetup.Blocked(SetupProblem.PAYMENTS_APP_MISSING))
+            read: Map<Secret, String?> = mapOf(Secret.ADYEN_API_KEY to "adyen-key"),
+        ) = TerminalSetup.boarding(settings, device, read)
+        val ready = BoardingOwner.Ready(TerminalEnvironment.LIVE, "Merchant", "adyen-key")
+        assertThat(boarding()).isEqualTo(ready)
+        assertThat(ready.toString()).doesNotContain("adyen-key")
+        assertThat(ready.fingerprint).isEqualTo(secretFingerprint("adyen-key"))
+        assertThat(boarding(onTerminal)).isEqualTo(BoardingOwner.Blocked(SetupProblem.PAYMENTS_APP_ON_TERMINAL))
+        assertThat(boarding(FakeDevice())).isEqualTo(BoardingOwner.Blocked(SetupProblem.PAYMENTS_APP_MISSING))
         val both = FakeDevice(paymentsApps = TerminalEnvironment.entries.toSet())
-        assertThat(boarding(both)).isEqualTo(BoardingSetup.Blocked(SetupProblem.PAYMENTS_APP_AMBIGUOUS))
-        assertThat(boarding(settings = AppSettings())).isEqualTo(BoardingSetup.Blocked(SetupProblem.MERCHANT_ACCOUNT))
-        assertThat(boarding(saved = passphrase, read = null)).isEqualTo(BoardingSetup.Blocked(SetupProblem.PAYMENTS_APP_API_KEY))
+        assertThat(boarding(both)).isEqualTo(BoardingOwner.Blocked(SetupProblem.PAYMENTS_APP_AMBIGUOUS))
+        assertThat(boarding(settings = AppSettings())).isEqualTo(BoardingOwner.Blocked(SetupProblem.MERCHANT_ACCOUNT))
+        assertThat(boarding(read = emptyMap())).isEqualTo(BoardingOwner.Blocked(SetupProblem.API_KEY))
         // A key saved but no longer readable has to be entered again.
-        assertThat(boarding(read = null)).isEqualTo(BoardingSetup.Blocked(SetupProblem.UNREADABLE_PAYMENTS_APP_KEY))
+        assertThat(boarding(read = mapOf(Secret.ADYEN_API_KEY to null))).isEqualTo(BoardingOwner.Blocked(SetupProblem.UNREADABLE_API_KEY))
     }
 
     @Test

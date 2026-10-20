@@ -167,34 +167,27 @@ class TerminalSetupViewModelTest {
     }
 
     @Test
-    fun `Tap to Pay is set up with the Payments app API key typed, and the phone can be removed again`() {
+    fun `Tap to Pay provisions its credential automatically and the phone can be removed again`() {
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
         env.updateSettings {
             it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP, keyIdentifier = "key", merchantAccount = "Merchant"))
         }
         val vm = setupViewModel()
         vm.setUpTapToPay()
-        val missing = await { vm.actions.first { it.tapToPay.isError } }
-        assertThat(missing.tapToPay.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.PAYMENTS_APP_API_KEY)))
-
-        vm.setUpTapToPay(" pa-key ")
         val ready = await { vm.actions.first { it.tapToPay.done } }
         assertThat(ready.tapToPay.outcome).isEqualTo(ActionOutcome.TapToPayReady(FakePaymentsApp.INSTALLATION_ID))
-        assertThat(ready.paymentsAppKeyStored).isTrue()
-        assertThat(await { container.secrets.get(Secret.PAYMENTS_APP_API_KEY) }).isEqualTo("pa-key")
         vm.dismissResult(SetupResult.TAP_TO_PAY)
         vm.dismissResult(SetupResult.SHARED_KEY)
         assertThat(vm.actions.value.tapToPay).isEqualTo(ActionState(done = true))
-        assertThat(vm.actions.value.paymentsAppKeyStored).isTrue()
 
         vm.setUpTapToPay(again = true)
-        await { vm.actions.first { it.tapToPay.done && !it.paymentsAppKeyStored } }
+        await { vm.actions.first { it.tapToPay.done } }
         vm.removeTapToPay()
         assertThat(await { vm.actions.first { it.tapToPay.done } }.tapToPay.outcome).isEqualTo(ActionOutcome.TapToPayRemoved)
 
         // A key that cannot be stored is reported.
         env.cipher.failEncrypt = true
-        vm.setUpTapToPay("another key")
+        vm.setUpTapToPay()
         assertThat(
             await { vm.actions.first { it.tapToPay.isError } }.tapToPay.outcome,
         ).isEqualTo(ActionOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE)))

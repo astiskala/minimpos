@@ -2,9 +2,11 @@ package app.minimpos.app.terminal
 
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.EncryptedJournal
+import app.minimpos.app.data.security.JournalRead
 import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
+import app.minimpos.app.data.security.secretFingerprint
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.SettingsRepository
@@ -24,6 +26,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.serializer
 
 /**
  * Where payments go and what is still missing, resolved in one place ([resolve]) from the stored settings, which
@@ -240,26 +243,26 @@ data class TerminalSetup(
         }
 
         /**
-         * Whether the Adyen Payments app on [device] can be boarded (or revoked) for the merchant account in [settings]
-         * with the Payments app API key, given which secrets are [saved] and the key as [read] (null when it is not
-         * saved or can no longer be decrypted): the same device rules as for payments through it, then the merchant
-         * account and the key.
+         * Whether Tap to Pay can be set up on [device] for the merchant account in [settings] with the Adyen API key as
+         * [read] (absent when it is not saved, null when it can no longer be decrypted): the same device rules as for
+         * payments through the Payments app, then the merchant account and the key, which creates this phone's own
+         * credential for boarding ([TerminalSetupSource.boarding]).
          */
         fun boarding(
             settings: AppSettings,
-            saved: Set<Secret>,
             device: DeviceInfo,
-            read: String?,
-        ): BoardingSetup {
+            read: Map<Secret, String?>,
+        ): BoardingOwner {
             val apps = device.paymentsApps
             val problem =
                 paymentsAppProblem(device.isAdyenTerminal, apps)
                     ?: SetupProblem.MERCHANT_ACCOUNT.takeIf { settings.terminal.merchantAccount.isBlank() }
-                    ?: SetupProblem.PAYMENTS_APP_API_KEY.takeIf { Secret.PAYMENTS_APP_API_KEY !in saved }
+                    ?: SetupProblem.API_KEY.takeIf { Secret.ADYEN_API_KEY !in read }
+            val key = read[Secret.ADYEN_API_KEY]
             return when {
-                problem != null -> BoardingSetup.Blocked(problem)
-                read == null -> BoardingSetup.Blocked(SetupProblem.UNREADABLE_PAYMENTS_APP_KEY)
-                else -> BoardingSetup.Ready(apps.single(), read)
+                problem != null -> BoardingOwner.Blocked(problem)
+                key == null -> BoardingOwner.Blocked(SetupProblem.UNREADABLE_API_KEY)
+                else -> BoardingOwner.Ready(apps.single(), settings.terminal.merchantAccount.trim(), key)
             }
         }
 
@@ -268,7 +271,6 @@ data class TerminalSetup(
             when (secret) {
                 Secret.TERMINAL_PASSPHRASE -> SetupProblem.UNREADABLE_PASSPHRASE
                 Secret.ADYEN_API_KEY -> SetupProblem.UNREADABLE_API_KEY
-                Secret.PAYMENTS_APP_API_KEY -> SetupProblem.UNREADABLE_PAYMENTS_APP_KEY
                 Secret.SMTP_PASSWORD, Secret.PIN_VERIFIER, Secret.MANAGER_PIN_VERIFIER -> null
             }
 
@@ -399,13 +401,43 @@ enum class SetupFreshness {
     BOARDING,
 }
 
-/** Whether Tap to Pay can be set up on this phone, see [TerminalSetup.boarding]. */
+/** Whether the Adyen API key can create this phone's own Tap to Pay credential, see [TerminalSetup.boarding]. */
+sealed interface BoardingOwner {
+    /**
+     * It can. [toString] leaves the API key out.
+     *
+     * @property environment The installed Payments app's, which the credential is created in.
+     * @property merchantAccount The merchant account it is created for, trimmed.
+     * @property apiKey The Adyen API key, decrypted.
+     */
+    data class Ready(
+        val environment: TerminalEnvironment,
+        val merchantAccount: String,
+        val apiKey: String,
+    ) : BoardingOwner {
+        /** Non-secret fingerprint of [apiKey], which the credentials it creates are stored with instead of the key. */
+        val fingerprint: String get() = secretFingerprint(apiKey)
+
+        override fun toString() = "Ready($environment, $merchantAccount)"
+    }
+
+    /**
+     * Something must be entered or installed first.
+     *
+     * @property problem What.
+     */
+    data class Blocked(
+        val problem: SetupProblem,
+    ) : BoardingOwner
+}
+
+/** Whether the Payments app can be boarded on this phone, see [TerminalSetupSource.boarding]. */
 sealed interface BoardingSetup {
     /**
-     * The Payments app can be boarded. [toString] leaves the API key out.
+     * It can, with this phone's own credential. [toString] leaves the API key out.
      *
      * @property environment The installed Payments app's, which the Management API is called in.
-     * @property apiKey The Payments app API key, decrypted.
+     * @property apiKey The API key of this phone's own credential, decrypted.
      */
     data class Ready(
         val environment: TerminalEnvironment,
@@ -415,7 +447,7 @@ sealed interface BoardingSetup {
     }
 
     /**
-     * Something must be entered or installed first.
+     * Something must be entered, installed or set up first.
      *
      * @property problem What.
      */
@@ -443,6 +475,8 @@ class TerminalSetupSource(
     private val historySwitchPending: Flow<Boolean> = flowOf(false),
     private val onVerified: suspend (UnlockedSetup) -> Unit = {},
 ) {
+    internal val boardingCredentials = journal(RecoveryJournal.BOARDING_CREDENTIAL, serializer<List<BoardingCredential>>())
+
     /** The setup with the stored settings now, without reading any secret. */
     suspend fun current(): TerminalSetup = reading(settings.current(), read = false).setup
 
@@ -475,10 +509,30 @@ class TerminalSetupSource(
         values: Map<Secret, String>,
     ): UnlockedSetup = TerminalSetup.resolve(current, values.keys, device, verified = true, pendingImport = false).unlock(values)
 
-    internal fun candidateBoarding(
+    /**
+     * Whether the Adyen API key can create this phone's own credential ([TerminalSetup.boarding]): the saved one with the
+     * stored settings now, or that of the [candidate] setup.
+     */
+    internal suspend fun owner(candidate: UnlockedSetup? = null): BoardingOwner {
+        val current = candidate?.setup?.settings ?: settings.current()
+        val read =
+            if (candidate == null) {
+                boardingSecrets(current, read = true).values
+            } else {
+                candidate.apiKey?.let { mapOf(Secret.ADYEN_API_KEY to it) }.orEmpty()
+            }
+        return TerminalSetup.boarding(current, device, read)
+    }
+
+    private suspend fun boardingSecrets(
         current: AppSettings,
-        values: Map<Secret, String>,
-    ): BoardingSetup = TerminalSetup.boarding(current, values.keys, device, values[Secret.PAYMENTS_APP_API_KEY])
+        read: Boolean,
+    ) = secrets.setupSecrets(
+        current.terminal.toString() + device.paymentsApps.sortedBy { it.name },
+        setOf(Secret.ADYEN_API_KEY),
+        read,
+        RecoveryJournal.BOARDING_CREDENTIAL,
+    )
 
     internal fun <T> journal(
         kind: RecoveryJournal,
@@ -624,11 +678,26 @@ class TerminalSetupSource(
     suspend fun unlocked(forValidation: Boolean = false): UnlockedSetup =
         reading(settings.current(), read = true, forValidation = forValidation)
 
-    /** Whether Tap to Pay can be set up now with the stored settings, see [TerminalSetup.boarding]. */
-    suspend fun boarding(): BoardingSetup {
-        val saved = secrets.configured.first()
-        val key = if (Secret.PAYMENTS_APP_API_KEY in saved) secrets.get(Secret.PAYMENTS_APP_API_KEY) else null
-        return TerminalSetup.boarding(settings.current(), saved, device, key)
+    /**
+     * Whether the Payments app can be boarded (or revoked) with this phone's own credential, which the Adyen API key
+     * created for the merchant account and the installed Payments app's environment ([owner]): now with the stored
+     * settings, or with the [candidate] setup. [SetupProblem.PAYMENTS_APP_API_KEY] until Tap to Pay setup creates it,
+     * and [SetupProblem.UNREADABLE_PAYMENTS_APP_KEY] when it can no longer be decrypted.
+     */
+    suspend fun boarding(candidate: UnlockedSetup? = null): BoardingSetup {
+        val key =
+            when (val owner = owner(candidate)) {
+                is BoardingOwner.Blocked -> return BoardingSetup.Blocked(owner.problem)
+                is BoardingOwner.Ready -> owner
+            }
+        val records =
+            when (val read = boardingCredentials.read()) {
+                JournalRead.Absent -> emptyList()
+                JournalRead.Unreadable -> return BoardingSetup.Blocked(SetupProblem.UNREADABLE_PAYMENTS_APP_KEY)
+                is JournalRead.Present -> read.value
+            }
+        val credential = records.firstOrNull { it.matches(key) }?.apiKey ?: return BoardingSetup.Blocked(SetupProblem.PAYMENTS_APP_API_KEY)
+        return BoardingSetup.Ready(key.environment, credential)
     }
 
     private val deviceReads = MutableStateFlow(0)
@@ -653,15 +722,13 @@ class TerminalSetupSource(
             .map { Triple(it.setup.settings.terminal, it.setup.apiSetup, it.setup.paymentContext()) to it.validationIdentity }
             .distinctUntilChanged()
 
-    /** Invalidations for advisory checks, including replacement of the separate encrypted boarding credential. */
+    /**
+     * Distinct changes of what [boarding] is read from (the connection fields, the installed Payments app, the saved
+     * Adyen API key and this phone's own credential), for advisory checks; without decrypting any secret.
+     */
     internal val boardingChanges: Flow<*> =
         combine(settings.settings, secrets.configured, deviceReads) { current, _, _ ->
-            secrets
-                .setupSecrets(
-                    current.terminal.toString() + device.paymentsApps.sortedBy { it.name },
-                    setOf(Secret.PAYMENTS_APP_API_KEY),
-                    read = false,
-                ).identity
+            boardingSecrets(current, read = false).identity
         }.distinctUntilChanged()
 
     /** Distinct setup-identity changes that invalidate cached Management wallet and capability readings. */

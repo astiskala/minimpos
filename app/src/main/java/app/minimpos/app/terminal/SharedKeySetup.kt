@@ -5,6 +5,7 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.JournalRead
 import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.SharedKeyGenerator
+import app.minimpos.app.data.security.secretFingerprint
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyApi
@@ -212,7 +213,7 @@ class SharedKeySetup internal constructor(
             unlocked.setup.settings.terminal.keyIdentifier
                 .isNotBlank() || unlocked.hasSharedPassphrase,
             unlocked.setup.settings.terminal,
-            generator.identity(checkNotNull(unlocked.apiKey)),
+            secretFingerprint(checkNotNull(unlocked.apiKey)),
         )
 
     private fun newRecord(unlocked: UnlockedSetup): KeyRecord {

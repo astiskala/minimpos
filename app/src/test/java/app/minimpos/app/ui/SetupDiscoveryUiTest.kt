@@ -185,7 +185,7 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("environment").assertDoesNotExist()
         compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
-        compose.onNodeWithTag("paymentsAppKey").assertExists()
+        compose.onNodeWithTag("paymentsAppKey").assertDoesNotExist()
         compose.onNodeWithTag("host").assertDoesNotExist()
     }
 
@@ -324,15 +324,15 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("terminalsResult").assertDoesNotExist()
         compose.onNodeWithTag("step_3").assertExists()
         compose.onNodeWithTag("step_4").assertDoesNotExist()
-        // Once unlocked, retesting cannot discard a secret draft in a later step.
-        compose.onNodeWithTag("paymentsAppKey").performScrollTo().performTextInput("boarding-draft")
+        // Once unlocked, retesting preserves the optional store field.
+        compose.onNodeWithTag("storeId").performScrollTo().performTextInput("store-draft")
         apiFailure = Fault.AdyenUnavailable(503)
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(
             hasTestTag("apiResult") and hasText(env.context.getString(R.string.fault_adyen_unavailable), substring = true),
             15_000,
         )
-        compose.onNodeWithTag("paymentsAppKey").performScrollTo().assertTextContains("boarding-draft", substring = true)
+        compose.onNodeWithTag("storeId").performScrollTo().assertTextContains("store-draft", substring = true)
     }
 
     @Test

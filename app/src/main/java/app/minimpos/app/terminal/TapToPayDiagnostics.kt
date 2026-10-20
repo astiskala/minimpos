@@ -1,11 +1,8 @@
 package app.minimpos.app.terminal
 
-import app.minimpos.app.BuildConfig
 import app.minimpos.app.data.db.Failure
-import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.settings.BoardingIdentity
 import app.minimpos.app.data.settings.SettingsRepository
-import app.minimpos.terminal.client.Decline
 import app.minimpos.terminal.paymentsapp.AppLinkAnswer
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
 import app.minimpos.terminal.paymentsapp.BoardingCredentialCheck
@@ -74,7 +71,6 @@ data class TapToPayCredential(
 /**
  * Non-secret diagnostic reading; null identities/times mean unavailable, never an assumed successful check.
  * @property environment Installed Payments app environment checked, or null before checking.
- * @property checking Whether a manual refresh is running.
  * @property clientKey Credential introspection result.
  * @property credential Verified /me result, containing presence only, never the client key value.
  * @property checkedAt UTC epoch milliseconds of the credential response, or null before checking.
@@ -87,7 +83,6 @@ data class TapToPayCredential(
  */
 data class TapToPayCheck(
     val environment: TerminalEnvironment? = null,
-    val checking: Boolean = false,
     val clientKey: ClientKeyCheck = ClientKeyCheck.NOT_CHECKED,
     val credential: TapToPayCredential? = null,
     val checkedAt: Long? = null,
@@ -143,7 +138,6 @@ class TapToPayDiagnostics(
                 is BoardingSetup.Ready -> {
                     inspect(origin, access)
                     val before = cached.value
-                    publish(before.fence, before.reading.copy(checking = true))
                     val answer =
                         exchange.exchange(
                             PaymentsAppLinks(access.environment).boardedCheck("${PaymentsAppBridge.RETURN_URL}/boarded"),
@@ -159,7 +153,6 @@ class TapToPayDiagnostics(
                         }
                     val next =
                         before.reading.copy(
-                            checking = false,
                             boarding = boarding,
                             boardingAt = now(),
                             installationId = fields["installationId"]?.takeIf { it.isNotBlank() },
@@ -175,7 +168,6 @@ class TapToPayDiagnostics(
         access: BoardingSetup.Ready,
     ): BoardingCredentialCheck {
         val fence = setups.SetupFence(origin, access)
-        publish(fence, TapToPayCheck(environment = access.environment, checking = true))
         val result = management(access.apiKey, access.environment).credential()
         val reading =
             TapToPayCheck(
@@ -226,22 +218,6 @@ class TapToPayDiagnostics(
         val previous = cached.value.reading
         val fence = setups.SetupFence(setups.current(), access)
         publish(fence, withBoardingIdentity(previous))
-    }
-
-    /** Creates a redacted report only on request; it is never automatically uploaded or shared. */
-    suspend fun report(
-        sale: SaleEntity? = null,
-        decline: Decline? = null,
-    ): String {
-        val current = setups.current()
-        val saved = cached.value
-        val reading =
-            if (saved.fence?.stillCurrent() == true) {
-                saved.reading
-            } else {
-                withBoardingIdentity(TapToPayCheck(environment = current.environment))
-            }
-        return TapToPayReport(reading, current.settings.terminal, setups.device, BuildConfig.VERSION_NAME).render(now(), sale, decline)
     }
 
     private suspend fun withBoardingIdentity(reading: TapToPayCheck): TapToPayCheck {

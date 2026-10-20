@@ -229,11 +229,8 @@ internal interface TerminalSetupEvents {
     /** Reads key settings and retries connection verification without granting permission to PATCH. */
     fun onSharedKeyCheck()
 
-    /** Sets up Tap to Pay, saving [apiKey] first ([TerminalSetupViewModel.setUpTapToPay]). */
-    fun onTapToPaySetUp(
-        apiKey: String,
-        again: Boolean,
-    )
+    /** Sets up Tap to Pay, provisioning its credential automatically ([TerminalSetupViewModel.setUpTapToPay]). */
+    fun onTapToPaySetUp(again: Boolean)
 
     /** Removes this phone's Payments app instance ([TerminalSetupViewModel.removeTapToPay]). */
     fun onTapToPayRemove()
@@ -335,10 +332,7 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
 
         override fun onSharedKeyCheck() = setup.checkSharedKey()
 
-        override fun onTapToPaySetUp(
-            apiKey: String,
-            again: Boolean,
-        ) = setup.setUpTapToPay(apiKey, again)
+        override fun onTapToPaySetUp(again: Boolean) = setup.setUpTapToPay(again)
 
         override fun onTapToPayRemove() = setup.removeTapToPay()
 
@@ -529,12 +523,16 @@ private fun ColumnScope.OtherSectionRows(
     )
 }
 
-/** One settings [section] (a [SettingsSections] key; unknown keys show About). */
+/**
+ * One settings [section] (a [SettingsSections] key; unknown keys show About).
+ * [showTroubleshooting] expands Help's table and scrolls it into view when opened from a failed payment.
+ */
 @Composable
 fun SettingsSectionScreen(
     section: String,
     navigator: Navigator,
     modifier: Modifier = Modifier,
+    showTroubleshooting: Boolean = false,
 ) {
     val vm = settingsViewModel()
     val sampleData = sampleDataViewModel()
@@ -551,6 +549,7 @@ fun SettingsSectionScreen(
     val events = remember(vm, sampleData) { settingsEvents(vm, sampleData) }
     val setupEvents = remember(setup) { terminalSetupEvents(setup) }
     var settingPin by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val setPin: (Boolean) -> Unit = { settingPin = it }
     if (settingPin != null) {
         SetPinScreen(onDone = {
             vm.setPin(it, manager = settingPin == true)
@@ -579,7 +578,7 @@ fun SettingsSectionScreen(
                     SampleDataSection(samples, events.samples)
                 }
                 val businessImport by vm.businessImport.state.collectAsStateWithLifecycle()
-                SettingsContent(section, state, actions, setupActions, events, setupEvents, navigator, { settingPin = it }) {
+                SettingsContent(section, state, actions, setupActions, events, setupEvents, navigator, showTroubleshooting, setPin) {
                     ReceiptsSection(state, actions, businessImport, events)
                 }
                 if (section == SettingsSections.TERMINAL) {
@@ -663,6 +662,7 @@ private fun ColumnScope.SettingsContent(
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
     navigator: Navigator,
+    showTroubleshooting: Boolean,
     onSetPin: (Boolean) -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -714,7 +714,7 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.HELP -> {
-            HelpSection(terminal, setup, setupEvents)
+            HelpSection(terminal, setup, setupEvents, showTroubleshooting)
         }
 
         else -> {

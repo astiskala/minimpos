@@ -17,6 +17,7 @@ import app.minimpos.app.FakeDevice
 import app.minimpos.app.FakeManagement
 import app.minimpos.app.FakePaymentsApp
 import app.minimpos.app.MiniMposApp
+import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
@@ -140,30 +141,19 @@ class TapToPaySettingsTest {
     }
 
     @Test
-    fun `removing a saved key asks first`() {
+    fun `registration credentials have no manual entry or removal controls`() {
         device.paymentsApps = setOf(TerminalEnvironment.TEST)
         env.useCheckoutApi()
-        await { container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "pa-key") }
         openTerminalSettings()
         testApi()
-        waitForTag("forgetPaymentsAppKey")
-        compose.onNodeWithTag("forgetPaymentsAppKey").performScrollTo().performClick()
-        compose.onNodeWithText("Remove the saved Payments app API key?").assertExists()
-        // Cancelling keeps it.
-        compose.onNodeWithText("Cancel").performClick()
-        assertThat(await { container.secrets.get(Secret.PAYMENTS_APP_API_KEY) }).isEqualTo("pa-key")
-        compose.onNodeWithTag("forgetPaymentsAppKey").performScrollTo().performClick()
-        compose.onNodeWithTag("confirm").performClick()
-        compose.awaitCondition("Removing the key") { await { container.secrets.get(Secret.PAYMENTS_APP_API_KEY) } == null }
+        compose.onNodeWithTag("paymentsAppKey").assertDoesNotExist()
+        compose.onNodeWithTag("forgetPaymentsAppKey").assertDoesNotExist()
     }
 
     private fun boardPhone() {
         device.paymentsApps = setOf(TerminalEnvironment.TEST)
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
-        await {
-            container.secrets.set(Secret.ADYEN_API_KEY, "checkout-key")
-            container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "boarding-key")
-        }
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "checkout-key") }
         openTerminalSettings()
         testApi()
         waitForTag("setUpTapToPay")
@@ -209,9 +199,11 @@ class TapToPaySettingsTest {
         openHelp()
         compose.onNodeWithTag("tapClientKeyStatus").assertDoesNotExist()
         compose.onNodeWithTag("tapTroubleshootingDetails").performScrollTo().performClick()
-        compose.waitUntilAtLeastOneExists(hasTestTag("tapClientKeyStatus") and hasText("has no client key", substring = true), 15_000)
+        compose.waitUntilAtLeastOneExists(hasTestTag("tapClientKeyStatus") and hasText("MISSING"), 15_000)
         compose.waitUntilDoesNotExist(hasTestTag("diagnosticsLoading"), 15_000)
-        compose.onNodeWithText("Credential verified: ws@Company.Test").performScrollTo().assertExists()
+        compose.onNodeWithTag("diagnostic_credential.username").performScrollTo().assertTextContains("ws@Company.Test")
+        compose.onNodeWithTag("diagnostic_boardingStatus").performScrollTo().assertTextContains("BOARDED")
+        compose.onNodeWithText("Payments app reports boarded.", substring = true).assertDoesNotExist()
         compose.onNodeWithTag("tapCustomerArea").assertDoesNotExist()
         val application = ApplicationProvider.getApplicationContext<Application>()
         compose.onNodeWithTag("shareTapReport").performScrollTo().performClick()
@@ -229,7 +221,7 @@ class TapToPaySettingsTest {
         testConnection("Client key present")
         openHelp()
         compose.onNodeWithTag("tapTroubleshootingDetails").performScrollTo().performClick()
-        compose.waitUntilAtLeastOneExists(hasTestTag("tapClientKeyStatus") and hasText("Client key present", substring = true), 15_000)
+        compose.waitUntilAtLeastOneExists(hasTestTag("tapClientKeyStatus") and hasText("PRESENT"), 15_000)
         assertThat(management.requests).hasSize(1)
         assertThat(management.revoked).isEmpty()
     }
@@ -239,10 +231,11 @@ class TapToPaySettingsTest {
     fun `permission unavailable offers a troubleshooting guide without declaring a missing key in Japanese`() {
         boardPhone()
         management.credentialResult = BoardingCredentialCheck.Failed(Fault.Permission(ApiKey.PAYMENTS_APP))
-        testConnection("GET /me")
+        val permission = env.context.getString(R.string.tap_key_permission)
+        testConnection(permission)
         openHelp()
         compose.onNodeWithTag("tapTroubleshootingDetails").performScrollTo().performClick()
-        compose.waitUntilAtLeastOneExists(hasTestTag("tapClientKeyStatus") and hasText("GET /me", substring = true), 15_000)
+        compose.waitUntilAtLeastOneExists(hasTestTag("tapClientKeyStatus") and hasText("PERMISSION_UNAVAILABLE"), 15_000)
         compose.onNodeWithTag("helpTroubleshooting").performScrollTo().assertExists()
         compose.onNodeWithText("現在確認している Tap to Pay 設定用の認証情報にクライアントキーがありません。", substring = true).assertDoesNotExist()
         assertThat(management.requests).hasSize(1)

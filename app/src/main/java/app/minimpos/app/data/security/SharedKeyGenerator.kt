@@ -1,8 +1,6 @@
 package app.minimpos.app.data.security
 
-import java.security.MessageDigest
 import java.security.SecureRandom
-import kotlin.io.encoding.Base64
 
 /** Fresh terminal-key values; string conversion never exposes the secret.
  * @property identifier Random installation-independent identifier prefixed with `minimpos-`.
@@ -33,8 +31,6 @@ class SharedKeyGenerator(
             "minimpos-" + List(IDENTIFIER_LENGTH) { IDENTIFIER_ALPHABET[random.nextInt(IDENTIFIER_ALPHABET.length)] }.joinToString("")
         return SharedKeyMaterial(identifier, characters.joinToString(""))
     }
-
-    internal fun identity(value: String): String = Base64.encode(MessageDigest.getInstance("SHA-256").digest(value.toByteArray()))
 
     private companion object {
         const val PASSPHRASE_LENGTH = 32

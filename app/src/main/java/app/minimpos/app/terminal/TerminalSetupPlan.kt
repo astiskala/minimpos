@@ -142,5 +142,5 @@ object TerminalSetupPlan {
             terminal.storeId,
             terminal.liveUrlPrefix,
         ).any(String::isNotBlank) ||
-            secrets.any { it in setOf(Secret.ADYEN_API_KEY, Secret.TERMINAL_PASSPHRASE, Secret.PAYMENTS_APP_API_KEY) }
+            secrets.any { it in setOf(Secret.ADYEN_API_KEY, Secret.TERMINAL_PASSPHRASE) }
 }

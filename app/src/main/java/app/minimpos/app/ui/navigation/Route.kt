@@ -228,9 +228,11 @@ sealed interface Route : NavKey {
      * One settings section.
      *
      * @property section One of the [app.minimpos.app.feature.settings.SettingsSections] keys.
+     * @property troubleshooting Opens Help with its troubleshooting table expanded and in view.
      */
     @Serializable data class SettingsSection(
         val section: String,
+        val troubleshooting: Boolean = false,
     ) : Route {
         override val isProtected get() = true
     }

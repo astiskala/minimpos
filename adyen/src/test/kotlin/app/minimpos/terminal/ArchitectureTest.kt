@@ -8,6 +8,7 @@ import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.client.Decline
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TransactionDetails
+import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppCredentials
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
 import app.minimpos.terminal.transport.AdyenCloudDevices
 import app.minimpos.terminal.transport.AdyenHttp
@@ -63,7 +64,8 @@ class ArchitectureTest {
                 .or(type(AdyenTerminalDetails::class.java))
                 .or(type(AdyenWalletMethods::class.java))
                 .or(type(AdyenCloudDevices::class.java))
-                .or(type(AdyenPaymentsAppManagement::class.java)),
+                .or(type(AdyenPaymentsAppManagement::class.java))
+                .or(type(AdyenPaymentsAppCredentials::class.java)),
         ).check(terminal)
 
     @Test

@@ -146,7 +146,7 @@ private fun AppEntries(
                 entry<Route.TransferImport> { PinGate(navigator) { TransferImportScreen(navigator) } }
                 entry<Route.Settings>(metadata = settingsList) { PinGate(navigator) { SettingsScreen(navigator) } }
                 entry<Route.SettingsSection>(metadata = settingsDetail) {
-                    PinGate(navigator) { SettingsSectionScreen(it.section, navigator) }
+                    PinGate(navigator) { SettingsSectionScreen(it.section, navigator, showTroubleshooting = it.troubleshooting) }
                 }
             },
     )

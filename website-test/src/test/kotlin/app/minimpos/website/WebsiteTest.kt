@@ -61,7 +61,8 @@ class QuickStartGuideTest {
                 },
             ).contains("Devices › Device settings › Integrations › Terminal API › Encryption key")
             assertThat(text).doesNotContain("API tokenise payment details")
-            assertThat(text).doesNotContain("Management API - API credentials read and write")
+            assertThat(steps.children().single { "Adyen Payments app role" in it.text() }.text())
+                .contains("Management API - API credentials read and write")
         }
     }
 
@@ -818,7 +819,7 @@ class WebsitePresentationTest {
         fun Page.shortcuts() = document.select("a[data-ca]").map { it.attr("data-ca") to it.attr("href") }
         assertThat(
             english.fields().map { it[1] },
-        ).containsAtLeast("destination", "setupMode", "passphrase", "apiKey", "paymentsAppApiKey", "liveUrlPrefix")
+        ).containsAtLeast("destination", "setupMode", "passphrase", "apiKey", "liveUrlPrefix")
         LANGUAGES.forEach { language ->
             val page = pages.getValue(language to Kind.SETUP)
             assertWithMessage(page.name).that(page.fields()).isEqualTo(english.fields())
@@ -1100,7 +1101,7 @@ class SetupGuideTest {
             assertThat(options.select("dt")).hasSize(1)
             assertThat(options.select("dd")).hasSize(1)
             assertThat(options.select("a").map { it.attr("href") }).containsExactly("setup.html", "#helper").inOrder()
-            assertThat(following.single { it.hasClass("manual-setup") }.text()).contains("Adyen Payments app role")
+            assertThat(following.single { it.hasClass("manual-setup") }.text()).doesNotContain("Adyen Payments app role")
         }
         val english =
             pages

@@ -423,12 +423,12 @@ class AutomaticSetupUiTest {
         importAutomatic(
             "tapToPay",
             manualDetails = """"keyIdentifier":"manual-key","keyVersion":3,""",
-            secrets = """{"ADYEN_API_KEY":"imported-key","TERMINAL_PASSPHRASE":"manual secret","PAYMENTS_APP_API_KEY":"boarding-key"}""",
+            secrets = """{"ADYEN_API_KEY":"imported-key","TERMINAL_PASSPHRASE":"manual secret"}""",
             register = true,
         )
         openTerminal("keyIdentifier")
         compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("manual-key", substring = true)
-        compose.onNodeWithTag("paymentsAppKey").assertExists()
+        compose.onNodeWithTag("paymentsAppKey").assertDoesNotExist()
         assertThat(searches).isEmpty()
         assertThat(paymentsApp.opened).isNotEmpty()
     }

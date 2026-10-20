@@ -4,6 +4,8 @@ import app.minimpos.app.ArchitectureTest.Companion.app
 import app.minimpos.app.ArchitectureTest.Companion.callToSubtypeOf
 import app.minimpos.app.ArchitectureTest.Companion.within
 import app.minimpos.app.terminal.TapToPayDiagnostics
+import app.minimpos.app.terminal.TapToPaySetup
+import app.minimpos.terminal.paymentsapp.PaymentsAppCredentials
 import app.minimpos.terminal.paymentsapp.PaymentsAppManagement
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
@@ -12,6 +14,14 @@ import org.junit.Test
 
 /** Advisory introspection has one owner and cannot acquire registration or destructive recovery responsibilities. */
 class TapToPayArchitectureTest {
+    // Credential writes must be explicit setup work with encrypted creation intent, never diagnostics or payment sends.
+    private val provisioning =
+        noClasses()
+            .that()
+            .haveNameNotMatching(within(TapToPaySetup::class.java.name))
+            .should()
+            .callMethodWhere(callToSubtypeOf(PaymentsAppCredentials::class.java, "provision"))
+
     // Only this owner can authenticate and interpret the optional diagnostic. In particular, ordinary payment sends
     // must not silently acquire a /me dependency, and permission failures cannot trigger token generation/revocation.
     private val introspection =
@@ -43,6 +53,7 @@ class TapToPayArchitectureTest {
         introspection.check(app)
         readOnly.check(app)
         sharedConnection.check(app)
+        provisioning.check(app)
     }
 
     @Test
@@ -50,10 +61,15 @@ class TapToPayArchitectureTest {
         assertTrue(introspection.evaluate(ClassFileImporter().importClasses(IntrospectionViolation::class.java)).hasViolation())
         assertTrue(readOnly.evaluate(ClassFileImporter().importClasses(DiagnosticWriteViolation::class.java)).hasViolation())
         assertTrue(sharedConnection.evaluate(ClassFileImporter().importClasses(SeparateCheckViolation::class.java)).hasViolation())
+        assertTrue(provisioning.evaluate(ClassFileImporter().importClasses(ProvisioningViolation::class.java)).hasViolation())
     }
 
     private class IntrospectionViolation {
         suspend fun inspect(api: PaymentsAppManagement) = api.credential()
+    }
+
+    private class ProvisioningViolation {
+        suspend fun create(api: PaymentsAppCredentials) = api.provision("Merchant", "unpersisted", false)
     }
 
     private class DiagnosticWriteViolation {

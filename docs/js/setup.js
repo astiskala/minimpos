@@ -37,7 +37,7 @@
   ];
   const SECRET_FIELDS = {
     passphrase: "TERMINAL_PASSPHRASE", apiKey: "ADYEN_API_KEY",
-    paymentsAppApiKey: "PAYMENTS_APP_API_KEY", smtpPassword: "SMTP_PASSWORD",
+    smtpPassword: "SMTP_PASSWORD",
   };
 
   const results = document.getElementById("setup-codes");

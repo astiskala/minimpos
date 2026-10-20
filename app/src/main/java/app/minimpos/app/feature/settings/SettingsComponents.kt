@@ -43,6 +43,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
@@ -65,7 +66,8 @@ private fun Modifier.tagged(tag: String?) = if (tag != null) testTag(tag) else t
 
 /**
  * A text setting that keeps its own editing state (so asynchronous DataStore round trips never move the cursor) and
- * commits every valid change straight away, so nothing is lost when leaving the screen.
+ * commits every valid change straight away, so nothing is lost when leaving the screen. External saved changes
+ * refresh unfocused fields; focused drafts keep their cursor through asynchronous storage updates.
  */
 @Composable
 fun SettingTextField(
@@ -85,6 +87,15 @@ fun SettingTextField(
 ) {
     val container = LocalAppContainer.current
     var text by rememberSaveable { mutableStateOf(value) }
+    var focused by remember { mutableStateOf(false) }
+    // The last value this field committed or adopted, so only changes made elsewhere replace a draft, never an invalid one.
+    var synced by remember { mutableStateOf(value) }
+    LaunchedEffect(value, focused) {
+        if (!focused && value != synced) {
+            text = value
+            synced = value
+        }
+    }
     val error = isError(text)
     Column(
         modifier.fillMaxWidth().padding(
@@ -97,7 +108,10 @@ fun SettingTextField(
             onValueChange = {
                 container.userActivity()
                 text = it
-                if (!isError(it)) onCommit(it)
+                if (!isError(it)) {
+                    synced = it
+                    onCommit(it)
+                }
             },
             label = { Text(label) },
             placeholder = placeholder?.let { { Text(it) } },
@@ -105,7 +119,7 @@ fun SettingTextField(
             singleLine = singleLine,
             minLines = if (singleLine) 1 else 3,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, autoCorrectEnabled = autoCorrect, imeAction = imeAction),
-            modifier = Modifier.fillMaxWidth().tagged(tag),
+            modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused }.tagged(tag),
         )
         supporting?.let {
             FieldNote(

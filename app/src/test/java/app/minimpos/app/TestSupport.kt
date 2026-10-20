@@ -60,6 +60,7 @@ import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.StoreDetailsApi
+import app.minimpos.terminal.transport.StoreListing
 import app.minimpos.terminal.transport.StoreLookup
 import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalDetailsApi
@@ -456,8 +457,12 @@ class FakeStoreDetails(
     /** What merchant-account lookups answer. */
     var merchantAnswer: MerchantLookup = MerchantLookup.Found(""),
 ) : StoreDetailsApi {
+    var listing: StoreListing = StoreListing.Found(emptyList())
+
     /** Requests in order, as `store:<merchant account>/<store ID>` or `merchant:<merchant account>`. */
     val calls = mutableListOf<String>()
+
+    override suspend fun stores(merchantAccount: String): StoreListing = listing.also { calls += "stores:$merchantAccount" }
 
     override suspend fun store(
         merchantAccount: String,

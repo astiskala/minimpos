@@ -133,7 +133,6 @@
             <div><dt>錢包查詢報錯</dt><dd><p>錯誤僅顯示在設定中，不會阻止普通支付。請檢查憑據、環境和只讀存取權限。設定未變時，臨時重新整理錯誤會保留最近驗證的錢包列表；成功查詢到空列表或存取失敗會移除它。只在啟動、設定改變或手動重新整理時查詢，不會在每筆銷售前查詢。</p></dd></div>
             <div><dt>付款碼無效或未收到付款碼</dt><dd><p>請使用顧客的付款碼，而非個人資料、設定轉移或收據二維碼，並選擇正確的錢包。終端掃描最多持續 30 秒，之後點按<strong>重新掃描</strong>或<strong>使用相機</strong>。相機提示時請授予權限。應用程式從後台返回後需重新開始掃描。</p></dd></div>
             <div><dt>儲存被拒絕或未建立代碼</dt><dd><p>請以支付結果為準。沒有儲存代碼的已批准付款仍然有效。僅在明確被拒絕後，如需重試，返回結帳，關閉<strong>儲存卡</strong>並明確開始新掃描。應用程式不會自動重新付款。<strong>結果未知</strong>時應<a href="#unknown">查詢原交易</a>。</p></dd></div>
-            <div><dt>PayMe 掃碼被拒絕</dt><dd><p>PayMe 商戶掃碼是盡力嘗試，與 Adyen 已發佈的限制相衝突。請顧客改用其他支付方式，或使用終端的普通錢包流程。模擬器批准不代表錢包實際支援此功能。</p></dd></div>
           </dl>
           <p>請參閱<a href="using.html#wallets">錢包支付步驟</a>。交易紀錄中的請求錢包僅表示支付意圖，不證明付款成功或 Adyen 使用了該方式。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
@@ -141,7 +140,7 @@
         <section id="connection">
           <h2>終端綁定或設定失敗</h2>
           <p>先查看首頁的提示，再開啟<strong>設定 › 終端</strong>，完成最後的<strong>測試連接</strong>步驟，驗證 API 存取和此整合支援的連接檢查。網絡和雲端設定使用<strong>尋找要設定的終端</strong>測試 API 存取並列出終端；裝置本機終端和 Tap to Pay 提供<strong>測試 API</strong>。完整步驟請參閱<a href="quick-start.html#connect">連接 Adyen</a>。</p>
-          <p>所有整合都可開啟<strong>設定 › 說明與疑難排解 › 疑難排解詳情</strong>。詳情預設收合；展開後自動更新唯讀檢查並顯示載入進度。收合後重新展開可再次檢查。結果包括設定缺失項、API 存取、受支援的連接檢查、時間和裝置資料，並標明不支援的檢查。這些檢查不保證付款、退款或列印成功，也不會發起付款、註冊手機或更改密鑰。使用<strong>分享已隱去敏感資料的報告</strong>分享顯示的詳情：保留商戶、終端、安裝實例和憑據 ID；排除秘密值、非結構化訊息和顧客資料。不會自動上載任何內容。</p>
+          <p>所有整合都可開啟<strong>設定 › 說明與疑難排解 › 疑難排解詳情</strong>。結果包括設定缺失項、API 存取、受支援的連接檢查、時間和裝置資料，並標明不支援的檢查。這些檢查不保證付款、退款或列印成功，也不會發起付款、註冊手機或更改密鑰。使用<strong>分享已隱去敏感資料的報告</strong>分享顯示的詳情：保留商戶、終端、安裝實例和憑據 ID；排除秘密值、非結構化訊息和顧客資料。</p>
           <dl class="fixes">
             <div><dt>首頁提示“尚未完成收款設定”</dt>
               <dd><p><span class="fix-label">原因</span>必填欄位為空、本設備無法讀取已儲存的密鑰，或設定更改後尚未通過連線測試。在此之前，支付、退款、列印和其他 Adyen 操作會顯示此說明，而不會執行。</p>
@@ -165,13 +164,11 @@
               <dd><p><span class="fix-label">原因</span>未安裝所選 TEST 或 LIVE 環境的 Payments 應用程式。</p>
                 <p><span class="fix-label">解決</span>檢查<strong>設定 › 終端 › 環境</strong>，從 Google Play 安裝對應應用程式。兩者可以同時安裝。完成註冊，輸入對應的共享密鑰，再完成一筆 TEST 付款。</p></dd></div>
             <div id="tap-to-pay-check"><dt>Tap to Pay 在出示卡片前傳回 UnavailableService</dt>
-              <dd><p>Payments 應用程式無法完成請求。此通用錯誤不能證明 Adyen 服務中斷或缺少客戶端密鑰。如果收到 <code>1029_605</code>，這表示工作階段相關故障，不能證明缺少密鑰。</p>
-                <p>在<strong>設定 › 終端</strong>中執行<strong>測試連接</strong>。如需查看簡潔的檢查結果表格或分享已隱去敏感資料的報告，請展開<strong>設定 › 說明與疑難排解 › 疑難排解詳情</strong>。未成功付款的結果頁面上的<strong>說明與疑難排解</strong>按鈕亦會直接開啟這些詳情。展開表格時會更新檢查；背景連接檢查不會驗證客戶端密鑰。</p>
-                <p>選用檢查透過公開的 Adyen Management v1 <a href="https://docs.adyen.com/api-explorer/Management/1/get/me">GET /me</a>，使用<strong>註冊 Payments 應用程式的同一憑據</strong>，而非主憑據。自動建立的憑據只有 Payments app role，可能無法存取此端點。缺少診斷權限不會阻止付款；請勿為自動建立的憑據新增管理權限。</p>
-                <p><strong>設定 Tap to Pay</strong>會使用主 API 密鑰自動建立註冊憑據和客戶端密鑰。如遭拒絕，請檢查<a href="quick-start.html#credentials">所需角色</a>。新密鑰需要數分鐘生效，然後再次<strong>測試連接</strong>。建立中斷後會按已儲存的識別資料恢復；只有在 Adyen 的完整 API 憑據清單確認其不存在後才會重新建立。如仍無法恢復，請稍後重試或請 Adyen 支援團隊檢查對應的 <a href="https://ca-test.adyen.com/">TEST Customer Area</a> 或 <a href="https://ca-live.adyen.com/">LIVE Customer Area</a>。參見 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式要求</a>。</p>
-                <p>客戶端密鑰必須屬於註冊所用的同一憑據。它不同於 API 密鑰，亦毋須貼到 Mini mPOS。只為滿足此原生前提不需要 Allowed origins。不要為排解問題而重新產生現有客戶端密鑰或輪換 API 密鑰。</p>
-                <p>沒有註冊憑據記錄的現有安裝實例只能驗證目前設定的憑據，不能確認最初註冊所用的憑據。驗證、權限、網絡或結構錯誤均不表示缺少密鑰。v1 文件規定該欄位為必填字串：空字串確認缺失，缺少欄位或 null 則無法驗證。環境或憑據變更會令快取結果失效；修改後請重新檢查。</p>
-                <p><strong>分享已隱去敏感資料的報告</strong>只分享顯示的各行：應用程式版本、API 存取和連接檢查結果及其 UTC 時間、整合方式和環境、帳戶/店舖/安裝實例/共享密鑰 ID、Android/裝置/Payments 應用程式版本；使用 Tap to Pay 時亦包括客戶端密鑰和註冊檢查結果及已驗證憑據身份。不包含自由文字、密鑰、令牌、回調網址或顧客資料。分享前請檢查；不會自動上載。檢查不會產生密鑰、變更權限、重新註冊、清除資料或重試付款。回調或解碼失敗不等於確認付款失敗；結果不明時，再次收款前請在 Customer Area 核對。</p></dd></div>
+              <dd><p>Payments 應用程式無法完成請求。此通用錯誤不能證明 Adyen 服務中斷或缺少客戶端密鑰。</p>
+                <p>在<strong>設定 › 終端</strong>中執行<strong>測試連接</strong>。如需查看簡潔的檢查結果表格或分享已隱去敏感資料的報告，請展開<strong>設定 › 說明與疑難排解 › 疑難排解詳情</strong>。</p>
+                <p><strong>設定 Tap to Pay</strong>會使用主 API 密鑰自動建立註冊憑據和客戶端密鑰。如遭拒絕，請檢查<a href="quick-start.html#credentials">所需角色</a>。新密鑰需要數分鐘生效，然後再次<strong>測試連接</strong>。如仍無法恢復，請稍後重試或請 Adyen 支援團隊檢查對應的 <a href="https://ca-test.adyen.com/">TEST Customer Area</a> 或 <a href="https://ca-live.adyen.com/">LIVE Customer Area</a>。參見 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式要求</a>。</p>
+                <p>客戶端密鑰必須屬於註冊所用的同一憑據。</p>
+                <p><strong>分享已隱去敏感資料的報告</strong>只分享顯示的各行：應用程式版本、API 存取和連接檢查結果及其 UTC 時間、整合方式和環境、帳戶/店舖/安裝實例/共享密鑰 ID、Android/裝置/Payments 應用程式版本；使用 Tap to Pay 時亦包括客戶端密鑰和註冊檢查結果及已驗證憑據身份。</p></dd></div>
             <div id="key-setup"><dt>“新密鑰已儲存。請更新此終端的設定”</dt>
               <dd><p><span class="fix-label">原因</span>加密密鑰已在 Adyen 建立，但終端尚未載入。</p>
                 <p><span class="fix-label">解決</span>在終端上打開 <strong>Admin menu › Config › Update</strong>，然後返回 Mini mPOS 點按<strong>再次檢查</strong>。如果建立中斷，請點按<strong>繼續密鑰設定</strong>，不會建立第二個密鑰。參見<a href="quick-start.html#shared-key-creation">密鑰建立</a>及 <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Adyen 設定更新指南</a>。</p></dd></div>

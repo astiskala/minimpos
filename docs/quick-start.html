@@ -124,12 +124,11 @@
                 <li><strong>Management API - Terminal actions read</strong></li>
                 <li><strong>Management API - Terminal settings read and write</strong></li>
                 <li><strong>Management API - Terminal settings Advanced read and write</strong></li>
-                <li><strong>Management API - API credentials read and write</strong></li>
                 <li><strong>Cloud Device API role</strong></li>
               </ul>
               The same roles are required for every setup. The credential must belong to your company account and have access to the destination's merchant account. See the <a href="https://docs.adyen.com/development-resources/api-credentials/roles">Adyen API role guide</a>.</li>
             <li>For LIVE, note the <strong>Live URL prefix</strong> from <strong>Developers › API URLs</strong>.</li>
-            <li>For Tap to Pay, Mini mPOS automatically creates a separate merchant-scoped credential with the <strong>Adyen Payments App role</strong> and a client key. This role belongs on that credential, not the main API key. Adyen Support must enable Tap to Pay and make this role assignable from your company credential. The generated key stays encrypted on this phone; it is not entered or transferred. See <a href="troubleshooting.html#tap-to-pay-check">Tap to Pay troubleshooting</a>. Have the shared key ready as described below.</li>
+            <li>For Tap to Pay, Mini mPOS automatically creates a separate merchant-scoped credential with the <strong>Adyen Payments App role</strong> and a client key. Adyen Support must enable Tap to Pay and make this role assignable from your company credential.</li>
             <li>If you want to configure the device manually:
               <ul>
                 <li>Note the <strong>Merchant account</strong>.</li>
@@ -178,7 +177,7 @@
             <li>Click <strong>Make QR codes</strong>. Keep the page open: it shows the 12-character transfer code.</li>
             <li>In Mini mPOS, open <strong>Settings › Terminal</strong> and tap <strong>Scan setup codes</strong> or the QR icon at the top right. Read the guidance, tap <strong>I already have codes</strong> and scan every code.</li>
             <li>Check the destination and environment, enter the transfer code and tap <strong>Verify and import</strong>.</li>
-            <li>If asked, choose your terminal, or register the phone for Tap to Pay. Nothing is saved until all checks pass.</li>
+            <li>If asked, choose your terminal. For Tap to Pay, complete registration when the Payments app opens. Nothing is saved until all checks pass.</li>
           </ol>
           <h3 id="on-terminal">Connect an Adyen terminal</h3>
           <div class="callout callout-prereq" role="note">
@@ -258,13 +257,13 @@
           </ol>
           <dl class="settings-list setup-route">
             <dt>Setup helper (recommended)</dt>
-            <dd>In the <a href="setup.html">setup helper</a>, choose <strong>On a phone, with Tap to Pay in the Adyen Payments app</strong> and <strong>TEST</strong> or <strong>LIVE</strong>. Enter the matching Adyen API key, merchant account and shared key, and optionally a store ID. <a href="#helper">Scan the codes</a> and register the phone when prompted; its registration credential is created automatically.</dd>
+            <dd>In the <a href="setup.html">setup helper</a>, choose <strong>On a phone, with Tap to Pay in the Adyen Payments app</strong> and <strong>TEST</strong> or <strong>LIVE</strong>. Enter the matching Adyen API key, merchant account and shared key, and optionally a store ID. <a href="#helper">Scan the codes</a> and tap <strong>Verify and import</strong>. Mini mPOS creates the registration credential and opens the Payments app to complete registration as part of the import.</dd>
           </dl>
           <details class="manual-setup">
             <summary>Manual</summary>
             <ol>
               <li>In <strong>Settings › Terminal › Adyen API</strong>, enter the Adyen API key and merchant account. For live payments, also enter the live URL prefix. Tap <strong>Test API</strong>.</li>
-              <li>Under <strong>Tap to Pay</strong>, optionally enter a store ID. No separate API key is needed.</li>
+              <li>Under <strong>Tap to Pay</strong>, optionally tap <strong>Choose store</strong> or enter a store ID. No separate API key is needed.</li>
               <li>Tap <strong>Set up Tap to Pay</strong> and complete registration in the Payments app.</li>
               <li>In Mini mPOS, enter the shared key.</li>
             </ol>

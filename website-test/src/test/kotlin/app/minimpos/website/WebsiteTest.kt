@@ -46,7 +46,6 @@ class QuickStartGuideTest {
                     "Management API - Terminal actions read",
                     "Management API - Terminal settings read and write",
                     "Management API - Terminal settings Advanced read and write",
-                    "Management API - API credentials read and write",
                     "Cloud Device API role",
                 ).inOrder()
             steps.select("ul.roles li").forEach { role ->
@@ -62,6 +61,7 @@ class QuickStartGuideTest {
                 },
             ).contains("Devices › Device settings › Integrations › Terminal API › Encryption key")
             assertThat(text).doesNotContain("API tokenise payment details")
+            assertThat(text).doesNotContain("Management API - API credentials read and write")
             assertThat(steps.children().single { "Adyen Payments App role" in it.text() }.text())
                 .doesNotContain("Management API - API credentials read and write")
         }
@@ -302,6 +302,7 @@ class WebsiteTest {
                         .first()!!
                         .attr("href"),
                 ).isEqualTo(Kind.GUIDE.file)
+            assertWithMessage(page.name).that(page.document.select(".feature a[href='setup.html']")).isEmpty()
             page.document.select(".feature").forEach { feature ->
                 val links = feature.select(".feature-link a")
                 assertWithMessage(page.name).that(links).isNotEmpty()
@@ -339,7 +340,7 @@ class WebsiteTest {
     }
 
     @Test
-    fun `setup shortcuts keep prerequisites and the next payment step reachable`() {
+    fun `setup shortcuts keep prerequisites and troubleshooting reachable`() {
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
@@ -356,7 +357,9 @@ class WebsiteTest {
                 .containsAtLeast("quick-start.html#choose", "quick-start.html#credentials")
             assertWithMessage(helper.name)
                 .that(helper.document.select("#setup-codes a").map { it.attr("href") })
-                .containsAtLeast("quick-start.html#first-payment", "troubleshooting.html#access", "troubleshooting.html#connection")
+                .containsExactly("troubleshooting.html#access", "troubleshooting.html#connection")
+                .inOrder()
+            assertWithMessage(helper.name).that(helper.document.select("#setup-codes ol > li")).hasSize(3)
             val notice = helper.document.getElementById("customer-area-note")!!
             assertWithMessage(helper.name).that(notice.text()).isNotEmpty()
             helper.document.select("a[href^='https://ca-']").forEach { link ->
@@ -1127,7 +1130,7 @@ class SetupGuideTest {
             )
         val manualLabels = mapOf("en" to "Manual", "zh-CN" to "手动", "zh-Hant" to "手動", "ja" to "手動")
         val automaticLabels = mapOf("en" to "Automatic", "zh-CN" to "自动", "zh-Hant" to "自動", "ja" to "自動")
-        val registrationLabels = mapOf("en" to "register the phone", "zh-CN" to "注册手机", "zh-Hant" to "註冊手機", "ja" to "スマートフォンを登録")
+        val registrationLabels = mapOf("en" to "Verify and import", "zh-CN" to "验证并导入", "zh-Hant" to "驗證並匯入", "ja" to "確認してインポート")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             assertThat(guide.document.select("#connect details.manual-setup")).hasSize(4)

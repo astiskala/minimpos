@@ -23,6 +23,7 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.StoreDetails
 import app.minimpos.terminal.transport.StoreLookup
+import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
 import org.junit.Rule
@@ -56,6 +57,24 @@ class SettingsPreferencesTest {
     private fun findStores() {
         compose.waitUntilAtLeastOneExists(hasTestTag("findReceiptBusinesses"), 15_000)
         compose.onNodeWithTag("findReceiptBusinesses").performScrollTo().performClick()
+    }
+
+    @Test
+    fun `open terminal editors reflect imported account and live prefix without leaving screen`() {
+        env.updateSettings {
+            it.copy(terminal = it.terminal.copy(mode = TerminalMode.CLOUD, environment = TerminalEnvironment.LIVE))
+        }
+        open("terminal")
+        compose.waitUntilAtLeastOneExists(hasTestTag("merchantAccount"), 15_000)
+        compose.onNodeWithTag("merchantAccount").performScrollTo().assertTextContains("Merchant account")
+        env.updateSettings {
+            it.copy(terminal = it.terminal.copy(merchantAccount = "ImportedMerchant", liveUrlPrefix = "imported-prefix"))
+        }
+        compose.awaitCondition("account editor refreshes") {
+            compose.onAllNodes(hasTestTag("merchantAccount") and hasText("ImportedMerchant")).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("merchantAccount").assertTextContains("ImportedMerchant")
+        compose.onNodeWithTag("livePrefix").performScrollTo().assertTextContains("imported-prefix")
     }
 
     @Test

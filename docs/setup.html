@@ -177,7 +177,7 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS automatically creates a separate credential with the Adyen Payments App role and a client key. No extra key to enter or transfer. See <a href="troubleshooting.html#tap-to-pay-check">optional setup checks</a> and
+            <p class="hint">Mini mPOS automatically creates a separate credential with the Adyen Payments App role and a client key. No extra key to enter or transfer. See <a href="troubleshooting.html#tap-to-pay-check">Tap to Pay troubleshooting</a> and
               the <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments app guide</a>.</p>
             <label for="storeId">Store ID, optional</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
@@ -274,15 +274,12 @@
           </div>
           <ol>
             <li>In Mini mPOS, open <strong>Settings › Terminal</strong> and tap <strong>Scan setup codes</strong>
-              under Quick setup, or the QR scan icon at the top right. You do not need to choose a destination or
-              environment first.</li>
+              under Quick setup, or the QR scan icon at the top right.</li>
             <li>Point its camera at the codes. With more than one, they change by themselves.</li>
-            <li>Review the destination and environment, especially LIVE. Enter the required <strong>transfer code</strong>
+            <li>Review the destination and environment. Enter the required <strong>transfer code</strong>
               and tap <strong>Verify and import</strong>.</li>
-            <li>Follow the <a href="quick-start.html#helper">verified import steps</a>.</li>
           </ol>
           <p>If you included SMTP settings, review <strong>Settings › Email receipts</strong> and send a test email.</p>
-          <p>After importing, <a href="quick-start.html#first-payment">make your first TEST payment</a>.</p>
           <p><a href="troubleshooting.html#access">Import problem?</a> · <a href="troubleshooting.html#connection">Connection problem?</a></p>
         </div>
       </section>

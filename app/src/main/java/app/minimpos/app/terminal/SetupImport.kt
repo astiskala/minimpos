@@ -64,7 +64,7 @@ class SetupImportChecks(
  * @param setups Resolves candidates and records local verification fingerprints.
  * @param gateway Tests candidate connections without publishing learned facts into active settings.
  * @param api Verifies Checkout access for the candidate account and environment.
- * @param tapToPay Performs only explicitly requested phone registration, retaining its recovery identity.
+ * @param tapToPay Registers the phone during a confirmed helper import or separate registration action, retaining its recovery identity.
  * @param checks Reads Management terminal facts and proposed receipt fields without modifying active setup.
  * @param historySwitches Requires explicit confirmation before an import purges another environment’s history.
  * @param busy Whether a financial operation is running, so its configuration cannot be replaced.
@@ -168,7 +168,7 @@ class SetupImport internal constructor(
             .andThen { discovery(it, choices.terminalId) }
             .andThen { requiredFields(it, allowMissingKey = it.missingKey) }
             .andThen { checkout(it) }
-            .andThen { phone(it, choices.board) }
+            .andThen { phone(it, choices.board || initial.received.hasConnection, choices.confirmedHistory) }
             .andThen { sharedKey(it, choices.confirmedHistory, choices.confirmedKey) }
             .andThen { requiredFields(it) }
             .andThen { connection(it) }
@@ -268,10 +268,7 @@ class SetupImport internal constructor(
         val prepared = current.prepared
         val unlocked = candidate(prepared)
         if (!current.missingKey && sharedKeys.pendingOffer(unlocked) == null) return Step.Next(current)
-        val switch = historySwitches.preview(prepared.settings.terminal)
-        if (switch != null && !switch.wasConfirmedBy(confirmedHistory)) {
-            return Step.Halted(SetupImportOutcome.HistoryConfirmation(switch))
-        }
+        historyConfirmation(prepared, confirmedHistory)?.let { return it }
         return when (val result = sharedKeys.resolve(unlocked, confirmedKey, verified = true) { transfer.unchanged(prepared) }) {
             is SharedKeySetupOutcome.Confirmation -> {
                 Step.Halted(SetupImportOutcome.KeyConfirmation(result.offer))
@@ -286,6 +283,15 @@ class SetupImport internal constructor(
             }
         }
     }
+
+    private suspend fun historyConfirmation(
+        prepared: PreparedTransfer,
+        confirmed: HistorySwitchPlan?,
+    ): Step.Halted? =
+        historySwitches
+            .preview(prepared.settings.terminal)
+            ?.takeUnless { it.wasConfirmedBy(confirmed) }
+            ?.let { Step.Halted(SetupImportOutcome.HistoryConfirmation(it)) }
 
     private fun requiredFields(
         current: Candidate,
@@ -319,10 +325,13 @@ class SetupImport internal constructor(
     private suspend fun phone(
         current: Candidate,
         explicit: Boolean,
+        confirmedHistory: HistorySwitchPlan?,
     ): Step {
         val prepared = current.prepared
         val unlocked = candidate(prepared)
         if (!unlocked.setup.boardsPhone) return Step.Next(current)
+        // Registration creates a credential at Adyen, so history loss is confirmed before it rather than after.
+        if (explicit) historyConfirmation(prepared, confirmedHistory)?.let { return it }
         return when (val result = tapToPay.candidate(unlocked, explicit)) {
             is TapToPayOutcome.Boarded -> {
                 val evidence = tapToPay.candidateIdentity(unlocked, result.installationId)

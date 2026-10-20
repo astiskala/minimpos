@@ -6,14 +6,18 @@ import app.minimpos.app.FakePaymentsApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.TransferSeal
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.terminal.HistorySwitchPlan
 import app.minimpos.app.terminal.SetupImportOutcome
 import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.paymentsapp.ManagementResult
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -79,6 +83,34 @@ class TapToPayImportTest {
         assertThat(phone.packages.toSet()).containsExactly("com.adyen.ipp.mobile.companion.test")
     }
 
+    @Test
+    fun `helper import confirms history loss before registering Tap to Pay`() {
+        await {
+            env.container.sales.createPending(
+                SaleEntity(
+                    id = "unknown",
+                    createdAt = 1,
+                    currency = "AUD",
+                    taxMode = "INCLUSIVE",
+                    netMinor = 1000,
+                    taxMinor = 0,
+                    totalMinor = 1000,
+                    status = SaleStatus.UNKNOWN,
+                    merchantReference = "LIVE",
+                    context = PaymentContext("TERMINAL", "P400Plus-1", "POS", "Merchant", "LIVE"),
+                ),
+                emptyList(),
+            )
+        }
+        val connection =
+            """{"destination":"tapToPay","environment":"TEST","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}"""
+        val history = (import(connection) as SetupImportOutcome.HistoryConfirmation).plan
+        assertThat(management.requests).isEmpty()
+        assertThat(phone.opened).isEmpty()
+        assertThat(import(connection, history)).isInstanceOf(SetupImportOutcome.Committed::class.java)
+        assertThat(management.requests).hasSize(1)
+    }
+
     private fun importLive(fails: Boolean): SetupImportOutcome {
         env.updateSettings {
             it.copy(
@@ -111,13 +143,16 @@ class TapToPayImportTest {
         return result
     }
 
-    private fun import(connection: String): SetupImportOutcome {
+    private fun import(
+        connection: String,
+        confirmedHistory: HistorySwitchPlan? = null,
+    ): SetupImportOutcome {
         val public = Transfer(connection = connection)
         val secrets = """{"ADYEN_API_KEY":"key","TERMINAL_PASSPHRASE":"shared passphrase"}"""
         val seal = TransferSeal(iterations = 1_000)
         val code = seal.newCode()
         val encrypted = seal.seal(secrets.toByteArray(), code, TransferCodec.authenticationData(public))
         val received = env.container.setupTransfer.receive(public.copy(sealedSecrets = SealedSecrets(encrypted)))
-        return await { env.container.setupImport.import(received, ImportMode.MERGE, code, board = true) }
+        return await { env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedHistorySwitch = confirmedHistory) }
     }
 }

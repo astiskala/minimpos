@@ -15,6 +15,8 @@ import app.minimpos.app.feature.persisting
 import app.minimpos.app.terminal.SetupDiagnostics
 import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SetupDiscoverySearch
+import app.minimpos.app.terminal.SetupStoreChoice
+import app.minimpos.app.terminal.SetupStoreSearch
 import app.minimpos.app.terminal.SharedKeyConnection
 import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.app.terminal.TapToPayCheck
@@ -45,6 +47,8 @@ import kotlinx.coroutines.launch
  * @property diagnostics Latest advisory Payments app check, invalidated when its credential/environment changes.
  * @property checkingDiagnostics Whether independent integration checks are refreshing.
  * @property integrationDiagnostics Latest completed integration checks, or null before checking or after a setup change.
+ * @property stores Latest store-listing action.
+ * @property storeChoices Offered store choices, or null when the selector is closed.
  */
 data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
@@ -60,6 +64,8 @@ data class TerminalSetupActions(
     val diagnostics: TapToPayCheck = TapToPayCheck(),
     val checkingDiagnostics: Boolean = false,
     val integrationDiagnostics: SetupDiagnostics? = null,
+    val stores: ActionState = ActionState(),
+    val storeChoices: List<SetupStoreChoice>? = null,
 )
 
 /** Which result of [TerminalSetupActions] a dialog shows, see [TerminalSetupViewModel.dismissResult]. */
@@ -72,6 +78,9 @@ enum class SetupResult {
 
     /** [TerminalSetupActions.keyResult]. */
     SHARED_KEY,
+
+    /** [TerminalSetupActions.stores]. */
+    STORES,
 }
 
 /**
@@ -115,6 +124,33 @@ class TerminalSetupViewModel(
         present: Boolean,
     ) {
         actions.update { it.copy(unsavedSecrets = if (present) it.unsavedSecrets + secret else it.unsavedSecrets - secret) }
+    }
+
+    /** Lists stores for the saved Tap to Pay account without opening the Payments app or changing registration. */
+    fun findStores() {
+        if (actions.value.stores.running) return
+        actions.update { it.copy(stores = ActionState(running = true), storeChoices = null) }
+        launchWrite({
+            when (val result = discovery.findStores()) {
+                is SetupStoreSearch.Found -> {
+                    actions.update { it.copy(stores = ActionState(done = true), storeChoices = result.stores) }
+                }
+
+                is SetupStoreSearch.Failed -> {
+                    actions.update { it.copy(stores = ActionState(outcome = ActionOutcome.Failed(result.failure), isError = true)) }
+                }
+            }
+        })
+    }
+
+    /** Saves an offered store, or dismisses for null; stale or unknown choices leave settings unchanged and show why. */
+    fun chooseStore(id: String?) {
+        actions.update { it.copy(storeChoices = null) }
+        launchWrite({
+            discovery.chooseStore(id)?.let { failure ->
+                actions.update { it.copy(stores = ActionState(outcome = ActionOutcome.Failed(failure), isError = true)) }
+            }
+        })
     }
 
     /**
@@ -273,6 +309,7 @@ class TerminalSetupViewModel(
                 SetupResult.TERMINALS -> it.copy(terminals = it.terminals.dismissed())
                 SetupResult.TAP_TO_PAY -> it.copy(tapToPay = it.tapToPay.dismissed())
                 SetupResult.SHARED_KEY -> it.copy(keyResult = it.keyResult.dismissed())
+                SetupResult.STORES -> it.copy(stores = it.stores.dismissed())
             }
         }
     }

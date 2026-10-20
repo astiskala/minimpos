@@ -1,6 +1,7 @@
 package app.minimpos.app.terminal
 
 import app.minimpos.app.FakeDevice
+import app.minimpos.app.FakeStoreDetails
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.Failure
@@ -213,6 +214,7 @@ class SharedKeySetupTest {
                         TerminalConnection.NotSetUp(SetupProblem.KEY_CONNECTION_PENDING)
                     }
                 },
+                stores = { _, _ -> FakeStoreDetails() },
             )
         val confirmation = await { discovery.setupKey() } as SharedKeyConnection.Confirmation
         val pending = await { discovery.setupKey(confirmation.offer) } as SharedKeyConnection.Failed

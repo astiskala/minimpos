@@ -509,7 +509,6 @@
   <string name="transfer_included">含まれます</string>
   <string name="transfer_not_included">含まれません</string>
   <string name="transfer_unchanged">変更なし</string>
-  <string name="transfer_live_warning">LIVEは実際の決済を行います。インポート前に、意図した環境か確認してください。</string>
   <string name="transfer_secret_passphrase">共有キーのパスフレーズ</string>
   <string name="transfer_secret_api_key">Adyen APIキー</string>
   <string name="transfer_secret_smtp">SMTPパスワード</string>
@@ -520,6 +519,7 @@
   <string name="transfer_verify">確認してインポート</string>
   <string name="transfer_verifying">認証情報と接続を確認中…</string>
   <string name="transfer_board_first">このインポートを確認するため Tap to Pay を設定してください。確認成功まで他の内容は保存しません。</string>
+  <string name="transfer_register_phone">インポート時に Tap to Pay も設定します。Mini mPOS がこのスマートフォンの登録用認証情報を作成し、登録が必要な場合は Payments アプリを開きます。</string>
   <string name="transfer_business_failed">店舗情報をインポートできませんでした。再試行するか、「設定 › 領収書」で入力してください。</string>
   <string name="transfer_missing_fields">設定が不完全です。手動設定ヘルパーで不足する情報を追加し、新しいコードを読み取ってください。</string>
   <string name="transfer_tap_checked">Paymentsアプリの登録と設定を確認しました。このアプリは接続確認で共有キーをテストできません。</string>
@@ -706,7 +706,6 @@
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
-  <string name="settings_adyen_role_credentials">Management API - API credentials read and write</string>
   <string name="settings_live_prefix">LIVE URLプレフィックス</string>
   <string name="settings_live_prefix_hint">CheckoutライブURLプレフィックスを入力してください。「Developers › API URLs」で確認できます。</string>
   <string name="settings_test_api">APIをテスト</string>
@@ -773,6 +772,8 @@
   <string name="settings_installation_id">インストールID</string>
   <string name="settings_not_boarded">未設定</string>
   <string name="settings_store_id">店舗ID（任意）</string>
+  <string name="settings_choose_store">店舗を選択</string>
+  <string name="settings_no_stores">この加盟店アカウントの店舗が見つかりません。店舗 ID は手動で入力できます。</string>
   <string name="settings_store_id_hint">1店舗だけにTap to Payを設定する場合は、その店舗ID（リファレンスではありません）を入力します。空欄の場合はマーチャントアカウント全体に設定します。</string>
   <string name="settings_set_up_tap_to_pay">Tap to Payを設定</string>
   <string name="settings_set_up_again">再設定</string>
@@ -797,7 +798,7 @@
   <!-- Tap to Pay troubleshooting -->
   <string name="tap_key_present">クライアントキーがあります。決済の動作を保証するものではありません。</string>
   <string name="tap_key_missing">現在確認している Tap to Pay 設定用の認証情報にクライアントキーがありません。Payments app が決済を開始できない原因になることがあります。</string>
-  <string name="tap_key_permission">登録用認証情報ではクライアントキーを確認できません。この診断権限は任意です。登録用認証情報に管理ロールを追加しないでください。</string>
+  <string name="tap_key_permission">登録用認証情報ではクライアントキーを確認できません。この診断は任意で、決済は妨げません。</string>
   <string name="tap_key_auth">登録用の認証情報が拒否されました。TEST/LIVE 環境と Customer Area の認証情報の状態を確認してください。</string>
   <string name="tap_key_failed">API から有効な認証情報の応答が得られず、クライアントキーを確認できません。ネットワークと API 権限を確認し、再度チェックしてください。</string>
   <string name="tap_key_unchecked">現在の認証情報と環境に有効なクライアントキーの確認結果がありません。バックグラウンドの接続確認ではこの参考チェックを省略します。キーがないという意味ではありません。</string>
@@ -998,7 +999,7 @@
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">ヘッダーとフッター</string>
   <string name="settings_business_import">Adyenから店舗情報をインポート</string>
-  <string name="settings_business_import_hint">割り当て店舗（Management API - Stores read）またはマーチャントアカウント（Management API - Account read）の領収書情報を確認します。アカウントからは法人名のみ取得できます。</string>
+  <string name="settings_business_import_hint">割り当て店舗（Management API - Stores read）またはマーチャントアカウント（Management API - Accounts read）の領収書情報を確認します。アカウントからは法人名のみ取得できます。</string>
   <string name="settings_business_review">店舗情報を確認</string>
   <string name="settings_business_review_hint">店舗名、住所、電話番号の空欄だけを補完します。既存の文面は置き換えません。税務番号、タイトル、フッターは変更しません。</string>
   <string name="settings_business_unavailable">インポートできる店舗情報はありません。</string>

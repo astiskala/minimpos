@@ -176,7 +176,7 @@ Payments app return-URL encoding, error answers and size limits, boarding-creden
 and client-key propagation on physical phones; Management v3 Payments app role assignment, credential creation,
 interrupted-creation listing/API-key recovery and propagation before boarding; TEST payment-link paid/PATCH answers
 and line-item validation; whether a shopper reference without `recurringProcessingModel` stores no card;
-the role names `GET /me` reports for the required roles (`Merchant Recurring role`, `Management API - Account read`);
+the role name `GET /me` reports for `Merchant Recurring role`;
 `GET /storedPaymentMethods` listing terminal-saved tokens, shopper-not-present (`ContAuth`) token payments for each
 recurring processing model, and Checkout refunds (`/payments/{pspReference}/refunds`) of those payments;
 Management single-store/merchant receipt details, read permissions and missing-store answers; terminal discovery,

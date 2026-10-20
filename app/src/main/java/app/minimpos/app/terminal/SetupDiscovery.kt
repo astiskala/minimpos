@@ -9,11 +9,44 @@ import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyApi
 import app.minimpos.terminal.transport.SharedKeyLookup
+import app.minimpos.terminal.transport.StoreDetailsApi
+import app.minimpos.terminal.transport.StoreListing
 import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalListingApi
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+
+/**
+ * Non-secret store choice offered by setup discovery.
+ * @property id Adyen store ID used for boarding.
+ * @property reference Merchant's store reference, blank when absent.
+ * @property description Merchant's display description, blank when absent.
+ */
+data class SetupStoreChoice(
+    val id: String,
+    val reference: String,
+    val description: String,
+)
+
+/** Store discovery for a saved Tap to Pay setup, without changing registration. */
+sealed interface SetupStoreSearch {
+    /**
+     * Complete store choices for the current account.
+     * @property stores Offered stores, empty when none exist.
+     */
+    data class Found(
+        val stores: List<SetupStoreChoice>,
+    ) : SetupStoreSearch
+
+    /**
+     * Setup or remote failure; no partial choices are offered.
+     * @property failure Why listing could not finish.
+     */
+    data class Failed(
+        val failure: Failure,
+    ) : SetupStoreSearch
+}
 
 /** One terminal search's immutable outcome, independent of later searches. */
 sealed interface SetupDiscoverySearch {
@@ -100,6 +133,7 @@ internal sealed interface SharedKeyConnection {
  * @param readEnvironment Reads this device's certificate before using Management.
  * @param sharedKeys Owns separately confirmed key creation and encrypted recovery.
  * @param verifyConnection Checks saved setup and records its verified identity through TerminalStatus.
+ * @param stores Read-only store listing for the selected credential and environment.
  */
 class SetupDiscovery(
     private val setups: TerminalSetupSource,
@@ -108,9 +142,51 @@ class SetupDiscovery(
     private val readEnvironment: suspend () -> Unit = {},
     private val sharedKeys: SharedKeySetup,
     private val verifyConnection: suspend () -> TerminalConnection,
+    private val stores: (String, TerminalEnvironment) -> StoreDetailsApi,
 ) {
     private var selection: Selection? = null
+    private var storeSelection: StoreSelection? = null
     private val mutex = Mutex()
+
+    /** Lists stores for the saved account; missing setup and stale responses return typed failures. */
+    suspend fun findStores(): SetupStoreSearch =
+        mutex.withLock {
+            storeSelection = null
+            val unlocked = setups.unlocked()
+            val owner = setups.owner(unlocked)
+            if (owner is BoardingOwner.Blocked) return@withLock SetupStoreSearch.Failed(Failure.NotSetUp(owner.problem))
+            owner as BoardingOwner.Ready
+            val fence = setups.SetupFence(unlocked, SetupFreshness.CREDENTIAL)
+            val result = stores(owner.apiKey, owner.environment).stores(owner.merchantAccount)
+            if (!fence.stillCurrent()) return@withLock SetupStoreSearch.Failed(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
+            when (result) {
+                is StoreListing.Found -> {
+                    val choices = result.stores.map { SetupStoreChoice(it.id, it.reference, it.description) }
+                    storeSelection = StoreSelection(fence, choices)
+                    SetupStoreSearch.Found(choices)
+                }
+
+                is StoreListing.Failed -> {
+                    SetupStoreSearch.Failed(Failure.Remote(result.fault))
+                }
+            }
+        }
+
+    /**
+     * Applies only an offered store while its original setup remains current; null dismisses without changing settings.
+     * Returns null once saved or dismissed, or [SetupProblem.SETUP_CHANGED] for an unknown, already used or stale choice.
+     */
+    suspend fun chooseStore(id: String?): Failure? =
+        mutex.withLock {
+            val selected = storeSelection
+            storeSelection = null
+            if (id == null) return@withLock null
+            val saved =
+                selected != null &&
+                    selected.stores.any { it.id == id } &&
+                    selected.fence.update { it.copy(terminal = it.terminal.copy(storeId = id)) }
+            if (saved) null else Failure.NotSetUp(SetupProblem.SETUP_CHANGED)
+        }
 
     /** Lists terminal IDs without changing saved connection fields; outcomes retain their meaning across later calls. */
     suspend fun find(): SetupDiscoverySearch =
@@ -289,6 +365,11 @@ class SetupDiscovery(
         val api: SharedKeyApi,
         val environment: TerminalEnvironment,
         val terminals: List<TerminalDetails>,
+    )
+
+    private class StoreSelection(
+        val fence: TerminalSetupSource.SetupFence,
+        val stores: List<SetupStoreChoice>,
     )
 }
 

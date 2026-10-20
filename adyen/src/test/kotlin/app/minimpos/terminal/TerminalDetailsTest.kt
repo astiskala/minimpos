@@ -90,7 +90,7 @@ class TerminalDetailsTest {
             // Adyen has spelled roles with other dashes, spacing, case and plurals.
             val respelled =
                 ALL_ROLES.map { it.replace(" - ", "—").uppercase() }.map {
-                    if (it.contains("ACCOUNT READ")) "Management API - Accounts read" else it
+                    if (it.contains("ACCOUNTS READ")) "Management API - Account read" else it
                 }
             reply(rolesReply(respelled))
             assertThat(
@@ -453,7 +453,7 @@ class TerminalDetailsTest {
                 "Management API - API credentials read and write",
                 "Management API - Payment methods read",
                 "Management API - Stores read",
-                "Management API - Account read",
+                "Management API - Accounts read",
                 "Merchant Recurring role",
                 "Cloud Device API role",
             )

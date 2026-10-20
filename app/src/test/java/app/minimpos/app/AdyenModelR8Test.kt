@@ -18,6 +18,7 @@ import com.adyen.model.management.GenerateClientKeyResponse
 import com.adyen.model.management.Gratuity
 import com.adyen.model.management.Key
 import com.adyen.model.management.ListMerchantApiCredentialsResponse
+import com.adyen.model.management.ListStoresResponse
 import com.adyen.model.management.Merchant
 import com.adyen.model.management.MinorUnitsMonetaryValue
 import com.adyen.model.management.ModelConfiguration
@@ -99,6 +100,8 @@ class AdyenModelR8Test {
             Store::class.java to
                 """{"id":"ST1","shopperStatement":"Harbour Coffee","phoneNumber":"+61212345678",""" +
                 """"address":{"line1":"1 Main St","city":"Sydney","country":"AU"}}""",
+            ListStoresResponse::class.java to
+                """{"data":[{"id":"ST1","reference":"counter","description":"Main counter"}],"_links":{"next":{"href":"next"}}}""",
             PaymentMethodResponse::class.java to
                 """{"data":[{"type":"wechatpay_pos","enabled":true,"allowed":true,"shopperInteraction":"pos","currencies":["AUD"]}]}""",
             Terminal::class.java to """{"id":"S1F2L-123456789","model":"S1F2L","countryCode":"AU"}""",

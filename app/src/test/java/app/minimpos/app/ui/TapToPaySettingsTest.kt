@@ -16,6 +16,7 @@ import androidx.test.core.app.ApplicationProvider
 import app.minimpos.app.FakeDevice
 import app.minimpos.app.FakeManagement
 import app.minimpos.app.FakePaymentsApp
+import app.minimpos.app.FakeStoreDetails
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
@@ -31,6 +32,8 @@ import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.SharedKeyLookup
+import app.minimpos.terminal.transport.StoreChoice
+import app.minimpos.terminal.transport.StoreListing
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalListing
@@ -68,9 +71,10 @@ class TapToPaySettingsTest {
         }
 
     private val management = FakeManagement()
+    private val stores = FakeStoreDetails()
 
     @get:Rule(order = 0)
-    val env = TestEnvironment(device, paymentsApp = paymentsApp, management = management, terminalDetails = details)
+    val env = TestEnvironment(device, paymentsApp = paymentsApp, management = management, terminalDetails = details, stores = stores)
 
     @get:Rule(order = 1)
     val compose = createComposeRule()
@@ -205,6 +209,24 @@ class TapToPaySettingsTest {
         compose.onNodeWithTag("apiResultOk").performClick()
         compose.waitUntilDoesNotExist(hasTestTag("apiResult"), 15_000)
         waitForTag("setUpTapToPay")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `store selector fills boarding store without opening Payments app on AMS1`() {
+        device.paymentsApps = setOf(TerminalEnvironment.TEST)
+        env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "checkout-key") }
+        stores.listing = StoreListing.Found(listOf(StoreChoice("ST1", "counter", "Main counter")))
+        openTerminalSettings()
+        testApi()
+        compose.onNodeWithTag("findStores").performScrollTo().performClick()
+        waitForTag("store_ST1")
+        compose.onNodeWithTag("store_ST1").assertTextContains("Main counter", substring = true).performClick()
+        compose.awaitCondition("store selection saved") { container.settingsState.value.terminal.storeId == "ST1" }
+        compose.onNodeWithTag("storeId").performScrollTo().assertTextContains("ST1", substring = true)
+        assertThat(paymentsApp.opened).isEmpty()
+        assertThat(stores.calls).containsExactly("stores:Merchant")
     }
 
     private fun testConnection(expected: String) {

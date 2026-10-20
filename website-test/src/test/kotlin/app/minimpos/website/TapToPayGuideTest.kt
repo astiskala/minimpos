@@ -8,7 +8,7 @@ import kotlin.io.path.readText
 
 class TapToPayGuideTest {
     @Test
-    fun `all languages explain optional introspection uncertainty remediation and redacted reporting`() {
+    fun `all languages explain Tap to Pay remediation and redacted reporting`() {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website")))
         listOf("", "ja", "zh-CN", "zh-Hant").forEach { language ->
             val directory = docs.resolve(language)
@@ -19,9 +19,6 @@ class TapToPayGuideTest {
             val connectionTest = strings.select("string[name=settings_test_connection]").text()
             assertThat(connectionTest).isNotEmpty()
             assertThat(help.select("strong").eachText()).contains(connectionTest)
-            val helpLabel = strings.select("string[name=settings_help]").text()
-            assertThat(helpLabel).isNotEmpty()
-            assertThat(help.select("strong").eachText()).contains(helpLabel)
             val diagnostics = strings.select("string[name=diagnostics_details]").text()
             val share = strings.select("string[name=diagnostics_share_report]").text()
             assertThat(diagnostics).isNotEmpty()
@@ -43,19 +40,17 @@ class TapToPayGuideTest {
                 assertThat(steps.select("strong").eachText()).containsAtLeast(discover, connectionTest)
                 assertThat(steps.select("strong").eachText()).doesNotContain(apiTest)
             }
-            listOf("UnavailableService", "1029_605", "GET /me", "TEST", "LIVE", "UTC", "null").forEach {
+            listOf("UnavailableService", "TEST", "LIVE", "UTC").forEach {
                 assertThat(help.text()).contains(it)
             }
+            listOf("1029_605", "GET /me", "null").forEach {
+                assertThat(help.text()).doesNotContain(it)
+            }
             assertThat(help.select("a").map { it.attr("href") }).containsAtLeast(
-                "https://docs.adyen.com/api-explorer/Management/1/get/me",
                 "https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app",
                 "https://ca-test.adyen.com/",
                 "https://ca-live.adyen.com/",
             )
-            listOf("quick-start.html", "setup.html").forEach { file ->
-                val guide = Jsoup.parse(directory.resolve(file).readText())
-                assertThat(guide.select("a[href='troubleshooting.html#tap-to-pay-check']")).isNotEmpty()
-            }
         }
     }
 }

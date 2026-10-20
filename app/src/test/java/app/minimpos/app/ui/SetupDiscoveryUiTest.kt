@@ -272,7 +272,7 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithText("Checkout webservice role", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Required for real payments.", substring = true).assertDoesNotExist()
         compose.onNodeWithTag("roleCloud").assertExists()
-        compose.onNodeWithTag("roleCredentials").assertExists()
+        compose.onNodeWithTag("roleCredentials").assertDoesNotExist()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertExists()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertExists()
     }

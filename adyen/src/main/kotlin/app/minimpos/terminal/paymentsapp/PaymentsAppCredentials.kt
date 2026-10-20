@@ -104,7 +104,11 @@ class AdyenPaymentsAppCredentials(
         url: HttpUrl,
         reference: String,
     ): ProvisionedCredential {
-        val body = CreateMerchantApiCredentialRequest().description(reference).roles(listOf(PAYMENTS_APP_ROLE)).toJson()
+        val body =
+            CreateMerchantApiCredentialRequest()
+                .description(reference)
+                .roles(listOf(PAYMENTS_APP_ROLE, AdyenRole.ACCOUNT_READ.displayName))
+                .toJson()
         val reply = http.post(url, body, TIMEOUT)
         if (reply !is AdyenReply.Answered || !reply.ok) return failed(reply)
         val created = decodeAdyenModel(reply.body, CreateApiCredentialResponse::class.java)

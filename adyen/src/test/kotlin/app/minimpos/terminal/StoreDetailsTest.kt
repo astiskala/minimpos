@@ -5,7 +5,9 @@ import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MerchantLookup
+import app.minimpos.terminal.transport.StoreChoice
 import app.minimpos.terminal.transport.StoreDetails
+import app.minimpos.terminal.transport.StoreListing
 import app.minimpos.terminal.transport.StoreLookup
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
@@ -43,6 +45,39 @@ class StoreDetailsTest {
     )
 
     private fun store() = runBlocking { api.store("Merchant/One", "ST1") }
+
+    @Test
+    fun `store selector collects pages scoped to merchant and ignores server supplied next URL`() =
+        runBlocking {
+            reply("""{"data":[$store],"_links":{"next":{"href":"https://untrusted.example/"}}}""")
+            reply("""{"data":[{"id":"ST2","reference":"second"}]}""")
+            assertThat(api.stores("Merchant/One")).isEqualTo(
+                StoreListing.Found(
+                    listOf(StoreChoice("ST1", "coffee", "Internal label"), StoreChoice("ST2", "second", "")),
+                ),
+            )
+            val first = server.takeRequest()
+            assertThat(first.url.encodedPath).isEqualTo("/v3/merchants/Merchant%2FOne/stores")
+            assertThat(first.url.queryParameter("pageNumber")).isEqualTo("1")
+            assertThat(first.headers["x-api-key"]).isEqualTo("secret-key")
+            assertThat(server.takeRequest().url.queryParameter("pageNumber")).isEqualTo("2")
+        }
+
+    @Test
+    fun `empty stores are valid but unreadable pages and denied listings offer no partial choices`() =
+        runBlocking {
+            reply("""{"data":[]}""")
+            assertThat(api.stores("Merchant")).isEqualTo(StoreListing.Found(emptyList()))
+            reply("""{"data":[{}]}""")
+            assertThat(api.stores("Merchant")).isEqualTo(StoreListing.Failed(Fault.UnreadableReply()))
+            reply("{}", 403)
+            assertThat(api.stores("Merchant")).isEqualTo(
+                StoreListing.Failed(Fault.Permission(ApiKey.ADYEN, "Management API - Stores read")),
+            )
+            reply("""{"data":[$store],"_links":{"next":{"href":"next"}}}""")
+            reply("{}")
+            assertThat(api.stores("Merchant")).isEqualTo(StoreListing.Failed(Fault.UnreadableReply()))
+        }
 
     private fun failure() = (store() as StoreLookup.Failed).fault
 
@@ -99,7 +134,7 @@ class StoreDetailsTest {
         }
         reply("{}", 403)
         assertThat((runBlocking { api.merchant("Merchant/One") } as MerchantLookup.Failed).fault)
-            .isEqualTo(Fault.Permission(ApiKey.ADYEN, "Management API - Account read"))
+            .isEqualTo(Fault.Permission(ApiKey.ADYEN, "Management API - Accounts read"))
     }
 
     @Test

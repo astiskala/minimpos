@@ -609,6 +609,9 @@ private fun ImportReady(
         Column(Modifier.widthIn(max = LocalDimens.current.contentMaxWidth), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
             Text(stringResource(R.string.transfer_ready), style = MaterialTheme.typography.titleLarge)
             if (received.hasConnection) ConnectionPreview(received)
+            if (received.connectionDestination == ConnectionDestination.TAP_TO_PAY) {
+                Note(stringResource(R.string.transfer_register_phone))
+            }
             TransferSummary(received.catalogue, received.hasSettings, received.hasSecrets, connection = received.hasConnection)
             TransferCodeField(state.code, state.wrongCode, onCode)
             received.catalogue?.let { catalogue ->
@@ -678,9 +681,6 @@ private fun ConnectionPreview(received: ReceivedTransfer) {
                 },
             ),
         )
-        if (environment == TerminalEnvironment.LIVE) {
-            ActionMessage(stringResource(R.string.transfer_live_warning), isError = true, modifier = Modifier.testTag("importLiveWarning"))
-        }
     }
 }
 

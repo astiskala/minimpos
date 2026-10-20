@@ -193,22 +193,13 @@ class AutomaticSetupUiTest {
         } else if (!succeeds) {
             compose.awaitCondition("Rejected candidate remains editable") { (vm.state.value as? ImportUiState.Ready)?.outcome != null }
         } else {
-            finishImport(vm, register)
+            finishImport(register)
         }
         return vm
     }
 
-    private fun finishImport(
-        vm: TransferImportViewModel,
-        register: Boolean,
-    ) {
+    private fun finishImport(register: Boolean) {
         if (register) {
-            compose.awaitCondition("Explicit registration is offered") {
-                val ready = vm.state.value as? ImportUiState.Ready
-                ready?.boardingRequired == true
-            }
-            assertThat(paymentsApp.opened).isEmpty()
-            compose.onNodeWithTag("import").assertTextContains(env.context.getString(R.string.settings_set_up_tap_to_pay)).performClick()
             waitForTag("importDone")
             compose.onNodeWithText(env.context.getString(R.string.transfer_tap_checked)).performScrollTo().assertIsDisplayed()
             compose.onNodeWithTag("importFinished").performClick()
@@ -231,7 +222,7 @@ class AutomaticSetupUiTest {
 
     private fun verificationSpacing() {
         verificationRelease = CompletableDeferred()
-        val vm = importAutomatic()
+        importAutomatic()
         val message = compose.onNodeWithText(env.context.getString(R.string.transfer_verifying)).assertIsDisplayed().fetchSemanticsNode()
         val spinner = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).fetchSemanticsNode()
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
@@ -244,7 +235,7 @@ class AutomaticSetupUiTest {
         } finally {
             checkNotNull(verificationRelease).complete(Unit)
         }
-        finishImport(vm, register = false)
+        finishImport(register = false)
     }
 
     @Test

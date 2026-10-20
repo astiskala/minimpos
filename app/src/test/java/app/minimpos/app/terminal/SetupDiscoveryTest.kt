@@ -1,6 +1,7 @@
 package app.minimpos.app.terminal
 
 import app.minimpos.app.FakeDevice
+import app.minimpos.app.FakeStoreDetails
 import app.minimpos.app.FakeTerminal
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
@@ -17,6 +18,8 @@ import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.SharedKeyLookup
+import app.minimpos.terminal.transport.StoreChoice
+import app.minimpos.terminal.transport.StoreListing
 import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -78,6 +81,38 @@ class SetupDiscoveryTest {
 
     @After
     fun tearDown() = env.close()
+
+    @Test
+    fun `store choices use selected environment and reject unknown dismissed or stale selections`() {
+        env.close()
+        val store = StoreChoice("ST1", "counter", "Main counter")
+        val stores = FakeStoreDetails().apply { listing = StoreListing.Found(listOf(store)) }
+        env = TestEnvironment(FakeDevice(paymentsApps = setOf(TerminalEnvironment.TEST)), stores = stores)
+        ready(TerminalMode.PAYMENTS_APP)
+        env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
+        val discovery = container.setupDiscovery
+        assertThat(
+            await { discovery.findStores() },
+        ).isEqualTo(SetupStoreSearch.Found(listOf(SetupStoreChoice("ST1", "counter", "Main counter"))))
+        assertThat(stores.calls).containsExactly("stores:Merchant")
+        assertThat(await { discovery.chooseStore("unknown") }).isEqualTo(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
+        await { discovery.findStores() }
+        assertThat(await { discovery.chooseStore(null) }).isNull()
+        await { discovery.findStores() }
+        env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Other")) }
+        assertThat(await { discovery.chooseStore("ST1") }).isEqualTo(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
+        assertThat(await { container.settings.current() }.terminal.storeId).isEmpty()
+        await { discovery.findStores() }
+        assertThat(await { discovery.chooseStore("ST1") }).isNull()
+        assertThat(await { container.settings.current() }.terminal.storeId).isEqualTo("ST1")
+        await { discovery.findStores() }
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "changed-key") }
+        assertThat(await { discovery.chooseStore("ST1") }).isEqualTo(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
+        stores.listing = StoreListing.Failed(Fault.Permission(ApiKey.ADYEN))
+        assertThat(await { discovery.findStores() }).isEqualTo(
+            SetupStoreSearch.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN))),
+        )
+    }
 
     @Test
     fun `saved shared key setup verifies the connection before returning`() {
@@ -143,6 +178,7 @@ class SetupDiscoveryTest {
                     verified = true
                     container.terminalStatus.check()
                 },
+                stores = { _, _ -> FakeStoreDetails() },
             )
         assertThat(await { discovery.setupKey() })
             .isEqualTo(SharedKeyConnection.Failed(Failure.NotSetUp(SetupProblem.SETUP_CHANGED)))
@@ -165,6 +201,7 @@ class SetupDiscoveryTest {
                 { api },
                 sharedKeys = SharedKeySetup(container.terminalSetup, { api }, { ApiCheck.Works }, { false }),
                 verifyConnection = container.terminalStatus::check,
+                stores = { _, _ -> FakeStoreDetails() },
             )
         await { discovery.find() }
         assertThat(await { discovery.choose("S1F2-123456789") }).isEqualTo(SetupDiscoveryChoice.Ignored)

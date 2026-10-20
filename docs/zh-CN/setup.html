@@ -170,7 +170,7 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS 自动创建具有 Adyen Payments App role 和客户端密钥的独立凭据。无需输入或传输额外密钥。参见<a href="troubleshooting.html#tap-to-pay-check">可选检查</a>和 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 应用指南</a>。</p>
+            <p class="hint">Mini mPOS 自动创建具有 Adyen Payments App role 和客户端密钥的独立凭据。无需输入或传输额外密钥。参见<a href="troubleshooting.html#tap-to-pay-check">Tap to Pay 故障排除</a>和 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 应用指南</a>。</p>
             <label for="storeId">门店 ID（可选）</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
             <p class="hint">如只为一家门店设置本手机：填写 <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> 中该门店的 ID（不是其 reference）。</p>
@@ -265,13 +265,11 @@
             <p class="setup-code" id="setup-code"></p>
           </div>
           <ol>
-            <li>在 Mini mPOS 中打开<strong>设置 › 终端</strong>，点按快速设置下的<strong>扫描设置二维码</strong>，或右上角的二维码扫描图标。无需先选择支付目标或环境。</li>
+            <li>在 Mini mPOS 中打开<strong>设置 › 终端</strong>，点按快速设置下的<strong>扫描设置二维码</strong>，或右上角的二维码扫描图标。</li>
             <li>用摄像头扫描二维码。有多个二维码时会自动轮换。</li>
-            <li>检查支付目标和环境，尤其是 LIVE。输入必需的<strong>传输码</strong>，再点击<strong>验证并导入</strong>。</li>
-            <li>按照<a href="quick-start.html#helper">验证后导入的步骤</a>操作。</li>
+            <li>检查支付目标和环境。输入必需的<strong>传输码</strong>，再点击<strong>验证并导入</strong>。</li>
           </ol>
           <p>如包含 SMTP 设置，请检查<strong>设置 › 电子收据</strong>并发送测试邮件。</p>
-          <p>导入后请<a href="quick-start.html#first-payment">完成第一笔 TEST 付款</a>。</p>
           <p><a href="troubleshooting.html#access">导入问题？</a> · <a href="troubleshooting.html#connection">连接问题？</a></p>
         </div>
       </section>

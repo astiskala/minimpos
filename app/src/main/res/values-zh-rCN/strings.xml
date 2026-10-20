@@ -509,7 +509,6 @@
   <string name="transfer_included">已包含</string>
   <string name="transfer_not_included">未包含</string>
   <string name="transfer_unchanged">保持不变</string>
-  <string name="transfer_live_warning">LIVE 用于真实收款。导入前请确认这是您需要的环境。</string>
   <string name="transfer_secret_passphrase">共享密钥口令</string>
   <string name="transfer_secret_api_key">Adyen API 密钥</string>
   <string name="transfer_secret_smtp">SMTP 密码</string>
@@ -520,6 +519,7 @@
   <string name="transfer_verify">验证并导入</string>
   <string name="transfer_verifying">正在检查凭据和连接…</string>
   <string name="transfer_board_first">请设置 Tap to Pay 以验证本次导入。验证成功前不会保存其他内容。</string>
+  <string name="transfer_register_phone">导入时也会设置 Tap to Pay。Mini mPOS 会为此手机创建注册凭据，并在需要注册时打开 Payments 应用。</string>
   <string name="transfer_business_failed">无法导入商家信息。请重试，或在“设置 › 收据”中输入。</string>
   <string name="transfer_missing_fields">设置不完整。请在手动设置助手中补充缺失信息，再扫描新二维码。</string>
   <string name="transfer_tap_checked">已检查 Payments 应用注册和设置。该应用无法通过连接检查测试共享密钥。</string>
@@ -706,7 +706,6 @@
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
-  <string name="settings_adyen_role_credentials">Management API - API credentials read and write</string>
   <string name="settings_live_prefix">LIVE URL 前缀</string>
   <string name="settings_live_prefix_hint">请输入 Checkout 实时 URL 前缀，可在“Developers › API URLs”中找到。</string>
   <string name="settings_test_api">测试 API</string>
@@ -773,6 +772,8 @@
   <string name="settings_installation_id">安装 ID</string>
   <string name="settings_not_boarded">尚未设置</string>
   <string name="settings_store_id">门店 ID（可选）</string>
+  <string name="settings_choose_store">选择门店</string>
+  <string name="settings_no_stores">未找到此商户账户的门店。您可以手动输入门店 ID。</string>
   <string name="settings_store_id_hint">如只为一家门店设置 Tap to Pay，请填写其门店 ID（不是门店参考号）。留空则用于整个商家账户。</string>
   <string name="settings_set_up_tap_to_pay">设置 Tap to Pay</string>
   <string name="settings_set_up_again">重新设置</string>
@@ -797,7 +798,7 @@
   <!-- Tap to Pay troubleshooting -->
   <string name="tap_key_present">客户端密钥已存在。这并不保证支付能够成功进行。</string>
   <string name="tap_key_missing">当前检查的 Tap to Pay 设置凭据没有客户端密钥。这可能导致 Payments app 无法开始支付。</string>
-  <string name="tap_key_permission">无法使用注册凭据验证客户端密钥。此诊断权限是可选的；请勿给注册凭据添加管理角色。</string>
+  <string name="tap_key_permission">无法使用注册凭据验证客户端密钥。此诊断是可选的，不会阻止付款。</string>
   <string name="tap_key_auth">注册凭据被拒绝。请检查 TEST/LIVE 环境及 Customer Area 中的凭据状态。</string>
   <string name="tap_key_failed">API 未返回可用的凭据响应，无法验证客户端密钥。请检查网络和 API 权限，然后重试检查。</string>
   <string name="tap_key_unchecked">当前凭据和环境没有有效的客户端密钥检查结果。后台连接检查不包含此项参考检查。这不表示密钥缺失。</string>
@@ -998,7 +999,7 @@
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">页眉和页脚</string>
   <string name="settings_business_import">从 Adyen 导入商家信息</string>
-  <string name="settings_business_import_hint">核对已分配门店（Management API - Stores read）或商家账户（Management API - Account read）的收据信息。商家账户仅提供法人名称。</string>
+  <string name="settings_business_import_hint">核对已分配门店（Management API - Stores read）或商家账户（Management API - Accounts read）的收据信息。商家账户仅提供法人名称。</string>
   <string name="settings_business_review">核对商家信息</string>
   <string name="settings_business_review_hint">仅补充空白的商家名称、地址和电话。已有文本绝不被替换，税号、标题和页脚不变。</string>
   <string name="settings_business_unavailable">没有可导入的商家信息。</string>

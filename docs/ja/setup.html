@@ -170,7 +170,7 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS が Adyen Payments App role とクライアントキーを持つ別の認証情報を自動作成します。追加のキーの入力や転送は不要です。<a href="troubleshooting.html#tap-to-pay-check">任意の確認</a>と<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments アプリガイド</a>を参照してください。</p>
+            <p class="hint">Mini mPOS が Adyen Payments App role とクライアントキーを持つ別の認証情報を自動作成します。追加のキーの入力や転送は不要です。<a href="troubleshooting.html#tap-to-pay-check">Tap to Pay のトラブルシューティング</a>と<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments アプリガイド</a>を参照してください。</p>
             <label for="storeId">店舗ID（任意）</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
             <p class="hint">スマートフォンを 1 店舗用に設定する場合：<a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> にあるその店舗の ID（reference ではありません）。</p>
@@ -265,13 +265,11 @@
             <p class="setup-code" id="setup-code"></p>
           </div>
           <ol>
-            <li>Mini mPOS の<strong>設定 › 端末</strong>を開き、かんたんセットアップの<strong>設定コードを読み取る</strong>か右上のQRスキャンアイコンをタップします。決済先や環境を先に選ぶ必要はありません。</li>
+            <li>Mini mPOS の<strong>設定 › 端末</strong>を開き、かんたんセットアップの<strong>設定コードを読み取る</strong>か右上のQRスキャンアイコンをタップします。</li>
             <li>カメラでコードを読み取ります。複数ある場合は自動で切り替わります。</li>
-            <li>決済先と環境、特にLIVEを確認し、必須の<strong>転送コード</strong>を入力して<strong>確認してインポート</strong>をタップします。</li>
-            <li><a href="quick-start.html#helper">確認済みインポート手順</a>に従います。</li>
+            <li>決済先と環境を確認し、必須の<strong>転送コード</strong>を入力して<strong>確認してインポート</strong>をタップします。</li>
           </ol>
           <p>SMTP設定を含めた場合は<strong>設定 › 領収書のメール送信</strong>を確認し、テストメールを送ります。</p>
-          <p>取り込み後は<a href="quick-start.html#first-payment">最初の TEST 決済</a>を行ってください。</p>
           <p><a href="troubleshooting.html#access">取り込みの問題</a> · <a href="troubleshooting.html#connection">接続の問題</a></p>
         </div>
       </section>

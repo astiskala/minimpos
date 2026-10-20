@@ -73,6 +73,7 @@ class TapToPayDiagnosticsTest {
 
         await { container.terminalStatus.check(includeDiagnostics = true) }
         assertThat(management.credentialChecks).isEqualTo(1)
+        await { diagnostics.state.first { it.clientKey == ClientKeyCheck.PRESENT } }
         assertThat(diagnostics.state.value.clientKey).isEqualTo(ClientKeyCheck.PRESENT)
         assertThat(paymentsApp.opened).hasSize(1)
         assertThat(paymentsApp.opened.single()).doesNotContain("reboard")

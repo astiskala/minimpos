@@ -99,6 +99,47 @@ class TransferScreensTest {
     private fun waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
 
     @Test
+    fun `import guidance keeps manual entry available without changing settings`() {
+        val vm = TransferImportViewModel("AUD", container.setupImport)
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport))
+        val settings = container.settingsState.value
+        compose.setContent {
+            MiniMposTheme {
+                CompositionLocalProvider(LocalAppContainer provides container) {
+                    TransferImportScreen(navigator, vm = vm)
+                }
+            }
+        }
+        waitForTag("setupCodesIntro")
+        compose.onNodeWithText("From a computer").assertIsDisplayed()
+        compose.onNodeWithText("From another device").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("startSetupScan").assertIsDisplayed()
+        compose.onNodeWithTag("manualSetup").assertIsDisplayed().performClick()
+        assertThat(navigator.current).isEqualTo(Route.SettingsSection(SettingsSections.TERMINAL))
+        assertThat(container.settingsState.value).isEqualTo(settings)
+    }
+
+    @Test
+    fun `scanner opens only after choosing codes and Back returns to guidance`() {
+        val vm = TransferImportViewModel("AUD", container.setupImport)
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport))
+        compose.setContent {
+            MiniMposTheme {
+                CompositionLocalProvider(LocalAppContainer provides container) {
+                    TransferImportScreen(navigator, vm = vm)
+                }
+            }
+        }
+        waitForTag("startSetupScan")
+        compose.onNodeWithTag("startSetupScan").performClick()
+        compose.onNodeWithTag("setupCodesIntro").assertDoesNotExist()
+        compose.onNodeWithText(env.context.getString(R.string.transfer_import_hint)).assertIsDisplayed()
+        compose.onNodeWithTag("back").performClick()
+        compose.onNodeWithTag("setupCodesIntro").assertExists()
+        assertThat(navigator.current).isEqualTo(Route.TransferImport)
+    }
+
+    @Test
     fun `settings share the catalogue, settings and secrets, with a transfer code`() {
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("settings").performClick()

@@ -136,6 +136,9 @@ class SmallScreenTest {
             .performScrollTo()
             .assertIsDisplayed()
             .performClick()
+        waitForTag("startSetupScan")
+        compose.onNodeWithTag("setupCodesIntro").assertExists()
+        compose.onNodeWithTag("startSetupScan").assertIsDisplayed().performClick()
         waitForText("Point the camera")
         compose.onNodeWithText("Set up from another device").assertIsDisplayed()
     }

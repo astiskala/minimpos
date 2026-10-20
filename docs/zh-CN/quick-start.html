@@ -138,8 +138,8 @@
           <h2>安装应用</h2>
           <p>从<a href="https://github.com/astiskala/minimpos/releases/latest">最新发布版本</a>下载已签名的 <code>minimpos-&lt;version&gt;.apk</code>。</p>
           <dl class="settings-list">
-            <dt>Adyen 终端</dt><dd><ol><li>在商户后台上传 APK 并部署到终端；参见 <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen 应用部署指南</a>。用户需有上传和部署应用的权限。</li><li>在终端上打开 Mini mPOS，选择<strong>设置终端</strong>。</li></ol></dd>
-            <dt>平板或手机</dt><dd><ol><li>在设备上打开 APK，按 Android 提示允许浏览器或文件管理器安装应用。</li><li>打开 Mini mPOS，选择<strong>设置终端</strong>。</li></ol></dd>
+            <dt>Adyen 终端</dt><dd><ol><li>在商户后台上传 APK 并部署到终端；参见 <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen 应用部署指南</a>。用户需有上传和部署应用的权限。</li><li>在终端上打开 Mini mPOS，选择<strong>连接 Adyen</strong>，点按<strong>继续</strong>。</li></ol></dd>
+            <dt>平板或手机</dt><dd><ol><li>在设备上打开 APK，按 Android 提示允许浏览器或文件管理器安装应用。</li><li>打开 Mini mPOS，选择<strong>连接 Adyen</strong>，点按<strong>继续</strong>。</li></ol></dd>
           </dl>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
@@ -163,7 +163,7 @@
             <li>选择<strong>自动（推荐）</strong>只需输入 Adyen API 密钥，其余由设备查询；选择<strong>手动</strong>则输入全部连接信息。</li>
             <li>填写所需信息。</li>
             <li>点击<strong>生成二维码</strong>。请保持页面打开：页面会显示 12 位传输码。</li>
-            <li>在 Mini mPOS 中打开<strong>设置 › 终端</strong>，点按<strong>扫描设置二维码</strong>或右上角的二维码图标，扫描全部二维码。</li>
+            <li>在 Mini mPOS 中打开<strong>设置 › 终端</strong>，点按<strong>扫描设置二维码</strong>或右上角的二维码图标。阅读说明，点按<strong>我已有二维码</strong>，扫描全部二维码。</li>
             <li>检查支付目标和环境，输入传输码，点按<strong>验证并导入</strong>。</li>
             <li>如有提示，选择您的终端，或为 Tap to Pay 注册手机。全部检查通过前不会保存任何内容。</li>
           </ol>
@@ -315,10 +315,11 @@
           <p>无需 Adyen 账户或终端即可体验 Mini mPOS，不会扣款。</p>
           <ol>
             <li>在 Android 9+ 手机或模拟器上<a href="#install">安装应用</a>。</li>
-            <li>在欢迎界面选择<strong>使用示例数据试用模拟器</strong>。其他选项为<strong>从另一台设备设置</strong>（导入设置二维码）和<strong>设置终端</strong>。</li>
+            <li>在欢迎界面选择<strong>试用演示</strong>，点按<strong>继续</strong>。其他选项为<strong>扫描设置二维码</strong>（来自设置助手或另一台设备）和<strong>连接 Adyen</strong>。Adyen 终端默认选择连接，其他设备默认选择演示。</li>
             <li>在<strong>设置 › 模拟器</strong>中选择支付结果、延迟以及是否有打印机。</li>
           </ol>
           <p>示例商品和交易记录会标为演示。每次<strong>添加示例数据</strong>都会以虚构咖啡店信息替换收据商家信息，即使示例已存在；收据版式和发送设置保持不变。示例计入演示每日合计和报告，并非真实付款。在<strong>设置 › 数据与传输</strong>中可<strong>添加示例数据</strong>或<strong>删除示例数据</strong>；删除会保留您自己的商品、交易记录和设置。离线演示链接请参阅<a href="using.html#payment-links">付款链接</a>。</p>
+          <p>准备连接时，在<strong>设置 › 模拟器</strong>中点按<strong>设置真实支付</strong>。通过快捷入口检查示例数据和收据，再点按<strong>继续设置</strong>。打开设置不会更改数据。确认切换到 TEST 或 LIVE 后，所有本地交易记录（包括未完成的操作）都会删除；示例商品和收据信息会保留。请单独移除不需要的示例，并在真实支付前检查虚构的收据商户信息。先使用 TEST 测试。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
       </div>

@@ -65,6 +65,7 @@ import app.minimpos.app.data.transfer.ReceivedTransfer
 import app.minimpos.app.data.transfer.TransferContents
 import app.minimpos.app.data.transfer.TransferExport
 import app.minimpos.app.feature.settings.SettingSwitch
+import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.feature.settings.TerminalChoiceDialog
 import app.minimpos.app.feature.text
 import app.minimpos.app.scan.ScanMode
@@ -276,44 +277,100 @@ fun TransferImportScreen(
 ) {
     val currency = LocalAppContainer.current.currency().code
     val state by vm.state.collectAsStateWithLifecycle()
+    var scanStarted by rememberSaveable { mutableStateOf(false) }
+    val introduction = state is ImportUiState.Scanning && !scanStarted
+    val scanning = state is ImportUiState.Scanning && scanStarted
+
+    fun back() {
+        if (scanning) scanStarted = false else navigator.back()
+    }
+    BackHandler(enabled = scanning) { back() }
+    var confirmReplace by rememberSaveable { mutableStateOf(false) }
+    val importing = state == ImportUiState.Importing
+    val snackbar = remember { SnackbarHostState() }
+    ImportNavigation(state, navigator, snackbar)
+    MiniScaffold(
+        title = stringResource(R.string.transfer_import),
+        onBack = ::back.takeUnless { importing },
+        modifier = modifier,
+        snackbarHostState = snackbar,
+        bottomBar = {
+            if (introduction) {
+                SetupCodesActions(
+                    onScan = { scanStarted = true },
+                    onManual = {
+                        navigator.back()
+                        val terminal = Route.SettingsSection(SettingsSections.TERMINAL)
+                        // Reopening the section it came from would discard that screen's saved state.
+                        if (navigator.current != terminal) navigator.openFrom(Route.Settings, terminal)
+                    },
+                )
+            } else {
+                ImportBottomBar(
+                    state,
+                    onImport = { if (it) confirmReplace = true else vm.import() },
+                    onBoard = vm::setUpTapToPay,
+                    onRetry = vm::retryRecovery,
+                    onDone = {
+                        navigator.back()
+                        if (navigator.current == Route.Onboarding) navigator.home()
+                    },
+                )
+            }
+        },
+    ) { padding ->
+        val callbacks = remember(vm) { ImportContentEvents(vm::onCode, vm::setMode, vm::setCode) }
+        if (introduction) {
+            SetupCodesIntro(padding)
+        } else {
+            ImportContent(state, currency, callbacks, Modifier.padding(padding))
+        }
+    }
+    ImportReviewDialogs(
+        state = state as? ImportUiState.Ready,
+        confirmReplace = confirmReplace,
+        onTerminal = vm::chooseTerminal,
+        onReview = vm::reviewSetup,
+        onConfirm = {
+            confirmReplace = false
+            if ((state as? ImportUiState.Ready)?.boardingRequired == true) vm.setUpTapToPay() else vm.import()
+        },
+        onDismiss = { confirmReplace = false },
+    )
+}
+
+/** Verified setup returns Home; in-progress imports intercept system Back until their durable work finishes. */
+@Composable
+private fun ImportNavigation(
+    state: ImportUiState,
+    navigator: Navigator,
+    snackbar: SnackbarHostState,
+) {
     val returnHome = (state as? ImportUiState.Done)?.result?.let { it.connection && !it.businessWarning && !it.paymentsAppChecked } == true
     LaunchedEffect(returnHome) {
         if (returnHome) navigator.home()
     }
-    var confirmReplace by rememberSaveable { mutableStateOf(false) }
-    val importing = state == ImportUiState.Importing
-    val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val wait = stringResource(R.string.processing_wait)
-    // An import must finish where it started; Back says so instead of doing nothing, and the arrow hides meanwhile.
-    BackHandler(enabled = importing) { scope.launch { snackbar.showSnackbar(wait) } }
-    MiniScaffold(
-        title = stringResource(R.string.transfer_import),
-        onBack = navigator::back.takeUnless { importing },
-        modifier = modifier,
-        snackbarHostState = snackbar,
-        bottomBar = {
-            ImportBottomBar(
-                state,
-                onImport = { if (it) confirmReplace = true else vm.import() },
-                onBoard = vm::setUpTapToPay,
-                onRetry = vm::retryRecovery,
-                onDone = {
-                    navigator.back()
-                    if (navigator.current == Route.Onboarding) navigator.home()
-                },
-            )
-        },
-    ) { padding ->
-        val callbacks = remember(vm) { ImportContentEvents(vm::onCode, vm::setMode, vm::setCode) }
-        ImportContent(state, currency, callbacks, Modifier.padding(padding))
+    BackHandler(enabled = state == ImportUiState.Importing) { scope.launch { snackbar.showSnackbar(wait) } }
+}
+
+/** Selection and explicit mutation confirmations stay separate from scanning and import progress. */
+@Composable
+private fun ImportReviewDialogs(
+    state: ImportUiState.Ready?,
+    confirmReplace: Boolean,
+    onTerminal: (String?) -> Unit,
+    onReview: (Boolean) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    state?.terminalChoices?.let { TerminalChoiceDialog(it, onTerminal) }
+    state?.historySwitch?.let {
+        HistorySwitchDialog(it.unfinished, { onReview(true) }, { onReview(false) })
     }
-    (state as? ImportUiState.Ready)?.terminalChoices?.let { TerminalChoiceDialog(it, vm::chooseTerminal) }
-    (state as? ImportUiState.Ready)?.historySwitch?.let {
-        HistorySwitchDialog(it.unfinished, { vm.reviewSetup(true) }, { vm.reviewSetup(false) })
-    }
-    (state as? ImportUiState.Ready)?.sharedKeyOffer?.let {
-        SharedKeyDialog(it, { vm.reviewSetup(true) }, { vm.reviewSetup(false) })
+    state?.sharedKeyOffer?.let {
+        SharedKeyDialog(it, { onReview(true) }, { onReview(false) })
     }
     if (confirmReplace) {
         ConfirmDialog(
@@ -321,11 +378,8 @@ fun TransferImportScreen(
             message = stringResource(R.string.transfer_replace_confirm),
             confirmLabel = stringResource(R.string.transfer_replace),
             destructive = true,
-            onConfirm = {
-                confirmReplace = false
-                if ((state as? ImportUiState.Ready)?.boardingRequired == true) vm.setUpTapToPay() else vm.import()
-            },
-            onDismiss = { confirmReplace = false },
+            onConfirm = onConfirm,
+            onDismiss = onDismiss,
         )
     }
 }

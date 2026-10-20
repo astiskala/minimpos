@@ -443,7 +443,7 @@ private fun ColumnScope.ConnectionSectionRows(
     simulatorOutcome?.let { outcome ->
         SettingNavRow(Icons.Default.Science, stringResource(R.string.settings_simulator), simulatorOutcomeLabel(outcome), {
             onOpen(SettingsSections.SIMULATOR)
-        })
+        }, tag = "section_simulator")
     }
 }
 
@@ -678,6 +678,7 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.SIMULATOR -> {
+            DemoExit { target -> navigator.openFrom(Route.Settings, Route.SettingsSection(target)) }
             SimulatorSection(state, events)
         }
 

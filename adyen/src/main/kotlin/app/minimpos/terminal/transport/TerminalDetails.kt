@@ -773,7 +773,7 @@ enum class AdyenRole(
     /** Reads and creates shared keys. */
     TERMINAL_SETTINGS_ADVANCED("Management API - Terminal settings Advanced read and write"),
 
-    /** Creates the phone's own Tap to Pay credential during its setup. */
+    /** Creates the phone's own Tap to Pay credential during its setup. Granted to new credentials by default. */
     API_CREDENTIALS("Management API - API credentials read and write"),
 
     /** Reads payment method settings: scanned wallets and gift cards. Granted to new credentials by default. */
@@ -783,7 +783,7 @@ enum class AdyenRole(
     STORES_READ("Management API - Stores read"),
 
     /** Reads the merchant account's legal name for receipts. Granted to new credentials by default. */
-    ACCOUNT_READ("Management API - Account read", alternatives = listOf("Management API - Accounts read")),
+    ACCOUNT_READ("Management API - Accounts read", alternatives = listOf("Management API - Account read")),
 
     /** Lists a shopper's saved cards. Granted to new credentials by default. */
     MERCHANT_RECURRING("Merchant Recurring role"),

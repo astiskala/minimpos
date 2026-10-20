@@ -170,7 +170,7 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS 自動建立具有 Adyen Payments App role 和客戶端密鑰的獨立憑據。毋須輸入或傳送額外密鑰。參見<a href="troubleshooting.html#tap-to-pay-check">可選檢查</a>和 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式指南</a>。</p>
+            <p class="hint">Mini mPOS 自動建立具有 Adyen Payments App role 和客戶端密鑰的獨立憑據。毋須輸入或傳送額外密鑰。參見<a href="troubleshooting.html#tap-to-pay-check">Tap to Pay 疑難排解</a>和 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式指南</a>。</p>
             <label for="storeId">店舖 ID（可選）</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
             <p class="hint">如只為一家店舖設定本手機：填寫 <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> 中該店舖的 ID（不是其 reference）。</p>
@@ -265,13 +265,11 @@
             <p class="setup-code" id="setup-code"></p>
           </div>
           <ol>
-            <li>在 Mini mPOS 中打開<strong>設定 › 終端</strong>，點按快速設定下的<strong>掃描設定二維碼</strong>，或右上角的二維碼掃描圖示。無需先選擇支付目標或環境。</li>
+            <li>在 Mini mPOS 中打開<strong>設定 › 終端</strong>，點按快速設定下的<strong>掃描設定二維碼</strong>，或右上角的二維碼掃描圖示。</li>
             <li>用相機掃描二維碼。有多個二維碼時會自動輪換。</li>
-            <li>檢查支付目標和環境，尤其是 LIVE。輸入必需的<strong>傳輸碼</strong>，再點按<strong>驗證並匯入</strong>。</li>
-            <li>按照<a href="quick-start.html#helper">驗證後匯入的步驟</a>操作。</li>
+            <li>檢查支付目標和環境。輸入必需的<strong>傳輸碼</strong>，再點按<strong>驗證並匯入</strong>。</li>
           </ol>
           <p>如包含 SMTP 設定，請檢查<strong>設定 › 電郵收據</strong>併發送測試郵件。</p>
-          <p>匯入後請<a href="quick-start.html#first-payment">完成第一筆 TEST 付款</a>。</p>
           <p><a href="troubleshooting.html#access">匯入問題？</a> · <a href="troubleshooting.html#connection">連接問題？</a></p>
         </div>
       </section>

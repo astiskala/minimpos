@@ -25,7 +25,7 @@ class PaymentsAppCredentialsTest {
     private fun api(server: MockWebServer) = AdyenPaymentsAppCredentials("primary-secret", TerminalEnvironment.TEST, server.url("/v3/"))
 
     @Test
-    fun `creation uses primary key and only merchant scoped Payments app role`() =
+    fun `creation uses primary key with merchant scoped boarding and diagnostic roles`() =
         runBlocking {
             MockWebServer().use { server ->
                 server.start()
@@ -38,7 +38,7 @@ class PaymentsAppCredentialsTest {
                 assertThat(request.url.encodedPath).isEqualTo("/v3/merchants/Merchant/apiCredentials")
                 assertThat(request.headers["x-api-key"]).isEqualTo("primary-secret")
                 assertThat(request.body!!.utf8()).isEqualTo(
-                    """{"description":"$reference","roles":["Adyen Payments App role"]}""",
+                    """{"description":"$reference","roles":["Adyen Payments App role","Management API - Accounts read"]}""",
                 )
                 assertThat(server.requestCount).isEqualTo(1)
             }

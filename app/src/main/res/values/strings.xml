@@ -509,7 +509,6 @@
   <string name="transfer_included">Included</string>
   <string name="transfer_not_included">Not included</string>
   <string name="transfer_unchanged">Unchanged</string>
-  <string name="transfer_live_warning">LIVE takes real payments. Check that this is the intended environment before importing.</string>
   <string name="transfer_secret_passphrase">Shared key passphrase</string>
   <string name="transfer_secret_api_key">Adyen API key</string>
   <string name="transfer_secret_smtp">SMTP password</string>
@@ -520,6 +519,7 @@
   <string name="transfer_verify">Verify and import</string>
   <string name="transfer_verifying">Checking credentials and connection…</string>
   <string name="transfer_board_first">Set up Tap to Pay to verify this import. Nothing else is saved until verification succeeds.</string>
+  <string name="transfer_register_phone">Import also sets up Tap to Pay. Mini mPOS creates this phone’s registration credential and opens the Payments app if registration is needed.</string>
   <string name="transfer_business_failed">Business details could not be imported. Retry or enter them in Settings › Receipts.</string>
   <string name="transfer_missing_fields">Setup is incomplete. Add the missing details in the Manual setup helper and scan the new codes.</string>
   <string name="transfer_tap_checked">Payments app registration and setup checked. The app cannot test the shared key with a connection check.</string>
@@ -707,7 +707,6 @@
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
-  <string name="settings_adyen_role_credentials">Management API - API credentials read and write</string>
   <string name="settings_live_prefix">Live URL prefix</string>
   <string name="settings_live_prefix_hint">Enter the Checkout live URL prefix. This can be found under Developers › API URLs.</string>
   <string name="settings_test_api">Test API</string>
@@ -774,6 +773,8 @@
   <string name="settings_installation_id">Installation ID</string>
   <string name="settings_not_boarded">Not set up yet</string>
   <string name="settings_store_id">Store ID (optional)</string>
+  <string name="settings_choose_store">Choose store</string>
+  <string name="settings_no_stores">No stores found for this merchant account. You can enter a store ID manually.</string>
   <string name="settings_store_id_hint">To set up Tap to Pay for one store, its store ID (not its reference). Leave blank for the merchant account.</string>
   <string name="settings_set_up_tap_to_pay">Set up Tap to Pay</string>
   <string name="settings_set_up_again">Set up again</string>
@@ -798,7 +799,7 @@
   <!-- Tap to Pay troubleshooting -->
   <string name="tap_key_present">Client key present. This does not confirm that payments will work.</string>
   <string name="tap_key_missing">The currently checked Tap to Pay setup credential has no client key. This can prevent the Payments app from starting a payment.</string>
-  <string name="tap_key_permission">Cannot verify the client key with the registration credential. This diagnostic permission is optional; do not add management roles to that credential.</string>
+  <string name="tap_key_permission">Cannot verify the client key with the registration credential. This diagnostic check is optional and does not block payments.</string>
   <string name="tap_key_auth">The registration credential was rejected. Check the TEST/LIVE environment and credential status in your Customer Area.</string>
   <string name="tap_key_failed">Cannot verify the client key because the API did not return a usable credential response. Check connectivity and API permissions, then retry the check.</string>
   <string name="tap_key_unchecked">No current client-key check for this credential and environment. Background connection checks skip this advisory check. This does not mean the key is missing.</string>
@@ -1001,7 +1002,7 @@
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">Header and footer</string>
   <string name="settings_business_import">Import business details from Adyen</string>
-  <string name="settings_business_import_hint">Review receipt details from the assigned store (Management API - Stores read) or merchant account (Management API - Account read). Merchant accounts provide only the legal name.</string>
+  <string name="settings_business_import_hint">Review receipt details from the assigned store (Management API - Stores read) or merchant account (Management API - Accounts read). Merchant accounts provide only the legal name.</string>
   <string name="settings_business_review">Review business details</string>
   <string name="settings_business_review_hint">Import fills only blank business name, address and phone fields. Existing text is never replaced. Tax ID, title and footer stay unchanged.</string>
   <string name="settings_business_unavailable">No business details are available to import.</string>

@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -56,6 +57,7 @@ import app.minimpos.app.terminal.PaymentsAppDestination
 import app.minimpos.app.terminal.SetupProgress
 import app.minimpos.app.terminal.SetupStep
 import app.minimpos.app.terminal.SetupStepKind
+import app.minimpos.app.terminal.SetupStoreChoice
 import app.minimpos.app.terminal.SetupVisit
 import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.TerminalState
@@ -366,6 +368,8 @@ private fun ColumnScope.TapToPayEntry(
         storeId = terminal.storeId,
         setup = setup,
         onStoreId = { id -> update { it.copy(storeId = id) } },
+        onFindStores = setupEvents::onStoresFind,
+        onChooseStore = setupEvents::onStoreChoose,
         onSetUp = setupEvents::onTapToPaySetUp,
         onRemove = setupEvents::onTapToPayRemove,
     )
@@ -563,7 +567,6 @@ private fun ColumnScope.ApiKeyRoles() {
     listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key).forEach {
         SettingNote("• " + stringResource(it))
     }
-    SettingNote("• " + stringResource(R.string.settings_adyen_role_credentials), Modifier.testTag("roleCredentials"))
 }
 
 /** Optional terminal discovery, with its manual-entry fallback kept beside the API-key action. */
@@ -658,14 +661,26 @@ internal fun TerminalChoiceDialog(
     poiIds: List<String>,
     onChoose: (poiId: String?) -> Unit,
 ) {
+    ChoiceDialog(R.string.settings_choose_terminal, R.string.settings_no_terminals, poiIds.map { it to it }, "terminal", onChoose)
+}
+
+/** Choices of `id to label`, each tagged `<tagPrefix>_<id>`; [onChoose] gets null when the dialog is dismissed. */
+@Composable
+private fun ChoiceDialog(
+    @StringRes title: Int,
+    @StringRes empty: Int,
+    choices: List<Pair<String, String>>,
+    tagPrefix: String,
+    onChoose: (id: String?) -> Unit,
+) {
     AlertDialog(
         onDismissRequest = { onChoose(null) },
-        title = { Text(stringResource(R.string.settings_choose_terminal)) },
+        title = { Text(stringResource(title)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                if (poiIds.isEmpty()) Text(stringResource(R.string.settings_no_terminals))
-                poiIds.forEach { poiId ->
-                    TextButton({ onChoose(poiId) }, Modifier.fillMaxWidth().testTag("terminal_$poiId")) { Text(poiId) }
+                if (choices.isEmpty()) Text(stringResource(empty))
+                choices.forEach { (id, label) ->
+                    TextButton({ onChoose(id) }, Modifier.fillMaxWidth().testTag("${tagPrefix}_$id")) { Text(label) }
                 }
             }
         },
@@ -731,6 +746,8 @@ private fun ColumnScope.TapToPayStep(
     storeId: String,
     setup: TerminalSetupActions,
     onStoreId: (String) -> Unit,
+    onFindStores: () -> Unit,
+    onChooseStore: (String?) -> Unit,
     onSetUp: (again: Boolean) -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -752,7 +769,37 @@ private fun ColumnScope.TapToPayStep(
         imeAction = ImeAction.Next,
         tag = "storeId",
     )
+    val focus = LocalFocusManager.current
+    SettingActions {
+        SecondaryButton(
+            stringResource(R.string.settings_choose_store),
+            {
+                // A focused Store ID draft would otherwise keep, and later re-commit, its text over the chosen store.
+                focus.clearFocus()
+                onFindStores()
+            },
+            Modifier.testTag("findStores"),
+            loading = setup.stores.running,
+            icon = Icons.Default.Search,
+        )
+    }
+    setup.storeChoices?.let { StoreChoiceDialog(it, onChooseStore) }
     TapToPayButtons(boarded, setup.tapToPay, onSetUp, onRemove)
+}
+
+/** Store IDs with merchant reference/description; null selection closes without changing the saved store. */
+@Composable
+private fun StoreChoiceDialog(
+    stores: List<SetupStoreChoice>,
+    onChoose: (String?) -> Unit,
+) {
+    val choices =
+        remember(stores) {
+            stores.map { store ->
+                store.id to listOf(store.reference, store.description, store.id).filter { it.isNotBlank() }.distinct().joinToString("\n")
+            }
+        }
+    ChoiceDialog(R.string.settings_choose_store, R.string.settings_no_stores, choices, "store", onChoose)
 }
 
 /** Set up (or again, once [boarded]) or remove this phone, busy while [result] runs. */

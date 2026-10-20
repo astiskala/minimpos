@@ -377,11 +377,7 @@ class TransferScreensTest {
         assertThat(environment.left).isAtLeast(environmentLabel.right)
         assertThat(environment.right).isEqualTo(destination.right)
         assertThat(environment.top).isEqualTo(environmentLabel.top)
-        if (environmentName == "LIVE") {
-            compose.onNodeWithTag("importLiveWarning").performScrollTo().assertIsDisplayed()
-        } else {
-            compose.onNodeWithTag("importLiveWarning").assertDoesNotExist()
-        }
+        compose.onNodeWithTag("importLiveWarning").assertDoesNotExist()
         assertImportSummary()
         compose.onNodeWithTag("import").assertIsDisplayed()
         assertThat(await { container.settings.current() }).isEqualTo(before)

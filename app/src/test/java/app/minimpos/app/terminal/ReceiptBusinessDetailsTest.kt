@@ -82,10 +82,10 @@ class ReceiptBusinessDetailsTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
         assertThat(read()).isEqualTo(ReceiptBusinesses.Found(ReceiptBusiness("Legal Shop", "", ""), fromStore = false))
         assertThat(calls).containsExactly("merchant:Merchant")
-        stores.merchantAnswer = MerchantLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API - Account read"))
+        stores.merchantAnswer = MerchantLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API - Accounts read"))
         assertThat(
             read(),
-        ).isEqualTo(ReceiptBusinesses.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN, "Management API - Account read"))))
+        ).isEqualTo(ReceiptBusinesses.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN, "Management API - Accounts read"))))
     }
 
     @Test

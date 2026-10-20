@@ -1,5 +1,6 @@
 package app.minimpos.terminal.transport
 
+import com.adyen.model.management.ListStoresResponse
 import com.adyen.model.management.Merchant
 import com.adyen.model.management.Store
 import kotlinx.coroutines.CoroutineDispatcher
@@ -21,6 +22,37 @@ data class StoreDetails(
     val address: String,
     val phone: String,
 )
+
+/**
+ * One merchant-scoped store choice; display fields are blank when absent.
+ * @property id Adyen store ID used for boarding.
+ * @property reference Merchant's store reference.
+ * @property description Merchant's display description.
+ */
+data class StoreChoice(
+    val id: String,
+    val reference: String,
+    val description: String,
+)
+
+/** Complete store listing, or a failure without partial choices. */
+sealed interface StoreListing {
+    /**
+     * Stores from all Management pages, in server order.
+     * @property stores Available stores; empty when none exist.
+     */
+    data class Found(
+        val stores: List<StoreChoice>,
+    ) : StoreListing
+
+    /**
+     * Listing could not finish.
+     * @property fault Permission, transport or malformed-response failure.
+     */
+    data class Failed(
+        val fault: Fault,
+    ) : StoreListing
+}
 
 /** Result of reading one store's receipt details; HTTP, network and malformed-answer failures are returned, not thrown. */
 sealed interface StoreLookup {
@@ -65,6 +97,9 @@ sealed interface MerchantLookup {
 
 /** Read-only Management API store and merchant access; safe to call from any thread. */
 interface StoreDetailsApi {
+    /** Lists all stores for [merchantAccount] with [AdyenRole.STORES_READ], never across environments. */
+    suspend fun stores(merchantAccount: String): StoreListing
+
     /** Reads store [storeId] of [merchantAccount] with [AdyenRole.STORES_READ], without listing other stores. */
     suspend fun store(
         merchantAccount: String,
@@ -92,6 +127,46 @@ class AdyenStoreDetails(
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : StoreDetailsApi {
     private val http = AdyenHttp(apiKey, baseClient, dispatcher)
+
+    override suspend fun stores(merchantAccount: String): StoreListing =
+        when (
+            val pages =
+                collectManagementPages(
+                    role = AdyenRole.STORES_READ.displayName,
+                    fetch = { storesPage(merchantAccount, it) },
+                    parse = ::parseStoresPage,
+                )
+        ) {
+            is ManagementPages.Listed -> StoreListing.Found(pages.items)
+            is ManagementPages.Failed -> StoreListing.Failed(pages.fault)
+        }
+
+    private suspend fun storesPage(
+        merchantAccount: String,
+        number: Int,
+    ): AdyenReply {
+        val url =
+            baseUrl
+                .newBuilder()
+                .addPathSegment("merchants")
+                .addPathSegment(merchantAccount)
+                .addPathSegment("stores")
+                .addQueryParameter("pageNumber", number.toString())
+                .addQueryParameter("pageSize", MANAGEMENT_PAGE_SIZE.toString())
+                .build()
+        return http.get(url, TIMEOUT)
+    }
+
+    private fun parseStoresPage(body: String): Pair<List<StoreChoice>, Boolean>? {
+        val response = decodeAdyenModel(body, ListStoresResponse::class.java)
+        val data = response?.data
+        if (data == null || data.any { it.id.isNullOrBlank() }) return null
+        return data.map { StoreChoice(checkNotNull(it.id), it.reference.orEmpty(), it.description.orEmpty()) } to
+            !response.links
+                ?.next
+                ?.href
+                .isNullOrBlank()
+    }
 
     override suspend fun store(
         merchantAccount: String,

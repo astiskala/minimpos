@@ -354,7 +354,7 @@ class AppContainer(
     val setupDiscovery =
         SetupDiscovery(terminalSetup, {
             secrets.set(Secret.TERMINAL_PASSPHRASE, it)
-        }, terminalDetails, gateway::readEnvironment, sharedKeys, terminalStatus::check)
+        }, terminalDetails, gateway::readEnvironment, sharedKeys, terminalStatus::check, storeDetails)
 
     /**
      * The startup check for a newer GitHub release, which Home offers to download in the browser; never started on an

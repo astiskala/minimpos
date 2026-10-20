@@ -625,7 +625,7 @@ class AutomaticSetupTransferTest {
     }
 
     @Test
-    fun `Tap to Pay registration is explicit and supported verification does not claim diagnosis`() {
+    fun `helper import registers Tap to Pay in one action and supported verification does not claim diagnosis`() {
         env.close()
         env =
             TestEnvironment(
@@ -640,10 +640,7 @@ class AutomaticSetupTransferTest {
                 """{"destination":"tapToPay","environment":"TEST","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
                 """{"ADYEN_API_KEY":"key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
             )
-        val proposed = await { env.container.setupImport.import(received, ImportMode.MERGE, code) }
-        assertThat(proposed).isEqualTo(SetupImportOutcome.BoardingRequired)
-        assertThat(management.requests).isEmpty()
-        val registered = await { env.container.setupImport.import(received, ImportMode.MERGE, code, board = true) }
+        val registered = await { env.container.setupImport.import(received, ImportMode.MERGE, code) }
         val outcome = registered as SetupImportOutcome.Committed
         assertThat((outcome.outcome as ImportOutcome.Imported).result.paymentsAppChecked).isTrue()
         assertThat(management.requests).hasSize(1)

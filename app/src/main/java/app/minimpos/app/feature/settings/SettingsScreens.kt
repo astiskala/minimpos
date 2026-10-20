@@ -223,6 +223,12 @@ internal interface TerminalSetupEvents {
     /** Takes [poiId] as the terminal in the cloud; null only closes the list ([TerminalSetupViewModel.chooseTerminal]). */
     fun onTerminalChoose(poiId: String?)
 
+    /** Lists stores for the saved Tap to Pay account. */
+    fun onStoresFind()
+
+    /** Selects an offered store; null dismisses the list. */
+    fun onStoreChoose(id: String?)
+
     /** Confirms the displayed non-secret key offer; stale context never grants permission to write. */
     fun onSharedKeyConfirm(offer: SharedKeyOffer)
 
@@ -327,6 +333,10 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
         override fun onTerminalsFind(apiKey: String) = setup.findTerminals(apiKey)
 
         override fun onTerminalChoose(poiId: String?) = setup.chooseTerminal(poiId)
+
+        override fun onStoresFind() = setup.findStores()
+
+        override fun onStoreChoose(id: String?) = setup.chooseStore(id)
 
         override fun onSharedKeyConfirm(offer: SharedKeyOffer) = setup.createSharedKey(offer)
 
@@ -869,6 +879,12 @@ private fun TerminalResults(
         setup.keyResult.outcome != null -> {
             OutcomeDialog(R.string.settings_shared_key, setup.keyResult, "sharedKeyResult") {
                 setupEvents.onResultDismiss(SetupResult.SHARED_KEY)
+            }
+        }
+
+        setup.stores.outcome != null -> {
+            OutcomeDialog(R.string.settings_choose_store, setup.stores, "storesResult") {
+                setupEvents.onResultDismiss(SetupResult.STORES)
             }
         }
     }

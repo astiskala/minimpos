@@ -736,9 +736,10 @@ class AdyenTerminalDetails(
 }
 
 /**
- * An API credential role every real Mini mPOS setup requires, as the Customer Area names it ([displayName]). Adyen
- * grants some to new credentials by default, so setup guides ask only for the others; all are still checked, since an
- * admin can remove a default role. [CLOUD_DEVICE] is required only while payments go to a cloud terminal.
+ * An API credential role a real Mini mPOS setup requires, as the Customer Area names it ([displayName]). Adyen grants
+ * some to new credentials by default, so setup guides ask only for the others; all are still checked, since an admin
+ * can remove a default role. [CLOUD_DEVICE] is required only while payments go to a cloud terminal, and
+ * [API_CREDENTIALS] only to set up Tap to Pay, which reports it when missing.
  *
  * @property displayName The role's name in the Customer Area, shown verbatim when it is missing.
  * @param alternatives Other spellings Adyen has used for the same role.
@@ -755,6 +756,9 @@ enum class AdyenRole(
 
     /** Reads and creates shared keys. */
     TERMINAL_SETTINGS_ADVANCED("Management API - Terminal settings Advanced read and write"),
+
+    /** Creates the phone's own Tap to Pay credential during its setup; never checked by [required]. */
+    API_CREDENTIALS("Management API - API credentials read and write"),
 
     /** Reads payment method settings: scanned wallets and gift cards. Granted to new credentials by default. */
     PAYMENT_METHODS_READ("Management API - Payment methods read"),
@@ -774,8 +778,8 @@ enum class AdyenRole(
 
     /** Role checks and names. */
     companion object {
-        /** The roles a real setup requires; [cloud] adds [CLOUD_DEVICE]. */
-        fun required(cloud: Boolean): List<AdyenRole> = entries.filter { cloud || it != CLOUD_DEVICE }
+        /** The roles the API test requires; [cloud] adds [CLOUD_DEVICE]. */
+        fun required(cloud: Boolean): List<AdyenRole> = entries.filter { (cloud || it != CLOUD_DEVICE) && it != API_CREDENTIALS }
 
         /**
          * Which of [required] the credential's [granted] role names lack, compared without case, spaces or the kind of

@@ -9,9 +9,15 @@ import com.adyen.model.checkout.PaymentLinkRequest
 import com.adyen.model.checkout.PaymentMethodsRequest
 import com.adyen.model.checkout.UpdatePaymentLinkRequest
 import com.adyen.model.clouddevice.ConnectedDevicesResponse
+import com.adyen.model.management.ApiCredential
+import com.adyen.model.management.CreateApiCredentialResponse
+import com.adyen.model.management.CreateMerchantApiCredentialRequest
 import com.adyen.model.management.Dcc
+import com.adyen.model.management.GenerateApiKeyResponse
+import com.adyen.model.management.GenerateClientKeyResponse
 import com.adyen.model.management.Gratuity
 import com.adyen.model.management.Key
+import com.adyen.model.management.ListMerchantApiCredentialsResponse
 import com.adyen.model.management.Merchant
 import com.adyen.model.management.MinorUnitsMonetaryValue
 import com.adyen.model.management.ModelConfiguration
@@ -97,6 +103,14 @@ class AdyenModelR8Test {
                 """{"data":[{"type":"wechatpay_pos","enabled":true,"allowed":true,"shopperInteraction":"pos","currencies":["AUD"]}]}""",
             Terminal::class.java to """{"id":"S1F2L-123456789","model":"S1F2L","countryCode":"AU"}""",
             BoardingTokenRequest::class.java to """{"boardingRequestToken":"synthetic"}""",
+            CreateMerchantApiCredentialRequest::class.java to
+                """{"description":"Mini mPOS synthetic","roles":["Adyen Payments app role"]}""",
+            CreateApiCredentialResponse::class.java to
+                """{"id":"C1","apiKey":"synthetic","clientKey":"test_synthetic","active":true,"roles":["Adyen Payments app role"]}""",
+            ListMerchantApiCredentialsResponse::class.java to
+                """{"data":[{"id":"C1","description":"Mini mPOS synthetic"}],"pagesTotal":1}""",
+            GenerateApiKeyResponse::class.java to """{"apiKey":"synthetic"}""",
+            GenerateClientKeyResponse::class.java to """{"clientKey":"test_synthetic"}""",
             ConnectedDevicesResponse::class.java to """{"uniqueDeviceIds":["AMS1-1"]}""",
         )
 
@@ -117,6 +131,7 @@ class AdyenModelR8Test {
             Key::class.java,
             PaymentMethod::class.java,
             StoreLocation::class.java,
+            ApiCredential::class.java,
         )
 
     private fun shrink(models: Collection<Class<*>>): URLClassLoader {

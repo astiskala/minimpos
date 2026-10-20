@@ -262,17 +262,17 @@ class SetupHelperTest {
     }
 
     @Test
-    fun `Tap to Pay always uses manual key fields after either previous setup mode`() {
+    fun `Tap to Pay transfers primary credential and shared key without a boarding key`() {
         for (mode in listOf("automatic", "manual")) {
             openPage()
             field("setupMode", mode)
             field("destination", "tapToPay")
+            assertThat(script.executeScript("return document.getElementById('paymentsAppApiKey')")).isNull()
             assertThat(script.executeScript("return document.querySelector('[data-mode]').disabled")).isEqualTo(false)
             assertThat(script.executeScript("return document.querySelector('[name=setupMode]').closest('fieldset').hidden"))
                 .isEqualTo(true)
             mapOf(
                 "merchantAccount" to " Merchant ",
-                "paymentsAppApiKey" to " boarding-key ",
                 "storeId" to " ST1 ",
                 "keyIdentifier" to "manual-key",
                 "keyVersion" to "2",
@@ -288,7 +288,7 @@ class SetupHelperTest {
                         """.trimMargin(),
                     ) to
                         json(
-                            """{"ADYEN_API_KEY":"demo-key","PAYMENTS_APP_API_KEY":"boarding-key",
+                            """{"ADYEN_API_KEY":"demo-key",
                             |"TERMINAL_PASSPHRASE":" manual secret "}
                             """.trimMargin(),
                         ),

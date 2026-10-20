@@ -77,7 +77,10 @@ payment terminals; prefer a network terminal where practical.
 
 - Use dedicated, least-privilege API credentials with the
   [roles and account access required for your destination](docs/quick-start.html#credentials).
-  Boarding uses a separate Adyen Payments app credential.
+  Boarding uses a separate Adyen Payments app credential, created automatically with the primary key. For Tap to Pay
+  only, the primary key needs credential-management write access: compromise can permit creating or modifying API
+  credentials within its account scope. Generated boarding credentials and creation-recovery records stay encrypted on
+  this device and are never transferred by QR.
 - Set an admin PIN; optionally require a Manager PIN for financial follow-up actions. Keep phone/tablet screen locks
   and Android security updates enabled. Review [staff access](docs/using.html#business).
 - Keep TEST and LIVE credentials separate. Verify the selected or detected environment in Settings › Terminal before

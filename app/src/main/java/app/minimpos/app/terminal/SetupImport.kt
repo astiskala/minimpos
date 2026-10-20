@@ -321,10 +321,11 @@ class SetupImport internal constructor(
         explicit: Boolean,
     ): Step {
         val prepared = current.prepared
-        if (!candidate(prepared).setup.boardsPhone) return Step.Next(current)
-        return when (val result = tapToPay.candidate(prepared.settings, prepared.secrets, explicit)) {
+        val unlocked = candidate(prepared)
+        if (!unlocked.setup.boardsPhone) return Step.Next(current)
+        return when (val result = tapToPay.candidate(unlocked, explicit)) {
             is TapToPayOutcome.Boarded -> {
-                val evidence = tapToPay.candidateIdentity(prepared.settings, prepared.secrets, result.installationId)
+                val evidence = tapToPay.candidateIdentity(unlocked, result.installationId)
                 Step.Next(current.copy(prepared = prepared.withBoardedPhone(result.installationId, evidence)))
             }
 

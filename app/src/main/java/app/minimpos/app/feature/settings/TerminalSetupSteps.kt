@@ -192,6 +192,7 @@ private fun ColumnScope.DestinationSteps(
         number = apiStep.number,
         done = apiStep.done,
         cloud = status.mode == TerminalMode.CLOUD,
+        tapToPay = status.mode == TerminalMode.PAYMENTS_APP,
         discovers = status.mode != TerminalMode.PAYMENTS_APP,
         findOnly = !status.onTerminal && status.mode != TerminalMode.PAYMENTS_APP,
         api = api,
@@ -238,7 +239,7 @@ private fun ColumnScope.ConnectionSteps(
             onPoiId = { id -> update { it.copy(poiIdOverride = id) } },
         )
     }
-    step(SetupStepKind.TAP_TO_PAY)?.let { TapToPayEntry(it.number, state, setup, events, setupEvents, update) }
+    step(SetupStepKind.TAP_TO_PAY)?.let { TapToPayEntry(it.number, state, setup, setupEvents, update) }
 
     fun testConnection() {
         if (!actions.connection.running) {
@@ -351,13 +352,12 @@ private fun ApiEntry.testCompleted(
     return matches && settled
 }
 
-/** Setting up Tap to Pay with the Adyen Payments app on this phone: its store, the Payments app API key and boarding. */
+/** Setting up Tap to Pay on this phone with an automatically provisioned credential. */
 @Composable
 private fun ColumnScope.TapToPayEntry(
     number: Int,
     state: SettingsUiState,
     setup: TerminalSetupActions,
-    events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
     update: TerminalUpdate,
 ) {
@@ -366,13 +366,10 @@ private fun ColumnScope.TapToPayEntry(
         number = number,
         installationId = terminal.paymentsAppInstallationId,
         storeId = terminal.storeId,
-        apiKeySaved = Secret.PAYMENTS_APP_API_KEY in state.secrets,
         setup = setup,
         onStoreId = { id -> update { it.copy(storeId = id) } },
         onSetUp = setupEvents::onTapToPaySetUp,
         onRemove = setupEvents::onTapToPayRemove,
-        onForgetApiKey = { events.onSecretChange(Secret.PAYMENTS_APP_API_KEY, null) },
-        onDraft = { setupEvents.onSecretDraft(Secret.PAYMENTS_APP_API_KEY, it) },
     )
 }
 
@@ -509,6 +506,7 @@ private fun ColumnScope.AdyenApiStep(
     number: Int,
     done: Boolean,
     cloud: Boolean,
+    tapToPay: Boolean,
     discovers: Boolean,
     findOnly: Boolean,
     api: ApiEntry,
@@ -527,7 +525,7 @@ private fun ColumnScope.AdyenApiStep(
     }
     StepHeader(number, stringResource(R.string.settings_api), done = done)
     SettingNote(stringResource(R.string.settings_adyen_key_hint))
-    ApiKeyRoles(cloud)
+    ApiKeyRoles(cloud, tapToPay)
 
     SecretField(
         label = stringResource(R.string.settings_api_key),
@@ -560,16 +558,20 @@ private fun ColumnScope.AdyenApiStep(
 
 /**
  * The roles the API test requires that new API credentials lack by default (`AdyenRole.required` without the default
- * ones); cloud adds its transport role.
+ * ones); cloud adds its transport role, and Tap to Pay the role its setup creates the phone's own credential with.
  */
 @Composable
-private fun ColumnScope.ApiKeyRoles(cloud: Boolean) {
+private fun ColumnScope.ApiKeyRoles(
+    cloud: Boolean,
+    tapToPay: Boolean,
+) {
     SettingNote(stringResource(R.string.settings_adyen_roles_hint))
     if (cloud) SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
     SettingNote("• " + stringResource(R.string.settings_adyen_role_terminals), Modifier.testTag("roleTerminals"))
     listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key).forEach {
         SettingNote("• " + stringResource(it))
     }
+    if (tapToPay) SettingNote("• " + stringResource(R.string.settings_adyen_role_credentials), Modifier.testTag("roleCredentials"))
 }
 
 /** Optional terminal discovery, with its manual-entry fallback kept beside the API-key action. */
@@ -731,29 +733,22 @@ private fun paymentsAppLabel(paymentsApps: Set<TerminalEnvironment>): String =
 
 /**
  * Setting up Tap to Pay on this phone: the boarded [installationId] (blank until boarded), the optional [storeId], the
- * Payments app API key (only kept in memory while typed, and cleared once stored), and the buttons that set it up
- * ([onSetUp] gets the key typed, or an empty one, and whether it is boarded already), remove this phone or forget the
- * key; their outcome shows in a dialog.
+ * automatically managed credential, and buttons that set it up ([onSetUp] boards afresh when true) or remove this
+ * phone; their outcome shows in a dialog.
  */
 @Composable
 private fun ColumnScope.TapToPayStep(
     number: Int,
     installationId: String,
     storeId: String,
-    apiKeySaved: Boolean,
     setup: TerminalSetupActions,
     onStoreId: (String) -> Unit,
-    onSetUp: (apiKey: String, again: Boolean) -> Unit,
+    onSetUp: (again: Boolean) -> Unit,
     onRemove: () -> Unit,
-    onForgetApiKey: () -> Unit,
-    onDraft: (Boolean) -> Unit,
 ) {
-    var apiKey by remember { mutableStateOf("") }
-    LaunchedEffect(setup.paymentsAppKeyStored) { if (setup.paymentsAppKeyStored) apiKey = "" }
     val boarded = installationId.isNotBlank()
     StepHeader(number, stringResource(R.string.settings_tap_to_pay), done = boarded)
     SettingNote(stringResource(R.string.settings_tap_to_pay_hint))
-    SettingNote(stringResource(R.string.settings_payments_app_key_hint))
     Column(Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding)) {
         LabeledValue(
             stringResource(R.string.settings_installation_id),
@@ -769,27 +764,16 @@ private fun ColumnScope.TapToPayStep(
         imeAction = ImeAction.Next,
         tag = "storeId",
     )
-    SecretField(
-        label = stringResource(R.string.settings_payments_app_key),
-        isSet = apiKeySaved,
-        value = apiKey,
-        onValueChange = { apiKey = it },
-        onSubmit = { onSetUp(apiKey, boarded) },
-        tag = "paymentsAppKey",
-        onDraft = onDraft,
-    )
-    TapToPayButtons(boarded, apiKeySaved, setup.tapToPay, { again -> onSetUp(apiKey, again) }, onRemove, onForgetApiKey)
+    TapToPayButtons(boarded, setup.tapToPay, onSetUp, onRemove)
 }
 
-/** Set up (or again, once [boarded]), remove this phone and forget the saved API key, busy while [result] runs. */
+/** Set up (or again, once [boarded]) or remove this phone, busy while [result] runs. */
 @Composable
 private fun TapToPayButtons(
     boarded: Boolean,
-    apiKeySaved: Boolean,
     result: ActionState,
     onSetUp: (again: Boolean) -> Unit,
     onRemove: () -> Unit,
-    onForgetApiKey: () -> Unit,
 ) {
     SettingActions {
         val tag = Modifier.testTag("setUpTapToPay")
@@ -814,16 +798,6 @@ private fun TapToPayButtons(
                 onConfirm = onRemove,
                 icon = Icons.Default.PhonelinkErase,
                 modifier = Modifier.testTag("removePhone"),
-            )
-        }
-        if (apiKeySaved) {
-            ConfirmedRemoval(
-                text = stringResource(R.string.settings_forget_payments_app_key),
-                confirmTitle = stringResource(R.string.settings_forget_payments_app_key_title),
-                confirmMessage = stringResource(R.string.settings_forget_payments_app_key_message),
-                onConfirm = onForgetApiKey,
-                icon = Icons.Default.KeyOff,
-                modifier = Modifier.testTag("forgetPaymentsAppKey"),
             )
         }
     }

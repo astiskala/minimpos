@@ -112,6 +112,7 @@ secrets.json: app.minimpos.app.data.security.SecretBlob
   pendingImport?: string
   boardingRecovery?: string
   keyCreationRecovery?: string
+  boardingCredential?: string
 
 Room column: payment context: app.minimpos.core.payment.PaymentContext
   destination required: string
@@ -262,7 +263,7 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
       username? required: string
       boardedAt required: long
   secrets required: map
-    key: enum app.minimpos.app.data.security.Secret [TERMINAL_PASSPHRASE, SMTP_PASSWORD, PIN_VERIFIER, MANAGER_PIN_VERIFIER, ADYEN_API_KEY, PAYMENTS_APP_API_KEY]
+    key: string
     value: string
   changesSetup required: boolean
   businessWarning required: boolean
@@ -294,3 +295,11 @@ Encrypted journal: key creation: app.minimpos.app.terminal.SharedKeySetup.KeyRec
       identifier required: string
       passphrase required: string
       version required: int
+
+Encrypted journal: boarding credentials: list of
+  - app.minimpos.app.terminal.BoardingCredential
+    owner required: string
+    merchant required: string
+    environment required: enum app.minimpos.terminal.transport.TerminalEnvironment [TEST, LIVE]
+    reference required: string
+    apiKey?: string

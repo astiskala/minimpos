@@ -479,7 +479,7 @@
   <string name="transfer_part_settings">Settings</string>
   <string name="transfer_part_settings_hint">Payments, tax, receipts, email, security, history, the shared key’s identifier and the Checkout API. Where payments go, and the address and ID of the terminal they go to, are not copied.</string>
   <string name="transfer_part_secrets">Passwords and keys</string>
-  <string name="transfer_part_secrets_hint">Shared key passphrase, Adyen API key, Payments app API key, SMTP password and admin PIN, protected by a transfer code</string>
+  <string name="transfer_part_secrets_hint">Shared key passphrase, Adyen API key, SMTP password and admin PIN, protected by a transfer code</string>
   <string name="transfer_part_secrets_none">None set on this device</string>
   <string name="transfer_part_connection">Connection</string>
   <string name="transfer_show_codes">Show QR codes</string>
@@ -494,7 +494,6 @@
   <string name="transfer_live_warning">LIVE takes real payments. Check that this is the intended environment before importing.</string>
   <string name="transfer_secret_passphrase">Shared key passphrase</string>
   <string name="transfer_secret_api_key">Adyen API key</string>
-  <string name="transfer_secret_payments_app_key">Payments app API key</string>
   <string name="transfer_secret_smtp">SMTP password</string>
   <string name="transfer_secret_pin">Admin PIN</string>
   <string name="transfer_settings_note">This replaces the settings on this device. Its payment destination, terminal address and terminal ID stay unchanged.</string>
@@ -690,6 +689,7 @@
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
+  <string name="settings_adyen_role_credentials">Management API - API credentials read and write</string>
   <string name="settings_live_prefix">Live URL prefix</string>
   <string name="settings_live_prefix_hint">Enter the Checkout live URL prefix. This can be found under Developers › API URLs.</string>
   <string name="settings_test_api">Test API</string>
@@ -757,16 +757,11 @@
   <string name="settings_not_boarded">Not set up yet</string>
   <string name="settings_store_id">Store ID (optional)</string>
   <string name="settings_store_id_hint">To set up Tap to Pay for one store, its store ID (not its reference). Leave blank for the merchant account.</string>
-  <string name="settings_payments_app_key">Payments app API key</string>
-  <string name="settings_payments_app_key_hint">A separate credential with the Adyen Payments app role and a client key. It sets up and removes this phone. Enter its API key here, not its client key.</string>
   <string name="settings_set_up_tap_to_pay">Set up Tap to Pay</string>
   <string name="settings_set_up_again">Set up again</string>
   <string name="settings_remove_phone">Remove this phone</string>
   <string name="settings_remove_phone_title">Remove this phone?</string>
   <string name="settings_remove_phone_message">Adyen stops taking Tap to Pay payments on this phone until it is set up again.</string>
-  <string name="settings_forget_payments_app_key">Remove saved Payments app API key</string>
-  <string name="settings_forget_payments_app_key_title">Remove the saved Payments app API key?</string>
-  <string name="settings_forget_payments_app_key_message">Payments go on, but this phone cannot be set up again or removed until the key is entered again.</string>
   <string name="settings_payments_app_setup_checked">Setup fields checked. The Payments app cannot test the shared key with a connection check.</string>
 
   <!-- Settings: help and troubleshooting -->
@@ -777,37 +772,23 @@
   <string name="help_report_issue">Report an issue</string>
 
   <!-- Shared integration diagnostics -->
-  <string name="diagnostics_api">API access: %1$s</string>
-  <string name="diagnostics_checked_at">Checks completed (UTC): %1$s</string>
-  <string name="diagnostics_connection">Connection: %1$s</string>
   <string name="diagnostics_details">Troubleshooting details</string>
-  <string name="diagnostics_limits">Read-only checks do not prove that payments, refunds or printing will succeed. Fix reported setup gaps in Settings › Terminal; check connectivity and API permissions for failed requests. No payment, boarding or shared-key changes run here.</string>
-  <string name="diagnostics_no_diagnosis">Terminal diagnosis is unsupported for this integration. Connection results validate setup only, not terminal reachability.</string>
-  <string name="diagnostics_no_status">Remote transaction-status lookup is unsupported. Only a late reply already received by Mini mPOS can resolve a missing payment answer.</string>
   <string name="diagnostics_not_checked">Not checked or unavailable</string>
-  <string name="diagnostics_report_notice">Includes merchant, terminal, installation and credential IDs. Secret values, free-text messages, callbacks and shopper data are omitted. Review before sharing; nothing uploads automatically.</string>
+  <string name="diagnostics_report_notice">Report includes account and device IDs, not secrets or shopper data. Review before sharing.</string>
   <string name="diagnostics_share_report">Share redacted report</string>
 
   <!-- Tap to Pay troubleshooting -->
-  <string name="tap_credential_verified">Credential verified: %1$s</string>
-  <string name="tap_credential_inactive">This credential is inactive.</string>
   <string name="tap_key_present">Client key present. This does not confirm that payments will work.</string>
   <string name="tap_key_missing">The currently checked Tap to Pay setup credential has no client key. This can prevent the Payments app from starting a payment.</string>
-  <string name="tap_key_permission">Cannot verify the client key: GET /me needs a Management API role. This diagnostic permission is optional; do not add broad credential-management access just to take payments.</string>
-  <string name="tap_key_auth">Authentication failed in the selected environment. Check the saved Payments app API key and TEST/LIVE environment.</string>
+  <string name="tap_key_permission">Cannot verify the client key with the registration credential. This diagnostic permission is optional; do not add management roles to that credential.</string>
+  <string name="tap_key_auth">The registration credential was rejected. Check the TEST/LIVE environment and credential status in your Customer Area.</string>
   <string name="tap_key_failed">Cannot verify the client key because the API did not return a usable credential response. Check connectivity and API permissions, then retry the check.</string>
   <string name="tap_key_unchecked">No current client-key check for this credential and environment. Background connection checks skip this advisory check. This does not mean the key is missing.</string>
-  <string name="tap_boarding_known">This verified credential matches the recorded boarding of this installation.</string>
-  <string name="tap_boarding_unknown">This check validates the currently configured credential. Mini mPOS cannot confirm which credential originally boarded this installation.</string>
   <string name="tap_boarded">Payments app reports boarded. Boarding alone does not verify payment readiness.</string>
   <string name="tap_not_boarded">Payments app reports not boarded.</string>
   <string name="tap_boarding_unverified">Payments app boarding status could not be verified.</string>
   <string name="tap_boarding_unchecked">Payments app boarding status not checked.</string>
-  <string name="tap_check_time">Credential check (UTC): %1$s</string>
-  <string name="tap_boarding_time">Boarding check (UTC): %1$s</string>
   <string name="tap_unavailable">The Payments app could not complete the request. This error has several possible causes; it does not by itself prove an outage or a missing client key. Check setup and review the available diagnostics.</string>
-  <string name="tap_boarding_credential">Recorded boarding credential: %1$s</string>
-  <string name="tap_boarding_unmatched">This check does not confirm that the current credential matches the recorded boarding credential. Use the recorded boarding credential for client-key troubleshooting.</string>
 
   <!-- Settings: Adyen capabilities -->
   <string name="capabilities_intro">See which features this destination and device support. Unsupported means the destination or known hardware cannot use it. Needs configuration means local or Adyen settings, or hardware verification, are still needed. Available is not a guarantee of payment approval.</string>
@@ -1135,8 +1116,8 @@
   <string name="setup_payments_app_ambiguous">Both the TEST and the LIVE Adyen Payments app are installed; uninstall the one you do not use</string>
   <string name="setup_payments_app_not_boarded">Set up Tap to Pay in Terminal settings</string>
   <string name="setup_payments_app_on_terminal">The Adyen Payments app does not run on payment terminals</string>
-  <string name="setup_payments_app_api_key">Enter the Payments app API key in Terminal settings</string>
-  <string name="setup_unreadable_payments_app_key">The saved Payments app API key could not be read on this device; enter it again in Terminal settings</string>
+  <string name="setup_payments_app_api_key">Set up Tap to Pay in Terminal settings to create this phone’s registration credential</string>
+  <string name="setup_unreadable_payments_app_key">This phone’s registration credential could not be read. Retry Tap to Pay setup in Terminal settings.</string>
   <string name="setup_not_verified">Test API access and the connection before taking payments.</string>
   <string name="setup_required_title">Payments aren’t set up yet</string>
   <string name="setup_required_message">Mini mPOS needs a tested connection to Adyen first. Settings › Terminal shows what is still missing.</string>
@@ -1172,9 +1153,9 @@
   <string name="fault_no_record">The terminal has no record of this transaction, so it was not processed.</string>
   <string name="fault_request_not_encrypted">The request could not be encrypted. Check the shared key in Terminal settings.</string>
   <string name="fault_credential_adyen">Adyen did not accept the API key. Check it in Terminal settings.</string>
-  <string name="fault_credential_payments_app">Adyen did not accept the Payments app API key. Check it in Terminal settings.</string>
+  <string name="fault_credential_payments_app">Adyen did not accept this phone’s registration credential. Check its status in your Customer Area.</string>
   <string name="fault_permission_adyen">The API key lacks a role or access to this merchant account. Check the API credential in your Customer Area.</string>
-  <string name="fault_permission_payments_app">The Payments app API key lacks the Adyen Payments app role or access to this merchant account. Check it in your Customer Area.</string>
+  <string name="fault_permission_payments_app">This phone’s registration credential lacks the Adyen Payments app role or access to this merchant account. Check it in your Customer Area.</string>
   <string name="fault_not_found">Adyen does not know this terminal in this merchant account. Check the terminal ID and merchant account.</string>
   <string name="fault_adyen_rejected">Adyen rejected the request.</string>
   <string name="fault_list_too_large">The list is too long to read. Enter the details manually.</string>

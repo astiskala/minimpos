@@ -13,6 +13,7 @@ import app.minimpos.app.data.settings.JsonDataStoreSerializer
 import app.minimpos.app.data.settings.StorageJson
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.newInstallation
+import app.minimpos.app.terminal.BoardingCredential
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.receipt.CardReceiptLine
 import com.google.common.truth.Truth.assertThat
@@ -51,6 +52,7 @@ class StoredFormatTest {
             "Encrypted journal: setup import" to journal("app.minimpos.app.data.transfer.PendingSetupImport"),
             "Encrypted journal: Tap to Pay registration" to journal("app.minimpos.app.terminal.TapToPaySetup\$RegistrationRecovery"),
             "Encrypted journal: key creation" to journal("app.minimpos.app.terminal.SharedKeySetup\$KeyRecords"),
+            "Encrypted journal: boarding credentials" to serializer<List<BoardingCredential>>().descriptor,
         )
 
     private fun journal(name: String): SerialDescriptor = serializer(Class.forName(name)).descriptor
@@ -67,6 +69,9 @@ class StoredFormatTest {
             .sorted()
 
     private val reports = File("build/reports/stored-formats")
+
+    /** Secrets earlier versions stored that this one no longer has; the next secret write deletes them. */
+    private val retiredSecrets = setOf("PAYMENTS_APP_API_KEY")
 
     @Test
     fun `stored formats match the reviewed snapshot`() {
@@ -159,6 +164,10 @@ class StoredFormatTest {
                 .isEqualTo(readSettings.normalized())
             readSecrets.values.keys.forEach { name ->
                 val secret = Secret.entries.find { it.name == name }
+                if (name in retiredSecrets) {
+                    assertWithMessage("$version retired secret $name").that(secret).isNull()
+                    return@forEach
+                }
                 assertWithMessage("$version stores secret $name, which this version no longer reads").that(secret).isNotNull()
                 assertWithMessage(
                     "$version secret $name",
@@ -172,8 +181,11 @@ class StoredFormatTest {
                                 .hasJournal(kind)
                                 .first()
                         },
-                    ).isTrue()
+                    ).isEqualTo(kind.get(readSecrets) != null)
             }
+            await { env.container.secrets.set(Secret.SMTP_PASSWORD, "SMTP_PASSWORD changed") }
+            val rewritten = File(env.dir, "secrets.json").readText()
+            retiredSecrets.forEach { assertWithMessage("$version $it after a secret write").that(rewritten).doesNotContain("\"$it\"") }
         } finally {
             env.close()
         }

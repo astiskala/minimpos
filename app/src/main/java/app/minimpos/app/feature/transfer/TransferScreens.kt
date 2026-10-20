@@ -492,7 +492,6 @@ private fun secretNames(secrets: Set<Secret>): String? {
                     Secret.SMTP_PASSWORD -> R.string.transfer_secret_smtp
                     Secret.PIN_VERIFIER -> R.string.transfer_secret_pin
                     Secret.MANAGER_PIN_VERIFIER -> R.string.manager_pin_title
-                    Secret.PAYMENTS_APP_API_KEY -> R.string.transfer_secret_payments_app_key
                 },
             )
         }

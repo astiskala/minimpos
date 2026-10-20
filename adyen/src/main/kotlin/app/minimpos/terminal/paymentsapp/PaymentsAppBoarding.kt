@@ -23,6 +23,9 @@ import okhttp3.OkHttpClient
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
+/** The Customer Area name of the API credential role that boards and revokes the Payments app. */
+internal const val PAYMENTS_APP_ROLE = "Adyen Payments app role"
+
 /**
  * Where a Payments app instance is boarded: a merchant account, or one of its stores. Constructing it with a blank
  * [merchantAccount] throws [IllegalArgumentException].
@@ -222,7 +225,6 @@ class AdyenPaymentsAppManagement(
     /** The Management API's endpoints. */
     companion object {
         private val TIMEOUT = 30.seconds
-        private const val PAYMENTS_APP_ROLE = "Adyen Payments app role"
 
         /** The Management API's base URL for [environment], with its version and without a trailing slash. */
         fun endpoint(environment: TerminalEnvironment): String = managementEndpoint(environment, version = 1)
@@ -281,7 +283,7 @@ sealed interface Onboarding {
  *
  * @param environment Which Payments app to board.
  * @param exchange Opens the links.
- * @param management The Management API, with the Payments app API key.
+ * @param management The Management API, with this phone's own credential for boarding.
  * @param returnUrl Where the Payments app calls back, without a trailing slash.
  */
 class PaymentsAppOnboarding(

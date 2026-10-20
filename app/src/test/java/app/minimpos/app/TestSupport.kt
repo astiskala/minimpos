@@ -39,7 +39,9 @@ import app.minimpos.terminal.paymentsapp.AppLinkExchange
 import app.minimpos.terminal.paymentsapp.BoardingCredentialCheck
 import app.minimpos.terminal.paymentsapp.BoardingTarget
 import app.minimpos.terminal.paymentsapp.ManagementResult
+import app.minimpos.terminal.paymentsapp.PaymentsAppCredentials
 import app.minimpos.terminal.paymentsapp.PaymentsAppManagement
+import app.minimpos.terminal.paymentsapp.ProvisionedCredential
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.AdyenLocalTransport
@@ -364,6 +366,23 @@ class FakeManagement(
     ): ManagementResult = result.also { revoked += installationId }
 }
 
+class FakeBoardingCredentials : PaymentsAppCredentials {
+    var result: ProvisionedCredential = ProvisionedCredential.Ready("generated-boarding-key")
+    val requests = mutableListOf<Triple<String, String, Boolean>>()
+    val connections = mutableListOf<Pair<String, TerminalEnvironment>>()
+    var beforeProvision: suspend () -> Unit = {}
+
+    override suspend fun provision(
+        merchant: String,
+        reference: String,
+        recover: Boolean,
+    ): ProvisionedCredential {
+        requests += Triple(merchant, reference, recover)
+        beforeProvision()
+        return result
+    }
+}
+
 /**
  * Adyen's payment links: answers with a link in [status] (or the result set for a call), and records what was sent.
  * Thread-safe, as the container calls it from its own scope.
@@ -456,6 +475,7 @@ class TestEnvironment(
     paymentsApp: FakePaymentsApp = FakePaymentsApp(),
     /** Replaces the Management API that boards the Payments app. */
     management: FakeManagement = FakeManagement(),
+    boardingCredentials: FakeBoardingCredentials = FakeBoardingCredentials(),
     /** Replaces Adyen's payment links. */
     links: FakeLinkApi = FakeLinkApi(),
     /** Replaces Checkout API access checks and payment modifications; never reaches Adyen. */
@@ -516,6 +536,7 @@ class TestEnvironment(
             cloudDevices = cloud::connect,
             paymentsAppExchange = paymentsApp,
             paymentsAppManagement = { key, environment -> management.also { it.connections += key to environment } },
+            paymentsAppCredentials = { key, environment -> boardingCredentials.also { it.connections += key to environment } },
             checkout = {
                 CheckoutApi.of(
                     modifications,

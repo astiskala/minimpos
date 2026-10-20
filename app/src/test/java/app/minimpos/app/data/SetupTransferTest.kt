@@ -6,8 +6,10 @@ import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.ImportMode
+import app.minimpos.app.data.security.JournalRead
 import app.minimpos.app.data.security.PinCheck
 import app.minimpos.app.data.security.PinManager
+import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.TransferSeal
 import app.minimpos.app.data.settings.ConnectionSetup
@@ -31,6 +33,10 @@ import app.minimpos.core.codec.TransferFormatException
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.serializer
 import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -193,6 +199,24 @@ class SetupTransferTest {
         ).isEqualTo(products)
         assertThat(await { receiving.pending.first() }).isFalse()
         assertThat(await { receiving.recover() }).isNull()
+    }
+
+    @Test
+    fun `an interrupted commit naming a secret this version no longer has still resumes`() {
+        configureSource()
+        val export = await { setup(source).export(TransferContents(catalogue = false), "EUR") }
+        val receiving = setup(target)
+        val prepared = checkNotNull(await { receiving.prepare(receiving.receive(TransferCodec.decode(export.payload)), export.code) })
+        await { receiving.commit(prepared, ImportMode.MERGE) { throw IOException("Interrupted save") } }
+        val journal = target.container.secrets.journal(RecoveryJournal.SETUP_IMPORT, serializer<JsonObject>())
+        await {
+            val entry = (journal.read() as JournalRead.Present).value
+            val secrets = checkNotNull(entry["secrets"]).jsonObject + ("PAYMENTS_APP_API_KEY" to JsonPrimitive("earlier"))
+            journal.write(JsonObject(entry + ("secrets" to JsonObject(secrets))))
+        }
+        val resumed = checkNotNull(await { setup(target).recover() }) as ImportOutcome.Imported
+        assertThat(resumed.result.secrets).contains(Secret.ADYEN_API_KEY)
+        assertThat(await { receiving.pending.first() }).isFalse()
     }
 
     @Test
@@ -376,8 +400,12 @@ class SetupTransferTest {
 
         fun sealed(json: String) = receive(Transfer(sealedSecrets = SealedSecrets(seal.seal(json.toByteArray(), code))))
         assertThat(await { setup(target).unlock(sealed("[1]"), code) }).isNull()
-        // Unknown secrets, empty values and a PIN verifier that could not be checked are left out.
-        val mixed = sealed("""{"FUTURE":"x","SMTP_PASSWORD":"","PIN_VERIFIER":"v1:x","TERMINAL_PASSPHRASE":"p"}""")
+        // Unknown secrets (such as the Payments app API key earlier versions transferred), empty values and a PIN verifier
+        // that could not be checked are left out.
+        val mixed =
+            sealed(
+                """{"FUTURE":"x","SMTP_PASSWORD":"","PIN_VERIFIER":"v1:x","TERMINAL_PASSPHRASE":"p","PAYMENTS_APP_API_KEY":"local-only"}""",
+            )
         val filtered = await { setup(target).unlock(mixed, code) }
         assertThat(filtered).containsExactly(Secret.TERMINAL_PASSPHRASE, "p")
         assertThat(await { setup(target).unlock(receive(Transfer(settings = "{}")), code) }).isEmpty()

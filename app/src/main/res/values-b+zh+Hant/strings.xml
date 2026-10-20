@@ -479,7 +479,7 @@
   <string name="transfer_part_settings">設定</string>
   <string name="transfer_part_settings_hint">支付、稅、收據、電郵、安全、交易紀錄、共享密鑰識別碼和 Checkout API。不會複製支付目標及其所用終端的地址和 ID。</string>
   <string name="transfer_part_secrets">密碼和密鑰</string>
-  <string name="transfer_part_secrets_hint">共享密鑰口令、Adyen API 密鑰、Payments 應用程式 API 密鑰、SMTP 密碼和管理員 PIN，均由傳輸碼保護</string>
+  <string name="transfer_part_secrets_hint">共享密鑰口令、Adyen API 密鑰、SMTP 密碼和管理員 PIN，均由傳輸碼保護</string>
   <string name="transfer_part_secrets_none">此設備尚未設定</string>
   <string name="transfer_part_connection">連接</string>
   <string name="transfer_show_codes">顯示二維碼</string>
@@ -494,7 +494,6 @@
   <string name="transfer_live_warning">LIVE 用於真實收款。匯入前請確認這是您需要的環境。</string>
   <string name="transfer_secret_passphrase">共享密鑰口令</string>
   <string name="transfer_secret_api_key">Adyen API 密鑰</string>
-  <string name="transfer_secret_payments_app_key">Payments 應用程式 API 密鑰</string>
   <string name="transfer_secret_smtp">SMTP 密碼</string>
   <string name="transfer_secret_pin">管理員 PIN</string>
   <string name="transfer_settings_note">這些設定將替換此設備的設定。支付目標及其所用終端的地址和 ID 保持不變。</string>
@@ -689,6 +688,7 @@
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
+  <string name="settings_adyen_role_credentials">Management API - API credentials read and write</string>
   <string name="settings_live_prefix">LIVE URL 前置字元</string>
   <string name="settings_live_prefix_hint">請輸入 Checkout 實時 URL 前置字元，可在“Developers › API URLs”中找到。</string>
   <string name="settings_test_api">測試 API</string>
@@ -756,16 +756,11 @@
   <string name="settings_not_boarded">尚未設定</string>
   <string name="settings_store_id">店舖 ID（可選）</string>
   <string name="settings_store_id_hint">如只為一家店舖設定 Tap to Pay，請填寫其店舖 ID（不是店舖參考號）。留空則用於整個商戶帳戶。</string>
-  <string name="settings_payments_app_key">Payments 應用程式 API 密鑰</string>
-  <string name="settings_payments_app_key_hint">具有 Adyen Payments app role 和用戶端金鑰的獨立憑據，用於設定和移除本手機。此處請輸入 API 金鑰，而非用戶端金鑰。</string>
   <string name="settings_set_up_tap_to_pay">設定 Tap to Pay</string>
   <string name="settings_set_up_again">重新設定</string>
   <string name="settings_remove_phone">移除本手機</string>
   <string name="settings_remove_phone_title">移除本手機？</string>
   <string name="settings_remove_phone_message">在重新設定之前，Adyen 將不再在本手機上接受 Tap to Pay 付款。</string>
-  <string name="settings_forget_payments_app_key">移除已儲存的 Payments 應用程式 API 密鑰</string>
-  <string name="settings_forget_payments_app_key_title">移除已儲存的 Payments 應用程式 API 密鑰？</string>
-  <string name="settings_forget_payments_app_key_message">仍可收款，但在重新輸入密鑰之前，無法重新設定或移除本手機。</string>
   <string name="settings_payments_app_setup_checked">已檢查設定欄位。Payments 應用程式無法通過連接檢查測試共享密鑰。</string>
 
   <!-- Settings: help and troubleshooting -->
@@ -776,37 +771,23 @@
   <string name="help_report_issue">回報問題</string>
 
   <!-- Shared integration diagnostics -->
-  <string name="diagnostics_api">API 存取：%1$s</string>
-  <string name="diagnostics_checked_at">檢查完成時間（UTC）：%1$s</string>
-  <string name="diagnostics_connection">連接：%1$s</string>
   <string name="diagnostics_details">疑難排解詳情</string>
-  <string name="diagnostics_limits">唯讀檢查無法保證付款、退款或列印成功。請在設定 › 終端機中補齊所報告的設定；請求失敗時檢查網絡和 API 權限。此處不會發起付款、註冊手機或更改共用密鑰。</string>
-  <string name="diagnostics_no_diagnosis">此整合不支援終端機診斷。連接結果只驗證設定，不代表能連接至終端機。</string>
-  <string name="diagnostics_no_status">不支援遙距查詢交易狀態。付款結果未知時，只有 Mini mPOS 已收到的延遲回覆才能確認結果。</string>
   <string name="diagnostics_not_checked">未檢查或無法使用</string>
-  <string name="diagnostics_report_notice">包含商戶、終端機、安裝實例和憑證 ID。不包含秘密值、自由文字訊息、回調網址或顧客資料。分享前請先檢查；不會自動上載任何內容。</string>
+  <string name="diagnostics_report_notice">報告包含帳戶和裝置 ID，不含密鑰或顧客資料。分享前請先檢查。</string>
   <string name="diagnostics_share_report">分享已隱去敏感資料的報告</string>
 
   <!-- Tap to Pay troubleshooting -->
-  <string name="tap_credential_verified">已驗證憑據：%1$s</string>
-  <string name="tap_credential_inactive">此憑據未啟用。</string>
   <string name="tap_key_present">客戶端密鑰已存在。這並不保證可以成功付款。</string>
   <string name="tap_key_missing">目前檢查的 Tap to Pay 設定憑據沒有客戶端密鑰。這可能導致 Payments app 無法開始付款。</string>
-  <string name="tap_key_permission">無法驗證客戶端密鑰：GET /me 需要 Management API 角色。此診斷權限是可選的；不要只為收款而新增廣泛的憑據管理權限。</string>
-  <string name="tap_key_auth">在所選環境中驗證失敗。請檢查已儲存的 Payments app API 密鑰及 TEST/LIVE 環境。</string>
+  <string name="tap_key_permission">無法使用註冊憑據驗證客戶端密鑰。此診斷權限是選用的；請勿為註冊憑據新增管理角色。</string>
+  <string name="tap_key_auth">註冊憑據遭拒絕。請檢查 TEST/LIVE 環境及 Customer Area 中的憑據狀態。</string>
   <string name="tap_key_failed">API 未傳回可用的憑據回應，無法驗證客戶端密鑰。請檢查網絡和 API 權限，然後重試檢查。</string>
   <string name="tap_key_unchecked">目前憑據和環境沒有有效的客戶端密鑰檢查結果。背景連接檢查不包含此項參考檢查。這不表示密鑰遺失。</string>
-  <string name="tap_boarding_known">此已驗證憑據與本安裝實例記錄的註冊憑據相符。</string>
-  <string name="tap_boarding_unknown">此檢查驗證目前設定的憑據。Mini mPOS 無法確認最初使用哪個憑據註冊本安裝實例。</string>
   <string name="tap_boarded">Payments app 回報已註冊。註冊本身並不代表付款已準備就緒。</string>
   <string name="tap_not_boarded">Payments app 回報尚未註冊。</string>
   <string name="tap_boarding_unverified">無法驗證 Payments app 註冊狀態。</string>
   <string name="tap_boarding_unchecked">尚未檢查 Payments app 註冊狀態。</string>
-  <string name="tap_check_time">憑據檢查時間（UTC）：%1$s</string>
-  <string name="tap_boarding_time">註冊檢查時間（UTC）：%1$s</string>
   <string name="tap_unavailable">Payments app 無法完成請求。此錯誤可能有多種原因，不能據此斷定服務中斷或缺少客戶端密鑰。請檢查設定並查看可用的診斷資料。</string>
-  <string name="tap_boarding_credential">記錄的註冊憑據：%1$s</string>
-  <string name="tap_boarding_unmatched">此檢查不能確認目前憑據與記錄的註冊憑據相符。請使用記錄的註冊憑據排解客戶端密鑰問題。</string>
 
   <!-- Settings: Adyen capabilities -->
   <string name="capabilities_intro">查看此收款目標和裝置支援的功能。「不支援」表示收款目標或已知硬件無法使用此功能。「需要設定」表示仍需調整本機或 Adyen 設定，或確認硬件。「可用」不保證付款獲批。</string>
@@ -1130,8 +1111,8 @@
   <string name="setup_payments_app_ambiguous">同時安裝了 TEST 和 LIVE 版 Adyen Payments 應用程式，請解除安裝不用的那個</string>
   <string name="setup_payments_app_not_boarded">請在終端設定中設定 Tap to Pay</string>
   <string name="setup_payments_app_on_terminal">Adyen Payments 應用程式無法在支付終端上運行</string>
-  <string name="setup_payments_app_api_key">請在終端設定中輸入 Payments 應用程式 API 密鑰</string>
-  <string name="setup_unreadable_payments_app_key">無法在此設備上讀取已儲存的 Payments 應用程式 API 密鑰，請在終端設定中重新輸入</string>
+  <string name="setup_payments_app_api_key">請在終端設定中設定 Tap to Pay，以建立這部手機的註冊憑據</string>
+  <string name="setup_unreadable_payments_app_key">無法讀取這部手機的註冊憑據。請在終端設定中重試 Tap to Pay 設定。</string>
   <string name="setup_not_verified">收款前，請測試 API 存取權限和連接。</string>
   <string name="setup_required_title">尚未完成收款設定</string>
   <string name="setup_required_message">Mini mPOS 需要先成功測試與 Adyen 的連線。“設定 › 終端”會顯示尚欠甚麼。</string>
@@ -1167,9 +1148,9 @@
   <string name="fault_no_record">終端沒有此交易的記錄，因此未處理。</string>
   <string name="fault_request_not_encrypted">無法加密請求。請在終端設定中檢查共享密鑰。</string>
   <string name="fault_credential_adyen">Adyen 未接受 API 密鑰。請在終端設定中檢查。</string>
-  <string name="fault_credential_payments_app">Adyen 未接受 Payments 應用程式 API 密鑰。請在終端設定中檢查。</string>
+  <string name="fault_credential_payments_app">Adyen 未接受這部手機的註冊憑據。請在 Customer Area 中檢查其狀態。</string>
   <string name="fault_permission_adyen">此 API 密鑰缺少所需角色或對此商戶帳戶的存取權限。請在商戶後台檢查 API 憑證。</string>
-  <string name="fault_permission_payments_app">Payments 應用程式 API 密鑰缺少 Adyen Payments app 角色或對此商戶帳戶的存取權限。請在商戶後台檢查。</string>
+  <string name="fault_permission_payments_app">這部手機的註冊憑據缺少 Adyen Payments app 角色或對此商戶帳戶的存取權限。請在商戶後台檢查。</string>
   <string name="fault_not_found">Adyen 在此商戶帳戶中找不到該終端。請檢查終端 ID 及商戶帳戶。</string>
   <string name="fault_adyen_rejected">Adyen 拒絕了請求。</string>
   <string name="fault_list_too_large">列表過長，無法讀取。請手動輸入資料。</string>

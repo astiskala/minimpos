@@ -35,8 +35,6 @@ import kotlinx.coroutines.launch
  * @property terminals The latest search for terminals connected in the cloud.
  * @property connectedTerminals The POIIDs that search found, to choose from; null while none is offered.
  * @property tapToPay The latest setup or removal of Tap to Pay.
- * @property paymentsAppKeyStored Whether the Payments app API key given to the latest setup was stored (so the field
- *   can be cleared).
  * @property apiKeyStored Whether the API key given to the latest search was stored (so the field can be cleared).
  * @property manualDetails Whether optional details need manual entry.
  * @property revision Completed discovery imports, used to refresh field editing state.
@@ -52,7 +50,6 @@ data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
     val connectedTerminals: List<String>? = null,
     val tapToPay: ActionState = ActionState(),
-    val paymentsAppKeyStored: Boolean = false,
     val apiKeyStored: Boolean = false,
     val manualDetails: Boolean = false,
     val revision: Int = 0,
@@ -81,7 +78,7 @@ enum class SetupResult {
  * Settings › Terminal's setup of where payments go off-terminal: choosing a terminal in the cloud from those connected,
  * and setting up (or removing) Tap to Pay with the Adyen Payments app.
  *
- * @param secrets Where the Payments app API key and the API key for the cloud are stored.
+ * @param secrets Where the Adyen API key entered for the cloud is stored.
  * @param status Lists the terminals connected in the cloud.
  * @param tapToPay Boards and removes the Payments app.
  * @param discovery Reads optional terminal setup details.
@@ -248,16 +245,12 @@ class TerminalSetupViewModel(
     }
 
     /**
-     * Sets up Tap to Pay with the Adyen Payments app (see [TapToPaySetup.board]), first saving [apiKey] as the Payments
-     * app API key if one was entered; [again] boards it afresh.
+     * Sets up Tap to Pay with an automatically provisioned credential; [again] boards it afresh.
      */
-    fun setUpTapToPay(
-        apiKey: String? = null,
-        again: Boolean = false,
-    ) = run(apiKey) { tapToPay.board(reboard = again) }
+    fun setUpTapToPay(again: Boolean = false) = run { tapToPay.board(reboard = again) }
 
     /** Removes this phone's Payments app instance (see [TapToPaySetup.unregister]). */
-    fun removeTapToPay() = run(null) { tapToPay.unregister() }
+    fun removeTapToPay() = run { tapToPay.unregister() }
 
     /** Refreshes read-only support checks on expansion; no setup-result dialog or setup mutation. */
     fun refreshDiagnostics() {
@@ -284,20 +277,10 @@ class TerminalSetupViewModel(
         }
     }
 
-    private fun run(
-        apiKey: String?,
-        action: suspend () -> TapToPayOutcome,
-    ) {
+    private fun run(action: suspend () -> TapToPayOutcome) {
         if (actions.value.tapToPay.running) return
-        actions.update { it.copy(tapToPay = ActionState(running = true), paymentsAppKeyStored = false) }
+        actions.update { it.copy(tapToPay = ActionState(running = true)) }
         launchWrite({
-            val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
-            val notStored = entered?.let { persisting { secrets.storeSafely(Secret.PAYMENTS_APP_API_KEY, it) } }
-            if (notStored != null) {
-                actions.update { it.copy(tapToPay = ActionState(outcome = notStored, isError = true)) }
-                return@launchWrite
-            }
-            if (entered != null) actions.update { it.copy(paymentsAppKeyStored = true) }
             val result =
                 when (val outcome = persisting { action() }) {
                     is TapToPayOutcome.Boarded -> {

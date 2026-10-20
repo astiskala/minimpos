@@ -19,6 +19,9 @@ class TapToPayGuideTest {
             val connectionTest = strings.select("string[name=settings_test_connection]").text()
             assertThat(connectionTest).isNotEmpty()
             assertThat(help.select("strong").eachText()).contains(connectionTest)
+            val helpLabel = strings.select("string[name=settings_help]").text()
+            assertThat(helpLabel).isNotEmpty()
+            assertThat(help.select("strong").eachText()).contains(helpLabel)
             val diagnostics = strings.select("string[name=diagnostics_details]").text()
             val share = strings.select("string[name=diagnostics_share_report]").text()
             assertThat(diagnostics).isNotEmpty()
@@ -40,7 +43,7 @@ class TapToPayGuideTest {
                 assertThat(steps.select("strong").eachText()).containsAtLeast(discover, connectionTest)
                 assertThat(steps.select("strong").eachText()).doesNotContain(apiTest)
             }
-            listOf("UnavailableService", "1029_605", "GET /me", "TEST", "LIVE", "ServiceID/SaleID", "null").forEach {
+            listOf("UnavailableService", "1029_605", "GET /me", "TEST", "LIVE", "UTC", "null").forEach {
                 assertThat(help.text()).contains(it)
             }
             assertThat(help.select("a").map { it.attr("href") }).containsAtLeast(

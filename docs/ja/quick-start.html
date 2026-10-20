@@ -116,7 +116,7 @@
               </ul>
               認証情報はご自身の Company アカウントに属し、決済先のマーチャントアカウントへのアクセス権が必要です。<a href="https://docs.adyen.com/development-resources/api-credentials/roles">Adyen の API ロールガイド</a>を参照してください。</li>
             <li>LIVE では <strong>Developers › API URLs</strong> の <strong>LIVE URLプレフィックス</strong>を控えます。</li>
-            <li>Tap to Pay のみ：登録用に <strong>Adyen Payments app role</strong> とクライアントキーを持つ別の認証情報を作成します。任意の診断にはいずれかの Management API ロールも必要です。<a href="troubleshooting.html#tap-to-pay-check">Tap to Pay の問題解決</a>を参照し、下記の手順で共有キーも用意してください。</li>
+            <li>Tap to Pay では、メインの APIキーで <strong>Management API - API credentials read and write</strong> も有効にします。これにより Mini mPOS が <strong>Adyen Payments app role</strong> とクライアントキーを持つ加盟店単位の別の認証情報を自動作成します。Adyen サポートに Tap to Pay の有効化と会社の認証情報からのロール割り当てを依頼してください。生成キーはこのスマートフォンに暗号化保存され、入力や転送は不要です。<a href="troubleshooting.html#tap-to-pay-check">Tap to Pay の問題解決</a>を参照し、共有キーも用意してください。</li>
             <li>デバイスを手動で設定する場合：
               <ul>
                 <li><strong>マーチャントアカウント</strong>を控えます。</li>
@@ -236,7 +236,7 @@
             <ul>
               <li>Adyen が会社向けに Tap to Pay と <strong>Adyen Payments app role</strong> を有効化済み。<a href="https://help.adyen.com/contact">Adyen サポートに連絡</a>してください</li>
               <li><a href="#install">Mini mPOS をインストール</a>した<a href="#devices">対応スマートフォン</a></li>
-              <li><a href="#credentials">Adyen APIキー</a>、別の Payments アプリの APIキー、共有キー</li>
+              <li><a href="#credentials">Adyen APIキー</a>と共有キー</li>
             </ul>
           </div>
           <ol>
@@ -245,13 +245,13 @@
           </ol>
           <dl class="settings-list setup-route">
             <dt>セットアップヘルパー（推奨）</dt>
-            <dd><a href="setup.html">セットアップヘルパー</a>で<strong>スマートフォンで動かす</strong>（Adyen Payments アプリの Tap to Pay）と、インストールしたアプリの <strong>TEST</strong> または <strong>LIVE</strong> 環境を選びます。Adyen APIキー、マーチャントアカウント、Payments アプリの APIキー、共有キー、任意で店舗IDを入力します。<a href="#helper">コードを読み取り</a>、案内に従ってスマートフォンを登録します。</dd>
+            <dd><a href="setup.html">セットアップヘルパー</a>で<strong>スマートフォンで動かす</strong>（Adyen Payments アプリの Tap to Pay）と、インストールしたアプリの <strong>TEST</strong> または <strong>LIVE</strong> 環境を選びます。Adyen APIキー、マーチャントアカウント、共有キー、任意で店舗IDを入力します。<a href="#helper">コードを読み取り</a>、案内に従ってスマートフォンを登録すると、登録用認証情報が自動作成されます。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
             <ol>
               <li><strong>設定 › 端末 › Adyen API</strong>で Adyen APIキーとマーチャントアカウントを入力します。LIVE では LIVE URLプレフィックスも入力し、<strong>APIをテスト</strong>をタップします。</li>
-              <li><strong>Tap to Pay</strong>で、Adyen Payments app role とクライアントキーを持つ認証情報の<strong>PaymentsアプリのAPIキー</strong>を入力します。クライアントキーは貼り付けません。店舗IDは任意です。</li>
+              <li><strong>Tap to Pay</strong>で店舗IDを任意入力します。追加の API キーは不要です。</li>
               <li><strong>Tap to Payを設定</strong>をタップし、Payments アプリで登録を完了します。</li>
               <li>Mini mPOS で共有キーを入力します。</li>
             </ol>

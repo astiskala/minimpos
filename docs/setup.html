@@ -123,13 +123,13 @@
             <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>Manual</strong>: enter all connection details on this computer</span></label>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>Follow the <a href="quick-start.html#tap-to-pay">Tap to Pay prerequisites</a> and install the Payments app first. Enter the merchant account and separate Payments app API key for registration. Enter the shared key here; Mini mPOS does not look it up. Registration is an explicit action on the phone before import finishes. You do not need to copy boarding tokens.</p>
+          <p class="hint" data-only="tapToPay" hidden>Follow the <a href="quick-start.html#tap-to-pay">Tap to Pay prerequisites</a> and install the Payments app first. Mini mPOS uses your Adyen API key to create the phone’s registration credential automatically. Enter the shared key here; Mini mPOS does not look it up. Registration is an explicit action on the phone before import finishes.</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API key</legend>
             <p class="hint">Create a credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> and generate its API key.
               <span data-only="cloud" hidden>Add the Cloud Device API role for cloud payments.</span>
-              <span data-only="tapToPay" hidden>This key is for Checkout operations, not Payments app registration.</span>
+              <span data-only="tapToPay" hidden>This key handles Checkout and provisions the phone’s separate registration credential.</span>
               This main credential needs specific roles; see the <a href="quick-start.html#credentials">credential requirements</a>.</p>
             <label for="apiKey">API key</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
@@ -178,10 +178,8 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">A separate API credential with the Adyen Payments app role and a client key for phone registration. Enter only its API key here, not its client key. See <a href="troubleshooting.html#tap-to-pay-check">optional setup checks</a> and
+            <p class="hint">Mini mPOS automatically creates a separate credential with the Adyen Payments app role and a client key. No extra key to enter or transfer. See <a href="troubleshooting.html#tap-to-pay-check">optional setup checks</a> and
               the <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments app guide</a>.</p>
-            <label for="paymentsAppApiKey">Payments app API key</label>
-            <input id="paymentsAppApiKey" name="paymentsAppApiKey" type="password" required spellcheck="false">
             <label for="storeId">Store ID, optional</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
             <p class="hint">To set up the phone for one store: its ID (not its reference) from <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a>.</p>

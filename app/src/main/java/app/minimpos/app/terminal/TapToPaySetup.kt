@@ -5,9 +5,7 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.JournalRead
 import app.minimpos.app.data.security.RecoveryJournal
-import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStoreException
-import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.BoardingIdentity
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalSettings
@@ -16,13 +14,18 @@ import app.minimpos.terminal.paymentsapp.BoardingCredentialCheck
 import app.minimpos.terminal.paymentsapp.BoardingTarget
 import app.minimpos.terminal.paymentsapp.ManagementResult
 import app.minimpos.terminal.paymentsapp.Onboarding
+import app.minimpos.terminal.paymentsapp.PaymentsAppCredentials
 import app.minimpos.terminal.paymentsapp.PaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.PaymentsAppOnboarding
+import app.minimpos.terminal.paymentsapp.ProvisionedCredential
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.uuid.Uuid
 
 /** The outcome of [TapToPaySetup.board] and [TapToPaySetup.unregister]. Failures are reported here, never thrown. */
 sealed interface TapToPayOutcome {
@@ -62,16 +65,17 @@ sealed interface TapToPayOutcome {
 
 /**
  * Sets up Tap to Pay with the Adyen Payments app on this phone: boards it for the merchant account (or store) in the
- * settings, with the Payments app API key ([Secret.PAYMENTS_APP_API_KEY]), and stores the installation ID it reports as
- * the POIID; or revokes it. The environment is the installed Payments app's.
+ * settings, using a dedicated credential provisioned automatically by the primary API key, and stores the installation
+ * ID it reports as the POIID; or revokes it. The environment is the installed Payments app's.
  *
- * @param setups Whether it can be boarded, with the Payments app API key ([TerminalSetupSource.boarding]), and the
- *   merchant account and store.
+ * @param setups Whether the Adyen API key can create this phone's own credential ([TerminalSetupSource.owner]) and
+ *   whether it can be boarded with that credential ([TerminalSetupSource.boarding]), and the merchant account and store.
  * @param settings Where the installation ID is stored.
  * @param exchange Opens the Payments app.
  * @param management The Management API for an API key and environment; tests replace it.
  * @property diagnostics Advisory credential preflight and evidence of actual new boarding; never gates payments.
  * @param verifyApi Validates the main credential and Checkout account before registration can change.
+ * @param credentials Creates this phone's own credential with the Adyen API key, in an environment.
  */
 class TapToPaySetup(
     private val setups: TerminalSetupSource,
@@ -80,8 +84,10 @@ class TapToPaySetup(
     private val management: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement,
     val diagnostics: TapToPayDiagnostics,
     private val verifyApi: suspend () -> ApiCheck,
+    private val credentials: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppCredentials,
 ) {
     private val journal = setups.journal(RecoveryJournal.BOARDING, serializer<RegistrationRecovery>())
+    private val provisioning = Mutex()
 
     // Adyen's list of boarded instances can lag behind a boarding its token already confirmed. Storing the new
     // installation ID needs a fresh connection check, which would otherwise close the setup gate until the list
@@ -96,32 +102,84 @@ class TapToPaySetup(
      * stored installation ID, so the setup asks for Tap to Pay again. The shared key is entered separately through the
      * setup helper or on this device; boarding never retrieves or replaces it.
      */
-    suspend fun board(reboard: Boolean = false): TapToPayOutcome =
-        when (val access = access()) {
-            is Access.Denied -> {
-                TapToPayOutcome.NotSetUp(access.problem)
+    suspend fun board(reboard: Boolean = false): TapToPayOutcome {
+        val unlocked = setups.unlocked(forValidation = true)
+        return when (val owner = setups.owner()) {
+            is BoardingOwner.Blocked -> {
+                TapToPayOutcome.NotSetUp(owner.problem)
             }
 
-            is Access.Granted -> {
+            is BoardingOwner.Ready -> {
                 when (val checked = verifyApi()) {
-                    ApiCheck.Works -> boardSaved(access, reboard)
+                    ApiCheck.Works -> boardVerified(unlocked, owner, reboard)
                     is ApiCheck.NotSetUp -> TapToPayOutcome.NotSetUp(checked.problem)
                     is ApiCheck.Failed -> TapToPayOutcome.Failed(checked.failure)
                 }
             }
         }
+    }
+
+    private suspend fun boardVerified(
+        unlocked: UnlockedSetup,
+        owner: BoardingOwner.Ready,
+        reboard: Boolean,
+    ): TapToPayOutcome {
+        val fence = setups.SetupFence(unlocked, SetupFreshness.SECRETS)
+        val blocked = fence.changed()?.let { TapToPayOutcome.NotSetUp(it) } ?: prepare(owner)
+        if (blocked != null) return blocked
+        return when (val access = access()) {
+            is Access.Denied -> TapToPayOutcome.NotSetUp(access.problem)
+            is Access.Granted -> fence.changed()?.let { TapToPayOutcome.NotSetUp(it) } ?: boardSaved(unlocked.setup, access, reboard)
+        }
+    }
+
+    /**
+     * Makes sure this phone's own credential exists for [owner], creating it (or recovering an interrupted creation)
+     * with the Adyen API key; null once it is stored. Its creation intent is stored first, so an answer that never
+     * arrives is recovered rather than repeated; one that cannot be decrypted any more is replaced. Once a credential
+     * is created, those of other Adyen API keys are forgotten.
+     */
+    private suspend fun prepare(owner: BoardingOwner.Ready): TapToPayOutcome? =
+        provisioning.withLock {
+            try {
+                val stored = (setups.boardingCredentials.read() as? JournalRead.Present)?.value.orEmpty()
+                val previous = stored.firstOrNull { it.matches(owner) }
+                if (previous?.apiKey != null) return@withLock null
+                val intent =
+                    previous
+                        ?: BoardingCredential(owner.fingerprint, owner.merchantAccount, owner.environment, "Mini mPOS ${Uuid.random()}")
+                            .also { setups.boardingCredentials.write(stored + it) }
+                val api = credentials(owner.apiKey, owner.environment)
+                when (val result = api.provision(intent.merchant, intent.reference, recover = previous != null)) {
+                    is ProvisionedCredential.Failed -> {
+                        if (previous == null && !result.creationMayExist) setups.boardingCredentials.write(stored)
+                        TapToPayOutcome.Failed(Failure.Remote(result.fault))
+                    }
+
+                    is ProvisionedCredential.Ready -> {
+                        val ready = BoardingCredential(intent.owner, intent.merchant, intent.environment, intent.reference, result.apiKey)
+                        val kept = stored.filter { it.owner == intent.owner && it.reference != intent.reference }
+                        setups.boardingCredentials.write(kept + ready)
+                        null
+                    }
+                }
+            } catch (ignored: SecretStoreException) {
+                TapToPayOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))
+            }
+        }
 
     private suspend fun boardSaved(
+        origin: TerminalSetup,
         access: Access.Granted,
         reboard: Boolean,
     ): TapToPayOutcome {
-        val origin = setups.current()
+        val fence = setups.SetupFence(origin, access.boarding)
         val original = origin.settings.terminal
         val attempt = Attempt(origin, original.target(), access)
         val result = register(attempt, reboard)
         if (result !is TapToPayOutcome.Boarded) return result
         val boarded = original.copy(paymentsAppInstallationId = result.installationId)
-        setups.SetupFence(origin).update { it.copy(terminal = boarded, boardingIdentity = attempt.identity ?: it.boardingIdentity) }
+        fence.update { it.copy(terminal = boarded, boardingIdentity = attempt.identity ?: it.boardingIdentity) }
         return if (settings.current().terminal == boarded) {
             diagnostics.registrationSaved(access.boarding)
             result
@@ -148,15 +206,41 @@ class TapToPaySetup(
         }
     }
 
+    /**
+     * Whether the Payments app is boarded for the [candidate] setup; [explicit] setup also creates this phone's own
+     * credential and boards it. Without one, that explicit setup is what is missing
+     * ([SetupProblem.PAYMENTS_APP_NOT_BOARDED]).
+     */
     internal suspend fun candidate(
-        current: AppSettings,
-        values: Map<Secret, String>,
+        candidate: UnlockedSetup,
         explicit: Boolean,
-    ): TapToPayOutcome =
-        when (val access = setups.candidateBoarding(current, values)) {
-            is BoardingSetup.Blocked -> TapToPayOutcome.NotSetUp(access.problem)
-            is BoardingSetup.Ready -> candidateRegistration(current.terminal.target(), access, explicit)
+    ): TapToPayOutcome {
+        val unprepared =
+            if (explicit) {
+                when (val owner = setups.owner(candidate)) {
+                    is BoardingOwner.Blocked -> TapToPayOutcome.NotSetUp(owner.problem)
+                    is BoardingOwner.Ready -> prepare(owner)
+                }
+            } else {
+                null
+            }
+        if (unprepared != null) return unprepared
+        return when (val access = setups.boarding(candidate)) {
+            is BoardingSetup.Blocked -> {
+                val unprovisioned = access.problem in setOf(SetupProblem.PAYMENTS_APP_API_KEY, SetupProblem.UNREADABLE_PAYMENTS_APP_KEY)
+                TapToPayOutcome.NotSetUp(if (unprovisioned) SetupProblem.PAYMENTS_APP_NOT_BOARDED else access.problem)
+            }
+
+            is BoardingSetup.Ready -> {
+                candidateRegistration(
+                    candidate.setup.settings.terminal
+                        .target(),
+                    access,
+                    explicit,
+                )
+            }
         }
+    }
 
     private suspend fun candidateRegistration(
         target: BoardingTarget,
@@ -226,8 +310,8 @@ class TapToPaySetup(
         }
 
     /**
-     * One [register] call: it boards this phone at the merchant account or store [target], with the Payments app API
-     * key, environment and Management API ([access]) that each installation reported is remembered with for recovery.
+     * One [register] call: it boards this phone at the merchant account or store [target], with this phone's own
+     * credential, environment and Management API ([access]) that each installation reported is remembered with for recovery.
      * [origin] is the setup stored when it began, whose installation ID is forgotten if the Payments app may have
      * dropped its boarding.
      */
@@ -307,21 +391,28 @@ class TapToPaySetup(
         return recovery
     }
 
-    /** New-boarding evidence bound to this candidate's actual credential/target; null for legacy or status-only boarding. */
+    /**
+     * Evidence that [installation] was newly boarded with the [candidate]'s own credential and target; null when none
+     * was recorded with that boarding, as for a status-only check.
+     */
     internal suspend fun candidateIdentity(
-        candidate: AppSettings,
-        values: Map<Secret, String>,
+        candidate: UnlockedSetup,
         installation: String,
     ): BoardingIdentity? {
-        val access = setups.candidateBoarding(candidate, values) as? BoardingSetup.Ready ?: return null
+        val access = setups.boarding(candidate) as? BoardingSetup.Ready ?: return null
         val previous =
             when (val stored = journal.read()) {
                 is JournalRead.Present -> stored.value
                 JournalRead.Absent, JournalRead.Unreadable -> return null
             }
         return previous
-            .takeIf { it.matches(access, candidate.terminal.target()) && it.installation == installation }
-            ?.identity
+            .takeIf {
+                it.matches(
+                    access,
+                    candidate.setup.settings.terminal
+                        .target(),
+                ) && it.installation == installation
+            }?.identity
     }
 
     /**
@@ -394,8 +485,13 @@ class TapToPaySetup(
 
             is ManagementResult.Done -> {
                 confirmed.set(null)
-                settings.update { it.copy(terminal = it.terminal.copy(paymentsAppInstallationId = ""), boardingIdentity = null) }
-                journal.write(null)
+                // The instance is revoked whatever changed meanwhile; only a newer boarding is kept, with its recovery.
+                var revoked = false
+                settings.update {
+                    revoked = it.terminal.paymentsAppInstallationId.trim() == id
+                    if (revoked) it.copy(terminal = it.terminal.copy(paymentsAppInstallationId = ""), boardingIdentity = null) else it
+                }
+                if (revoked) journal.write(null)
                 TapToPayOutcome.Unregistered
             }
         }

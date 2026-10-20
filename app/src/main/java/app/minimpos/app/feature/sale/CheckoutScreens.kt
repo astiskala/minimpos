@@ -59,7 +59,7 @@ import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.outcomeNote
-import app.minimpos.app.feature.settings.TapToPayTroubleshooting
+import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.SaleResultNext
 import app.minimpos.app.history.saleResultNext
@@ -84,6 +84,7 @@ import app.minimpos.app.ui.components.ProcessingContent
 import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SwitchRow
+import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
@@ -779,8 +780,12 @@ fun SaleResultScreen(
         if (record == null) return@MiniScaffold
         ScreenColumn(padding, horizontalAlignment = Alignment.CenterHorizontally) {
             SaleOutcome(state, money)
-            if (state.tapToPayHelp) {
-                TapToPayTroubleshooting(state.tapToPay, vm::reportTapToPay, state.report, vm::reportShared, vm::testConnection)
+            if (!state.approved) {
+                TertiaryButton(
+                    stringResource(R.string.settings_help),
+                    { navigator.push(Route.SettingsSection(SettingsSections.HELP, troubleshooting = true)) },
+                    Modifier.testTag("paymentTroubleshooting"),
+                )
             }
             SalePaymentCard(record.sale)
             if (state.approved) {
@@ -931,8 +936,6 @@ private fun saleResultViewModel(saleId: String): SaleResultViewModel {
             container.receipts,
             container.payments,
             container.operations,
-            container.tapToPay.diagnostics,
-            container.terminalStatus,
         )
     }
 }

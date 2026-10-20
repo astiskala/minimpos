@@ -36,8 +36,8 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   alone compares secret fingerprints. The source takes everything it calls as constructor arguments. `VerifiedSetup`
   alone decides what the verified-setup fingerprint covers; only the source reads `AppSettings.verifiedSetup`.
 - \* Only `TerminalSetupSource` calls `TerminalSetup.resolve` and reads destination/API secrets. Unlock once per call;
-  unreadable secrets become typed setup problems. `boarding()` and `candidateBoarding()` do the same for the Payments
-  app credential. Encrypted recovery journals use `EncryptedJournal` in one snapshot; only `RecoveryJournal` accesses
+  unreadable secrets become typed setup problems. `owner()` and `boarding()`, also for a candidate, do the same for the
+  Payments app credential. Encrypted recovery journals use `EncryptedJournal` in one snapshot; only `RecoveryJournal` accesses
   their `SecretBlob` fields. Only this source applies learned environment/region facts, atomically against their
   originating terminal settings; pure destination rules decide what can be learned. Detection origins cannot be copied
   by callers.
@@ -50,6 +50,8 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   persistence. Discovery stays read-only; existing effective keys are reused, never deliberately replaced.
   Raw `SharedKeySetupOutcome` stays in `terminal`; `SetupDiscovery` owns saved-key persistence through connection
   verification, using the source's exact-key fence. Settings presents only its completed non-secret reading.
+- \* Only `TapToPaySetup` provisions Payments app credentials, during explicit phone setup with encrypted creation intent
+  saved first. Generated keys and pending creations stay device-local; diagnostics and payments never provision.
 - \* Setup, receipt, wallet and capability tasks share `TerminalAssignments`, which alone queries `TerminalDetailsApi.terminals`
   and verifies the listing environment while preserving each task's distinct strictness.
   Only `CapabilityDiscovery` reads or updates Management capability settings (`capabilities`, `updateCapabilities`).

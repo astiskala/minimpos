@@ -32,7 +32,7 @@ import kotlinx.serialization.Serializable
  * @property onboardingCompleted Whether this device has chosen its first-run setup path; never shared.
  * @property verifiedSetup Opaque fingerprint of locally verified connection fields and encrypted payment secrets; null until verified.
  * @property languageTag Supported app-language tag, or empty to follow Android; device-local and unrelated to pricing.
- * @property boardingIdentity Device-local evidence of a new Payments app boarding credential; null for legacy/unknown boarding.
+ * @property boardingIdentity Device-local evidence of a new Payments app boarding credential; null when none was recorded.
  */
 @Serializable
 data class AppSettings(

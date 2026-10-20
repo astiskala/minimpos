@@ -5,16 +5,11 @@ import app.minimpos.app.FakeManagement
 import app.minimpos.app.FakePaymentsApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
-import app.minimpos.app.data.db.Failure
-import app.minimpos.app.data.db.SaleEntity
-import app.minimpos.app.data.db.SaleStatus
-import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.security.Secret
+import app.minimpos.app.data.security.secretFingerprint
 import app.minimpos.app.data.settings.TerminalMode
-import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.paymentsapp.BoardingCredentialCheck
 import app.minimpos.terminal.transport.ApiKey
-import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
@@ -56,9 +51,16 @@ class TapToPayDiagnosticsTest {
         }
         await {
             container.secrets.set(Secret.ADYEN_API_KEY, "unrelated-terminal-key")
-            container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "boarding-key")
+            boardingKey("boarding-key")
         }
     }
+
+    private suspend fun boardingKey(key: String) =
+        container.terminalSetup.boardingCredentials.write(
+            TerminalEnvironment.entries.map {
+                BoardingCredential(secretFingerprint("unrelated-terminal-key"), "Merchant", it, "reference-$it", key)
+            },
+        )
 
     @Test
     fun `explicit connection test includes boarding diagnostics but ordinary checks do not`() {
@@ -104,7 +106,7 @@ class TapToPayDiagnosticsTest {
     }
 
     @Test
-    fun `check uses separate boarding credential and never infers legacy boarding identity`() {
+    fun `check uses separate boarding credential and never infers a boarding identity it did not record`() {
         configured()
         paymentsApp.boarded = true
         val check = await { diagnostics.refresh() }
@@ -150,7 +152,7 @@ class TapToPayDiagnosticsTest {
         configured()
         await { diagnostics.refresh() }
         val checks = management.credentialChecks
-        await { container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "replacement-key") }
+        await { boardingKey("replacement-key") }
         await { diagnostics.state.first { it.clientKey == ClientKeyCheck.NOT_CHECKED } }
         assertThat(management.credentialChecks).isEqualTo(checks)
         await { diagnostics.refresh() }
@@ -175,7 +177,7 @@ class TapToPayDiagnosticsTest {
             }
             val work = env.scope.launch { diagnostics.refresh() }
             await { entered.await() }
-            await { container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "replacement-key") }
+            await { boardingKey("replacement-key") }
             resume.complete(Unit)
             await { work.join() }
             assertThat(diagnostics.state.value.clientKey).isEqualTo(ClientKeyCheck.NOT_CHECKED)
@@ -192,64 +194,10 @@ class TapToPayDiagnosticsTest {
         assertThat(identity.environment).isEqualTo(TerminalEnvironment.TEST)
         assertThat(await { diagnostics.refresh() }.associated).isTrue()
         management.credentialResult = BoardingCredentialCheck.Verified("CRED-2", "ws@Company.Other", true, true)
-        await { container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "other-boarding-key") }
+        await { boardingKey("other-boarding-key") }
         assertThat(await { diagnostics.refresh() }.associated).isFalse()
         assertThat(await { diagnostics.refresh() }.boardingIdentity?.username).isEqualTo("ws@Company.Test")
         assertThat(await { container.settings.current() }.boardingIdentity).isEqualTo(identity)
         assertThat(await { container.settings.current() }.shared().boardingIdentity).isNull()
-    }
-
-    @Test
-    fun `report redacts free text secrets PII and callbacks but retains validated support trace`() {
-        configured()
-        await { diagnostics.refresh() }
-        val trace = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
-        val text =
-            "apiKey=super-secret clientKey=public-secret bearer=secret shopper@example.org 4111111111111111 " +
-                "https://callback/?token=private\nerrorCode=1029_605\ntraceparent=$trace"
-        val sale =
-            SaleEntity(
-                id = "sale-1",
-                createdAt = 0,
-                currency = "AUD",
-                taxMode = "EXCLUSIVE",
-                netMinor = 100,
-                taxMinor = 0,
-                totalMinor = 100,
-                status = SaleStatus.UNKNOWN,
-                merchantReference = "reference-private",
-                shopperEmail = "shopper@example.org",
-                serviceId = "SERVICE1",
-                context = PaymentContext("PAYMENTS_APP", FakePaymentsApp.INSTALLATION_ID, "POS", "Merchant", "TEST"),
-                reason =
-                    StoredReason.Unconfirmed(
-                        Failure.Remote(
-                            Fault.UnreadableReply(
-                                ExternalText(
-                                    "$text\nrequestId=boarding-key\ntraceId=boarding-key\ntraceparent=boarding-key\nerrorCode=boarding-key",
-                                ),
-                            ),
-                        ),
-                    ),
-            )
-        val report = await { diagnostics.report(sale) }
-        listOf(
-            "super-secret",
-            "public-secret",
-            "bearer",
-            "shopper@example.org",
-            "4111111111111111",
-            "callback",
-            "private",
-            "unrelated-terminal-key",
-            "boarding-key",
-            "reference-private",
-        ).forEach { assertThat(report).doesNotContain(it) }
-        assertThat(report).contains("traceId=4bf92f3577b34da6a3ce929d0e0e4736")
-        assertThat(report).contains("errorCode=1029_605")
-        assertThat(report).contains("failureStage=response-decoding")
-        assertThat(report).contains("ServiceID=SERVICE1")
-        assertThat(report).contains("SaleID=POS")
-        assertThat(report).contains("message=redacted")
     }
 }

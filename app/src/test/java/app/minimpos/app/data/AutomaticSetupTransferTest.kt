@@ -596,7 +596,7 @@ class AutomaticSetupTransferTest {
         val received =
             received(
                 """{"destination":"tapToPay","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
-                """{"ADYEN_API_KEY":"key","PAYMENTS_APP_API_KEY":"boarding-key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
+                """{"ADYEN_API_KEY":"key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
             )
         val before = await { env.container.settings.current() }
         management.registrationResult = ManagementResult.Failed(Fault.AdyenUnavailable(503))
@@ -637,7 +637,7 @@ class AutomaticSetupTransferTest {
         val received =
             received(
                 """{"destination":"tapToPay","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
-                """{"ADYEN_API_KEY":"key","PAYMENTS_APP_API_KEY":"boarding-key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
+                """{"ADYEN_API_KEY":"key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
             )
         val proposed = await { env.container.setupImport.import(received, ImportMode.MERGE, code) }
         assertThat(proposed).isEqualTo(SetupImportOutcome.BoardingRequired)
@@ -674,7 +674,7 @@ class AutomaticSetupTransferTest {
         val received =
             received(
                 """{"destination":"tapToPay","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
-                """{"ADYEN_API_KEY":"key","PAYMENTS_APP_API_KEY":"boarding-key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
+                """{"ADYEN_API_KEY":"key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
             )
         management.result = ManagementResult.Failed(Fault.AdyenUnavailable(503))
         val failed = await { env.container.setupImport.import(received, ImportMode.MERGE, code, board = true) }

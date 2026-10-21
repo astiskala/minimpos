@@ -32,7 +32,15 @@ class AppLanguageTest {
         val originalConfiguration = Configuration(env.context.resources.configuration)
         val device = AndroidDeviceInfo(env.context)
         val country = device.country
-        mapOf("en" to "Settings", "zh-CN" to "设置", "zh-Hant" to "設定", "ja" to "設定").forEach { (tag, label) ->
+        mapOf(
+            "en" to "Settings",
+            "zh-CN" to "设置",
+            "zh-Hant" to "設定",
+            "ja" to "設定",
+            "pt-BR" to "Configurações",
+            "es-MX" to "Configuración",
+            "fr-FR" to "Paramètres",
+        ).forEach { (tag, label) ->
             val localized = env.context.withAppLanguage(tag)
             assertWithMessage(tag).that(localized.getString(R.string.settings_title)).isEqualTo(label)
             assertWithMessage(tag)

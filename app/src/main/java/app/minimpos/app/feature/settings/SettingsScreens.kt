@@ -204,8 +204,11 @@ internal interface ReceiptBusinessEvents {
     /** Loads stores without changing saved receipt details. */
     fun onFind()
 
-    /** Confirms a currently offered proposal, or dismisses the selection for null. */
-    fun onChoose(business: ReceiptBusiness?)
+    /** Confirms a proposal, replacing supplied fields only when [replaceExisting] is true; null dismisses it. */
+    fun onChoose(
+        business: ReceiptBusiness?,
+        replaceExisting: Boolean = false,
+    )
 
     /** Acknowledges an explicit lookup/import result. */
     fun onResultDismiss()
@@ -295,7 +298,10 @@ private fun settingsEvents(
             object : ReceiptBusinessEvents {
                 override fun onFind() = settings.businessImport.find()
 
-                override fun onChoose(business: ReceiptBusiness?) = settings.businessImport.choose(business)
+                override fun onChoose(
+                    business: ReceiptBusiness?,
+                    replaceExisting: Boolean,
+                ) = settings.businessImport.choose(business, replaceExisting)
 
                 override fun onResultDismiss() = settings.businessImport.dismissResult()
             }
@@ -644,7 +650,7 @@ private fun ColumnScope.SetupImportFeedback(
         }
     }
     if (business.proposal != null || business.lookup.isError) {
-        ReceiptBusinessImport(business, events)
+        ReceiptBusinessImport(business, events, hasExistingDetails = business.hasExistingDetails)
         SecondaryButton(stringResource(R.string.settings_receipts), { navigator.push(Route.SettingsSection(SettingsSections.RECEIPTS)) })
     }
 }

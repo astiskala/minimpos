@@ -129,6 +129,7 @@ class OnboardingUiTest {
             }
         val settings = env.container.settingsState.value
         compose.onNodeWithTag("settings").performClick()
+        waitFor("section_simulator")
         compose.onNodeWithTag("section_simulator").performScrollTo().performClick()
         waitFor("exitDemo")
         compose.onNodeWithTag("exitDemo").performClick()

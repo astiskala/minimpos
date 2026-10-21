@@ -8,6 +8,17 @@ import java.nio.file.Path
 import kotlin.io.path.readText
 
 class TerminalFeaturesGuideTest {
+    private val resources =
+        mapOf(
+            "en" to "values",
+            "zh-CN" to "values-zh-rCN",
+            "zh-Hant" to "values-b+zh+Hant",
+            "ja" to "values-ja",
+            "pt-BR" to "values-pt-rBR",
+            "es-MX" to "values-es-rMX",
+            "fr-FR" to "values-fr-rFR",
+        )
+
     @Test
     fun `terminal workflows use localized app labels and are reachable from setup`() {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
@@ -22,8 +33,6 @@ class TerminalFeaturesGuideTest {
                 "reconciliation" to listOf("reconciliation_check", "reconciliation_close_period"),
                 "offline" to listOf("detail_offline_mode", "detail_unconfirmed_batches"),
             )
-        val resources =
-            mapOf("en" to "values", "zh-CN" to "values-zh-rCN", "zh-Hant" to "values-b+zh+Hant", "ja" to "values-ja")
         resources.forEach { (language, folder) ->
             val directory = docs.resolve(if (language == "en") "" else language)
             val using = Jsoup.parse(directory.resolve("using.html").readText())

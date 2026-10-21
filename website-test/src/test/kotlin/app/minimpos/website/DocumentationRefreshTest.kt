@@ -16,7 +16,9 @@ class DocumentationRefreshTest {
     @Test
     fun `screenshot sample data localizes merchant and all catalog labels`() {
         val languages = sampleLanguages()
-        assertWithMessage("Screenshot sample languages").that(languages.keys).containsExactly("en", "zh-CN", "zh-Hant", "ja")
+        assertWithMessage(
+            "Screenshot sample languages",
+        ).that(languages.keys).containsExactly("en", "zh-CN", "zh-Hant", "ja", "pt-BR", "es-MX", "fr-FR")
         val english = languages.getValue("en").jsonObject
         val originals = english.getValue("names").jsonObject
         languages.forEach { (language, element) ->
@@ -26,7 +28,12 @@ class DocumentationRefreshTest {
             names.forEach { (name, translation) ->
                 val value = translation.jsonPrimitive.content
                 assertWithMessage("$language $name").that(value).isNotEmpty()
-                if (language != "en") assertWithMessage("$language $name translation").that(value).isNotEqualTo(name)
+                // Familiar coffee loanwords keep their spelling in Latin languages; categories and tax names must localize.
+                val categoryOrTax = name in setOf("Coffee", "Food", "Retail", "Bookings", "GST", "GST-free")
+                val differentScript = language in setOf("zh-CN", "zh-Hant", "ja")
+                if (language != "en" && (categoryOrTax || differentScript)) {
+                    assertWithMessage("$language $name translation").that(value).isNotEqualTo(name)
+                }
             }
             val receipt = fixture.getValue("receipt").jsonObject
             assertWithMessage(
@@ -51,8 +58,26 @@ class DocumentationRefreshTest {
     @Test
     fun `screenshot samples use regional currencies and realistic prices in their minor units`() {
         val languages = sampleLanguages()
-        val currencies = mapOf("en" to "AUD", "zh-CN" to "SGD", "zh-Hant" to "HKD", "ja" to "JPY")
-        val basketTotals = mapOf("en" to 3_400L, "zh-CN" to 3_350L, "zh-Hant" to 23_200L, "ja" to 3_050L)
+        val currencies =
+            mapOf(
+                "en" to "AUD",
+                "zh-CN" to "SGD",
+                "zh-Hant" to "HKD",
+                "ja" to "JPY",
+                "pt-BR" to "BRL",
+                "es-MX" to "MXN",
+                "fr-FR" to "EUR",
+            )
+        val basketTotals =
+            mapOf(
+                "en" to 3_400L,
+                "zh-CN" to 3_350L,
+                "zh-Hant" to 23_200L,
+                "ja" to 3_050L,
+                "pt-BR" to 8_700L,
+                "es-MX" to 33_500L,
+                "fr-FR" to 2_700L,
+            )
         val products =
             languages
                 .getValue("en")
@@ -94,7 +119,15 @@ class DocumentationRefreshTest {
                 "terminal-tips" to "terminal-tipping.png",
             )
         val disclosures =
-            mapOf("en" to "English simulator demo", "zh-CN" to "简体中文模拟器", "zh-Hant" to "繁體中文模擬器", "ja" to "日本語のシミュレーター")
+            mapOf(
+                "en" to "English simulator demo",
+                "zh-CN" to "简体中文模拟器",
+                "zh-Hant" to "繁體中文模擬器",
+                "ja" to "日本語のシミュレーター",
+                "pt-BR" to "simulador em português do Brasil",
+                "es-MX" to "simulador en español",
+                "fr-FR" to "simulateur en français",
+            )
         disclosures.forEach { (language, marker) ->
             val directory = docs.resolve(if (language == "en") "" else language)
             val using = Jsoup.parse(directory.resolve("using.html").readText())

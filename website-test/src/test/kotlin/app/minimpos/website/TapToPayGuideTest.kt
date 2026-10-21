@@ -10,9 +10,18 @@ class TapToPayGuideTest {
     @Test
     fun `all languages explain Tap to Pay remediation and redacted reporting`() {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website")))
-        listOf("", "ja", "zh-CN", "zh-Hant").forEach { language ->
+        listOf("", "ja", "zh-CN", "zh-Hant", "pt-BR", "es-MX", "fr-FR").forEach { language ->
             val directory = docs.resolve(language)
-            val resources = mapOf("" to "values", "ja" to "values-ja", "zh-CN" to "values-zh-rCN", "zh-Hant" to "values-b+zh+Hant")
+            val resources =
+                mapOf(
+                    "" to "values",
+                    "ja" to "values-ja",
+                    "zh-CN" to "values-zh-rCN",
+                    "zh-Hant" to "values-b+zh+Hant",
+                    "pt-BR" to "values-pt-rBR",
+                    "es-MX" to "values-es-rMX",
+                    "fr-FR" to "values-fr-rFR",
+                )
             val strings = Jsoup.parse(docs.parent.resolve("app/src/main/res/${resources.getValue(language)}/strings.xml").readText())
             val page = Jsoup.parse(directory.resolve("troubleshooting.html").readText())
             val help = checkNotNull(page.getElementById("tap-to-pay-check"))

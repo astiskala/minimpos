@@ -10,7 +10,7 @@ class GuideLayoutTest {
         val docs = Path.of(System.getProperty("minimpos.website"))
         val reports = Path.of(System.getProperty("minimpos.layoutReports"))
         HelperBrowser().use { browser ->
-            for (language in listOf("", "zh-CN/", "zh-Hant/", "ja/")) {
+            for (language in listOf("", "zh-CN/", "zh-Hant/", "ja/", "pt-BR/", "es-MX/", "fr-FR/")) {
                 for (page in listOf("index.html", "quick-start.html", "using.html", "troubleshooting.html", "setup.html")) {
                     for (width in listOf(390, 1280)) {
                         browser.viewport(width)

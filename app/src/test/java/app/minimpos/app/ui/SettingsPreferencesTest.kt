@@ -164,6 +164,18 @@ class SettingsPreferencesTest {
         assertThat(receipt.phone).isEqualTo("Original phone")
         assertThat(receipt.taxId).isEqualTo("123")
         assertThat(receipt.footer).isEqualTo("Custom footer")
+        findStores()
+        compose.waitUntilAtLeastOneExists(hasTestTag("replaceReceiptBusiness"), 15_000)
+        compose.onNodeWithTag("replaceReceiptBusiness").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("businessImportResult"), 15_000)
+        compose.onNodeWithTag("businessImportResultOk").performClick()
+        compose.onNodeWithTag("businessName").performScrollTo().assertTextContains("Adyen Cafe")
+        val replaced = container.settingsState.value.receipt
+        assertThat(replaced.businessName).isEqualTo("Adyen Cafe")
+        assertThat(replaced.addressLines).isEqualTo("1 Main St\nSydney")
+        assertThat(replaced.phone).isEqualTo("Original phone")
+        assertThat(replaced.taxId).isEqualTo("123")
+        assertThat(replaced.footer).isEqualTo("Custom footer")
     }
 
     @Test

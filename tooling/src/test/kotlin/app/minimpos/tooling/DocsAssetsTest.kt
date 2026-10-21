@@ -14,7 +14,7 @@ class DocsAssetsTest {
     @get:Rule
     val temporary = TemporaryFolder()
 
-    private val languages = listOf("en", "zh-CN", "zh-Hant", "ja")
+    private val languages = listOf("en", "zh-CN", "zh-Hant", "ja", "pt-BR", "es-MX", "fr-FR")
 
     @Test
     fun `social pages preserve checked-in design and localized copy with portable file URLs`() {
@@ -43,7 +43,7 @@ class DocsAssetsTest {
         val raw = temporary.newFolder("raw").toPath()
         val images = temporary.newFolder("social").toPath()
         languages.forEach { save(BufferedImage(1200, 630, BufferedImage.TYPE_INT_RGB), raw.resolve("$it-social.png")) }
-        assertThat(DocsAssets.run("social", raw, images)).hasSize(4)
+        assertThat(DocsAssets.run("social", raw, images)).hasSize(languages.size)
         assertThat(ImageIO.read(images.resolve("ja/social.png").toFile()).width).isEqualTo(1200)
         for ((width, height) in listOf(1 to 630, 1200 to 1)) {
             save(BufferedImage(width, height, BufferedImage.TYPE_INT_RGB), raw.resolve("en-social.png"))
@@ -57,7 +57,7 @@ class DocsAssetsTest {
     fun `review validates parity frame dimensions and palettes then creates labeled contact sheets`() {
         val images = images()
         val review = temporary.newFolder("review").toPath()
-        assertThat(DocsAssets.run("review", images, review)).hasSize(4)
+        assertThat(DocsAssets.run("review", images, review)).hasSize(languages.size)
         assertThat(ImageIO.read(review.resolve("en-contact.png").toFile()).width).isEqualTo(1190)
         Files.delete(images.resolve("ja/home.png"))
         assertThrows(IllegalArgumentException::class.java) { DocsAssets.run("review", images, review) }

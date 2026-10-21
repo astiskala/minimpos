@@ -14,7 +14,10 @@ or with Tap to Pay through the Adyen Payments app.
 [Download APK](https://github.com/astiskala/minimpos/releases/latest) ·
 [简体中文](https://minimpos.app/zh-CN/) ·
 [繁體中文](https://minimpos.app/zh-Hant/) ·
-[日本語](https://minimpos.app/ja/)
+[日本語](https://minimpos.app/ja/) ·
+[Português (Brasil)](https://minimpos.app/pt-BR/) ·
+[Español (México)](https://minimpos.app/es-MX/) ·
+[Français](https://minimpos.app/fr-FR/)
 
 <p align="center">
   <img src="docs/images/home.png" width="200" alt="Home screen">
@@ -43,7 +46,8 @@ For supported terminals, the [operations guide](https://minimpos.app/using.html#
 capabilities, shopper-facing prompts, Adyen Giving and Manager-approved MOTO / Manual Key Entry. Feature availability
 depends on the payment destination and your Adyen configuration; test the workflows you plan to use.
 
-The app supports English, Simplified Chinese, Traditional Chinese and Japanese. Products, settings and history stay
+The app supports English, Simplified Chinese, Traditional Chinese, Japanese, Brazilian Portuguese, Spanish and French.
+Products, settings and history stay
 on each device; there is no backend, tracking or automatic synchronization between devices.
 
 ## Try it or set it up

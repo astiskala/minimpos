@@ -84,6 +84,9 @@ class SampleDataTest {
                 Triple("zh-SG", "SGD", "晴川咖啡私人有限公司"),
                 Triple("zh-HK", "HKD", "榕巷咖啡有限公司"),
                 Triple("ja-JP", "JPY", "株式会社あおぞら焙煎所"),
+                Triple("pt-BR", "BRL", "Café Horizonte"),
+                Triple("es-MX", "MXN", "Café del Puerto"),
+                Triple("fr-FR", "EUR", "Café du Port"),
             )
         markets.forEach { (language, currency, business) ->
             val fixture = SampleDataFixture.read(json, language)

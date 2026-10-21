@@ -84,6 +84,9 @@ class SampleDataFixture private constructor(
             val language =
                 when {
                     languageTag.startsWith("ja") -> "ja"
+                    languageTag.startsWith("pt") -> "pt-BR"
+                    languageTag.startsWith("es") -> "es-MX"
+                    languageTag.startsWith("fr") -> "fr-FR"
                     languageTag.startsWith("zh") && listOf("Hant", "HK", "TW", "MO").any { languageTag.contains(it) } -> "zh-Hant"
                     languageTag.startsWith("zh") -> "zh-CN"
                     else -> "en"

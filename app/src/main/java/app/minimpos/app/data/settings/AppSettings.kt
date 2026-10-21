@@ -129,7 +129,7 @@ data class AppSettings(
 
     /** The display languages Settings offers. */
     companion object {
-        internal val LANGUAGE_TAGS = listOf("", "en", "zh-CN", "zh-Hant", "ja")
+        internal val LANGUAGE_TAGS = listOf("", "en", "zh-CN", "zh-Hant", "ja", "pt-BR", "es-MX", "fr-FR")
     }
 }
 

@@ -11,7 +11,15 @@ class SettingsNavigationGuideTest {
     fun `settings breadcrumbs match current localized sections across guides and helper`() {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         val resources =
-            mapOf("en" to "values", "zh-CN" to "values-zh-rCN", "zh-Hant" to "values-b+zh+Hant", "ja" to "values-ja")
+            mapOf(
+                "en" to "values",
+                "zh-CN" to "values-zh-rCN",
+                "zh-Hant" to "values-b+zh+Hant",
+                "ja" to "values-ja",
+                "pt-BR" to "values-pt-rBR",
+                "es-MX" to "values-es-rMX",
+                "fr-FR" to "values-fr-rFR",
+            )
         resources.forEach { (language, folder) ->
             val directory = docs.resolve(if (language == "en") "" else language)
             val strings =

@@ -206,6 +206,18 @@ private fun StorageUnavailable() {
                 }
             }
 
+            "pt" -> {
+                "pt-BR/"
+            }
+
+            "es" -> {
+                "es-MX/"
+            }
+
+            "fr" -> {
+                "fr-FR/"
+            }
+
             else -> {
                 ""
             }

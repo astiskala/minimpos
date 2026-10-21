@@ -46,7 +46,7 @@ case $command in
         }
         render=$(mktemp -d "$work/social.XXXXXX")
         "${tooling[@]}" docs-assets pages "$root" "$render"
-        for language in en zh-CN zh-Hant ja; do
+        for language in en zh-CN zh-Hant ja pt-BR es-MX fr-FR; do
             "$chrome" --headless --allow-file-access-from-files --force-device-scale-factor=1 --hide-scrollbars \
                 --disable-background-networking --disable-component-update --disable-sync --no-first-run \
                 "--user-data-dir=$render/profile-$language" \

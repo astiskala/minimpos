@@ -42,7 +42,11 @@ internal fun ColumnScope.ReceiptsSection(
     val printBlocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { terminal.capabilities.supportsPrinting }
 
     fun update(transform: (ReceiptSettings) -> ReceiptSettings) = events.onUpdate { it.copy(receipt = transform(it.receipt)) }
-    ReceiptBusinessImport(businessImport, events.businessImport)
+    ReceiptBusinessImport(
+        businessImport,
+        events.businessImport,
+        receipt.businessName.isNotBlank() || receipt.addressLines.isNotBlank() || receipt.phone.isNotBlank(),
+    )
     key(businessImport.revision) { ReceiptTextSettings(receipt, ::update) }
     SectionHeader(stringResource(R.string.settings_content))
     ReceiptTaxSettings(receipt, ::update)

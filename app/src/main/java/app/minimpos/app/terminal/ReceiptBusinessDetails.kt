@@ -11,8 +11,7 @@ import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalListingApi
 
 /**
- * Proposed receipt fields from the assigned store or merchant account; existing merchant text is never replaced by
- * [applyTo].
+ * Proposed receipt fields from the assigned store or merchant account, reviewed before manual import.
  * @property name Store shopper receipt name or merchant legal name, possibly blank.
  * @property address Newline-separated address components, possibly blank.
  * @property phone Store phone number, possibly blank.
@@ -25,13 +24,24 @@ data class ReceiptBusiness(
     /** Whether the proposal supplies any fields that can be imported. */
     val available: Boolean get() = name.isNotBlank() || address.isNotBlank() || phone.isNotBlank()
 
-    /** Fills only blank business fields of [receipt]; tax ID, title, footer and other preferences are untouched. */
-    fun applyTo(receipt: ReceiptSettings): ReceiptSettings =
-        receipt.copy(
-            businessName = receipt.businessName.ifBlank { name.ifBlank { receipt.businessName } },
-            addressLines = receipt.addressLines.ifBlank { address.ifBlank { receipt.addressLines } },
-            phone = receipt.phone.ifBlank { phone.ifBlank { receipt.phone } },
+    /**
+     * Imports supplied business fields into [receipt], replacing populated fields only when [replaceExisting] is true.
+     * Blank imported fields preserve saved values; tax ID, title, footer and other preferences are untouched.
+     */
+    fun applyTo(
+        receipt: ReceiptSettings,
+        replaceExisting: Boolean = false,
+    ): ReceiptSettings {
+        fun imported(
+            current: String,
+            supplied: String,
+        ): String = if (replaceExisting || current.isBlank()) supplied.ifBlank { current } else current
+        return receipt.copy(
+            businessName = imported(receipt.businessName, name),
+            addressLines = imported(receipt.addressLines, address),
+            phone = imported(receipt.phone, phone),
         )
+    }
 }
 
 /** Result of the receipt-business import lookup; no lookup changes saved fields. */

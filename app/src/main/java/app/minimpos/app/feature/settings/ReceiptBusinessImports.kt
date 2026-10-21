@@ -25,12 +25,14 @@ import app.minimpos.app.payment.PricingChanges as SettingsOperations
  * @property lookup Latest read-only Management lookup.
  * @property proposal Proposal offered for review; null when no review is open.
  * @property revision Advances after import so business text editors reload confirmed values.
+ * @property hasExistingDetails Whether saved business fields offer an explicit replacement choice.
  * @property resultPending Whether an explicitly requested action has an unacknowledged completion.
  */
 internal data class ReceiptBusinessImportState(
     val lookup: ActionState = ActionState(),
     val proposal: ReceiptBusiness? = null,
     val revision: Int = 0,
+    val hasExistingDetails: Boolean = false,
     val resultPending: Boolean = false,
 )
 
@@ -61,6 +63,8 @@ internal class ReceiptBusinessImports(
         state.update { it.copy(lookup = ActionState(running = true), proposal = null, resultPending = false) }
         owner.viewModelScope.launch {
             origin = operations.changes.first().terminal
+            val receipt = observedReceipt.first()
+            val hasExistingDetails = receipt.businessName.isNotBlank() || receipt.addressLines.isNotBlank() || receipt.phone.isNotBlank()
             val result = details.lookup()
             val changed = details.validateOrigin(checkNotNull(origin))
             if (changed != null) {
@@ -79,7 +83,7 @@ internal class ReceiptBusinessImports(
             state.update {
                 when (result) {
                     is ReceiptBusinesses.Found -> {
-                        it.copy(lookup = ActionState(done = true), proposal = result.business)
+                        it.copy(lookup = ActionState(done = true), proposal = result.business, hasExistingDetails = hasExistingDetails)
                     }
 
                     is ReceiptBusinesses.Failed -> {
@@ -94,13 +98,25 @@ internal class ReceiptBusinessImports(
         }
     }
 
-    fun choose(business: ReceiptBusiness?) {
+    fun choose(
+        business: ReceiptBusiness?,
+        replaceExisting: Boolean = false,
+    ) {
         if (business != null && (business != state.value.proposal || !business.available)) return
         state.update { it.copy(proposal = null, lookup = ActionState()) }
         if (business != null) {
             val notify = !automatic
+            val replace = replaceExisting && !automatic
             owner.launchWrite({
-                operations.update { if (it.terminal == origin) it.copy(receipt = business.applyTo(it.receipt)) else it }
+                operations.update {
+                    if (it.terminal ==
+                        origin
+                    ) {
+                        it.copy(receipt = business.applyTo(it.receipt, replaceExisting = replace))
+                    } else {
+                        it
+                    }
+                }
                 val receipt = operations.changes.first().receipt
                 observedReceipt.first { it == receipt }
             }) { _ ->

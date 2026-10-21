@@ -187,8 +187,17 @@ class WebsiteTest {
 
     @Test
     fun `pages declare their language and metadata`() {
-        val locales = mapOf("en" to "en_US", "zh-CN" to "zh_CN", "zh-Hant" to "zh_HK", "ja" to "ja_JP")
-        pages.forEach { (key, page) ->
+        val locales =
+            mapOf(
+                "en" to "en_US",
+                "zh-CN" to "zh_CN",
+                "zh-Hant" to "zh_HK",
+                "ja" to "ja_JP",
+                "pt-BR" to "pt_BR",
+                "es-MX" to "es_MX",
+                "fr-FR" to "fr_FR",
+            )
+        allPages.forEach { (key, page) ->
             val (language, kind) = key
             assertThat(page.single("link", "rel" to "stylesheet").attr("href"))
                 .isEqualTo(if (language == "en") "styles.css" else "../styles.css")
@@ -218,21 +227,21 @@ class WebsiteTest {
 
     @Test
     fun `alternate links are reciprocal`() {
-        pages.forEach { (key, page) ->
+        allPages.forEach { (key, page) ->
             val kind = key.second
             val alternates = page.matching("link", "rel" to "alternate").associate { it.attr("hreflang") to it.attr("href") }
-            val expected = LANGUAGES.associateWith { publicUrl(it, kind) } + ("x-default" to publicUrl("en", kind))
+            val expected = ALL_LANGUAGES.associateWith { publicUrl(it, kind) } + ("x-default" to publicUrl("en", kind))
             assertWithMessage(page.name).that(alternates).isEqualTo(expected)
         }
     }
 
     @Test
     fun `language switches keep the page type`() {
-        pages.forEach { (key, page) ->
+        allPages.forEach { (key, page) ->
             val (language, kind) = key
             listOf(".language-menu", ".mobile-languages").forEach { selector ->
                 val links = page.document.select("$selector a[hreflang]")
-                assertWithMessage("${page.name} $selector").that(links).hasSize(LANGUAGES.size)
+                assertWithMessage("${page.name} $selector").that(links).hasSize(ALL_LANGUAGES.size)
                 links.forEach { link ->
                     val target = link.attr("hreflang")
                     assertThat(link.attr("lang")).isEqualTo(target)
@@ -248,10 +257,10 @@ class WebsiteTest {
     @Test
     fun `every page exposes the guides and helper in desktop mobile and footer navigation`() {
         val destinations = listOf(Kind.GUIDE, Kind.USING, Kind.TROUBLE, Kind.SETUP).map { it.file }
-        pages.forEach { (key, page) ->
+        allPages.forEach { (key, page) ->
             val (language, kind) = key
             val labels =
-                pages
+                allPages
                     .getValue(language to Kind.LANDING)
                     .document
                     .select(".desktop-nav a")
@@ -276,8 +285,8 @@ class WebsiteTest {
 
     @Test
     fun `localized pages keep all navigation destinations in the same order`() {
-        pages.forEach { (key, page) ->
-            val english = pages.getValue("en" to key.second)
+        allPages.forEach { (key, page) ->
+            val english = allPages.getValue("en" to key.second)
 
             fun Page.destinations() = document.select("a[href]:not([hreflang])").map { it.attr("href") }
             assertWithMessage(page.name).that(page.destinations()).isEqualTo(english.destinations())
@@ -528,7 +537,7 @@ class WebsitePresentationTest {
     @Test
     fun `every language has its own complete screenshot set and pages use it`() {
         val originals = docs.resolve("images").listDirectoryEntries("*.png")
-        LANGUAGES.forEach { language ->
+        ALL_LANGUAGES.forEach { language ->
             val directory = docs.resolve("images").resolve(if (language == "en") "" else language).normalize()
             originals.forEach { original ->
                 val localized = directory.resolve(original.fileName)
@@ -540,7 +549,7 @@ class WebsitePresentationTest {
                         .isFalse()
                 }
             }
-            pages.filterKeys { it.first == language }.values.forEach { page ->
+            allPages.filterKeys { it.first == language }.values.forEach { page ->
                 page.document.select(".terminal img").forEach { image ->
                     assertWithMessage("${page.name} screenshot language")
                         .that(
@@ -782,7 +791,7 @@ class WebsitePresentationTest {
 
     @Test
     fun `only the setup helper runs scripts, its own, under a policy that lets it send nothing`() {
-        pages.forEach { (key, page) ->
+        allPages.forEach { (key, page) ->
             val scripts = page.matching("script")
             if (key.second != Kind.SETUP) {
                 assertWithMessage("${page.name} has scripts").that(scripts).isEmpty()
@@ -1229,6 +1238,7 @@ private const val FRAME_TOLERANCE = 0.005
 private const val CUSTOMER_AREA_TEST = "https://ca-test.adyen.com/ca/ui/"
 private const val CUSTOMER_AREA_LIVE = "https://ca-live.adyen.com/ca/ui/"
 private val LANGUAGES = listOf("en", "zh-CN", "zh-Hant", "ja")
+private val ALL_LANGUAGES = LANGUAGES + listOf("pt-BR", "es-MX", "fr-FR")
 private val GUIDE_TOPICS =
     mapOf(
         Kind.GUIDE to setOf("try", "choose", "install", "connect", "first-payment", "live"),
@@ -1266,10 +1276,12 @@ private enum class Kind(
     SETUP("setup.html"),
 }
 
-private val pages: Map<Pair<String, Kind>, Page> =
-    LANGUAGES
+private val allPages: Map<Pair<String, Kind>, Page> =
+    ALL_LANGUAGES
         .flatMap { language -> Kind.entries.map { kind -> (language to kind) to Page(docs.resolve(relativePage(language, kind))) } }
         .toMap()
+
+private val pages = allPages.filterKeys { it.first in LANGUAGES }
 
 private fun relativePage(
     language: String,

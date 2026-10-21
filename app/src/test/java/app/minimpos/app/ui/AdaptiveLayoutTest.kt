@@ -55,7 +55,7 @@ class AdaptiveLayoutTest {
 
     private fun waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
 
-    /** An approved sale of $2.00 with [reference]; returns its stored time. */
+    /** An approved sale of $2.00 with [reference]; returns its processed time shown in History. */
     private fun approvedSale(reference: String): Long {
         val start =
             PaymentStart(
@@ -69,7 +69,8 @@ class AdaptiveLayoutTest {
         val saleId = container.payments.started(start)
         await { container.payments.state.first { it == TransactionState.Finished(saleId) } }
         container.operations.acknowledgePayment()
-        return checkNotNull(await { container.sales.get(saleId) }).sale.createdAt
+        val sale = checkNotNull(await { container.sales.get(saleId) }).sale
+        return checkNotNull(sale.processedAt)
     }
 
     @Test

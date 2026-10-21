@@ -14,6 +14,7 @@ import app.minimpos.app.MiniMposApp
 import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.createRecordingComposeRule
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
@@ -87,7 +88,7 @@ class SavedCardFlowTest {
         listOf(1, 2, 5, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
         compose.onNodeWithTag("addCustom").performClick()
         waitForTag("charge")
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("chargeSavedCard")
         compose.onNodeWithTag("chargeSavedCard").assertTextContains("Charge $12.50")
         compose.onNodeWithTag("chargeSavedCard").performClick()

@@ -1,11 +1,16 @@
 package app.minimpos.app.data.security
 
 import android.os.SystemClock
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
@@ -52,10 +57,13 @@ class PinManager(
     /** PBKDF2 iterations for new PINs; stored verifiers carry their own count. Tests use fewer to run faster. */
     private val iterations: Int = DEFAULT_ITERATIONS,
     private val verifierSecret: Secret = Secret.PIN_VERIFIER,
+    /** Dispatcher for expensive PIN derivation; lockout decisions are serialized across callers. */
+    private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) {
     /** Whether a PIN is set, emitted again whenever that changes. */
     val pinConfigured: Flow<Boolean> = secrets.configured.map { verifierSecret in it }
 
+    private val mutex = Mutex()
     private var failures = 0
     private var lockedUntil = 0L
 
@@ -65,60 +73,63 @@ class PinManager(
      * @throws IllegalArgumentException if [pin] is not [isValidPin].
      * @throws SecretStoreException if the verifier cannot be encrypted on this device.
      */
-    suspend fun setPin(pin: String) {
-        require(isValidPin(pin)) { "PIN must be $MIN_LENGTH-$MAX_LENGTH digits" }
-        val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
-        secrets.set(
-            verifierSecret,
-            "v1:$iterations:${Base64.encode(salt)}:${Base64.encode(hash(pin, salt, iterations))}",
-        )
-        failures = 0
-        lockedUntil = 0
-    }
+    suspend fun setPin(pin: String) =
+        mutex.withLock {
+            require(isValidPin(pin)) { "PIN must be $MIN_LENGTH-$MAX_LENGTH digits" }
+            val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
+            secrets.set(
+                verifierSecret,
+                "v1:$iterations:${Base64.encode(salt)}:${Base64.encode(hash(pin, salt, iterations))}",
+            )
+            failures = 0
+            lockedUntil = 0
+        }
 
     /** Removes the PIN, which leaves the admin area unprotected. */
-    suspend fun clearPin() = secrets.set(verifierSecret, null)
+    suspend fun clearPin() = mutex.withLock { secrets.set(verifierSecret, null) }
 
     /**
      * Checks [pin] against the stored verifier, comparing the hashes in constant time. Accepts any PIN when none is
      * set.
      */
-    suspend fun verify(pin: String): PinCheck {
-        val now = clock()
-        if (now < lockedUntil) return PinCheck.LockedOut(lockedUntil)
-        if (verifierSecret !in secrets.configured.first()) return PinCheck.Accepted
-        val stored = secrets.get(verifierSecret)?.takeIf(::isValidVerifier) ?: return PinCheck.Unreadable
-        val parts = stored.split(':')
-        val matches =
-            parts.size == 4 &&
-                MessageDigest.isEqual(hash(pin, Base64.decode(parts[2]), parts[1].toInt()), Base64.decode(parts[3]))
-        if (matches) {
-            failures = 0
-            return PinCheck.Accepted
+    suspend fun verify(pin: String): PinCheck =
+        mutex.withLock {
+            val now = clock()
+            if (now < lockedUntil) return@withLock PinCheck.LockedOut(lockedUntil)
+            if (verifierSecret !in secrets.configured.first()) return@withLock PinCheck.Accepted
+            val stored = secrets.get(verifierSecret)?.takeIf(::isValidVerifier) ?: return@withLock PinCheck.Unreadable
+            val parts = stored.split(':')
+            val matches =
+                parts.size == 4 &&
+                    MessageDigest.isEqual(hash(pin, Base64.decode(parts[2]), parts[1].toInt()), Base64.decode(parts[3]))
+            if (matches) {
+                failures = 0
+                return@withLock PinCheck.Accepted
+            }
+            failures++
+            if (failures % MAX_ATTEMPTS == 0) {
+                val round = failures / MAX_ATTEMPTS
+                lockedUntil = now + LOCKOUT_MILLIS * (1L shl (round - 1).coerceAtMost(MAX_LOCKOUT_SHIFT))
+                // Retain complete five-attempt rounds at the maximum delay without growing towards Int overflow.
+                failures = failures.coerceAtMost(MAX_LOCKOUT_SHIFT * MAX_ATTEMPTS)
+                return@withLock PinCheck.LockedOut(lockedUntil)
+            }
+            return@withLock PinCheck.Rejected(MAX_ATTEMPTS - failures % MAX_ATTEMPTS)
         }
-        failures++
-        if (failures % MAX_ATTEMPTS == 0) {
-            val round = failures / MAX_ATTEMPTS
-            lockedUntil = now + LOCKOUT_MILLIS * (1L shl (round - 1).coerceAtMost(MAX_LOCKOUT_SHIFT))
-            // Retain complete five-attempt rounds at the maximum delay without growing towards Int overflow.
-            failures = failures.coerceAtMost(MAX_LOCKOUT_SHIFT * MAX_ATTEMPTS)
-            return PinCheck.LockedOut(lockedUntil)
-        }
-        return PinCheck.Rejected(MAX_ATTEMPTS - failures % MAX_ATTEMPTS)
-    }
 
-    private fun hash(
+    private suspend fun hash(
         pin: String,
         salt: ByteArray,
         rounds: Int,
-    ): ByteArray {
-        val spec = PBEKeySpec(pin.toCharArray(), salt, rounds, HASH_BITS)
-        return SecretKeyFactory
-            .getInstance("PBKDF2WithHmacSHA256")
-            .generateSecret(spec)
-            .encoded
-            .also { spec.clearPassword() }
-    }
+    ): ByteArray =
+        withContext(cpu) {
+            val spec = PBEKeySpec(pin.toCharArray(), salt, rounds, HASH_BITS)
+            try {
+                SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+            } finally {
+                spec.clearPassword()
+            }
+        }
 
     /** PIN rules and lockout timing. */
     companion object {

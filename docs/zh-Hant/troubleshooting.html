@@ -61,7 +61,7 @@
           <li><a href="#wallets">錢包掃碼</a></li><li><a href="#connection">終端綁定和設定</a></li><li><a href="#network-dropouts">網絡中斷</a></li>
           <li><a href="#modifications">扣款和調整</a></li><li><a href="#links">付款連結</a></li>
           <li><a href="#receipts">打印機和郵件</a></li><li><a href="#access">PIN 和傳輸</a></li>
-          <li><a href="#install">安裝</a></li><li><a href="#messages">錯誤訊息</a></li><li><a href="#help">取得幫助</a></li>
+          <li><a href="#storage">儲存空間復原</a></li><li><a href="#install">安裝</a></li><li><a href="#messages">錯誤訊息</a></li><li><a href="#help">取得幫助</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">本頁目錄</summary><ol>
           <li><a href="#unknown">結果未知</a></li><li><a href="#declines">付款被拒絕</a></li>
@@ -69,7 +69,7 @@
           <li><a href="#wallets">錢包掃碼</a></li><li><a href="#connection">終端綁定和設定</a></li><li><a href="#network-dropouts">網絡中斷</a></li>
           <li><a href="#modifications">扣款和調整</a></li><li><a href="#links">付款連結</a></li>
           <li><a href="#receipts">打印機和郵件</a></li><li><a href="#access">PIN 和傳輸</a></li>
-          <li><a href="#install">安裝</a></li><li><a href="#messages">錯誤訊息</a></li><li><a href="#help">取得幫助</a></li>
+          <li><a href="#storage">儲存空間復原</a></li><li><a href="#install">安裝</a></li><li><a href="#messages">錯誤訊息</a></li><li><a href="#help">取得幫助</a></li>
         </ol></details>
       </nav>
       <div class="guide-body">
@@ -263,16 +263,28 @@
               <dd><p><span class="fix-label">解決</span>管理員可在<strong>設定 › 安全</strong>中更換或移除。管理員 PIN 和經理 PIN 保護不同的操作，其中一個不會解鎖另一個。</p></dd></div>
             <div><dt>忘記了管理員 PIN</dt>
               <dd><p><span class="fix-label">原因</span>沒有 PIN 恢復功能。</p>
-                <p><span class="fix-label">解決</span>唯一的方法是在 Android 中清除應用程式資料。</p>
-                <div class="callout callout-warning" role="note">
-                  <p class="callout-title">警告</p>
-                  <p>清除應用程式資料會刪除設備上的全部商品、設定、密鑰和交易紀錄。請先處理未完成的付款並保留所需紀錄。設定傳輸不能恢復交易紀錄。</p>
-                </div></dd></div>
+                <p>如需在沒有管理員 PIN 的情況下重新開始，請按照<a href="#storage">儲存空間復原</a>步驟操作。重設前請閱讀資料遺失警告。</p></dd></div>
             <div><dt>傳輸碼被拒絕，或匯入後缺少密鑰</dt>
               <dd><p><span class="fix-label">原因</span>傳輸碼與這些二維碼不相符，或未填寫。</p>
                 <p><span class="fix-label">解決</span>使用與這些二維碼一起顯示的傳輸碼，而不是新生成的碼。每次傳輸都需要傳輸碼。錯誤的碼或留空都不會匯入任何內容。複製後，請檢查新設備的支付目標和憑據；參見<a href="using.html#more">更多設備</a>。</p></dd></div>
           </dl>
           <p>各 PIN 保護的操作請參閱<a href="using.html#staff">員工 PIN</a>。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="storage">
+          <h2>無法讀取或儲存已儲存的設定或憑證</h2>
+          <p>Mini mPOS 會停止運作，而不會取代無法讀取的設定或憑證，以保留檔案，包括未完成設定或付款的復原紀錄。</p>
+          <ol class="steps">
+            <li>重新啟動裝置並再次開啟 Mini mPOS。如裝置儲存空間已滿，請先清理 Mini mPOS 以外的空間。只清除應用程式快取不會重設已儲存的設定。</li>
+            <li>重設前，請保留所需紀錄，並處理未完成的付款、退款、請款和調整。如無法開啟應用程式，請在 Customer Area 確認結果；參見<a href="#unknown">結果未知</a>。如結果仍不確定，請保留應用程式資料，並先與 Adyen 核對。不要因為無法開啟應用程式就再次發送操作。</li>
+            <li>如問題持續，而您接受遺失全部本機資料，可重設 Mini mPOS。在手機或平板電腦上，開啟 Android <strong>設定 › 應用程式 › Mini mPOS › 儲存空間和快取 › 清除儲存空間</strong>（名稱因裝置而異），或解除安裝 Mini mPOS 並從<a href="https://github.com/astiskala/minimpos/releases/latest">最新版本</a>重新安裝。在 Adyen 終端上，請由終端應用程式管理員安排重設或移除後重新安裝；參見<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen 應用程式部署指南</a>。</li>
+            <li>重新設定 Mini mPOS，或匯入可信的設定傳輸，然後完成<strong>測試連接</strong>，再進行真實付款。參見<a href="quick-start.html#connect">連接 Adyen</a>。</li>
+          </ol>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">警告</p>
+            <p>清除儲存空間或解除安裝會刪除全部本機商品、設定、憑證、PIN、交易紀錄及未完成操作的復原紀錄。設定傳輸無法還原交易紀錄或這些復原紀錄。重設不會撤銷已發送至 Adyen 的付款、退款或請款。</p>
+          </div>
+          <p>覆蓋安裝更新不會重設應用程式儲存空間。如錯誤再次出現，請<a href="#help">在 GitHub 報告應用程式問題</a>，不要附上已儲存的設定檔或憑證。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="install">

@@ -20,6 +20,7 @@ import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.terminal.checkout.PaymentLinkStatus
 import com.google.common.truth.Truth.assertThat
@@ -70,7 +71,7 @@ class PaymentLinkFlowTest {
     fun `sends a payment link instead of the terminal, shares it, and sees it paid`() {
         env.useLinks()
         ringUpCustomAmount(1, 2, 5, 0)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("sendLink")
         compose.onNodeWithTag("sendLink").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Awaiting payment"), 15_000)
@@ -135,7 +136,7 @@ class PaymentLinkFlowTest {
         compose.onNodeWithTag("back").performClick()
         compose.onNodeWithTag("back").performClick()
         ringUpCustomAmount(5, 0, 0)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("pay")
         compose.onNodeWithTag("sendLink").assertExists()
     }
@@ -144,7 +145,7 @@ class PaymentLinkFlowTest {
     fun `simulator creates a clearly marked link and waits for explicit demo payment`() {
         env.useSimulator { it.copy(receipt = it.receipt.copy(autoPrint = false)) }
         ringUpCustomAmount(5, 0, 0)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("sendLink")
         compose.onNodeWithTag("sendLink").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Awaiting payment"), 15_000)

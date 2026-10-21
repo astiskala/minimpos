@@ -15,6 +15,7 @@ import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
 import com.google.common.truth.Truth.assertThat
@@ -89,7 +90,7 @@ class DoubleActivationTest {
 
     private fun checkout(vararg digits: Int) {
         ringUp("newSale", *digits)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("pay")
     }
 

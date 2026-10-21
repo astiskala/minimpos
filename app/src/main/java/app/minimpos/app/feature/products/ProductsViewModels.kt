@@ -1,21 +1,33 @@
 package app.minimpos.app.feature.products
 
+import android.database.SQLException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.minimpos.app.data.db.CategoryEntity
+import app.minimpos.app.data.db.DeviceFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.CatalogRepository
+import app.minimpos.app.data.repo.DuplicateSkuException
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.feature.launchWrite
+import app.minimpos.app.feature.persisting
 import app.minimpos.core.money.CurrencySpec
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -56,12 +68,14 @@ class ProductsViewModel(
     private val catalog: CatalogRepository,
     settingsState: StateFlow<AppSettings>,
     currency: (AppSettings) -> CurrencySpec,
+    /** Dispatcher for catalog indexes and counts. */
+    private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     /** The screen state, updated whenever the catalogue or settings change. */
     val state: StateFlow<ProductsUiState> =
         combine(catalog.products, catalog.categories, catalog.taxRates, settingsState) { products, categories, taxRates, appSettings ->
             ProductsUiState(products, categories, taxRates, currency(appSettings), appSettings.payment.chargeTax)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProductsUiState())
+        }.flowOn(cpu).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProductsUiState())
 
     /** Adds [category] (ID 0) or renames it, trimming the name. */
     fun saveCategory(category: CategoryEntity) {
@@ -109,6 +123,8 @@ data class ProductForm(
  * @property skuInUse Whether another product already has the typed SKU, which blocks saving.
  * @property chargeTax Settings › Tax › Charge tax; when off the product's tax rate is hidden (but kept).
  * @property saving Whether a save or delete is under way; another one is ignored until it has finished.
+ * @property skuChecking Whether the current SKU still needs validation; saving is blocked until it completes.
+ * @property failure The latest catalog read/write failure, or null; exception text is never retained.
  */
 data class ProductEditUiState(
     val loaded: Boolean = false,
@@ -119,6 +135,8 @@ data class ProductEditUiState(
     val skuInUse: Boolean = false,
     val chargeTax: Boolean = true,
     val saving: Boolean = false,
+    val skuChecking: Boolean = false,
+    val failure: Failure? = null,
 ) {
     /** The typed price in minor units; null on overflow, nonpositive values or too many decimals for the currency. */
     val priceMinor: Long?
@@ -132,7 +150,7 @@ data class ProductEditUiState(
 
     /** Whether the product can be saved: a name, a valid price, a tax rate and a SKU no other product has. */
     val valid: Boolean
-        get() = form.name.isNotBlank() && priceMinor != null && form.taxRateId != null && !skuInUse
+        get() = form.name.isNotBlank() && priceMinor != null && form.taxRateId != null && !skuInUse && !skuChecking
 }
 
 /**
@@ -143,6 +161,7 @@ data class ProductEditUiState(
  * @param catalog Where the product is read and saved.
  * @param settingsState The current settings, read once for the currency, default tax rate and "Charge tax".
  * @param currency The currency prices are entered in with the given settings.
+ * @param lookupSku Main-safe SKU lookup; tests can delay individual validation results.
  */
 class ProductEditViewModel(
     productId: Long?,
@@ -150,7 +169,10 @@ class ProductEditViewModel(
     private val catalog: CatalogRepository,
     settingsState: StateFlow<AppSettings>,
     currency: (AppSettings) -> CurrencySpec,
+    private val lookupSku: suspend (String) -> ProductEntity? = { catalog.productBySku(it) },
 ) : ViewModel() {
+    private var skuCheck: Job? = null
+
     /** The editor state. */
     val state: StateFlow<ProductEditUiState>
         field = MutableStateFlow(ProductEditUiState())
@@ -176,22 +198,46 @@ class ProductEditViewModel(
                         preAuthorisation = it.kind == SaleKind.PRE_AUTHORISATION,
                     )
                 } ?: ProductForm(taxRateId = defaultTaxRateId, sku = initialSku.orEmpty())
-            state.value = ProductEditUiState(true, form, taxRates, categories, spec, chargeTax = appSettings.payment.chargeTax)
-            checkSku(form.sku)
+            state.value =
+                ProductEditUiState(true, form, taxRates, categories, spec, chargeTax = appSettings.payment.chargeTax, skuChecking = true)
+            validateSku(form.sku)
         }
     }
 
     /** Applies [transform] to the form and, when the SKU changed, checks whether another product has it. */
     fun update(transform: (ProductForm) -> ProductForm) {
         val before = state.value.form.sku
-        state.update { it.copy(form = transform(it.form)) }
+        state.update { it.copy(form = transform(it.form), failure = null) }
         val sku = state.value.form.sku
-        if (sku != before) viewModelScope.launch { checkSku(sku) }
+        if (sku != before) validateSku(sku)
     }
 
-    private suspend fun checkSku(sku: String) {
-        val existing = sku.trim().takeIf { it.isNotEmpty() }?.let { catalog.productBySku(it) }
-        state.update { it.copy(skuInUse = existing != null && existing.id != it.form.id) }
+    private fun validateSku(sku: String) {
+        skuCheck?.cancel()
+        state.update { it.copy(skuChecking = true, skuInUse = false) }
+        skuCheck =
+            viewModelScope.launch {
+                try {
+                    val existing = sku.trim().takeIf { it.isNotEmpty() }?.let { lookupSku(it) }
+                    currentCoroutineContext().ensureActive()
+                    state.update { current ->
+                        if (current.form.sku != sku) {
+                            current
+                        } else {
+                            current.copy(
+                                skuChecking = false,
+                                skuInUse = existing != null && existing.id != current.form.id,
+                            )
+                        }
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (ignored: SQLException) {
+                    state.update { it.copy(failure = Failure.Device(DeviceFault.DATABASE)) }
+                } catch (ignored: IllegalStateException) {
+                    state.update { it.copy(failure = Failure.Device(DeviceFault.DATABASE)) }
+                }
+            }
     }
 
     /**
@@ -217,11 +263,7 @@ class ProductEditViewModel(
                 sortOrder = current.form.sortOrder,
                 kind = if (current.form.preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE,
             )
-        state.update { it.copy(saving = true) }
-        launchWrite({ catalog.saveProduct(product) }) { _ ->
-            state.update { it.copy(saving = false) }
-            onSaved()
-        }
+        write({ catalog.saveProduct(product) }, onSaved)
     }
 
     /**
@@ -232,10 +274,30 @@ class ProductEditViewModel(
         val current = state.value
         val id = current.form.id
         if (id == 0L || current.saving) return
-        state.update { it.copy(saving = true) }
-        launchWrite({ catalog.product(id)?.let { catalog.deleteProduct(it) } }) { _ ->
-            state.update { it.copy(saving = false) }
-            onDeleted()
+        write({ catalog.product(id)?.let { catalog.deleteProduct(it) } }, onDeleted)
+    }
+
+    private fun write(
+        write: suspend () -> Unit,
+        onDone: () -> Unit,
+    ) {
+        state.update { it.copy(saving = true, failure = null) }
+        viewModelScope.launch {
+            try {
+                persisting(write)
+                state.update { it.copy(saving = false) }
+                onDone()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (ignored: DuplicateSkuException) {
+                state.update { it.copy(skuInUse = true) }
+            } catch (ignored: SQLException) {
+                state.update { it.copy(failure = Failure.Device(DeviceFault.DATABASE)) }
+            } catch (ignored: IllegalStateException) {
+                state.update { it.copy(failure = Failure.Device(DeviceFault.DATABASE)) }
+            } finally {
+                state.update { it.copy(saving = false) }
+            }
         }
     }
 }

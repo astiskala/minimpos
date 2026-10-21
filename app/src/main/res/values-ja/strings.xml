@@ -1146,7 +1146,7 @@
   <string name="setup_changed">確認中に設定が変更されました。現在の設定で再試行してください。</string>
   <string name="setup_key_update_title">端末の設定を更新</string>
   <string name="setup_key_connection_pending">新しいキーを保存しました。この端末で「Admin menu › Config › Update」を開き、設定を更新してください。完了後、Mini mPOS に戻り「もう一度確認」をタップして設定を完了します。</string>
-  <string name="setup_key_recovery_unreadable">保存途中のキー設定を読み取れませんでした。別のキーを作成する前に既存のキーを取得するか、サポートへお問い合わせください。</string>
+  <string name="setup_key_recovery_unreadable">保存途中のキー設定を読み取れませんでした。別のキーを作成する前に既存のキーを取得するか、Adyen サポートへお問い合わせください。</string>
   <string name="setup_key_creation_unconfirmed">キー作成の結果は未確認です。キー設定を再開して Adyen の設定を読み取ってから再試行してください。</string>
   <string name="setup_printer">使用できるプリンターがありません。「設定 › 領収書」の「プリンター」を確認してください。シミュレーター使用時は「設定 › シミュレーター」を確認してください。</string>
   <string name="setup_charge_too_old">時間が経過しているため、安全に再送信できません。Customer Areaで結果を確認してください。</string>
@@ -1212,4 +1212,5 @@
   <string name="checkout_token_without_tip_or_donation">トークンでの請求にはチップは含まれず、寄付も案内しません。</string>
   <string name="reconciliation_mismatch_hint">取引履歴で確認が必要な決済を解決してください。この端末を使う他のデバイスの決済も合計に含まれます。</string>
   <string name="setup_operation_reconciliation">Adyen は再試行を許可していません。Customer Area でこの操作の結果を確認してください。</string>
+  <string name="storage_unavailable">保存済みの設定または認証情報を読み書きできませんでした。デバイスを再起動してください。問題が続く場合はトラブルシューティングのリセット手順を確認するか、アプリの問題を報告してください。保存済みファイルはリセットされていません。</string>
 </resources>

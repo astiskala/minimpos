@@ -1,5 +1,7 @@
 package app.minimpos.app.ui
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
@@ -39,42 +41,65 @@ class OnboardingUiTest {
     private fun waitFor(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
 
     @Test
-    fun `restoration keeps unfinished onboarding and removes it once completion is persisted`() {
+    fun `welcome is a root and restoration keeps the selected first-run choice`() {
+        lateinit var back: OnBackPressedDispatcher
         val restoration = StateRestorationTester(compose)
-        restoration.setContent { MiniMposApp(env.container) }
+        restoration.setContent {
+            back = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
+            MiniMposApp(env.container)
+        }
         waitFor("onboardingContinue")
+        compose.runOnUiThread { assertThat(back.hasEnabledCallbacks()).isFalse() }
         compose.onNodeWithTag("onboardingImport").performClick()
         restoration.emulateSavedInstanceStateRestore()
         waitFor("onboardingContinue")
         compose.onNodeWithTag("onboardingImport").assertIsSelected()
-
-        // Saved navigation can still contain Onboarding while durable settings already say it is complete.
-        env.updateSettings { it.copy(onboardingCompleted = true) }
-        compose.awaitCondition("completion observed") { env.container.onboardingState.value == true }
-        restoration.emulateSavedInstanceStateRestore()
-        waitFor("newSale")
-        compose.onNodeWithTag("onboardingContinue").assertDoesNotExist()
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
-        waitFor("section_terminal")
-        compose.onNodeWithTag("back").performClick()
-        waitFor("newSale")
-        compose.onNodeWithTag("onboardingContinue").assertDoesNotExist()
+        assertThat(env.container.settingsState.value.onboardingCompleted).isFalse()
     }
 
     @Test
-    fun `restoration after choosing terminal setup retains setup above Home`() {
+    fun `setup Back returns to the selected choice even after restoration and Home finishes onboarding`() {
+        lateinit var back: OnBackPressedDispatcher
         val restoration = StateRestorationTester(compose)
-        restoration.setContent { MiniMposApp(env.container) }
+        restoration.setContent {
+            back = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
+            MiniMposApp(env.container)
+        }
         waitFor("onboardingTerminal")
         compose.onNodeWithTag("onboardingTerminal").performClick()
         compose.onNodeWithTag("onboardingContinue").performClick()
         waitFor("scanSetup")
-        compose.awaitCondition("completion persisted") { env.container.settingsState.value.onboardingCompleted }
+        compose.awaitCondition("choice persisted") { env.container.settingsState.value.onboardingCompleted }
         restoration.emulateSavedInstanceStateRestore()
         waitFor("scanSetup")
-        compose.onNodeWithTag("back").performClick()
+        compose.runOnUiThread { back.onBackPressed() }
+        waitFor("onboardingContinue")
+        compose.onNodeWithTag("onboardingTerminal").assertIsSelected()
+        // Completion records the confirmed intent; it must not discard an active wizard's parent on rotation.
+        restoration.emulateSavedInstanceStateRestore()
+        waitFor("onboardingContinue")
+        compose.onNodeWithTag("onboardingContinue").performClick()
+        waitFor("finishOnboarding")
+        compose.onNodeWithTag("finishOnboarding").performClick()
+        waitFor("newSale")
+        restoration.emulateSavedInstanceStateRestore()
         waitFor("newSale")
         compose.onNodeWithTag("onboardingContinue").assertDoesNotExist()
+        compose.runOnUiThread { assertThat(back.hasEnabledCallbacks()).isFalse() }
+    }
+
+    @Test
+    fun `manual setup from first-run import retains the selected import choice on Back`() {
+        compose.setContent { MiniMposApp(env.container) }
+        waitFor("onboardingImport")
+        compose.onNodeWithTag("onboardingImport").performClick()
+        compose.onNodeWithTag("onboardingContinue").performClick()
+        waitFor("manualSetup")
+        compose.onNodeWithTag("manualSetup").performClick()
+        waitFor("scanSetup")
+        compose.onNodeWithTag("back").performClick()
+        waitFor("onboardingContinue")
+        compose.onNodeWithTag("onboardingImport").assertIsSelected()
     }
 
     @Test
@@ -212,15 +237,17 @@ class OnboardingUiTest {
             },
         ).isEmpty()
         compose.onNodeWithTag("back").performClick()
-        waitFor("settings")
-        compose.onNodeWithTag("onboardingImport").assertDoesNotExist()
-        compose.onNodeWithTag("onboardingSimulator").assertDoesNotExist()
+        waitFor("onboardingContinue")
+        compose.onNodeWithTag("onboardingImport").assertIsSelected()
         assertThat(
             await {
                 env.container.catalog.products
                     .first()
             },
         ).isEmpty()
+        compose.onNodeWithTag("onboardingSimulator").performClick()
+        compose.onNodeWithTag("onboardingContinue").performClick()
+        waitFor("newSale")
     }
 
     @Test
@@ -246,9 +273,7 @@ class OnboardingUiTest {
             },
         ).isEmpty()
         compose.onNodeWithTag("back").performClick()
-        waitFor("settings")
-        compose.onNodeWithTag("onboardingTerminal").assertDoesNotExist()
-        compose.onNodeWithTag("onboardingImport").assertDoesNotExist()
-        compose.onNodeWithTag("onboardingSimulator").assertDoesNotExist()
+        waitFor("onboardingContinue")
+        compose.onNodeWithTag("onboardingTerminal").assertIsSelected()
     }
 }

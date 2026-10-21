@@ -15,6 +15,7 @@ import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.settings.EmailCapture
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
@@ -84,7 +85,7 @@ class ShopperReferenceFlowTest {
     fun `checkout option labels toggle their switches`() {
         env.updateSettings { it.copy(payment = it.payment.copy(receiptTipping = ReceiptTipping.DEFAULT_OFF)) }
         ringUpCustomAmount(5, 0, 0)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("pay")
         compose.onNodeWithTag("customerReference").performTextInput("CUST-1042")
         compose.onNodeWithText("Save card for future payments").performScrollTo().performClick()
@@ -97,7 +98,7 @@ class ShopperReferenceFlowTest {
     fun `with the email as shopper reference checkout asks for the email and no customer reference`() {
         useEmailAsShopperReference()
         ringUpCustomAmount(5, 0, 0)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("pay")
         compose.onNodeWithTag("email").assertExists()
         compose.onNodeWithTag("customerReference").assertDoesNotExist()
@@ -161,7 +162,7 @@ class ShopperReferenceFlowTest {
     fun `with saving cards not offered checkout still sends the customer reference as shopper reference`() {
         env.updateSettings { it.copy(payment = it.payment.copy(offerCardSaving = false)) }
         ringUpCustomAmount(5, 0, 0)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("pay")
         compose.onNodeWithTag("customerReference").performTextInput("CUST-7")
         compose.onNodeWithTag("tokenize").assertDoesNotExist()

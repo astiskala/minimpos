@@ -9,6 +9,7 @@ import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.ReceiptTipping
@@ -181,7 +182,20 @@ class TippingViewModelsTest {
         val after = await { history.state.first { it.filter == HistoryFilter.AWAITING_TIP && it.days.isEmpty() } }
         assertThat(after.days).isEmpty()
         history.setFilter(HistoryFilter.ALL)
-        val day = await { history.state.first { it.filter == HistoryFilter.ALL && it.days.isNotEmpty() } }.days.single()
+        // Room can publish CaptureSending before the answer. Assert totals from the answered snapshot.
+        val day =
+            await {
+                history.state.first {
+                    val sale =
+                        (
+                            it.days
+                                .singleOrNull()
+                                ?.items
+                                ?.singleOrNull() as? HistoryItem.Sale
+                        )?.sale
+                    it.filter == HistoryFilter.ALL && sale?.captureStatus == CaptureStatus.REQUESTED
+                }
+            }.days.single()
         assertThat(day.totals.salesMinor).containsExactly("AUD", 2_400L)
         assertThat(day.totals.tipsMinor).containsExactly("AUD", 400L)
     }

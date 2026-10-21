@@ -15,7 +15,7 @@ class Navigator(
         if (current != route) backStack.add(route)
     }
 
-    /** Closes the current screen; the last one (Home) is never removed. */
+    /** Closes the current screen; the root (Home or first-run onboarding) is never removed. */
     fun back() {
         if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
     }
@@ -30,14 +30,18 @@ class Navigator(
     fun popTo(route: Route) {
         val index = backStack.indexOfLast { it == route }
         if (index < 0) {
-            while (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+            backStack.clear()
+            backStack.add(Route.Home)
             if (route != Route.Home) backStack.add(route)
         } else {
             while (backStack.lastIndex > index) backStack.removeAt(backStack.lastIndex)
         }
     }
 
-    /** Returns to the Home screen, closing everything else. */
+    /** Whether an active first-run choice remains below setup; false after explicitly returning Home. */
+    val isOnboarding: Boolean get() = Route.Onboarding in backStack
+
+    /** Returns to the Home screen, closing everything else, including first-run onboarding. */
     fun home() = popTo(Route.Home)
 
     /**

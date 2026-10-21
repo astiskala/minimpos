@@ -22,7 +22,7 @@ sealed interface Route : NavKey {
      */
     val requiresSetup: Boolean get() = true
 
-    /** The start screen with a tile per area; always at the bottom of the back stack. */
+    /** The start screen with a tile per area; the root after the first-run choice. */
     @Serializable data object Home : Route
 
     /** First-run setup choices, kept below import and terminal settings so Back can choose a different path. */

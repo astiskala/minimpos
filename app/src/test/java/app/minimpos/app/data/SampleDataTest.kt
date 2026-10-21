@@ -107,6 +107,26 @@ class SampleDataTest {
     }
 
     @Test
+    fun `onboarding demo defaults fill an empty business profile but preserve each entered merchant field`() {
+        val json =
+            env.context.assets
+                .open("sample-data.json")
+                .bufferedReader()
+                .use { it.readText() }
+        val fixture = SampleDataFixture.read(json, "en-AU")
+        val empty = ReceiptSettings()
+        assertThat(fixture.receipt(empty, replaceReceiptDetails = false).businessName).isEqualTo("Harbour Coffee Co.")
+        listOf(
+            empty.copy(businessName = "Merchant"),
+            empty.copy(addressLines = "123 Main St"),
+            empty.copy(phone = "555-0100"),
+            empty.copy(taxId = "TAX-123"),
+        ).forEach { merchant ->
+            assertThat(fixture.receipt(merchant, replaceReceiptDetails = false)).isEqualTo(merchant)
+        }
+    }
+
+    @Test
     fun `sample action replaces business details even with existing samples but preserves receipt configuration`() =
         await {
             container.sampleData.populate()

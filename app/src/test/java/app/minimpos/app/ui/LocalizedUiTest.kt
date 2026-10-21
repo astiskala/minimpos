@@ -18,6 +18,7 @@ import app.minimpos.app.MiniMposApp
 import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.EmailFault
 import app.minimpos.app.data.db.Failure
@@ -271,7 +272,7 @@ class LocalizedUiTest {
         compose.setContent { MiniMposApp(env.container) }
         compose.onNodeWithTag("newSale").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("charge") and isEnabled(), 15_000)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         compose.waitUntilAtLeastOneExists(hasTestTag("scanWallet"), 15_000)
         compose.onNodeWithTag("scanWallet").assertIsDisplayed().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("wallet_pick_wechatpay_pos"), 15_000)
@@ -300,7 +301,8 @@ class LocalizedUiTest {
                 .single()
                 .name,
         ).isEqualTo(context.getString(R.string.sale_custom_default_name))
-        compose.onNodeWithTag("charge").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("charge").assertIsDisplayed()
+        compose.clickWhenEnabled("charge")
         compose.waitUntilAtLeastOneExists(hasTestTag("pay"), 15_000)
         compose.onNodeWithTag("pay").assertIsDisplayed().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("newSaleAfter"), 15_000)

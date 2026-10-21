@@ -61,7 +61,7 @@
           <li><a href="#wallets">Wallet scanning</a></li><li><a href="#connection">Pairing and setup</a></li><li><a href="#network-dropouts">Network dropouts</a></li>
           <li><a href="#modifications">Captures and adjustments</a></li><li><a href="#links">Payment links</a></li>
           <li><a href="#receipts">Printer and email</a></li><li><a href="#access">PINs and transfers</a></li>
-          <li><a href="#install">Installation</a></li><li><a href="#messages">Error messages</a></li><li><a href="#help">Get help</a></li>
+          <li><a href="#storage">Storage recovery</a></li><li><a href="#install">Installation</a></li><li><a href="#messages">Error messages</a></li><li><a href="#help">Get help</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
           <li><a href="#unknown">Unknown result</a></li><li><a href="#declines">Declined payments</a></li>
@@ -69,7 +69,7 @@
           <li><a href="#wallets">Wallet scanning</a></li><li><a href="#connection">Pairing and setup</a></li><li><a href="#network-dropouts">Network dropouts</a></li>
           <li><a href="#modifications">Captures and adjustments</a></li><li><a href="#links">Payment links</a></li>
           <li><a href="#receipts">Printer and email</a></li><li><a href="#access">PINs and transfers</a></li>
-          <li><a href="#install">Installation</a></li><li><a href="#messages">Error messages</a></li><li><a href="#help">Get help</a></li>
+          <li><a href="#storage">Storage recovery</a></li><li><a href="#install">Installation</a></li><li><a href="#messages">Error messages</a></li><li><a href="#help">Get help</a></li>
         </ol></details>
       </nav>
       <div class="guide-body">
@@ -263,16 +263,28 @@
               <dd><p><span class="fix-label">Fix</span>An administrator can replace or remove it in <strong>Settings › Security</strong>. The admin PIN and Manager PIN protect different actions; one does not unlock the other.</p></dd></div>
             <div><dt>The admin PIN is forgotten</dt>
               <dd><p><span class="fix-label">Cause</span>There is no PIN recovery.</p>
-                <p><span class="fix-label">Fix</span>The only way is to clear the app's data in Android.</p>
-                <div class="callout callout-warning" role="note">
-                  <p class="callout-title">Warning</p>
-                  <p>Clearing the app's data deletes all products, settings, keys and payment history on the device. Resolve unfinished payments and keep the records you need first. A setup transfer does not restore history.</p>
-                </div></dd></div>
+                <p>To start again without the admin PIN, follow <a href="#storage">storage recovery</a>. Read the data-loss warning before resetting.</p></dd></div>
             <div><dt>The transfer code is rejected, or keys are missing after import</dt>
               <dd><p><span class="fix-label">Cause</span>The code does not belong to these QR codes, or it was left blank.</p>
                 <p><span class="fix-label">Fix</span>Use the code shown with these QR codes, not a newly generated one. Every transfer needs its code. A wrong or blank code imports nothing. After copying, check the destination and credentials on the new device; see <a href="using.html#more">more devices</a>.</p></dd></div>
           </dl>
           <p>To review which actions each PIN protects, see <a href="using.html#staff">staff PINs</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+        </section>
+        <section id="storage">
+          <h2>Saved settings or credentials cannot be read or written</h2>
+          <p>Mini mPOS stops rather than replacing unreadable settings or credentials. This preserves the files, including any unfinished setup or payment recovery records.</p>
+          <ol class="steps">
+            <li>Restart the device and open Mini mPOS again. If device storage is full, free space outside Mini mPOS first. Clearing only the app's cache does not reset its saved settings.</li>
+            <li>Before resetting, keep the records you need and resolve unfinished payments, refunds, captures and adjustments. If the app cannot open, check their outcomes in the Customer Area; see <a href="#unknown">unknown results</a>. If an outcome is still uncertain, keep the app's data and reconcile it with Adyen first. Do not send the operation again just because the app cannot open.</li>
+            <li>If the error persists and you accept losing all local data, reset Mini mPOS. On a phone or tablet, open Android <strong>Settings › Apps › Mini mPOS › Storage &amp; cache › Clear storage</strong> (labels vary by device), or uninstall Mini mPOS and reinstall it from the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a>. On an Adyen terminal, have the person managing your terminal apps arrange the reset or removal and reinstallation; see the <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen app deployment guide</a>.</li>
+            <li>Set up Mini mPOS again, or import a trusted setup transfer, then complete <strong>Test connection</strong> before taking real payments. See <a href="quick-start.html#connect">Connect to Adyen</a>.</li>
+          </ol>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">Warning</p>
+            <p>Clearing storage or uninstalling deletes all local products, settings, credentials, PINs, history and unfinished-operation recovery records. A setup transfer cannot restore history or those recovery records. Resetting does not undo payments, refunds or captures already sent to Adyen.</p>
+          </div>
+          <p>Installing an update over the existing app does not reset its storage. If the error returns, <a href="#help">report an app problem on GitHub</a>; do not attach saved configuration files or credentials.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="install">

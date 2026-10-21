@@ -27,11 +27,14 @@ import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.ReconciliationOutcome
 import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.app.payment.TerminalReconciliation
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -81,6 +84,8 @@ class HistoryViewModel(
     private val receipts: ReceiptDelivery? = null,
     /** Terminal reconciliation, absent only in list-only tests. */
     private val reconciliation: TerminalReconciliation? = null,
+    /** Dispatcher for filtering and whole-day accounting, including each search edit. */
+    private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val print = MutableStateFlow(ActionState())
     private val reconcileState = MutableStateFlow<Pair<ActionState, TerminalReconciliationReport?>>(ActionState() to null)
@@ -117,18 +122,19 @@ class HistoryViewModel(
                 methods = PaymentMethodFilter.available(sales.values.toList()),
                 hasHistory = items.isNotEmpty(),
             )
-        }.combine(
-            combine(canPrint, print, reconcileState) { available, action, (recAction, recReport) ->
-                ReconcileSlice(available, action, recAction, recReport)
-            },
-        ) { list, slice ->
-            list.copy(
-                canPrint = slice.canPrint,
-                print = slice.print,
-                reconcile = slice.reconcile,
-                reconciliation = slice.reconciliation,
-            )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
+        }.flowOn(cpu)
+            .combine(
+                combine(canPrint, print, reconcileState) { available, action, (recAction, recReport) ->
+                    ReconcileSlice(available, action, recAction, recReport)
+                },
+            ) { list, slice ->
+                list.copy(
+                    canPrint = slice.canPrint,
+                    print = slice.print,
+                    reconcile = slice.reconcile,
+                    reconciliation = slice.reconciliation,
+                )
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
 
     private data class ReconcileSlice(
         val canPrint: Boolean,

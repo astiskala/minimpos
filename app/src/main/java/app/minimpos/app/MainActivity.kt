@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -36,9 +37,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import app.minimpos.app.data.settings.StorageState
 import app.minimpos.app.terminal.PaymentsAppBridge
+import app.minimpos.app.ui.components.CenteredScrollColumn
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.PrintJobsPreview
+import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.currentLocale
+import app.minimpos.app.ui.components.openUrl
 import app.minimpos.app.ui.navigation.AppNavHost
 import app.minimpos.app.ui.theme.MiniMposTheme
 import kotlinx.coroutines.delay
@@ -79,7 +85,7 @@ class MainActivity : ComponentActivity() {
         val timeout = container.settingsState.value.security.autoLockMinutes.minutes.inWholeMilliseconds
         container.sessionLock.expire(timeout)
         container.managerLock.expire(timeout)
-        container.terminalStatus.readDevice()
+        if (container.storage.state.value == StorageState.READY) container.terminalStatus.readDevice()
         // Back from the Payments app: an answer comes with onNewIntent before this; without one, it is not coming.
         val waiting = paymentsApp.awaitingAnswer ?: return
         lifecycleScope.launch {
@@ -125,8 +131,19 @@ fun MiniMposApp(container: AppContainer) {
         LocalResources provides localized.resources,
     ) {
         MiniMposTheme {
-            AppNavHost()
-            VirtualPrinterSheet()
+            val storage by container.storage.state.collectAsStateWithLifecycle()
+            when (storage) {
+                StorageState.LOADING -> {}
+
+                StorageState.READY -> {
+                    AppNavHost()
+                    VirtualPrinterSheet()
+                }
+
+                StorageState.UNAVAILABLE -> {
+                    StorageUnavailable()
+                }
+            }
         }
     }
 }
@@ -165,5 +182,51 @@ private fun VirtualPrinterSheet() {
             Text(stringResource(R.string.virtual_printer_title), style = MaterialTheme.typography.titleMedium)
             PrintJobsPreview(jobs)
         }
+    }
+}
+
+/** Blocks all screens when saved configuration cannot be read, preserving the original files for recovery. */
+@Composable
+private fun StorageUnavailable() {
+    val context = LocalContext.current
+    val locale = currentLocale()
+    val language =
+        when (locale.language) {
+            "ja" -> {
+                "ja/"
+            }
+
+            "zh" -> {
+                if (locale.script == "Hant" ||
+                    (locale.script.isEmpty() && locale.country in setOf("HK", "MO", "TW"))
+                ) {
+                    "zh-Hant/"
+                } else {
+                    "zh-CN/"
+                }
+            }
+
+            else -> {
+                ""
+            }
+        }
+    val guide = "https://minimpos.app/${language}troubleshooting.html#storage"
+    CenteredScrollColumn(
+        Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+    ) {
+        Text(stringResource(R.string.storage_unavailable), modifier = Modifier.testTag("storageUnavailable"))
+        // Terminals may have no browser: keep the guide address visible for opening on another device.
+        Text(guide.removePrefix("https://"), style = MaterialTheme.typography.bodySmall)
+        SecondaryButton(
+            stringResource(R.string.help_troubleshooting),
+            { context.openUrl(guide) },
+            modifier = Modifier.testTag("storageTroubleshooting"),
+        )
+        SecondaryButton(
+            stringResource(R.string.help_report_issue),
+            { context.openUrl("https://github.com/astiskala/minimpos/issues") },
+            modifier = Modifier.testTag("storageReportIssue"),
+        )
     }
 }

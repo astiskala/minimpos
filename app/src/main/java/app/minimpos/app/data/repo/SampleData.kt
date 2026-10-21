@@ -18,8 +18,8 @@ import kotlin.uuid.Uuid
 /**
  * Optional catalog examples and read-only simulated history. Creation and removal are atomic, main-safe and offline.
  * Existing catalog rows, history and tax rates are never overwritten. Repeated creation adds no rows while any tracked
- * samples remain; edits retain their sample identity. The container replaces receipt business details after each
- * completed population request. Exported catalog data has no sample identity.
+ * samples remain; edits retain their sample identity. The container applies fictional receipt business details after
+ * population; onboarding preserves any merchant business fields already entered. Exported catalog data has no sample identity.
  *
  * @param db Database transaction boundary shared by the repositories.
  * @param catalog Owns sample catalog writes.
@@ -29,7 +29,8 @@ import kotlin.uuid.Uuid
  * @param starterRates Initial tax rates if setup runs before startup seeding.
  * @param country Device country used when the merchant has not selected a currency.
  * @param now Epoch milliseconds used for the sample history.
- * @param withSettings Runs population with stable settings while excluding concurrent pricing transitions.
+ * @param withSettings Receives the receipt replacement policy and runs population with stable settings while excluding
+ *   concurrent pricing transitions.
  */
 class SampleData(
     private val db: AppDatabase,
@@ -40,10 +41,13 @@ class SampleData(
     private val starterRates: () -> List<TaxRateEntity>,
     private val country: String,
     private val now: () -> Long = System::currentTimeMillis,
-    private val withSettings: suspend (suspend (AppSettings) -> Boolean) -> Boolean = { it(AppSettings()) },
+    private val withSettings: suspend (Boolean, suspend (AppSettings) -> Boolean) -> Boolean = { _, write -> write(AppSettings()) },
 ) {
-    /** Adds samples priced in the current stable currency and tax style; returns false if samples already exist. */
-    suspend fun populate(): Boolean = withSettings(::populate)
+    /**
+     * Adds samples in the current stable currency/tax style; returns false if samples already exist.
+     * @param replaceReceiptDetails Whether to replace merchant business fields; false fills only an empty business profile.
+     */
+    suspend fun populate(replaceReceiptDetails: Boolean = true): Boolean = withSettings(replaceReceiptDetails, ::populate)
 
     /** Adds samples priced in [settings]'s currency/tax style; returns false if samples already exist. */
     suspend fun populate(settings: AppSettings): Boolean =

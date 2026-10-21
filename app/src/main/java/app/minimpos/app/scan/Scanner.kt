@@ -146,11 +146,12 @@ fun ScannerView(
         val executor = Executors.newSingleThreadExecutor()
         val mainExecutor = ContextCompat.getMainExecutor(context)
         val providerFuture = ProcessCameraProvider.getInstance(context)
+        val session = CameraSession(mainExecutor) { error = true }
         var delivered = false
         var lastCode: String? = null
         val analyzer =
             BarcodeAnalyzer(mode.formats, rotateForLinear = mode != ScanMode.QR) { code ->
-                mainExecutor.execute {
+                session.dispatch {
                     if (continuous) {
                         if (code != lastCode) {
                             lastCode = code
@@ -162,13 +163,11 @@ fun ScannerView(
                     }
                 }
             }
-        providerFuture.addListener({
-            runCatching {
-                bindCamera(providerFuture.get(), lifecycleOwner, previewView) { setAnalyzer(executor, analyzer) }
-            }.onFailure { error = true }
-        }, mainExecutor)
+        session.bind(providerFuture) { provider ->
+            bindCamera(provider, lifecycleOwner, previewView) { setAnalyzer(executor, analyzer) }
+        }
         onDispose {
-            runCatching { providerFuture.get().unbindAll() }
+            session.close()
             executor.shutdown()
         }
     }
@@ -238,7 +237,7 @@ private fun bindCamera(
     lifecycleOwner: LifecycleOwner,
     previewView: PreviewView,
     configureAnalysis: ImageAnalysis.() -> Unit,
-) {
+): () -> Unit {
     val selector =
         if (runCatching { provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) }.getOrDefault(false)) {
             CameraSelector.DEFAULT_BACK_CAMERA
@@ -258,8 +257,11 @@ private fun bindCamera(
             ).setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .apply(configureAnalysis)
-    provider.unbindAll()
     provider.bindToLifecycle(lifecycleOwner, selector, preview, analysis)
+    return {
+        analysis.clearAnalyzer()
+        provider.unbind(preview, analysis)
+    }
 }
 
 private class BarcodeAnalyzer(

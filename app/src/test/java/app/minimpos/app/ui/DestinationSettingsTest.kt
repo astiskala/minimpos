@@ -76,7 +76,7 @@ class DestinationSettingsTest {
 
     @Test
     fun `Tap to Pay disables saved MOTO and MKE offers then restores them for another destination`() {
-        open("payments")
+        open("payments", "allowMoto")
         listOf("allowMoto", "allowMke").forEach { tag ->
             compose
                 .onNodeWithTag(tag)
@@ -104,10 +104,7 @@ class DestinationSettingsTest {
     @Test
     @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
     fun `unsupported tip and Giving choices stay disabled in Japanese without changing stored preferences`() {
-        open("tipping")
-        compose.awaitCondition("tip settings finish opening") {
-            compose.onAllNodesWithTag("terminalTipping").fetchSemanticsNodes().isNotEmpty()
-        }
+        open("tipping", "terminalTipping")
         listOf("terminalTipping", "receiptTipping", "askGivingSetting", "dynamicTipOverride", "tipOnPreTax").forEach { tag ->
             compose.onNodeWithTag(tag).performScrollTo().assertIsNotEnabled()
         }
@@ -121,7 +118,7 @@ class DestinationSettingsTest {
     @Test
     @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
     fun `Tap to Pay disables print controls but keeps receipt line width usable for email`() {
-        open("receipts")
+        open("receipts", "receiptPrinter")
         listOf("receiptPrinter", "autoPrint", "merchantCopy", "printTest").forEach { tag ->
             compose.onNodeWithTag(tag).performScrollTo().assertIsNotEnabled()
         }
@@ -134,10 +131,7 @@ class DestinationSettingsTest {
     @Test
     @Config(qualifiers = "b+zh+Hant-w320dp-h460dp-hdpi")
     fun `Tap to Pay disables shopper display settings in Traditional Chinese`() {
-        open("shopper_display")
-        compose.awaitCondition("shopper display settings load") {
-            compose.onAllNodesWithTag("showVirtualReceipt").fetchSemanticsNodes().isNotEmpty()
-        }
+        open("shopper_display", "showVirtualReceipt")
         listOf("showVirtualReceipt", "confirmBasketOnTerminal", "collectEmailOnTerminal", "showTerminalQrReceipt", "askShopperRating")
             .forEach { tag -> compose.onNodeWithTag(tag).performScrollTo().assertIsNotEnabled() }
         assertThat(env.container.settingsState.value.payment.showVirtualReceipt).isTrue()
@@ -145,7 +139,7 @@ class DestinationSettingsTest {
 
     @Test
     fun `capabilities explain all Tap to Pay limits without marking device camera unsupported`() {
-        open("capabilities")
+        open("capabilities", "cap_tipping")
         compose.awaitCondition("capabilities refreshed") {
             val state = env.container.capabilityDiscovery.state.value
             !state.checking && !state.capabilities.supportsTerminalFeatures
@@ -179,7 +173,10 @@ class DestinationSettingsTest {
         assertThat(unsupported).isEqualTo("Unsupported")
     }
 
-    private fun open(section: String) {
+    private fun open(
+        section: String,
+        readyTag: String,
+    ) {
         compose.setContent { MiniMposApp(env.container) }
         compose.onNodeWithTag("settings").performClick()
         compose.awaitCondition("settings list opens") {
@@ -187,7 +184,7 @@ class DestinationSettingsTest {
         }
         compose.onNodeWithTag("section_$section").performScrollTo().performClick()
         compose.awaitCondition("settings section opens") {
-            compose.onAllNodesWithTag("section_$section").fetchSemanticsNodes().isEmpty()
+            compose.onAllNodesWithTag(readyTag).fetchSemanticsNodes().isNotEmpty()
         }
     }
 }

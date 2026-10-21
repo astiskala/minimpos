@@ -54,8 +54,10 @@
   <string name="home_new_sale_hint">Add products or a custom amount</string>
   <string name="home_pre_auth">New pre-authorization</string>
   <string name="home_pre_auth_hint">Hold an amount on a card</string>
+  <string name="home_saved_card">Charge token</string>
   <string name="home_refund">Refund</string>
   <string name="home_history">History</string>
+  <string name="home_reconciliation">Reconciliation</string>
   <string name="home_products">Products</string>
   <string name="home_settings">Settings</string>
   <string name="home_printer_yes">printer available</string>
@@ -109,6 +111,11 @@
   <string name="checkout_pay">Pay %1$s</string>
   <string name="checkout_scan_wallet">Scan wallet</string>
   <string name="checkout_send_link">Create payment link</string>
+  <string name="checkout_charge_token">Charge token</string>
+  <string name="checkout_choose_token">Choose a token</string>
+  <string name="checkout_token_without_tip">The token is charged without a tip.</string>
+  <string name="checkout_token_without_donation">The token is charged without a donation invitation.</string>
+  <string name="checkout_token_without_tip_or_donation">The token is charged without a tip or donation invitation.</string>
   <string name="checkout_link_without_tip">Payment links do not support terminal or receipt tips. Create this link without tipping?</string>
   <string name="checkout_link_without_donation">Payment links do not invite charity donations. Create this link without a donation invitation?</string>
   <string name="checkout_link_without_tip_or_donation">Payment links do not support tips or charity donations. Create this link without them?</string>
@@ -139,6 +146,18 @@
   <string name="shopper_confirm">Confirm</string>
   <string name="shopper_email_prompt">Enter your email address:</string>
   <string name="shopper_rating_prompt">Rate your experience (0–10)</string>
+
+  <!-- Saved cards -->
+  <string name="saved_card_title">Charge token</string>
+  <string name="saved_card_intro">Find the tokens saved for a shopper, choose one, then ring up what to charge. The shopper does not need to be present; get their consent first.</string>
+  <string name="saved_card_find">Find tokens</string>
+  <string name="saved_card_none">No tokens are saved for this shopper.</string>
+  <string name="saved_card_expires">Expires %1$s/%2$s</string>
+  <string name="saved_card_unsupported">Saved for another kind of payment; it cannot be charged here.</string>
+  <string name="saved_card_card">Card</string>
+  <string name="saved_card_charge">Charge %1$s</string>
+  <string name="saved_card_charging">Charging the token…</string>
+  <string name="saved_card_review_note">Adyen charges the token without the shopper present. Refund it from History if needed.</string>
 
   <!-- Scanned wallets -->
   <string name="wallet_choose">Choose wallet</string>
@@ -414,6 +433,7 @@
   <string name="reconciliation_closed_title">Terminal period %1$s closed</string>
   <string name="reconciliation_matched">Totals match</string>
   <string name="reconciliation_mismatch">Totals differ</string>
+  <string name="reconciliation_mismatch_hint">Resolve payments that need attention in History. Other devices using this terminal also count in its totals.</string>
   <string name="reconciliation_close_period">Close terminal period</string>
   <string name="reconciliation_offline_warning">Offline sales: %1$d · Batches not yet uploaded to Adyen: %2$d</string>
   <string name="reconciliation_unresolved">Unresolved terminal payments: %1$d</string>
@@ -430,6 +450,7 @@
   <string name="reconciliation_close_confirm_message">The terminal ends its current period and starts a new one. This cannot be undone.</string>
   <string name="reconciliation_report_header">Daily report</string>
   <string name="reconciliation_report_hint">Prints this device’s local summary of today’s payments and refunds. It is not Adyen’s settlement.</string>
+  <string name="reconciliation_print_today">Print today’s report</string>
 
   <!-- Products and sample data -->
   <string name="products_title">Products</string>
@@ -677,6 +698,9 @@
     <item>简体中文</item>
     <item>繁體中文</item>
     <item>日本語</item>
+    <item>Português (Brasil)</item>
+    <item>Español (México)</item>
+    <item>Français</item>
   </string-array>
 
   <!-- Settings: terminal and Tap to Pay -->
@@ -1004,7 +1028,9 @@
   <string name="settings_business_import">Import business details from Adyen</string>
   <string name="settings_business_import_hint">Review receipt details from the assigned store (Management API - Stores read) or merchant account (Management API - Accounts read). Merchant accounts provide only the legal name.</string>
   <string name="settings_business_review">Review business details</string>
-  <string name="settings_business_review_hint">Import fills only blank business name, address and phone fields. Existing text is never replaced. Tax ID, title and footer stay unchanged.</string>
+  <string name="settings_business_review_hint">Fill missing business details or replace existing ones with the supplied name, address and phone. Blank imported fields, tax ID, title and footer stay unchanged.</string>
+  <string name="settings_business_supplement">Fill missing details</string>
+  <string name="settings_business_replace">Replace existing details</string>
   <string name="settings_business_unavailable">No business details are available to import.</string>
   <string name="settings_business_name">Business name</string>
   <string name="settings_address">Address (one line per row)</string>
@@ -1155,6 +1181,9 @@
   <string name="setup_key_creation_unconfirmed">Key creation is unconfirmed. Resume key setup to read Adyen settings before retrying.</string>
   <string name="setup_printer">No printer is available. Check Printer in Settings › Receipts, or in Settings › Simulator when simulating.</string>
   <string name="setup_charge_too_old">This is too old to send again safely. Check its outcome in your Customer Area.</string>
+  <string name="setup_shopper_reference">Choose a shopper reference in Settings › Payments to use tokens.</string>
+  <string name="setup_totals">Terminal totals are not available where payments go now. Tap to Pay does not report them.</string>
+  <string name="setup_operation_reconciliation">Adyen did not permit a retry. Check this operation’s outcome in your Customer Area.</string>
   <string name="payment_context_mismatch">This setup does not match the original payment’s terminal, merchant account or environment. Restore the original setup before you continue.</string>
   <string name="fault_unreachable_terminal">The terminal could not be reached. Check that it is on, on the same network and at this IP address.</string>
   <string name="fault_unreachable_adyen">Adyen could not be reached. Check the internet connection.</string>
@@ -1195,27 +1224,5 @@
   <string name="sentences">%1$s %2$s</string>
   <string name="action_unconfirmed">Adyen did not confirm the result. Check again before you try anything else.</string>
   <string name="still_unconfirmed">Still not confirmed: %1$s</string>
-  <string name="home_saved_card">Charge token</string>
-  <string name="home_reconciliation">Reconciliation</string>
-  <string name="saved_card_title">Charge token</string>
-  <string name="saved_card_intro">Find the tokens saved for a shopper, choose one, then ring up what to charge. The shopper does not need to be present; get their consent first.</string>
-  <string name="saved_card_find">Find tokens</string>
-  <string name="saved_card_none">No tokens are saved for this shopper.</string>
-  <string name="saved_card_expires">Expires %1$s/%2$s</string>
-  <string name="saved_card_unsupported">Saved for another kind of payment; it cannot be charged here.</string>
-  <string name="saved_card_card">Card</string>
-  <string name="saved_card_charge">Charge %1$s</string>
-  <string name="saved_card_charging">Charging the token…</string>
-  <string name="saved_card_review_note">Adyen charges the token without the shopper present. Refund it from History if needed.</string>
-  <string name="setup_shopper_reference">Choose a shopper reference in Settings › Payments to use tokens.</string>
-  <string name="setup_totals">Terminal totals are not available where payments go now. Tap to Pay does not report them.</string>
-  <string name="reconciliation_print_today">Print today’s report</string>
-  <string name="checkout_charge_token">Charge token</string>
-  <string name="checkout_choose_token">Choose a token</string>
-  <string name="checkout_token_without_tip">The token is charged without a tip.</string>
-  <string name="checkout_token_without_donation">The token is charged without a donation invitation.</string>
-  <string name="checkout_token_without_tip_or_donation">The token is charged without a tip or donation invitation.</string>
-  <string name="reconciliation_mismatch_hint">Resolve payments that need attention in History. Other devices using this terminal also count in its totals.</string>
-  <string name="setup_operation_reconciliation">Adyen did not permit a retry. Check this operation’s outcome in your Customer Area.</string>
   <string name="storage_unavailable">Saved settings or credentials could not be read or written. Restart the device. If this continues, follow Troubleshooting for reset steps or report an app issue. Your saved files have not been reset.</string>
 </resources>

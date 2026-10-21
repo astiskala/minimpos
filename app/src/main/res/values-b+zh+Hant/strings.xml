@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
   <!-- App, onboarding, and common actions -->
   <string name="app_name">Mini mPOS</string>
   <string name="locked">已鎖定</string>
@@ -54,8 +54,10 @@
   <string name="home_new_sale_hint">新增商品或自訂金額</string>
   <string name="home_pre_auth">新建預授權</string>
   <string name="home_pre_auth_hint">凍結卡內金額</string>
+  <string name="home_saved_card">代碼扣款</string>
   <string name="home_refund">退款</string>
   <string name="home_history">交易紀錄</string>
+  <string name="home_reconciliation">對帳</string>
   <string name="home_products">商品</string>
   <string name="home_settings">設定</string>
   <string name="home_printer_yes">打印機可用</string>
@@ -108,6 +110,11 @@
   <string name="checkout_pay">支付 %1$s</string>
   <string name="checkout_scan_wallet">掃描錢包</string>
   <string name="checkout_send_link">建立付款連結</string>
+  <string name="checkout_charge_token">代碼扣款</string>
+  <string name="checkout_choose_token">選擇代碼</string>
+  <string name="checkout_token_without_tip">使用代碼扣款時不含小費。</string>
+  <string name="checkout_token_without_donation">使用代碼扣款時不邀請捐款。</string>
+  <string name="checkout_token_without_tip_or_donation">使用代碼扣款時不含小費，亦不邀請捐款。</string>
   <string name="checkout_link_without_tip">付款連結不支援終端小費或收據小費。是否不加小費建立連結？</string>
   <string name="checkout_link_without_donation">付款連結不支援邀請慈善捐款。是否不邀請捐款建立連結？</string>
   <string name="checkout_link_without_tip_or_donation">付款連結不支援小費或慈善捐款。是否不含這些選項建立連結？</string>
@@ -133,12 +140,23 @@
   <string name="payment_unknown_outcome">終端未確認支付結果。再次收款前，請先在商戶後台核實。</string>
   <string name="payment_interrupted">應用程式在收到結果前已停止運行。</string>
   <string name="capture_interrupted">應用程式在收到 Adyen 的扣款回應前已停止運行。可以安全地重試同一扣款請求。</string>
-
   <string name="shopper_order">訂單</string>
   <string name="shopper_confirm_order">確認訂單</string>
   <string name="shopper_confirm">確認</string>
   <string name="shopper_email_prompt">請輸入您的電郵地址：</string>
   <string name="shopper_rating_prompt">請為本次體驗評分（0–10）</string>
+
+  <!-- Saved cards -->
+  <string name="saved_card_title">代碼扣款</string>
+  <string name="saved_card_intro">尋找為顧客儲存的代碼，選擇一個，然後輸入要扣款的商品。顧客毋須在場；請先取得其同意。</string>
+  <string name="saved_card_find">尋找代碼</string>
+  <string name="saved_card_none">此顧客沒有已儲存的代碼。</string>
+  <string name="saved_card_expires">有效期至 %1$s/%2$s</string>
+  <string name="saved_card_unsupported">此代碼為其他付款類型儲存，無法在此扣款。</string>
+  <string name="saved_card_card">卡</string>
+  <string name="saved_card_charge">扣款 %1$s</string>
+  <string name="saved_card_charging">正在使用代碼扣款…</string>
+  <string name="saved_card_review_note">Adyen 會在顧客不在場的情況下使用代碼扣款。如有需要，請在交易紀錄中退款。</string>
 
   <!-- Scanned wallets -->
   <string name="wallet_choose">選擇錢包</string>
@@ -414,6 +432,7 @@
   <string name="reconciliation_closed_title">終端對帳週期 %1$s 已結束</string>
   <string name="reconciliation_matched">總額一致</string>
   <string name="reconciliation_mismatch">總額不一致</string>
+  <string name="reconciliation_mismatch_hint">請在交易紀錄中處理需要關注的付款。使用此終端的其他裝置也會計入其總額。</string>
   <string name="reconciliation_close_period">結束終端對帳週期</string>
   <string name="reconciliation_offline_warning">離線銷售：%1$d · 尚未上載至 Adyen 的批次：%2$d</string>
   <string name="reconciliation_unresolved">未確認的終端付款：%1$d</string>
@@ -430,6 +449,7 @@
   <string name="reconciliation_close_confirm_message">終端將結束目前的對帳週期並開始新的週期。此操作無法還原。</string>
   <string name="reconciliation_report_header">每日報表</string>
   <string name="reconciliation_report_hint">列印本裝置今日付款及退款的本地摘要。這不是 Adyen 的結算。</string>
+  <string name="reconciliation_print_today">列印今日報表</string>
 
   <!-- Products and sample data -->
   <string name="products_title">商品</string>
@@ -676,6 +696,9 @@
     <item>简体中文</item>
     <item>繁體中文</item>
     <item>日本語</item>
+    <item>Português (Brasil)</item>
+    <item>Español (México)</item>
+    <item>Français</item>
   </string-array>
 
   <!-- Settings: terminal and Tap to Pay -->
@@ -1001,7 +1024,9 @@
   <string name="settings_business_import">從 Adyen 匯入商戶資訊</string>
   <string name="settings_business_import_hint">核對已分配店舖（Management API - Stores read）或商戶帳戶（Management API - Accounts read）的收據資訊。商戶帳戶僅提供法人名稱。</string>
   <string name="settings_business_review">核對商戶資訊</string>
-  <string name="settings_business_review_hint">僅補充空白的商戶名稱、地址和電話。已有文字絕不被替換，稅務編號、標題和頁尾不變。</string>
+  <string name="settings_business_review_hint">可補充缺漏的商戶資料，或以取得的名稱、地址及電話取代現有資料。匯入的空白欄位保留原值，稅務編號、標題及頁尾不變。</string>
+  <string name="settings_business_supplement">補充缺漏資料</string>
+  <string name="settings_business_replace">取代現有資料</string>
   <string name="settings_business_unavailable">沒有可匯入的商戶資訊。</string>
   <string name="settings_business_name">商戶名稱</string>
   <string name="settings_address">地址（每行一條）</string>
@@ -1150,6 +1175,9 @@
   <string name="setup_key_creation_unconfirmed">尚未確認密鑰建立結果。請繼續密鑰設定，先讀取 Adyen 設定再重試。</string>
   <string name="setup_printer">沒有可用的打印機。請檢查“設定 › 收據”中的“打印機”，使用模擬器時請檢查“設定 › 模擬器”。</string>
   <string name="setup_charge_too_old">此操作時間過久，無法安全地再次發送。請在商戶後台查看結果。</string>
+  <string name="setup_shopper_reference">請在“設定 › 支付”中選擇顧客參考編號，以使用代碼。</string>
+  <string name="setup_totals">目前收款目標無法提供終端匯總。Tap to Pay 不提供匯總。</string>
+  <string name="setup_operation_reconciliation">Adyen 不允許重試。請在商戶後台查看此操作的結果。</string>
   <string name="payment_context_mismatch">目前設定與原支付的終端、商戶帳戶或環境不一致。請恢復原設定後繼續。</string>
   <string name="fault_unreachable_terminal">無法連接終端。請確認終端已開機、位於同一網絡，且 IP 地址正確。</string>
   <string name="fault_unreachable_adyen">無法連接 Adyen。請檢查互聯網連接。</string>
@@ -1190,27 +1218,5 @@
   <string name="sentences">%1$s%2$s</string>
   <string name="action_unconfirmed">Adyen 未確認結果。請先再次查詢，再進行其他操作。</string>
   <string name="still_unconfirmed">仍未確認：%1$s</string>
-  <string name="home_saved_card">代碼扣款</string>
-  <string name="home_reconciliation">對帳</string>
-  <string name="saved_card_title">代碼扣款</string>
-  <string name="saved_card_intro">尋找為顧客儲存的代碼，選擇一個，然後輸入要扣款的商品。顧客毋須在場；請先取得其同意。</string>
-  <string name="saved_card_find">尋找代碼</string>
-  <string name="saved_card_none">此顧客沒有已儲存的代碼。</string>
-  <string name="saved_card_expires">有效期至 %1$s/%2$s</string>
-  <string name="saved_card_unsupported">此代碼為其他付款類型儲存，無法在此扣款。</string>
-  <string name="saved_card_card">卡</string>
-  <string name="saved_card_charge">扣款 %1$s</string>
-  <string name="saved_card_charging">正在使用代碼扣款…</string>
-  <string name="saved_card_review_note">Adyen 會在顧客不在場的情況下使用代碼扣款。如有需要，請在交易紀錄中退款。</string>
-  <string name="setup_shopper_reference">請在“設定 › 支付”中選擇顧客參考編號，以使用代碼。</string>
-  <string name="setup_totals">目前收款目標無法提供終端匯總。Tap to Pay 不提供匯總。</string>
-  <string name="reconciliation_print_today">列印今日報表</string>
-  <string name="checkout_charge_token">代碼扣款</string>
-  <string name="checkout_choose_token">選擇代碼</string>
-  <string name="checkout_token_without_tip">使用代碼扣款時不含小費。</string>
-  <string name="checkout_token_without_donation">使用代碼扣款時不邀請捐款。</string>
-  <string name="checkout_token_without_tip_or_donation">使用代碼扣款時不含小費，亦不邀請捐款。</string>
-  <string name="reconciliation_mismatch_hint">請在交易紀錄中處理需要關注的付款。使用此終端的其他裝置也會計入其總額。</string>
-  <string name="setup_operation_reconciliation">Adyen 不允許重試。請在商戶後台查看此操作的結果。</string>
   <string name="storage_unavailable">無法讀取或儲存已儲存的設定或憑證。請重新啟動裝置。如問題持續，請參閱疑難排解指南的重設步驟，或報告應用程式問題。已儲存的檔案未有重設。</string>
 </resources>

@@ -22,12 +22,15 @@ import java.io.File
 import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 
+private val allResourceFolders =
+    listOf("values", "values-ja", "values-zh-rCN", "values-b+zh+Hant", "values-pt-rBR", "values-es-rMX", "values-fr-rFR")
+
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "ja-rJP")
 class LocalizationTest {
     @Test
     fun `shared and phone diagnostics stay grouped beside setup with shared keys sorted in every language`() {
-        listOf("values", "values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
+        allResourceFolders.forEach { folder ->
             val names = resourceEntries(folder).keys.toList()
             val setup = names.indexOf("string:settings_payments_app_setup_checked")
             val capabilities = names.indexOf("string:capabilities_intro")
@@ -55,7 +58,7 @@ class LocalizationTest {
     fun `application identity uses the owned domain and keeps the display name`() {
         assertThat(BuildConfig.APPLICATION_ID).isEqualTo("app.minimpos")
         assertThat(RuntimeEnvironment.getApplication().packageName).isEqualTo("app.minimpos")
-        listOf("values", "values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
+        allResourceFolders.forEach { folder ->
             assertThat(resourceEntries(folder).getValue("string:app_name").single()).isEqualTo("Mini mPOS")
         }
     }
@@ -67,6 +70,9 @@ class LocalizationTest {
             "values-ja" to "ja/",
             "values-zh-rCN" to "zh-CN/",
             "values-b+zh+Hant" to "zh-Hant/",
+            "values-pt-rBR" to "pt-BR/",
+            "values-es-rMX" to "es-MX/",
+            "values-fr-rFR" to "fr-FR/",
         ).forEach { (folder, path) ->
             assertWithMessage(folder)
                 .that(resourceEntries(folder).getValue("string:settings_quick_setup_hint").single())
@@ -76,7 +82,7 @@ class LocalizationTest {
 
     @Test
     fun `terminal address examples use an address reserved for documentation in every language`() {
-        listOf("values", "values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
+        allResourceFolders.forEach { folder ->
             assertWithMessage(folder)
                 .that(resourceEntries(folder).getValue("string:settings_host_placeholder").single())
                 .contains("192.0.2.1")
@@ -88,7 +94,7 @@ class LocalizationTest {
         val camelCase = Regex("[A-Za-z]*[a-z][A-Z][A-Za-z]*")
         // Product names are merchant-facing; protocol field names are not.
         val brands = setOf("mPOS", "PayMe", "iCloud")
-        listOf("values", "values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
+        allResourceFolders.forEach { folder ->
             resourceEntries(folder).forEach { (name, texts) ->
                 val identifiers =
                     camelCase
@@ -104,19 +110,56 @@ class LocalizationTest {
     @Test
     fun `translations cover every resource and preserve format arguments`() {
         val base = resourceEntries("values")
-        listOf("values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
+        listOf("values-ja", "values-zh-rCN", "values-b+zh+Hant", "values-pt-rBR", "values-es-rMX", "values-fr-rFR").forEach { folder ->
             val translated = resourceEntries(folder)
             assertThat(translated.keys).containsExactlyElementsIn(base.keys)
             assertWithMessage("$folder resource order").that(translated.keys.toList()).containsExactlyElementsIn(base.keys).inOrder()
             base.forEach { (name, texts) ->
                 val localized = translated.getValue(name)
-                // Japanese and Chinese both use only the CLDR "other" plural form.
-                assertThat(localized.size).isEqualTo(if (name.startsWith("plurals:")) 1 else texts.size)
-                localized.zip(if (name.startsWith("plurals:")) listOf(texts.last()) else texts).forEach { (actual, source) ->
+                // Japanese and Chinese use only "other"; the Latin locales also distinguish singulars.
+                val cjk = folder in setOf("values-ja", "values-zh-rCN", "values-b+zh+Hant")
+                val otherOnly = name.startsWith("plurals:") && cjk
+                val latinPlural = name.startsWith("plurals:") && !cjk
+                val originals =
+                    if (otherOnly) {
+                        listOf(texts.last())
+                    } else if (latinPlural) {
+                        texts + texts.last()
+                    } else {
+                        texts
+                    }
+                assertThat(localized.size).isEqualTo(originals.size)
+                localized.zip(originals).forEach { (actual, source) ->
                     assertWithMessage("$folder/$name").that(arguments(actual)).isEqualTo(arguments(source))
                     assertThat(actual).doesNotContain("\uFFFD")
                 }
             }
+        }
+    }
+
+    @Test
+    fun `Latin translations retain Adyen product names in every context`() {
+        val base = resourceEntries("values")
+        val products = listOf("Adyen Giving", "Checkout API", "Terminal API", "Adyen Payments", "Google Play", "Android")
+        listOf("values-pt-rBR", "values-es-rMX", "values-fr-rFR").forEach { folder ->
+            val translated = resourceEntries(folder)
+            base.forEach { (key, texts) ->
+                products.filter { product -> texts.any { product in it } }.forEach { product ->
+                    assertWithMessage("$folder/$key preserves $product")
+                        .that(translated.getValue(key).joinToString(" "))
+                        .contains(product)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `receipt quantity keeps its indentation without literal quote marks in every language`() {
+        val context = RuntimeEnvironment.getApplication()
+        listOf("en", "zh-CN", "zh-Hant", "ja", "pt-BR", "es-MX", "fr-FR").forEach { language ->
+            val text = context.withAppLanguage(language).getString(R.string.receipt_quantity, 2, "12.00")
+            assertWithMessage(language).that(text).startsWith("  ")
+            assertWithMessage(language).that(text).doesNotContain("\"")
         }
     }
 
@@ -127,6 +170,9 @@ class LocalizationTest {
                 "values-zh-rCN" to listOf("付款链接", "购物者识别号", "扣款 / 小费", "经理", "已结束"),
                 "values-b+zh+Hant" to listOf("付款連結", "顧客參考編號", "扣款 / 小費", "經理", "已結束"),
                 "values-ja" to listOf("決済リンク", "購入者参照ID", "キャプチャ / チップ", "マネージャー", "締めました"),
+                "values-pt-rBR" to listOf("Link de pagamento", "Referência do comprador", "Captura / gorjeta", "gerente", "encerrado"),
+                "values-es-rMX" to listOf("Enlace de pago", "Referencia del comprador", "Captura / propina", "gerente", "cerrado"),
+                "values-fr-rFR" to listOf("Lien de paiement", "Référence acheteur", "Capture / pourboire", "responsable", "clôturée"),
             )
         terms.forEach { (folder, expected) ->
             val strings = resourceEntries(folder)
@@ -138,7 +184,7 @@ class LocalizationTest {
             }
             assertThat(strings.getValue("string:reconciliation_closed_title").single()).contains(expected[4])
         }
-        listOf("values", "values-zh-rCN", "values-b+zh+Hant", "values-ja").forEach { folder ->
+        allResourceFolders.forEach { folder ->
             val strings = resourceEntries(folder)
             // Settings lists exactly the required roles new credentials lack by default, by their Customer Area names.
             val grantedByDefault =
@@ -217,7 +263,7 @@ class LocalizationTest {
                     .getNamedItem("android:name")
                     .nodeValue
             }
-        assertThat(names).containsExactly("en", "zh-CN", "zh-Hant", "ja")
+        assertThat(names).containsExactly("en", "zh-CN", "zh-Hant", "ja", "pt-BR", "es-MX", "fr-FR")
     }
 
     @Test

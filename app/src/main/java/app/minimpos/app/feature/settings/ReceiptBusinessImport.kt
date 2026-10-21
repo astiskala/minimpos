@@ -25,15 +25,17 @@ import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.currentSetupGate
 
 /**
- * Explicit Management lookup (through the setup gate) followed by review; only confirmation fills blank receipt fields.
+ * Explicit Management lookup through the setup gate, followed by review. Confirmation fills missing fields or
+ * explicitly replaces supplied fields.
  */
 @Composable
 internal fun ReceiptBusinessImport(
     state: ReceiptBusinessImportState,
     events: ReceiptBusinessEvents,
+    hasExistingDetails: Boolean,
 ) {
     val gate = currentSetupGate()
-    SettingNote(stringResource(R.string.settings_business_import_hint))
+    SettingIntro(stringResource(R.string.settings_business_import_hint))
     SettingActions {
         SecondaryButton(
             stringResource(R.string.settings_business_import),
@@ -63,10 +65,23 @@ internal fun ReceiptBusinessImport(
                     onClick = { events.onChoose(business) },
                     enabled = business.available,
                     modifier = Modifier.testTag("confirmReceiptBusiness"),
-                ) { Text(stringResource(R.string.transfer_import_action)) }
+                ) {
+                    Text(
+                        stringResource(if (hasExistingDetails) R.string.settings_business_supplement else R.string.transfer_import_action),
+                    )
+                }
             },
             dismissButton = {
-                TextButton(onClick = { events.onChoose(null) }) { Text(stringResource(R.string.action_cancel)) }
+                Column {
+                    if (hasExistingDetails) {
+                        TextButton(
+                            onClick = { events.onChoose(business, true) },
+                            enabled = business.available,
+                            modifier = Modifier.testTag("replaceReceiptBusiness"),
+                        ) { Text(stringResource(R.string.settings_business_replace)) }
+                    }
+                    TextButton(onClick = { events.onChoose(null) }) { Text(stringResource(R.string.action_cancel)) }
+                }
             },
         )
     }

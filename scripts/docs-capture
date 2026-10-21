@@ -2,7 +2,7 @@
 # Drives docs screenshot captures on the docs emulator (see .devin/skills/docs-screenshots/SKILL.md › Capture script).
 #
 #   scripts/docs-capture prepare             overlays off, no status icons, terminal device name, no animations
-#   scripts/docs-capture locale LANG         device locale and time zone of a sample-data.json market (en, zh-CN, zh-Hant, ja)
+#   scripts/docs-capture locale LANG         device locale and time zone of a supported sample-data.json market
 #   scripts/docs-capture snapshot NAME.tar   app data into /data/local/tmp/NAME.tar
 #   scripts/docs-capture restore NAME.tar    app data from /data/local/tmp/NAME.tar
 #   scripts/docs-capture install             build/install current debug APK on an owned clone
@@ -13,7 +13,7 @@
 #   scripts/docs-capture shot LANG NAME      raw capture into $SHOTS/LANG-NAME.png
 #   scripts/docs-capture expand_receipt      expand the open simulated printer sheet
 #   scripts/docs-capture flow LANG NAME...   named flows listed below, each from docs-$SNAPSHOT-LANG.tar
-#   scripts/docs-capture batch [LANG...]     all flows; all four languages by default, serially on one disposable clone
+#   scripts/docs-capture batch [LANG...]     all flows; all seven languages by default, serially on one disposable clone
 #   scripts/docs-capture process             raw S1F2/AMS1 captures into docs/images[/LANG]/ via scripts/docs-assets
 #   scripts/docs-capture finish              remove the capture-only device settings
 #   scripts/docs-capture shutdown            finish, then power off the owned disposable emulator
@@ -62,6 +62,7 @@ string() {
     local folder
     case $1 in
         en) folder=values ;; zh-CN) folder=values-zh-rCN ;; zh-Hant) folder=values-b+zh+Hant ;; ja) folder=values-ja ;;
+        pt-BR) folder=values-pt-rBR ;; es-MX) folder=values-es-rMX ;; fr-FR) folder=values-fr-rFR ;;
         *)
             printf '%s\n' "Unknown language: $1" >&2
             exit 1
@@ -104,6 +105,8 @@ prepare() {
     sleep 2
     remote cmd overlay disable com.android.internal.emulation.pixel_4a
     remote cmd overlay disable com.android.systemui.emulation.pixel_4a
+    remote cmd overlay disable com.android.internal.systemui.navbar.threebutton
+    remote cmd overlay enable com.android.internal.systemui.navbar.gestural
     remote settings put secure icon_blacklist \
         clock,battery,wifi,mobile,airplane,cast,hotspot,volume,bluetooth,location,alarm_clock,zen,ethernet,vpn,nfc,rotate,headset
     local scale
@@ -397,7 +400,7 @@ flow_checkout() {
     tap "$1" "=Alipay" 3
     shot "$1" wallet-scan
     back
-    tap "$1" ^checkout_pay 0.2
+    tap "$1" ^checkout_pay 1
     shot "$1" processing
     sleep 10
     shot "$1" approved
@@ -429,6 +432,7 @@ flow_authorize() {
 
 flow_transfer() {
     settings "$1" settings_data
+    scroll "$1" transfer_export
     tap "$1" transfer_export 2
     shot "$1" transfer
     tap "$1" transfer_show_codes 5
@@ -587,7 +591,7 @@ install() {
 
 batch() {
     require_clone
-    if [[ $# == 0 ]]; then set -- en zh-CN zh-Hant ja; fi
+    if [[ $# == 0 ]]; then set -- en zh-CN zh-Hant ja pt-BR es-MX fr-FR; fi
     local language
     for language in "$@"; do
         [[ -n $(string "$language" home_new_sale) ]] || exit 1

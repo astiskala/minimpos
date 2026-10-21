@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
   <!-- App, onboarding, and common actions -->
   <string name="app_name">Mini mPOS</string>
   <string name="locked">已锁定</string>
@@ -54,8 +54,10 @@
   <string name="home_new_sale_hint">添加商品或自定义金额</string>
   <string name="home_pre_auth">新建预授权</string>
   <string name="home_pre_auth_hint">冻结卡内金额</string>
+  <string name="home_saved_card">令牌扣款</string>
   <string name="home_refund">退款</string>
   <string name="home_history">交易记录</string>
+  <string name="home_reconciliation">对账</string>
   <string name="home_products">商品</string>
   <string name="home_settings">设置</string>
   <string name="home_printer_yes">打印机可用</string>
@@ -108,6 +110,11 @@
   <string name="checkout_pay">支付 %1$s</string>
   <string name="checkout_scan_wallet">扫描钱包</string>
   <string name="checkout_send_link">创建付款链接</string>
+  <string name="checkout_charge_token">令牌扣款</string>
+  <string name="checkout_choose_token">选择令牌</string>
+  <string name="checkout_token_without_tip">使用令牌扣款时不含小费。</string>
+  <string name="checkout_token_without_donation">使用令牌扣款时不邀请捐款。</string>
+  <string name="checkout_token_without_tip_or_donation">使用令牌扣款时不含小费，也不邀请捐款。</string>
   <string name="checkout_link_without_tip">付款链接不支持终端小费或收据小费。是否不加小费创建链接？</string>
   <string name="checkout_link_without_donation">付款链接不支持邀请慈善捐款。是否不邀请捐款创建链接？</string>
   <string name="checkout_link_without_tip_or_donation">付款链接不支持小费或慈善捐款。是否不含这些选项创建链接？</string>
@@ -133,12 +140,23 @@
   <string name="payment_unknown_outcome">终端未确认支付结果。再次收款前，请先在商户后台核实。</string>
   <string name="payment_interrupted">应用在收到结果前已停止运行。</string>
   <string name="capture_interrupted">应用在收到 Adyen 的扣款响应前已停止运行。可以安全地重试同一扣款请求。</string>
-
   <string name="shopper_order">订单</string>
   <string name="shopper_confirm_order">确认订单</string>
   <string name="shopper_confirm">确认</string>
   <string name="shopper_email_prompt">请输入您的电子邮件地址：</string>
   <string name="shopper_rating_prompt">请为本次体验评分（0–10）</string>
+
+  <!-- Saved cards -->
+  <string name="saved_card_title">令牌扣款</string>
+  <string name="saved_card_intro">查找为购物者保存的令牌，选择一个，然后录入要扣款的商品。购物者无需在场；请先征得其同意。</string>
+  <string name="saved_card_find">查找令牌</string>
+  <string name="saved_card_none">此购物者没有已保存的令牌。</string>
+  <string name="saved_card_expires">有效期至 %1$s/%2$s</string>
+  <string name="saved_card_unsupported">此令牌为其他付款类型保存，无法在此扣款。</string>
+  <string name="saved_card_card">卡</string>
+  <string name="saved_card_charge">扣款 %1$s</string>
+  <string name="saved_card_charging">正在使用令牌扣款…</string>
+  <string name="saved_card_review_note">Adyen 将在购物者不在场的情况下使用令牌扣款。如有需要，请在交易记录中退款。</string>
 
   <!-- Scanned wallets -->
   <string name="wallet_choose">选择钱包</string>
@@ -414,6 +432,7 @@
   <string name="reconciliation_closed_title">终端对账期 %1$s 已结束</string>
   <string name="reconciliation_matched">总额一致</string>
   <string name="reconciliation_mismatch">总额不一致</string>
+  <string name="reconciliation_mismatch_hint">请在交易记录中处理需要关注的付款。使用此终端的其他设备也会计入其总额。</string>
   <string name="reconciliation_close_period">结束终端对账期</string>
   <string name="reconciliation_offline_warning">离线销售：%1$d · 尚未上传至 Adyen 的批次：%2$d</string>
   <string name="reconciliation_unresolved">未确认的终端付款：%1$d</string>
@@ -430,6 +449,7 @@
   <string name="reconciliation_close_confirm_message">终端将结束当前对账期并开始新的对账期。此操作无法撤销。</string>
   <string name="reconciliation_report_header">每日报表</string>
   <string name="reconciliation_report_hint">打印本设备今日付款和退款的本地汇总。这不是 Adyen 的结算。</string>
+  <string name="reconciliation_print_today">打印今日报表</string>
 
   <!-- Products and sample data -->
   <string name="products_title">商品</string>
@@ -676,6 +696,9 @@
     <item>简体中文</item>
     <item>繁體中文</item>
     <item>日本語</item>
+    <item>Português (Brasil)</item>
+    <item>Español (México)</item>
+    <item>Français</item>
   </string-array>
 
   <!-- Settings: terminal and Tap to Pay -->
@@ -1001,7 +1024,9 @@
   <string name="settings_business_import">从 Adyen 导入商家信息</string>
   <string name="settings_business_import_hint">核对已分配门店（Management API - Stores read）或商家账户（Management API - Accounts read）的收据信息。商家账户仅提供法人名称。</string>
   <string name="settings_business_review">核对商家信息</string>
-  <string name="settings_business_review_hint">仅补充空白的商家名称、地址和电话。已有文本绝不被替换，税号、标题和页脚不变。</string>
+  <string name="settings_business_review_hint">可补全缺失的商家信息，或用获取的名称、地址和电话替换现有信息。导入的空白字段保留原值，税号、标题和页脚不变。</string>
+  <string name="settings_business_supplement">补全缺失信息</string>
+  <string name="settings_business_replace">替换现有信息</string>
   <string name="settings_business_unavailable">没有可导入的商家信息。</string>
   <string name="settings_business_name">商家名称</string>
   <string name="settings_address">地址（每行一条）</string>
@@ -1150,6 +1175,9 @@
   <string name="setup_key_creation_unconfirmed">尚未确认密钥创建结果。请继续密钥设置，先读取 Adyen 设置再重试。</string>
   <string name="setup_printer">没有可用的打印机。请检查“设置 › 收据”中的“打印机”，使用模拟器时请检查“设置 › 模拟器”。</string>
   <string name="setup_charge_too_old">此操作时间过久，无法安全地再次发送。请在商户后台查看结果。</string>
+  <string name="setup_shopper_reference">请在“设置 › 支付”中选择购物者识别号，以使用令牌。</string>
+  <string name="setup_totals">当前收款目标无法提供终端汇总。Tap to Pay 不提供汇总。</string>
+  <string name="setup_operation_reconciliation">Adyen 不允许重试。请在商户后台查看此操作的结果。</string>
   <string name="payment_context_mismatch">当前设置与原支付的终端、商家账户或环境不一致。请恢复原设置后继续。</string>
   <string name="fault_unreachable_terminal">无法连接终端。请确认终端已开机、位于同一网络，且 IP 地址正确。</string>
   <string name="fault_unreachable_adyen">无法连接 Adyen。请检查互联网连接。</string>
@@ -1190,27 +1218,5 @@
   <string name="sentences">%1$s%2$s</string>
   <string name="action_unconfirmed">Adyen 未确认结果。请先再次查询，再进行其他操作。</string>
   <string name="still_unconfirmed">仍未确认：%1$s</string>
-  <string name="home_saved_card">令牌扣款</string>
-  <string name="home_reconciliation">对账</string>
-  <string name="saved_card_title">令牌扣款</string>
-  <string name="saved_card_intro">查找为购物者保存的令牌，选择一个，然后录入要扣款的商品。购物者无需在场；请先征得其同意。</string>
-  <string name="saved_card_find">查找令牌</string>
-  <string name="saved_card_none">此购物者没有已保存的令牌。</string>
-  <string name="saved_card_expires">有效期至 %1$s/%2$s</string>
-  <string name="saved_card_unsupported">此令牌为其他付款类型保存，无法在此扣款。</string>
-  <string name="saved_card_card">卡</string>
-  <string name="saved_card_charge">扣款 %1$s</string>
-  <string name="saved_card_charging">正在使用令牌扣款…</string>
-  <string name="saved_card_review_note">Adyen 将在购物者不在场的情况下使用令牌扣款。如有需要，请在交易记录中退款。</string>
-  <string name="setup_shopper_reference">请在“设置 › 支付”中选择购物者识别号，以使用令牌。</string>
-  <string name="setup_totals">当前收款目标无法提供终端汇总。Tap to Pay 不提供汇总。</string>
-  <string name="reconciliation_print_today">打印今日报表</string>
-  <string name="checkout_charge_token">令牌扣款</string>
-  <string name="checkout_choose_token">选择令牌</string>
-  <string name="checkout_token_without_tip">使用令牌扣款时不含小费。</string>
-  <string name="checkout_token_without_donation">使用令牌扣款时不邀请捐款。</string>
-  <string name="checkout_token_without_tip_or_donation">使用令牌扣款时不含小费，也不邀请捐款。</string>
-  <string name="reconciliation_mismatch_hint">请在交易记录中处理需要关注的付款。使用此终端的其他设备也会计入其总额。</string>
-  <string name="setup_operation_reconciliation">Adyen 不允许重试。请在商户后台查看此操作的结果。</string>
   <string name="storage_unavailable">无法读取或保存已存储的设置或凭据。请重启设备。如果问题仍然存在，请参阅故障排除指南中的重置步骤，或报告应用问题。已保存的文件未被重置。</string>
 </resources>

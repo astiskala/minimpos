@@ -1,15 +1,17 @@
 ---
 name: docs-screenshots
-description: Re-capture the screenshots and social image of the docs/ website, or run the AMS1-sized emulator, for Mini mPOS
+description: Re-capture the screenshots and social image of the docs/ website, or run the AMS1-sized emulator, for
+  Mini mPOS
 ---
 
 # Screenshots for `docs/images/` and the AMS1 emulator
 
 ## Output format
 
-- Capture English, Simplified Chinese, Traditional Chinese and Japanese using `AppSettings.languageTag` (`en`,
-  `zh-CN`, `zh-Hant`, `ja`), not translated overlays. English assets live directly in `docs/images/`; the other sets
-  live in matching language subdirectories. Localized pages and social metadata must use their own set. Use the
+- Capture English, Simplified Chinese, Traditional Chinese, Japanese, Brazilian Portuguese, Mexican Spanish and French
+  using `AppSettings.languageTag` (`en`, `zh-CN`, `zh-Hant`, `ja`, `pt-BR`, `es-MX`, `fr-FR`), not translated overlays.
+  English assets live directly in `docs/images/`; the other sets live in matching language subdirectories. Localized
+  pages and social metadata must use their own set. Use the
   separate localized café fixtures in `app/src/main/assets/sample-data.json`, including native merchant details,
   products, categories, receipt text, currency and prices. Never translate or reprice saved merchant data. Adyen receipt
   fields remain verbatim in the app; only synthetic fixture card receipts are regenerated for the chosen demo currency.
@@ -21,7 +23,8 @@ description: Re-capture the screenshots and social image of the docs/ website, o
     on the S1F2 AVD, then `wm size reset`/`wm density reset`; `screencap` then returns 480×800).
 - PNGs with a 96-colour palette (median cut, no dither), made by `scripts/docs-capture process`; see Capture script.
 - No system bars: Adyen terminals show no clock or gesture bar. Hide the status bar icons and clock with
-  `settings put secure icon_blacklist clock,battery,wifi,mobile,airplane,cast,hotspot,volume,bluetooth,location,alarm_clock,zen,ethernet,vpn,nfc,rotate,headset`
+  `settings put secure icon_blacklist
+  clock,battery,wifi,mobile,airplane,cast,hotspot,volume,bluetooth,location,alarm_clock,zen,ethernet,vpn,nfc,rotate,headset`
   (then `stop`/`start`), and before resizing paint the status bar (top 48 px at 720×1280) and gesture bar (bottom 48 px)
   with the app's first row below and last row above them, column by column. For an existing 540×960 PNG that is the top
   and bottom 36 px; for `sale-ams1.png` (480×800, three-button bar) the top 36 px and bottom 72 px. Delete
@@ -32,14 +35,16 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 ## Capture script
 
 `scripts/docs-capture` (Bash, checked by shellcheck) drives the docs emulator by visible text, so one sequence works
-in every language: `prepare`, `locale LANG`, `snapshot`/`restore NAME.tar` (app data in `/data/local/tmp`), `launch LANG`,
+in every language: `prepare`, `locale LANG`, `snapshot`/`restore NAME.tar` (app data in `/data/local/tmp`), `launch
+  LANG`,
 `tap LANG KEY` (a string resource, or `=literal text`), `scroll LANG KEY`, `shot LANG NAME` and `finish`. Raw
 Captures collect in `/tmp/minimpos-shots` as `LANG-NAME.png`; `process` then paints the system bars, scales S1F2 to
 540×960 (AMS1 stays 480×800) and quantizes them into `docs/images[/LANG]/` through `:tooling`'s `screenshots` command
 (`DocsScreenshots`). Keep per-language fixtures as on-device snapshots (`docs-<set>-<lang>.tar`); `flow LANG NAME...`
 restores one before each named flow:
 
-- `home`: home only; `overview`: home, history, history-search; `catalog`: products; `preferences`: settings, capabilities.
+- `home`: home only; `overview`: home, history, history-search; `catalog`: products; `preferences`: settings,
+  capabilities.
 - `cart`: sale; `checkout`: sale, checkout, wallets, wallet-scan, processing, approved, receipt, refund.
 - `authorize`: pre-auth; `preauth`: pre-auth-detail; `settings`: terminal-setup, tax, terminal-tipping.
 - `transfer`: transfer, export; `partial`: partial-payment; `gratuity`: tip-receipt, tip; `tax_dialog`: tax-dialog.
@@ -52,7 +57,8 @@ recapture by hand twice, rather than a temporary script. Do not edit the running
 Launch waits for localized Home controls; a Home capture checks them again and refuses splash screens.
 For cloning, approved reset opt-in, batch capture, image processing/review and shutdown, use
 [CONTRIBUTING's repeatable workflow](../../../CONTRIBUTING.md#repeatable-screenshot-refresh). Do not recreate those
-steps with temporary Python, Node or shell scripts. Fixture resets refuse non-emulators, unowned AVDs and missing archives.
+steps with temporary Python, Node or shell scripts. Fixture resets refuse non-emulators, unowned AVDs and missing
+  archives.
 
 ## Emulator
 
@@ -68,7 +74,8 @@ steps with temporary Python, Node or shell scripts. Fixture resets refuse non-em
   the app; an early launch can report that the activity does not exist.
 - Setup: `adb root`, set `persist.sys.locale` to the fixture's `deviceLocale`, then `stop`/`start`; wait until Package
   Manager resolves the app's activity, not just its APK path. After restarting, disable automatic time zone selection
-  with `settings put global auto_time_zone 0` and apply the fixture's `timeZone` with `cmd alarm set-timezone <timeZone>`.
+  with `settings put global auto_time_zone 0` and apply the fixture's `timeZone` with `cmd alarm set-timezone
+  <timeZone>`.
   Verify `getprop persist.sys.timezone`; a numeric Binder call or setprop alone is not reliable. Window, transition
   and animator animations off; SystemUI demo mode (clock 09:30, full Wi-Fi and battery, no notifications; re-send it
   after every `stop`/`start`).
@@ -105,7 +112,8 @@ Seeded before the first launch (debug builds only), piped in with
   other language's native café, realistic prices and tax examples. JPY minor units are whole yen, not hundredths.
 - The admin PIN (1357) is set in the app.
 - Back up the database through SQLite, including committed WAL contents, before preparing localized copies. Recompute
-  line amounts, net/tax totals, tips, authorizations, captures, tenders, refunds and synthetic card-receipt totals in the
+  line amounts, net/tax totals, tips, authorizations, captures, tenders, refunds and synthetic card-receipt totals in
+  the
   selected currency. Validate foreign keys, integrity and summed line totals before installing a disposable fixture.
 
 | Page language | Device locale | Currency | Main sale | Item refund | Tip sale + tip | Deposit | Partial sale |
@@ -114,12 +122,16 @@ Seeded before the first launch (debug builds only), piped in with
 | Simplified Chinese | zh-SG | SGD | 33.50 | 10.00 | 35.00 + 5.00 | 200.00 | 21.39 |
 | Traditional Chinese | zh-HK | HKD | 232.00 | 66.00 | 192.00 + 18.00 | 2,000.00 | 121.39 |
 | Japanese | ja-JP | JPY | 3,050 | 1,000 | 3,000 + 500 | 20,000 | 2,139 |
+| Brazilian Portuguese | pt-BR | BRL | 87.00 | 30.00 | 80.00 + 10.00 | 200.00 | 21.39 |
+| Mexican Spanish | es-MX | MXN | 335.00 | 100.00 | 330.00 + 50.00 | 2,000.00 | 21.39 |
+| French | fr-FR | EUR | 27.00 | 9.00 | 24.00 + 5.00 | 200.00 | 21.39 |
 
 ## Flows
 
 The amounts and customer references below describe the English fixture. Use the table above and the JSON fixture for
 the other languages. CJK fixtures use numeric customer references so input methods do not autocorrect ASCII acronyms.
-In Japanese, send `KEYCODE_EISU` before typing to keep digits half-width. Verify the actual field text after the keyboard
+In Japanese, send `KEYCODE_EISU` before typing to keep digits half-width. Verify the actual field text after the
+  keyboard
 closes. Always restore the market's device locale when recapturing only part of a flow.
 
 1. Sale of 2 flat whites, banana bread and beans ($34.00, CUST-1042, save card; `checkout.png` shows Save card on,
@@ -188,7 +200,7 @@ closes. Always restore the market's device locale when recapturing only part of 
 
 - `scripts/docs-assets social` generates `social.png` (1200×630) from the checked-in `social.html` template and
   `social-copy.json` beside this skill. Keep their original design, frame insets and demo disclosures. It renders all
-  four languages with local assets only; no host paths or browser versions are embedded in a temporary generator.
+  seven languages with local assets only; no host paths or browser versions are embedded in a temporary generator.
 - The site's terminal frames are original SVG illustrations: keep their bottom bezels blank (no model labels) and the
   AMS1's top free of an NFC symbol; `./gradlew :website-test:check` checks this.
 - Use `MINIMPOS_CHROME` for Playwright's installed `chrome-headless-shell` if regular Chrome crashes in the sandbox.

@@ -26,5 +26,26 @@
     "lead": "Adyen Android 端末で商品の販売、<br>決済、レシート印刷を。",
     "pill": "無料・オープンソース",
     "foot": "独立したプロジェクト · Adyenの承認・サポートなし · 日本語シミュレーターデモ"
+  },
+  "pt-BR": {
+    "language": "pt-BR",
+    "title": "Todo o pagamento.<br>Um único<br>terminal.",
+    "lead": "Venda produtos, receba pagamentos e imprima recibos<br>em terminais Android da Adyen.",
+    "pill": "Gratuito e de código aberto",
+    "foot": "Projeto independente · Sem apoio ou suporte da Adyen · Demonstrações em português do Brasil"
+  },
+  "es-MX": {
+    "language": "es-MX",
+    "title": "Todo el cobro.<br>Un solo<br>terminal.",
+    "lead": "Vende productos, acepta pagos e imprime recibos<br>en terminales Android de Adyen.",
+    "pill": "Gratis y de código abierto",
+    "foot": "Proyecto independiente · Sin respaldo ni soporte de Adyen · Demostraciones en español"
+  },
+  "fr-FR": {
+    "language": "fr-FR",
+    "title": "Tout l’encaissement.<br>Un seul terminal<br>de paiement.",
+    "lead": "Vendez, encaissez et imprimez des reçus<br>sur les terminaux Android d’Adyen.",
+    "pill": "Gratuit et open source",
+    "foot": "Projet indépendant · Sans approbation ni assistance d’Adyen · Démonstrations en français"
   }
 }

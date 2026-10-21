@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Início rápido – Mini mPOS</title>
+  <meta name="description" content="Instale o Mini mPOS, conecte-o ao Adyen e verifique a configuração do seu TEST antes de ir ao ar.">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="canonical" href="https://minimpos.app/pt-BR/quick-start.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Início rápido com Mini mPOS">
+  <meta property="og:description" content="Pré-requisitos, instalação, conexão com Adyen e validação TEST antes de entrar em operação.">
+  <meta property="og:url" content="https://minimpos.app/pt-BR/quick-start.html">
+  <meta property="og:image" content="https://minimpos.app/images/pt-BR/social.png">
+  <meta property="og:image:alt" content="Mini mPOS em terminais Adyen ilustrados, mostrando demonstrações de simuladores em português do Brasil.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Início rápido com Mini mPOS">
+  <meta name="twitter:description" content="Pré-requisitos, instalação, conexão com Adyen e validação TEST antes de entrar em operação.">
+  <meta name="twitter:image" content="https://minimpos.app/images/pt-BR/social.png">
+  <meta name="twitter:image:alt" content="Mini mPOS em terminais Adyen ilustrados, mostrando demonstrações de simuladores em português do Brasil.">
+  <meta name="theme-color" content="#00843F">
+    <link href="https://minimpos.app/quick-start.html" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/quick-start.html" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/quick-start.html" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/ja/quick-start.html" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/quick-start.html" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/es-MX/quick-start.html" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/quick-start.html" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/quick-start.html" hreflang="x-default" rel="alternate">
+    <meta content="en_US" property="og:locale:alternate">
+    <meta content="zh_CN" property="og:locale:alternate">
+    <meta content="zh_HK" property="og:locale:alternate">
+    <meta content="ja_JP" property="og:locale:alternate">
+    <meta content="pt_BR" property="og:locale">
+    <meta content="es_MX" property="og:locale:alternate">
+    <meta content="fr_FR" property="og:locale:alternate">
+  </head>
+<body>
+  <a class="skip" href="#main">Pular para o conteúdo</a>
+  <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Mini mPOS casa"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav class="desktop-nav" aria-label="Principal"><ul class="nav">
+      <li><a href="quick-start.html" aria-current="page">Início rápido</a></li><li><a href="using.html">Usando Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">Solução de problemas</a></li><li><a href="setup.html">Auxiliar de configuração</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>Menu</summary><div class="mobile-panel"><nav aria-label="Principal"><ul class="nav">
+      <li><a href="quick-start.html" aria-current="page">Início rápido</a></li><li><a href="using.html">Usando Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">Solução de problemas</a></li><li><a href="setup.html">Auxiliar de configuração</a></li>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="Idioma"><p>Idioma</p><ul><li><a href="../quick-start.html" hreflang="en" lang="en">English</a></li><li><a href="../zh-CN/quick-start.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/quick-start.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li><li><a href="../ja/quick-start.html" hreflang="ja" lang="ja">日本語</a></li><li><a aria-current="page" href="../pt-BR/quick-start.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../es-MX/quick-start.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/quick-start.html" hreflang="fr-FR" lang="fr-FR">Français</a></li></ul></nav>
+    </div></details>
+    <details class="language-menu">
+      <summary aria-label="Idioma: Português (Brasil)" title="Idioma"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">Português (Brasil)</span></summary>
+      <nav aria-label="Idioma"><ul><li><a href="../quick-start.html" hreflang="en" lang="en">English</a></li><li><a href="../zh-CN/quick-start.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/quick-start.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li><li><a href="../ja/quick-start.html" hreflang="ja" lang="ja">日本語</a></li><li><a aria-current="page" href="../pt-BR/quick-start.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../es-MX/quick-start.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/quick-start.html" hreflang="fr-FR" lang="fr-FR">Français</a></li></ul></nav>
+    </details>
+  </div></header>
+  <main id="main">
+    <section class="guide-hero"><div class="wrap">
+      <p class="eyebrow">Guia</p><h1>Início rápido</h1>
+      <p class="lead">Instale o Mini mPOS, conecte-o à Adyen e verifique seu primeiro pagamento TEST. Siga apenas as etapas de configuração do seu dispositivo.</p>
+      <p>Apenas explorando? <a href="#try">Experimente o simulador</a> sem uma conta ou terminal Adyen.</p>
+    </div></section>
+    <div class="wrap guide">
+      <nav class="toc" id="contents" aria-label="Guia de navegação">
+        <p class="toc-title">Guias</p>
+        <p><a href="quick-start.html" aria-current="page">Início rápido</a><br><a href="using.html">Usando Mini mPOS</a><br><a href="troubleshooting.html">Solução de problemas</a></p>
+        <div class="desktop-contents"><p class="toc-title">Nesta página</p><ol>
+          <li><a href="#choose">Verifique os pré-requisitos</a><ul>
+            <li><a href="#devices">Dispositivos</a></li><li><a href="#network-requirements">Líquido</a></li><li><a href="#credentials">Credenciais da Adyen</a></li>
+          </ul></li>
+          <li><a href="#install">Instale o aplicativo</a></li>
+          <li><a href="#connect">Conectar-se à Adyen</a><ul>
+            <li><a href="#helper">Digitalizar códigos de configuração</a></li><li><a href="#on-terminal">Terminal Adyen</a></li><li><a href="#network">Terminal de rede</a></li>
+            <li><a href="#cloud">Terminal de nuvem</a></li><li><a href="#tap-to-pay">Tap to Pay</a></li><li><a href="#shared-key-creation">Chave de criptografia ausente</a></li>
+          </ul></li>
+          <li><a href="#first-payment">Valide sua configuração TEST</a></li><li><a href="#live">Ativar pagamentos LIVE</a></li><li><a href="#try">Experimente o simulador</a></li>
+        </ol></div>
+        <details class="mobile-contents"><summary class="toc-title">Nesta página</summary><ol>
+          <li><a href="#choose">Verifique os pré-requisitos</a><ul>
+            <li><a href="#devices">Dispositivos</a></li><li><a href="#network-requirements">Líquido</a></li><li><a href="#credentials">Credenciais da Adyen</a></li>
+          </ul></li>
+          <li><a href="#install">Instale o aplicativo</a></li>
+          <li><a href="#connect">Conectar-se à Adyen</a><ul>
+            <li><a href="#helper">Digitalizar códigos de configuração</a></li><li><a href="#on-terminal">Terminal Adyen</a></li><li><a href="#network">Terminal de rede</a></li>
+            <li><a href="#cloud">Terminal de nuvem</a></li><li><a href="#tap-to-pay">Tap to Pay</a></li><li><a href="#shared-key-creation">Chave de criptografia ausente</a></li>
+          </ul></li>
+          <li><a href="#first-payment">Valide sua configuração TEST</a></li><li><a href="#live">Ativar pagamentos LIVE</a></li><li><a href="#try">Experimente o simulador</a></li>
+        </ol></details>
+      </nav>
+      <div class="guide-body">
+        <section id="choose">
+          <h2>Verifique os pré-requisitos</h2>
+          <p>Verifique esses requisitos antes de instalar o aplicativo. O dispositivo executa Mini mPOS; o terminal de pagamento aceita o cartão. Eles podem ser o mesmo dispositivo.</p>
+          <h3 id="devices">Escolha uma configuração de dispositivo</h3>
+          <dl class="settings-list setup-choices">
+            <div><dt><a href="#on-terminal">Em um terminal Adyen</a></dt><dd>A verificação completa em um dispositivo. Use um terminal de pagamento Adyen Android com Android 9 ou posterior. Confira os modelos atuais no <a href="https://docs.adyen.com/point-of-sale/android-terminals">Guia do terminal Adyen Android</a>.</dd></div>
+            <div><dt><a href="#network">Tablet ou telefone com terminal de rede</a></dt><dd>Recomendado para um contador. Um tablet ou telefone Android 9+ na mesma rede local que um terminal Adyen. Mini mPOS não está instalado nesse terminal.</dd></div>
+            <div><dt><a href="#cloud">Tablet ou telefone com terminal em nuvem</a></dt><dd>Para um dispositivo e terminal em redes diferentes. Ambos precisam de acesso à internet; os pagamentos chegam ao terminal através da Adyen.</dd></div>
+            <div><dt><a href="#tap-to-pay">Tap to Pay em um telefone</a></dt><dd>Nenhum terminal separado. Use um telefone com comunicação de proximidade (NFC) e o aplicativo Adyen Payments, ativado pelo Suporte Adyen. Verifique o <a href="https://docs.adyen.com/point-of-sale/mobile-android/requirements">Requisitos do telefone Adyen</a> e <a href="https://docs.adyen.com/point-of-sale/ipp-mobile">Países e métodos de pagamento suportados pela Adyen</a>.</dd></div>
+          </dl>
+          <ul>
+            <li>A impressão necessita de um terminal com impressora incorporada. Se não houver nenhum, você pode enviar por e-mail ou compartilhar recibos.</li>
+            <li>A leitura de códigos de barras, códigos de reembolso QR ou códigos de configuração precisa de uma câmera.</li>
+          </ul>
+          <h3 id="network-requirements">Preparar a rede</h3>
+          <p>Peça ao administrador de rede do site para permitir o seguinte:</p>
+          <dl class="settings-list">
+            <dt>Internet</dt><dd>Saída HTTPS em TCP 443 do dispositivo e terminal para <code>*.adyen.com</code> e <code>*.adyenpayments.com</code>. <a href="https://docs.adyen.com/development-resources/security/integration-security/allowlisting#dns-resolution-and-domain-base-allowlist">Permitir estes por nome de domínio</a>, não endereço IP, porque os endereços IP da Adyen mudam.</dd>
+            <dt>Líquido local (para terminais de rede)</dt><dd>O tablet ou telefone deve alcançar o endereço IP do terminal em TCP 8443. Conecte ambos à mesma rede, e certifique-se de que o isolamento do cliente Wi-Fi (comum em redes convidadas) não os separe.</dd>
+            <dt>Recibos de e-mail (opcional)</dt><dd>Acesso de saída para seu servidor SMTP, geralmente TCP 587 (STARTTLS) ou 465 (SSL/TLS).</dd>
+          </dl>
+          <p>Dê a cada terminal de rede um endereço IP fixo com uma reserva DHCP em seu roteador. Os dados móveis funcionam para tablet ou telefone em configurações de nuvem e Tap to Pay, mas não com um terminal de rede. Para os próprios requisitos do terminal, consulte o <a href="https://docs.adyen.com/point-of-sale/design-your-integration/network-and-connectivity/network-configuration">Guia de configuração de rede Adyen</a>.</p>
+          <h3 id="credentials">Preparar credenciais da Adyen</h3>
+          <p>Para validar com a Adyen, você precisa de uma conta de comerciante de teste ativa com pagamentos presenciais habilitados e acesso Customer Area. Comece com credenciais TEST e um terminal TEST ou Adyen Payments Test. Para LIVE, use a conta real, credenciais e terminal ou aplicativo Adyen Payments correspondentes.</p>
+          <p>Para criar ou editar credenciais, seu usuário Customer Area precisa <strong>Manage API credentials</strong> ou <strong>Merchant admin</strong>. Estas são permissões de usuário, não funções para a chave API.</p>
+          <p>Habilite os métodos de pagamento POS que você pretende aceitar; siga o <a href="https://docs.adyen.com/point-of-sale/what-we-support/payment-methods/add-payment-methods">Guia de configuração do método de pagamento Adyen</a>. Mini mPOS usa os métodos configurados do terminal.</p>
+          <ol>
+            <li>No Customer Area, vá para <strong>Developers › API credentials</strong>. Crie uma credencial para Mini mPOS e gere sua chave API; veja o <a href="https://docs.adyen.com/development-resources/api-credentials">Guia de credenciais Adyen API</a>.</li>
+            <li>Para a chave API principal, habilite estas funções adicionais:
+              <ul class="roles">
+                <li><strong>Management API - Terminal actions read</strong></li>
+                <li><strong>Management API - Terminal settings read and write</strong></li>
+                <li><strong>Management API - Terminal settings Advanced read and write</strong></li>
+                <li><strong>Cloud Device API role</strong></li>
+              </ul>
+              As mesmas funções são necessárias para cada configuração. A credencial deve pertencer à conta da sua empresa e ter acesso à conta do comerciante do destino. Veja o <a href="https://docs.adyen.com/development-resources/api-credentials/roles">Guia de função Adyen API</a>.</li>
+            <li>Para LIVE, observe o <strong>Prefixo de URL LIVE</strong> de <strong>Developers › API URLs</strong>.</li>
+            <li>Para Tap to Pay, Mini mPOS cria automaticamente uma credencial separada com escopo de comerciante com o <strong>Adyen Payments App role</strong> e uma chave de cliente. O suporte da Adyen deve habilitar Tap to Pay e tornar esta função atribuível a partir da credencial da sua empresa.</li>
+            <li>Se desejar configurar o dispositivo manualmente:
+              <ul>
+                <li>Observe o <strong>Conta de comerciante</strong>.</li>
+                <li>Para um terminal Adyen, terminal de rede ou Tap to Pay, encontre o <strong>Chave compartilhada</strong> (identificador, senha e versão) em <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong>. Os terminais em nuvem não o utilizam.</li>
+              </ul>
+            </li>
+          </ol>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">Importante</p>
+            <p>Mini mPOS não possui servidor, portanto as chaves API são armazenadas criptografadas no dispositivo. Crie credenciais apenas para Mini mPOS com apenas as funções API necessárias para sua configuração. Defina um PIN de administrador e revogue as credenciais se um dispositivo for perdido. Veja o <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">política de segurança</a>.</p>
+          </div>
+          <div class="callout callout-note" role="note">
+            <p class="callout-title">Nota</p>
+            <p>Mini mPOS é independente; não é feito, endossado ou apoiado pela Adyen. Siga a documentação vinculada da Adyen para procedimentos de conta e plataforma.</p>
+          </div>
+          <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
+        </section>
+        <section id="install">
+          <h2>Instale o aplicativo</h2>
+          <p>Baixe o APK assinado <code>minimpos-&lt;version&gt;.apk</code> na <a href="https://github.com/astiskala/minimpos/releases/latest">versão mais recente</a>.</p>
+          <dl class="settings-list">
+            <dt>Terminal Adyen</dt><dd><ol><li>No Customer Area, carregue o APK e implante-o em seus terminais; veja o <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Guia de implantação do aplicativo Adyen</a>. Seu usuário precisa de permissão para fazer upload e implantar aplicativos.</li><li>Abra Mini mPOS no terminal, selecione <strong>Conectar-se à Adyen</strong> e toque em <strong>Continuar</strong>.</li></ol></dd>
+            <dt>Tablet ou telefone</dt><dd><ol><li>Abra o APK no dispositivo e permita a instalação a partir do seu navegador ou gerenciador de arquivos quando o Android solicitar.</li><li>Abra Mini mPOS, selecione <strong>Conectar-se à Adyen</strong> e toque em <strong>Continuar</strong>.</li></ol></dd>
+          </dl>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">Importante</p>
+            <p>Instale todas as atualizações da mesma fonte de assinatura. Um terminal rejeita uma atualização assinada com uma chave diferente. Para construir e assinar o seu próprio, consulte o <a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md#signing-your-own-apk">guia do contribuidor</a>.</p>
+          </div>
+          <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
+        </section>
+        <section id="connect">
+          <h2>Conectar-se à Adyen</h2>
+          <p>Conectar pares Mini mPOS com seu terminal ou aplicativo Adyen Payments e verificar sua chave API da Adyen. Siga apenas a parte da sua configuração. Cada um tem duas opções: o <a href="setup.html">auxiliar de configuração</a> (recomendado), ou entrada manual em <strong>Configurações › Terminal</strong>.</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2">
+              <img alt="Demonstração do simulador em português do Brasil: Configuração do terminal" height="960" loading="lazy" src="../images/pt-BR/terminal-setup.png" width="540">
+            </div>
+            <figcaption class="fine">Demonstração de configuração do emulador em português do Brasil.</figcaption>
+          </figure>
+          <h3 id="helper">Digitalizar códigos de configuração de um computador</h3>
+          <ol>
+            <li>Em um computador confiável, abra o <a href="setup.html">auxiliar de configuração</a>. Funciona offline e não envia nada.</li>
+            <li>Escolha onde o Mini mPOS é executado e o ambiente, <strong>TEST</strong> ou <strong>LIVE</strong>.</li>
+            <li>Escolher <strong>Automático (recomendado)</strong> para inserir apenas a chave Adyen API; o dispositivo procura o resto. Escolha <strong>Manual</strong> para inserir todos os detalhes da conexão.</li>
+            <li>Insira os detalhes solicitados.</li>
+            <li>Clique <strong>Fazer códigos QR</strong>. Mantenha a página aberta: ela mostra o código de transferência de 12 caracteres.</li>
+            <li>Em Mini mPOS, abrir <strong>Configurações › Terminal</strong> e toque em <strong>Digitalizar códigos de configuração</strong> ou o ícone QR no canto superior direito. Leia as orientações, toque em <strong>Já tenho códigos</strong> e escaneie cada código.</li>
+            <li>Verifique o destino e o ambiente, insira o código de transferência e toque em <strong>Verificar e importar</strong>.</li>
+            <li>Se solicitado, escolha seu terminal. Para Tap to Pay, conclua o registro quando o aplicativo Adyen Payments for aberto. Nada é salvo até que todas as verificações sejam aprovadas.</li>
+          </ol>
+          <h3 id="on-terminal">Conectar um terminal Adyen</h3>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">Pré-requisitos</p>
+            <ul>
+              <li>Mini mPOS <a href="#install">implantado no terminal</a></li>
+              <li>Um <a href="#credentials">Chave Adyen API</a> do ambiente do terminal</li>
+              <li>Acesso à Internet para o terminal</li>
+            </ul>
+          </div>
+          <dl class="settings-list setup-route">
+            <dt>Auxiliar de configuração (recomendado)</dt>
+            <dd>No <a href="setup.html">auxiliar de configuração</a>, escolha <strong>Em um terminal Adyen</strong>, o terminal <strong>TEST</strong> ou <strong>LIVE</strong> ambiente e <strong>Automático</strong>. Insira a chave API e depois <a href="#helper">digitalizar os códigos</a>.</dd>
+          </dl>
+          <details class="manual-setup">
+            <summary>Manual</summary>
+            <ol>
+              <li>Em <strong>Configurações › Terminal › Adyen API</strong>, insira a chave Adyen API e a conta do comerciante, além do prefixo URL ativo para LIVE. Toque <strong>Encontre o terminal para configurar</strong> para testar o acesso API e preencher a chave compartilhada automaticamente, ou <strong>Teste API</strong> para continuar manualmente.</li>
+              <li>Verifique ou insira a chave compartilhada e toque em <strong>Testar conexão</strong>.</li>
+            </ol>
+          </details>
+          <h3 id="network">Emparelhar um terminal na sua rede</h3>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">Pré-requisitos</p>
+            <ul>
+              <li>Mini mPOS <a href="#install">instalado</a> no tablet ou telefone</li>
+              <li>Um <a href="#credentials">Chave Adyen API</a> do ambiente do terminal</li>
+              <li>O dispositivo e terminal no <a href="#network-requirements">mesma rede</a>, com TCP 8443 aberto entre eles</li>
+            </ul>
+          </div>
+          <dl class="settings-list setup-route">
+            <dt>Auxiliar de configuração (recomendado)</dt>
+            <dd>No <a href="setup.html">auxiliar de configuração</a>, escolha <strong>Em um tablet ou telefone, com um terminal na mesma rede</strong>, o terminal <strong>TEST</strong> ou <strong>LIVE</strong> ambiente e <strong>Automático</strong>. Insira a chave API e depois <a href="#helper">digitalizar os códigos</a>. Se for encontrado mais de um terminal, escolha o seu.</dd>
+          </dl>
+          <details class="manual-setup">
+            <summary>Manual</summary>
+            <ol>
+              <li>Em <strong>Configurações › Terminal</strong>, conjunto <strong>Os pagamentos vão para</strong> para <strong>Um terminal na sua rede</strong>. Abaixo <strong>Ambiente</strong>, escolha TEST ou LIVE para corresponder ao terminal.</li>
+              <li>Abaixo <strong>Adyen API</strong>, insira a chave Adyen API e a conta do comerciante, além do prefixo URL ativo para LIVE. Toque <strong>Encontre o terminal para configurar</strong> testar o acesso API e escolher o terminal. Insira quaisquer detalhes ausentes manualmente.</li>
+              <li>Verifique ou insira o endereço IP do terminal e <strong>ID do Terminal (POIID)</strong>. Ambos estão na tela de informações do dispositivo do terminal.</li>
+              <li>Verifique ou insira a chave compartilhada e toque em <strong>Testar conexão</strong>.</li>
+            </ol>
+          </details>
+          <h3 id="cloud">Conectar um terminal em nuvem</h3>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">Pré-requisitos</p>
+            <ul>
+              <li>Mini mPOS <a href="#install">instalado</a> no tablet ou telefone</li>
+              <li>Um <a href="#credentials">Chave Adyen API</a> do ambiente do terminal</li>
+              <li>Acesso à Internet para o dispositivo e o terminal</li>
+            </ul>
+          </div>
+          <dl class="settings-list setup-route">
+            <dt>Auxiliar de configuração (recomendado)</dt>
+            <dd>No <a href="setup.html">auxiliar de configuração</a>, escolha <strong>Em um tablet ou telefone, com terminal pela internet (nuvem)</strong>, o terminal <strong>TEST</strong> ou <strong>LIVE</strong> ambiente e <strong>Automático</strong>. Insira a chave API e depois <a href="#helper">digitalizar os códigos</a>. Se for encontrado mais de um terminal, escolha o seu.</dd>
+          </dl>
+          <details class="manual-setup">
+            <summary>Manual</summary>
+            <ol>
+              <li>Em <strong>Configurações › Terminal</strong>, conjunto <strong>Os pagamentos vão para</strong> para <strong>Um terminal pela internet (nuvem)</strong>. Abaixo <strong>Ambiente</strong>, escolha TEST ou LIVE para corresponder ao terminal.</li>
+              <li>Abaixo <strong>Adyen API</strong>, insira a chave Adyen API e a conta do comerciante, além do prefixo URL ativo para LIVE. Toque <strong>Encontre o terminal para configurar</strong> testar o acesso API e escolher o terminal. Insira quaisquer detalhes ausentes manualmente.</li>
+              <li>Verifique ou insira o <strong>ID do Terminal (POIID)</strong> e toque em <strong>Testar conexão</strong>.</li>
+            </ol>
+          </details>
+          <h3 id="tap-to-pay">Configurar Tap to Pay</h3>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">Pré-requisitos</p>
+            <ul>
+              <li>Tap to Pay e o <strong>Adyen Payments App role</strong> habilitado para sua empresa pela Adyen; <a href="https://help.adyen.com/contact">entrar em contato com o suporte da Adyen</a></li>
+              <li>Mini mPOS <a href="#install">instalado</a> em um <a href="#devices">telefone suportado</a></li>
+              <li>Um <a href="#credentials">Chave Adyen API</a> e a chave compartilhada</li>
+            </ul>
+          </div>
+          <ol>
+            <li>No Google Play, instale <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.test">Adyen Payments Test</a> para TEST ou <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.live">Adyen Payments</a> para LIVE. Ambos podem permanecer instalados.</li>
+            <li>Em Mini mPOS, abrir <strong>Configurações › Terminal</strong> e selecione <strong>Tap to Pay neste telefone</strong>. Escolha <strong>TEST</strong> ou <strong>LIVE</strong> sob <strong>Ambiente</strong>; Mini mPOS abre apenas o aplicativo desse ambiente.</li>
+          </ol>
+          <dl class="settings-list setup-route">
+            <dt>Auxiliar de configuração (recomendado)</dt>
+            <dd>No <a href="setup.html">auxiliar de configuração</a>, escolha <strong>Em um telefone, com Tap to Pay no aplicativo Adyen Payments</strong> e <strong>TEST</strong> ou <strong>LIVE</strong>. Insira a chave Adyen API correspondente, a conta do comerciante e a chave compartilhada e, opcionalmente, um ID da loja. <a href="#helper">Digitalize os códigos</a> e toque em <strong>Verificar e importar</strong>. Mini mPOS cria a credencial de registro e abre o aplicativo Adyen Payments para concluir o registro como parte da importação.</dd>
+          </dl>
+          <details class="manual-setup">
+            <summary>Manual</summary>
+            <ol>
+              <li>Em <strong>Configurações › Terminal › Adyen API</strong>, insira a chave Adyen API e a conta do comerciante. Para pagamentos em tempo real, insira também o prefixo URL em tempo real. Toque <strong>Teste API</strong>.</li>
+              <li>Abaixo <strong>Tap to Pay</strong>, opcionalmente toque em <strong>Escolher loja</strong> ou insira um ID de loja. Nenhuma chave API separada é necessária.</li>
+              <li>Toque <strong>Configurar Tap to Pay</strong> e realizar o cadastro no aplicativo Adyen Payments.</li>
+              <li>Em Mini mPOS, inserir a chave compartilhada.</li>
+            </ol>
+          </details>
+          <p>O aplicativo Adyen Payments não pode executar um teste de conexão, portanto confirme a configuração com um <a href="#first-payment">Pagamento TEST</a>. Para cancelar o registro do telefone mais tarde, use <strong>Remover este telefone</strong>.</p>
+          <h3 id="shared-key-creation">Criar uma chave de criptografia ausente</h3>
+          <p>Se um terminal físico ainda não tiver chave de criptografia, a configuração oferece <strong>Criar chave de criptografia</strong> após a aprovação das verificações de credenciais e contas.</p>
+          <ol>
+            <li>Verifique o ID do terminal e o ambiente mostrado e depois confirme. Não altere as configurações deste terminal em outro lugar enquanto a chave é criada.</li>
+            <li>Caso a conexão ainda não tenha sido verificada, atualizar a configuração do terminal; veja <a href="troubleshooting.html#key-setup">recuperação de configuração de chave</a>.</li>
+            <li>Se a criação for interrompida, toque em <strong>Retomar configuração da chave</strong>. Para configuração QR, leia os mesmos códigos novamente com seu código de transferência.</li>
+          </ol>
+          <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
+        </section>
+        <section id="first-payment">
+          <h2>Valide sua configuração TEST</h2>
+          <ol>
+            <li>Em <strong>Configurações › Terminal</strong>, verifique se o ambiente está <strong>TEST</strong>. Conclua a final <strong>Testar conexão</strong> etapa para verificar o acesso API e verificações de conexão suportadas.
+              <ul>
+                <li>Terminal físico: execução <strong>Testar conexão</strong> e verifique se passa.</li>
+                <li>Tap to Pay: confirme se o telefone está registrado em <strong>Adyen Payments Test</strong>. A verificação da conexão valida apenas a configuração: não há diagnóstico do terminal. Use o pagamento de teste abaixo para verificar o comportamento do pagamento.</li>
+              </ul></li>
+            <li>Em <strong>Configurações › Pagamentos</strong>, verifique a moeda. Em <strong>Configurações › Imposto</strong>, verificar as taxas e se os preços incluem impostos.</li>
+            <li>Na página inicial, toque em <strong>Nova venda</strong>, adicione um <strong>Item personalizado</strong> e toque em <strong>Cobrar</strong>.</li>
+            <li>Toque <strong>Pagar</strong> e siga o <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Guia de teste Adyen POS</a> para um pagamento bem sucedido.</li>
+            <li>Verifique se o resultado está aprovado e se o recibo possui valor, moeda e imposto corretos. Abra a venda em <strong>Histórico</strong>. Combine com seu <strong>Referência PSP</strong> ao pagamento no TEST Customer Area.</li>
+            <li><a href="using.html#refund">Reembolsar o pagamento</a> e verifique o resultado final do reembolso no TEST Customer Area. <strong>Reembolso solicitado</strong> não é uma confirmação final.</li>
+            <li>Repetir a venda com um cenário de pagamento recusado do <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Guia de teste Adyen POS</a>. Verifique se Mini mPOS mostra uma recusa, não uma aprovação; veja <a href="troubleshooting.html#declines">pagamentos recusados</a>.</li>
+          </ol>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">Aviso</p>
+            <p>Se o resultado for desconhecido, não pague novamente. Siga o <a href="troubleshooting.html#unknown">etapas de recuperação</a> primeiro.</p>
+          </div>
+          <p>Em seguida, configure produtos, recibos e acesso de pessoal em <a href="using.html">Usando Mini mPOS</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
+        </section>
+        <section id="live">
+          <h2>Ativar pagamentos LIVE</h2>
+          <p>Antes de usar recursos de terminal opcionais, revise <a href="using.html#capabilities">Capacidades da Adyen</a> e teste seu destino real: <a href="using.html#terminal-tips">gorjetas no terminal</a>, <a href="using.html#terminal-checkout">pagamentos parciais, avisos do comprador, doações e digitação manual do cartão</a>, <a href="using.html#offline">processamento off-line</a> e <a href="using.html#reconciliation">reconciliação terminal</a>. A disponibilidade depende da configuração da Adyen e do destino do pagamento; os resultados do simulador não são verificação de terminal real.</p>
+          <ol>
+            <li>Em TEST, experimente apenas os fluxos de trabalho opcionais que você planeja usar: <a href="using.html#preauth">depósitos</a>, <a href="using.html#tips">gorjetas de recebimento</a>, <a href="using.html#payment-links">links de pagamento</a> ou <a href="using.html#wallets">carteiras digitalizadas</a>. Depósitos e gorjetas de recebimento retêm fundos até a captura. Verifique os resultados finais da captura na Customer Area.</li>
+            <li>Teste os métodos de entrega de recibos que você planeja usar: imprimir em uma impressora real, enviar um e-mail de teste ou compartilhar um recibo.</li>
+            <li>Definir um Administrador PIN e, se necessário, um Gerente PIN; veja <a href="using.html#staff">acesso de pessoal</a>.</li>
+            <li>Mude para o terminal LIVE ou para o aplicativo LIVE Pagamentos, com credenciais LIVE. Para um terminal de rede/nuvem ou Tap to Pay, escolha <strong>LIVE</strong> sob <strong>Ambiente</strong>. Digite o <strong>Prefixo de URL LIVE</strong>; veja o <a href="https://docs.adyen.com/development-resources/live-endpoints">Guia de endpoints ativos da Adyen</a>. Tap to Pay precisa de registro novamente no ambiente selecionado.</li>
+            <li>Em <strong>Configurações › Terminal</strong>, verifique se o ambiente está <strong>LIVE</strong>. Conclua a final <strong>Testar conexão</strong> etapa para verificar o acesso API e verificações de conexão suportadas.
+              <ul>
+                <li>Terminal físico: execução <strong>Testar conexão</strong> e verifique se passa.</li>
+                <li>Tap to Pay: confirme se o telefone está registrado no LIVE <strong>Adyen Payments</strong> aplicativo. A verificação da conexão valida apenas a configuração: não há diagnóstico do terminal.</li>
+              </ul></li>
+          </ol>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">Aviso</p>
+            <p>Alternar entre TEST, LIVE e o simulador exclui todo o histórico de pagamentos no dispositivo, incluindo dados de recuperação para pagamentos inacabados. Resolva todos os pagamentos sob <strong>Precisa de atenção</strong> primeiro.</p>
+          </div>
+          <p>Para verificações diárias e reconciliação, consulte <a href="using.html#close-day">Fechar o dia</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
+        </section>
+        <section id="try">
+          <h2>Experimente o simulador</h2>
+          <p>Explore Mini mPOS sem uma conta ou terminal Adyen. Nenhum cartão é cobrado.</p>
+          <p>Para explorar avisos offline, ative <strong>Aprovações off-line</strong> em <strong>Configurações › Simulador</strong>. As vendas simuladas aprovadas não têm referência PSP e reportam um lote não confirmado. Inspecione a venda no Histórico e experimente <a href="using.html#reconciliation">reconciliação terminal</a>. Esta é uma demonstração, não um teste de autorização offline real ou upload posterior para a Adyen.</p>
+          <ol>
+            <li><a href="#install">Instale o aplicativo</a> em um telefone ou emulador Android 9+.</li>
+            <li>Na tela de boas-vindas, selecione <strong>Experimente uma demonstração</strong> e toque em <strong>Continuar</strong>. As outras opções são <strong>Digitalizar códigos de configuração</strong>, do auxiliar de configuração ou de outro dispositivo, e <strong>Conectar-se à Adyen</strong>. Os terminais Adyen selecionam inicialmente a conexão; outros dispositivos selecionam a demonstração.</li>
+            <li>Em <strong>Configurações › Simulador</strong>, escolha o resultado do pagamento, o prazo e se há impressora disponível.</li>
+          </ol>
+          <p>Os produtos de amostra e o histórico são rotulados como demonstrações. Cada uso de <strong>Adicionar dados de amostra</strong> substitui os detalhes comerciais do recibo por detalhes fictícios do café, mesmo que já existam amostras; o layout do recibo e as configurações de entrega permanecem inalterados. Contagem de amostras em totais e relatórios de dias de demonstração; eles não são pagamentos reais. Em <strong>Configurações › Dados e transferência</strong>, usar <strong>Adicionar dados de amostra</strong> ou <strong>Remover dados de amostra</strong>; a remoção mantém seus próprios produtos, histórico e configurações. Para links de demonstração off-line, consulte <a href="using.html#payment-links">links de pagamento</a>.</p>
+          <p>Pronto para conectar? Em <strong>Configurações › Simulador</strong>, toque em <strong>Configurar pagamentos reais</strong>. Revise os dados de amostra e os atalhos de recibo e toque em <strong>Continuar com a configuração</strong>. Abrir a configuração não altera nenhum dado. Uma mudança confirmada para TEST ou LIVE exclui todo o histórico local, incluindo operações inacabadas; produtos de amostra e detalhes do recibo ficam. Remova amostras indesejadas separadamente e revise detalhes comerciais de recibos fictícios antes de pagamentos reais. Comece com TEST.</p>
+          <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="Guias e configuração"><ul class="footer-nav">
+      <li><a href="quick-start.html" aria-current="page">Início rápido</a></li><li><a href="using.html">Usando Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">Solução de problemas</a></li><li><a href="setup.html">Auxiliar de configuração</a></li>
+    </ul></nav>
+    <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · Licença MIT · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Segurança</a></p>
+    <p class="fine">Adyen é uma marca registrada da Adyen N.V. Mini mPOS é independente e não é afiliado, endossado ou apoiado pela Adyen.</p>
+  </div></footer>
+</body>
+</html>

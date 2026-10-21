@@ -152,7 +152,7 @@ standalone release builds retain release lint by default. R8, signing and packag
   CI includes them in its existing reports artifact. Check timestamps: old failure artifacts may remain.
 - `LocalizationTest` checks resource/format parity and writes receipt samples under
   `app/build/reports/localization/`. `LocalizedUiTest` checks Simplified/Traditional Chinese and Japanese checkout
-  at AMS1 size. `ScreenTextTest` finds text cut off without an ellipsis in all four languages at AMS1 size, and text
+  at AMS1 size. `ScreenTextTest` finds text cut off without an ellipsis in all seven languages at AMS1 size, and text
   still in English in the debug-only en-XA pseudo-locale.
 - `testDebugUnitTestMinSdk` reruns every app test on Robolectric SDK 28 (S1F2's Android 9); it is part of `check`.
   Filter it like `testDebugUnitTest`.
@@ -210,8 +210,10 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
   others `@param`. Don't merely repeat a declaration's name.
 - Keep Compose components small. Pass state/callbacks rather than view models below screen level, reuse components,
   and use `ColumnScope`/`RowScope` extensions for siblings that need parent spacing.
-- Put user text in resources, in short US English, with Simplified/Traditional Chinese and Japanese translations
-  and matching format arguments.
+- Put user text in resources, in short US English, with Simplified/Traditional Chinese, Japanese, Brazilian Portuguese,
+  Mexican Spanish and French translations
+  and matching format arguments. Group `strings.xml` by feature, keeping the same section and resource order in every
+  language; place new entries beside related strings.
   CJK plurals use `other`. Preserve identifiers, stored spelling and Adyen text; keep Customer Area paths English.
   Follow the [Adyen partner style guide](https://docs.adyen.com/development-resources/partner-style-guide) for app copy
   and merchant guides: short active sentences, consistent terms and numbered instructions. Name Adyen in documentation
@@ -229,6 +231,29 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
 - QR formats retain one current contract. Update the app, setup helper, format tests and helper vectors together;
   see [repository constraints](AGENTS.md).
 - New-install localized/regional defaults must not overwrite stored text or imported settings.
+
+### Translation terminology
+
+Use `pt-BR`, `es-MX` and `fr-FR` consistently in app language choices, guide paths and screenshot fixtures.
+Adyen’s localized [Portuguese help](https://help.adyen.com/pt_BR), [Spanish help](https://help.adyen.com/es_MX) and
+[French help](https://help.adyen.com/fr_FR) guide the payment vocabulary. Keep product names, credential roles and
+Customer Area navigation in English. Spanish uses Adyen’s localized portal name,
+[Área de Clientes](https://help.adyen.com/es_MX/knowledge/account/access-your-customer-area/i-can-t-access-my-account-how-do-i-reset-my-mfa-method).
+Distinguish a capture from settlement and terminal reconciliation:
+
+| English | Brazilian Portuguese | Mexican Spanish | French |
+| --- | --- | --- | --- |
+| Payment | Pagamento | Pago | Paiement |
+| Refund | Reembolso | Reembolso | Remboursement |
+| Capture | Captura | Captura | Capture |
+| Pre-authorization | Pré-autorização | Preautorización | Pré-autorisation |
+| Tip | Gorjeta | Propina | Pourboire |
+| Settlement | Liquidação | Liquidación | Règlement |
+| Reconciliation | Reconciliação | Conciliación | Rapprochement |
+| Receipt | Recibo | Recibo | Reçu |
+| Shopper reference | Referência do comprador | Referencia del comprador | Référence acheteur |
+| Manager PIN | PIN de gerente | PIN de gerente | PIN responsable |
+| Admin PIN | PIN de administrador | PIN de administrador | PIN administrateur |
 
 ### Adyen API model ownership
 
@@ -288,13 +313,14 @@ helper runs `docs/js/setup.js` and the vendored `qrcodegen.js`. Preserve the hel
 format alongside `TransferCodec`, `QrChunks`, `TransferSeal` and the helper vectors in `SetupTransferTest`.
 
 The merchant documentation has three guides: setup, using the app, troubleshooting. Each fact has one home, with
-links from elsewhere. Update English, Simplified Chinese, Traditional Chinese and Japanese together, including metadata
+links from elsewhere. Update English, Simplified Chinese, Traditional Chinese, Japanese, Brazilian Portuguese, Mexican
+Spanish and French together, including metadata
 and reciprocal language switches. Website tests protect workflow coverage and translation parity, not a fixed count
 of pages or headings.
 For a quick check, run `./gradlew :website-test:check`; the full gate remains required.
 
 Use [the screenshot skill](.devin/skills/docs-screenshots/SKILL.md) to capture simulator demos and social images in all
-four supported languages, with its fictional local companies, prices and currencies. Each translated page uses its
+seven supported languages, with its fictional local companies, prices and currencies. Each translated page uses its
 own language's captures. Screenshots must match their original terminal frames: S1F2 540×960, AMS1 480×800.
 Do not crop or stretch to fit,
 label screenshots as demos, and keep demo data consistent. The guides' SMTP links must match
@@ -312,7 +338,7 @@ for Adyen's Customer Area, with 25% rounded corners; only the launcher activity 
 512×512, 32-bit sRGB PNG, opaque square background, no corner mask or shadow, following
 [Google Play's specifications](https://developer.android.com/distribute/google-play/resources/icon-design-specifications).
 When changing the SVG, re-export this asset and the 48/72/96/144/192 px application PNGs, update the vector paths and
-regenerate all four social previews with `scripts/docs-assets social`. App screenshots need recapturing only if their
+regenerate all seven social previews with `scripts/docs-assets social`. App screenshots need recapturing only if their
 visible content changes.
 
 ### Repeatable screenshot refresh
@@ -344,11 +370,11 @@ fixtures before each named flow and captures both terminal sizes. `DOCS_DATE` ov
 (`101619302026.00`, Android's `MMDDhhmmYYYY.ss`). Home captures refuse splash screens. Raw S1F2 and AMS1 images share
 one folder; processing selects dimensions and bar heights from the terminal-specific filename.
 
-`social` renders the checked-in template and four-language copy with local assets only; use `MINIMPOS_CHROME` for a
+`social` renders the checked-in template and seven-language copy with local assets only; use `MINIMPOS_CHROME` for a
 Chrome/Chromium or `chrome-headless-shell` executable. `review` validates language parity, frame dimensions and indexed
 palettes, then writes labeled contact sheets to `build/docs-assets` (`DOCS_WORK` overrides it). Inspect them: valid
-dimensions do not prove the correct screen or transaction. Website checks also render all four languages' five pages at
-390/1280 px, reject broken images and horizontal overflow, and save 40 screenshots in
+dimensions do not prove the correct screen or transaction. Website checks also render all seven languages' five pages at
+390/1280 px, reject broken images and horizontal overflow, and save 70 screenshots in
 `website-test/build/reports/guide-layout`. Run `scripts/dev finish` before committing.
 
 ## Dependency and build maintenance

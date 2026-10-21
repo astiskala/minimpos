@@ -197,6 +197,18 @@ class ScreenTextTest {
     fun `no Japanese text is cut off at AMS1 size`() = assertNothingCutOff()
 
     @Test
+    @Config(qualifiers = "pt-rBR-w320dp-h460dp-hdpi")
+    fun `no Brazilian Portuguese text is cut off at AMS1 size`() = assertNothingCutOff()
+
+    @Test
+    @Config(qualifiers = "es-rMX-w320dp-h460dp-hdpi")
+    fun `no Mexican Spanish text is cut off at AMS1 size`() = assertNothingCutOff()
+
+    @Test
+    @Config(qualifiers = "fr-rFR-w320dp-h460dp-hdpi")
+    fun `no French text is cut off at AMS1 size`() = assertNothingCutOff()
+
+    @Test
     @Config(qualifiers = "en-rXA-w320dp-h460dp-hdpi")
     fun `every translatable text is shown translated in the pseudo-locale`() {
         fun strings(tag: String): List<String> {

@@ -254,6 +254,198 @@
         "Reusable cup": "リユースカップ",
         "Catering deposit": "ケータリング予約金"
       }
+    },
+    "pt-BR": {
+      "deviceLocale": "pt-BR",
+      "timeZone": "America/Sao_Paulo",
+      "currencyCode": "BRL",
+      "customerReference": "1042",
+      "preAuthCustomerReference": "2077",
+      "decimals": 2,
+      "tipMinor": 1000,
+      "partialMinor": 2139,
+      "taxDialogRate": "8.875",
+      "taxRates": [
+        {
+          "id": 1,
+          "name": "Imposto",
+          "rateMilliPercent": 10000
+        },
+        {
+          "id": 2,
+          "name": "Sem imposto",
+          "rateMilliPercent": 0
+        }
+      ],
+      "pricesMinor": {
+        "Flat white": 1200,
+        "Long black": 1000,
+        "Cappuccino": 1400,
+        "Chai latte": 1600,
+        "Iced latte": 1800,
+        "Banana bread": 1800,
+        "Almond croissant": 2200,
+        "Avocado toast": 2800,
+        "Coffee beans 250 g": 4500,
+        "Reusable cup": 3500,
+        "Catering deposit": 20000
+      },
+      "receipt": {
+        "businessName": "Café Horizonte",
+        "addressLines": "Rua do Café, 123\nSão Paulo SP 01000-000",
+        "taxIdLabel": "CPF/CNPJ",
+        "taxId": "00.000.000/0001-00",
+        "title": "RECIBO",
+        "footer": "Obrigado pela visita!",
+        "phone": ""
+      },
+      "names": {
+        "Coffee": "Café",
+        "Food": "Comida",
+        "Retail": "Loja",
+        "Bookings": "Reservas",
+        "GST": "Imposto",
+        "GST-free": "Sem imposto",
+        "Flat white": "Flat white",
+        "Long black": "Café preto",
+        "Cappuccino": "Cappuccino",
+        "Chai latte": "Chai latte",
+        "Iced latte": "Latte gelado",
+        "Banana bread": "Bolo de banana",
+        "Almond croissant": "Croissant de amêndoas",
+        "Avocado toast": "Torrada com abacate",
+        "Coffee beans 250 g": "Café em grãos 250 g",
+        "Reusable cup": "Copo reutilizável",
+        "Catering deposit": "Sinal para catering"
+      }
+    },
+    "es-MX": {
+      "deviceLocale": "es-MX",
+      "timeZone": "America/Mexico_City",
+      "currencyCode": "MXN",
+      "customerReference": "1042",
+      "preAuthCustomerReference": "2077",
+      "decimals": 2,
+      "tipMinor": 5000,
+      "partialMinor": 2139,
+      "taxDialogRate": "8.875",
+      "taxRates": [
+        {
+          "id": 1,
+          "name": "IVA",
+          "rateMilliPercent": 16000
+        },
+        {
+          "id": 2,
+          "name": "Sin IVA",
+          "rateMilliPercent": 0
+        }
+      ],
+      "pricesMinor": {
+        "Flat white": 5500,
+        "Long black": 4500,
+        "Cappuccino": 6000,
+        "Chai latte": 6500,
+        "Iced latte": 7000,
+        "Banana bread": 4500,
+        "Almond croissant": 6000,
+        "Avocado toast": 11000,
+        "Coffee beans 250 g": 18000,
+        "Reusable cup": 15000,
+        "Catering deposit": 200000
+      },
+      "receipt": {
+        "businessName": "Café del Puerto",
+        "addressLines": "Calle del Café 123\nCiudad de México 06000",
+        "taxIdLabel": "RFC",
+        "taxId": "DEMO010101XXX",
+        "title": "RECIBO",
+        "footer": "¡Gracias por tu visita!",
+        "phone": ""
+      },
+      "names": {
+        "Coffee": "Café",
+        "Food": "Comida",
+        "Retail": "Tienda",
+        "Bookings": "Reservas",
+        "GST": "IVA",
+        "GST-free": "Sin IVA",
+        "Flat white": "Flat white",
+        "Long black": "Café americano",
+        "Cappuccino": "Capuchino",
+        "Chai latte": "Chai latte",
+        "Iced latte": "Latte helado",
+        "Banana bread": "Pan de plátano",
+        "Almond croissant": "Croissant de almendras",
+        "Avocado toast": "Tostada de aguacate",
+        "Coffee beans 250 g": "Café en grano 250 g",
+        "Reusable cup": "Vaso reutilizable",
+        "Catering deposit": "Anticipo para catering"
+      }
+    },
+    "fr-FR": {
+      "deviceLocale": "fr-FR",
+      "timeZone": "Europe/Paris",
+      "currencyCode": "EUR",
+      "customerReference": "1042",
+      "preAuthCustomerReference": "2077",
+      "decimals": 2,
+      "tipMinor": 500,
+      "partialMinor": 2139,
+      "taxDialogRate": "8.875",
+      "taxRates": [
+        {
+          "id": 1,
+          "name": "TVA",
+          "rateMilliPercent": 20000
+        },
+        {
+          "id": 2,
+          "name": "Sans TVA",
+          "rateMilliPercent": 0
+        }
+      ],
+      "pricesMinor": {
+        "Flat white": 400,
+        "Long black": 350,
+        "Cappuccino": 450,
+        "Chai latte": 500,
+        "Iced latte": 550,
+        "Banana bread": 500,
+        "Almond croissant": 550,
+        "Avocado toast": 800,
+        "Coffee beans 250 g": 1400,
+        "Reusable cup": 1200,
+        "Catering deposit": 20000
+      },
+      "receipt": {
+        "businessName": "Café du Port",
+        "addressLines": "1 rue du Café\n75001 Paris",
+        "taxIdLabel": "N° TVA",
+        "taxId": "FR00000000000",
+        "title": "REÇU",
+        "footer": "Merci de votre visite !",
+        "phone": ""
+      },
+      "names": {
+        "Coffee": "Café",
+        "Food": "Restauration",
+        "Retail": "Boutique",
+        "Bookings": "Réservations",
+        "GST": "TVA",
+        "GST-free": "Sans TVA",
+        "Flat white": "Flat white",
+        "Long black": "Café allongé",
+        "Cappuccino": "Cappuccino",
+        "Chai latte": "Chai latte",
+        "Iced latte": "Latte glacé",
+        "Banana bread": "Cake à la banane",
+        "Almond croissant": "Croissant aux amandes",
+        "Avocado toast": "Tartine à l’avocat",
+        "Coffee beans 250 g": "Café en grains 250 g",
+        "Reusable cup": "Gobelet réutilisable",
+        "Catering deposit": "Acompte traiteur"
+      }
     }
   },
   "categories": {

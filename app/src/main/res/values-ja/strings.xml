@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
   <!-- App, onboarding, and common actions -->
   <string name="app_name">Mini mPOS</string>
   <string name="locked">ロック中</string>
@@ -54,8 +54,10 @@
   <string name="home_new_sale_hint">商品または任意の金額を追加</string>
   <string name="home_pre_auth">新規プリオーソリ</string>
   <string name="home_pre_auth_hint">カードの利用枠を確保</string>
+  <string name="home_saved_card">トークンで請求</string>
   <string name="home_refund">返金</string>
   <string name="home_history">取引履歴</string>
+  <string name="home_reconciliation">照合</string>
   <string name="home_products">商品</string>
   <string name="home_settings">設定</string>
   <string name="home_printer_yes">プリンターあり</string>
@@ -108,6 +110,11 @@
   <string name="checkout_pay">%1$sを決済</string>
   <string name="checkout_scan_wallet">ウォレットをスキャン</string>
   <string name="checkout_send_link">決済リンクを作成</string>
+  <string name="checkout_charge_token">トークンで請求</string>
+  <string name="checkout_choose_token">トークンを選択</string>
+  <string name="checkout_token_without_tip">トークンでの請求にはチップは含まれません。</string>
+  <string name="checkout_token_without_donation">トークンでの請求では寄付を案内しません。</string>
+  <string name="checkout_token_without_tip_or_donation">トークンでの請求にはチップは含まれず、寄付も案内しません。</string>
   <string name="checkout_link_without_tip">決済リンクは端末と領収書のチップに対応していません。チップなしでリンクを作成しますか？</string>
   <string name="checkout_link_without_donation">決済リンクはチャリティ寄付の案内に対応していません。寄付の案内なしでリンクを作成しますか？</string>
   <string name="checkout_link_without_tip_or_donation">決済リンクはチップとチャリティ寄付に対応していません。これらなしでリンクを作成しますか？</string>
@@ -133,12 +140,23 @@
   <string name="payment_unknown_outcome">端末から結果を確認できませんでした。再度請求する前に、Customer Areaで決済を確認してください。</string>
   <string name="payment_interrupted">結果を受信する前にアプリが停止しました。</string>
   <string name="capture_interrupted">キャプチャ要求へのAdyenの応答を受信する前にアプリが停止しました。同じキャプチャ要求を安全に再試行できます。</string>
-
   <string name="shopper_order">注文</string>
   <string name="shopper_confirm_order">注文を確認</string>
   <string name="shopper_confirm">確認</string>
   <string name="shopper_email_prompt">メールアドレスを入力してください：</string>
   <string name="shopper_rating_prompt">今回の体験を評価してください（0–10）</string>
+
+  <!-- Saved cards -->
+  <string name="saved_card_title">トークンで請求</string>
+  <string name="saved_card_intro">購入者に保存されたトークンを検索して選択し、請求する商品を入力します。購入者が不在でも請求できます。事前に同意を得てください。</string>
+  <string name="saved_card_find">トークンを検索</string>
+  <string name="saved_card_none">この購入者に保存されたトークンはありません。</string>
+  <string name="saved_card_expires">有効期限 %1$s/%2$s</string>
+  <string name="saved_card_unsupported">別の種類の支払い用に保存されたトークンのため、ここでは請求できません。</string>
+  <string name="saved_card_card">カード</string>
+  <string name="saved_card_charge">%1$sを請求</string>
+  <string name="saved_card_charging">トークンで請求しています…</string>
+  <string name="saved_card_review_note">Adyenは購入者不在のままトークンで請求します。必要な場合は取引履歴から返金してください。</string>
 
   <!-- Scanned wallets -->
   <string name="wallet_choose">ウォレットを選択</string>
@@ -414,6 +432,7 @@
   <string name="reconciliation_closed_title">端末の集計期間 %1$s を締めました</string>
   <string name="reconciliation_matched">合計が一致しています</string>
   <string name="reconciliation_mismatch">合計が一致しません</string>
+  <string name="reconciliation_mismatch_hint">取引履歴で確認が必要な決済を解決してください。この端末を使う他のデバイスの決済も合計に含まれます。</string>
   <string name="reconciliation_close_period">端末の集計期間を締める</string>
   <string name="reconciliation_offline_warning">オフライン売上：%1$d · Adyenに未送信のバッチ：%2$d</string>
   <string name="reconciliation_unresolved">未確定の端末決済：%1$d</string>
@@ -430,6 +449,7 @@
   <string name="reconciliation_close_confirm_message">端末は現在の集計期間を終了し、新しい期間を開始します。元に戻すことはできません。</string>
   <string name="reconciliation_report_header">日次レポート</string>
   <string name="reconciliation_report_hint">このデバイスの本日の決済と返金のローカル集計を印刷します。Adyenの精算ではありません。</string>
+  <string name="reconciliation_print_today">本日のレポートを印刷</string>
 
   <!-- Products and sample data -->
   <string name="products_title">商品</string>
@@ -676,6 +696,9 @@
     <item>简体中文</item>
     <item>繁體中文</item>
     <item>日本語</item>
+    <item>Português (Brasil)</item>
+    <item>Español (México)</item>
+    <item>Français</item>
   </string-array>
 
   <!-- Settings: terminal and Tap to Pay -->
@@ -1001,7 +1024,9 @@
   <string name="settings_business_import">Adyenから店舗情報をインポート</string>
   <string name="settings_business_import_hint">割り当て店舗（Management API - Stores read）またはマーチャントアカウント（Management API - Accounts read）の領収書情報を確認します。アカウントからは法人名のみ取得できます。</string>
   <string name="settings_business_review">店舗情報を確認</string>
-  <string name="settings_business_review_hint">店舗名、住所、電話番号の空欄だけを補完します。既存の文面は置き換えません。税務番号、タイトル、フッターは変更しません。</string>
+  <string name="settings_business_review_hint">不足している事業者情報を補完するか、取得した名前・住所・電話番号で既存の情報を置き換えます。取得した項目が空欄の場合、元の値を保持します。登録番号、タイトル、フッターは変更しません。</string>
+  <string name="settings_business_supplement">不足している情報を補完</string>
+  <string name="settings_business_replace">既存の情報を置換</string>
   <string name="settings_business_unavailable">インポートできる店舗情報はありません。</string>
   <string name="settings_business_name">店舗名</string>
   <string name="settings_address">住所（1行ずつ入力）</string>
@@ -1150,6 +1175,9 @@
   <string name="setup_key_creation_unconfirmed">キー作成の結果は未確認です。キー設定を再開して Adyen の設定を読み取ってから再試行してください。</string>
   <string name="setup_printer">使用できるプリンターがありません。「設定 › 領収書」の「プリンター」を確認してください。シミュレーター使用時は「設定 › シミュレーター」を確認してください。</string>
   <string name="setup_charge_too_old">時間が経過しているため、安全に再送信できません。Customer Areaで結果を確認してください。</string>
+  <string name="setup_shopper_reference">トークンを使うには、「設定 › 決済」で購入者参照IDを選択してください。</string>
+  <string name="setup_totals">現在の決済先では端末の合計を取得できません。Tap to Payは合計を報告しません。</string>
+  <string name="setup_operation_reconciliation">Adyen は再試行を許可していません。Customer Area でこの操作の結果を確認してください。</string>
   <string name="payment_context_mismatch">現在の設定は元の決済の端末、マーチャントアカウント、または環境と一致しません。元の設定に戻してから続行してください。</string>
   <string name="fault_unreachable_terminal">端末に接続できませんでした。端末の電源、同じネットワークにあること、IPアドレスを確認してください。</string>
   <string name="fault_unreachable_adyen">Adyenに接続できませんでした。インターネット接続を確認してください。</string>
@@ -1190,27 +1218,5 @@
   <string name="sentences">%1$s%2$s</string>
   <string name="action_unconfirmed">Adyenが結果を確認できませんでした。他の操作をする前に、もう一度確認してください。</string>
   <string name="still_unconfirmed">まだ確認できません：%1$s</string>
-  <string name="home_saved_card">トークンで請求</string>
-  <string name="home_reconciliation">照合</string>
-  <string name="saved_card_title">トークンで請求</string>
-  <string name="saved_card_intro">購入者に保存されたトークンを検索して選択し、請求する商品を入力します。購入者が不在でも請求できます。事前に同意を得てください。</string>
-  <string name="saved_card_find">トークンを検索</string>
-  <string name="saved_card_none">この購入者に保存されたトークンはありません。</string>
-  <string name="saved_card_expires">有効期限 %1$s/%2$s</string>
-  <string name="saved_card_unsupported">別の種類の支払い用に保存されたトークンのため、ここでは請求できません。</string>
-  <string name="saved_card_card">カード</string>
-  <string name="saved_card_charge">%1$sを請求</string>
-  <string name="saved_card_charging">トークンで請求しています…</string>
-  <string name="saved_card_review_note">Adyenは購入者不在のままトークンで請求します。必要な場合は取引履歴から返金してください。</string>
-  <string name="setup_shopper_reference">トークンを使うには、「設定 › 決済」で購入者参照IDを選択してください。</string>
-  <string name="setup_totals">現在の決済先では端末の合計を取得できません。Tap to Payは合計を報告しません。</string>
-  <string name="reconciliation_print_today">本日のレポートを印刷</string>
-  <string name="checkout_charge_token">トークンで請求</string>
-  <string name="checkout_choose_token">トークンを選択</string>
-  <string name="checkout_token_without_tip">トークンでの請求にはチップは含まれません。</string>
-  <string name="checkout_token_without_donation">トークンでの請求では寄付を案内しません。</string>
-  <string name="checkout_token_without_tip_or_donation">トークンでの請求にはチップは含まれず、寄付も案内しません。</string>
-  <string name="reconciliation_mismatch_hint">取引履歴で確認が必要な決済を解決してください。この端末を使う他のデバイスの決済も合計に含まれます。</string>
-  <string name="setup_operation_reconciliation">Adyen は再試行を許可していません。Customer Area でこの操作の結果を確認してください。</string>
   <string name="storage_unavailable">保存済みの設定または認証情報を読み書きできませんでした。デバイスを再起動してください。問題が続く場合はトラブルシューティングのリセット手順を確認するか、アプリの問題を報告してください。保存済みファイルはリセットされていません。</string>
 </resources>

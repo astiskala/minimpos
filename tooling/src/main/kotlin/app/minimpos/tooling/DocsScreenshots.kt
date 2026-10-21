@@ -45,7 +45,7 @@ internal object DocsScreenshots {
     /** The palette size of a saved screenshot. */
     const val COLOURS = 96
 
-    private val LANGUAGES = setOf("zh-CN", "zh-Hant", "ja")
+    private val LANGUAGES = setOf("zh-CN", "zh-Hant", "ja", "pt-BR", "es-MX", "fr-FR")
 
     /** Red, green and blue, as [channel] numbers them. */
     private val CHANNELS = 0..2
@@ -55,7 +55,7 @@ internal object DocsScreenshots {
     private const val RGB_MASK = 0xFFFFFF
 
     /**
-     * Processes every `<language>-<name>.png` in [raw] (language `en`, `zh-CN`, `zh-Hant` or `ja`) into
+     * Processes every `<language>-<name>.png` in [raw] (any supported app language) into
      * `[images]/<name>.png` for English, else `[images]/<language>/<name>.png`, and returns the paths written.
      *
      * @throws IllegalArgumentException for a file of another name or size.
@@ -72,7 +72,7 @@ internal object DocsScreenshots {
             .map { file ->
                 val name = file.nameWithoutExtension
                 val language = (LANGUAGES + "en").firstOrNull { name.startsWith("$it-") }
-                requireNotNull(language) { "Expected <en|zh-CN|zh-Hant|ja>-<name>.png: $name" }
+                requireNotNull(language) { "Expected <language>-<name>.png: $name" }
                 val target = (if (language == "en") images else images.resolve(language)).resolve(name.removePrefix("$language-") + ".png")
                 val image = requireNotNull(ImageIO.read(file.toFile())) { "Not a PNG: $name" }
                 val ams1 = name.endsWith("-sale-ams1")

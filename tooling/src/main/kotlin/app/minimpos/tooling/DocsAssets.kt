@@ -13,7 +13,7 @@ import kotlin.io.path.nameWithoutExtension
 
 /** Offline social-page generation, palette conversion and visual-review sheets; never drives a device or browser. */
 internal object DocsAssets {
-    private val languages = listOf("en", "zh-CN", "zh-Hant", "ja")
+    private val languages = listOf("en", "zh-CN", "zh-Hant", "ja", "pt-BR", "es-MX", "fr-FR")
     private const val COLUMNS = 7
     private const val CELL_WIDTH = 170
     private const val CELL_HEIGHT = 280

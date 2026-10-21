@@ -1146,7 +1146,7 @@
   <string name="setup_changed">验证期间设置已更改。请使用当前设置重试。</string>
   <string name="setup_key_update_title">更新终端配置</string>
   <string name="setup_key_connection_pending">新密钥已保存。请更新此终端的配置：打开“Admin menu › Config › Update”。完成后返回 Mini mPOS，点按“再次检查”以完成设置。</string>
-  <string name="setup_key_recovery_unreadable">无法读取待完成的密钥设置。创建其他密钥前，请获取现有密钥或联系支持。</string>
+  <string name="setup_key_recovery_unreadable">无法读取待完成的密钥设置。创建其他密钥前，请获取现有密钥或联系 Adyen 支持团队。</string>
   <string name="setup_key_creation_unconfirmed">尚未确认密钥创建结果。请继续密钥设置，先读取 Adyen 设置再重试。</string>
   <string name="setup_printer">没有可用的打印机。请检查“设置 › 收据”中的“打印机”，使用模拟器时请检查“设置 › 模拟器”。</string>
   <string name="setup_charge_too_old">此操作时间过久，无法安全地再次发送。请在商户后台查看结果。</string>
@@ -1212,4 +1212,5 @@
   <string name="checkout_token_without_tip_or_donation">使用令牌扣款时不含小费，也不邀请捐款。</string>
   <string name="reconciliation_mismatch_hint">请在交易记录中处理需要关注的付款。使用此终端的其他设备也会计入其总额。</string>
   <string name="setup_operation_reconciliation">Adyen 不允许重试。请在商户后台查看此操作的结果。</string>
+  <string name="storage_unavailable">无法读取或保存已存储的设置或凭据。请重启设备。如果问题仍然存在，请参阅故障排除指南中的重置步骤，或报告应用问题。已保存的文件未被重置。</string>
 </resources>

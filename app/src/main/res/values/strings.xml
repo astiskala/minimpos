@@ -1151,7 +1151,7 @@
   <string name="setup_changed">Settings changed during verification. Retry with the current setup.</string>
   <string name="setup_key_update_title">Update terminal config</string>
   <string name="setup_key_connection_pending">The new key is saved. Update this terminal’s config: open Admin menu › Config › Update. When finished, return to Mini mPOS and tap Check again to complete setup.</string>
-  <string name="setup_key_recovery_unreadable">Pending key setup could not be read. Retrieve an existing key or contact support before creating another.</string>
+  <string name="setup_key_recovery_unreadable">Pending key setup could not be read. Retrieve an existing key or contact Adyen Support before creating another.</string>
   <string name="setup_key_creation_unconfirmed">Key creation is unconfirmed. Resume key setup to read Adyen settings before retrying.</string>
   <string name="setup_printer">No printer is available. Check Printer in Settings › Receipts, or in Settings › Simulator when simulating.</string>
   <string name="setup_charge_too_old">This is too old to send again safely. Check its outcome in your Customer Area.</string>
@@ -1217,4 +1217,5 @@
   <string name="checkout_token_without_tip_or_donation">The token is charged without a tip or donation invitation.</string>
   <string name="reconciliation_mismatch_hint">Resolve payments that need attention in History. Other devices using this terminal also count in its totals.</string>
   <string name="setup_operation_reconciliation">Adyen did not permit a retry. Check this operation’s outcome in your Customer Area.</string>
+  <string name="storage_unavailable">Saved settings or credentials could not be read or written. Restart the device. If this continues, follow Troubleshooting for reset steps or report an app issue. Your saved files have not been reset.</string>
 </resources>

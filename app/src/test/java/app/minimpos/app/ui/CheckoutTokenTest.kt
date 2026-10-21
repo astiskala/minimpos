@@ -11,6 +11,7 @@ import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.createRecordingComposeRule
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
@@ -77,7 +78,7 @@ class CheckoutTokenTest {
         listOf(1, 2, 5, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
         compose.onNodeWithTag("addCustom").performClick()
         waitForTag("charge")
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("customerReference")
         compose.onNodeWithTag("customerReference").performTextInput(reference)
     }

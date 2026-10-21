@@ -10,7 +10,7 @@ import org.junit.Test
 class NavigatorTest {
     @Test
     fun `setup Back retains onboarding while finishing at Home removes it`() {
-        val stack = NavBackStack<NavKey>(Route.Home, Route.Onboarding)
+        val stack = NavBackStack<NavKey>(Route.Onboarding)
         val navigator = Navigator(stack)
         navigator.push(Route.TransferImport)
         navigator.back()
@@ -20,6 +20,18 @@ class NavigatorTest {
         assertThat(navigator.current).isEqualTo(Route.Onboarding)
         navigator.home()
         assertThat(stack).containsExactly(Route.Home)
+    }
+
+    @Test
+    fun `Back never removes onboarding root and explicit Home replaces it`() {
+        val stack = NavBackStack<NavKey>(Route.Onboarding)
+        val navigator = Navigator(stack)
+        navigator.back()
+        assertThat(stack).containsExactly(Route.Onboarding)
+        assertThat(navigator.isOnboarding).isTrue()
+        navigator.home()
+        assertThat(stack).containsExactly(Route.Home)
+        assertThat(navigator.isOnboarding).isFalse()
     }
 
     @Test

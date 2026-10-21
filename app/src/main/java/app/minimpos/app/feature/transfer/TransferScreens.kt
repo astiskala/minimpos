@@ -282,9 +282,13 @@ fun TransferImportScreen(
     val scanning = state is ImportUiState.Scanning && scanStarted
 
     fun back() {
-        if (scanning) scanStarted = false else navigator.back()
+        when {
+            scanning -> scanStarted = false
+            state is ImportUiState.Done && navigator.isOnboarding -> navigator.home()
+            else -> navigator.back()
+        }
     }
-    BackHandler(enabled = scanning) { back() }
+    BackHandler(enabled = scanning || state is ImportUiState.Done) { back() }
     var confirmReplace by rememberSaveable { mutableStateOf(false) }
     val importing = state == ImportUiState.Importing
     val snackbar = remember { SnackbarHostState() }
@@ -311,10 +315,7 @@ fun TransferImportScreen(
                     onImport = { if (it) confirmReplace = true else vm.import() },
                     onBoard = vm::setUpTapToPay,
                     onRetry = vm::retryRecovery,
-                    onDone = {
-                        navigator.back()
-                        if (navigator.current == Route.Onboarding) navigator.home()
-                    },
+                    onDone = ::back,
                 )
             }
         },

@@ -3,7 +3,12 @@ package app.minimpos.app
 import android.app.Application
 import android.content.Context
 import android.os.Looper
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,6 +20,7 @@ import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretCipher
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.NewInstallation
+import app.minimpos.app.data.settings.StorageState
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.email.MailTransport
 import app.minimpos.app.payment.TransactionLifecycle
@@ -680,7 +686,9 @@ class TestEnvironment(
         // Screens' writes finish after the screens close (persisting): let queued ones resume, then wait behind them in
         // DataStore's update queue, so the files are not deleted while one is being renamed into place.
         Shadows.shadowOf(Looper.getMainLooper()).idle()
-        runBlocking { withTimeout(10_000) { container.settings.update { it } } }
+        if (container.storage.state.value != StorageState.UNAVAILABLE) {
+            runBlocking { withTimeout(10_000) { container.settings.update { it } } }
+        }
         runBlocking { scope.coroutineContext[Job]?.cancelAndJoin() }
         container.database.close()
         dir.deleteRecursively()
@@ -739,6 +747,14 @@ fun ComposeTestRule.awaitCondition(
         waitForIdle()
         condition()
     }
+}
+
+/** Waits for asynchronous UI state to enable [tag] before tapping; Compose idle alone does not drain background flows. */
+fun ComposeContentTestRule.clickWhenEnabled(tag: String) {
+    waitUntil("enabled $tag", timeoutMillis = 15_000) {
+        onAllNodes(hasTestTag(tag) and isEnabled()).fetchSemanticsNodes().size == 1
+    }
+    onNodeWithTag(tag).performClick()
 }
 
 /**

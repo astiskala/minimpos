@@ -22,7 +22,7 @@ internal val StorageJson =
         encodeDefaults = true
     }
 
-/** DataStore serializer that stores [T] as JSON; unreadable files are reported as corruption so they get replaced. */
+/** DataStore serializer that stores [T] as JSON; unreadable files report corruption and remain intact for recovery. */
 class JsonDataStoreSerializer<T>(
     private val serializer: KSerializer<T>,
     override val defaultValue: T,

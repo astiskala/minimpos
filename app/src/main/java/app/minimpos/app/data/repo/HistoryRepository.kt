@@ -9,9 +9,12 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.settings.StorageJson
 import app.minimpos.app.data.settings.TerminalSettings
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.serializer
 
@@ -55,6 +58,8 @@ sealed interface HistoryItem {
  */
 class HistoryRepository(
     private val db: AppDatabase,
+    /** Dispatcher for mapping and sorting observed history outside Room's query executor. */
+    private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private val saleDao = db.saleDao()
     private val refundDao = db.refundDao()
@@ -63,7 +68,7 @@ class HistoryRepository(
     fun items(): Flow<List<HistoryItem>> =
         combine(saleDao.sales(), refundDao.refunds()) { sales, refunds ->
             (sales.map { HistoryItem.Sale(it) } + refunds.map { HistoryItem.Refund(it) }).sortedByDescending { it.createdAt }
-        }
+        }.flowOn(cpu)
 
     /** Reads one transactionally consistent snapshot of all retained records for report delivery. Main-safe. */
     suspend fun snapshot(): List<HistoryItem> =

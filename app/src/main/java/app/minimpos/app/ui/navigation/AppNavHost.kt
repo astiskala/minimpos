@@ -61,7 +61,7 @@ import app.minimpos.app.ui.components.SetupGateHost
 import app.minimpos.app.ui.theme.LocalDimens
 
 /**
- * Maps every [Route] to its screen, starting at [Route.Home] or first-run [Route.Onboarding] above Home.
+ * Maps every [Route] to its screen, starting at [Route.Home] or first-run [Route.Onboarding].
  * Onboarding stays below setup screens so Back can change the initial choice. Admin routes are wrapped in [PinGate], and the admin
  * area locks again once no protected route is left on the back stack. Each entry gets its own saved state and view
  * models, which are cleared when it leaves the stack. Every screen is inside the [SetupGateHost], whose "Finish setting
@@ -75,15 +75,11 @@ fun AppNavHost() {
     val startWithOnboarding = rememberSaveable { completed.value == false }
     val backStack =
         if (startWithOnboarding) {
-            rememberNavBackStack(Route.Home, Route.Onboarding)
+            rememberNavBackStack(Route.Onboarding)
         } else {
             rememberNavBackStack(Route.Home)
         }
-    val navigator =
-        remember(backStack) {
-            if (completed.value == true) backStack.removeAll { it == Route.Onboarding }
-            Navigator(backStack)
-        }
+    val navigator = remember(backStack) { Navigator(backStack) }
     val top = backStack.lastOrNull()
 
     // Leaving the admin area re-locks it.
@@ -111,6 +107,8 @@ private fun AppEntries(
     val historyDetail = remember { ListDetailSceneStrategy.detailPane(HISTORY_PANES) }
     val settingsList = remember { ListDetailSceneStrategy.listPane(SETTINGS_PANES) { PanePlaceholder(R.string.settings_choose) } }
     val settingsDetail = remember { ListDetailSceneStrategy.detailPane(SETTINGS_PANES) }
+    // Navigation 3 owns forward, pop and gesture-progress transitions (including system motion scale).
+    // Do not wrap the display in a second animation or intercept Back at either root destination.
     NavDisplay(
         backStack = backStack,
         onBack = { navigator.back() },

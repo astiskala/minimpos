@@ -566,7 +566,7 @@ class ViewModelsTest {
     fun `a second tap on Save while the product is being saved is ignored`() {
         val (tax, _) = seedCatalogue()
         val edit = ProductEditViewModel(null, null, container.catalog, container.settingsState, container::currency)
-        await { edit.state.first { it.loaded } }
+        await { edit.state.first { it.loaded && !it.skuChecking } }
         edit.update { it.copy(name = "Scone", price = "4.50", taxRateId = tax.id) }
         // Hold the save on a queue, so the second tap certainly comes while the first save is under way.
         val queued = StandardTestDispatcher()
@@ -598,7 +598,7 @@ class ViewModelsTest {
         await { vm.state.first { it.categories.size == 1 } }
 
         val edit = ProductEditViewModel(null, "NEW1", container.catalog, container.settingsState, container::currency)
-        var form = await { edit.state.first { it.loaded } }
+        var form = await { edit.state.first { it.loaded && !it.skuChecking } }
         assertThat(form.form.sku).isEqualTo("NEW1")
         assertThat(form.form.taxRateId).isEqualTo(tax.id)
         edit.update { it.copy(name = "Scone", price = "1e17") }
@@ -617,7 +617,7 @@ class ViewModelsTest {
         val scone = await { container.catalog.productBySku("NEW1")!! }
         assertThat(scone.taxRateId).isEqualTo(tax.id)
         val existing = ProductEditViewModel(scone.id, null, container.catalog, container.settingsState, container::currency)
-        form = await { existing.state.first { it.loaded } }
+        form = await { existing.state.first { it.loaded && !it.skuChecking } }
         assertThat(form.form.price).isEqualTo("4.50")
         assertThat(form.form.taxRateId).isEqualTo(tax.id)
 
@@ -627,7 +627,7 @@ class ViewModelsTest {
         existing.save {}
         assertThat(await { container.catalog.products.first { it.any { p -> p.id == scone.id && p.taxRateId == free } } }).isNotEmpty()
         val reopened = ProductEditViewModel(scone.id, null, container.catalog, container.settingsState, container::currency)
-        assertThat(await { reopened.state.first { it.loaded } }.form.taxRateId).isEqualTo(free)
+        assertThat(await { reopened.state.first { it.loaded && !it.skuChecking } }.form.taxRateId).isEqualTo(free)
         reopened.update { it.copy(taxRateId = null) }
         assertThat(reopened.state.value.valid).isFalse()
         reopened.save { error("must not save without a tax rate") }
@@ -635,7 +635,7 @@ class ViewModelsTest {
         // With tax switched off in settings, the rate is hidden but new products still get the default one.
         env.updateSettings { it.copy(payment = it.payment.copy(chargeTax = false)) }
         val offline = ProductEditViewModel(null, null, container.catalog, container.settingsState, container::currency)
-        val off = await { offline.state.first { it.loaded } }
+        val off = await { offline.state.first { it.loaded && !it.skuChecking } }
         assertThat(off.chargeTax).isFalse()
         assertThat(off.form.taxRateId).isEqualTo(tax.id)
         env.updateSettings { it.copy(payment = it.payment.copy(chargeTax = true)) }

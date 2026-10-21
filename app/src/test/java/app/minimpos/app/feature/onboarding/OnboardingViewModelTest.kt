@@ -45,7 +45,13 @@ class OnboardingViewModelTest {
 
     @Test
     fun `simulator choice persists samples and clears learned connection facts without replacing merchant fields`() {
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, host = "merchant-host")) }
+        env.updateSettings {
+            it.copy(
+                terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, host = "merchant-host"),
+                receipt = it.receipt.copy(businessName = "Merchant", addressLines = "123 Main St", phone = "555-0100", taxId = "TAX-123"),
+            )
+        }
+        val receipt = await { env.container.settings.current() }.receipt
         val vm = model()
         val done = CompletableDeferred<OnboardingChoice>()
         vm.choose(OnboardingChoice.SIMULATOR) { done.complete(it) }
@@ -54,6 +60,7 @@ class OnboardingViewModelTest {
         assertThat(stored.onboardingCompleted).isTrue()
         assertThat(stored.terminal.mode).isEqualTo(TerminalMode.SIMULATOR)
         assertThat(stored.terminal.host).isEqualTo("merchant-host")
+        assertThat(stored.receipt).isEqualTo(receipt)
         assertThat(stored.shared().onboardingCompleted).isFalse()
         assertThat(stored.shared().withDeviceFieldsOf(stored).onboardingCompleted).isTrue()
     }

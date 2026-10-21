@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.annotation.StringRes
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
-import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.dataStoreFile
 import app.minimpos.app.data.db.AppDatabase
 import app.minimpos.app.data.db.RefundStatus
@@ -30,6 +29,7 @@ import app.minimpos.app.data.settings.JsonDataStoreSerializer
 import app.minimpos.app.data.settings.NewInstallation
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.SettingsRepository
+import app.minimpos.app.data.settings.StorageHealth
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.transfer.SetupTransfer
 import app.minimpos.app.email.EmailTexts
@@ -200,8 +200,18 @@ class AppContainer(
     private val country = device.country.trim().uppercase(Locale.ROOT)
     private val defaults = installation(context).settings.copy(onboardingCompleted = onboardingCompleted)
 
+    /** Configuration-file readiness; unreadable files are retained and protected access remains blocked. */
+    val storage = StorageHealth()
+
+    private val settingsStore = store("settings.json", serializer<AppSettings>(), defaults)
+    private val secretsStore = store("secrets.json", serializer<SecretBlob>(), SecretBlob())
+
+    init {
+        appScope.launch { storage.check(settingsStore, secretsStore) }
+    }
+
     /** Non-secret settings (`settings.json`). */
-    val settings = SettingsRepository(store("settings.json", serializer<AppSettings>(), defaults))
+    val settings = SettingsRepository(settingsStore)
 
     /** [settings] as a state that is always available; it holds the defaults until the file has been read. */
     val settingsState: StateFlow<AppSettings> = settings.settings.stateIn(appScope, SharingStarted.Eagerly, defaults)
@@ -213,7 +223,7 @@ class AppContainer(
         settings.onboardingCompleted.stateIn(appScope, SharingStarted.Eagerly, true.takeIf { onboardingCompleted })
 
     /** Encrypted credentials (`secrets.json`). */
-    val secrets = SecretStore(store("secrets.json", serializer<SecretBlob>(), SecretBlob()), cipher, ioDispatcher)
+    val secrets = SecretStore(secretsStore, cipher, ioDispatcher)
 
     /** The admin PIN. */
     val pinManager = PinManager(secrets)
@@ -573,9 +583,9 @@ class AppContainer(
             fixture = ::sampleFixture,
             starterRates = ::starterTaxRates,
             country = device.country,
-            withSettings = { write ->
+            withSettings = { replaceReceiptDetails, write ->
                 val added = pricingChanges.withStableSettings(write)
-                pricingChanges.update { it.copy(receipt = sampleFixture().receipt(it.receipt)) }
+                pricingChanges.update { it.copy(receipt = sampleFixture().receipt(it.receipt, replaceReceiptDetails)) }
                 added
             },
         )
@@ -596,6 +606,7 @@ class AppContainer(
      */
     fun start() {
         appScope.launch {
+            storage.awaitReady()
             pricingChanges.recover()
             setupImport.recover()
             historySwitches.recover()
@@ -603,10 +614,13 @@ class AppContainer(
             catalog.seedDefaults(starterTaxRates())
             history.prune(settings.current().history.retentionDays, System.currentTimeMillis())
         }
-        terminalStatus.start()
-        walletDiscovery.start()
-        // Adyen terminals update through the Customer Area; only other devices check GitHub Releases for a newer one.
-        if (!device.isAdyenTerminal) update.start()
+        appScope.launch {
+            storage.awaitReady()
+            terminalStatus.start()
+            walletDiscovery.start()
+            // Adyen terminals update through the Customer Area; only other devices check GitHub Releases.
+            if (!device.isAdyenTerminal) update.start()
+        }
     }
 
     /**
@@ -638,11 +652,12 @@ class AppContainer(
         serializer: KSerializer<T>,
         default: T,
     ): DataStore<T> =
-        DataStoreFactory.create(
-            serializer = JsonDataStoreSerializer(serializer, default),
-            corruptionHandler = ReplaceFileCorruptionHandler { default },
-            scope = CoroutineScope(ioDispatcher + SupervisorJob()),
-            produceFile = { storageDir(name) },
+        storage.protect(
+            DataStoreFactory.create(
+                serializer = JsonDataStoreSerializer(serializer, default),
+                scope = CoroutineScope(ioDispatcher + SupervisorJob()),
+                produceFile = { storageDir(name) },
+            ),
         )
 
     /** The resource of each text a new installation starts with: the Android adapter of [NewInstallation]'s texts. */

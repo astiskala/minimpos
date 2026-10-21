@@ -61,7 +61,7 @@
           <li><a href="#wallets">ウォレットスキャン</a></li><li><a href="#connection">端末ペアリングと設定</a></li><li><a href="#network-dropouts">ネットワークの切断</a></li>
           <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">決済リンク</a></li>
           <li><a href="#receipts">プリンターとメール</a></li><li><a href="#access">PIN と転送</a></li>
-          <li><a href="#install">インストール</a></li><li><a href="#messages">エラーメッセージ</a></li><li><a href="#help">問い合わせ</a></li>
+          <li><a href="#storage">ストレージの復旧</a></li><li><a href="#install">インストール</a></li><li><a href="#messages">エラーメッセージ</a></li><li><a href="#help">問い合わせ</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">このページの内容</summary><ol>
           <li><a href="#unknown">結果不明</a></li><li><a href="#declines">拒否された決済</a></li>
@@ -69,7 +69,7 @@
           <li><a href="#wallets">ウォレットスキャン</a></li><li><a href="#connection">端末ペアリングと設定</a></li><li><a href="#network-dropouts">ネットワークの切断</a></li>
           <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">決済リンク</a></li>
           <li><a href="#receipts">プリンターとメール</a></li><li><a href="#access">PIN と転送</a></li>
-          <li><a href="#install">インストール</a></li><li><a href="#messages">エラーメッセージ</a></li><li><a href="#help">問い合わせ</a></li>
+          <li><a href="#storage">ストレージの復旧</a></li><li><a href="#install">インストール</a></li><li><a href="#messages">エラーメッセージ</a></li><li><a href="#help">問い合わせ</a></li>
         </ol></details>
       </nav>
       <div class="guide-body">
@@ -263,16 +263,28 @@
               <dd><p><span class="fix-label">対処</span>管理者が<strong>設定 › セキュリティ</strong>で変更・削除できます。管理者PINとマネージャーPINは保護する操作が異なり、一方で他方を解除することはできません。</p></dd></div>
             <div><dt>管理者PINを忘れた</dt>
               <dd><p><span class="fix-label">原因</span>PIN の復旧機能はありません。</p>
-                <p><span class="fix-label">対処</span>唯一の方法は、Android でアプリのデータを消去することです。</p>
-                <div class="callout callout-warning" role="note">
-                  <p class="callout-title">警告</p>
-                  <p>アプリのデータを消去すると、デバイスのすべての商品、設定、キー、決済履歴が削除されます。先に未完了の決済を解決し、必要な記録を保存してください。設定転送では履歴を復元できません。</p>
-                </div></dd></div>
+                <p>管理者PINなしで最初から設定し直すには、<a href="#storage">ストレージの復旧</a>手順に従ってください。リセット前にデータ削除の警告を確認してください。</p></dd></div>
             <div><dt>転送コードが拒否される、またはインポート後にキーがない</dt>
               <dd><p><span class="fix-label">原因</span>コードがこの QR コードのものではないか、空欄でした。</p>
                 <p><span class="fix-label">対処</span>新しく生成したコードではなく、この QR コードと一緒に表示されたコードを使います。すべての転送にコードが必要です。誤ったコードでも空欄でも何も取り込みません。コピー後は、新しいデバイスの決済先と認証情報を確認します。<a href="using.html#more">追加デバイス</a>を参照してください。</p></dd></div>
           </dl>
           <p>各 PIN が保護する操作は<a href="using.html#staff">スタッフの PIN</a>を参照してください。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="storage">
+          <h2>保存済みの設定や認証情報を読み書きできない</h2>
+          <p>Mini mPOS は、読み取れない設定や認証情報を置き換えずに停止します。未完了の設定や決済の復旧記録を含むファイルを保持するためです。</p>
+          <ol class="steps">
+            <li>デバイスを再起動し、Mini mPOS を開き直します。ストレージがいっぱいの場合は、先に Mini mPOS 以外で空き容量を確保してください。アプリのキャッシュを消去するだけでは、保存済みの設定はリセットされません。</li>
+            <li>リセット前に必要な記録を保存し、未完了の決済、返金、売上確定、調整を解決してください。アプリを開けない場合は Customer Area で結果を確認します。<a href="#unknown">結果不明</a>を参照してください。結果がまだ不明な場合はアプリのデータを保持し、先に Adyen と照合してください。アプリを開けないことを理由に同じ操作を再送しないでください。</li>
+            <li>問題が続き、すべてのローカルデータの削除を了承する場合は Mini mPOS をリセットします。スマートフォンやタブレットでは Android の<strong>設定 › アプリ › Mini mPOS › ストレージとキャッシュ › ストレージを消去</strong>を開くか（項目名はデバイスによって異なります）、Mini mPOS をアンインストールして<a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>から再インストールします。Adyen 端末では、端末アプリの管理者にリセットまたは削除後の再インストールを依頼してください。<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen のアプリ配布ガイド</a>を参照してください。</li>
+            <li>Mini mPOS を設定し直すか、信頼できる設定転送を取り込み、<strong>接続をテスト</strong>を完了してから実際の決済を行います。<a href="quick-start.html#connect">Adyen に接続</a>を参照してください。</li>
+          </ol>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">警告</p>
+            <p>ストレージの消去やアンインストールは、ローカルの商品、設定、認証情報、PIN、履歴、未完了操作の復旧記録をすべて削除します。設定転送では履歴や復旧記録を復元できません。リセットしても、Adyen に送信済みの決済、返金、売上確定は取り消されません。</p>
+          </div>
+          <p>既存アプリへの上書き更新ではストレージはリセットされません。エラーが再発する場合は<a href="#help">GitHub でアプリの問題を報告</a>してください。保存済みの設定ファイルや認証情報を添付しないでください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="install">

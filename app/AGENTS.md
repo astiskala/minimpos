@@ -2,7 +2,7 @@
 
 Read root `AGENTS.md` for repository constraints. Domain names/owners are in `CONTEXT.md`, code contracts in KDoc.
 Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTest`, `DeepeningArchitectureTest`,
-`SettingsArchitectureTest`, `PinArchitectureTest` and `MaterialArchitectureTest`.
+`SettingsArchitectureTest`, `PinArchitectureTest`, `MaterialArchitectureTest` and `MadArchitectureTest`.
 
 ## Architecture boundaries
 
@@ -137,6 +137,15 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   gates tiles by `Route.requiresSetup` rather than its own route list.
 - \* Result and detail screens offer receipts only through `ReceiptActions` (one order: print, merchant copy, email,
   share, show receipt), status checks through `StatusCheck` and result bars through `ResultBar` (Home + next step).
+- \* Configuration DataStores are wrapped by `StorageHealth`; never replace corrupt files with defaults. Startup work
+  and protected UI wait for both settings and secrets. Read failures publish no defaults; failed writes never report success.
+- \* PIN derivation stays inside `PinManager` on its injected CPU dispatcher; verification and lockout mutation are
+  serialized. History, sale and product list pipelines offload transformations before sharing UI state.
+- \* Only `CameraSession` reads camera futures, after completion. Scanner disposal never waits; delayed binds and
+  decoded callbacks are invalidated on close, and cleanup unbinds only the scanner's own use cases.
+- \* `AppNavHost` alone owns Navigation 3 scenes and their built-in forward/pop/predictive transitions. Use AndroidX
+  Back APIs, never legacy Activity Back or Activity transition overrides. Home and first-run onboarding are roots;
+  setup preserves the onboarding parent until explicitly returning Home, including across recreation.
 
 ## Non-obvious implementation constraints
 

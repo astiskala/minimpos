@@ -48,8 +48,20 @@ class SampleDataFixture private constructor(
             }.toMap()
     }
 
-    /** Replaces receipt business fields with fictional details; layout, title, footer and delivery settings stay intact. */
-    fun receipt(existing: ReceiptSettings): ReceiptSettings {
+    /**
+     * Applies fictional business details, keeping layout, title, footer and delivery settings intact.
+     * @param existing Saved receipt settings.
+     * @param replaceReceiptDetails False preserves all business fields if any merchant business field is nonblank.
+     */
+    fun receipt(
+        existing: ReceiptSettings,
+        replaceReceiptDetails: Boolean = true,
+    ): ReceiptSettings {
+        if (!replaceReceiptDetails &&
+            listOf(existing.businessName, existing.addressLines, existing.phone, existing.taxId).any { it.isNotBlank() }
+        ) {
+            return existing
+        }
         val receipt = market.getValue("receipt").jsonObject
 
         fun field(name: String) = receipt.getValue(name).jsonPrimitive.content

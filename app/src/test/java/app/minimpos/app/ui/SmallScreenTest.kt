@@ -29,6 +29,7 @@ import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.db.CaptureStatus
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleEntity
@@ -247,7 +248,7 @@ class SmallScreenTest {
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("newSale").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("charge") and isEnabled(), 15_000)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("scanWallet")
         compose.onNodeWithTag("pay").assertIsDisplayed()
         compose.onNodeWithTag("sendLink").assertIsDisplayed()
@@ -479,7 +480,8 @@ class SmallScreenTest {
         compose.onNodeWithTag("key_00").assertIsDisplayed()
         listOf(1, 2, 5, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
         compose.onNodeWithTag("addCustom").performClick()
-        compose.onNodeWithTag("charge").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("charge").assertIsDisplayed()
+        compose.clickWhenEnabled("charge")
 
         // Pay stays in reach below the checkout form.
         waitForTag("pay")
@@ -514,7 +516,7 @@ class SmallScreenTest {
         waitForTag("addCustom")
         listOf(1, 2, 5, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
         compose.onNodeWithTag("addCustom").performClick()
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         // Both ways to pay stay in reach below the checkout form.
         waitForTag("sendLink")
         compose.onNodeWithTag("pay").assertIsDisplayed()
@@ -612,7 +614,7 @@ class SmallScreenTest {
         waitForTag("addCustom")
         listOf(4, 0, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
         compose.onNodeWithTag("addCustom").performClick()
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("pay")
         compose.onNodeWithTag("tipOnReceipt").performScrollTo().performClick()
         compose.onNodeWithTag("pay").assertIsDisplayed().performClick()

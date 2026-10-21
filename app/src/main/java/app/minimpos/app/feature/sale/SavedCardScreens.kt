@@ -1,5 +1,6 @@
 package app.minimpos.app.feature.sale
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -18,10 +19,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +53,7 @@ import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.terminal.checkout.StoredCard
+import kotlinx.coroutines.launch
 
 /**
  * Charge saved card, first step: the shopper reference (the customer reference or email, whichever Settings › Payments
@@ -184,11 +189,17 @@ fun SavedCardReviewScreen(
         if (charge is TransactionState.Finished) navigator.replace(Route.SaleResult(charge.id))
     }
     val charging = charge is TransactionState.Processing
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val wait = stringResource(R.string.processing_wait)
+    // A stored charge continues outside this screen; retain its result observer until the answer arrives.
+    BackHandler(enabled = charging) { scope.launch { snackbar.showSnackbar(wait) } }
     val total = money.format(state.checkout.totals.amounts.gross)
     MiniScaffold(
         title = stringResource(R.string.saved_card_title),
         onBack = navigator::back.takeUnless { charging },
         modifier = modifier,
+        snackbarHostState = snackbar,
         bottomBar = {
             if (!charging) {
                 BottomActions {

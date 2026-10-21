@@ -83,11 +83,13 @@ import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.ui.components.ActionMessage
+import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.HistorySwitchDialog
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
@@ -533,6 +535,19 @@ private fun ColumnScope.OtherSectionRows(
     )
 }
 
+/** Explicitly leaves first-run setup; the setup gate still protects payments when connection setup is unfinished. */
+@Composable
+private fun FirstRunActions(
+    section: String,
+    navigator: Navigator,
+) {
+    if (section == SettingsSections.TERMINAL && navigator.isOnboarding) {
+        BottomActions {
+            PrimaryButton(stringResource(R.string.action_home), navigator::home, modifier = Modifier.testTag("finishOnboarding"))
+        }
+    }
+}
+
 /**
  * One settings [section] (a [SettingsSections] key; unknown keys show About).
  * [showTroubleshooting] expands Help's table and scrolls it into view when opened from a failed payment.
@@ -571,6 +586,7 @@ fun SettingsSectionScreen(
         title = stringResource(sectionTitle(section)),
         onBack = navigator::back,
         modifier = modifier,
+        bottomBar = { FirstRunActions(section, navigator) },
         actions = {
             if (section == SettingsSections.TERMINAL) {
                 SetupScannerAction(state.loaded, setupActions.unsavedSecrets.isNotEmpty()) { navigator.push(Route.TransferImport) }

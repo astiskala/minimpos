@@ -59,8 +59,10 @@ import app.minimpos.app.data.db.CategoryEntity
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.feature.sale.TaxRatePicker
+import app.minimpos.app.feature.text
 import app.minimpos.app.scan.ScanMode
 import app.minimpos.app.scan.ScannerDialog
+import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.EmptyState
@@ -356,6 +358,7 @@ fun ProductEditScreen(
     ) { padding ->
         if (!state.loaded) return@MiniScaffold
         ScreenColumn(padding) {
+            state.failure?.let { ActionMessage(it.text(), isError = true) }
             ProductFields(state, onUpdate = {
                 container.userActivity()
                 vm.update(it)

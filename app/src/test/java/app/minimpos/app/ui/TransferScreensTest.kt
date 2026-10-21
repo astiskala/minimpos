@@ -1,5 +1,7 @@
 package app.minimpos.app.ui
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -123,7 +125,9 @@ class TransferScreensTest {
     fun `scanner opens only after choosing codes and Back returns to guidance`() {
         val vm = TransferImportViewModel("AUD", container.setupImport)
         val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport))
+        lateinit var back: OnBackPressedDispatcher
         compose.setContent {
+            back = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
             MiniMposTheme {
                 CompositionLocalProvider(LocalAppContainer provides container) {
                     TransferImportScreen(navigator, vm = vm)
@@ -134,6 +138,9 @@ class TransferScreensTest {
         compose.onNodeWithTag("startSetupScan").performClick()
         compose.onNodeWithTag("setupCodesIntro").assertDoesNotExist()
         compose.onNodeWithText(env.context.getString(R.string.transfer_import_hint)).assertIsDisplayed()
+        compose.runOnUiThread { back.onBackPressed() }
+        compose.onNodeWithTag("setupCodesIntro").assertExists()
+        compose.onNodeWithTag("startSetupScan").performClick()
         compose.onNodeWithTag("back").performClick()
         compose.onNodeWithTag("setupCodesIntro").assertExists()
         assertThat(navigator.current).isEqualTo(Route.TransferImport)
@@ -227,7 +234,7 @@ class TransferScreensTest {
     }
 
     @Test
-    fun `finishing a first-run settings import leaves onboarding and opens Home`() {
+    fun `system Back after a first-run import finishes onboarding just like Done`() {
         val payload = TransferCodec.encode(protect(Transfer(settings = TransferredSettings(AppSettings().shared(), null).encode())))
         val vm = TransferImportViewModel("AUD", container.setupImport)
         compose.awaitCondition(
@@ -235,9 +242,11 @@ class TransferScreensTest {
         ) { vm.state.value is ImportUiState.Scanning }
         QrChunks.split(payload, "INIT").forEach { vm.onCode(it.encode()) }
         vm.setCode(fixtureCode)
-        val stack = NavBackStack<NavKey>(Route.Home, Route.Onboarding, Route.TransferImport)
+        val stack = NavBackStack<NavKey>(Route.Onboarding, Route.TransferImport)
         val navigator = Navigator(stack)
+        lateinit var back: OnBackPressedDispatcher
         compose.setContent {
+            back = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
             MiniMposTheme {
                 CompositionLocalProvider(LocalAppContainer provides container) {
                     TransferImportScreen(navigator, vm = vm)
@@ -247,7 +256,7 @@ class TransferScreensTest {
         waitForTag("import")
         compose.onNodeWithTag("import").performClick()
         waitForTag("importFinished")
-        compose.onNodeWithTag("importFinished").performClick()
+        compose.runOnUiThread { back.onBackPressed() }
         assertThat(navigator.current).isEqualTo(Route.Home)
         assertThat(stack).containsExactly(Route.Home)
     }

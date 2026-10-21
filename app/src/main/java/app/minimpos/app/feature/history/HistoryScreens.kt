@@ -211,7 +211,7 @@ private fun HistoryList(
     val today = LocalDate.now()
     LazyColumn(Modifier.fillMaxSize().testTag("historyList")) {
         days.forEach { day ->
-            stickyHeader(key = day.date.toString()) {
+            stickyHeader(key = day.date.toString(), contentType = "day-header") {
                 DayHeader(
                     day,
                     if (day.date == today) stringResource(R.string.history_today) else dateFormat.format(day.date),
@@ -220,7 +220,7 @@ private fun HistoryList(
                     money,
                 ) { onPrint(day.date) }
             }
-            items(day.items, key = { "${day.date}-${it.id}" }) { item ->
+            items(day.items, key = { "${day.date}-${it.id}" }, contentType = { "transaction-row" }) { item ->
                 HistoryRow(item, timeFormat, day.times[item.id] ?: item.createdAt, item.id in day.captures, money) { onOpen(item) }
                 HorizontalDivider()
             }

@@ -16,6 +16,7 @@ import app.minimpos.app.GST_RATES
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.payment.TransactionState
 import com.google.common.truth.Truth.assertThat
@@ -70,7 +71,7 @@ class PaymentBackTest {
         waitFor(hasTestTag("addCustom"))
         listOf(1, 2, 5, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
         compose.onNodeWithTag("addCustom").performClick()
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitFor(hasTestTag("pay"))
         compose.onNodeWithTag("pay").performClick()
         waitFor(hasTestTag("cancelPayment") and isEnabled())

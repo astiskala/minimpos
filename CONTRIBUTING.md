@@ -222,7 +222,8 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
   schema. Update `DatabaseSchemaTest` and add migration tests that verify schema validity and preservation of merchant
   data, including unfinished financial operations. Never add destructive fallback or reset local data silently.
 - Settings, secrets, JSON columns and journal payloads have no Room schema export, and an unreadable settings or
-  secrets file is replaced with defaults. `StoredFormatTest` keeps their format in `stored/formats.txt` and loads the
+  secrets file is preserved: storage health blocks access and startup work until the app can read it after restart.
+  `StoredFormatTest` keeps their format in `stored/formats.txt` and loads the
   files each release wrote from `app/src/test/resources/stored/<version>/`. When a release changes the format, copy
   `app/build/reports/stored-formats/current/` (written by that test) to `stored/<version>/` before releasing.
 - QR formats retain one current contract. Update the app, setup helper, format tests and helper vectors together;

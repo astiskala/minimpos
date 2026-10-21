@@ -41,6 +41,9 @@ data class ImportSummary(
     val categoriesAdded: Int,
 )
 
+/** Another product already owns the requested SKU; the catalog remains unchanged. */
+class DuplicateSkuException : IllegalArgumentException("SKU already in use")
+
 /** The result of trying to delete a tax rate. */
 sealed interface DeleteResult {
     /** The tax rate was deleted. */
@@ -143,7 +146,11 @@ class CatalogRepository(
     /** Deletes [category]; its products stay and become uncategorised. */
     suspend fun deleteCategory(category: CategoryEntity) = dao.delete(category)
 
-    /** Inserts [product] when its ID is 0, otherwise updates it; returns its ID. */
+    /**
+     * Inserts [product] when its ID is 0, otherwise updates it; returns its ID.
+     *
+     * @throws DuplicateSkuException if a different product owns the normalized SKU; checked atomically with the write.
+     */
     suspend fun saveProduct(product: ProductEntity): Long =
         db.withTransaction {
             val normalized =
@@ -152,7 +159,7 @@ class CatalogRepository(
                     sample = if (product.id == 0L) product.sample else dao.product(product.id)?.sample ?: product.sample,
                 )
             val existing = normalized.sku?.let { dao.productBySku(it) }
-            require(existing == null || existing.id == normalized.id) { "SKU already in use" }
+            if (existing != null && existing.id != normalized.id) throw DuplicateSkuException()
             if (normalized.id == 0L) {
                 dao.insert(normalized)
             } else {

@@ -44,6 +44,8 @@ import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.RetryAdvice
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -53,6 +55,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -128,12 +131,14 @@ data class SaleUiState(
  * @param session The payment being rung up; its [SaleSession.kind] decides whose products are offered.
  * @param settings The current settings.
  * @param currency The currency prices are shown in with the given settings.
+ * @param cpu Dispatcher for catalog filtering, indexing and cart totals.
  */
 class SaleViewModel(
     private val catalog: CatalogRepository,
     private val session: SaleSession,
     settings: StateFlow<AppSettings>,
     currency: (AppSettings) -> CurrencySpec,
+    private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val kind = session.kind
     private val filters = MutableStateFlow("" to null as Long?)
@@ -142,10 +147,11 @@ class SaleViewModel(
         combine(catalog.products, catalog.categories, catalog.taxRates) { products, categories, taxRates ->
             val offered = products.filter { it.kind == kind }
             // A category is shown when it has products of this kind; a sale also keeps categories without products yet.
+            val offeredCategories = offered.mapTo(mutableSetOf()) { it.categoryId }
+            val usedCategories = products.mapTo(mutableSetOf()) { it.categoryId }
             val shown =
                 categories.filter { category ->
-                    offered.any { it.categoryId == category.id } ||
-                        (kind == SaleKind.SALE && products.none { it.categoryId == category.id })
+                    category.id in offeredCategories || (kind == SaleKind.SALE && category.id !in usedCategories)
                 }
             Triple(offered, shown, taxRates)
         }
@@ -167,7 +173,7 @@ class SaleViewModel(
                 chargeTax = appSettings.payment.chargeTax,
                 kind = kind,
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SaleUiState(kind = kind))
+        }.flowOn(cpu).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SaleUiState(kind = kind))
 
     /** Filters the tiles by [query]. */
     fun setQuery(query: String) = filters.update { query to it.second }

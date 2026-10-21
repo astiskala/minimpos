@@ -15,6 +15,7 @@ import app.minimpos.app.GST_RATES
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.ReceiptTipping
@@ -170,7 +171,7 @@ class DoubleModificationTest {
     fun `a double tap on the tip confirmation sends one capture`() {
         env.updateSettings { it.copy(payment = it.payment.copy(receiptTipping = ReceiptTipping.DEFAULT_ON)) }
         ringUp("newSale", 2, 5, 0, 0)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("pay")
         compose.onNodeWithTag("pay").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Awaiting tip"), 15_000)

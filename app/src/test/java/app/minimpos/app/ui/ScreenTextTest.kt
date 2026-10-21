@@ -12,6 +12,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
@@ -22,6 +23,7 @@ import app.minimpos.app.MiniMposApp
 import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.clickWhenEnabled
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Before
@@ -73,9 +75,9 @@ class ScreenTextTest {
         settled("custom item keypad")
         listOf(1, 2, 5, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
         compose.onNodeWithTag("addCustom").performClick()
-        waitForTag("charge")
+        compose.waitUntilAtLeastOneExists(hasTestTag("charge") and isEnabled(), 15_000)
         settled("cart")
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         waitForTag("pay")
         settled("checkout")
         compose.onNodeWithTag("pay").performClick()

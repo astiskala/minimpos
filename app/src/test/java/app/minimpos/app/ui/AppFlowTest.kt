@@ -24,6 +24,7 @@ import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
@@ -95,7 +96,7 @@ class AppFlowTest {
         compose.onNodeWithTag("modeBanner").assertIsDisplayed()
         ringUpCustomAmount(1, 2, 5, 0)
         compose.onNodeWithText("Charge $12.50").assertIsDisplayed()
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         compose.waitForTag("pay")
         compose.onNodeWithTag("customerReference").performTextInput("CUST-42")
         compose.onNodeWithTag("tokenize").performClick()
@@ -125,7 +126,7 @@ class AppFlowTest {
         val fresh = newInstallation("AU")
         env.updateSettings { it.copy(payment = fresh.payment.copy(currencyCode = "AUD"), receipt = fresh.receipt) }
         ringUpCustomAmount(9, 5, 0)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         compose.waitForTag("pay")
         compose.onNodeWithTag("customerReference").assertExists()
         listOf("transactionReference", "email", "tokenize").forEach { compose.onNodeWithTag(it).assertDoesNotExist() }
@@ -150,7 +151,7 @@ class AppFlowTest {
     fun `declined payments can be retried`() {
         env.useSimulator { it.copy(simulator = it.simulator.copy(outcome = SimulatedOutcome.DECLINE)) }
         ringUpCustomAmount(5, 0, 0)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         compose.waitForTag("pay")
         compose.onNodeWithTag("pay").performClick()
         waitForText("Declined")
@@ -190,6 +191,7 @@ class AppFlowTest {
         compose.onNodeWithTag("addCustom").assertDoesNotExist()
         compose.onNodeWithText("Flat white").performClick()
         compose.onNodeWithText("Flat white").performClick()
+        waitForText("Charge $9.00")
         compose.onNodeWithText("Charge $9.00").assertIsDisplayed()
         compose.onNodeWithTag("cartButton").performClick()
         compose.waitForTag("cartList")
@@ -346,7 +348,7 @@ class AppFlowTest {
             2,
         )
         waitForText("Charge $4.00")
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         compose.waitForTag("pay")
         compose.onNodeWithTag("pay").performClick()
         waitForText("Approved")
@@ -545,7 +547,7 @@ class AppFlowTest {
     fun `takes a sale for a tip on the receipt and enters the tip afterwards`() {
         env.updateSettings { it.copy(payment = it.payment.copy(receiptTipping = ReceiptTipping.DEFAULT_OFF)) }
         ringUpCustomAmount(2, 5, 0, 0)
-        compose.onNodeWithTag("charge").performClick()
+        compose.clickWhenEnabled("charge")
         compose.waitForTag("pay")
         compose
             .onNodeWithTag("tipOnReceipt")

@@ -47,7 +47,7 @@ class OnboardingViewModel(
         launchWrite({
             sampleDataWrite {
                 pricing.recover()
-                if (choice == OnboardingChoice.SIMULATOR) samples.populate()
+                if (choice == OnboardingChoice.SIMULATOR) samples.populate(replaceReceiptDetails = false)
                 pricing.update {
                     it.copy(
                         onboardingCompleted = true,

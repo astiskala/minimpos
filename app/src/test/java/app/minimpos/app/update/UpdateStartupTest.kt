@@ -6,6 +6,7 @@ import app.minimpos.app.TestEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -17,6 +18,9 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class UpdateStartupTest {
     private val dispatcher = UnconfinedTestDispatcher()
+
+    // DataStore can resume unconfined work on IO; assertions and Robolectric teardown must return to the test thread.
+    private val testDispatcher = StandardTestDispatcher(dispatcher.scheduler)
 
     private suspend fun started(
         device: FakeDevice,
@@ -31,7 +35,7 @@ class UpdateStartupTest {
 
     @Test
     fun `the container checks once on a device that is not an Adyen terminal`() =
-        runTest(dispatcher) {
+        runTest(testDispatcher) {
             val (env, updates) = started(FakeDevice(), UpdateCheck.Available("0.6.5", "https://example.com/minimpos-0.6.5.apk"))
             try {
                 env.container.update.state
@@ -46,7 +50,7 @@ class UpdateStartupTest {
 
     @Test
     fun `an Adyen terminal never checks, and offers nothing`() =
-        runTest(dispatcher) {
+        runTest(testDispatcher) {
             val (env, updates) = started(FakeDevice(detectedPoiId = "S1F2-000158213605014"), UpdateCheck.Current)
             try {
                 assertThat(updates.checks).isEqualTo(0)

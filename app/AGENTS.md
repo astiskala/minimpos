@@ -175,8 +175,9 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   CONTRIBUTING owns paths and usage). FakeDevice/FakeTerminal model terminals; FakeCloud,
   FakePaymentsApp, FakeManagement and FakeLinkApi model external services (`env.useLinks()` enables link setup).
   Call `container.start()` for background connection checks. Use fake DNS; no network in tests.
-  Startup tests inject `UnconfinedTestDispatcher` into `TestEnvironment` and use `runTest` with that dispatcher;
-  suspend for state changes so queued DataStore continuations and debounced checks can progress.
+  Startup tests inject `UnconfinedTestDispatcher` into `TestEnvironment` for eager startup and run the test with a
+  `StandardTestDispatcher` sharing its scheduler. This keeps assertions and Robolectric teardown on the test thread
+  after DataStore resumes on IO. Suspend for state changes so queued continuations and debounced checks can progress.
 - `FileProvider` caches roots across Robolectric tests; `forgetSharedFileRoots` clears them. Filesystem fixtures must
   also be isolated across the two worker JVMs.
 - Wait with `compose.awaitCondition`, not `await` (main-looper deadlock). After saving, wait for the editor to close.

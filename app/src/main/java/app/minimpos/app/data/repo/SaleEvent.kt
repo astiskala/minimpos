@@ -264,12 +264,14 @@ sealed interface SaleEvent {
      * Persists adjustment identity and amount before it can take effect.
      * @property key Logical operation identity reused until its outcome is known.
      * @property amountMinor Frozen adjustment amount, in minor units.
+     * @property startedAt First-send time in epoch milliseconds; null until persistence stamps it.
      */
     data class AdjustmentSending(
         val key: String,
         val amountMinor: Long,
+        val startedAt: Long? = null,
     ) : SaleEvent {
-        override fun stamped(now: Long) = this
+        override fun stamped(now: Long): SaleEvent = copy(startedAt = startedAt ?: now)
     }
 }
 
@@ -403,7 +405,12 @@ private fun SaleEntity.prepared(event: SaleEvent): SaleEntity =
         copy(context = event.context)
     } else {
         check(event is SaleEvent.AdjustmentSending)
-        copy(adjustmentKey = event.key, adjustmentAmountMinor = event.amountMinor, adjustmentPending = true)
+        copy(
+            adjustmentKey = event.key,
+            adjustmentAmountMinor = event.amountMinor,
+            adjustmentPending = true,
+            adjustmentStartedAt = if (adjustmentKey == event.key) adjustmentStartedAt else event.startedAt,
+        )
     }
 
 private fun SaleEntity.ended(

@@ -28,9 +28,9 @@ import kotlin.time.Duration.Companion.seconds
  * serialization. [AdyenHttp] owns delivery uncertainty, timeouts and idempotency headers; the library's HTTP client
  * is not used. The API key goes in the `x-api-key` header and is never part of an error message.
  *
- * Blocking calls run on [dispatcher]; cancelling the coroutine interrupts them. A request that could not be sent at
- * all (no connection, unknown host) and HTTP 4xx answers other than 408 and 429 fail with a fault that took no effect;
- * timeouts, 408, 429, 5xx and unreadable answers with one that may have.
+ * Blocking calls run on [dispatcher]; cancelling the coroutine interrupts them. [AdyenHttp] distinguishes definitive
+ * rejections from uncertain delivery, including idempotency conflicts. HTTP errors retain Adyen's explicit retry
+ * permission; callers must preserve an earlier unknown outcome when a recovery attempt cannot be sent.
  */
 class CheckoutModifications(
     private val credentials: CheckoutCredentials,

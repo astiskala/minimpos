@@ -343,30 +343,35 @@ class CapabilityDiscovery(
                     checking = true,
                 )
             state.value = initial
-            when {
-                setup.apiSetup == ApiSetup.Simulated -> {
-                    publish(
-                        origin,
-                        initial
-                            .withRemote(simulatedCapabilities)
-                            .copy(checking = false, problem = null, failure = null),
-                    )
-                }
+            try {
+                when {
+                    setup.apiSetup == ApiSetup.Simulated -> {
+                        publish(
+                            origin,
+                            initial
+                                .withRemote(simulatedCapabilities)
+                                .copy(checking = false, problem = null, failure = null),
+                        )
+                    }
 
-                !setup.capabilities.discoversTerminals -> {
-                    publish(
-                        origin,
-                        initial.copy(checking = false, problem = setup.problem, failure = null),
-                    )
-                }
+                    !setup.capabilities.discoversTerminals -> {
+                        publish(
+                            origin,
+                            initial.copy(checking = false, problem = setup.problem, failure = null),
+                        )
+                    }
 
-                setup.problem != null -> {
-                    publish(origin, initial.copy(checking = false, problem = setup.problem, failure = null))
-                }
+                    setup.problem != null -> {
+                        publish(origin, initial.copy(checking = false, problem = setup.problem, failure = null))
+                    }
 
-                else -> {
-                    discoverRemote(origin, initial)
+                    else -> {
+                        discoverRemote(origin, initial)
+                    }
                 }
+            } finally {
+                // This mutex still owns the reading, including when its caller is cancelled or its setup changes.
+                state.value = state.value.copy(checking = false)
             }
             state.value
         }

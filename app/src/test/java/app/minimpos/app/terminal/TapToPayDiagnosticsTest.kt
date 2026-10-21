@@ -5,6 +5,7 @@ import app.minimpos.app.FakeManagement
 import app.minimpos.app.FakePaymentsApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.secretFingerprint
 import app.minimpos.app.data.settings.TerminalMode
@@ -151,6 +152,39 @@ class TapToPayDiagnosticsTest {
         assertThat(management.requests).isEmpty()
         assertThat(management.revoked).isEmpty()
         assertThat(paymentsApp.opened.all { "/boarded?" in it && "reboard" !in it }).isTrue()
+    }
+
+    @Test
+    fun `revoked credentials replace cached success without generating tokens or changing boarding evidence`() {
+        configured(installation = "")
+        await { container.tapToPay.board() }
+        val identity = checkNotNull(await { container.settings.current() }.boardingIdentity)
+        assertThat(await { diagnostics.refresh() }.associated).isTrue()
+        management.credentialResult = BoardingCredentialCheck.Failed(Fault.Credential(ApiKey.PAYMENTS_APP))
+        val tokens = management.requests.size
+        val check = await { diagnostics.refresh() }
+        assertThat(check.clientKey).isEqualTo(ClientKeyCheck.AUTHENTICATION_FAILED)
+        assertThat(check.failure).isEqualTo(Failure.Remote(Fault.Credential(ApiKey.PAYMENTS_APP)))
+        assertThat(check.credential).isNull()
+        assertThat(check.apiHasRequiredRole).isNull()
+        assertThat(check.associated).isFalse()
+        assertThat(check.boardingIdentity).isEqualTo(identity)
+        assertThat(await { container.settings.current() }.boardingIdentity).isEqualTo(identity)
+        assertThat(management.requests).hasSize(tokens)
+        assertThat(management.revoked).isEmpty()
+        assertThat(management.connections.all { it.second == TerminalEnvironment.TEST }).isTrue()
+    }
+
+    @Test
+    fun `inactive credential remains explicit diagnostic evidence`() {
+        configured()
+        management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", false, true, true)
+        val check = await { diagnostics.refresh() }
+        assertThat(check.credential?.active).isFalse()
+        assertThat(check.clientKey).isEqualTo(ClientKeyCheck.PRESENT)
+        assertThat(check.associated).isFalse()
+        assertThat(management.requests).isEmpty()
+        assertThat(management.revoked).isEmpty()
     }
 
     @Test

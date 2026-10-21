@@ -103,7 +103,7 @@ private fun fetch(url: String): String? {
     connection.setRequestProperty("Accept", "application/vnd.github+json")
     connection.setRequestProperty("User-Agent", USER_AGENT)
     try {
-        if (connection.responseCode != HttpURLConnection.HTTP_OK) return null
+        if (connection.responseCode != HttpURLConnection.HTTP_OK || connection.contentLengthLong > LIMIT) return null
         return read(connection.inputStream)
     } finally {
         connection.disconnect()
@@ -116,8 +116,10 @@ private fun read(stream: InputStream): String? {
     val buffer = ByteArray(BUFFER)
     stream.use { input ->
         while (out.size() <= LIMIT) {
-            val read = input.read(buffer)
+            val remaining = LIMIT - out.size()
+            val read = input.read(buffer, 0, minOf(buffer.size, remaining + 1))
             if (read < 0) return out.toByteArray().toString(Charsets.UTF_8)
+            if (read > remaining) break
             out.write(buffer, 0, read)
         }
     }

@@ -40,9 +40,12 @@ import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Rule
 import org.junit.Test
@@ -287,6 +290,29 @@ class CapabilityDiscoveryTest {
             Dispatchers.resetMain()
         }
     }
+
+    @Test
+    fun `cancelling a refresh clears checking and permits another refresh`() =
+        runTest {
+            await { env.container.secrets.set(Secret.ADYEN_API_KEY, "api-key") }
+            env.updateSettings {
+                val connection = it.terminal.withConnection(TerminalMode.CLOUD, TerminalEnvironment.TEST)
+                it.copy(terminal = connection.copy(merchantAccount = "HarbourCoffeeCOM", poiIdOverride = "S1F2-000158213605014"))
+            }
+            val gate = CompletableDeferred<Unit>()
+            lookupGate = gate
+            val discovery = env.container.capabilityDiscovery
+            val refresh = env.scope.launch { discovery.refresh() }
+            await { discovery.state.first { it.checking } }
+            await { refresh.cancelAndJoin() }
+            assertThat(refresh.isCancelled).isTrue()
+            assertThat(discovery.state.value.checking).isFalse()
+            gate.complete(Unit)
+            val next = await { discovery.refresh() }
+            assertThat(next.checking).isFalse()
+            assertThat(next.failure).isNull()
+            assertThat(next.surchargeConfigured).isTrue()
+        }
 
     private fun assertUnsupportedAndStandings(unsupportedState: AdyenCapabilitiesState) {
         assertThat(unsupportedState.giftCardsFor("AUD")).isEmpty()

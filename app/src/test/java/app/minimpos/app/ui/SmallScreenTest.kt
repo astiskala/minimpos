@@ -1,5 +1,6 @@
 package app.minimpos.app.ui
 
+import android.view.View
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
@@ -303,6 +304,31 @@ class SmallScreenTest {
     }
 
     @Test
+    fun `home tiles remain usable at one and a half font scale`() {
+        RuntimeEnvironment.setFontScale(1.5f)
+        compose.setContent { MiniMposApp(container) }
+        assertHomeTilesUsable()
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rEG-ldrtl-w320dp-h460dp-hdpi")
+    fun `RTL home tiles remain usable at one and a half font scale`() {
+        RuntimeEnvironment.setFontScale(1.5f)
+        compose.setContent { MiniMposApp(container) }
+        assertThat(env.context.resources.configuration.layoutDirection).isEqualTo(View.LAYOUT_DIRECTION_RTL)
+        assertHomeTilesUsable()
+    }
+
+    @Test
+    @Config(qualifiers = "ar-rEG-ldrtl-w320dp-h460dp-hdpi")
+    fun `RTL home tiles remain usable at double font scale`() {
+        RuntimeEnvironment.setFontScale(2f)
+        compose.setContent { MiniMposApp(container) }
+        assertThat(env.context.resources.configuration.layoutDirection).isEqualTo(View.LAYOUT_DIRECTION_RTL)
+        assertHomeTilesUsable()
+    }
+
+    @Test
     fun `the PIN pad scrolls to every key with the largest text`() {
         await { container.pinManager.setPin("1357") }
         RuntimeEnvironment.setFontScale(2f)
@@ -348,7 +374,18 @@ class SmallScreenTest {
             // A label squeezed by its tile measures far less than a line.
             assertWithMessage("$tag label height").that(text.height).isAtLeast(14.dp)
         }
-        listOf("products", "settings").forEach { compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed() }
+        listOf("products", "settings").forEach {
+            val button =
+                compose
+                    .onNodeWithTag(it)
+                    .performScrollTo()
+                    .assertIsDisplayed()
+                    .fetchSemanticsNode()
+            // Compact buttons draw at 44 dp; Compose expands their effective touch area independently.
+            val minimum = with(button.layoutInfo.density) { 48.dp.toPx() }
+            assertWithMessage(it).that(button.touchBoundsInRoot.height).isAtLeast(minimum)
+            assertWithMessage(it).that(button.touchBoundsInRoot.width).isAtLeast(minimum)
+        }
     }
 
     @Test

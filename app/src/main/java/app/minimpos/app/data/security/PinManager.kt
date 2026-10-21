@@ -100,6 +100,8 @@ class PinManager(
         if (failures % MAX_ATTEMPTS == 0) {
             val round = failures / MAX_ATTEMPTS
             lockedUntil = now + LOCKOUT_MILLIS * (1L shl (round - 1).coerceAtMost(MAX_LOCKOUT_SHIFT))
+            // Retain complete five-attempt rounds at the maximum delay without growing towards Int overflow.
+            failures = failures.coerceAtMost(MAX_LOCKOUT_SHIFT * MAX_ATTEMPTS)
             return PinCheck.LockedOut(lockedUntil)
         }
         return PinCheck.Rejected(MAX_ATTEMPTS - failures % MAX_ATTEMPTS)

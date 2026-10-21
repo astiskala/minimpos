@@ -9,6 +9,7 @@ import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.StoredPayment
+import app.minimpos.app.history.standing
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
@@ -23,6 +24,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.time.Clock
 import kotlin.uuid.Uuid
 
 /** What became of entering a tip, a capture or an authorisation adjustment, see [Captures]. */
@@ -79,17 +81,20 @@ sealed interface CaptureResult {
  * idempotency key made from the sale and amount, so one whose outcome is unknown can be sent again
  * ([retryCapture]) without capturing twice. One operation runs at a time. Waiting and eligibility checks are
  * cancellable; once committed, the stored request, exchange and stored answer finish even if the caller is cancelled.
- * Cancellation is then rethrown so a closed screen never continues with the outcome.
+ * Cancellation is then rethrown so a closed screen never continues with the outcome. Unresolved requests retain their
+ * original identity and first-send time; retries stop at seven days or after an HTTP error without explicit retry permission.
  *
  * @param sales Where the payments are stored, and their capture recorded.
  * @param target Where captures and adjustments go now: [AdyenApi.target] in the app, a fixed target in tests.
  * @param approval Manager approval, which every capture and adjustment needs, checked as held now under the
  *   operation lock.
+ * @param clock Checks persisted first-send times against Adyen’s guaranteed idempotency retention.
  */
 class Captures(
     private val sales: SaleRepository,
     private val target: suspend () -> ApiTarget,
     private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
+    private val clock: Clock = Clock.systemUTC(),
 ) {
     private val mutex = Mutex()
 
@@ -103,7 +108,7 @@ class Captures(
             val sale =
                 allowing(saleId, PaymentAction.ENTER_TIP)?.takeIf { tipMinor >= 0 } ?: return@withLock CaptureResult.NotAllowed
             val total = sale.totalMinor + tipMinor
-            if (PaymentStanding.tipNeedsAdjustment(sale.totalMinor, tipMinor) && total > sale.heldMinor) {
+            if (sale.adjustmentPending || (PaymentStanding.tipNeedsAdjustment(sale.totalMinor, tipMinor) && total > sale.heldMinor)) {
                 // The tip is only saved once the higher amount is authorised.
                 withApi(target, sale) { modifications ->
                     adjusted(sale, total, modifications) { capture(it, total, modifications, tipMinor) }
@@ -125,7 +130,7 @@ class Captures(
             val target = target()
             val sale =
                 allowing(saleId, PaymentAction.CAPTURE)?.takeIf { amountMinor > 0 } ?: return@withLock CaptureResult.NotAllowed
-            if (amountMinor > sale.heldMinor) {
+            if (sale.adjustmentPending || amountMinor > sale.heldMinor) {
                 withApi(target, sale) { modifications ->
                     adjusted(sale, amountMinor, modifications) { capture(it, amountMinor, modifications) }
                 }
@@ -187,8 +192,13 @@ class Captures(
             }
 
             is ApiAccess.Blocked -> {
-                if (access is ApiAccess.Unavailable) sales.record(sale.id, SaleEvent.ModificationNotSetUp(access.problem))
-                CaptureResult.NotDone(Failure.NotSetUp(access.problem))
+                val unresolved =
+                    sale.adjustmentPending || sale.standing in setOf(PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN)
+                if (access is ApiAccess.Unavailable && !unresolved) {
+                    sales.record(sale.id, SaleEvent.ModificationNotSetUp(access.problem))
+                }
+                val failure = Failure.NotSetUp(access.problem)
+                if (unresolved) CaptureResult.Unconfirmed(failure) else CaptureResult.NotDone(failure)
             }
         }
 
@@ -212,8 +222,13 @@ class Captures(
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
         // An unresolved request keeps its identity; a separate renewal or amount change gets a new identity.
         if (sale.adjustmentPending && sale.adjustmentAmountMinor != amount) return CaptureResult.NotAllowed
+        if (sale.adjustmentPending) {
+            CheckoutOperations.retryProblem(sale.adjustmentStartedAt, clock.millis(), sale.modificationReason)?.let {
+                return CaptureResult.Unconfirmed(Failure.NotSetUp(it))
+            }
+        }
         val key = if (sale.adjustmentPending) checkNotNull(sale.adjustmentKey) else "adjust-${Uuid.random()}"
-        sales.record(sale.id, SaleEvent.AdjustmentSending(key, amount))
+        if (!sale.adjustmentPending) sales.record(sale.id, SaleEvent.AdjustmentSending(key, amount, clock.millis()))
         val result =
             modifications.updateAmount(
                 psp,
@@ -222,11 +237,15 @@ class Captures(
                 sale.adjustAuthorisationData,
                 key,
             )
-        sales.record(sale.id, SaleEvent.AdjustmentAnswered(amount, result))
-        return when (result) {
-            is ModificationResult.Authorised, is ModificationResult.Received -> CaptureResult.Adjusted
-            is ModificationResult.Refused -> CaptureResult.Refused(result.said)
-            is ModificationResult.Failed -> result.fault.captureResult()
+        return if (sale.adjustmentPending && result is ModificationResult.Failed && !result.fault.mayHaveTakenEffect) {
+            CaptureResult.Unconfirmed(Failure.Remote(result.fault))
+        } else {
+            sales.record(sale.id, SaleEvent.AdjustmentAnswered(amount, result))
+            when (result) {
+                is ModificationResult.Authorised, is ModificationResult.Received -> CaptureResult.Adjusted
+                is ModificationResult.Refused -> CaptureResult.Refused(result.said)
+                is ModificationResult.Failed -> result.fault.captureResult()
+            }
         }
     }
 
@@ -237,7 +256,13 @@ class Captures(
         tipMinor: Long? = null,
     ): CaptureResult {
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
-        sales.record(sale.id, SaleEvent.CaptureSending(amount, tipMinor))
+        val unresolved = sale.standing in setOf(PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN)
+        if (sale.capturedMinor == amount) {
+            CheckoutOperations.retryProblem(sale.captureStartedAt, clock.millis(), sale.modificationReason)?.let {
+                return CaptureResult.Unconfirmed(Failure.NotSetUp(it))
+            }
+        }
+        if (!unresolved) sales.record(sale.id, SaleEvent.CaptureSending(amount, tipMinor, clock.millis()))
         val result =
             modifications.capture(
                 psp,
@@ -245,11 +270,15 @@ class Captures(
                 sale.merchantReference,
                 "capture-${sale.id}-$amount",
             )
-        sales.record(sale.id, SaleEvent.CaptureAnswered(result))
-        return when (result) {
-            is ModificationResult.Received, is ModificationResult.Authorised -> CaptureResult.Requested
-            is ModificationResult.Refused -> CaptureResult.Refused(result.said)
-            is ModificationResult.Failed -> result.fault.captureResult()
+        return if (unresolved && result is ModificationResult.Failed && !result.fault.mayHaveTakenEffect) {
+            CaptureResult.Unconfirmed(Failure.Remote(result.fault))
+        } else {
+            sales.record(sale.id, SaleEvent.CaptureAnswered(result))
+            when (result) {
+                is ModificationResult.Received, is ModificationResult.Authorised -> CaptureResult.Requested
+                is ModificationResult.Refused -> CaptureResult.Refused(result.said)
+                is ModificationResult.Failed -> result.fault.captureResult()
+            }
         }
     }
 

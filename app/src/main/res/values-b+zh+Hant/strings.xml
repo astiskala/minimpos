@@ -1211,4 +1211,5 @@
   <string name="checkout_token_without_donation">使用代碼扣款時不邀請捐款。</string>
   <string name="checkout_token_without_tip_or_donation">使用代碼扣款時不含小費，亦不邀請捐款。</string>
   <string name="reconciliation_mismatch_hint">請在交易紀錄中處理需要關注的付款。使用此終端的其他裝置也會計入其總額。</string>
+  <string name="setup_operation_reconciliation">Adyen 不允許重試。請在商戶後台查看此操作的結果。</string>
 </resources>

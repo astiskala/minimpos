@@ -161,6 +161,18 @@ class GitHubReleasesTest {
         }
     }
 
+    @Test
+    fun `the real client accepts exactly the limit and rejects oversized chunked bodies`() {
+        MockWebServer().use { server ->
+            server.start()
+            val maximum = "a".repeat(LIMIT)
+            server.enqueue(MockResponse.Builder().body(maximum).build())
+            server.enqueue(MockResponse.Builder().chunkedBody(maximum + "a", 8_192).build())
+            assertThat(body(server.url("/maximum").toString())).isEqualTo(maximum)
+            assertThat(body(server.url("/chunked").toString())).isNull()
+        }
+    }
+
     /** The real client's answer for [url]. */
     private fun body(url: String): String? = runBlocking { httpGet(url) }
 }

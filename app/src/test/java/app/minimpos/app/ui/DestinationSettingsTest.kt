@@ -182,6 +182,9 @@ class DestinationSettingsTest {
     private fun open(section: String) {
         compose.setContent { MiniMposApp(env.container) }
         compose.onNodeWithTag("settings").performClick()
+        compose.awaitCondition("settings list opens") {
+            compose.onAllNodesWithTag("section_$section").fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithTag("section_$section").performScrollTo().performClick()
         compose.awaitCondition("settings section opens") {
             compose.onAllNodesWithTag("section_$section").fetchSemanticsNodes().isEmpty()

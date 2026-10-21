@@ -242,16 +242,18 @@ sealed class Fault(
     ) : MaybeSent()
 
     /**
-     * Adyen timed out, throttled the request or had a server error (HTTP 408, 429 or 5xx).
+     * Adyen timed out, throttled the request, reported an idempotency conflict or had a server error.
      *
      * @property http The HTTP status code.
      * @property errorCode Adyen's error code; null when it sent none.
      * @property said Adyen's error message; null when it sent none.
+     * @property transientError Whether Adyen explicitly permits a retry with the same idempotency key.
      */
     data class AdyenUnavailable(
         val http: Int,
         val errorCode: String? = null,
         val said: ExternalText? = null,
+        val transientError: Boolean = false,
     ) : MaybeSent()
 
     /** The terminal reports the transaction as still in progress (the shopper or the issuer is not done yet). */

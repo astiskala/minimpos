@@ -20,6 +20,8 @@ import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.issues
 import app.minimpos.app.history.paidOnline
 import app.minimpos.app.history.standing
+import app.minimpos.app.terminal.ApiSetup
+import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
@@ -35,6 +37,7 @@ import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import javax.mail.Multipart
@@ -286,6 +289,36 @@ class PaymentLinksTest {
         val (first, second) = api.created.takeLast(2)
         assertThat(second.second).isEqualTo("link-$unknown")
         assertThat(second).isEqualTo(first)
+    }
+
+    @Test
+    fun `unknown link recovery preserves the first request through DNS failure and expires after seven days`() {
+        env.useLinks()
+        api.createResult = PaymentLinkResult.Failed(Fault.TimedOut)
+        val id = checkNotNull(links.start(linkStart()))
+        val original = saleWhen(id) { it.status == SaleStatus.UNKNOWN }
+        api.createResult = PaymentLinkResult.Failed(Fault.UnknownHost("checkout", false))
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.Unconfirmed(Failure.Remote(Fault.UnknownHost("checkout", false))))
+        assertThat(checkNotNull(await { container.sales.get(id) }).sale).isEqualTo(original)
+        val expired =
+            PaymentLinks(
+                container.appScope,
+                container.sales,
+                {
+                    ApiTarget(
+                        ApiSetup.Simulated,
+                        links = api,
+                        context = original.context,
+                    )
+                },
+                clock = Clock.fixed(Instant.ofEpochMilli(original.createdAt).plusSeconds(7 * 24 * 3600), ZoneOffset.UTC),
+            )
+        val count = api.created.size
+        assertThat(await { expired.check(id) }).isEqualTo(LinkUpdate.NotDone(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD)))
+        assertThat(api.created).hasSize(count)
+        api.createResult = null
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.StillOpen)
+        assertThat(api.created.map { it.second }.distinct()).containsExactly(PaymentLinks.idempotencyKey(id))
     }
 
     @Test

@@ -17,6 +17,10 @@
     @com.fasterxml.jackson.annotation.* <methods>;
 }
 -keepattributes Signature, *Annotation*, InnerClasses, EnclosingMethod
+# CheckoutPaymentMethod initializes anonymous GenericType subclasses before a saved-card charge. R8 full mode needs
+# both the generic base and its subclasses kept to retain their type arguments; otherwise initialization crashes.
+-keep,allowoptimization,allowobfuscation class jakarta.ws.rs.core.GenericType
+-keep,allowoptimization,allowobfuscation class com.adyen.model.checkout.CheckoutPaymentMethod$* extends jakarta.ws.rs.core.GenericType
 -keep,allowoptimization,allowobfuscation interface app.minimpos.terminal.transport.NexoSettings
 -keep @interface com.fasterxml.jackson.annotation.JsonIncludeProperties { *; }
 # The library's default Apache HttpClient is excluded (it does not run on Android); TerminalHttpClient replaces it.

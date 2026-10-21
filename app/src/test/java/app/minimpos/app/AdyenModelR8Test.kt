@@ -1,12 +1,15 @@
 package app.minimpos.app
 
 import com.adyen.model.checkout.Amount
+import com.adyen.model.checkout.CardDetails
+import com.adyen.model.checkout.CheckoutPaymentMethod
 import com.adyen.model.checkout.JSON
 import com.adyen.model.checkout.LineItem
 import com.adyen.model.checkout.PaymentAmountUpdateRequest
 import com.adyen.model.checkout.PaymentCaptureRequest
 import com.adyen.model.checkout.PaymentLinkRequest
 import com.adyen.model.checkout.PaymentMethodsRequest
+import com.adyen.model.checkout.PaymentRequest
 import com.adyen.model.checkout.UpdatePaymentLinkRequest
 import com.adyen.model.clouddevice.ConnectedDevicesResponse
 import com.adyen.model.management.ApiCredential
@@ -62,6 +65,17 @@ class AdyenModelR8Test {
     fun `release rules preserve official API JSON without exposing bookkeeping fields`() {
         val cases = modelCases()
         shrink(cases.keys + extraTypes()).use { loader ->
+            // Constructing the wrapper initializes its GenericType subclasses, just as pressing Charge does.
+            val cardType = loader.loadClass(CardDetails::class.java.name)
+            val card = cardType.getConstructor().newInstance()
+            cardType.getMethod("setStoredPaymentMethodId", String::class.java).invoke(card, "TOKEN1")
+            val methodType = loader.loadClass(CheckoutPaymentMethod::class.java.name)
+            val method = methodType.getConstructor(cardType).newInstance(card)
+            val requestType = loader.loadClass(PaymentRequest::class.java.name)
+            val request = requestType.getConstructor().newInstance()
+            requestType.getMethod("setPaymentMethod", methodType).invoke(request, method)
+            assertThat(JsonParser.parseString(requestType.getMethod("toJson").invoke(request) as String))
+                .isEqualTo(JsonParser.parseString("""{"paymentMethod":{"storedPaymentMethodId":"TOKEN1"}}"""))
             cases.forEach { (model, json) ->
                 val type = loader.loadClass(model.name)
                 val value = JSON.getMapper().readValue(json, type)
@@ -69,9 +83,9 @@ class AdyenModelR8Test {
                 assertThat(JsonParser.parseString(body)).isEqualTo(JsonParser.parseString(json))
             }
             val model = loader.loadClass(PaymentMethodsRequest::class.java.name)
-            val request = model.getConstructor().newInstance()
-            model.getMethod("merchantAccount", String::class.java).invoke(request, "HarbourCoffeeCOM")
-            assertThat(JsonParser.parseString(model.getMethod("toJson").invoke(request) as String))
+            val methodsRequest = model.getConstructor().newInstance()
+            model.getMethod("merchantAccount", String::class.java).invoke(methodsRequest, "HarbourCoffeeCOM")
+            assertThat(JsonParser.parseString(model.getMethod("toJson").invoke(methodsRequest) as String))
                 .isEqualTo(JsonParser.parseString(cases.getValue(PaymentMethodsRequest::class.java)))
         }
     }
@@ -79,6 +93,10 @@ class AdyenModelR8Test {
     private fun modelCases(): Map<Class<*>, String> =
         mapOf(
             PaymentMethodsRequest::class.java to """{"merchantAccount":"HarbourCoffeeCOM"}""",
+            PaymentRequest::class.java to
+                """{"merchantAccount":"HarbourCoffeeCOM","amount":{"currency":"AUD","value":1250},""" +
+                """"paymentMethod":{"type":"scheme","storedPaymentMethodId":"TOKEN1"},""" +
+                """"shopperReference":"CUST-001","shopperInteraction":"ContAuth","recurringProcessingModel":"UnscheduledCardOnFile"}""",
             PaymentCaptureRequest::class.java to
                 """{"merchantAccount":"HarbourCoffeeCOM","amount":{"currency":"AUD","value":3900},"reference":"capture"}""",
             PaymentAmountUpdateRequest::class.java to
@@ -120,6 +138,8 @@ class AdyenModelR8Test {
     private fun extraTypes(): List<Class<*>> =
         listOf(
             Amount::class.java,
+            CardDetails::class.java,
+            CheckoutPaymentMethod::class.java,
             LineItem::class.java,
             Dcc::class.java,
             Gratuity::class.java,
@@ -148,12 +168,11 @@ class AdyenModelR8Test {
                 .addProguardConfigurationFiles(File(checkNotNull(System.getProperty("minimpos.adyenModelRules"))).toPath())
                 .addProguardConfiguration(
                     models.map {
-                        "-keep,allowoptimization class ${it.name} { public <init>(); " +
+                        "-keep,allowoptimization class ${it.name} { public <init>(...); " +
                             "public *** merchantAccount(...); public *** toJson(...); }"
                     } +
                         listOf(
                             "-allowaccessmodification",
-                            "-keepnames class com.adyen.model.**",
                             "-keepclassmembers enum * { public static **[] values(); public static ** valueOf(java.lang.String); }",
                         ),
                     Origin.unknown(),

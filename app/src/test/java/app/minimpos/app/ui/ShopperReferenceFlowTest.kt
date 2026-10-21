@@ -128,6 +128,7 @@ class ShopperReferenceFlowTest {
         compose.onNodeWithTag("back").performClick()
         waitForTag("section_payments")
         compose.onNodeWithTag("section_payments").performScrollTo().performClick()
+        waitForTag("referenceSource")
         compose.onNodeWithTag("referenceSource").performScrollTo().performClick()
         waitForTag("referenceSource_CUSTOMER_REFERENCE")
         compose.onNodeWithTag("referenceSource_CUSTOMER_REFERENCE").performClick()

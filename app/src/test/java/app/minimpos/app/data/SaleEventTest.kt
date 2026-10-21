@@ -348,6 +348,7 @@ class SaleEventTest {
                 Fault.Abandoned,
                 Fault.TerminalHttp(500),
                 Fault.AdyenUnavailable(503, "905", SAID),
+                Fault.AdyenUnavailable(409, "704", SAID, transientError = true),
                 Fault.StillInProgress,
             )
     }

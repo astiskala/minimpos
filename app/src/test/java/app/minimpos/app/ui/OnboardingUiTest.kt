@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -36,6 +37,45 @@ class OnboardingUiTest {
     val compose = createComposeRule()
 
     private fun waitFor(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
+
+    @Test
+    fun `restoration keeps unfinished onboarding and removes it once completion is persisted`() {
+        val restoration = StateRestorationTester(compose)
+        restoration.setContent { MiniMposApp(env.container) }
+        waitFor("onboardingContinue")
+        compose.onNodeWithTag("onboardingImport").performClick()
+        restoration.emulateSavedInstanceStateRestore()
+        waitFor("onboardingContinue")
+        compose.onNodeWithTag("onboardingImport").assertIsSelected()
+
+        // Saved navigation can still contain Onboarding while durable settings already say it is complete.
+        env.updateSettings { it.copy(onboardingCompleted = true) }
+        compose.awaitCondition("completion observed") { env.container.onboardingState.value == true }
+        restoration.emulateSavedInstanceStateRestore()
+        waitFor("newSale")
+        compose.onNodeWithTag("onboardingContinue").assertDoesNotExist()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        waitFor("section_terminal")
+        compose.onNodeWithTag("back").performClick()
+        waitFor("newSale")
+        compose.onNodeWithTag("onboardingContinue").assertDoesNotExist()
+    }
+
+    @Test
+    fun `restoration after choosing terminal setup retains setup above Home`() {
+        val restoration = StateRestorationTester(compose)
+        restoration.setContent { MiniMposApp(env.container) }
+        waitFor("onboardingTerminal")
+        compose.onNodeWithTag("onboardingTerminal").performClick()
+        compose.onNodeWithTag("onboardingContinue").performClick()
+        waitFor("scanSetup")
+        compose.awaitCondition("completion persisted") { env.container.settingsState.value.onboardingCompleted }
+        restoration.emulateSavedInstanceStateRestore()
+        waitFor("scanSetup")
+        compose.onNodeWithTag("back").performClick()
+        waitFor("newSale")
+        compose.onNodeWithTag("onboardingContinue").assertDoesNotExist()
+    }
 
     @Test
     fun `leaving demo reviews data and opens setup without changing merchant or sample data`() {

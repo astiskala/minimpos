@@ -1211,4 +1211,5 @@
   <string name="checkout_token_without_donation">トークンでの請求では寄付を案内しません。</string>
   <string name="checkout_token_without_tip_or_donation">トークンでの請求にはチップは含まれず、寄付も案内しません。</string>
   <string name="reconciliation_mismatch_hint">取引履歴で確認が必要な決済を解決してください。この端末を使う他のデバイスの決済も合計に含まれます。</string>
+  <string name="setup_operation_reconciliation">Adyen は再試行を許可していません。Customer Area でこの操作の結果を確認してください。</string>
 </resources>

@@ -277,6 +277,32 @@ class PaymentsAppTest {
     }
 
     @Test
+    fun `expired boarding token is refused and an explicit retry obtains a fresh token`() {
+        val management = RecordingManagement()
+        val onboarding = PaymentsAppOnboarding(TerminalEnvironment.TEST, app, management, RETURN_URL)
+        val target = BoardingTarget("HarbourCoffeeCOM", "ST1")
+        app.boarded = false
+        app.reply = { opened ->
+            if ("/boarded?" in opened.link) {
+                "${opened.returnUrl}?boarded=false&installationId=INSTALLATION-1&boardingRequestToken=BRT-1"
+            } else {
+                "${opened.returnUrl}?boarded=false&error=Boarding+token+expired"
+            }
+        }
+        assertThat(runBlocking { onboarding.board(target) })
+            .isEqualTo(Onboarding.Failed(Fault.AppRefused(ExternalText("Boarding token expired")), unboarded = true))
+        assertThat(management.requests).hasSize(1)
+        assertThat(app.opened).hasSize(2)
+        assertThat(app.boarded).isFalse()
+
+        app.reply = null
+        management.result = ManagementResult.Done("BT-2", "INSTALLATION-1")
+        assertThat(runBlocking { onboarding.board(target) }).isEqualTo(Onboarding.NewlyBoarded("INSTALLATION-1", confirmed = true))
+        assertThat(management.requests).hasSize(2)
+        assertThat(app.boardingTokens).containsExactly("BT-2")
+    }
+
+    @Test
     fun `boarding steps without a usable answer say whether the Payments app may have dropped its boarding`() {
         val management = RecordingManagement()
         val onboarding = PaymentsAppOnboarding(TerminalEnvironment.TEST, app, management, RETURN_URL)

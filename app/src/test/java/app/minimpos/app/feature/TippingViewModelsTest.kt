@@ -219,7 +219,12 @@ class TippingViewModelsTest {
                 container.sales
                     .get(id)!!
                     .sale
-                    .copy(tipMinor = 100, capturedMinor = 2_100, captureStatus = CaptureStatus.FAILED),
+                    .copy(
+                        tipMinor = 100,
+                        capturedMinor = 2_100,
+                        captureStatus = CaptureStatus.FAILED,
+                        captureStartedAt = System.currentTimeMillis(),
+                    ),
             )
         }
         val vm = detail(id)

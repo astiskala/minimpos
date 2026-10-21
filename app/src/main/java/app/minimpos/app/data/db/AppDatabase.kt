@@ -22,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RefundEntity::class,
         HistorySwitchEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -83,11 +83,19 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /** Preserves version-13 history; legacy adjustments retain an unknown first-send time. */
+        val MIGRATION_13_14: Migration =
+            object : Migration(13, 14) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE `sales` ADD COLUMN `adjustmentStartedAt` INTEGER")
+                }
+            }
+
         /** Opens lazily on first query with versioned migrations; no destructive fallback is configured. */
         fun create(context: Context): AppDatabase =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, "minimpos.db")
-                .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+                .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
                 .build()
     }
 }

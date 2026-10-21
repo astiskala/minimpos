@@ -142,19 +142,30 @@ class PricingChangesTest {
     @Test
     fun `catalogue failure leaves a blocked journal that recovery replays atomically`() {
         val product = seed()
+        val laterProduct = seed(price = 1_250)
+        await { container.catalog.saveProduct(laterProduct.copy(name = "Zebra tea")) }
         val change = preview()
         val database = container.database.openHelper.writableDatabase
-        database.execSQL("CREATE TRIGGER fail_prices BEFORE UPDATE ON products BEGIN SELECT RAISE(ABORT, 'prices failed'); END")
+        database.execSQL(
+            "CREATE TRIGGER fail_prices BEFORE UPDATE ON products WHEN OLD.id = ${laterProduct.id} " +
+                "BEGIN SELECT RAISE(ABORT, 'prices failed'); END",
+        )
         assertThrows(SQLiteConstraintException::class.java) { runBlocking { operations.confirm(change) } }
         assertThat(store.data.value.pricingChange).isEqualTo(change)
         assertThat(PricingChanges.ready(store.data.value)).isFalse()
         assertThat(await { operations.confirm(change) }).isFalse()
         assertThat(await { operations.update { it.copy(receipt = it.receipt.copy(title = "ignored")) } }).isNull()
         assertThat(await { container.catalog.product(product.id) }!!.priceMinor).isEqualTo(450)
+        assertThat(await { container.catalog.product(laterProduct.id) }!!.priceMinor).isEqualTo(1_250)
         database.execSQL("DROP TRIGGER fail_prices")
-        await { operations.recover() }
+        // Recreate the owner, as after process loss: recovery must use only the persisted journal and database.
+        val restarted = PricingChanges(settings, container.catalog, { CurrencySpec.of(it.payment.currencyCode) }, emptyList()) { false }
+        await { restarted.recover() }
         assertThat(store.data.value.pricingChange).isNull()
         assertThat(await { container.catalog.product(product.id) }!!.priceMinor).isEqualTo(5)
+        assertThat(await { container.catalog.product(laterProduct.id) }!!.priceMinor).isEqualTo(13)
+        await { restarted.recover() }
+        assertThat(await { container.catalog.product(laterProduct.id) }!!.priceMinor).isEqualTo(13)
     }
 
     @Test

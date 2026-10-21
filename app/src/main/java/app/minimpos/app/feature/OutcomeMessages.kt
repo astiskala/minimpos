@@ -358,6 +358,7 @@ private val SetupProblem.textRes: Int
             SetupProblem.KEY_CREATION_UNCONFIRMED -> R.string.setup_key_creation_unconfirmed
             SetupProblem.PRINTER -> R.string.setup_printer
             SetupProblem.CHARGE_TOO_OLD -> R.string.setup_charge_too_old
+            SetupProblem.OPERATION_RECONCILIATION -> R.string.setup_operation_reconciliation
             SetupProblem.SHOPPER_REFERENCE -> R.string.setup_shopper_reference
             SetupProblem.TOTALS -> R.string.setup_totals
         }

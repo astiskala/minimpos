@@ -38,6 +38,7 @@ import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCardListing
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -53,6 +54,10 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 
 /** Answers captures and adjustments as told, and records what was sent. */
 private class FakeModifications : PaymentModifications {
@@ -255,7 +260,9 @@ class CapturesTest {
         assertThat(sale().tipMinor).isNull()
 
         fake.adjustResult = null
-        assertThat(await { captures.addTip("s1", 200) }).isEqualTo(CaptureResult.Requested)
+        assertThat(await { captures.addTip("s1", 200) }).isEqualTo(CaptureResult.NotAllowed)
+        assertThat(sale().adjustmentPending).isTrue()
+        assertThat(await { captures.addTip("s1", 1_000) }).isEqualTo(CaptureResult.Requested)
         assertThat(sale().modificationMessage).isNull()
     }
 
@@ -356,6 +363,96 @@ class CapturesTest {
         await { container.history.settleInterrupted() }
         assertThat(sale().captureStatus).isEqualTo(CaptureStatus.UNKNOWN)
         assertThat(sale().modificationReason).isEqualTo(StoredReason.Interrupted)
+    }
+
+    @Test
+    fun `failed recovery preserves capture and adjustment identities until a definitive answer`() {
+        store()
+        fake.captureResult = ModificationResult.Failed(Fault.TimedOut)
+        await { captures.addTip("s1", 100) }
+        val capture = sale()
+        target = ApiTarget(ApiSetup.Incomplete(SetupProblem.API_KEY))
+        assertThat(await { captures.retryCapture("s1") }).isEqualTo(CaptureResult.Unconfirmed(Failure.NotSetUp(SetupProblem.API_KEY)))
+        assertThat(sale()).isEqualTo(capture)
+        target = ApiTarget(ApiSetup.Complete, fake)
+        fake.captureResult = ModificationResult.Failed(Fault.UnknownHost("checkout", false))
+        assertThat(
+            await { captures.retryCapture("s1") },
+        ).isEqualTo(CaptureResult.Unconfirmed(Failure.Remote(Fault.UnknownHost("checkout", false))))
+        assertThat(sale()).isEqualTo(capture)
+        fake.captureResult = ModificationResult.Received("CAP")
+        assertThat(await { captures.retryCapture("s1") }).isEqualTo(CaptureResult.Requested)
+        assertThat(fake.keys.distinct()).containsExactly("capture-s1-2100")
+
+        store(bill.copy(id = "p", tipOnReceipt = false, kind = SaleKind.PRE_AUTHORISATION))
+        fake.adjustResult = ModificationResult.Failed(Fault.TimedOut)
+        await { captures.adjust("p", 3000) }
+        val adjustment = sale("p")
+        fake.adjustResult = ModificationResult.Failed(Fault.Credential(ApiKey.ADYEN))
+        assertThat(await { captures.adjust("p", 3000) }).isInstanceOf(CaptureResult.Unconfirmed::class.java)
+        assertThat(sale("p")).isEqualTo(adjustment)
+        assertThat(await { captures.capture("p", 1500) }).isEqualTo(CaptureResult.NotAllowed)
+        fake.adjustResult = ModificationResult.Authorised("ADJ", "new-blob")
+        assertThat(await { captures.adjust("p", 3000) }).isEqualTo(CaptureResult.Adjusted)
+        assertThat(fake.keys.takeLast(3).distinct()).containsExactly(adjustment.adjustmentKey)
+        assertThat(await { captures.adjust("p", 3000) }).isEqualTo(CaptureResult.Adjusted)
+        assertThat(fake.keys.last()).isNotEqualTo(adjustment.adjustmentKey)
+    }
+
+    @Test
+    fun `capture and adjustment retries stop at seven days and cannot renew their first send times`() {
+        val instant = Instant.parse("2026-10-21T00:00:00Z")
+        val first = Captures(container.sales, { target }, clock = Clock.fixed(instant, ZoneOffset.UTC))
+        store()
+        store(bill.copy(id = "p", tipOnReceipt = false, kind = SaleKind.PRE_AUTHORISATION))
+        fake.captureResult = ModificationResult.Failed(Fault.TimedOut)
+        fake.adjustResult = ModificationResult.Failed(Fault.TimedOut)
+        await { first.addTip("s1", 100) }
+        await { first.adjust("p", 3000) }
+        val capture = sale()
+        val adjustment = sale("p")
+        val beforeExpiry =
+            Captures(container.sales, { target }, clock = Clock.fixed(instant.plus(7, ChronoUnit.DAYS).minusMillis(1), ZoneOffset.UTC))
+        await { beforeExpiry.retryCapture("s1") }
+        await { beforeExpiry.adjust("p", 3000) }
+        assertThat(sale().captureStartedAt).isEqualTo(instant.toEpochMilli())
+        assertThat(sale("p").adjustmentStartedAt).isEqualTo(instant.toEpochMilli())
+        val expired = Captures(container.sales, { target }, clock = Clock.fixed(instant.plus(7, ChronoUnit.DAYS), ZoneOffset.UTC))
+        val count = fake.keys.size
+        assertThat(await { expired.retryCapture("s1") }).isEqualTo(CaptureResult.Unconfirmed(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD)))
+        assertThat(await { expired.adjust("p", 3000) }).isEqualTo(CaptureResult.Unconfirmed(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD)))
+        assertThat(fake.keys).hasSize(count)
+        assertThat(sale()).isEqualTo(capture)
+        assertThat(sale("p")).isEqualTo(adjustment)
+    }
+
+    @Test
+    fun `legacy unresolved modifications and nontransient HTTP errors cannot be replayed`() {
+        store(bill.copy(captureStatus = CaptureStatus.UNKNOWN, capturedMinor = 2000))
+        store(
+            bill.copy(
+                id = "p",
+                tipOnReceipt = false,
+                kind = SaleKind.PRE_AUTHORISATION,
+                adjustmentPending = true,
+                adjustmentKey = "legacy",
+                adjustmentAmountMinor = 3000,
+            ),
+        )
+        assertThat(
+            await { captures.retryCapture("s1") },
+        ).isEqualTo(CaptureResult.Unconfirmed(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD)))
+        assertThat(await { captures.adjust("p", 3000) }).isEqualTo(CaptureResult.Unconfirmed(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD)))
+        assertThat(fake.keys).isEmpty()
+        store(bill.copy(id = "http"))
+        fake.captureResult = ModificationResult.Failed(Fault.AdyenUnavailable(409, "704"))
+        await { captures.addTip("http", 100) }
+        assertThat(
+            await {
+                captures.retryCapture("http")
+            },
+        ).isEqualTo(CaptureResult.Unconfirmed(Failure.NotSetUp(SetupProblem.OPERATION_RECONCILIATION)))
+        assertThat(fake.keys).hasSize(1)
     }
 
     @Test

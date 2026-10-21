@@ -1216,4 +1216,5 @@
   <string name="checkout_token_without_donation">The token is charged without a donation invitation.</string>
   <string name="checkout_token_without_tip_or_donation">The token is charged without a tip or donation invitation.</string>
   <string name="reconciliation_mismatch_hint">Resolve payments that need attention in History. Other devices using this terminal also count in its totals.</string>
+  <string name="setup_operation_reconciliation">Adyen did not permit a retry. Check this operation’s outcome in your Customer Area.</string>
 </resources>

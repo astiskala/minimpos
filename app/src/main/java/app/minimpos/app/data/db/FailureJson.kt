@@ -83,7 +83,10 @@ internal object FailureJson {
     private val TERMINAL_HTTP =
         codec<Fault.TerminalHttp>("TERMINAL_HTTP", { put(HTTP, it.code) }) { json -> json.int(HTTP)?.let(Fault::TerminalHttp) }
     private val ADYEN_UNAVAILABLE =
-        codec<Fault.AdyenUnavailable>("ADYEN_UNAVAILABLE", { adyen(it.http, it.errorCode, it.said) }) { it.adyen(Fault::AdyenUnavailable) }
+        codec<Fault.AdyenUnavailable>("ADYEN_UNAVAILABLE", {
+            adyen(it.http, it.errorCode, it.said)
+            put("transientError", it.transientError)
+        }) { json -> json.adyen { http, code, said -> Fault.AdyenUnavailable(http, code, said, json.boolean("transientError") == true) } }
     private val STILL_IN_PROGRESS = fixed("STILL_IN_PROGRESS", Fault.StillInProgress)
 
     /**

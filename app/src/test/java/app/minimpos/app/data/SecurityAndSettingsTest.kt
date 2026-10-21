@@ -120,6 +120,28 @@ class SecurityAndSettingsTest {
         }
 
     @Test
+    fun `maximum PIN delay retains five attempts per round and successful verification resets it`() =
+        await {
+            var now = 0L
+            val pins = PinManager(secrets, clock = { now }, iterations = 1_000)
+            pins.setPin("1234")
+            repeat(12) { round ->
+                repeat(4) { attempt ->
+                    assertThat(pins.verify("9999")).isEqualTo(PinCheck.Rejected(4 - attempt))
+                }
+                val until = now + PinManager.LOCKOUT_MILLIS * (1L shl round.coerceAtMost(5))
+                assertThat(pins.verify("9999")).isEqualTo(PinCheck.LockedOut(until))
+                assertThat(pins.verify("1234")).isEqualTo(PinCheck.LockedOut(until))
+                now = until
+            }
+            assertThat(pins.verify("1234")).isEqualTo(PinCheck.Accepted)
+            repeat(4) { attempt ->
+                assertThat(pins.verify("9999")).isEqualTo(PinCheck.Rejected(4 - attempt))
+            }
+            assertThat(pins.verify("9999")).isEqualTo(PinCheck.LockedOut(now + PinManager.LOCKOUT_MILLIS))
+        }
+
+    @Test
     fun `inactivity expiry does not refresh the last interaction`() {
         var now = 0L
         val lock = SessionLock { now }

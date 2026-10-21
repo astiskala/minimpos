@@ -25,7 +25,7 @@ import kotlin.uuid.Uuid
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun exportedSchema(version: Int = 13): JSONObject =
+    private fun exportedSchema(version: Int = 14): JSONObject =
         listOf("schemas", "app/schemas")
             .map { File(it, "app.minimpos.app.data.db.AppDatabase/$version.json") }
             .first { it.exists() }
@@ -33,7 +33,7 @@ class DatabaseSchemaTest {
 
     private fun createExportedDatabase(
         name: String,
-        version: Int = 13,
+        version: Int = 14,
     ) {
         val schema = exportedSchema(version)
         val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
@@ -62,8 +62,12 @@ class DatabaseSchemaTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(AppDatabase.MIGRATION_10_11, AppDatabase.MIGRATION_11_12, AppDatabase.MIGRATION_12_13)
-                .allowMainThreadQueries()
+                .addMigrations(
+                    AppDatabase.MIGRATION_10_11,
+                    AppDatabase.MIGRATION_11_12,
+                    AppDatabase.MIGRATION_12_13,
+                    AppDatabase.MIGRATION_13_14,
+                ).allowMainThreadQueries()
                 .build()
         try {
             return block(db)
@@ -97,6 +101,7 @@ class DatabaseSchemaTest {
                             reason = StoredReason.NotDone(Failure.NotSetUp(SetupProblem.API_KEY)),
                             processedAt = 10,
                             captureStartedAt = 20,
+                            adjustmentStartedAt = 15,
                             captureProcessedAt = 30,
                         ),
                     )
@@ -113,6 +118,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.requestedWallet).isEqualTo("wechatpay_pos")
                     assertThat(sale.processedAt).isEqualTo(10)
                     assertThat(sale.captureStartedAt).isEqualTo(20)
+                    assertThat(sale.adjustmentStartedAt).isEqualTo(15)
                     assertThat(sale.captureProcessedAt).isEqualTo(30)
                     assertThat(db.openHelper.readableDatabase.version).isEqualTo(exportedSchema().getInt("version"))
                 }
@@ -144,7 +150,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.merchantReference).isEqualTo("MP-10")
                     assertThat(sale.poiReconciliationId).isNull()
                     assertThat(sale.savedCard).isFalse()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(13)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(14)
                 }
             }
         } finally {
@@ -191,7 +197,7 @@ class DatabaseSchemaTest {
                             .single()
                             .name,
                     ).isEqualTo("GST")
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(13)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(14)
                 }
             }
         } finally {
@@ -222,7 +228,40 @@ class DatabaseSchemaTest {
                     assertThat(sale.status).isEqualTo(SaleStatus.DECLINED)
                     assertThat(sale.errorCondition).isEqualTo("Busy")
                     assertThat(sale.busyServiceId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(13)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(14)
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test
+    fun `version 13 preserves unresolved adjustments without inventing a retry window`() {
+        val name = "schema-v13-${Uuid.random()}"
+        createExportedDatabase(name, version = 13)
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
+            raw.execSQL(
+                "INSERT INTO `sales` (`id`, `sample`, `createdAt`, `currency`, `taxMode`, `netMinor`, `taxMinor`, `totalMinor`, " +
+                    "`status`, `merchantReference`, `tokenizationRequested`, `signatureRequired`, `refundedMinor`, `kind`, " +
+                    "`tipOnReceipt`, `holdCancelled`, `paymentLink`, `adjustmentPending`, `paidMinor`, `savedCard`, " +
+                    "`adjustmentKey`, `adjustmentAmountMinor`, `captureStartedAt`, `captureStatus`, `capturedMinor`) " +
+                    "VALUES ('s13', 0, 100, 'AUD', 'INCLUSIVE', 909, 91, 1000, 'APPROVED', 'MP-13', 0, 0, 0, 'PRE_AUTHORISATION', " +
+                    "0, 0, 0, 1, 0, 0, 'original-key', 1200, 200, 'UNKNOWN', 1200)",
+            )
+        }
+        try {
+            withDatabase(name) { db ->
+                runBlocking {
+                    val sale = checkNotNull(db.saleDao().sale("s13")).sale
+                    assertThat(sale.adjustmentPending).isTrue()
+                    assertThat(sale.adjustmentKey).isEqualTo("original-key")
+                    assertThat(sale.adjustmentAmountMinor).isEqualTo(1200)
+                    assertThat(sale.adjustmentStartedAt).isNull()
+                    assertThat(sale.captureStartedAt).isEqualTo(200)
+                    assertThat(sale.captureStatus?.name).isEqualTo("UNKNOWN")
+                    assertThat(sale.totalMinor).isEqualTo(1000)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(14)
                 }
             }
         } finally {

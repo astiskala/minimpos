@@ -189,7 +189,7 @@ class SavedCardCharges(
                 .get(id)
                 ?.sale
                 ?.takeIf { it.savedCard && (it.status == SaleStatus.PENDING || it.status == SaleStatus.UNKNOWN) }
-                ?.let { CheckoutRecord(it.status == SaleStatus.PENDING, it.createdAt, it.context) }
+                ?.let { CheckoutRecord(it.status == SaleStatus.PENDING, it.createdAt, it.context, it.reason) }
 
         override fun access(
             target: ApiTarget,
@@ -203,6 +203,9 @@ class SavedCardCharges(
         ): CheckoutAnswer {
             val sale = sales.get(id)?.sale ?: return CheckoutAnswer.NotTaken
             val result = client.charge(request(sale), idempotencyKey(id))
+            if (sale.status == SaleStatus.UNKNOWN && result is CardChargeResult.Failed && !result.fault.mayHaveTakenEffect) {
+                return CheckoutAnswer.Unconfirmed(Failure.Remote(result.fault))
+            }
             sales.record(id, SaleEvent.CardAnswered(result, now))
             return when {
                 result is CardChargeResult.Authorised -> {

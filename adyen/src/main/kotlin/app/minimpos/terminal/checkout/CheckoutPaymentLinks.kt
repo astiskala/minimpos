@@ -24,9 +24,10 @@ import com.adyen.model.checkout.PaymentLinkRequest as AdyenPaymentLinkRequest
  * [PaymentLinkApi] over HTTPS with OkHttp, using the Adyen library's typed Checkout models, like [CheckoutModifications].
  * The API key goes in the `x-api-key` header and is never part of an error message.
  *
- * Blocking calls run on [dispatcher]; cancelling the coroutine interrupts them. A request that could not be sent at
- * all and HTTP 4xx answers other than 408 and 429 fail with a fault that took no effect; timeouts, 408, 429, 5xx and
- * answers without a link with one that may have.
+ * Blocking calls run on [dispatcher]; cancelling the coroutine interrupts them. [AdyenHttp] distinguishes definitive
+ * rejections from uncertain delivery, including idempotency conflicts. HTTP errors retain Adyen's explicit retry
+ * permission; an unreadable successful answer leaves creation uncertain. Callers bound creation retries by Adyen's
+ * guaranteed key retention and preserve an earlier unknown outcome when a recovery attempt cannot be sent.
  */
 class CheckoutPaymentLinks(
     private val credentials: CheckoutCredentials,

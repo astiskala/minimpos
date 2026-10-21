@@ -4,10 +4,12 @@ import android.database.SQLException
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.core.payment.PaymentContext
+import app.minimpos.terminal.transport.Fault
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -41,11 +43,13 @@ sealed interface CheckoutAnswer {
  * @property createdAt When it was opened, in epoch milliseconds, which decides whether it may be sent again (see
  *   [CheckoutOperations.RECHECK_WINDOW]).
  * @property context The original payment context the current API target must match; null when none was recorded.
+ * @property reason Last unresolved outcome, including Adyen’s persisted retry permission; null when unavailable.
  */
 data class CheckoutRecord(
     val pending: Boolean,
     val createdAt: Long,
     val context: PaymentContext?,
+    val reason: StoredReason? = null,
 )
 
 /**
@@ -128,7 +132,6 @@ interface CheckoutBook<R, C> {
  * @param newId Generates record IDs.
  * @param approval Manager approval of this kind; [ManagerApproval.NOT_REQUIRED] for a kind sent without it.
  * @param mutex Serializes sends and rechecks; shared when a caller also serializes follow-up operations.
- * @param recheckWindow Maximum age for resending an unknown operation; null when idempotency retries do not expire locally.
  */
 class CheckoutOperations<R, C>(
     scope: CoroutineScope,
@@ -139,7 +142,6 @@ class CheckoutOperations<R, C>(
     private val newId: () -> String = { Uuid.random().toString() },
     private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
     private val mutex: Mutex = Mutex(),
-    private val recheckWindow: Duration? = RECHECK_WINDOW,
 ) {
     private val runner = OperationRunner<R>(scope, onTerminal = false, amountOf = book::amount)
 
@@ -165,15 +167,15 @@ class CheckoutOperations<R, C>(
     /**
      * Sends record [id], whose outcome is unknown, again with its stored request and idempotency key, and stores Adyen's
      * answer. Anything else has nothing left to check ([Recheck.Settled]); nothing changes while approval, setup or the
-     * original payment context is missing, or once it is older than [recheckWindow].
+     * original payment context is missing, or once it is older than [RECHECK_WINDOW].
      */
     suspend fun recheck(id: String): Recheck = mutex.withLock { recheckUnlocked(id) }
 
     /** Runs [recheck] while the caller already holds [mutex]. */
     internal suspend fun recheckUnlocked(id: String): Recheck {
         val record = book.unsent(id)?.takeUnless { it.pending } ?: return Recheck.Settled
-        if (recheckWindow != null && Duration.ofMillis(clock.millis() - record.createdAt) > recheckWindow) {
-            return Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD))
+        retryProblem(record.createdAt, clock.millis(), record.reason)?.let {
+            return Recheck.StillUnknown(Failure.NotSetUp(it))
         }
         return send(id, record, grant = null)?.let(Recheck::StillUnknown) ?: Recheck.Settled
     }
@@ -237,5 +239,22 @@ class CheckoutOperations<R, C>(
     companion object {
         /** How long after an operation was opened its unknown outcome may be sent again: Adyen keeps keys at least this long. */
         val RECHECK_WINDOW: Duration = Duration.ofDays(7)
+
+        /**
+         * Why a stored request must not be replayed: its first-send time is unknown, outside Adyen's guaranteed
+         * retention window or ahead of the device clock, or an HTTP error did not explicitly permit retry.
+         * [reason] is the last unresolved answer; null represents an interrupted exchange without an HTTP answer.
+         */
+        internal fun retryProblem(
+            startedAt: Long?,
+            now: Long,
+            reason: StoredReason?,
+        ): SetupProblem? {
+            if (startedAt == null || now < startedAt || Duration.ofMillis(now - startedAt) >= RECHECK_WINDOW) {
+                return SetupProblem.CHARGE_TOO_OLD
+            }
+            val fault = ((reason as? StoredReason.Unconfirmed)?.failure as? Failure.Remote)?.fault
+            return SetupProblem.OPERATION_RECONCILIATION.takeIf { fault is Fault.AdyenUnavailable && !fault.transientError }
+        }
     }
 }

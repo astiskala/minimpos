@@ -20,10 +20,12 @@ internal sealed interface AdyenReply {
      *
      * @property code The HTTP status code.
      * @property body The response body, possibly empty.
+     * @property transientError Whether Adyen explicitly permits retrying this error with the same key.
      */
     data class Answered(
         val code: Int,
         val body: String,
+        val transientError: Boolean = false,
     ) : AdyenReply {
         /** Whether [code] is 2xx. */
         val ok: Boolean get() = code in HTTP_OK
@@ -41,8 +43,8 @@ internal sealed interface AdyenReply {
 
 /**
  * The fault an unsuccessful HTTP answer means, sent with [key]: 401 and 403 name the key (and the [role] a 403 lacks),
- * 408, 429 and 5xx leave the outcome unknown, any other code is a rejection. [error] is Adyen's error message and code,
- * read with the API's own error model.
+ * 408, 429, 5xx, idempotency conflicts and transient errors leave the outcome unknown; other codes reject it.
+ * [error] is Adyen's error message and code, read with the API's own error model.
  */
 internal fun AdyenReply.Answered.fault(
     key: ApiKey,
@@ -50,10 +52,22 @@ internal fun AdyenReply.Answered.fault(
     error: AdyenError?,
 ): Fault =
     when {
-        code == HTTP_UNAUTHORIZED -> Fault.Credential(key)
-        code == HTTP_FORBIDDEN -> Fault.Permission(key, role)
-        code in UNCERTAIN_HTTP || code >= HTTP_SERVER_ERROR -> Fault.AdyenUnavailable(code, error?.code, error?.said)
-        else -> Fault.AdyenRejected(code, error?.code, error?.said)
+        code == HTTP_UNAUTHORIZED -> {
+            Fault.Credential(key)
+        }
+
+        code == HTTP_FORBIDDEN -> {
+            Fault.Permission(key, role)
+        }
+
+        transientError || (code in IDEMPOTENCY_CONFLICT_HTTP && error?.code == "704") ||
+            code in UNCERTAIN_HTTP || code >= HTTP_SERVER_ERROR -> {
+            Fault.AdyenUnavailable(code, error?.code, error?.said, transientError)
+        }
+
+        else -> {
+            Fault.AdyenRejected(code, error?.code, error?.said)
+        }
     }
 
 /**
@@ -133,7 +147,7 @@ internal class AdyenHttp(
                     .build()
                     .newCall(built)
                     .execute()
-                    .use { AdyenReply.Answered(it.code, it.body.string()) }
+                    .use { AdyenReply.Answered(it.code, it.body.string(), it.header("transient-error").equals("true", ignoreCase = true)) }
             } catch (e: IOException) {
                 AdyenReply.Failed(failure(built.url, e))
             }
@@ -171,3 +185,6 @@ private val UNCERTAIN_HTTP = setOf(408, 429)
 
 /** The first server error code; from here on the outcome is unknown. */
 private const val HTTP_SERVER_ERROR = 500
+
+/** Status codes Adyen uses for an operation already processed or in progress (error 704). */
+private val IDEMPOTENCY_CONFLICT_HTTP = setOf(409, 422)

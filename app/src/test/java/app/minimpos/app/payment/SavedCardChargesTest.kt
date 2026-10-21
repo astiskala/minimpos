@@ -33,6 +33,7 @@ import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.checkout.StoredCardListing
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
@@ -298,6 +299,72 @@ class SavedCardChargesTest {
         assertThat(refundsSent.map { it.substringAfterLast(':') }.distinct()).containsExactly(CheckoutRefunds.idempotencyKey(refundId))
         assertThat(await { refunds.recheck(refundId) }).isEqualTo(Recheck.Settled)
         assertThat(refundsSent).hasSize(2)
+    }
+
+    @Test
+    fun `recovery transport and credential failures preserve unknown charges and refunds`() {
+        answers += CardChargeResult.Failed(Fault.TimedOut)
+        val id = charge()
+        val unknown = sale(id)
+        for (fault in listOf(Fault.UnknownHost("checkout", false), Fault.Credential(ApiKey.ADYEN))) {
+            answers += CardChargeResult.Failed(fault)
+            assertThat(await { charges.recheck(id) }).isEqualTo(Recheck.StillUnknown(Failure.Remote(fault)))
+            assertThat(sale(id)).isEqualTo(unknown)
+        }
+        answers += CardChargeResult.Authorised("PSP9")
+        assertThat(await { charges.recheck(id) }).isEqualTo(Recheck.Settled)
+        assertThat(sent.map { it.second }.distinct()).containsExactly(SavedCardCharges.idempotencyKey(id))
+        val record = checkNotNull(await { container.sales.get(id) })
+        val payment = (RefundablePayment.check(record) as Refundability.Refundable).payment
+        val request = checkNotNull(payment.request(RefundChoice.Everything, "", now, ZoneOffset.UTC))
+        refundAnswer = ModificationResult.Failed(Fault.TimedOut)
+        val refundId = checkNotNull(refunds.start(request))
+        await { refunds.state.first { it == TransactionState.Finished(refundId) } }
+        val original = checkNotNull(await { container.refundRecords.get(refundId) })
+        refundAnswer = ModificationResult.Failed(Fault.Unreachable("checkout", false))
+        assertThat(
+            await { refunds.recheck(refundId) },
+        ).isEqualTo(Recheck.StillUnknown(Failure.Remote(Fault.Unreachable("checkout", false))))
+        assertThat(await { container.refundRecords.get(refundId) }).isEqualTo(original)
+        refundAnswer = ModificationResult.Received("REF")
+        assertThat(await { refunds.recheck(refundId) }).isEqualTo(Recheck.Settled)
+        assertThat(refundsSent.map { it.substringAfterLast(':') }.distinct()).containsExactly(CheckoutRefunds.idempotencyKey(refundId))
+    }
+
+    @Test
+    fun `HTTP retry permission survives storage and blocks resending nontransient errors`() {
+        for (transient in listOf(false, true)) {
+            answers += CardChargeResult.Failed(Fault.AdyenUnavailable(422, "704", transientError = transient))
+            val id = charge()
+            val count = sent.size
+            if (transient) {
+                answers += CardChargeResult.Authorised("PSP-$id")
+                assertThat(await { charges.recheck(id) }).isEqualTo(Recheck.Settled)
+                assertThat(sent).hasSize(count + 1)
+            } else {
+                assertThat(
+                    await { charges.recheck(id) },
+                ).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.OPERATION_RECONCILIATION)))
+                assertThat(sent).hasSize(count)
+                assertThat(sale(id).status).isEqualTo(SaleStatus.UNKNOWN)
+            }
+            charges.acknowledge()
+        }
+    }
+
+    @Test
+    fun `unknown refunds cannot be replayed once their key reaches seven days`() {
+        answers += CardChargeResult.Authorised("PSP9")
+        val id = charge()
+        val payment = (RefundablePayment.check(checkNotNull(await { container.sales.get(id) })) as Refundability.Refundable).payment
+        val request = checkNotNull(payment.request(RefundChoice.Everything, "", now, ZoneOffset.UTC))
+        refundAnswer = ModificationResult.Failed(Fault.TimedOut)
+        val refundId = checkNotNull(refunds.start(request))
+        await { refunds.state.first { it == TransactionState.Finished(refundId) } }
+        now = now.plusSeconds(7 * 24 * 3600)
+        assertThat(await { refunds.recheck(refundId) }).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD)))
+        assertThat(refundsSent).hasSize(1)
+        assertThat(checkNotNull(await { container.refundRecords.get(refundId) }).status).isEqualTo(RefundStatus.UNKNOWN)
     }
 
     @Test

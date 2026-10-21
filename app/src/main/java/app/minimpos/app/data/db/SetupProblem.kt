@@ -106,6 +106,9 @@ enum class SetupProblem {
      */
     CHARGE_TOO_OLD,
 
+    /** Adyen did not permit this HTTP error to be retried; reconcile the original operation externally. */
+    OPERATION_RECONCILIATION,
+
     /** No shopper reference is configured (Settings › Payments), so no saved card can be found or charged. */
     SHOPPER_REFERENCE,
 

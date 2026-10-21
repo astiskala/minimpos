@@ -1211,4 +1211,5 @@
   <string name="checkout_token_without_donation">使用令牌扣款时不邀请捐款。</string>
   <string name="checkout_token_without_tip_or_donation">使用令牌扣款时不含小费，也不邀请捐款。</string>
   <string name="reconciliation_mismatch_hint">请在交易记录中处理需要关注的付款。使用此终端的其他设备也会计入其总额。</string>
+  <string name="setup_operation_reconciliation">Adyen 不允许重试。请在商户后台查看此操作的结果。</string>
 </resources>

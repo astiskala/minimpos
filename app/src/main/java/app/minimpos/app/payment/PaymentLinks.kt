@@ -99,7 +99,6 @@ class PaymentLinks(
             clock = clock,
             newId = newId,
             mutex = mutex,
-            recheckWindow = null,
         )
 
     /** Checkouts that already started one link, by their session revision; see [start]. */
@@ -261,7 +260,7 @@ class PaymentLinks(
                 ?.sale
                 ?.takeIf {
                     it.paymentLink && it.paymentLinkId == null && (it.status == SaleStatus.PENDING || it.status == SaleStatus.UNKNOWN)
-                }?.let { CheckoutRecord(it.status == SaleStatus.PENDING, it.createdAt, it.context) }
+                }?.let { CheckoutRecord(it.status == SaleStatus.PENDING, it.createdAt, it.context, it.reason) }
 
         override fun access(
             target: ApiTarget,
@@ -274,7 +273,11 @@ class PaymentLinks(
             now: Long,
         ): CheckoutAnswer {
             val record = sales.get(id) ?: return CheckoutAnswer.NotTaken
-            return when (val result = client.create(PaymentLinkRequests.request(record), idempotencyKey(id))) {
+            val result = client.create(PaymentLinkRequests.request(record), idempotencyKey(id))
+            if (record.sale.status == SaleStatus.UNKNOWN && result is PaymentLinkResult.Failed && !result.fault.mayHaveTakenEffect) {
+                return CheckoutAnswer.Unconfirmed(Failure.Remote(result.fault))
+            }
+            return when (result) {
                 is PaymentLinkResult.Answered -> {
                     val answered = SaleEvent.LinkAnswered(result.link)
                     sales.record(id, answered)

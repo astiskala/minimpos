@@ -348,6 +348,8 @@ data class SaleEntity(
     val adjustmentAmountMinor: Long? = null,
     /** An adjustment was sent but its outcome remains unresolved. */
     val adjustmentPending: Boolean = false,
+    /** First send of the latest adjustment in epoch milliseconds; null for legacy operations or before any. */
+    val adjustmentStartedAt: Long? = null,
     /** Original terminal approval time in epoch milliseconds; null when not approved or its date is unavailable. */
     val processedAt: Long? = null,
     /** First send time of the current logical capture in epoch milliseconds; retained across retries. */

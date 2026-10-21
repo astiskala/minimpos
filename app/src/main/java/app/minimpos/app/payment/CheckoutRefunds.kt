@@ -92,7 +92,7 @@ class CheckoutRefunds(
                     it.checkoutRefund && (it.status == RefundStatus.PENDING || it.status == RefundStatus.UNKNOWN)
                 } ?: return null
             val saleId = refund.saleId ?: return null
-            return CheckoutRecord(refund.status == RefundStatus.PENDING, refund.createdAt, sales.get(saleId)?.sale?.context)
+            return CheckoutRecord(refund.status == RefundStatus.PENDING, refund.createdAt, sales.get(saleId)?.sale?.context, refund.reason)
         }
 
         override suspend fun missing(id: String): SetupProblem? = SetupProblem.PAYMENT_CONTEXT.takeIf { pspReference(id) == null }
@@ -110,7 +110,11 @@ class CheckoutRefunds(
             val refund = refunds.get(id) ?: return CheckoutAnswer.NotTaken
             val psp = pspReference(id) ?: return CheckoutAnswer.NotTaken
             val amount = ModificationAmount(refund.currency, refund.amountMinor)
-            return when (val result = client.refund(psp, amount, refund.merchantReference, idempotencyKey(id))) {
+            val result = client.refund(psp, amount, refund.merchantReference, idempotencyKey(id))
+            if (refund.status == RefundStatus.UNKNOWN && result is ModificationResult.Failed && !result.fault.mayHaveTakenEffect) {
+                return CheckoutAnswer.Unconfirmed(Failure.Remote(result.fault))
+            }
+            return when (result) {
                 is ModificationResult.Received -> {
                     refunds.settle(id, RefundStatus.REQUESTED, null, null, pspReference = result.pspReference)
                     CheckoutAnswer.Taken

@@ -164,6 +164,28 @@ class CheckoutModificationsTest {
     }
 
     @Test
+    fun `idempotency conflicts stay unknown and only explicit transient headers permit HTTP retries`() =
+        runBlocking {
+            for (code in listOf(409, 422, 503)) {
+                for (header in listOf(null, "false", "TrUe")) {
+                    val error = if (code == 503) "703" else "704"
+                    server.enqueue(
+                        MockResponse
+                            .Builder()
+                            .code(code)
+                            .body("""{"errorCode":"$error","message":"in progress"}""")
+                            .apply { header?.let { addHeader("TrAnSiEnT-ErRoR", it) } }
+                            .build(),
+                    )
+                    assertThat(api.capture("PSP1", amount, "r", "same-key")).isEqualTo(
+                        failed(Fault.AdyenUnavailable(code, error, ExternalText("in progress"), header == "TrUe")),
+                    )
+                    assertThat(server.takeRequest().headers["Idempotency-Key"]).isEqualTo("same-key")
+                }
+            }
+        }
+
+    @Test
     fun `a request that never arrives is not processed, and a timeout is unknown`() {
         val slow =
             CheckoutModifications(credentials, baseUrl = server.url("/v72/"), timeout = 200.milliseconds)

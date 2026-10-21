@@ -1,0 +1,25 @@
+Google postal address formatting metadata
+Copyright (C) 2010 Google Inc.
+
+Source: Google libaddressinput, RegionDataConstants.java
+https://github.com/google/libaddressinput/blob/5ef3a927bdd6002bf25c5c09029347bebf57a57b/common/src/main/java/com/google/i18n/addressinput/common/RegionDataConstants.java
+Upstream commit: 5ef3a927bdd6002bf25c5c09029347bebf57a57b
+Source SHA-256: ae0c44ef06e64e32e5c2f74ac43e717e69256ee17bc9c6770546ef716e223416
+Retrieved: 2026-10-21
+
+Google licenses the address metadata under Creative Commons Attribution 4.0 International:
+https://creativecommons.org/licenses/by/4.0/
+The full license accompanies this notice in google-address-formats.LICENSE.txt.
+Upstream licensing statement:
+https://github.com/google/libaddressinput/blob/5ef3a927bdd6002bf25c5c09029347bebf57a57b/README.md#license
+
+Changes by Mini mPOS:
+- Extracted only fmt and lfmt from each region's JSON record.
+- Stored them as UTF-8 Java properties, keyed by region and region-Latn respectively.
+- Filled missing fmt values from Google's ZZ default format.
+- Encoded non-ASCII literals as Java properties Unicode escapes.
+No country-specific template content was otherwise changed.
+
+To refresh, pin an upstream commit at least seven days old, verify its source hash,
+repeat the extraction above and update this notice. StoreAddressTest checks template
+tokens, script variants, missing fields and preservation of all Adyen components.

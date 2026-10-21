@@ -3,19 +3,24 @@ package app.minimpos.terminal.transport
 import com.adyen.model.management.ListStoresResponse
 import com.adyen.model.management.Merchant
 import com.adyen.model.management.Store
+import com.google.i18n.phonenumbers.NumberParseException
+import com.google.i18n.phonenumbers.PhoneNumberUtil
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
 
 /**
  * Receipt fields supplied by an Adyen store; blank fields are unavailable, not instructions to erase saved text.
  *
  * @property name Store shopper statement, the name Adyen prints on shopper receipts; blank if absent.
- * @property address Address components in receipt order, separated by newlines; blank if absent.
- * @property phone Store phone number, normally E.164; blank if absent.
+ * @property address Country-formatted address with an English country name; blank if absent.
+ * Unknown countries keep the supplied components and country text on separate lines.
+ * @property phone Store phone in international display format; unrecognized numbers stay verbatim, trimmed.
+ * Blank if absent.
  */
 data class StoreDetails(
     val name: String,
@@ -237,18 +242,29 @@ class AdyenStoreDetails(
         val address = store.address
         return StoreDetails(
             name = store.shopperStatement?.trim().orEmpty(),
-            address =
-                listOf(
-                    address?.line1,
-                    address?.line2,
-                    address?.line3,
-                    address?.city,
-                    address?.stateOrProvince,
-                    address?.postalCode,
-                    address?.country,
-                ).mapNotNull { it?.trim()?.takeIf(String::isNotBlank) }.joinToString("\n"),
-            phone = store.phoneNumber?.trim().orEmpty(),
+            address = StoreAddress.format(address),
+            phone = phone(store.phoneNumber, address?.country),
         )
+    }
+
+    private fun phone(
+        raw: String?,
+        country: String?,
+    ): String {
+        val text = raw?.trim().orEmpty()
+        if (text.isBlank()) return ""
+        val phones = PhoneNumberUtil.getInstance()
+        val parsed =
+            try {
+                phones.parse(text, country?.trim()?.uppercase(Locale.ROOT).orEmpty())
+            } catch (_: NumberParseException) {
+                return text
+            }
+        return if (phones.isValidNumber(parsed)) {
+            phones.format(parsed, PhoneNumberUtil.PhoneNumberFormat.INTERNATIONAL)
+        } else {
+            text
+        }
     }
 
     /** Endpoint and read timeout. */

@@ -56,6 +56,7 @@ dependencies {
     }
     api(libs.kotlinx.coroutines.core)
     api(libs.okhttp)
+    implementation(libs.libphonenumber)
     // The nexo models use XMLGregorianCalendar; Android ships the API but no DatatypeFactory implementation.
     runtimeOnly(libs.xerces) {
         exclude(group = "xml-apis")

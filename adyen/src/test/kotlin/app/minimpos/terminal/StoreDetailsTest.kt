@@ -87,20 +87,40 @@ class StoreDetailsTest {
         val expected =
             StoreDetails(
                 "Harbour Coffee",
-                "1 Main St\nSuite 2\nBuilding A\nSydney\nNSW\n2000\nAU",
-                "+61212345678",
+                "1 Main St\nSuite 2\nBuilding A\nSydney NSW 2000\nAustralia",
+                "+61 2 1234 5678",
             )
         val found = store() as StoreLookup.Found
         assertThat(found).isEqualTo(StoreLookup.Found(expected))
         assertThat(found.store.name).isEqualTo("Harbour Coffee")
-        assertThat(found.store.address).isEqualTo("1 Main St\nSuite 2\nBuilding A\nSydney\nNSW\n2000\nAU")
-        assertThat(found.store.phone).isEqualTo("+61212345678")
+        assertThat(found.store.address).isEqualTo("1 Main St\nSuite 2\nBuilding A\nSydney NSW 2000\nAustralia")
+        assertThat(found.store.phone).isEqualTo("+61 2 1234 5678")
         val sent = server.takeRequest()
         assertThat(sent.method).isEqualTo("GET")
         assertThat(sent.url.encodedPath).isEqualTo("/v3/merchants/Merchant%2FOne/stores/ST1")
         assertThat(sent.url.query).isNull()
         assertThat(sent.headers["x-api-key"]).isEqualTo("secret-key")
         assertThat(sent.body).isNull()
+    }
+
+    @Test
+    fun `store phones use international grouping and store country for national inputs`() {
+        listOf(
+            Triple("02 9111 2222", " au ", "+61 2 9111 2222"),
+            Triple("+61291112222", "US", "+61 2 9111 2222"),
+            Triple("+442079460018", "", "+44 20 7946 0018"),
+            Triple("+81312345678", "JP", "+81 3-1234-5678"),
+            Triple("+12025550123 ext. 42", "US", "+1 202-555-0123 ext. 42"),
+            Triple("  not a number  ", "AU", "not a number"),
+            Triple("123", "AU", "123"),
+            Triple("0291112222", "", "0291112222"),
+            Triple(" ", "AU", ""),
+        ).forEach { (phone, country, expected) ->
+            reply("""{"id":"ST1","phoneNumber":"$phone","address":{"country":"$country"}}""")
+            assertThat((store() as StoreLookup.Found).store.phone).isEqualTo(expected)
+        }
+        reply("""{"id":"ST1","phoneNumber":"+61291112222"}""")
+        assertThat((store() as StoreLookup.Found).store.phone).isEqualTo("+61 2 9111 2222")
     }
 
     @Test

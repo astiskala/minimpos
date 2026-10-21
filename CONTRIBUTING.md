@@ -354,6 +354,9 @@ dimensions do not prove the correct screen or transaction. Website checks also r
 
 - Add dependencies via `gradle/libs.versions.toml`, pin versions at least seven days old, and check the release build.
   Never weaken security policies or minimum-release-age controls to make a build pass.
+- Receipt address formatting uses bundled Google metadata, not runtime lookups. Its
+  [attribution and refresh instructions](adyen/src/main/resources/google-address-formats.NOTICE.txt) pin the source;
+  retain the accompanying license and run `StoreAddressTest` when refreshing it.
 - For transitive advisories, pin a patched version in `settings.gradle.kts`'s `patched` table, check
   `./gradlew <module>:dependencies buildEnvironment`, then run the gate and signed release build. Remove overrides
   when upstream catches up. Dependency submission sends the resolved graph to GitHub.

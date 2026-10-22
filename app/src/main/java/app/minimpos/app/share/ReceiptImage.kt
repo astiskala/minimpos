@@ -15,11 +15,12 @@ import app.minimpos.app.qr.QrCodes
 import app.minimpos.core.receipt.Align
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.receipt.ReceiptElement
+import app.minimpos.core.receipt.ReceiptSegment
 import app.minimpos.core.receipt.TextStyle
 import kotlin.math.roundToInt
 
 /**
- * Draws a receipt as an image to share, the way the on-screen preview shows it: a white slip, monospaced text, rows
+ * Draws the fixed-width receipt used by both the on-screen preview and sharing: a white slip, monospaced text, rows
  * with the value flush right, dashed dividers and QR codes. Text wraps at the slip's width (CJK glyphs and long links
  * included), so nothing is cut off.
  */
@@ -34,7 +35,6 @@ object ReceiptImage {
     private const val LINE_GAP = 6f
     private const val QR_SHARE = 0.55f
     private const val DASH = 6f
-    private const val LINK_COLOR = 0xFF0A62D0.toInt()
 
     /** [document] as a bitmap [widthPx] wide and as tall as it needs; the caller recycles it. */
     fun render(
@@ -43,7 +43,14 @@ object ReceiptImage {
     ): Bitmap {
         val scale = widthPx / REFERENCE_WIDTH
         val slip = Slip(widthPx, scale)
-        val blocks = document.elements.map(slip::block)
+        // Use the printer's segment order too: captions precede their QR codes on every slip.
+        val blocks =
+            document.segments().flatMap { segment ->
+                when (segment) {
+                    is ReceiptSegment.TextBlock -> segment.elements.map(slip::block)
+                    is ReceiptSegment.QrCode -> listOf(slip.block(ReceiptElement.Qr(segment.content)))
+                }
+            }
         val padding = PADDING * scale
         val height = (padding * 2 + blocks.sumOf { it.height.toDouble() }).roundToInt()
         val bitmap = createBitmap(widthPx, height.coerceAtLeast(1))
@@ -96,7 +103,7 @@ object ReceiptImage {
                 ReceiptElement.Divider -> Block(lineHeight) { it.drawLine(0f, lineHeight / 2, content.toFloat(), lineHeight / 2, divider) }
                 ReceiptElement.Blank -> Block(lineHeight / 2) {}
                 is ReceiptElement.Qr -> qr(element)
-                is ReceiptElement.Link -> text(element.url, Align.CENTER, TextPaint(plain).apply { color = LINK_COLOR })
+                is ReceiptElement.Link -> text(element.url, Align.CENTER, plain)
             }
 
         private fun layout(
@@ -130,7 +137,7 @@ object ReceiptImage {
             val paint = paint(row.style)
             val valueWidth = paint.measureText(row.right).roundToInt()
             val gap = (ROW_GAP * scale).roundToInt()
-            if (valueWidth + gap > content / 2) {
+            if (paint.measureText(row.left) + valueWidth + gap > content) {
                 val label = layout(row.left, paint, content)
                 val value = layout(row.right, paint, content, Align.RIGHT)
                 return Block(label.height + value.height + LINE_GAP * 2 * scale) {
@@ -146,17 +153,13 @@ object ReceiptImage {
             }
         }
 
-        /** The code, centred and about half the slip wide, with its caption under it. */
+        /** The code, centred and about half the slip wide; its caption is already in the preceding text segment. */
         private fun qr(qr: ReceiptElement.Qr): Block {
             val size = (content * QR_SHARE).roundToInt()
             val code = QrCodes.bitmap(qr.content, size)
-            val caption = qr.caption?.let { layout(it, plain, content, Align.CENTER) }
             val margin = lineHeight / 2
-            val captionGap = if (caption == null) 0f else margin
-            return Block(margin * 2 + code.height + captionGap + (caption?.height ?: 0)) {
+            return Block(margin * 2 + code.height) {
                 it.drawBitmap(code, (content - code.width) / 2f, margin, null)
-                it.translate(0f, margin + code.height + captionGap)
-                caption?.draw(it)
             }
         }
     }

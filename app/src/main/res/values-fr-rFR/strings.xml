@@ -1032,12 +1032,12 @@
   <string name="settings_business_import">Importer les détails de l’entreprise depuis Adyen</string>
   <string name="settings_business_import_hint">Vérifiez les détails du reçu du magasin attribué (Management API - Stores read) ou du compte marchand (Management API - Accounts read). Les comptes marchands fournissent uniquement le nom légal.</string>
   <string name="settings_business_review">Vérifier les détails de l’entreprise</string>
-  <string name="settings_business_review_hint">Remplissez les détails manquants de l’entreprise ou remplacez ceux existants par le nom, l’adresse et le téléphone fournis. Les champs importés vides, le numéro d’identification fiscale, le titre et le pied de page restent inchangés.</string>
+  <string name="settings_business_review_hint">Seuls les champs importés non vides sont appliqués. Le numéro fiscal, le titre et le pied du reçu restent inchangés.</string>
   <string name="settings_business_supplement">Compléter les données manquantes</string>
   <string name="settings_business_replace">Remplacer les données existantes</string>
   <string name="settings_business_unavailable">Aucun détail commercial n’est disponible pour l’importation.</string>
   <string name="settings_business_name">Nom de l’entreprise</string>
-  <string name="settings_address">Adresse (plusieurs lignes)</string>
+  <string name="settings_address">Adresse</string>
   <string name="settings_tax_id_label">Étiquette d’identification fiscale</string>
   <string name="settings_tax_id">Numéro d’identification fiscale</string>
   <string name="settings_phone">Téléphone</string>

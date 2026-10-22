@@ -1024,12 +1024,12 @@
   <string name="settings_business_import">从 Adyen 导入商家信息</string>
   <string name="settings_business_import_hint">核对已分配门店（Management API - Stores read）或商家账户（Management API - Accounts read）的收据信息。商家账户仅提供法人名称。</string>
   <string name="settings_business_review">核对商家信息</string>
-  <string name="settings_business_review_hint">可补全缺失的商家信息，或用获取的名称、地址和电话替换现有信息。导入的空白字段保留原值，税号、标题和页脚不变。</string>
+  <string name="settings_business_review_hint">仅导入非空字段。税号、收据标题和页脚保持不变。</string>
   <string name="settings_business_supplement">补全缺失信息</string>
   <string name="settings_business_replace">替换现有信息</string>
   <string name="settings_business_unavailable">没有可导入的商家信息。</string>
   <string name="settings_business_name">商家名称</string>
-  <string name="settings_address">地址（每行一条）</string>
+  <string name="settings_address">地址</string>
   <string name="settings_tax_id_label">税号标签</string>
   <string name="settings_tax_id">税号</string>
   <string name="settings_phone">电话</string>

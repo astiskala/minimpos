@@ -70,6 +70,8 @@ class PaymentLinkFlowTest {
     @Test
     fun `sends a payment link instead of the terminal, shares it, and sees it paid`() {
         env.useLinks()
+        // This tests link delivery and polling; an unrelated terminal-print result must not move controls mid-tap.
+        env.updateSettings { it.copy(receipt = it.receipt.copy(autoPrint = false)) }
         ringUpCustomAmount(1, 2, 5, 0)
         compose.clickWhenEnabled("charge")
         waitForTag("sendLink")

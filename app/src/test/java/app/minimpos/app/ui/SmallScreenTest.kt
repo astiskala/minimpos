@@ -410,12 +410,14 @@ class SmallScreenTest {
 
         compose.onNodeWithTag("openSearch").performClick()
         compose.onNodeWithTag("search").assertIsDisplayed().performTextInput("Product 3")
+        compose.waitUntilDoesNotExist(hasText("Product 1"), 15_000)
         compose.onNodeWithText("Product 1").assertDoesNotExist()
         compose.onNode(hasText("Product 3") and hasTestTag("search").not()).assertIsDisplayed()
 
         // Closing the search clears it too.
         compose.onNodeWithTag("openSearch").performClick()
         compose.onNodeWithTag("search").assertDoesNotExist()
+        compose.waitUntilAtLeastOneExists(hasText("Product 1"), 15_000)
         compose.onNodeWithText("Product 1").assertIsDisplayed()
     }
 

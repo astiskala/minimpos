@@ -1032,12 +1032,12 @@
   <string name="settings_business_import">Importar datos comerciales desde Adyen</string>
   <string name="settings_business_import_hint">Revise los detalles del recibo de la tienda asignada (Management API - Stores read) o cuenta de comerciante (Management API - Accounts read). Las cuentas comerciales proporcionan sólo el nombre legal.</string>
   <string name="settings_business_review">Revisar los detalles del negocio</string>
-  <string name="settings_business_review_hint">Complete los detalles comerciales que faltan o reemplace los existentes con el nombre, la dirección y el teléfono proporcionados. Los campos importados en blanco, el número de identificación fiscal, el título y el pie de página permanecen sin cambios.</string>
+  <string name="settings_business_review_hint">Solo se aplican los campos importados que no estén vacíos. La identificación fiscal, el título y el pie del recibo no cambian.</string>
   <string name="settings_business_supplement">Completar datos faltantes</string>
   <string name="settings_business_replace">Reemplazar datos existentes</string>
   <string name="settings_business_unavailable">No hay detalles comerciales disponibles para importar.</string>
   <string name="settings_business_name">Nombre comercial</string>
-  <string name="settings_address">Dirección (varias líneas)</string>
+  <string name="settings_address">Dirección</string>
   <string name="settings_tax_id_label">Etiqueta de identificación fiscal</string>
   <string name="settings_tax_id">Identificación fiscal</string>
   <string name="settings_phone">Teléfono</string>

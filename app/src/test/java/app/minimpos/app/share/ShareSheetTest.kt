@@ -42,6 +42,21 @@ class ShareSheetTest {
         )
 
     @Test
+    fun `a reference shares its label's line whenever both fit the slip`() {
+        fun image(
+            label: String,
+            value: String,
+        ) = ReceiptImage.render(ReceiptDocument(listOf(ReceiptElement.Row(label, value))))
+        val short = image("Reference", "MP-1")
+        val reference = image("Reference", "261022-102607-2YSD")
+        assertThat(reference.height).isEqualTo(short.height)
+        val long = image("Merchant reference too long for this row", "261022-102607-2YSD")
+        assertThat(long.height).isGreaterThan(reference.height)
+        val narrow = ReceiptImage.render(ReceiptDocument(listOf(ReceiptElement.Row("Reference", "261022-102607-2YSD"))), 288)
+        assertThat(narrow.height.toFloat() / narrow.width).isWithin(0.01f).of(reference.height.toFloat() / reference.width)
+    }
+
+    @Test
     fun `a receipt is drawn as a slip of the requested width, as tall as its content`() {
         val image = ReceiptImage.render(receipt)
         assertThat(image.width).isEqualTo(ReceiptImage.DEFAULT_WIDTH_PX)

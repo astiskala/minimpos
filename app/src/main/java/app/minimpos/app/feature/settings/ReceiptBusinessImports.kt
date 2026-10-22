@@ -83,7 +83,12 @@ internal class ReceiptBusinessImports(
             state.update {
                 when (result) {
                     is ReceiptBusinesses.Found -> {
-                        it.copy(lookup = ActionState(done = true), proposal = result.business, hasExistingDetails = hasExistingDetails)
+                        it.copy(
+                            lookup = ActionState(done = true),
+                            // Background setup lookup must not open an empty review over the setup flow.
+                            proposal = result.business.takeIf { business -> !automatic || business.available },
+                            hasExistingDetails = hasExistingDetails,
+                        )
                     }
 
                     is ReceiptBusinesses.Failed -> {

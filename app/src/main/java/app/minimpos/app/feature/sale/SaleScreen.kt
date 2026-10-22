@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -62,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -424,8 +426,9 @@ private fun saleViewModel(
     }
 }
 
+/** Category filters, a separate custom-item action and tiles sized for two readable name lines. */
 @Composable
-private fun ProductBrowser(
+internal fun ProductBrowser(
     state: SaleUiState,
     money: MoneyFormatter,
     search: SearchControl,
@@ -437,6 +440,9 @@ private fun ProductBrowser(
     val dimens = LocalDimens.current
     val gap = dimens.spacing
     val tileHeight = dimens.tileHeight
+    val grid = rememberLazyGridState()
+    // A new filter starts at its first result, including when clearing it restores products before the old anchor.
+    LaunchedEffect(state.query, state.selectedCategory) { grid.scrollToItem(0) }
     Column(modifier) {
         if (search.mode != SearchMode.HIDDEN) {
             SearchField(
@@ -449,14 +455,20 @@ private fun ProductBrowser(
         if (state.categories.isNotEmpty()) {
             CategoryFilters(state.categories, state.selectedCategory, onCategory, gap)
         }
+        SecondaryButton(
+            text = stringResource(R.string.sale_custom_item),
+            onClick = onCustom,
+            icon = Icons.Default.Add,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = gap, vertical = gap / 2).testTag("customItem"),
+        )
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(if (dimens.compact) 96.dp else 118.dp),
+            columns = GridCells.Adaptive(132.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)),
+            state = grid,
             contentPadding = PaddingValues(gap),
             horizontalArrangement = Arrangement.spacedBy(gap),
             verticalArrangement = Arrangement.spacedBy(gap),
             modifier = Modifier.fillMaxSize().testTag("productGrid"),
         ) {
-            item(key = "custom") { CustomItemTile(tileHeight, onCustom) }
             items(state.visibleProducts, key = { it.id }) { product ->
                 // A pre-authorisation's item is never shown as in a cart: choosing it opens checkout.
                 val inCart = if (state.kind.singleItem) 0 else state.quantityInCart(product.id)
@@ -501,34 +513,6 @@ private fun CategoryFilters(
     }
 }
 
-/** The first tile, which opens the keypad for an item with a typed amount. */
-@Composable
-private fun CustomItemTile(
-    minHeight: Dp,
-    onClick: () -> Unit,
-) {
-    Surface(
-        onClick = onClick,
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.primaryContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-        modifier = Modifier.heightIn(min = minHeight).testTag("customItem"),
-    ) {
-        Column(
-            Modifier.padding(LocalDimens.current.spacing),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text(
-                stringResource(R.string.sale_custom_item),
-                style = MaterialTheme.typography.titleSmall,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
-
 @Composable
 private fun ProductTile(
     product: ProductEntity,
@@ -554,7 +538,7 @@ private fun ProductTile(
                 .testTag("product_${product.id}"),
     ) {
         Column(Modifier.padding(gap), verticalArrangement = Arrangement.SpaceBetween) {
-            Text(product.name, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(product.name, style = MaterialTheme.typography.titleSmall, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(Modifier.padding(top = gap / 2), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     price,

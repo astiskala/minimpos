@@ -34,6 +34,7 @@ import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.StoreLookup
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
@@ -188,6 +189,26 @@ class SettingsViewModelTest {
         assertThat(await { container.settings.current() }).isEqualTo(before)
         vm.businessImport.choose(null)
         assertThat(vm.businessImport.state.value.proposal).isNull()
+    }
+
+    @Test
+    fun `background receipt lookup leaves empty business details out of review`() {
+        val empty = TestEnvironment(stores = FakeStoreDetails(merchantAnswer = MerchantLookup.Found("")))
+        try {
+            empty.useLinks()
+            val vm = settingsViewModel(empty.container)
+            vm.businessImport.find(automatic = true)
+            val automatic = await { vm.businessImport.state.first { it.lookup.done } }
+            assertThat(automatic.proposal).isNull()
+            assertThat(automatic.resultPending).isFalse()
+            // Explicit imports still explain why an empty result cannot be imported.
+            vm.businessImport.find()
+            val explicit = await { vm.businessImport.state.first { it.lookup.done } }
+            assertThat(explicit.proposal).isEqualTo(ReceiptBusiness("", "", ""))
+        } finally {
+            closeViewModels(viewModels)
+            empty.close()
+        }
     }
 
     @Test

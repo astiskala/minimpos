@@ -1024,12 +1024,12 @@
   <string name="settings_business_import">Adyenから店舗情報をインポート</string>
   <string name="settings_business_import_hint">割り当て店舗（Management API - Stores read）またはマーチャントアカウント（Management API - Accounts read）の領収書情報を確認します。アカウントからは法人名のみ取得できます。</string>
   <string name="settings_business_review">店舗情報を確認</string>
-  <string name="settings_business_review_hint">不足している事業者情報を補完するか、取得した名前・住所・電話番号で既存の情報を置き換えます。取得した項目が空欄の場合、元の値を保持します。登録番号、タイトル、フッターは変更しません。</string>
+  <string name="settings_business_review_hint">空欄でない項目のみ取り込みます。登録番号、レシートのタイトル、フッターは変更しません。</string>
   <string name="settings_business_supplement">不足している情報を補完</string>
   <string name="settings_business_replace">既存の情報を置換</string>
   <string name="settings_business_unavailable">インポートできる店舗情報はありません。</string>
   <string name="settings_business_name">店舗名</string>
-  <string name="settings_address">住所（1行ずつ入力）</string>
+  <string name="settings_address">住所</string>
   <string name="settings_tax_id_label">税務番号のラベル</string>
   <string name="settings_tax_id">税務番号</string>
   <string name="settings_phone">電話番号</string>

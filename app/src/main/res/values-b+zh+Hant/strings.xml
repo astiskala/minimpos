@@ -1024,12 +1024,12 @@
   <string name="settings_business_import">從 Adyen 匯入商戶資訊</string>
   <string name="settings_business_import_hint">核對已分配店舖（Management API - Stores read）或商戶帳戶（Management API - Accounts read）的收據資訊。商戶帳戶僅提供法人名稱。</string>
   <string name="settings_business_review">核對商戶資訊</string>
-  <string name="settings_business_review_hint">可補充缺漏的商戶資料，或以取得的名稱、地址及電話取代現有資料。匯入的空白欄位保留原值，稅務編號、標題及頁尾不變。</string>
+  <string name="settings_business_review_hint">只匯入非空白欄位。稅務編號、收據標題及頁尾保持不變。</string>
   <string name="settings_business_supplement">補充缺漏資料</string>
   <string name="settings_business_replace">取代現有資料</string>
   <string name="settings_business_unavailable">沒有可匯入的商戶資訊。</string>
   <string name="settings_business_name">商戶名稱</string>
-  <string name="settings_address">地址（每行一條）</string>
+  <string name="settings_address">地址</string>
   <string name="settings_tax_id_label">稅務編號標籤</string>
   <string name="settings_tax_id">稅務編號</string>
   <string name="settings_phone">電話</string>

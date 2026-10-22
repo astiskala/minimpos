@@ -1,13 +1,12 @@
 package app.minimpos.app.ui
 
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -110,7 +109,8 @@ class HistoryActionsTest {
             .performClick()
         waitForTag("virtualPrinter")
         compose.waitUntilAtLeastOneExists(hasText("MERCHANT COPY"), 15_000)
-        compose.onAllNodesWithText("MERCHANT COPY").assertCountEquals(2)
+        val texts = compose.onNodeWithTag("receiptImage").fetchSemanticsNode().config[SemanticsProperties.Text]
+        assertThat(texts.count { it.text == "MERCHANT COPY" }).isEqualTo(2)
         compose.runOnIdle { container.virtualPrinter.clear() }
         compose.onNodeWithTag("virtualPrinter").assertDoesNotExist()
         compose.onNodeWithTag("cancelPreAuth").performScrollTo().assertIsDisplayed()

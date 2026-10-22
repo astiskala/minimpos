@@ -1,19 +1,16 @@
 package app.minimpos.app.ui.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,7 +21,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -32,27 +28,25 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.AppContainer
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.qr.QrCodes
+import app.minimpos.app.share.ReceiptImage
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
 import app.minimpos.core.money.CurrencySpec
@@ -244,180 +238,83 @@ fun QrImage(
     }
 }
 
-/** A receipt drawn as a paper slip, for previews and the history screen. */
+/**
+ * The same fixed-width slip used for sharing, scaled to the available screen width without reflowing its rows.
+ * Receipt text remains available to accessibility services in document order, including QR captions and link URLs.
+ */
 @Composable
 fun ReceiptPreview(
     document: ReceiptDocument,
     modifier: Modifier = Modifier,
 ) {
-    Paper(modifier) {
-        document.elements.forEach { element ->
-            when (element) {
-                is ReceiptElement.Text -> {
-                    PaperText(element.text, element.align, element.style)
-                }
-
-                is ReceiptElement.Row -> {
-                    PaperRow(element.left, element.right, element.style)
-                }
-
-                ReceiptElement.Divider -> {
-                    ReceiptRule()
-                }
-
-                ReceiptElement.Blank -> {
-                    Spacer(Modifier.height(10.dp))
-                }
-
-                is ReceiptElement.Link -> {
-                    PaperText(element.url, Align.CENTER, TextStyle.NORMAL)
-                }
-
-                is ReceiptElement.Qr -> {
-                    Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        QrImage(element.content, Modifier.size(140.dp))
-                        element.caption?.let { PaperText(it, Align.CENTER, TextStyle.NORMAL) }
-                    }
-                }
+    val image = remember(document) { ReceiptImage.render(document).asImageBitmap() }
+    val receiptText =
+        remember(document) {
+            document.elements.flatMap { element ->
+                when (element) {
+                    is ReceiptElement.Text -> listOf(element.text)
+                    is ReceiptElement.Row -> listOf(element.left, element.right)
+                    is ReceiptElement.Link -> listOf(element.url)
+                    is ReceiptElement.Qr -> listOfNotNull(element.caption)
+                    ReceiptElement.Blank, ReceiptElement.Divider -> emptyList()
+                }.map(::AnnotatedString)
             }
         }
-    }
+    Image(
+        bitmap = image,
+        contentDescription = null,
+        modifier =
+            modifier
+                .widthIn(max = 360.dp)
+                .fillMaxWidth()
+                .aspectRatio(image.width.toFloat() / image.height)
+                .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
+                .semantics { this[SemanticsProperties.Text] = receiptText }
+                .testTag("receiptImage"),
+    )
 }
 
-/** A dashed line across the whole width of the slip, as a divider prints on paper sized to the line width. */
-@Composable
-private fun ReceiptRule() {
-    Canvas(Modifier.fillMaxWidth().height(16.dp).testTag("receiptDivider")) {
-        drawLine(
-            Color.Black,
-            Offset(0f, size.height / 2),
-            Offset(size.width, size.height / 2),
-            strokeWidth = 1.dp.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())),
-        )
-    }
-}
-
-/**
- * Whether this printed line is a divider: dashes only, which the receipt's divider prints as many of as the paper has
- * columns, so the preview draws it across the whole slip like the paper would.
- */
-private val PrintLine.Text.isRule: Boolean get() = text.length >= MIN_RULE_DASHES && text.all { it == '-' }
-
-/** The fewest dashes a line needs to count as a divider rather than text. */
-private const val MIN_RULE_DASHES = 3
-
-/**
- * What the simulated printer received, shown as the slip a real terminal would print; a line of dashes spans the slip
- * exactly, as it does on paper whose width matches the configured characters per line.
- */
+/** What the simulated printer received, using the same fixed-width slip as receipt previews and sharing. */
 @Composable
 fun PrintJobsPreview(
     jobs: List<PrintJob>,
     modifier: Modifier = Modifier,
 ) {
-    Paper(modifier) {
-        jobs.forEach { job ->
-            when (job) {
-                is PrintJob.QrCode -> {
-                    Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                        QrImage(job.content, Modifier.size(140.dp))
+    val document =
+        remember(jobs) {
+            ReceiptDocument(
+                jobs.flatMap { job ->
+                    when (job) {
+                        is PrintJob.QrCode -> {
+                            listOf(ReceiptElement.Qr(job.content))
+                        }
+
+                        is PrintJob.Text -> {
+                            job.lines.map { line ->
+                                when (line) {
+                                    is PrintLine.Columns -> {
+                                        ReceiptElement.Row(line.left, line.right, style(line.style))
+                                    }
+
+                                    is PrintLine.Text -> {
+                                        when {
+                                            line.text.length >= MIN_RULE_DASHES && line.text.all { it == '-' } -> ReceiptElement.Divider
+                                            line.text.isEmpty() -> ReceiptElement.Blank
+                                            else -> ReceiptElement.Text(line.text, align(line.align), style(line.style))
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                }
-
-                is PrintJob.Text -> {
-                    job.lines.forEach { PrintedLine(it) }
-                }
-            }
+                },
+            )
         }
-    }
+    ReceiptPreview(document, modifier)
 }
 
-@Composable
-private fun PrintedLine(line: PrintLine) {
-    when (line) {
-        is PrintLine.Columns -> {
-            PaperRow(line.left, line.right, style(line.style))
-        }
-
-        is PrintLine.Text -> {
-            if (line.isRule) ReceiptRule() else PaperText(line.text, align(line.align), style(line.style))
-        }
-    }
-}
-
-/** Leaves a gutter between columns; long values move below their labels instead of squeezing them. */
-@Composable
-private fun PaperRow(
-    left: String,
-    right: String,
-    style: TextStyle,
-) {
-    val measurer = rememberTextMeasurer()
-    val textStyle =
-        MaterialTheme.typography.bodySmall.copy(
-            fontFamily = FontFamily.Monospace,
-            fontWeight = if (style == TextStyle.BOLD) FontWeight.Bold else FontWeight.Normal,
-        )
-    val gap = with(LocalDensity.current) { 12.dp.roundToPx() }
-    val valueWidth = measurer.measure(right, textStyle).size.width
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        if (valueWidth + gap > constraints.maxWidth / 2) {
-            Column {
-                PaperText(left, Align.LEFT, style)
-                PaperText(right, Align.RIGHT, style, Modifier.fillMaxWidth())
-            }
-        } else {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PaperText(left, Align.LEFT, style, Modifier.weight(1f))
-                PaperText(right, Align.RIGHT, style)
-            }
-        }
-    }
-}
-
-@Composable
-private fun Paper(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    val compact = LocalDimens.current.compact
-    Surface(
-        modifier =
-            modifier
-                .widthIn(
-                    max = 360.dp,
-                ).fillMaxWidth()
-                .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small),
-        color = Color.White,
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Column(Modifier.padding(horizontal = if (compact) 10.dp else 16.dp, vertical = if (compact) 12.dp else 20.dp)) { content() }
-    }
-}
-
-@Composable
-private fun PaperText(
-    text: String,
-    align: Align,
-    style: TextStyle,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text = text,
-        fontFamily = FontFamily.Monospace,
-        style = MaterialTheme.typography.bodySmall,
-        fontWeight = if (style == TextStyle.BOLD) FontWeight.Bold else FontWeight.Normal,
-        textDecoration = if (style == TextStyle.UNDERLINE) TextDecoration.Underline else null,
-        textAlign =
-            when (align) {
-                Align.LEFT -> TextAlign.Start
-                Align.CENTER -> TextAlign.Center
-                Align.RIGHT -> TextAlign.End
-            },
-        modifier = (if (align == Align.RIGHT) modifier else modifier.fillMaxWidth()).padding(vertical = 2.dp),
-    )
-}
+/** The fewest dashes a printed line needs to count as a divider rather than text. */
+private const val MIN_RULE_DASHES = 3
 
 private fun style(value: PrintStyle) =
     when (value) {

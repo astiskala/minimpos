@@ -1,20 +1,25 @@
 package app.minimpos.app.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import app.minimpos.app.feature.ReceiptToggle
 import app.minimpos.app.receipt.PrintRenderer
+import app.minimpos.app.share.ReceiptImage
 import app.minimpos.app.ui.components.PrintJobsPreview
 import app.minimpos.app.ui.components.ReceiptPreview
 import app.minimpos.app.ui.theme.MiniMposTheme
@@ -35,47 +40,67 @@ class ReceiptToggleTest {
     val compose = createComposeRule()
 
     @Test
-    fun `preview dividers stay a single row on the smallest screen`() {
-        compose.setContent { MiniMposTheme { ReceiptPreview(ReceiptDocument(listOf(ReceiptElement.Divider))) } }
-        compose.onNodeWithTag("receiptDivider").assertIsDisplayed().assertHeightIsEqualTo(16.dp)
+    fun `preview keeps the shared slip proportions on the smallest screen`() {
+        val document = ReceiptDocument(listOf(ReceiptElement.Divider))
+        compose.setContent { MiniMposTheme { ReceiptPreview(document) } }
+        val bounds =
+            compose
+                .onNodeWithTag("receiptImage")
+                .assertIsDisplayed()
+                .fetchSemanticsNode()
+                .boundsInRoot
+        val shared = ReceiptImage.render(document)
+        assertThat(bounds.height / bounds.width).isWithin(0.005f).of(shared.height.toFloat() / shared.width)
     }
 
     @Test
-    fun `printed dividers span the simulated slip exactly like preview dividers`() {
-        val document = ReceiptDocument(listOf(ReceiptElement.Text("Corner Cafe"), ReceiptElement.Divider, ReceiptElement.Text("-")))
+    fun `the simulated print and preview use the same slip layout`() {
+        val document =
+            ReceiptDocument(
+                listOf(
+                    ReceiptElement.Text("Corner Cafe"),
+                    ReceiptElement.Divider,
+                    ReceiptElement.Text("-"),
+                    ReceiptElement.Qr("MPR1*demo", "Refund code"),
+                    ReceiptElement.Link("https://example.com/receipt"),
+                ),
+            )
         compose.setContent {
             MiniMposTheme {
-                Column {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
                     ReceiptPreview(document)
                     PrintJobsPreview(PrintRenderer.jobs(document, dividerWidth = 32))
                 }
             }
         }
-        val dividers = compose.onAllNodesWithTag("receiptDivider").fetchSemanticsNodes().map { it.boundsInRoot }
-        assertThat(dividers).hasSize(2)
-        assertThat(dividers[1].width).isEqualTo(dividers[0].width)
+        val slips = compose.onAllNodesWithTag("receiptImage")
+        assertThat(slips.fetchSemanticsNodes()).hasSize(2)
+        val preview = slips[0].getUnclippedBoundsInRoot()
+        val printed = slips[1].getUnclippedBoundsInRoot()
+        assertThat(printed.width).isEqualTo(preview.width)
+        assertThat(printed.height).isEqualTo(preview.height)
         compose.onNodeWithText("-".repeat(32)).assertDoesNotExist()
-        // A single dash is text, not a divider.
         assertThat(compose.onAllNodesWithText("-").fetchSemanticsNodes()).hasSize(2)
     }
 
     @Test
-    fun `receipt rows leave a gutter and stack long references on the smallest screen`() {
+    fun `references keep the shared layout and remain available to accessibility`() {
         val document =
             ReceiptDocument(
                 listOf(
                     ReceiptElement.Row("Total", "$34.00"),
-                    ReceiptElement.Row("Merchant reference", "261016-153444-6N03"),
+                    ReceiptElement.Row("Reference", "261022-102607-2YSD"),
+                    ReceiptElement.Qr("MPR1*demo", "Refund code"),
+                    ReceiptElement.Link("https://example.com/receipt"),
                 ),
             )
         compose.setContent { MiniMposTheme { ReceiptPreview(document) } }
-        val total = compose.onNodeWithText("Total").fetchSemanticsNode().boundsInRoot
-        val amount = compose.onNodeWithText("$34.00").fetchSemanticsNode().boundsInRoot
-        assertThat(amount.left).isGreaterThan(total.right)
-        assertThat(amount.top).isEqualTo(total.top)
-        val label = compose.onNodeWithText("Merchant reference").fetchSemanticsNode().boundsInRoot
-        val reference = compose.onNodeWithText("261016-153444-6N03").fetchSemanticsNode().boundsInRoot
-        assertThat(reference.top).isAtLeast(label.bottom)
+        val shared = ReceiptImage.render(document)
+        val bounds = compose.onNodeWithTag("receiptImage").fetchSemanticsNode().boundsInRoot
+        assertThat(bounds.height / bounds.width).isWithin(0.005f).of(shared.height.toFloat() / shared.width)
+        listOf("Total", "$34.00", "Reference", "261022-102607-2YSD", "Refund code", "https://example.com/receipt").forEach {
+            compose.onNodeWithText(it).assertExists()
+        }
     }
 
     @Test

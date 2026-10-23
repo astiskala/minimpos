@@ -82,7 +82,10 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
 - \* Only `SavedCardLookup` lists and selects saved cards for a charge. It owns reference/model/target freshness and
   model eligibility; Checkout still validates pure request facts. Charge token retains its explicit lookup across
   reference/cart/review screens; checkout's automatic lookup stays screen-scoped.
-- \* `TransactionLifecycle` stores only through `TransactionBook`. A stored Busy refusal's ServiceID lives on the
+- \* Only container wiring for committed history deletion releases process request/receipt registries and simulator
+  identities. Retained unknown operations keep their recovery evidence; simulator period totals survive retention.
+- \* `TransactionLifecycle` alone releases a received late answer, only after durable resolved settlement.
+  It stores only through `TransactionBook`. A stored Busy refusal's ServiceID lives on the
   sale, written and cleared only by `SaleEvent`; the book is its only reader, and the waiting screen asks
   `TransactionState.Processing.canCancel` rather than a ServiceID. Links reach Adyen/store link answers only through
   `PaymentLinks`, which serializes checks/cancellations and obtains eligible `ApiTarget` access. An unknown creation
@@ -141,6 +144,9 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   and protected UI wait for both settings and secrets. Read failures publish no defaults; failed writes never report success.
 - \* PIN derivation stays inside `PinManager` on its injected CPU dispatcher; verification and lockout mutation are
   serialized. History, sale and product list pipelines offload transformations before sharing UI state.
+- \* Receipt/email, QR and transfer preparation keep explicit CPU dispatcher boundaries. History list/maintenance
+  SQL omits receipt bodies and limits batches. Sale-event writes read headers, not line/tender relations. Transfer QR
+  playback suspends below STARTED; durable financial operations keep their application lifetime.
 - \* Only `CameraSession` reads camera futures, after completion. Scanner disposal never waits; delayed binds and
   decoded callbacks are invalidated on close, and cleanup unbinds only the scanner's own use cases.
 - \* `AppNavHost` alone owns Navigation 3 scenes and their built-in forward/pop/predictive transitions. Use AndroidX

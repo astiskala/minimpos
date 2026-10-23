@@ -36,6 +36,9 @@ data class StoredPayment(
 class StoredPayments(
     private val sales: SaleRepository,
 ) {
+    /** Reads committed sale [saleId] directly after a write; null when absent, without an observation's replay cache. */
+    suspend fun get(saleId: String): StoredPayment? = sales.get(saleId)?.let(::StoredPayment)
+
     /** Follows sale [saleId]; emits null while there is none (for example after pruning). */
     fun observe(saleId: String): Flow<StoredPayment?> = sales.observe(saleId).map { record -> record?.let(::StoredPayment) }
 }

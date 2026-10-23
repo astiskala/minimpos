@@ -38,8 +38,8 @@ sealed interface ReconciliationOutcome {
  * One terminal reconciliation, run the way Home's Reconciliation screen offers it: every unresolved terminal operation
  * of the current terminal is checked again first ([FinancialOperations.recheck], the way it was sent), then the
  * terminal's current totals are read — or its period closed when asked — and compared against local accounting for the
- * day ([HistoryAccounting.compareReconciliation]). Closing a period keeps the Manager approval held when it starts and
- * checks it again immediately before sending, so one that expired meanwhile sends nothing.
+ * day ([HistoryAccounting.ReconciliationAccumulator]). Closing a period keeps its original Manager approval and
+ * checks it again immediately before sending, so expired approval sends nothing.
  *
  * @param history The retained activity the unresolved operations are read from and compared.
  * @param operations Asks the terminal again about unresolved operations, the way each was sent.
@@ -68,9 +68,11 @@ class TerminalReconciliation(
     ): ReconciliationOutcome {
         val grant = approval.grant()
         val poiId = terminal.first().poiId.orEmpty()
-        HistoryAccounting.unresolvedTerminalItems(history.items().first(), poiId).forEach { item ->
-            operations.recheck(item.storedTransaction())
-        }
+        val unresolved =
+            history.reader.fold(mutableListOf<StoredTransaction>()) { ids, batch ->
+                ids.apply { addAll(HistoryAccounting.unresolvedTerminalItems(batch, poiId).map { it.storedTransaction() }) }
+            }
+        unresolved.forEach { operations.recheck(it) }
         return when (val attempt = gateway.totals(closePeriod) { approval.allows(grant) }) {
             is Attempt.NotSetUp -> {
                 ReconciliationOutcome.Failed(Failure.NotSetUp(attempt.problem))
@@ -84,13 +86,10 @@ class TerminalReconciliation(
 
                     is TerminalTotalsOutcome.Answered -> {
                         ReconciliationOutcome.Reconciled(
-                            HistoryAccounting.compareReconciliation(
-                                items = history.items().first(),
-                                poiId = poiId,
-                                outcome = outcome,
-                                date = date,
-                                zone = zone(),
-                            ),
+                            history.reader
+                                .fold(HistoryAccounting.ReconciliationAccumulator(poiId, outcome, date, zone())) { total, batch ->
+                                    total.apply { add(batch) }
+                                }.report(),
                         )
                     }
                 }

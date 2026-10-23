@@ -8,6 +8,7 @@ import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.HistoryScope
+import app.minimpos.app.items
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat

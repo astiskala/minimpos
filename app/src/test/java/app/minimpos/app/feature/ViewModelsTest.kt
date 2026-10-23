@@ -27,6 +27,7 @@ import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.RefundInvalidReason
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.items
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.OperationAmount
 import app.minimpos.app.payment.TransactionState
@@ -96,6 +97,8 @@ class ViewModelsTest {
                 container::currency,
             )
         configure(checkout)
+        val form = container.session(SaleKind.SALE).form.value
+        await { checkout.state.first { it.canPay && it.form == form } }
         assertThat(checkout.pay()).isTrue()
         return await { (container.payments.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
     }
@@ -324,7 +327,8 @@ class ViewModelsTest {
                 container.terminalStatus.state,
                 container::currency,
             )
-        await { checkout.state.first { it.canPay } }
+        val form = container.session(SaleKind.SALE).form.value
+        await { checkout.state.first { it.canPay && it.form == form } }
         assertThat(checkout.pay()).isTrue()
         assertThat(checkout.pay()).isFalse()
         val saleId = await { (container.payments.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
@@ -340,7 +344,7 @@ class ViewModelsTest {
         assertThat(result.payRemaining()).isTrue()
         assertThat(result.payRemaining()).isFalse()
         await { container.payments.state.first { it == TransactionState.Finished(saleId) } }
-        assertThat(await { container.sales.get(saleId)!! }.tenders).hasSize(2)
+        assertThat(await { container.database.saleDao().historyTenders(listOf(saleId)) }).hasSize(2)
         assertThat(await { container.history.items().first() }).hasSize(1)
     }
 

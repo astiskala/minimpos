@@ -20,6 +20,7 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.items
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.StoreDetails
 import app.minimpos.terminal.transport.StoreLookup
@@ -49,7 +50,7 @@ class SettingsPreferencesTest {
 
     private fun open(section: String) {
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("section_$section"), 15_000)
         compose.onNodeWithTag("section_$section").performScrollTo().performClick()
     }

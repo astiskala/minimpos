@@ -23,8 +23,10 @@ import app.minimpos.app.data.settings.MerchantCopyPolicy
 import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.data.settings.SmtpSecurity
 import app.minimpos.app.email.EmailMessage
+import app.minimpos.app.email.EmailTexts
 import app.minimpos.app.email.InlineImage
 import app.minimpos.app.email.MailTransport
+import app.minimpos.app.email.ReceiptEmailer
 import app.minimpos.app.email.SmtpMailer
 import app.minimpos.app.payment.ReceiptOffer
 import app.minimpos.app.payment.ReceiptPrint
@@ -47,6 +49,7 @@ import app.minimpos.terminal.client.PrintLine
 import app.minimpos.terminal.client.PrintStyle
 import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
 import org.junit.After
 import org.junit.Test
@@ -57,6 +60,7 @@ import java.io.ByteArrayOutputStream
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.Locale
+import java.util.concurrent.Executors
 import javax.mail.MessagingException
 import javax.mail.Multipart
 import javax.mail.Part
@@ -104,6 +108,32 @@ class ReceiptServicesTest {
             },
             { zone },
         )
+
+    @Test
+    fun `receipt email builds QR images and bodies on its CPU dispatcher before delivery`() {
+        configureEmail()
+        Executors.newSingleThreadExecutor { task -> Thread(task, "receipt-cpu") }.asCoroutineDispatcher().use { cpu ->
+            var prepared = false
+            val emailer =
+                ReceiptEmailer(
+                    container.settings,
+                    container.secrets,
+                    SmtpMailer(env.mail),
+                    qrPng = {
+                        assertThat(Thread.currentThread().name).startsWith("receipt-cpu")
+                        prepared = true
+                        QrCodes.png(it)
+                    },
+                    currentTexts = { EmailTexts("Mini mPOS", "Sale", "Refund", "Test", "Test body", "Hold", "Cancel") },
+                    cpu = cpu,
+                )
+            val document = ReceiptDocument(listOf(ReceiptElement.Text("Receipt"), ReceiptElement.Qr("MPR1*test")))
+            assertThat(await { emailer.send("shopper@example.com", document, "MP-1", ReceiptKind.SALE) })
+                .isEqualTo(ActionResult.Success)
+            assertThat(prepared).isTrue()
+            assertThat(env.mail.sent).hasSize(1)
+        }
+    }
 
     @Test
     fun `sale receipts carry lines, tax and the refund QR code`() {

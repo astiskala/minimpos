@@ -53,6 +53,7 @@ class RefundRepository(
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val dao = db.refundDao()
+    private val observations = RecordObservations(source = dao::observeRefund)
 
     /** Inserts a new [refund], normally PENDING. */
     suspend fun create(refund: RefundEntity) = dao.insert(refund)
@@ -70,7 +71,7 @@ class RefundRepository(
     }
 
     /** Observes the refund with ID [id]; emits null while there is none. */
-    fun observe(id: String): Flow<RefundEntity?> = dao.observeRefund(id)
+    fun observe(id: String): Flow<RefundEntity?> = observations.observe(id)
 
     /** Observes the refunds (and cancellations) made from this terminal against sale [saleId], newest first. */
     fun forSale(saleId: String): Flow<List<RefundEntity>> = dao.refundsForSale(saleId)
@@ -81,7 +82,7 @@ class RefundRepository(
      * an answer the stored ones are kept; a Checkout refund's own [pspReference] is kept too). When it was accepted
      * ([RefundStatus.REQUESTED]) it is applied to its local sale ([SaleRepository.applyRefund]), so the same items or
      * amount cannot be refunded twice from this terminal. This is the only change to a refund after [create]. Reads and
-     * writes in one transaction; does nothing when the refund no longer exists.
+     * writes in one transaction; returns false only when a healthy read proves the refund no longer exists.
      */
     suspend fun settle(
         id: String,
@@ -90,31 +91,33 @@ class RefundRepository(
         details: TransactionDetails?,
         reason: StoredReason? = null,
         pspReference: String? = null,
-    ) = db.withTransaction {
-        val stored = dao.refund(id) ?: return@withTransaction
-        if (stored.status == RefundStatus.REQUESTED && status != RefundStatus.REQUESTED) return@withTransaction
-        val refund =
-            stored.copy(
-                status = status,
-                processedAt =
-                    stored.processedAt ?: if (status == RefundStatus.REQUESTED) {
-                        details?.poiTimestamp?.let {
-                            runCatching {
-                                Instant
-                                    .parse(it)
-                                    .toEpochMilli()
-                            }.getOrNull()
-                        } ?: now()
-                    } else {
-                        null
-                    },
-                message = message,
-                reason = reason,
-                pspReference = details?.pspReference ?: pspReference ?: stored.pspReference,
-                poiReconciliationId = details?.poiReconciliationId ?: stored.poiReconciliationId,
-                customerReceiptJson = details?.let { ReceiptLinesJson.encodeFields(it.customerReceipt) } ?: stored.customerReceiptJson,
-            )
-        dao.update(refund)
-        if (stored.status != RefundStatus.REQUESTED) sales.applyRefund(refund)
-    }
+    ): Boolean =
+        db.withTransaction {
+            val stored = dao.refund(id) ?: return@withTransaction false
+            if (stored.status == RefundStatus.REQUESTED && status != RefundStatus.REQUESTED) return@withTransaction true
+            val refund =
+                stored.copy(
+                    status = status,
+                    processedAt =
+                        stored.processedAt ?: if (status == RefundStatus.REQUESTED) {
+                            details?.poiTimestamp?.let {
+                                runCatching {
+                                    Instant
+                                        .parse(it)
+                                        .toEpochMilli()
+                                }.getOrNull()
+                            } ?: now()
+                        } else {
+                            null
+                        },
+                    message = message,
+                    reason = reason,
+                    pspReference = details?.pspReference ?: pspReference ?: stored.pspReference,
+                    poiReconciliationId = details?.poiReconciliationId ?: stored.poiReconciliationId,
+                    customerReceiptJson = details?.let { ReceiptLinesJson.encodeFields(it.customerReceipt) } ?: stored.customerReceiptJson,
+                )
+            dao.update(refund)
+            if (stored.status != RefundStatus.REQUESTED) sales.applyRefund(refund)
+            true
+        }
 }

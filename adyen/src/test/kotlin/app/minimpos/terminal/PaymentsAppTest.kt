@@ -129,6 +129,13 @@ class PaymentsAppTest {
         assertThat(paid.details.success).isTrue()
         val recovered = runBlocking { client.status("PAY2") } as TransactionOutcome.Completed
         assertThat(recovered.details.success).isTrue()
+        // Acknowledgement belongs after durable storage; until then repeat checks must still work.
+        assertThat(app.lateReplies()).hasSize(1)
+        transport.acknowledge("OTHER")
+        assertThat(app.lateReplies()).hasSize(1)
+        transport.acknowledge("PAY2")
+        assertThat(app.lateReplies()).isEmpty()
+        assertThat(runBlocking { client.status("PAY2") }).isInstanceOf(TransactionOutcome.Unknown::class.java)
         // Answers to other requests do not count.
         assertThat(runBlocking { client.status("OTHER") }).isInstanceOf(TransactionOutcome.Unknown::class.java)
     }
@@ -494,6 +501,8 @@ class PaymentsAppTest {
                         }
 
                     override fun lateReplies(): List<String> = emptyList()
+
+                    override fun forgetLateReplies(urls: Set<String>) = Unit
                 }
             val onboarding = PaymentsAppOnboarding(TerminalEnvironment.TEST, abandonOnSecondStep, RecordingManagement(), RETURN_URL)
             assertThat(onboarding.board(BoardingTarget("Merchant"))).isEqualTo(Onboarding.Failed(Fault.Abandoned, unboarded = true))
@@ -542,6 +551,10 @@ class PaymentsAppTest {
         }
 
         override fun lateReplies(): List<String> = late
+
+        override fun forgetLateReplies(urls: Set<String>) {
+            late.removeAll(urls)
+        }
 
         private suspend fun answer(opened: Opened): String =
             when {

@@ -2,26 +2,39 @@ package app.minimpos.app.ui
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewRootForTest
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
+import androidx.core.graphics.get
 import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
+import app.minimpos.app.awaitCondition
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.feature.sale.ProductBrowser
 import app.minimpos.app.feature.sale.SaleUiState
@@ -61,6 +74,39 @@ class CompactLayoutTest {
             "1/10-14 Example Street\nSurry Hills NSW\nSydney NSW 2010\nAustralia",
             "+61 2 5550 0100",
         )
+
+    @Test
+    fun `a long receipt paints its final text when scrolled through a clipped Compose layer`() {
+        val receipt = ReceiptDocument(List(200) { ReceiptElement.Blank } + ReceiptElement.Text("Receipt end"))
+        compose.setContent {
+            MiniMposTheme {
+                Column(Modifier.height(160.dp).verticalScroll(rememberScrollState()).testTag("viewport")) {
+                    ReceiptPreview(receipt)
+                }
+            }
+        }
+        compose.awaitCondition("receipt layout measured") { compose.onAllNodesWithTag("receiptImage").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitForIdle()
+        assertThat(receiptInk()).isEqualTo(0)
+        compose.onNodeWithTag("viewport").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
+        compose.awaitCondition("receipt end is drawn") { receiptInk() > 0 }
+    }
+
+    private fun receiptInk(): Int {
+        val bounds = compose.onNodeWithTag("receiptImage").fetchSemanticsNode().boundsInRoot
+        val view = checkNotNull(compose.onRoot().fetchSemanticsNode().root as? ViewRootForTest).view
+        val bitmap = compose.runOnUiThread { createBitmap(view.width, view.height).also { view.draw(Canvas(it)) } }
+        var ink = 0
+        for (y in (bounds.top.toInt() + 4)..<(bounds.bottom.toInt() - 4)) {
+            for (x in (bounds.left.toInt() + 4)..<(bounds.right.toInt() - 4)) {
+                val pixel = bitmap[x, y]
+                val dark = Color.red(pixel) < 60 && Color.green(pixel) < 60 && Color.blue(pixel) < 60
+                if (Color.alpha(pixel) > 200 && dark) ink++
+            }
+        }
+        bitmap.recycle()
+        return ink
+    }
 
     @Test
     fun `English review actions remain pinned and replacement requires Import`() = reviewFits()
@@ -158,6 +204,42 @@ class CompactLayoutTest {
     @Config(qualifiers = "fr-rFR-w320dp-h460dp-hdpi")
     fun `French products adapt to large text`() = productsFit(fontScale = 1.5f)
 
+    @Test
+    fun `compact product tiles are as tall as two name lines and the price need`() = productTilesAreTight(64.67f)
+
+    @Test
+    @Config(qualifiers = "en-rAU-w360dp-h568dp-xhdpi")
+    fun `medium product tiles are as tall as two name lines and the price need`() = productTilesAreTight(67.5f)
+
+    @Test
+    @Config(qualifiers = "en-rAU-w360dp-h700dp-xhdpi")
+    fun `regular product tiles are as tall as two name lines and the price need`() = productTilesAreTight(68f)
+
+    /** A one-line and a two-line name give tiles of the same [height] dp: no more room than two lines and the price. */
+    private fun productTilesAreTight(height: Float) {
+        val products =
+            listOf(
+                ProductEntity(1, "Flat white", 1200, 1),
+                ProductEntity(2, "Chocolate banana bread with walnuts", 1800, 1),
+            )
+        compose.setContent {
+            MiniMposTheme {
+                ProductBrowser(
+                    SaleUiState(loaded = true, products = products),
+                    MoneyFormatter(CurrencySpec.of("AUD"), Locale.forLanguageTag("en-AU")),
+                    rememberSearchControl(false, true) {},
+                    {},
+                    {},
+                    {},
+                )
+            }
+        }
+        listOf("product_1", "product_2").forEach { tag ->
+            val bounds = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
+            assertWithMessage(tag).that((bounds.bottom - bounds.top).value).isWithin(0.5f).of(height)
+        }
+    }
+
     private fun productsFit(fontScale: Float = 1f) {
         val products =
             listOf(
@@ -219,6 +301,7 @@ class CompactLayoutTest {
                 ),
             )
         compose.setContent { MiniMposTheme { ReceiptPreview(receipt) } }
+        compose.awaitCondition("receipt layout measured") { compose.onAllNodesWithTag("receiptImage").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("261022-102607-2YSD").assertIsDisplayed()
         savePreview("receipt")
     }

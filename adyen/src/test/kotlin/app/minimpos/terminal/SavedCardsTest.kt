@@ -14,6 +14,7 @@ import app.minimpos.terminal.simulator.SimulatedLedger
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.SimulatorConfig
+import app.minimpos.terminal.simulator.SimulatorRemoval
 import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
@@ -47,6 +48,25 @@ class SavedCardsTest {
             .body(body)
             .build(),
     )
+
+    @Test
+    fun `saved card answers survive adapter replacement and only deleted keys are released`() =
+        runBlocking {
+            var outcome = SimulatedOutcome.TIMEOUT
+            val simulator = TerminalSimulator({ SimulatorConfig(outcome = outcome, delayMillis = 0) }, random = Random(1))
+            val card = StoredCard("TOKEN1", "visa", "1111")
+            val first = simulator.savedCards { listOf(card) }
+            assertThat(first.charge(request, "kept")).isEqualTo(CardChargeResult.Failed(Fault.TimedOut))
+            val second = simulator.savedCards { listOf(card) }
+            val known = second.charge(request, "kept") as CardChargeResult.Authorised
+            outcome = SimulatedOutcome.DECLINE
+            assertThat(second.charge(request, "kept")).isEqualTo(known)
+            val deleted = second.charge(request, "deleted")
+            simulator.forget(SimulatorRemoval(emptySet(), emptySet(), emptySet(), setOf("deleted")))
+            outcome = SimulatedOutcome.APPROVE
+            assertThat(first.charge(request, "deleted")).isNotEqualTo(deleted)
+            assertThat(first.charge(request, "kept")).isEqualTo(known)
+        }
 
     @Test
     fun `listing asks for the shopper's cards of the merchant account and keeps only usable summaries`() =

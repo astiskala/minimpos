@@ -9,8 +9,10 @@ import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct
+import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.ScanWallet
+import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.ScannedPayment
@@ -18,6 +20,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import java.time.Instant
@@ -112,33 +116,57 @@ class SaleSession(
         offersLinks: Boolean = true,
         currency: (AppSettings) -> CurrencySpec,
     ): Flow<Checkout> =
-        combine(snapshot, settings, terminal, wallets) { snapshot, appSettings, status, availableWallets ->
-            val payment = appSettings.payment
-            val resolvedCurrency = currency(appSettings)
-            val caps = status.capabilities
-            val shopperDisplay = caps.supportsShopperDisplay && shopperTexts != null
-            Checkout(
-                snapshot.form,
-                payment,
-                (
-                    if (PricingChanges.ready(appSettings)) {
-                        snapshot.cart
-                    } else {
-                        Cart()
-                    }
-                ).totals(payment.taxMode, payment.chargeTax),
-                resolvedCurrency,
-                kind,
-                status.printerAvailable,
-                status.paymentLinks && offersLinks,
-                snapshot.revision,
-                availableWallets.offered(resolvedCurrency.code),
-                terminalTippingAvailable = caps.supportsTerminalFeatures,
-                shopperDisplayAvailable = shopperDisplay,
-                shopperTexts = if (shopperDisplay) shopperTexts.invoke() else null,
-                emailOnTerminal = appSettings.asksEmailOnTerminal,
+        flow {
+            val prices = CheckoutPrices()
+            emitAll(
+                combine(snapshot, settings, terminal, wallets) { snapshot, appSettings, status, availableWallets ->
+                    val payment = appSettings.payment
+                    val resolvedCurrency = currency(appSettings)
+                    val caps = status.capabilities
+                    val shopperDisplay = caps.supportsShopperDisplay && shopperTexts != null
+                    Checkout(
+                        snapshot.form,
+                        payment,
+                        prices.totals(snapshot.cart, payment.taxMode, payment.chargeTax, PricingChanges.ready(appSettings)),
+                        resolvedCurrency,
+                        kind,
+                        status.printerAvailable,
+                        status.paymentLinks && offersLinks,
+                        snapshot.revision,
+                        availableWallets.offered(resolvedCurrency.code),
+                        terminalTippingAvailable = caps.supportsTerminalFeatures,
+                        shopperDisplayAvailable = shopperDisplay,
+                        shopperTexts = if (shopperDisplay) shopperTexts.invoke() else null,
+                        emailOnTerminal = appSettings.asksEmailOnTerminal,
+                    )
+                },
             )
         }
+
+    private class CheckoutPrices {
+        private var cart: Cart? = null
+        private var mode: TaxMode? = null
+        private var chargeTax = false
+        private var ready = false
+        private var priced: CartTotals? = null
+
+        fun totals(
+            cart: Cart,
+            mode: TaxMode,
+            chargeTax: Boolean,
+            ready: Boolean,
+        ): CartTotals {
+            val pricingChanged = this.mode != mode || this.chargeTax != chargeTax || this.ready != ready
+            if (this.cart !== cart || pricingChanged) {
+                priced = (if (ready) cart else Cart()).totals(mode, chargeTax)
+                this.cart = cart
+                this.mode = mode
+                this.chargeTax = chargeTax
+                this.ready = ready
+            }
+            return checkNotNull(priced)
+        }
+    }
 
     /**
      * Builds a payment from the displayed [checkout] at [now] in [zone] (for [walletScan], only when [checkout] and

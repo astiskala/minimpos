@@ -80,6 +80,14 @@ internal class OperationRunner<R>(
     /** The request of record [id] when it was started in this process and is now resolved; null otherwise or once taken. */
     fun resolved(id: String): R? = synchronized(unresolved) { unresolved.remove(id) }
 
+    /** Releases all process-only requests only after confirmed complete history deletion. */
+    fun forgetAll() = synchronized(unresolved) { unresolved.clear() }
+
+    /** Releases only IDs whose durable history was removed; unresolved retained records are never evicted. */
+    fun forget(ids: Set<String>) {
+        synchronized(unresolved) { unresolved.keys.removeAll(ids) }
+    }
+
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next operation can start. */
     fun acknowledge() {
         if (state.value is TransactionState.Finished) state.value = TransactionState.Idle

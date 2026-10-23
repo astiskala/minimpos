@@ -40,7 +40,7 @@ class SettingsCatalogUiTest {
         val vat = await { container.catalog.saveTaxRate(TaxRateEntity(name = "VAT", rateMilliPercent = 25_500, sortOrder = 9)) }
         await { container.settings.update { it.copy(payment = it.payment.copy(defaultTaxRateId = vat)) } }
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasText("VAT 25.5%"), 15_000)
         compose.onNodeWithTag("section_tax").performScrollTo().performClick()
         waitForTag("taxRow_$vat")

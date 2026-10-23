@@ -28,6 +28,7 @@ class SaleRepository(
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val dao = db.saleDao()
+    private val observations = RecordObservations(source = dao::observeSale)
 
     /** Inserts a new [sale] (normally PENDING) with its [lines] in one transaction. */
     suspend fun createPending(
@@ -42,7 +43,7 @@ class SaleRepository(
     suspend fun get(id: String): SaleWithLines? = dao.sale(id)
 
     /** Observes the sale with ID [id] and its lines; emits null while there is none. */
-    fun observe(id: String): Flow<SaleWithLines?> = dao.observeSale(id)
+    fun observe(id: String): Flow<SaleWithLines?> = observations.observe(id)
 
     /**
      * Returns the sale whose POITransactionID is [transactionId], or null. Used to link a scanned refund QR code to a
@@ -50,30 +51,27 @@ class SaleRepository(
      */
     suspend fun findByTransactionId(transactionId: String): SaleWithLines? = dao.saleByTransactionId(transactionId)
 
-    /** Records [event] for sale [id] (see [SaleEvent]), without writing or invalidating observers when nothing changes. */
+    /** Records [event] for sale [id] without unchanged writes; returns false only when a healthy read proves it absent. */
     suspend fun record(
         id: String,
         event: SaleEvent,
-    ) {
+    ): Boolean =
         db.withTransaction {
-            dao.sale(id)?.let { record ->
-                val sale = record.sale
-                val stamped = event.stamped(now())
-                val updated = sale.after(stamped)
-                if (updated != sale) dao.update(updated)
-                if (stamped is SaleEvent.Settled) recordApprovedTender(record, stamped)
-            }
+            val sale = dao.header(id) ?: return@withTransaction false
+            val stamped = event.stamped(now())
+            val updated = sale.after(stamped)
+            if (updated != sale) dao.update(updated)
+            if (stamped is SaleEvent.Settled) recordApprovedTender(sale, stamped)
+            true
         }
-    }
 
     private suspend fun recordApprovedTender(
-        record: SaleWithLines,
+        sale: SaleEntity,
         settled: SaleEvent.Settled,
     ) {
-        val sale = record.sale
         val details = settled.details ?: return
         val tender = settled.approvedTender(sale.totalMinor, sale.paidMinor) ?: return
-        val seq = record.tenders.size + 1
+        val seq = dao.tenderCount(sale.id) + 1
         dao.upsertTender(
             SaleTenderEntity(
                 id = "${sale.id}-$seq",

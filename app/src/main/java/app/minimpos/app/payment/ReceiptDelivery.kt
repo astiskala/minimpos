@@ -27,16 +27,21 @@ import app.minimpos.app.terminal.TerminalStatus
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.terminal.client.PrintOutcome
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
@@ -163,6 +168,7 @@ class ReceiptRecords(
  * @param emailer Emails them.
  * @param scope Owns claimed automatic delivery independently of the screen observing it.
  * @param clock Stamps when a daily summary was generated.
+ * @param cpu Dispatcher for receipt construction outside the UI thread.
  */
 class ReceiptDelivery(
     private val settings: SettingsRepository,
@@ -173,6 +179,7 @@ class ReceiptDelivery(
     private val emailer: ReceiptEmailer,
     private val scope: CoroutineScope,
     private val clock: Clock = Clock.systemUTC(),
+    private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) {
     /** Whether a daily summary can be printed with the current destination and receipt settings. */
     val canPrintReports: Flow<Boolean> = status.state.map { it.printerAvailable }
@@ -186,8 +193,16 @@ class ReceiptDelivery(
         zone: ZoneId,
     ): ActionResult {
         val current = settings.current()
-        val report = HistoryAccounting.report(records.history.snapshot(), date, zone, clock.millis())
-        return print(receipts.dailyReport(report, current.receipt), current)
+        val document =
+            withContext(cpu) {
+                val report =
+                    records.history.reader
+                        .fold(HistoryAccounting.ReportAccumulator(date, zone, clock.millis())) { total, batch ->
+                            total.apply { add(batch) }
+                        }.report()
+                receipts.dailyReport(report, current.receipt)
+            }
+        return print(document, current)
     }
 
     private val armed = mutableSetOf<String>()
@@ -279,48 +294,78 @@ class ReceiptDelivery(
             is StoredTransaction.Refund -> emailRefund(transaction.id, to)
         }
 
+    private val documentSettings = settings.settings.map { it.receipt to it.languageTag }.distinctUntilChanged()
+    private val emailSettings =
+        settings.settings
+            .map {
+                it.email.isConfigured to it.payment.effectiveEmailCapture
+            }.distinctUntilChanged()
+    private val capabilities = status.state.map { it.printerAvailable to it.canShare }.distinctUntilChanged()
+
+    private data class SaleDocuments(
+        val sale: SaleEntity,
+        val paper: ReceiptDocument,
+        val electronic: ReceiptDocument,
+    )
+
     private fun saleOffer(
         saleId: String,
         fresh: Boolean,
-    ): Flow<ReceiptOffer> =
-        combine(records.sales.observe(saleId), settings.settings, status.state) { record, current, terminal ->
-            val link = record?.sale?.paymentLink == true
-            val captured = !fresh || link || current.payment.effectiveEmailCapture != EmailCapture.OFF
+    ): Flow<ReceiptOffer> {
+        val documents =
+            combine(records.sales.observe(saleId), documentSettings) { record, (receipt, _) ->
+                record?.let {
+                    val paper = receipts.sale(it, receipt)
+                    SaleDocuments(it.sale, paper, receipts.electronic(it, receipt, paper))
+                }
+            }.flowOn(cpu)
+        return combine(documents, emailSettings, capabilities) { documents, (email, capture), (printer, share) ->
             ReceiptOffer(
-                receipt = record?.let { receipts.sale(it, current.receipt) },
-                canPrint = terminal.printerAvailable,
-                canEmail = current.email.isConfigured && captured,
-                canShare = terminal.canShare,
+                receipt = documents?.paper,
+                canPrint = printer,
+                canEmail = email && (!fresh || documents?.sale?.paymentLink == true || capture != EmailCapture.OFF),
+                canShare = share,
                 share =
-                    record?.takeIf { terminal.canShare }?.let {
+                    documents?.takeIf { share }?.let {
                         val sale = it.sale
                         val standing = ReceiptStanding.of(sale)
                         SharedReceipt(
-                            document = receipts.sale(it, current.receipt, surface = ReceiptSurface.ELECTRONIC),
-                            reference = sale.merchantReference,
-                            amountMinor = sale.amountMinor,
-                            currency = sale.currency,
-                            paymentLink = standing.unpaidLink,
-                            simulatedLink = standing.simulatedLink,
+                            it.electronic,
+                            sale.merchantReference,
+                            sale.amountMinor,
+                            sale.currency,
+                            standing.unpaidLink,
+                            standing.simulatedLink,
                         )
                     },
             )
         }
+    }
 
-    private fun refundOffer(refundId: String): Flow<ReceiptOffer> =
-        combine(records.refunds.observe(refundId), settings.settings, status.state) { refund, current, terminal ->
-            val receipt = refund?.let { receipts.refund(it, current.receipt) }
+    private fun refundOffer(refundId: String): Flow<ReceiptOffer> {
+        val documents =
+            combine(records.refunds.observe(refundId), documentSettings) { refund, (receipt, _) ->
+                refund?.let { it to receipts.refund(it, receipt) }
+            }.flowOn(cpu)
+        return combine(documents, emailSettings, capabilities) { documents, (email, _), (printer, share) ->
             ReceiptOffer(
-                receipt = receipt,
-                canPrint = terminal.printerAvailable,
-                canEmail = current.email.isConfigured,
-                canShare = terminal.canShare,
+                receipt = documents?.second,
+                canPrint = printer,
+                canEmail = email,
+                canShare = share,
                 share =
-                    refund?.takeIf { terminal.canShare }?.let { stored ->
-                        receipt?.let { SharedReceipt(it, stored.merchantReference, stored.amountMinor, stored.currency) }
+                    documents?.takeIf { share }?.let { (refund, receipt) ->
+                        SharedReceipt(receipt, refund.merchantReference, refund.amountMinor, refund.currency)
                     },
             )
         }
+    }
+
+    /** Releases unclaimed automatic deliveries after confirmed complete history deletion. */
+    internal fun forgetAll() = synchronized(armed) { armed.clear() }
+
+    /** Forgets unclaimed automatic delivery only after these history IDs have been durably removed. */
+    internal fun forget(ids: Set<String>) = synchronized(armed) { armed.removeAll(ids) }
 
     /** Makes the automatic delivery of [id], a just approved sale or accepted refund, due. */
     fun arm(id: String) = synchronized(armed) { armed += id }
@@ -345,7 +390,8 @@ class ReceiptDelivery(
     ): ReceiptPrint {
         val current = settings.current()
         val record = records.sales.get(saleId) ?: return ReceiptPrint(ActionResult.Missing)
-        val result = print(receipts.sale(record, current.receipt, copy), current)
+        val document = withContext(cpu) { receipts.sale(record, current.receipt, copy) }
+        val result = print(document, current)
         val due = copy == ReceiptCopy.CUSTOMER && result == ActionResult.Success && merchantCopyWanted(record.sale, current)
         return ReceiptPrint(result, due)
     }
@@ -353,7 +399,7 @@ class ReceiptDelivery(
     private suspend fun printRefund(refundId: String): ActionResult {
         val current = settings.current()
         val refund = records.refunds.get(refundId) ?: return ActionResult.Missing
-        return print(receipts.refund(refund, current.receipt), current)
+        return print(withContext(cpu) { receipts.refund(refund, current.receipt) }, current)
     }
 
     /** Prints [document], such as the sample receipt Settings prints to check the layout. */
@@ -365,7 +411,7 @@ class ReceiptDelivery(
     ): ActionResult {
         val record = records.sales.get(saleId) ?: return ActionResult.Missing
         val sale = record.sale
-        val document = receipts.sale(record, settings.current().receipt, surface = ReceiptSurface.ELECTRONIC)
+        val document = withContext(cpu) { receipts.sale(record, settings.current().receipt, surface = ReceiptSurface.ELECTRONIC) }
         val result = emailer.send(to, document, sale.merchantReference, ReceiptKind.of(ReceiptStanding.of(sale)))
         return result.also { if (it == ActionResult.Success) records.sales.record(saleId, SaleEvent.Emailed(to.trim())) }
     }
@@ -375,7 +421,8 @@ class ReceiptDelivery(
         to: String,
     ): ActionResult {
         val refund = records.refunds.get(refundId) ?: return ActionResult.Missing
-        return emailer.send(to, receipts.refund(refund, settings.current().receipt), refund.merchantReference, ReceiptKind.of(refund))
+        val document = withContext(cpu) { receipts.refund(refund, settings.current().receipt) }
+        return emailer.send(to, document, refund.merchantReference, ReceiptKind.of(refund))
     }
 
     /** Sends a short test email to [to], to check the SMTP settings. */
@@ -404,7 +451,7 @@ class ReceiptDelivery(
         document: ReceiptDocument,
         current: AppSettings,
     ): ActionResult =
-        when (val attempt = gateway.print(PrintRenderer.jobs(document, current.receipt.charsPerLine))) {
+        when (val attempt = gateway.print(withContext(cpu) { PrintRenderer.jobs(document, current.receipt.charsPerLine) })) {
             is Attempt.NotSetUp -> {
                 ActionResult.Failed(Failure.NotSetUp(attempt.problem))
             }

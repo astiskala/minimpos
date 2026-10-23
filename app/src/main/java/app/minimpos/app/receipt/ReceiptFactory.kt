@@ -86,6 +86,14 @@ class ReceiptFactory(
 ) {
     private val current: ReceiptTexts get() = texts("")
 
+    /** Reuses [paper] for sharing unless receipt-tip blanks require a distinct electronic document. */
+    fun electronic(
+        record: SaleWithLines,
+        settings: ReceiptSettings,
+        paper: ReceiptDocument,
+    ): ReceiptDocument =
+        if (ReceiptStanding.of(record.sale).awaitingTip) sale(record, settings, surface = ReceiptSurface.ELECTRONIC) else paper
+
     /** Summary of retained processing-day activity; no payment receipt, QR, or settlement claim. */
     fun dailyReport(
         report: HistoryReport,

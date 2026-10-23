@@ -189,11 +189,11 @@ interface TransactionBook<R> {
         poiId: String,
     ) = Unit
 
-    /** Stores [settlement] as the outcome of record [id]. */
+    /** Stores [settlement] for [id]; false only after a healthy read proves the record is absent. Storage failures throw. */
     suspend fun settle(
         id: String,
         settlement: Settlement,
-    )
+    ): Boolean
 
     /** The ServiceID of record [id] when its outcome is still unknown, so it can be checked again; else null. */
     suspend fun unsettledServiceId(id: String): String?
@@ -261,6 +261,12 @@ class TransactionLifecycle<R>(
     private val serviceIds = mutableMapOf<String, String>()
     private val rechecks = Mutex()
 
+    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
+    internal fun forgetAll() = runner.forgetAll()
+
+    /** Releases process-only requests for records that history has already durably deleted. */
+    internal fun forget(ids: Set<String>) = runner.forget(ids)
+
     /**
      * Starts [request] in the background and returns the new record's ID straight away; null, with nothing stored or
      * sent, while a transaction is already in progress (such as a second tap on the same action). Call it when the
@@ -274,10 +280,16 @@ class TransactionLifecycle<R>(
             interrupted = { id, _ ->
                 // The request may already have been sent, so the outcome is unconfirmed rather than failed.
                 val unexpected = Failure.Device(DeviceFault.UNEXPECTED)
-                book.settle(id, Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(unexpected)))
+                stored(id, Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(unexpected)))
             },
             release = { book.release(request) },
-        ) { id -> run(id, request, grant) }
+        ) { id ->
+            try {
+                run(id, request, grant)
+            } finally {
+                synchronized(serviceIds) { serviceIds.remove(id) }
+            }
+        }
     }
 
     /**
@@ -311,14 +323,16 @@ class TransactionLifecycle<R>(
     suspend fun recheck(id: String): Recheck =
         rechecks.withLock {
             val serviceId = book.unsettledServiceId(id) ?: return@withLock Recheck.Settled
+            val attempt = gateway.status(serviceId, book.kind, book.context(id))
             val outcome =
-                when (val attempt = gateway.status(serviceId, book.kind, book.context(id))) {
+                when (attempt) {
                     is Attempt.NotSetUp -> return@withLock Recheck.StillUnknown(Failure.NotSetUp(attempt.problem))
                     is Attempt.Made -> attempt.result
                 }
             if (outcome is TransactionOutcome.Unknown) return@withLock Recheck.StillUnknown(Failure.Remote(outcome.fault))
             val settlement = settle(outcome)
-            book.settle(id, settlement)
+            if (!stored(id, settlement)) return@withLock Recheck.Settled
+            attempt.onStored()
             complete(id, settlement)
             Recheck.Settled
         }
@@ -375,7 +389,8 @@ class TransactionLifecycle<R>(
                     )
                 }
             }
-        book.settle(id, settlement)
+        if (!stored(id, settlement)) return
+        if (settlement.status != SettlementStatus.UNKNOWN && attempt is Attempt.Made) attempt.onStored()
         complete(id, settlement)
     }
 
@@ -387,6 +402,12 @@ class TransactionLifecycle<R>(
         val request = runner.resolved(id) ?: return
         if (settlement.status == SettlementStatus.SUCCEEDED) onSucceeded(id, request)
     }
+
+    /** Stores [settlement] for [id]; when the record is gone, releases the process-only request and returns false. */
+    private suspend fun stored(
+        id: String,
+        settlement: Settlement,
+    ): Boolean = book.settle(id, settlement).also { if (!it) runner.resolved(id) }
 
     /** Classifies [outcome]. */
     private fun settle(outcome: TransactionOutcome): Settlement =

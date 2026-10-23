@@ -4,6 +4,7 @@ import app.minimpos.app.FakeDevice
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.CategoryEntity
+import app.minimpos.app.data.db.HistoryKey
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
@@ -18,6 +19,7 @@ import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.repo.RefundedLine
 import app.minimpos.app.data.repo.SaleEvent
+import app.minimpos.app.items
 import app.minimpos.core.catalogue.Catalogue
 import app.minimpos.core.catalogue.CatalogueCategory
 import app.minimpos.core.catalogue.CatalogueProduct
@@ -385,6 +387,29 @@ class RepositoriesTest {
             refunds.create(missing)
             refunds.settle(missing.id, RefundStatus.REQUESTED, null, null)
             assertThat(refunds.observe(foreign.id).first()!!.amountMinor).isEqualTo(50)
+        }
+
+    @Test
+    fun `batched retention preserves protected parents and omits receipt bodies from pages`() =
+        await {
+            repeat(260) { index ->
+                sales.createPending(sale("old-$index", createdAt = 0).copy(customerReceiptJson = "large-receipt"), emptyList())
+            }
+            sales.createPending(sale("unknown", createdAt = 0, status = SaleStatus.UNKNOWN), emptyList())
+            refunds.create(refund("unknown", false, 10, createdAt = 0))
+            val visited = mutableSetOf<String>()
+            var cursor: HistoryKey? = null
+            do {
+                val batch = history.reader.page(cursor)
+                assertThat(batch.keys.size).isAtMost(256)
+                batch.sales.values.forEach { assertThat(it.customerReceiptJson).isNull() }
+                visited += batch.keys.map { it.id }
+                cursor = batch.keys.lastOrNull()
+            } while (cursor != null)
+            assertThat(visited).hasSize(262)
+            assertThat(history.prune(1, 86_400_001L)).isEqualTo(260)
+            assertThat(history.items().first()).hasSize(2)
+            assertThat(sales.get("unknown")).isNotNull()
         }
 
     @Test

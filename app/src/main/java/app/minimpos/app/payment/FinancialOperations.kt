@@ -33,6 +33,24 @@ class FinancialOperations(
     private val sales: SaleRepository,
     private val refundRecords: RefundRepository,
 ) {
+    /** Releases every runner's process-only requests after confirmed complete history deletion. */
+    internal fun forgetAll() {
+        payments.forgetAll()
+        refunds.forgetAll()
+        charges.forgetAll()
+        checkoutRefunds.forgetAll()
+        links.forgetAll()
+    }
+
+    /** Releases process-only request material after durable history deletion, routed to every runner. */
+    internal fun forget(ids: Set<String>) {
+        payments.forget(ids)
+        refunds.forget(ids)
+        charges.forget(ids)
+        checkoutRefunds.forget(ids)
+        links.forget(ids)
+    }
+
     /**
      * Whether a card payment, refund, saved-card charge or Checkout refund is being sent now, so the configuration it
      * is sent with must not be replaced. Unfinished history alone does not count.

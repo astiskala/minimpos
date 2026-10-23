@@ -6,7 +6,6 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
-import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.ManagerApproval
@@ -158,6 +157,12 @@ class SavedCardCharges(
      */
     fun start(start: SavedCardStart): String? = operations.start(start)
 
+    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
+    internal fun forgetAll() = operations.forgetAll()
+
+    /** Releases process-only requests for records that history has already durably deleted. */
+    internal fun forget(ids: Set<String>) = operations.forget(ids)
+
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next charge can start. */
     fun acknowledge() = operations.acknowledge()
 
@@ -227,12 +232,16 @@ class SavedCardCharges(
         override suspend fun notSent(
             id: String,
             problem: SetupProblem,
-        ) = sales.record(id, SaleEvent.NotSetUp(problem))
+        ) {
+            sales.record(id, SaleEvent.NotSetUp(problem))
+        }
 
         override suspend fun interrupted(
             id: String,
             fault: DeviceFault,
-        ) = sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(fault)))
+        ) {
+            sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(fault)))
+        }
     }
 
     /** Values shared with tests and history. */
@@ -273,13 +282,11 @@ class SavedCardCharges(
          * sample sales count, never a real payment's token.
          */
         fun simulatedCards(
-            items: List<HistoryItem>,
+            items: List<SaleEntity>,
             shopperReference: String,
         ): List<StoredCard> =
             items
                 .asSequence()
-                .filterIsInstance<HistoryItem.Sale>()
-                .map { it.sale }
                 .filter { it.shopperReference == shopperReference && it.simulatedSale }
                 .sortedByDescending(SaleEntity::createdAt)
                 .mapNotNull(::savedCard)

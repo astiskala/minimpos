@@ -209,6 +209,9 @@ class FakeTerminal(
 ) {
     /** Every host a transport was created for, in order (`localhost` when the app runs on the terminal). */
     val hosts = mutableListOf<String>()
+
+    /** ServiceIDs whose resolved results the app durably stored before releasing recovery data. */
+    val acknowledged = mutableListOf<String>()
     private val simulator = TerminalSimulator(config = { SimulatorConfig(delayMillis = 0) })
 
     /** Stands in for [AdyenLocalTransport]: the simulator for the right passphrase, a rejecting transport otherwise. */
@@ -218,9 +221,18 @@ class FakeTerminal(
     ): TerminalTransport {
         hosts += host
         return if (key.passphrase == passphrase) {
-            TerminalTransport { request, timeout ->
-                beforeSend()
-                reply(request) ?: simulator.send(request, timeout)
+            object : TerminalTransport {
+                override suspend fun send(
+                    request: TerminalAPIRequest,
+                    timeout: Duration,
+                ): Delivery {
+                    beforeSend()
+                    return reply(request) ?: simulator.send(request, timeout)
+                }
+
+                override fun acknowledge(serviceId: String) {
+                    acknowledged += serviceId
+                }
             }
         } else {
             TerminalTransport { _, _ ->
@@ -320,6 +332,8 @@ class FakePaymentsApp(
     }
 
     override fun lateReplies(): List<String> = emptyList()
+
+    override fun forgetLateReplies(urls: Set<String>) = Unit
 
     private suspend fun answer(request: String): String {
         val secured = gson.fromJson(String(Base64.UrlSafe.decode(request)), TerminalAPISecuredRequest::class.java)

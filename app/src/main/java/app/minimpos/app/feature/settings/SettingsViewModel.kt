@@ -27,10 +27,14 @@ import app.minimpos.app.terminal.ReceiptBusinessDetails
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.app.terminal.TerminalStatus
 import app.minimpos.core.receipt.ReceiptDocument
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -155,6 +159,7 @@ class SettingsChecks(
  * @param sampleReceipt The sample receipt with the given settings.
  * @param managerPins The Manager PIN instance, so resetting it also clears its live lockout.
  * @param historySwitches Owns explicitly confirmed environment-change deletion and recovery.
+ * @param cpu Dispatcher for catalogue counts and sample receipt construction.
  */
 class SettingsViewModel(
     private val pricingChanges: PricingChangeOperations,
@@ -168,28 +173,35 @@ class SettingsViewModel(
     private val managerPins: PinManager = PinManager(secrets, verifierSecret = Secret.MANAGER_PIN_VERIFIER),
     /** Confirmed history deletion on LIVE/TEST/simulator changes. */
     historySwitches: HistorySwitches? = null,
+    private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
+    private val productCounts = catalog.products.map { products -> products.groupingBy { it.taxRateId }.eachCount() }.distinctUntilChanged()
+    private val sample =
+        pricingChanges.changes
+            .distinctUntilChanged { before, after ->
+                before.receipt == after.receipt && before.languageTag == after.languageTag &&
+                    before.payment.currencyCode == after.payment.currencyCode && before.payment.taxMode == after.payment.taxMode &&
+                    before.payment.asksCustomerReference == after.payment.asksCustomerReference
+            }.map(sampleReceipt)
+
     /** The screen state, updated whenever settings, secrets or the catalogue change. */
     val state: StateFlow<SettingsUiState> =
         combine(
             pricingChanges.changes,
             secrets.configured,
             catalog.taxRates,
-            catalog.products,
-        ) { appSettings, configured, taxRates, products ->
+            productCounts,
+            sample,
+        ) { appSettings, configured, taxRates, counts, receipt ->
             SettingsUiState(
                 appSettings,
                 configured,
                 taxRates,
-                products
-                    .mapNotNull {
-                        it.taxRateId
-                    }.groupingBy { it }
-                    .eachCount(),
+                counts,
                 loaded = true,
-                sampleReceipt = sampleReceipt(appSettings),
+                sampleReceipt = receipt,
             )
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
+        }.flowOn(cpu).stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
 
     /** Outcomes of the latest actions. */
     val actions: StateFlow<SettingsActions>

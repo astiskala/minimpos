@@ -152,7 +152,9 @@ class SaleBook(
     override suspend fun recordContext(
         id: String,
         context: PaymentContext,
-    ) = sales.record(id, SaleEvent.ContextRecorded(context))
+    ) {
+        sales.record(id, SaleEvent.ContextRecorded(context))
+    }
 
     override suspend fun context(id: String) = sales.get(id)?.sale?.context
 
@@ -193,12 +195,14 @@ class SaleBook(
     override suspend fun sending(
         id: String,
         poiId: String,
-    ) = sales.record(id, SaleEvent.Sending(poiId))
+    ) {
+        sales.record(id, SaleEvent.Sending(poiId))
+    }
 
     override suspend fun settle(
         id: String,
         settlement: Settlement,
-    ) {
+    ): Boolean {
         val status =
             when (settlement.status) {
                 SettlementStatus.SUCCEEDED -> SaleStatus.APPROVED
@@ -207,7 +211,7 @@ class SaleBook(
                 SettlementStatus.FAILED -> SaleStatus.FAILED
                 SettlementStatus.UNKNOWN -> SaleStatus.UNKNOWN
             }
-        sales.record(
+        return sales.record(
             id,
             SaleEvent.Settled(
                 status,

@@ -23,6 +23,7 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.transfer.ImportOutcome
 import app.minimpos.app.data.transfer.SetupTransfer
 import app.minimpos.app.data.transfer.TransferContents
+import app.minimpos.app.items
 import app.minimpos.core.codec.Base45
 import app.minimpos.core.codec.QrChunkAssembler
 import app.minimpos.core.codec.QrChunks

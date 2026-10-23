@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.modifiers.TextAutoSizeLayoutScope
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -49,20 +50,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.IntrinsicMeasurable
-import androidx.compose.ui.layout.IntrinsicMeasureScope
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.Measurable
-import androidx.compose.ui.layout.MeasurePolicy
-import androidx.compose.ui.layout.MeasureResult
-import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -155,16 +154,21 @@ private fun Modifier.fillOrGrow(height: Dp): Modifier =
  */
 @Composable
 private fun ColumnScope.PaymentTiles(onOpen: (Route) -> Unit) {
+    val sale = stringResource(R.string.home_new_sale)
+    val preAuth = stringResource(R.string.home_pre_auth)
+    val titles = rememberSharedFontSize(listOf(sale, preAuth), MaterialTheme.typography.titleLarge, MIN_PAYMENT_TITLE_SIZE)
     PaymentTile(
         Icons.Default.PointOfSale,
-        stringResource(R.string.home_new_sale),
+        sale,
+        titles,
         stringResource(R.string.home_new_sale_hint),
         onClick = { onOpen(Route.Sale) },
         modifier = Modifier.fillMaxWidth().weight(1f).testTag("newSale"),
     )
     PaymentTile(
         Icons.Default.LockClock,
-        stringResource(R.string.home_pre_auth),
+        preAuth,
+        titles,
         stringResource(R.string.home_pre_auth_hint),
         onClick = { onOpen(Route.PreAuth) },
         modifier = Modifier.fillMaxWidth().weight(1f).testTag("preAuth"),
@@ -249,14 +253,16 @@ private fun UpdateCard(
 }
 
 /**
- * A large green tile that starts a payment (a sale, or a pre-authorisation): the icon beside the title and hint. Where
- * the height is limited the title gets a smaller style, shrinking to one line, and the hint a single line, so two tiles
- * fit a 4" screen.
+ * A large green tile that starts a payment (a sale, or a pre-authorisation): the icon beside the title and hint, the
+ * same on every screen. The title is one line, sized by [titles] so both tiles' titles shrink together, only as far as
+ * the longest needs.
+ * Where the height is limited the hint is a single line too, so two tiles fit a 4" screen.
  */
 @Composable
 private fun PaymentTile(
     icon: ImageVector,
     title: String,
+    titles: TextAutoSize,
     hint: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -273,19 +279,15 @@ private fun PaymentTile(
             Modifier.padding(horizontal = dimens.screenPadding + 8.dp, vertical = dimens.spacing / 2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(if (dimens.compact) 32.dp else 40.dp))
+            Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
             Spacer(Modifier.width(dimens.screenPadding))
             Column {
-                val style = if (dimens.compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall
                 Text(
                     title,
-                    style = style,
-                    maxLines = if (dimens.compact) 1 else 2,
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    autoSize =
-                        TextAutoSize.StepBased(minFontSize = MIN_PAYMENT_TITLE_SIZE, maxFontSize = style.fontSize).takeIf {
-                            dimens.compact
-                        },
+                    autoSize = titles,
                 )
                 Text(
                     hint,
@@ -307,16 +309,28 @@ private fun ColumnScope.AreaTiles(
     locked: Boolean,
     onOpen: (Route) -> Unit,
 ) {
+    val savedCard = stringResource(R.string.home_saved_card)
+    val refund = stringResource(R.string.home_refund)
+    val history = stringResource(R.string.home_history)
+    val reconciliation = stringResource(R.string.home_reconciliation)
+    val labels =
+        rememberSharedFontSize(
+            listOf(savedCard, refund, history, reconciliation),
+            MaterialTheme.typography.titleMedium,
+            MIN_TILE_LABEL_SIZE,
+        )
     Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
         HomeTile(
             Icons.Default.CreditCard,
-            stringResource(R.string.home_saved_card),
+            savedCard,
+            labels,
             onClick = { onOpen(Route.SavedCard) },
             modifier = Modifier.testTag("savedCard"),
         )
         HomeTile(
             Icons.Default.QrCodeScanner,
-            stringResource(R.string.home_refund),
+            refund,
+            labels,
             onClick = { onOpen(Route.RefundScan) },
             modifier = Modifier.testTag("refund"),
         )
@@ -324,13 +338,15 @@ private fun ColumnScope.AreaTiles(
     Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
         HomeTile(
             Icons.AutoMirrored.Filled.ReceiptLong,
-            stringResource(R.string.home_history),
+            history,
+            labels,
             onClick = { onOpen(Route.History) },
             modifier = Modifier.testTag("history"),
         )
         HomeTile(
             Icons.Default.Balance,
-            stringResource(R.string.home_reconciliation),
+            reconciliation,
+            labels,
             onClick = { onOpen(Route.Reconciliation) },
             modifier = Modifier.testTag("reconciliation"),
         )
@@ -408,11 +424,16 @@ private fun SetupCard(
     }
 }
 
-/** A half-width tile: its icon above the label, or beside it where the tile is too short for both stacked. */
+/**
+ * A half-width tile: its icon at the top and the label at the bottom, the same on every screen. The tiles of a group
+ * share [labels], so they show their labels at one size: the largest, up to the style's, at which the longest still
+ * fits on a line (Reconciliation, say, or Charge saved card), so no tile's label looks smaller than another's.
+ */
 @Composable
 private fun RowScope.HomeTile(
     icon: ImageVector,
     label: String,
+    labels: TextAutoSize,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -423,94 +444,84 @@ private fun RowScope.HomeTile(
         shape = MaterialTheme.shapes.large,
         modifier = modifier.weight(1f).fillMaxHeight(),
     ) {
-        IconAndLabel(stackGap = 4.dp, sideGap = dimens.spacing, modifier = Modifier.padding(dimens.cardPadding)) {
+        // The vertical padding is the spacing, so the smallest terminal's tile is still no taller than it can spare.
+        Column(
+            Modifier.padding(horizontal = dimens.cardPadding, vertical = dimens.spacing),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
             Icon(
                 icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(if (dimens.compact) 24.dp else 32.dp),
+                modifier = Modifier.size(24.dp),
             )
-            val style = MaterialTheme.typography.titleMedium
-            // Longer labels, such as Charge saved card, shrink to fit a half-width tile rather than lose their end.
             Text(
                 label,
-                style = style,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                autoSize = TextAutoSize.StepBased(minFontSize = MIN_TILE_LABEL_SIZE, maxFontSize = style.fontSize),
+                autoSize = labels,
             )
         }
     }
+}
+
+/** One [SharedFontSize] for a group of tiles, so the group's size is measured once rather than by every tile. */
+@Composable
+private fun rememberSharedFontSize(
+    texts: List<String>,
+    style: TextStyle,
+    minSize: TextUnit,
+): TextAutoSize {
+    val measurer = rememberTextMeasurer()
+    return remember(texts, style, minSize, measurer) { SharedFontSize(texts, style, minSize, measurer) }
 }
 
 /**
- * Lays out its two children, an icon then a label: the icon at the top and the label at the bottom, at least
- * [stackGap] apart, when the height holds both; otherwise side by side, [sideGap] apart and centred vertically, as on
- * the AMS1 while the setup card takes room. Its minimum intrinsic height is the side-by-side one, which is what Home
- * guarantees each tile before it scrolls.
+ * Sizes a single-line text like [TextAutoSize.StepBased], in 1 sp steps from [style]'s size down to [minSize], but for
+ * the whole group of [texts] at once: the largest size at which all of them fit the width the text is given.
+ * [measurer] measures the others, which the layout scope cannot. Tiles of one size lay their labels out in the same
+ * width, so each arrives at the same size, however short its own label is. Longer labels, such as Charge saved card,
+ * shrink every label rather than lose their end. The size is kept for the last width and density, which every tile of
+ * the group shares; layout runs on the main thread only.
  */
-@Composable
-private fun IconAndLabel(
-    stackGap: Dp,
-    sideGap: Dp,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    val policy = remember(stackGap, sideGap) { IconAndLabelPolicy(stackGap, sideGap) }
-    Layout(content, modifier, policy)
-}
+private class SharedFontSize(
+    private val texts: List<String>,
+    private val style: TextStyle,
+    private val minSize: TextUnit,
+    private val measurer: TextMeasurer,
+) : TextAutoSize {
+    private var last: Pair<Triple<Int, Float, Float>, TextUnit>? = null
 
-/** The measure policy of [IconAndLabel]. */
-private class IconAndLabelPolicy(
-    private val stackGap: Dp,
-    private val sideGap: Dp,
-) : MeasurePolicy {
-    override fun MeasureScope.measure(
-        measurables: List<Measurable>,
+    override fun equals(other: Any?): Boolean =
+        other is SharedFontSize && texts == other.texts && style == other.style && minSize == other.minSize &&
+            measurer == other.measurer
+
+    override fun hashCode(): Int = listOf(texts, style, minSize, measurer).hashCode()
+
+    override fun TextAutoSizeLayoutScope.getFontSize(
         constraints: Constraints,
-    ): MeasureResult {
-        val (icon, label) = measurables
-        val loose = constraints.copy(minWidth = 0, minHeight = 0)
-        val iconPlaceable = icon.measure(loose)
-        val width = if (constraints.hasBoundedWidth) constraints.maxWidth else constraints.minWidth
-        val stackedHeight = iconPlaceable.height + stackGap.roundToPx() + label.minIntrinsicHeight(width)
-        if (!constraints.hasBoundedHeight || stackedHeight <= constraints.maxHeight) {
-            val labelPlaceable = label.measure(loose)
-            val height = if (constraints.hasBoundedHeight) constraints.maxHeight else stackedHeight
-            return layout(width, height) {
-                iconPlaceable.place(0, 0)
-                labelPlaceable.place(0, height - labelPlaceable.height)
-            }
-        }
-        val labelX = iconPlaceable.width + sideGap.roundToPx()
-        val labelPlaceable = label.measure(loose.copy(maxWidth = (width - labelX).coerceAtLeast(0)))
-        val height = constraints.maxHeight
-        return layout(width, height) {
-            iconPlaceable.place(0, (height - iconPlaceable.height) / 2)
-            labelPlaceable.place(labelX, (height - labelPlaceable.height) / 2)
-        }
+        text: AnnotatedString,
+    ): TextUnit {
+        val key = Triple(constraints.maxWidth, density, fontScale)
+        last?.takeIf { it.first == key }?.let { return it.second }
+        return largestFitting(constraints.maxWidth).also { last = key to it }
     }
 
-    override fun IntrinsicMeasureScope.minIntrinsicHeight(
-        measurables: List<IntrinsicMeasurable>,
-        width: Int,
-    ): Int {
-        val (icon, label) = measurables
-        val labelWidth = (width - icon.maxIntrinsicWidth(Constraints.Infinity) - sideGap.roundToPx()).coerceAtLeast(0)
-        return maxOf(icon.minIntrinsicHeight(width), label.minIntrinsicHeight(labelWidth))
-    }
-
-    override fun IntrinsicMeasureScope.maxIntrinsicHeight(
-        measurables: List<IntrinsicMeasurable>,
-        width: Int,
-    ): Int {
-        val (icon, label) = measurables
-        return icon.maxIntrinsicHeight(width) + stackGap.roundToPx() + label.maxIntrinsicHeight(width)
+    private fun TextAutoSizeLayoutScope.largestFitting(maxWidth: Int): TextUnit {
+        var size = style.fontSize.value
+        while (size > minSize.value) {
+            val sized = style.copy(fontSize = size.sp)
+            val fits = texts.all { measurer.measure(it, sized, softWrap = false, maxLines = 1, density = this).size.width <= maxWidth }
+            if (fits) return size.sp
+            size -= 1f
+        }
+        return minSize
     }
 }
 
 /** The smallest a Home tile label shrinks to before it is ellipsized. */
 private val MIN_TILE_LABEL_SIZE = 12.sp
 
-/** The smallest a payment tile's title shrinks to on a short screen before it is ellipsized. */
+/** The smallest a payment tile's title shrinks to, for a long translation or large text, before it is ellipsized. */
 private val MIN_PAYMENT_TITLE_SIZE = 16.sp

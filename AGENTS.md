@@ -78,10 +78,13 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
 - Public/protected declarations need useful KDoc (tests exempt): units, null meaning, threading, formats, errors.
   Once constructor tags are used, cover every parameter in order (`@property` for public properties, otherwise `@param`).
 - User text is short US English; keep identifier/stored-value spelling and Adyen text unchanged. Update English,
-  Simplified Chinese, Hong Kong-style Traditional Chinese (`zh-Hant`), Japanese, Brazilian Portuguese (`pt-BR`), Mexican
-  Spanish (`es-MX`) and French (`fr-FR`) together, with matching resource keys/format arguments.
+  Mexican Spanish (`es-MX`), French (`fr-FR`), Japanese, Brazilian Portuguese (`pt-BR`), Simplified Chinese and Hong
+  Kong-style Traditional Chinese (`zh-Hant`) together, with matching resource keys/format arguments.
   CJK plurals use only `other`.
   Customer Area paths stay English (quote UI names with “…” in Chinese and 「…」 in Japanese).
+- Language switchers (app Settings, website, README) name each language in itself, following CLDR (`Español (México)`,
+  `Français (France)`, `简体中文`, `繁體中文`), and list them in BCP 47 tag order: `en`, `es-MX`, `fr-FR`, `ja`, `pt-BR`,
+  `zh-CN`, `zh-Hant`. A new language goes at its tag's position everywhere.
 - New-install defaults may depend on country/language; never overwrite saved merchant text or imported catalogs.
   Receipt labels are read at delivery, Adyen receipt fields stay verbatim. Keep `StarterTax`'s rates current.
 - QR contracts have one current format. Change the app, setup helper, format tests and helper test vectors together.

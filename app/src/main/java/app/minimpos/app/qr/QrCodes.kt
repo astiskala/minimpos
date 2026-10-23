@@ -2,8 +2,8 @@ package app.minimpos.app.qr
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Path
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.set
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.common.BitMatrix
@@ -39,6 +39,35 @@ object QrCodes {
         )
 
     /**
+     * Immutable drawing data after publication; callers must not mutate [path].
+     * @property width Width in QR modules, including the quiet zone.
+     * @property path Coalesced black runs in module coordinates, drawn without antialiasing.
+     */
+    class Shape(
+        val width: Int,
+        val path: Path,
+    )
+
+    /** Encodes [content] into coalesced drawing runs; CPU work, never called during composition or drawing. */
+    fun shape(content: String): Shape {
+        val matrix = matrix(content)
+        val path = Path()
+        for (y in 0..<matrix.height) {
+            var x = 0
+            while (x < matrix.width) {
+                if (matrix[x, y]) {
+                    val start = x
+                    while (x < matrix.width && matrix[x, y]) x++
+                    path.addRect(start.toFloat(), y.toFloat(), x.toFloat(), y + 1f, Path.Direction.CW)
+                } else {
+                    x++
+                }
+            }
+        }
+        return Shape(matrix.width, path)
+    }
+
+    /**
      * A black-on-white bitmap of the code, scaled by a whole number of pixels per module so it stays sharp; it is at
      * most [sizePx] wide, or one pixel per module when the code has more modules than that.
      */
@@ -51,10 +80,10 @@ object QrCodes {
         val scale = (sizePx / matrix.width).coerceAtLeast(1)
         val size = matrix.width * scale
         val bitmap = createBitmap(size, size)
-        for (y in 0..<size) {
-            for (x in 0..<size) {
-                bitmap[x, y] = if (matrix[x / scale, y / scale]) Color.BLACK else Color.WHITE
-            }
+        val row = IntArray(size)
+        for (moduleY in 0..<matrix.height) {
+            for (x in 0..<size) row[x] = if (matrix[x / scale, moduleY]) Color.BLACK else Color.WHITE
+            for (offset in 0..<scale) bitmap.setPixels(row, 0, size, 0, moduleY * scale + offset, size, 1)
         }
         return bitmap
     }
@@ -71,4 +100,20 @@ object QrCodes {
             out.toByteArray()
         }
     }
+}
+
+/** Per-composable two-code cache; CPU callers only, safe across cancelled prefetch and replacement effects. */
+internal class QrShapes {
+    private val shapes = LinkedHashMap<String, QrCodes.Shape>(2, 0.75f, true)
+
+    /** The code for [content] if it is already encoded, without encoding it; null otherwise. */
+    @Synchronized
+    fun cached(content: String): QrCodes.Shape? = shapes[content]
+
+    /** Current or next code, encoding it only when absent; never retains a whole animated export. */
+    @Synchronized
+    fun get(content: String): QrCodes.Shape =
+        shapes.getOrPut(content) { QrCodes.shape(content) }.also {
+            if (shapes.size > 2) shapes.remove(shapes.keys.first())
+        }
 }

@@ -22,10 +22,9 @@ class SimulatedSavedCards internal constructor(
     private val random: Random,
     private val ledger: SimulatedLedger,
     private val cards: suspend (shopperReference: String) -> List<StoredCard>,
+    private val answered: ConcurrentHashMap<String, CardChargeResult>,
     private val outcome: () -> SimulatedOutcome,
 ) : SavedCardApi {
-    private val answered = ConcurrentHashMap<String, CardChargeResult>()
-
     override suspend fun list(shopperReference: String): StoredCardListing = StoredCardListing.Listed(cards(shopperReference))
 
     override suspend fun charge(

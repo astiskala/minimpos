@@ -18,6 +18,14 @@ import kotlin.random.Random
 internal class SimulatedLedger {
     private val payments = ConcurrentHashMap<String, State>()
 
+    /** Releases all modification state after confirmed complete history deletion. */
+    fun clear() = payments.clear()
+
+    /** Releases modification state only for payments whose durable history has been deleted. */
+    fun forget(psps: Set<String>) {
+        psps.forEach(payments::remove)
+    }
+
     /** Records the approved payment [psp]; [manualCapture] for a pre-authorisation, which waits for its capture. */
     fun approved(
         psp: String,

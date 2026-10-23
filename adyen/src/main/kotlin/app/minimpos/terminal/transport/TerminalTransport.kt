@@ -51,6 +51,9 @@ sealed interface Delivery {
 
 /** Sends one Terminal API message and returns what became of it. */
 fun interface TerminalTransport {
+    /** Releases cached late answers for [serviceId] only after its resolved result was durably stored. Never throws. */
+    fun acknowledge(serviceId: String) {}
+
     /**
      * Sends [request] and suspends until the reply arrives. The terminal holds a payment request open while the shopper
      * pays, so [timeout] limits the whole exchange, not just the connection. Failures are returned, never thrown.

@@ -13,6 +13,7 @@ import app.minimpos.core.catalogue.CatalogueCategory
 import app.minimpos.core.catalogue.CatalogueProduct
 import app.minimpos.core.catalogue.CatalogueTaxRate
 import kotlinx.coroutines.flow.Flow
+import java.util.TreeMap
 
 /** How an imported catalogue is combined with the one on the device. */
 enum class ImportMode {
@@ -79,13 +80,32 @@ class CatalogRepository(
     private val dao = db.catalogDao()
 
     /** All tax rates, ordered for display (see [CatalogDao.taxRates]). */
-    val taxRates: Flow<List<TaxRateEntity>> = dao.taxRates()
+    val taxRates: Flow<List<TaxRateEntity>> = shared { dao.taxRates() }
 
     /** All categories, ordered for display. */
-    val categories: Flow<List<CategoryEntity>> = dao.categories()
+    val categories: Flow<List<CategoryEntity>> = shared { dao.categories() }
 
     /** All products, ordered for display. */
-    val products: Flow<List<ProductEntity>> = dao.products()
+    val products: Flow<List<ProductEntity>> = shared { dao.products() }
+
+    /** Fresh catalog snapshots for commands; never uses an observation's potentially older replay. */
+    val reader = Reader(dao)
+
+    /** Main-safe direct reads, participating in the caller's Room transaction when present. */
+    class Reader internal constructor(
+        private val dao: CatalogDao,
+    ) {
+        /** Current tax rates, in display order, including this transaction's writes. */
+        suspend fun taxRates(): List<TaxRateEntity> = dao.taxRatesOnce()
+
+        /** Current categories in display order. */
+        suspend fun categories(): List<CategoryEntity> = dao.categoriesOnce()
+
+        /** Current products in display order. */
+        suspend fun products(): List<ProductEntity> = dao.productsOnce()
+    }
+
+    private fun <T> shared(source: () -> Flow<T>): Flow<T> = RecordObservations { _: String -> source() }.observe("catalog")
 
     /**
      * Creates the starter tax rates on first launch, so products can be added straight away: [rates] (their names and
@@ -183,7 +203,7 @@ class CatalogRepository(
     /** Catalog examples share the repository's DAO ownership, without expanding ordinary catalog operations. */
     internal inner class Samples {
         /** Whether any tracked sample catalog rows remain. */
-        suspend fun exists(): Boolean = dao.productsOnce().any { it.sample } || dao.categoriesOnce().any { it.sample }
+        suspend fun exists(): Boolean = dao.hasSamples()
 
         /** Adds separate sample categories and products without matching or overwriting merchant rows. */
         suspend fun add(
@@ -200,11 +220,9 @@ class CatalogRepository(
 
         /** Removes tracked sample products; sample categories used by merchant products are kept. Tax rates are untouched. */
         suspend fun remove() {
-            dao.productsOnce().filter { it.sample }.forEach { dao.delete(it) }
-            val used = dao.productsOnce().mapNotNull { it.categoryId }.toSet()
-            dao.categoriesOnce().filter { it.sample }.forEach {
-                if (it.id in used) dao.update(it.copy(sample = false)) else dao.delete(it)
-            }
+            dao.deleteSampleProducts()
+            dao.retainSampleCategories()
+            dao.deleteSampleCategories()
         }
     }
 
@@ -297,13 +315,14 @@ class CatalogRepository(
         }
 
     private suspend fun importTaxRates(rates: List<CatalogueTaxRate>): ImportedTaxRates {
-        val existing = dao.taxRatesOnce()
+        val existing = TreeMap<String, MutableMap<Int, Long>>(String.CASE_INSENSITIVE_ORDER)
+        dao.taxRatesOnce().forEach { rate ->
+            existing.getOrPut(rate.name) { mutableMapOf() }.putIfAbsent(rate.rateMilliPercent, rate.id)
+        }
         var added = 0
         val ids =
             rates.mapIndexed { index, rate ->
-                existing
-                    .firstOrNull { it.name.equals(rate.name, ignoreCase = true) && it.rateMilliPercent == rate.rateMilliPercent }
-                    ?.id
+                existing[rate.name]?.get(rate.rateMilliPercent)
                     ?: dao.insert(TaxRateEntity(name = rate.name, rateMilliPercent = rate.rateMilliPercent, sortOrder = index)).also {
                         added++
                     }
@@ -312,11 +331,12 @@ class CatalogRepository(
     }
 
     private suspend fun importCategories(categories: List<CatalogueCategory>): ImportedCategories {
-        val existing = dao.categoriesOnce()
+        val existing = TreeMap<String, Long>(String.CASE_INSENSITIVE_ORDER)
+        dao.categoriesOnce().forEach { existing.putIfAbsent(it.name, it.id) }
         var added = 0
         val ids =
             categories.mapIndexed { index, category ->
-                existing.firstOrNull { it.name.equals(category.name, ignoreCase = true) }?.id
+                existing[category.name]
                     ?: dao.insert(CategoryEntity(name = category.name, sortOrder = index)).also { added++ }
             }
         return ImportedCategories(ids, added)
@@ -327,18 +347,16 @@ class CatalogRepository(
         taxRates: ImportedTaxRates,
         categoryIds: List<Long>,
     ): ProductChanges {
-        val existing = dao.productsOnce().toMutableList()
+        val existing = dao.productsOnce()
+        val bySku = existing.filter { it.sku != null }.associateBy { it.sku }.toMutableMap()
+        val byName = TreeMap<String, MutableMap<SaleKind, ProductEntity>>(String.CASE_INSENSITIVE_ORDER)
+        existing.filter { it.sku == null }.forEach { product ->
+            byName.getOrPut(product.name) { mutableMapOf() }.putIfAbsent(product.kind, product)
+        }
         val changes = ProductChanges()
         products.forEachIndexed { index, product ->
-            val match =
-                existing.firstOrNull {
-                    if (!product.sku.isNullOrBlank()) {
-                        it.sku == product.sku?.trim()
-                    } else {
-                        it.sku == null && it.kind == (if (product.preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE) &&
-                            it.name.equals(product.name, ignoreCase = true)
-                    }
-                }
+            val kind = if (product.preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE
+            val match = if (!product.sku.isNullOrBlank()) bySku[product.sku.orEmpty().trim()] else byName[product.name]?.get(kind)
             val entity =
                 ProductEntity(
                     id = match?.id ?: 0,
@@ -348,14 +366,19 @@ class CatalogRepository(
                     categoryId = product.categoryIndex?.let(categoryIds::get),
                     sku = product.sku?.trim()?.takeIf { it.isNotEmpty() },
                     sortOrder = match?.sortOrder ?: index,
-                    kind = if (product.preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE,
+                    kind = kind,
                 )
             if (match == null) {
-                existing.add(entity.copy(id = dao.insert(entity)))
+                val inserted = entity.copy(id = dao.insert(entity))
+                if (inserted.sku != null) {
+                    bySku[inserted.sku] = inserted
+                } else {
+                    byName.getOrPut(inserted.name) { mutableMapOf() }[inserted.kind] = inserted
+                }
                 changes.added++
             } else {
+                // The match stays indexed under the same key with the same id and sort order, the only fields read.
                 dao.update(entity)
-                existing[existing.indexOfFirst { it.id == entity.id }] = entity
                 changes.updated++
             }
         }

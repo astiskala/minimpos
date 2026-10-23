@@ -219,6 +219,170 @@ data class HistoryDay(
 
 /** Pure processing-day accounting shared by filtered History and unfiltered reports; no clock or storage access. */
 object HistoryAccounting {
+    /** Adds independent batches of one processing day's totals without retaining their transaction bodies. */
+    fun merge(
+        left: DayTotals,
+        right: DayTotals,
+    ): DayTotals {
+        fun sum(
+            a: Map<String, Long>,
+            b: Map<String, Long>,
+        ) = (a.keys + b.keys).associateWith { (a[it] ?: 0) + (b[it] ?: 0) }
+        return DayTotals(
+            sum(left.salesMinor, right.salesMinor),
+            left.saleCount + right.saleCount,
+            sum(left.refundsMinor, right.refundsMinor),
+            left.refundCount + right.refundCount,
+            sum(left.preAuthsMinor, right.preAuthsMinor),
+            left.preAuthCount + right.preAuthCount,
+            sum(left.tipsMinor, right.tipsMinor),
+        )
+    }
+
+    /**
+     * Bounded, pure whole-day report aggregation, including retained online and undated captures across every batch.
+     * @param date Local processing date.
+     * @param zone Time zone used for every batch.
+     * @param generatedAt One generation time, in epoch milliseconds.
+     */
+    class ReportAccumulator(
+        private val date: LocalDate,
+        private val zone: ZoneId,
+        private val generatedAt: Long,
+    ) {
+        private val sections = mutableMapOf<HistoryScope, HistoryReportSection>()
+
+        /** Adds independent records exactly once, retaining only per-scope/currency totals. */
+        fun add(items: List<HistoryItem>) {
+            HistoryAccounting.report(items, date, zone, generatedAt).sections.forEach { section ->
+                val previous = sections[section.scope]
+                sections[section.scope] =
+                    if (previous == null) {
+                        section
+                    } else {
+                        HistoryReportSection(
+                            section.scope,
+                            mergeCurrencies(previous.totals, section.totals),
+                            mergeCurrencies(previous.online, section.online),
+                            mergeCurrencies(previous.undated, section.undated),
+                        )
+                    }
+            }
+        }
+
+        /** Current summary; no original records are retained. */
+        fun report(): HistoryReport = HistoryReport(date, zone, generatedAt, sections.values.sortedBy { it.scope.ordinal })
+
+        private fun mergeCurrencies(
+            left: Map<String, CurrencyHistoryTotals>,
+            right: Map<String, CurrencyHistoryTotals>,
+        ) = (left.keys + right.keys).sorted().associateWith { code ->
+            val a = left[code] ?: CurrencyHistoryTotals()
+            val b = right[code] ?: CurrencyHistoryTotals()
+            CurrencyHistoryTotals(
+                a.salesMinor + b.salesMinor,
+                a.saleCount + b.saleCount,
+                a.tipsMinor + b.tipsMinor,
+                a.refundsMinor + b.refundsMinor,
+                a.refundCount + b.refundCount,
+                a.heldMinor + b.heldMinor,
+                a.holdCount + b.holdCount,
+                a.unresolvedCount + b.unresolvedCount,
+            )
+        }
+    }
+
+    /**
+     * Pure reconciliation aggregation with both date and period candidates until all retained period evidence is known.
+     * @param poiId Terminal identity; blank includes all terminal records.
+     * @param outcome Authoritative terminal totals, included once in the final comparison.
+     * @param date Fallback local processing date when no retained period IDs exist.
+     * @param zone Time zone for the fallback date.
+     */
+    class ReconciliationAccumulator(
+        private val poiId: String,
+        private val outcome: TerminalTotalsOutcome.Answered,
+        private val date: LocalDate,
+        private val zone: ZoneId,
+    ) {
+        private var hasPeriods = false
+        private var unresolved = 0
+        private val day = ScopeTotals()
+        private val period = ScopeTotals()
+
+        /** Adds independent records exactly once without retaining their bodies. */
+        fun add(items: List<HistoryItem>) {
+            val relevant = items.filter { matchesTerminal(it, poiId) }
+            hasPeriods = hasPeriods || (outcome.poiReconciliationId != null && relevant.any { periodId(it) != null })
+            unresolved += relevant.count(::isUnresolvedTerminalItem)
+            relevant.forEach { item ->
+                if (periodId(item) == outcome.poiReconciliationId) period.add(item)
+                if (Instant.ofEpochMilli(processedAt(item)).atZone(zone).toLocalDate() == date) day.add(item)
+            }
+        }
+
+        /** Final comparison; period evidence from any batch controls every batch's scope. */
+        fun report(): TerminalReconciliationReport {
+            val scope = if (hasPeriods) period else day
+            val remoteByCurrency = outcome.totals.associateBy { it.currency.uppercase() }
+            val currencies = (scope.sales.keys + scope.refunds.keys + remoteByCurrency.keys).toSortedSet()
+            return TerminalReconciliationReport(
+                poiReconciliationId = outcome.poiReconciliationId,
+                closedPeriod = outcome.closedPeriod,
+                currencies =
+                    currencies.map { code ->
+                        val remote = remoteByCurrency[code]
+                        CurrencyReconciliation(
+                            currency = code,
+                            localSalesMinor = scope.sales[code] ?: 0L,
+                            terminalSalesMinor = remote?.debitMinor ?: 0L,
+                            localRefundsMinor = scope.refunds[code] ?: 0L,
+                            terminalRefundsMinor = remote?.creditMinor ?: 0L,
+                        )
+                    },
+                unresolvedCount = unresolved,
+                offlineSaleCount = scope.offlineSales,
+                unconfirmedBatchCount = scope.unconfirmedBatches,
+            )
+        }
+
+        private fun periodId(item: HistoryItem): String? =
+            when (item) {
+                is HistoryItem.Sale -> item.sale.poiReconciliationId
+                is HistoryItem.Refund -> item.refund.poiReconciliationId
+            }
+
+        private fun processedAt(item: HistoryItem): Long =
+            when (item) {
+                is HistoryItem.Sale -> item.sale.processedAt ?: item.sale.createdAt
+                is HistoryItem.Refund -> item.refund.processedAt ?: item.refund.createdAt
+            }
+
+        /** Local amounts by currency and counts for one candidate scope (the period, or the fallback date). */
+        private class ScopeTotals {
+            val sales = mutableMapOf<String, Long>()
+            val refunds = mutableMapOf<String, Long>()
+            var offlineSales = 0
+            var unconfirmedBatches = 0
+
+            fun add(item: HistoryItem) {
+                when (item) {
+                    is HistoryItem.Sale -> {
+                        val s = item.sale
+                        if (s.status == SaleStatus.APPROVED && !s.manualCapture) sales.merge(s.currency, s.amountMinor, Long::plus)
+                        if (s.status == SaleStatus.APPROVED && s.offlineMode != null) offlineSales++
+                        s.unconfirmedBatchCount?.let { unconfirmedBatches = maxOf(unconfirmedBatches, it) }
+                    }
+
+                    is HistoryItem.Refund -> {
+                        val r = item.refund
+                        if (r.status == RefundStatus.REQUESTED && !r.cancellation) refunds.merge(r.currency, r.amountMinor, Long::plus)
+                    }
+                }
+            }
+        }
+    }
+
     /**
      * Whether [item] has any issue activity ([SaleEntity.issues], or an unresolved refund); multiple unresolved
      * operations still select its record only once.
@@ -383,53 +547,6 @@ object HistoryAccounting {
     }
 
     /**
-     * Compares terminal-reported [outcome] against local terminal operations in [items] for [poiId] (matching
-     * [TerminalTotalsOutcome.Answered.poiReconciliationId] when stored, otherwise [date] in [zone]). Excludes payment
-     * links, saved-card charges and their Checkout refunds, manual-capture holds, hold cancellations and sample records,
-     * which do not appear in terminal debit/credit totals (see [SaleEntity.terminalOperation]).
-     */
-    fun compareReconciliation(
-        items: List<HistoryItem>,
-        poiId: String,
-        outcome: TerminalTotalsOutcome.Answered,
-        date: LocalDate,
-        zone: ZoneId,
-    ): TerminalReconciliationReport {
-        val terminalItems = items.filter { matchesTerminal(it, poiId) }
-        val unresolved = terminalItems.count(::isUnresolvedTerminalItem)
-        val scoped = filterReconciliationScope(terminalItems, outcome.poiReconciliationId, date, zone)
-        val (localSales, localRefunds) = sumReconciliationAmounts(scoped)
-        val remoteByCurrency = outcome.totals.associateBy { it.currency.uppercase() }
-        val currencies = (localSales.keys + localRefunds.keys + remoteByCurrency.keys).toSortedSet()
-        val comparisons =
-            currencies.map { code ->
-                val remote = remoteByCurrency[code]
-                CurrencyReconciliation(
-                    currency = code,
-                    localSalesMinor = localSales[code] ?: 0L,
-                    terminalSalesMinor = remote?.debitMinor ?: 0L,
-                    localRefundsMinor = localRefunds[code] ?: 0L,
-                    terminalRefundsMinor = remote?.creditMinor ?: 0L,
-                )
-            }
-        return TerminalReconciliationReport(
-            poiReconciliationId = outcome.poiReconciliationId,
-            closedPeriod = outcome.closedPeriod,
-            currencies = comparisons,
-            unresolvedCount = unresolved,
-            offlineSaleCount =
-                scoped.count {
-                    it is HistoryItem.Sale && it.sale.status == SaleStatus.APPROVED && it.sale.offlineMode != null
-                },
-            unconfirmedBatchCount =
-                scoped
-                    .filterIsInstance<HistoryItem.Sale>()
-                    .mapNotNull { it.sale.unconfirmedBatchCount }
-                    .maxOrNull() ?: 0,
-        )
-    }
-
-    /**
      * Terminal items in [items] for [poiId] whose terminal outcome is still unresolved (a sale's
      * [PaymentIssue.OUTCOME], or a pending or unknown refund); adjustments and captures go through the Checkout API and
      * are not terminal operations.
@@ -439,7 +556,8 @@ object HistoryAccounting {
         poiId: String,
     ): List<HistoryItem> = items.filter { matchesTerminal(it, poiId) && isUnresolvedTerminalItem(it) }
 
-    private fun matchesTerminal(
+    /** Whether this record belongs to the requested terminal; blank [poiId] includes every terminal. */
+    internal fun matchesTerminal(
         item: HistoryItem,
         poiId: String,
     ): Boolean =
@@ -455,63 +573,10 @@ object HistoryAccounting {
             }
         }
 
-    private fun isUnresolvedTerminalItem(item: HistoryItem): Boolean =
+    /** Whether the terminal outcome remains unresolved, excluding Checkout adjustments and captures. */
+    internal fun isUnresolvedTerminalItem(item: HistoryItem): Boolean =
         when (item) {
             is HistoryItem.Sale -> PaymentIssue.OUTCOME in item.sale.issues
             is HistoryItem.Refund -> item.refund.status.unresolved
         }
-
-    private fun filterReconciliationScope(
-        terminalItems: List<HistoryItem>,
-        poiReconciliationId: String?,
-        date: LocalDate,
-        zone: ZoneId,
-    ): List<HistoryItem> {
-        val hasPeriodIds =
-            poiReconciliationId != null &&
-                terminalItems.any { item ->
-                    when (item) {
-                        is HistoryItem.Sale -> item.sale.poiReconciliationId != null
-                        is HistoryItem.Refund -> item.refund.poiReconciliationId != null
-                    }
-                }
-        return terminalItems.filter { item ->
-            if (hasPeriodIds) {
-                when (item) {
-                    is HistoryItem.Sale -> item.sale.poiReconciliationId == poiReconciliationId
-                    is HistoryItem.Refund -> item.refund.poiReconciliationId == poiReconciliationId
-                }
-            } else {
-                val at =
-                    when (item) {
-                        is HistoryItem.Sale -> item.sale.processedAt ?: item.sale.createdAt
-                        is HistoryItem.Refund -> item.refund.processedAt ?: item.refund.createdAt
-                    }
-                Instant.ofEpochMilli(at).atZone(zone).toLocalDate() == date
-            }
-        }
-    }
-
-    private fun sumReconciliationAmounts(scoped: List<HistoryItem>): Pair<Map<String, Long>, Map<String, Long>> {
-        val localSales = mutableMapOf<String, Long>()
-        val localRefunds = mutableMapOf<String, Long>()
-        scoped.forEach { item ->
-            when (item) {
-                is HistoryItem.Sale -> {
-                    val s = item.sale
-                    if (s.status == SaleStatus.APPROVED && !s.manualCapture) {
-                        localSales[s.currency] = (localSales[s.currency] ?: 0L) + s.amountMinor
-                    }
-                }
-
-                is HistoryItem.Refund -> {
-                    val r = item.refund
-                    if (r.status == RefundStatus.REQUESTED && !r.cancellation) {
-                        localRefunds[r.currency] = (localRefunds[r.currency] ?: 0L) + r.amountMinor
-                    }
-                }
-            }
-        }
-        return localSales to localRefunds
-    }
 }

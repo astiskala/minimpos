@@ -45,6 +45,18 @@ class RefundablePaymentTest {
     private fun reason(record: SaleWithLines) = (RefundablePayment.check(record) as Refundability.NotRefundable).reason
 
     @Test
+    fun `refund indexes are reused and a fresh record rebuilds remaining quantities`() {
+        val payment = refundable()
+        assertThat(record.sortedLines).isSameInstanceAs(record.sortedLines)
+        assertThat(payment.lines).isSameInstanceAs(payment.lines)
+        val updated = record.copy(lines = record.lines.map { it.copy(refundedQuantity = it.quantity) })
+        val changed = refundable(updated)
+        assertThat(changed.lines).isNotSameInstanceAs(payment.lines)
+        assertThat(changed.cappedQuantity(1, 3)).isEqualTo(0)
+        assertThat(payment.cappedQuantity(1, 3)).isEqualTo(3)
+    }
+
+    @Test
     fun `approved sales with the terminal's transaction details can be refunded`() {
         val payment = refundable()
         assertThat(payment.transactionId).isEqualTo("BV0q001643892070000.PSP1")

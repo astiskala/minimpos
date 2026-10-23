@@ -311,25 +311,31 @@ class SetupTransfer(
     suspend fun export(
         contents: TransferContents,
         currencyCode: String,
-    ): TransferExport {
-        val catalogue = if (contents.catalogue) catalog.export(currencyCode) else null
-        val settingsText = if (contents.settings) snapshot(settings.current()) else null
-        val values = if (contents.secrets) configuredSecrets().associateWith { secrets.get(it) }.filterValues { it != null } else emptyMap()
-        require(catalogue != null || settingsText != null || values.isNotEmpty()) { "Nothing to transfer" }
-        val code = seal.newCode()
-        val plaintext = TransferJson.encodeToString(SECRETS, values.entries.associate { (key, value) -> key.name to value.orEmpty() })
-        val publicData =
-            if (catalogue == null &&
-                settingsText == null
-            ) {
-                byteArrayOf()
-            } else {
-                TransferCodec.authenticationData(Transfer(catalogue, settingsText))
-            }
-        val sealed = withContext(cpu) { SealedSecrets(seal.seal(plaintext.toByteArray(), code, publicData)) }
-        val payload = TransferCodec.encode(Transfer(catalogue, settingsText, sealed))
-        return TransferExport(payload, code, catalogue, settingsText != null, values.keys)
-    }
+    ): TransferExport =
+        withContext(cpu) {
+            val catalogue = if (contents.catalogue) catalog.export(currencyCode) else null
+            val settingsText = if (contents.settings) snapshot(settings.current()) else null
+            val values =
+                if (contents.secrets) {
+                    configuredSecrets().associateWith { secrets.get(it) }.filterValues { it != null }
+                } else {
+                    emptyMap()
+                }
+            require(catalogue != null || settingsText != null || values.isNotEmpty()) { "Nothing to transfer" }
+            val code = seal.newCode()
+            val plaintext = TransferJson.encodeToString(SECRETS, values.entries.associate { (key, value) -> key.name to value.orEmpty() })
+            val publicData =
+                if (catalogue == null &&
+                    settingsText == null
+                ) {
+                    byteArrayOf()
+                } else {
+                    TransferCodec.authenticationData(Transfer(catalogue, settingsText))
+                }
+            val sealed = SealedSecrets(seal.seal(plaintext.toByteArray(), code, publicData))
+            val payload = TransferCodec.encode(Transfer(catalogue, settingsText, sealed))
+            TransferExport(payload, code, catalogue, settingsText != null, values.keys)
+        }
 
     /**
      * Reads the settings and the connection of a scanned [transfer].
@@ -471,7 +477,7 @@ class SetupTransfer(
         }
 
     private suspend fun snapshot(current: AppSettings): String {
-        val default = catalog.taxRates.first().firstOrNull { it.id == current.payment.defaultTaxRateId }
+        val default = catalog.reader.taxRates().firstOrNull { it.id == current.payment.defaultTaxRateId }
         return TransferredSettings(current.shared(), default?.let { TaxRateRef(it.name, it.rateMilliPercent) }).encode()
     }
 
@@ -481,7 +487,7 @@ class SetupTransfer(
     ) {
         val rate =
             transferred.defaultTaxRate?.let { wanted ->
-                catalog.taxRates.first().firstOrNull {
+                catalog.reader.taxRates().firstOrNull {
                     it.name.equals(wanted.name, ignoreCase = true) &&
                         it.rateMilliPercent == wanted.rateMilliPercent
                 }

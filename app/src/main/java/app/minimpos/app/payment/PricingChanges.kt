@@ -8,7 +8,6 @@ import app.minimpos.app.terminal.HistorySwitchPlan
 import app.minimpos.app.terminal.HistorySwitches
 import app.minimpos.core.money.CurrencySpec
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -155,7 +154,7 @@ class PricingChanges(
     ): PricingChange? {
         val from = currency(current)
         val to = currency(proposed)
-        val prices = catalog.products.first().associate { it.id to to.toMinor(from.toMajor(it.priceMinor)) }
+        val prices = catalog.reader.products().associate { it.id to to.toMinor(from.toMajor(it.priceMinor)) }
         return if (prices.values.any { it <= 0 }) null else PricingChange(from.code, to.code, proposed.payment, prices)
     }
 

@@ -40,7 +40,7 @@ class TerminalSetupEntryTest {
 
     private fun openTerminal() {
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("section_terminal"), 15_000)
         compose.onNodeWithTag("section_terminal").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("terminalMode"), 15_000)

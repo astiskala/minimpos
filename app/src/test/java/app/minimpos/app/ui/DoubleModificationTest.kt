@@ -19,6 +19,7 @@ import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.ReceiptTipping
+import app.minimpos.app.items
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications

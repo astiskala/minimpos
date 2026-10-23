@@ -25,7 +25,7 @@ import kotlin.uuid.Uuid
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun exportedSchema(version: Int = 14): JSONObject =
+    private fun exportedSchema(version: Int = 16): JSONObject =
         listOf("schemas", "app/schemas")
             .map { File(it, "app.minimpos.app.data.db.AppDatabase/$version.json") }
             .first { it.exists() }
@@ -33,7 +33,7 @@ class DatabaseSchemaTest {
 
     private fun createExportedDatabase(
         name: String,
-        version: Int = 14,
+        version: Int = 16,
     ) {
         val schema = exportedSchema(version)
         val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
@@ -67,12 +67,105 @@ class DatabaseSchemaTest {
                     AppDatabase.MIGRATION_11_12,
                     AppDatabase.MIGRATION_12_13,
                     AppDatabase.MIGRATION_13_14,
+                    AppDatabase.MIGRATION_14_15,
+                    AppDatabase.MIGRATION_15_16,
                 ).allowMainThreadQueries()
                 .build()
         try {
             return block(db)
         } finally {
             db.close()
+        }
+    }
+
+    @Test
+    fun `version 15 shopper index migration preserves tokens receipts and unknown operation identities`() {
+        val name = "schema-v15-${Uuid.random()}"
+        createExportedDatabase(name, 15)
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
+            raw.execSQL(
+                "INSERT INTO sales (id, sample, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, " +
+                    "status, merchantReference, tokenizationRequested, signatureRequired, refundedMinor, kind, " +
+                    "tipOnReceipt, holdCancelled, paymentLink, adjustmentPending, serviceId, customerReceiptJson, " +
+                    "shopperReference, storedPaymentMethodId) " +
+                    "VALUES ('token-sale', 0, 100, 'AUD', 'INCLUSIVE', 100, 0, 100, 'UNKNOWN', 'MP-15', " +
+                    "1, 0, 0, 'SALE', 0, 0, 0, 0, 'original-service', '[original-receipt]', 'shopper', 'token')",
+            )
+        }
+        try {
+            withDatabase(name) { db ->
+                runBlocking {
+                    val original = checkNotNull(db.saleDao().sale("token-sale")).sale
+                    assertThat(original.status).isEqualTo(SaleStatus.UNKNOWN)
+                    assertThat(original.serviceId).isEqualTo("original-service")
+                    assertThat(original.customerReceiptJson).isEqualTo("[original-receipt]")
+                    val batch = db.saleDao().shopperSales("shopper", Long.MAX_VALUE, "", 256)
+                    assertThat(batch.single().storedPaymentMethodId).isEqualTo("token")
+                    assertThat(batch.single().customerReceiptJson).isNull()
+                    assertThat(db.saleDao().shopperSales("other", Long.MAX_VALUE, "", 256)).isEmpty()
+                    db.openHelper.readableDatabase
+                        .query(
+                            "EXPLAIN QUERY PLAN SELECT id FROM sales WHERE shopperReference = 'shopper' " +
+                                "AND createdAt <= 100 ORDER BY createdAt DESC, id DESC LIMIT 256",
+                        ).use { cursor ->
+                            val details = buildList { while (cursor.moveToNext()) add(cursor.getString(3)) }
+                            assertThat(details.joinToString()).contains("index_sales_shopperReference_createdAt_id")
+                            assertThat(details.joinToString()).doesNotContain("TEMP B-TREE")
+                        }
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test
+    fun `version 14 index migration preserves financial recovery and receipt data`() {
+        val name = "schema-v14-${Uuid.random()}"
+        createExportedDatabase(name, 14)
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
+            raw.execSQL(
+                "INSERT INTO sales (id, sample, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, " +
+                    "status, merchantReference, tokenizationRequested, signatureRequired, refundedMinor, kind, " +
+                    "tipOnReceipt, holdCancelled, paymentLink, adjustmentPending, serviceId, customerReceiptJson, " +
+                    "processedAt, captureStartedAt, captureProcessedAt, adjustmentStartedAt) " +
+                    "VALUES ('recovery', 0, 100, 'AUD', 'INCLUSIVE', 100, 0, 100, 'UNKNOWN', 'MP-14', " +
+                    "0, 0, 0, 'SALE', 0, 0, 0, 0, 'service14', '[receipt]', 200, 300, 400, 500)",
+            )
+            raw.execSQL(
+                "INSERT INTO refunds (id, saleId, createdAt, merchantReference, originalTransactionId, " +
+                    "originalTimestamp, currency, amountMinor, full, status, serviceId) " +
+                    "VALUES ('refund14', 'recovery', 600, 'R-14', 'T.PSP', 'timestamp', 'AUD', 50, 0, 'UNKNOWN', 'refund-service')",
+            )
+        }
+        try {
+            withDatabase(name) { db ->
+                runBlocking {
+                    val sale = checkNotNull(db.saleDao().sale("recovery")).sale
+                    assertThat(sale.status).isEqualTo(SaleStatus.UNKNOWN)
+                    assertThat(sale.serviceId).isEqualTo("service14")
+                    assertThat(sale.customerReceiptJson).isEqualTo("[receipt]")
+                    assertThat(sale.processedAt).isEqualTo(200)
+                    assertThat(sale.captureStartedAt).isEqualTo(300)
+                    assertThat(sale.captureProcessedAt).isEqualTo(400)
+                    assertThat(sale.adjustmentStartedAt).isEqualTo(500)
+                    assertThat(db.refundDao().refund("refund14")?.serviceId).isEqualTo("refund-service")
+                    val indexes = mutableListOf<String>()
+                    db.openHelper.readableDatabase.query("SELECT name FROM sqlite_master WHERE type = 'index'").use { cursor ->
+                        while (cursor.moveToNext()) indexes += cursor.getString(0)
+                    }
+                    assertThat(indexes).containsAtLeast(
+                        "index_sales_processedAt_id",
+                        "index_sales_captureProcessedAt_id",
+                        "index_sales_captureStartedAt_id",
+                        "index_refunds_processedAt_id",
+                    )
+                    val keys = db.saleDao().historyKeys(Long.MAX_VALUE, "z", Long.MIN_VALUE, 256)
+                    assertThat(keys.map { it.at }).containsExactly(600L, 400L, 300L, 200L, 100L).inOrder()
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
         }
     }
 
@@ -150,7 +243,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.merchantReference).isEqualTo("MP-10")
                     assertThat(sale.poiReconciliationId).isNull()
                     assertThat(sale.savedCard).isFalse()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(14)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
                 }
             }
         } finally {
@@ -197,7 +290,7 @@ class DatabaseSchemaTest {
                             .single()
                             .name,
                     ).isEqualTo("GST")
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(14)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
                 }
             }
         } finally {
@@ -228,7 +321,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.status).isEqualTo(SaleStatus.DECLINED)
                     assertThat(sale.errorCondition).isEqualTo("Busy")
                     assertThat(sale.busyServiceId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(14)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
                 }
             }
         } finally {
@@ -261,7 +354,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.captureStartedAt).isEqualTo(200)
                     assertThat(sale.captureStatus?.name).isEqualTo("UNKNOWN")
                     assertThat(sale.totalMinor).isEqualTo(1000)
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(14)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
                 }
             }
         } finally {

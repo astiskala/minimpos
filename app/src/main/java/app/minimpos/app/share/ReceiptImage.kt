@@ -18,6 +18,7 @@ import app.minimpos.core.receipt.ReceiptElement
 import app.minimpos.core.receipt.ReceiptSegment
 import app.minimpos.core.receipt.TextStyle
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
  * Draws the fixed-width receipt used by both the on-screen preview and sharing: a white slip, monospaced text, rows
@@ -28,6 +29,8 @@ object ReceiptImage {
     /** The default width in pixels: an 80 mm printer's dots, sharp on phones and small enough for messaging apps. */
     const val DEFAULT_WIDTH_PX = 576
 
+    private const val MAX_HEIGHT = 16_384
+    private const val MAX_PIXELS = 4_000_000
     private const val REFERENCE_WIDTH = 576f
     private const val TEXT_SIZE = 22f
     private const val PADDING = 32f
@@ -36,14 +39,36 @@ object ReceiptImage {
     private const val QR_SHARE = 0.55f
     private const val DASH = 6f
 
-    /** [document] as a bitmap [widthPx] wide and as tall as it needs; the caller recycles it. */
+    /**
+     * [document] as a bitmap up to [widthPx] wide; very long slips scale down to fit 16384 pixels high and four million
+     * pixels total without truncation. The caller recycles it. Run off the main thread.
+     */
     fun render(
         document: ReceiptDocument,
         widthPx: Int = DEFAULT_WIDTH_PX,
     ): Bitmap {
+        val measured = measure(document, widthPx)
+        // Bound native allocation and texture dimensions even for very long delivered receipts.
+        val scale =
+            minOf(
+                1.0,
+                MAX_HEIGHT.toDouble() / measured.height,
+                sqrt(MAX_PIXELS.toDouble() / (widthPx.toDouble() * measured.height)),
+            )
+        val bitmap = createBitmap((widthPx * scale).toInt().coerceAtLeast(1), (measured.height * scale).toInt().coerceAtLeast(1))
+        val canvas = Canvas(bitmap)
+        canvas.scale(scale.toFloat(), scale.toFloat())
+        measured.draw(canvas)
+        return bitmap
+    }
+
+    /** Measures [document] off the main thread; [widthPx] is its fixed layout width in pixels. No full-height bitmap is allocated. */
+    fun measure(
+        document: ReceiptDocument,
+        widthPx: Int = DEFAULT_WIDTH_PX,
+    ): MeasuredReceipt {
         val scale = widthPx / REFERENCE_WIDTH
         val slip = Slip(widthPx, scale)
-        // Use the printer's segment order too: captions precede their QR codes on every slip.
         val blocks =
             document.segments().flatMap { segment ->
                 when (segment) {
@@ -52,16 +77,49 @@ object ReceiptImage {
                 }
             }
         val padding = PADDING * scale
-        val height = (padding * 2 + blocks.sumOf { it.height.toDouble() }).roundToInt()
-        val bitmap = createBitmap(widthPx, height.coerceAtLeast(1))
-        val canvas = Canvas(bitmap)
-        canvas.drawColor(Color.WHITE)
-        var top = padding
-        blocks.forEach { block ->
-            canvas.withTranslation(padding, top) { block.draw(this) }
-            top += block.height
+        val height = (padding * 2 + blocks.sumOf { it.height.toDouble() }).roundToInt().coerceAtLeast(1)
+        var end = padding
+        val ends = FloatArray(blocks.size) { index -> (end + blocks[index].height).also { end = it } }
+        return MeasuredReceipt(widthPx, height) { canvas ->
+            canvas.drawColor(Color.WHITE)
+            val clip = canvas.clipBounds
+            var index = visibleStart(ends, clip.top.toFloat())
+            var top = if (index == 0) padding else ends[index - 1]
+            while (index < blocks.size && top < clip.bottom) {
+                canvas.withTranslation(padding, top) { blocks[index].draw(this) }
+                top = ends[index]
+                index++
+            }
         }
-        return bitmap
+    }
+
+    /** First block whose bottom lies strictly below the clip's [top]; [ends] must be nondecreasing. */
+    internal fun visibleStart(
+        ends: FloatArray,
+        top: Float,
+    ): Int {
+        var low = 0
+        var high = ends.size
+        while (low < high) {
+            val middle = (low + high) ushr 1
+            if (ends[middle] <= top) low = middle + 1 else high = middle
+        }
+        return low
+    }
+
+    /**
+     * Fixed-width measured slip, drawable without a bitmap. Draw only on one thread at a time.
+     * @property width Layout width in pixels.
+     * @property height Full layout height in pixels.
+     * @param paint Draws the measured blocks.
+     */
+    class MeasuredReceipt internal constructor(
+        val width: Int,
+        val height: Int,
+        private val paint: (Canvas) -> Unit,
+    ) {
+        /** Draws the slip into [canvas], respecting its current transform and clipping bounds. */
+        fun draw(canvas: Canvas) = paint(canvas)
     }
 
     /** One receipt element, measured: its [height] and how to [draw] it at the top left of the content area. */

@@ -1,7 +1,7 @@
 package app.minimpos.app.ui.components
 
+import android.graphics.Paint
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -27,12 +27,16 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -41,11 +45,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.withClip
+import androidx.core.graphics.withScale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.AppContainer
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.qr.QrCodes
+import app.minimpos.app.qr.QrShapes
 import app.minimpos.app.share.ReceiptImage
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
@@ -59,7 +66,11 @@ import app.minimpos.terminal.client.PrintAlign
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.PrintLine
 import app.minimpos.terminal.client.PrintStyle
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
+import android.graphics.Color as AndroidColor
 
 /** The process's [AppContainer], provided by `MiniMposApp`; screens use it to build their view models. */
 val LocalAppContainer = compositionLocalOf<AppContainer> { error("No AppContainer provided") }
@@ -220,19 +231,33 @@ fun NumericKeypad(
 
 private const val KEYPAD_COLUMNS = 3
 
-/** Renders a QR code crisply at any size. */
+/** Renders QR runs encoded on [cpu]; [nextContent] optionally prefetches one upcoming animated code. */
 @Composable
 fun QrImage(
     content: String,
     modifier: Modifier = Modifier,
+    cpu: CoroutineDispatcher = Dispatchers.Default,
+    nextContent: String? = null,
 ) {
-    val matrix = remember(content) { QrCodes.matrix(content, margin = 2) }
+    val cache = remember(cpu) { QrShapes() }
+    val shape by produceState<QrCodes.Shape?>(null, content, nextContent, cpu) {
+        // A prefetched code shows at once; otherwise nothing is shown until it is encoded, never the previous code.
+        value = cache.cached(content)
+        if (value == null) value = withContext(cpu) { cache.get(content) }
+        if (nextContent != null && nextContent != content) withContext(cpu) { cache.get(nextContent) }
+    }
+    val paint =
+        remember {
+            Paint().apply {
+                color = AndroidColor.BLACK
+                isAntiAlias = false
+            }
+        }
     Canvas(modifier = modifier.aspectRatio(1f).background(Color.White)) {
-        val cell = size.minDimension / matrix.width
-        for (y in 0..<matrix.height) {
-            for (x in 0..<matrix.width) {
-                // Each module overlaps its neighbours by half a pixel, so fractional cell sizes leave no hairline gaps.
-                if (matrix[x, y]) drawRect(Color.Black, Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
+        shape?.let { code ->
+            val cell = size.minDimension / code.width
+            drawIntoCanvas { canvas ->
+                canvas.nativeCanvas.withScale(cell, cell) { drawPath(code.path, paint) }
             }
         }
     }
@@ -240,38 +265,63 @@ fun QrImage(
 
 /**
  * The same fixed-width slip used for sharing, scaled to the available screen width without reflowing its rows.
- * Receipt text remains available to accessibility services in document order, including QR captions and link URLs.
+ * Layout measurement runs on [cpu]; drawing uses no full-height bitmap. Receipt text remains available to
+ * accessibility services in document order, including QR captions and link URLs.
  */
 @Composable
 fun ReceiptPreview(
     document: ReceiptDocument,
     modifier: Modifier = Modifier,
+    cpu: CoroutineDispatcher = Dispatchers.Default,
 ) {
-    val image = remember(document) { ReceiptImage.render(document).asImageBitmap() }
-    val receiptText =
-        remember(document) {
-            document.elements.flatMap { element ->
-                when (element) {
-                    is ReceiptElement.Text -> listOf(element.text)
-                    is ReceiptElement.Row -> listOf(element.left, element.right)
-                    is ReceiptElement.Link -> listOf(element.url)
-                    is ReceiptElement.Qr -> listOfNotNull(element.caption)
-                    ReceiptElement.Blank, ReceiptElement.Divider -> emptyList()
-                }.map(::AnnotatedString)
+    val prepared by produceState<Pair<ReceiptImage.MeasuredReceipt, List<AnnotatedString>>?>(null, document, cpu) {
+        value = null
+        value =
+            withContext(cpu) {
+                val text =
+                    document.elements.flatMap { element ->
+                        when (element) {
+                            is ReceiptElement.Text -> listOf(element.text)
+                            is ReceiptElement.Row -> listOf(element.left, element.right)
+                            is ReceiptElement.Link -> listOf(element.url)
+                            is ReceiptElement.Qr -> listOfNotNull(element.caption)
+                            ReceiptElement.Blank, ReceiptElement.Divider -> emptyList()
+                        }.map(::AnnotatedString)
+                    }
+                ReceiptImage.measure(document) to text
             }
-        }
-    Image(
-        bitmap = image,
-        contentDescription = null,
+    }
+    val (slip, receiptText) = prepared ?: return
+    val viewport = remember { mutableStateOf<Rect?>(null) }
+    Canvas(
         modifier =
             modifier
                 .widthIn(max = 360.dp)
                 .fillMaxWidth()
-                .aspectRatio(image.width.toFloat() / image.height)
+                .aspectRatio(slip.width.toFloat() / slip.height)
                 .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
                 .semantics { this[SemanticsProperties.Text] = receiptText }
-                .testTag("receiptImage"),
-    )
+                .onGloballyPositioned { coordinates ->
+                    val visible = coordinates.boundsInWindow()
+                    viewport.value =
+                        if (visible.isEmpty) {
+                            Rect.Zero
+                        } else {
+                            Rect(
+                                coordinates.windowToLocal(visible.topLeft),
+                                coordinates.windowToLocal(visible.bottomRight),
+                            )
+                        }
+                }.testTag("receiptImage"),
+    ) {
+        drawIntoCanvas { canvas ->
+            val visible = viewport.value ?: return@drawIntoCanvas
+            // Ancestor scroll layers can clip after recording; pass their visible bounds into the native drawing too.
+            canvas.nativeCanvas.withClip(visible.left, visible.top, visible.right, visible.bottom) {
+                withScale(size.width / slip.width, size.width / slip.width) { slip.draw(this) }
+            }
+        }
+    }
 }
 
 /** What the simulated printer received, using the same fixed-width slip as receipt previews and sharing. */

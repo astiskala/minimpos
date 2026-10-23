@@ -59,6 +59,17 @@ class PaymentsAppBridgeTest {
     }
 
     @Test
+    fun `acknowledging one durable reply preserves every other late answer`() {
+        val other = "$answer-other"
+        bridge.deliver(answer)
+        bridge.deliver(other)
+        bridge.forgetLateReplies(setOf(answer))
+        assertThat(bridge.lateReplies()).containsExactly(other)
+        bridge.forgetLateReplies(setOf(answer))
+        assertThat(bridge.lateReplies()).containsExactly(other)
+    }
+
+    @Test
     fun `an answer with no exchange waiting is kept for status checks`() {
         assertThat(bridge.deliver(answer)).isTrue()
         assertThat(bridge.lateReplies()).containsExactly(answer)

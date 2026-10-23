@@ -12,12 +12,12 @@ or with Tap to Pay through the Adyen Payments app.
 
 [Website](https://minimpos.app/) ·
 [Download APK](https://github.com/astiskala/minimpos/releases/latest) ·
-[简体中文](https://minimpos.app/zh-CN/) ·
-[繁體中文](https://minimpos.app/zh-Hant/) ·
+[Español (México)](https://minimpos.app/es-MX/) ·
+[Français (France)](https://minimpos.app/fr-FR/) ·
 [日本語](https://minimpos.app/ja/) ·
 [Português (Brasil)](https://minimpos.app/pt-BR/) ·
-[Español (México)](https://minimpos.app/es-MX/) ·
-[Français](https://minimpos.app/fr-FR/)
+[简体中文](https://minimpos.app/zh-CN/) ·
+[繁體中文](https://minimpos.app/zh-Hant/)
 
 <p align="center">
   <img src="docs/images/home.png" width="200" alt="Home screen">

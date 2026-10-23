@@ -13,16 +13,17 @@ import kotlin.io.path.nameWithoutExtension
 
 /**
  * Turns raw docs emulator captures into frame-sized screenshots: S1F2 720×1280 becomes 540×960; AMS1 stays 480×800.
- * The status and navigation bars are
- * painted with the background of the app's adjacent row (Adyen terminals show neither), the image is scaled down
- * smoothly and saved as an indexed PNG of at most [COLOURS] colours (median cut, no dithering).
+ * Adyen terminals show no system bars, so the app fills their whole screen. The docs emulator reproduces that with a
+ * logical display taller than the terminal's by exactly one status bar and one gesture bar: the app lays out between
+ * the bars as it would on the terminal, and this class crops both bars away. The image is then scaled down smoothly
+ * and saved as an indexed PNG of at most [COLOURS] colours (median cut, no dithering).
  */
 internal object DocsScreenshots {
-    /** The capture size of the S1F2-sized docs emulator. */
+    /** The raw capture width of the S1F2-sized docs emulator (`wm size 720x1376`). */
     const val RAW_WIDTH = 720
 
-    /** See [RAW_WIDTH]. */
-    const val RAW_HEIGHT = 1280
+    /** The raw capture height of the S1F2-sized docs emulator: the 1280 px terminal screen plus both [BAR]s. */
+    const val RAW_HEIGHT = 1376
 
     /** The saved size, matching the S1F2 terminal frame's screen. */
     const val WIDTH = 540
@@ -33,14 +34,17 @@ internal object DocsScreenshots {
     /** AMS1 raw and saved width in pixels; this capture is not resized. */
     const val AMS1_WIDTH = 480
 
-    /** AMS1 raw and saved height in pixels. */
+    /** The saved AMS1 height in pixels, matching the AMS1 terminal frame's screen. */
     const val AMS1_HEIGHT = 800
 
-    private const val AMS1_STATUS_BAR = 36
-    private const val AMS1_NAVIGATION_BAR = 72
+    /** The raw AMS1 capture height (`wm size 480x872`): the saved height plus both [AMS1_BAR]s. */
+    const val AMS1_RAW_HEIGHT = 872
 
-    /** The status and gesture bar height in raw pixels. */
+    /** The status and gesture bar height in S1F2 raw pixels (24 dp at 320 dpi). */
     const val BAR = 48
+
+    /** The status and gesture bar height in AMS1 raw pixels (24 dp at 240 dpi). */
+    const val AMS1_BAR = 36
 
     /** The palette size of a saved screenshot. */
     const val COLOURS = 96
@@ -76,7 +80,9 @@ internal object DocsScreenshots {
                 val target = (if (language == "en") images else images.resolve(language)).resolve(name.removePrefix("$language-") + ".png")
                 val image = requireNotNull(ImageIO.read(file.toFile())) { "Not a PNG: $name" }
                 val ams1 = name.endsWith("-sale-ams1")
-                require(image.width == (if (ams1) AMS1_WIDTH else RAW_WIDTH) && image.height == (if (ams1) AMS1_HEIGHT else RAW_HEIGHT)) {
+                require(
+                    image.width == (if (ams1) AMS1_WIDTH else RAW_WIDTH) && image.height == (if (ams1) AMS1_RAW_HEIGHT else RAW_HEIGHT),
+                ) {
                     "Capture dimensions do not match its terminal: $name"
                 }
                 Files.createDirectories(target.parent)
@@ -86,39 +92,14 @@ internal object DocsScreenshots {
 
     /** One raw capture as a finished screenshot; see [DocsScreenshots]. */
     fun process(raw: BufferedImage): BufferedImage {
-        val ams1 = raw.width == AMS1_WIDTH && raw.height == AMS1_HEIGHT
-        require(ams1 || (raw.width == RAW_WIDTH && raw.height == RAW_HEIGHT)) { "Expected a 720x1280 or 480x800 capture" }
-        val topBar = if (ams1) AMS1_STATUS_BAR else BAR
-        val bottomBar = if (ams1) AMS1_NAVIGATION_BAR else BAR
-        val painted = BufferedImage(raw.width, raw.height, BufferedImage.TYPE_INT_RGB)
-        val top = background(raw, topBar)
-        val bottom = background(raw, raw.height - bottomBar - 1)
-        for (x in 0..<raw.width) {
-            for (y in 0..<raw.height) {
-                painted.setRGB(
-                    x,
-                    y,
-                    if (y < topBar) {
-                        top
-                    } else if (y >= raw.height - bottomBar) {
-                        bottom
-                    } else {
-                        raw.getRGB(x, y)
-                    },
-                )
-            }
-        }
-        return quantize(if (ams1) painted else scale(painted, WIDTH, HEIGHT), COLOURS)
-    }
-
-    /** The most common colour of row [y]: the screen's background there, so content running under a bar is cut cleanly. */
-    private fun background(
-        image: BufferedImage,
-        y: Int,
-    ): Int {
-        val counts = HashMap<Int, Int>()
-        for (x in 0..<image.width) counts.merge(image.getRGB(x, y), 1, Int::plus)
-        return Collections.max(counts.entries, compareBy { it.value }).key
+        val ams1 = raw.width == AMS1_WIDTH && raw.height == AMS1_RAW_HEIGHT
+        require(ams1 || (raw.width == RAW_WIDTH && raw.height == RAW_HEIGHT)) { "Expected a 720x1376 or 480x872 capture" }
+        val bar = if (ams1) AMS1_BAR else BAR
+        val screen = BufferedImage(raw.width, raw.height - 2 * bar, BufferedImage.TYPE_INT_RGB)
+        val graphics = screen.createGraphics()
+        graphics.drawImage(raw, 0, -bar, null)
+        graphics.dispose()
+        return quantize(if (ams1) screen else scale(screen, WIDTH, HEIGHT), COLOURS)
     }
 
     /** [image] scaled to [width]×[height] with bicubic interpolation, so text stays crisp. */

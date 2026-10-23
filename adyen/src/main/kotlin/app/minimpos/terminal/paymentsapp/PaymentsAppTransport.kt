@@ -71,6 +71,9 @@ interface AppLinkExchange {
      * Payments app was in front, so its answer had nobody to go to.
      */
     fun lateReplies(): List<String>
+
+    /** Removes exactly [urls] after their verified financial answers were durably stored; unresolved replies remain. */
+    fun forgetLateReplies(urls: Set<String>)
 }
 
 /**
@@ -212,6 +215,15 @@ class PaymentsAppTransport(
 ) : TerminalTransport {
     private val crypto = PaymentsAppCrypto(key)
     private val links = PaymentsAppLinks(environment)
+    private val decoded = mutableMapOf<String, TerminalAPIResponse?>()
+
+    override fun acknowledge(serviceId: String) {
+        synchronized(decoded) {
+            val urls = decoded.filterValues { it?.saleToPOIResponse?.messageHeader?.serviceID == serviceId }.keys.toSet()
+            exchange.forgetLateReplies(urls)
+            urls.forEach(decoded::remove)
+        }
+    }
 
     override suspend fun send(
         request: TerminalAPIRequest,
@@ -271,8 +283,17 @@ class PaymentsAppTransport(
         val late = CompletedTransactions()
         exchange
             .lateReplies()
-            .mapNotNull { url -> PaymentsAppLinks.answer(url)["response"]?.let(crypto::decrypt) }
-            .mapNotNull { it.saleToPOIResponse }
+            .mapNotNull { url ->
+                synchronized(decoded) {
+                    if (decoded.containsKey(url)) {
+                        decoded[url]
+                    } else {
+                        val response = PaymentsAppLinks.answer(url)["response"]?.let(crypto::decrypt)
+                        decoded[url] = response
+                        response
+                    }
+                }
+            }.mapNotNull { it.saleToPOIResponse }
             .forEach { late.remember(it.messageHeader?.serviceID.orEmpty(), it.paymentResponse, it.reversalResponse) }
         val repeated = late.repeat(request) ?: return null
         return TerminalAPIResponse().apply {

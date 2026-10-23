@@ -75,6 +75,7 @@ internal data class SimulatedPayment(
     val unconfirmedBatchCount: Int = 0,
 ) {
     val isOffline: Boolean get() = approved && offlineMode != OfflineProcessingMode.ONLINE
+    val transactionId: String get() = if (isOffline) tender else "$tender.$psp"
 }
 
 internal fun simulatedCardEntryOverride(request: PaymentRequest): CardEntryOverride {

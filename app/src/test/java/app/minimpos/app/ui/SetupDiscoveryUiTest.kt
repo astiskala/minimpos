@@ -86,7 +86,7 @@ class SetupDiscoveryUiTest {
         val container = env.container
         env.useSimulator()
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("terminalMode")
@@ -219,7 +219,7 @@ class SetupDiscoveryUiTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = mode)) }
         container.start()
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(
             hasTestTag("section_terminal") and hasText(env.context.getString(R.string.settings_status_not_set_up), substring = true),
             15_000,
@@ -286,7 +286,7 @@ class SetupDiscoveryUiTest {
         }
         container.start()
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("step_1")
@@ -342,7 +342,7 @@ class SetupDiscoveryUiTest {
         val container = env.container
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST)) }
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("apiKey")
@@ -383,7 +383,7 @@ class SetupDiscoveryUiTest {
         env.useCheckoutApi()
         apiRelease = CompletableDeferred()
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("discoverSetup")
@@ -420,7 +420,7 @@ class SetupDiscoveryUiTest {
         env.useCheckoutApi()
         apiRelease = CompletableDeferred()
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("discoverSetup")
@@ -457,7 +457,7 @@ class SetupDiscoveryUiTest {
         phone.paymentsApps = TerminalEnvironment.entries.toSet()
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP)) }
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("step_1")

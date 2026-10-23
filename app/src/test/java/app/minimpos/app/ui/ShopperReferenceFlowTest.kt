@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isOn
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -19,6 +20,7 @@ import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.settings.EmailCapture
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.items
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
 import org.junit.Before
@@ -69,7 +71,7 @@ class ShopperReferenceFlowTest {
     }
 
     private fun openPaymentSettings() {
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_payments")
         compose.onNodeWithTag("section_payments").performScrollTo().performClick()
     }
@@ -89,8 +91,10 @@ class ShopperReferenceFlowTest {
         waitForTag("pay")
         compose.onNodeWithTag("customerReference").performTextInput("CUST-1042")
         compose.onNodeWithText("Save card for future payments").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("tokenize") and isOn(), 15_000)
         compose.onNodeWithTag("tokenize").assertIsOn()
         compose.onNodeWithText("Tip on the receipt").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("tipOnReceipt") and isOn(), 15_000)
         compose.onNodeWithTag("tipOnReceipt").assertIsOn()
     }
 

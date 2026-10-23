@@ -41,7 +41,7 @@ class CheckResultDialogTest {
     fun `receipt test print reports its result in a dismissible popup on AMS1`() {
         env.useSimulator()
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.onNodeWithTag("section_receipts").performScrollTo().performClick()
         repeat(2) {
             compose.onNodeWithTag("printTest").performScrollTo().performClick()
@@ -56,7 +56,7 @@ class CheckResultDialogTest {
     fun `test email reports its recipient in a dismissible popup`() {
         env.useSimulator { it.copy(email = it.email.copy(host = "smtp.example.com", fromAddress = "shop@example.com")) }
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.onNodeWithTag("section_email").performScrollTo().performClick()
         compose.onNodeWithTag("sendTestEmail").performScrollTo().performClick()
         compose.onNodeWithTag("dialogInput").performTextInput("shopper@example.com")

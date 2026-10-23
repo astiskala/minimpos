@@ -183,6 +183,8 @@ data class Dimens(
     val cardPadding: Dp,
     /** Minimum height of the product tiles on the sale screen: two lines of name and the price. */
     val tileHeight: Dp,
+    /** Vertical padding inside the sale screen's product tiles: just enough for two name lines and the price. */
+    val tileVerticalPadding: Dp,
     /** Style of the top app bar's title. */
     val titleStyle: TextStyle,
     /** Style of the outcome ("Approved", "Refund requested") on result and detail screens. */
@@ -219,7 +221,8 @@ data class Dimens(
                 topBarHeight = 64.dp,
                 amountStyle = AmountTextStyle,
                 cardPadding = 16.dp,
-                tileHeight = 96.dp,
+                tileHeight = 68.dp,
+                tileVerticalPadding = 6.dp,
                 titleStyle = typography.titleLarge,
                 outcomeStyle = typography.headlineMedium,
                 progressSize = 64.dp,
@@ -243,7 +246,8 @@ data class Dimens(
                 topBarHeight = 56.dp,
                 amountStyle = AmountTextStyle.copy(fontSize = 38.sp),
                 cardPadding = 14.dp,
-                tileHeight = 88.dp,
+                tileHeight = 66.dp,
+                tileVerticalPadding = 6.25.dp,
                 titleStyle = typography.titleLarge,
                 outcomeStyle = typography.headlineSmall,
                 progressSize = 56.dp,
@@ -264,7 +268,8 @@ data class Dimens(
                 topBarHeight = 48.dp,
                 amountStyle = AmountTextStyle.copy(fontSize = 34.sp),
                 cardPadding = 12.dp,
-                tileHeight = 80.dp,
+                tileHeight = 64.dp,
+                tileVerticalPadding = 5.dp,
                 titleStyle = typography.titleMedium,
                 outcomeStyle = typography.headlineSmall,
                 progressSize = 48.dp,

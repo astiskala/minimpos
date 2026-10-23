@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
@@ -81,6 +82,10 @@ fun PaymentLinkScreen(
     vm: PaymentLinkViewModel = paymentLinkViewModel(saleId, fresh),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    LifecycleStartEffect(vm) {
+        vm.setPolling(true)
+        onStopOrDispose { vm.setPolling(false) }
+    }
     var dialog by rememberSaveable { mutableStateOf<LinkDialog?>(null) }
     var approval by rememberSaveable { mutableStateOf<LinkApproval?>(null) }
     if (approval != null) {

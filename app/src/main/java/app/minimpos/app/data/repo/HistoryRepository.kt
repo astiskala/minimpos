@@ -2,20 +2,23 @@ package app.minimpos.app.data.repo
 
 import androidx.room.withTransaction
 import app.minimpos.app.data.db.AppDatabase
+import app.minimpos.app.data.db.HistoryKey
 import app.minimpos.app.data.db.HistorySwitchEntity
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.settings.StorageJson
 import app.minimpos.app.data.settings.TerminalSettings
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.serializer
 
 /** One entry of the transaction history: a sale or a refund. */
@@ -59,23 +62,20 @@ sealed interface HistoryItem {
 class HistoryRepository(
     private val db: AppDatabase,
     /** Dispatcher for mapping and sorting observed history outside Room's query executor. */
-    private val cpu: CoroutineDispatcher = Dispatchers.Default,
+    cpu: CoroutineDispatcher = Dispatchers.Default,
+    /** Receives successfully deleted records after commit, for process-only recovery and simulator cleanup. */
+    private val onRemoved: (List<HistoryItem>, List<SaleTenderEntity>) -> Unit = { _, _ -> },
+    /** Clears process bookkeeping only after an explicitly confirmed full purge commits. */
+    private val onPurged: () -> Unit = {},
 ) {
     private val saleDao = db.saleDao()
     private val refundDao = db.refundDao()
 
-    /** Observes all sales and refunds merged into one list, newest first. */
-    fun items(): Flow<List<HistoryItem>> =
-        combine(saleDao.sales(), refundDao.refunds()) { sales, refunds ->
-            (sales.map { HistoryItem.Sale(it) } + refunds.map { HistoryItem.Refund(it) }).sortedByDescending { it.createdAt }
-        }.flowOn(cpu)
+    /** Whether any history exists, emitted again after each write to either table, without materializing records. */
+    val changes: Flow<Boolean> = saleDao.historyChanges()
 
-    /** Reads one transactionally consistent snapshot of all retained records for report delivery. Main-safe. */
-    suspend fun snapshot(): List<HistoryItem> =
-        db.withTransaction {
-            (saleDao.sales().first().map { HistoryItem.Sale(it) } + refundDao.refunds().first().map { HistoryItem.Refund(it) })
-                .sortedByDescending { it.createdAt }
-        }
+    /** Bounded, lightweight history access for lists and searches. */
+    val reader = Reader(db, cpu)
 
     /**
      * Marks sales and refunds that never got an answer (for example because the app was killed mid-payment) as UNKNOWN,
@@ -121,6 +121,7 @@ class HistoryRepository(
             refundDao.deleteAllRefunds()
             saleDao.deleteAllSales()
         }
+        onPurged()
     }
 
     /** Confirmed switch target awaiting durable settings, or null when no switch needs recovery. */
@@ -139,43 +140,177 @@ class HistoryRepository(
     suspend fun finishSwitch() = saleDao.finishHistorySwitch()
 
     /** Whether tracked sample sales remain; called inside sample setup's database transaction. */
-    internal suspend fun hasSamples(): Boolean = saleDao.sales().first().any { it.sample }
+    internal suspend fun hasSamples(): Boolean = saleDao.hasSamples()
 
-    /** Removes every seeded demo sale and its report activity; merchant-created refunds and sales remain. */
-    internal suspend fun removeSamples() {
-        saleDao
-            .sales()
-            .first()
-            .filter { it.sample }
-            .forEach { saleDao.deleteSale(it.id) }
+    /** Removes samples and [removeCatalog] atomically, releasing process state only after the outer transaction commits. */
+    internal suspend fun removeSamples(removeCatalog: suspend () -> Unit) {
+        val removed =
+            db.withTransaction {
+                val records = saleDao.sampleSales()
+                val tenders =
+                    records.chunked(BATCH_SIZE).flatMap { chunk ->
+                        val ids = chunk.map { it.id }
+                        saleDao.historyTenders(ids).also { saleDao.deleteHistory(ids) }
+                    }
+                removeCatalog()
+                records.map { HistoryItem.Sale(it) } to tenders
+            }
+        onRemoved(removed.first, removed.second)
     }
 
-    private suspend fun deleteSettledBefore(before: Long): Int =
-        db.withTransaction {
-            val sales = saleDao.sales().first()
-            val refunds = refundDao.refunds().first()
-            val protectedSales = sales.filterNot { it.retentionEligible }.map { it.id }.toSet()
-            val removableRefunds =
-                refunds.filter {
-                    maxOf(it.createdAt, it.processedAt ?: 0) < before && !it.status.unresolved &&
-                        it.saleId !in protectedSales
+    private suspend fun deleteSettledBefore(before: Long): Int = deleteRefundsBefore(before) + deleteSalesBefore(before)
+
+    // The retention batch queries already enforce the age cut-off; only eligibility is decided here.
+    private suspend fun deleteRefundsBefore(before: Long): Int {
+        var deleted = 0
+        keysetBatches<RefundEntity> { last ->
+            val (records, removed, erased) =
+                db.withTransaction {
+                    val records = refundDao.retentionBatch(last?.createdAt ?: Long.MIN_VALUE, last?.id.orEmpty(), before, BATCH_SIZE)
+                    val parents = saleDao.historyParents(records.mapNotNull { it.saleId }.distinct()).associateBy { it.id }
+                    val eligible =
+                        records.filter {
+                            !it.status.unresolved && it.saleId?.let { id -> parents[id]?.retentionEligible } != false
+                        }
+                    Triple(records, refundDao.deleteHistory(eligible.map { it.id }), eligible.map { HistoryItem.Refund(it) })
                 }
-            val retainedReferences = (refunds - removableRefunds.toSet()).mapNotNull { it.saleId }.toSet()
-            val removableSales =
-                sales.filter {
-                    maxOf(
-                        it.createdAt,
-                        it.processedAt ?: 0,
-                        it.captureStartedAt ?: 0,
-                        it.captureProcessedAt ?: 0,
-                    ) <
-                        before &&
-                        it.retentionEligible && it.id !in retainedReferences
-                }
-            removableRefunds.sumOf { refundDao.deleteRefund(it.id) } + removableSales.sumOf { saleDao.deleteSale(it.id) }
+            onRemoved(erased, emptyList())
+            deleted += removed
+            records
         }
+        return deleted
+    }
+
+    private suspend fun deleteSalesBefore(before: Long): Int {
+        var deleted = 0
+        keysetBatches<SaleEntity> { last ->
+            val (records, removed, erased) =
+                db.withTransaction {
+                    val records = saleDao.retentionBatch(last?.createdAt ?: Long.MIN_VALUE, last?.id.orEmpty(), before, BATCH_SIZE)
+                    val referenced = refundDao.referencedSales(records.map { it.id }).toSet()
+                    val eligible = records.filter { it.retentionEligible && it.id !in referenced }
+                    val ids = eligible.map { it.id }
+                    val tenders = saleDao.historyTenders(ids)
+                    Triple(records, saleDao.deleteHistory(ids), eligible.map { HistoryItem.Sale(it) } to tenders)
+                }
+            onRemoved(erased.first, erased.second)
+            deleted += removed
+            records
+        }
+        return deleted
+    }
+
+    /** Lightweight bounded history reads; financial meaning and filtering remain with their pure owners. */
+    class Reader internal constructor(
+        private val db: AppDatabase,
+        private val cpu: CoroutineDispatcher,
+    ) {
+        private val saleDao = db.saleDao()
+        private val refundDao = db.refundDao()
+
+        /**
+         * Reads at most 256 indexed candidates before [before] and on/after [afterAt] (epoch milliseconds).
+         * Null [before] starts at the newest candidate. Receipts are omitted; parent sales accompany refunds for searching.
+         */
+        suspend fun page(
+            before: HistoryKey? = null,
+            afterAt: Long = Long.MIN_VALUE,
+        ): HistoryBatch =
+            db.withTransaction {
+                // UNION ALL merges covering indexes without a temporary sort. Drop duplicate timestamps within this bounded batch.
+                val keys = saleDao.historyKeys(before?.at ?: Long.MAX_VALUE, before?.id ?: "\uffff", afterAt, BATCH_SIZE).distinct()
+                val refunds = refundDao.historyRecords(keys.filter { it.refund }.map { it.id })
+                val sales = saleDao.historyParents(keys.filterNot { it.refund }.map { it.id } + refunds.mapNotNull { it.saleId })
+                HistoryBatch(keys, sales.associateBy { it.id }, refunds.associateBy { it.id })
+            }
+
+        /**
+         * Folds every retained record once in batches of at most 256, omitting receipt bodies.
+         * [reduce] must not retain batches or perform side effects. One read transaction preserves snapshot consistency;
+         * cancellation is checked between batches. Work runs outside Main on the injected CPU/Room executors.
+         */
+        suspend fun <T> fold(
+            initial: T,
+            reduce: (T, List<HistoryItem>) -> T,
+        ): T =
+            withContext(cpu) {
+                db.withTransaction {
+                    var result = initial
+                    keysetBatches<SaleEntity> { last ->
+                        currentCoroutineContext().ensureActive()
+                        saleDao.historyBatch(last?.id.orEmpty(), BATCH_SIZE).also { batch ->
+                            result = reduce(result, batch.map { HistoryItem.Sale(it) })
+                        }
+                    }
+                    keysetBatches<RefundEntity> { last ->
+                        currentCoroutineContext().ensureActive()
+                        refundDao.historyBatch(last?.id.orEmpty(), BATCH_SIZE).also { batch ->
+                            result = reduce(result, batch.map { HistoryItem.Refund(it) })
+                        }
+                    }
+                    result
+                }
+            }
+
+        /** Folds only [shopper]'s token-bearing sales, newest first, without receipt payloads or unrelated history. */
+        suspend fun <T> shopper(
+            shopper: String,
+            initial: T,
+            reduce: (T, List<SaleEntity>) -> T,
+        ): T =
+            withContext(cpu) {
+                db.withTransaction {
+                    var result = initial
+                    keysetBatches<SaleEntity> { last ->
+                        currentCoroutineContext().ensureActive()
+                        saleDao.shopperSales(shopper, last?.createdAt ?: Long.MAX_VALUE, last?.id ?: "\uffff", BATCH_SIZE).also {
+                            result = reduce(result, it)
+                        }
+                    }
+                    result
+                }
+            }
+
+        /** Representative lightweight sales for every payment method present in retained history. */
+        suspend fun methods(): List<SaleEntity> =
+            withContext(cpu) {
+                saleDao.historyMethodIds().chunked(BATCH_SIZE).flatMap { saleDao.historyParents(it) }
+            }
+    }
 
     private companion object {
         const val DAY_MILLIS = 24L * 60 * 60 * 1000
     }
+}
+
+/** Largest number of records any history read or deletion loads at once. */
+internal const val BATCH_SIZE = 256
+
+/**
+ * Runs keyset-paged [next] until it returns fewer than [BATCH_SIZE] records. [next] receives the last record of the
+ * previous batch, or null for the first batch, and returns its own batch.
+ */
+internal inline fun <E> keysetBatches(next: (last: E?) -> List<E>) {
+    var last: E? = null
+    do {
+        val batch = next(last)
+        last = batch.lastOrNull() ?: last
+    } while (batch.size == BATCH_SIZE)
+}
+
+/**
+ * One bounded batch of candidate activity and the records needed to interpret it.
+ *
+ * @property keys Candidates in descending timestamp and ID order.
+ * @property sales Lightweight sales, including refund parents.
+ * @property refunds Lightweight refunds.
+ */
+data class HistoryBatch(
+    val keys: List<HistoryKey>,
+    val sales: Map<String, SaleEntity>,
+    val refunds: Map<String, RefundEntity>,
+) {
+    /** Candidate's original record; null if a concurrent deletion removed it. */
+    fun item(key: HistoryKey): HistoryItem? =
+        if (key.refund) refunds[key.id]?.let(HistoryItem::Refund) else sales[key.id]?.let(HistoryItem::Sale)
 }

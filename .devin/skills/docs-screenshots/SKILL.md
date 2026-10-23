@@ -8,8 +8,8 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 
 ## Output format
 
-- Capture English, Simplified Chinese, Traditional Chinese, Japanese, Brazilian Portuguese, Mexican Spanish and French
-  using `AppSettings.languageTag` (`en`, `zh-CN`, `zh-Hant`, `ja`, `pt-BR`, `es-MX`, `fr-FR`), not translated overlays.
+- Capture English, Mexican Spanish, French, Japanese, Brazilian Portuguese, Simplified Chinese and Traditional Chinese
+  using `AppSettings.languageTag` (`en`, `es-MX`, `fr-FR`, `ja`, `pt-BR`, `zh-CN`, `zh-Hant`), not translated overlays.
   English assets live directly in `docs/images/`; the other sets live in matching language subdirectories. Localized
   pages and social metadata must use their own set. Use the
   separate localized café fixtures in `app/src/main/assets/sample-data.json`, including native merchant details,
@@ -18,17 +18,19 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 - The site shows every screenshot inside a terminal frame, so each must have its frame's screen ratio
   (`WebsiteTest`'s "screenshots match their terminal frames" checks the PNG sizes, the `width`/`height` attributes and
   the white screen `rect` of each SVG):
-  - S1F2 (9:16): captured at the S1F2's 720×1280 xhdpi, saved as 540×960. All screenshots except the hero's AMS1 one.
-  - AMS1 (3:5): `sale-ams1.png`, captured and saved at the AMS1's 480×800 hdpi (`wm size 480x800`, `wm density 240`
-    on the S1F2 AVD, then `wm size reset`/`wm density reset`; `screencap` then returns 480×800).
+  - S1F2 (9:16): laid out at the S1F2's 720×1280 xhdpi, saved as 540×960. All screenshots except the hero's AMS1 one.
+  - AMS1 (3:5): `sale-ams1.png`, laid out and saved at the AMS1's 480×800 hdpi (`wm density 240` on the S1F2 AVD).
 - PNGs with a 96-colour palette (median cut, no dither), made by `scripts/docs-capture process`; see Capture script.
-- No system bars: Adyen terminals show no clock or gesture bar. Hide the status bar icons and clock with
-  `settings put secure icon_blacklist
-  clock,battery,wifi,mobile,airplane,cast,hotspot,volume,bluetooth,location,alarm_clock,zen,ethernet,vpn,nfc,rotate,headset`
-  (then `stop`/`start`), and before resizing paint the status bar (top 48 px at 720×1280) and gesture bar (bottom 48 px)
-  with the app's first row below and last row above them, column by column. For an existing 540×960 PNG that is the top
-  and bottom 36 px; for `sale-ams1.png` (480×800, three-button bar) the top 36 px and bottom 72 px. Delete
-  `icon_blacklist` afterwards.
+- Full screen, no system bars: Adyen terminals show no clock or gesture bar, so the app fills their whole screen. The
+  emulator cannot hide its bars (SystemUI is persistent, and `policy_control` is gone since Android 11), so captures use
+  a logical display taller than the terminal's by exactly one status bar and one gesture bar (24 dp each): the app
+  lays out between them as it would on the terminal, and `process` crops the bars off. S1F2: `wm size 720x1376`, bars
+  48 px each (raw 720×1376 → 720×1280 → 540×960). AMS1: `wm size 480x872` at `wm density 240`, bars 36 px each (raw
+  480×872 → 480×800). Never paint over the bars or stretch: the crop keeps the layout the app draws. `scripts/docs-capture`
+  sets the sizes; check the bars with `dumpsys window displays | grep InsetsSource`.
+- Size classes follow the window between the bars (`Dimens.forWindow`). The S1F2 frame's full 640 dp gives `Regular`,
+  where an S1F2 that keeps its own bars (about 568 dp, `DimensTest`) gets `Medium`; the AMS1 is `Compact` either way
+  (under 360 dp wide). S1F2 screenshots therefore show the Regular layout, filling the frame.
 - If a frame's screen `rect` changes, update `.terminal-* img` in `docs/styles.css` (percentages of the viewBox) and
   the social page to match.
 
@@ -38,7 +40,7 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 in every language: `prepare`, `locale LANG`, `snapshot`/`restore NAME.tar` (app data in `/data/local/tmp`), `launch
   LANG`,
 `tap LANG KEY` (a string resource, or `=literal text`), `scroll LANG KEY`, `shot LANG NAME` and `finish`. Raw
-Captures collect in `/tmp/minimpos-shots` as `LANG-NAME.png`; `process` then paints the system bars, scales S1F2 to
+Captures collect in `/tmp/minimpos-shots` as `LANG-NAME.png`; `process` then crops the system bars, scales S1F2 to
 540×960 (AMS1 stays 480×800) and quantizes them into `docs/images[/LANG]/` through `:tooling`'s `screenshots` command
 (`DocsScreenshots`). Keep per-language fixtures as on-device snapshots (`docs-<set>-<lang>.tar`); `flow LANG NAME...`
 restores one before each named flow:
@@ -49,7 +51,7 @@ restores one before each named flow:
 - `authorize`: pre-auth; `preauth`: pre-auth-detail; `settings`: terminal-setup, tax, terminal-tipping.
 - `transfer`: transfer, export; `partial`: partial-payment; `gratuity`: tip-receipt, tip; `tax_dialog`: tax-dialog.
 - `offline`: offline-payment, reconciliation.
-- `ams1`: sale and the 480×800 sale-ams1 image. Both terminal sizes now share the raw processing directory.
+- `ams1`: sale and the sale-ams1 image (raw 480×872). Both terminal sizes share the raw processing directory.
 
 `settings LANG KEY` opens a Settings section past the admin PIN; `expand_receipt` expands the open simulated printer.
 Add a named flow there for each screenshot you
@@ -77,8 +79,7 @@ steps with temporary Python, Node or shell scripts. Fixture resets refuse non-em
   with `settings put global auto_time_zone 0` and apply the fixture's `timeZone` with `cmd alarm set-timezone
   <timeZone>`.
   Verify `getprop persist.sys.timezone`; a numeric Binder call or setprop alone is not reliable. Window, transition
-  and animator animations off; SystemUI demo mode (clock 09:30, full Wi-Fi and battery, no notifications; re-send it
-  after every `stop`/`start`).
+  and animator animations off. The status bar's clock and icons are cropped away, so no demo mode is needed.
 - The frames show terminals, so make the app behave as on one: `settings put global device_name S1F2-000158213605014`
   and `"terminal": {"mode": "SIMULATOR"}` in the seeded `settings.json` (Automatic would pick the local terminal).
   Off a terminal, results and history add Share receipt, which terminals never show. `settings delete global
@@ -119,12 +120,12 @@ Seeded before the first launch (debug builds only), piped in with
 | Page language | Device locale | Currency | Main sale | Item refund | Tip sale + tip | Deposit | Partial sale |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | English | en-AU | AUD | 34.00 | 11.00 | 38.00 + 7.00 | 200.00 | 21.39 |
-| Simplified Chinese | zh-SG | SGD | 33.50 | 10.00 | 35.00 + 5.00 | 200.00 | 21.39 |
-| Traditional Chinese | zh-HK | HKD | 232.00 | 66.00 | 192.00 + 18.00 | 2,000.00 | 121.39 |
-| Japanese | ja-JP | JPY | 3,050 | 1,000 | 3,000 + 500 | 20,000 | 2,139 |
-| Brazilian Portuguese | pt-BR | BRL | 87.00 | 30.00 | 80.00 + 10.00 | 200.00 | 21.39 |
 | Mexican Spanish | es-MX | MXN | 335.00 | 100.00 | 330.00 + 50.00 | 2,000.00 | 21.39 |
 | French | fr-FR | EUR | 27.00 | 9.00 | 24.00 + 5.00 | 200.00 | 21.39 |
+| Japanese | ja-JP | JPY | 3,050 | 1,000 | 3,000 + 500 | 20,000 | 2,139 |
+| Brazilian Portuguese | pt-BR | BRL | 87.00 | 30.00 | 80.00 + 10.00 | 200.00 | 21.39 |
+| Simplified Chinese | zh-SG | SGD | 33.50 | 10.00 | 35.00 + 5.00 | 200.00 | 21.39 |
+| Traditional Chinese | zh-HK | HKD | 232.00 | 66.00 | 192.00 + 18.00 | 2,000.00 | 121.39 |
 
 ## Flows
 

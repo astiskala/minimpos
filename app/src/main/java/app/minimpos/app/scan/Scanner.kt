@@ -264,27 +264,43 @@ private fun bindCamera(
     }
 }
 
-private class BarcodeAnalyzer(
+/**
+ * Serial camera analyzer with reusable luminance buffers and at most ten analyzed frames per second.
+ * @param formats Barcode formats accepted by this scan.
+ * @param rotateForLinear Whether a second decode uses a rotated plane for linear barcodes.
+ * @param clock Monotonic elapsed milliseconds for throttling, independent of wall-clock changes.
+ * @param onCode Receives decoded text on the analysis executor.
+ */
+internal class BarcodeAnalyzer(
     formats: List<BarcodeFormat>,
     private val rotateForLinear: Boolean,
+    private val clock: () -> Long = android.os.SystemClock::elapsedRealtime,
     private val onCode: (String) -> Unit,
 ) : ImageAnalysis.Analyzer {
-    private val reader =
-        MultiFormatReader().apply {
-            setHints(
-                mapOf(
-                    DecodeHintType.POSSIBLE_FORMATS to formats,
-                    DecodeHintType.TRY_HARDER to true,
-                    DecodeHintType.CHARACTER_SET to "UTF-8",
-                ),
-            )
-        }
+    private val ordinaryHints: Map<DecodeHintType, Any> =
+        mapOf(
+            DecodeHintType.POSSIBLE_FORMATS to formats,
+            DecodeHintType.CHARACTER_SET to "UTF-8",
+        )
+    private val harderHints = ordinaryHints + (DecodeHintType.TRY_HARDER to true)
+    private val reader = MultiFormatReader().apply { setHints(ordinaryHints) }
+
+    private var luminance = ByteArray(0)
+    private var rotated = ByteArray(0)
+    private var lastAnalyzed = 0L
+    private var failures = 0
 
     override fun analyze(image: ImageProxy) {
         image.use {
+            val now = clock()
+            if (now - lastAnalyzed < ANALYSIS_INTERVAL_MILLIS) return
+            lastAnalyzed = now
             val plane = image.planes[0]
             val buffer = plane.buffer
-            val data = ByteArray(buffer.remaining()).also { bytes -> buffer.get(bytes) }
+            val length = buffer.remaining()
+            if (luminance.size != length) luminance = ByteArray(length)
+            buffer.get(luminance)
+            val data = luminance
             val width = image.width
             val height = image.height
             // Rows of the Y plane are rowStride bytes apart, which can be more than the image width; the source crops to it.
@@ -299,7 +315,14 @@ private class BarcodeAnalyzer(
                     } else {
                         null
                     }
-            text?.let(onCode)
+            if (text == null) {
+                failures++
+                if (failures == HARDER_AFTER_FAILURES) reader.setHints(harderHints)
+            } else {
+                if (failures >= HARDER_AFTER_FAILURES) reader.setHints(ordinaryHints)
+                failures = 0
+                onCode(text)
+            }
         }
     }
 
@@ -320,12 +343,17 @@ private class BarcodeAnalyzer(
         width: Int,
         height: Int,
     ): ByteArray {
-        val rotated = ByteArray(width * height)
+        if (rotated.size != width * height) rotated = ByteArray(width * height)
         for (y in 0..<height) {
             for (x in 0..<width) {
                 rotated[x * height + (height - 1 - y)] = data[y * stride + x]
             }
         }
         return rotated
+    }
+
+    private companion object {
+        const val ANALYSIS_INTERVAL_MILLIS = 100L
+        const val HARDER_AFTER_FAILURES = 3
     }
 }

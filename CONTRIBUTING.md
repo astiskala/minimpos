@@ -210,8 +210,8 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
   others `@param`. Don't merely repeat a declaration's name.
 - Keep Compose components small. Pass state/callbacks rather than view models below screen level, reuse components,
   and use `ColumnScope`/`RowScope` extensions for siblings that need parent spacing.
-- Put user text in resources, in short US English, with Simplified/Traditional Chinese, Japanese, Brazilian Portuguese,
-  Mexican Spanish and French translations
+- Put user text in resources, in short US English, with Mexican Spanish, French, Japanese, Brazilian Portuguese
+  and Simplified/Traditional Chinese translations
   and matching format arguments. Group `strings.xml` by feature, keeping the same section and resource order in every
   language; place new entries beside related strings.
   CJK plurals use `other`. Preserve identifiers, stored spelling and Adyen text; keep Customer Area paths English.
@@ -313,8 +313,8 @@ helper runs `docs/js/setup.js` and the vendored `qrcodegen.js`. Preserve the hel
 format alongside `TransferCodec`, `QrChunks`, `TransferSeal` and the helper vectors in `SetupTransferTest`.
 
 The merchant documentation has three guides: setup, using the app, troubleshooting. Each fact has one home, with
-links from elsewhere. Update English, Simplified Chinese, Traditional Chinese, Japanese, Brazilian Portuguese, Mexican
-Spanish and French together, including metadata
+links from elsewhere. Update English, Mexican Spanish, French, Japanese, Brazilian Portuguese, Simplified Chinese and
+Traditional Chinese together, including metadata
 and reciprocal language switches. Website tests protect workflow coverage and translation parity, not a fixed count
 of pages or headings.
 For a quick check, run `./gradlew :website-test:check`; the full gate remains required.
@@ -367,8 +367,10 @@ scripts/docs-capture shutdown
 
 `batch [LANG...]` builds/installs the current debug APK, applies each locale/time zone and fixed demo clock, restores
 fixtures before each named flow and captures both terminal sizes. `DOCS_DATE` overrides the default fixture date
-(`101619302026.00`, Android's `MMDDhhmmYYYY.ss`). Home captures refuse splash screens. Raw S1F2 and AMS1 images share
-one folder; processing selects dimensions and bar heights from the terminal-specific filename.
+(`101619302026.00`, Android's `MMDDhhmmYYYY.ss`). Home captures refuse splash screens. Terminals have no system bars,
+so the emulator display is taller than the terminal's by one status bar and one gesture bar (S1F2 720×1376, AMS1
+480×872) and processing crops them: screenshots are full screen, like the terminal. Raw S1F2 and AMS1 images share one
+folder; processing selects dimensions and bar heights from the terminal-specific filename.
 
 `social` renders the checked-in template and seven-language copy with local assets only; use `MINIMPOS_CHROME` for a
 Chrome/Chromium or `chrome-headless-shell` executable. `review` validates language parity, frame dimensions and indexed

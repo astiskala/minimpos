@@ -46,14 +46,14 @@ class RefundBook(
     override suspend fun settle(
         id: String,
         settlement: Settlement,
-    ) {
+    ): Boolean {
         val status =
             when (settlement.status) {
                 SettlementStatus.SUCCEEDED -> RefundStatus.REQUESTED
                 SettlementStatus.UNKNOWN -> RefundStatus.UNKNOWN
                 SettlementStatus.CANCELLED, SettlementStatus.DECLINED, SettlementStatus.FAILED -> RefundStatus.FAILED
             }
-        refunds.settle(id, status, settlement.message, settlement.details, settlement.reason)
+        return refunds.settle(id, status, settlement.message, settlement.details, settlement.reason)
     }
 
     override suspend fun unsettledServiceId(id: String): String? = refunds.get(id)?.takeIf { it.status == RefundStatus.UNKNOWN }?.serviceId

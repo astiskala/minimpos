@@ -1,5 +1,6 @@
 package app.minimpos.terminal.simulator
 
+import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.NexoVocabulary
@@ -155,6 +156,7 @@ class TerminalSimulator(
     private val onPrint: (PrintJob) -> Unit = {},
 ) : TerminalTransport {
     private val completed = CompletedTransactions()
+    private val chargeAnswers = ConcurrentHashMap<String, CardChargeResult>()
     private val aborted = ConcurrentHashMap.newKeySet<String>()
     private val inProgress = ConcurrentHashMap.newKeySet<String>()
     private val ledger = SimulatedLedger()
@@ -170,7 +172,25 @@ class TerminalSimulator(
      * simulator's outcome and remembered in the ledger [modifications] shares.
      */
     fun savedCards(cards: suspend (shopperReference: String) -> List<StoredCard>): SimulatedSavedCards =
-        SimulatedSavedCards(random, ledger, cards) { config().outcome }
+        SimulatedSavedCards(random, ledger, cards, chargeAnswers) { config().outcome }
+
+    /** Forgets all history identities after confirmed purge, retaining independent reconciliation period totals. */
+    fun forgetHistory() {
+        completed.clear()
+        aborted.clear()
+        paymentAmountsByTransactionId.clear()
+        chargeAnswers.clear()
+        ledger.clear()
+    }
+
+    /** Releases only durably deleted history identities, preserving unfinished retries and terminal period totals. */
+    fun forget(removed: SimulatorRemoval) {
+        completed.forget(removed.serviceIds, removed.transactionIds)
+        removed.serviceIds.forEach(aborted::remove)
+        removed.transactionIds.forEach(paymentAmountsByTransactionId::remove)
+        removed.chargeKeys.forEach(chargeAnswers::remove)
+        ledger.forget(removed.pspReferences)
+    }
 
     override suspend fun send(
         request: TerminalAPIRequest,
@@ -387,6 +407,7 @@ class TerminalSimulator(
         payment.givingServiceId?.let { givingId ->
             completed.remember(
                 givingId,
+                ownerTransactionId = payment.transactionId,
                 payment =
                     PaymentResponse().apply {
                         response = Response().apply { result = ResultType.SUCCESS }
@@ -411,7 +432,7 @@ class TerminalSimulator(
     ) {
         ledger.approved(payment.psp, manualCapture = payment.preAuthorisation)
         if (!payment.preAuthorisation) {
-            val key = if (payment.isOffline) payment.tender else "${payment.tender}.${payment.psp}"
+            val key = payment.transactionId
             paymentAmountsByTransactionId[key] = currency to authorizedAmount
             periodTotals.compute(currency) { _, current ->
                 val base = current ?: SimulatedPeriodTotals(currency)

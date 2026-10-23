@@ -18,23 +18,56 @@ import java.util.concurrent.ConcurrentHashMap
  * in memory only; thread-safe.
  */
 internal class CompletedTransactions {
-    private val bodies = ConcurrentHashMap<String, RepeatedResponseMessageBody>()
+    private val bodies = ConcurrentHashMap<String, Entry>()
+    private val byTransaction = mutableMapOf<String, MutableSet<String>>()
+
+    /** Releases all cached status answers after confirmed complete history deletion. */
+    @Synchronized
+    fun clear() {
+        bodies.clear()
+        byTransaction.clear()
+    }
+
+    /** Releases exact stored identities after durable history deletion, including earlier split-tender requests. */
+    @Synchronized
+    fun forget(
+        serviceIds: Set<String>,
+        transactionIds: Set<String>,
+    ) {
+        val ids = serviceIds + transactionIds.flatMap { byTransaction[it].orEmpty() }
+        ids.forEach { id ->
+            val transaction = bodies.remove(id)?.transactionId
+            transaction?.let {
+                byTransaction[it]?.remove(id)
+                if (byTransaction[it].isNullOrEmpty()) byTransaction.remove(it)
+            }
+        }
+    }
 
     /**
      * Remembers the response of the transaction sent with [serviceId]: a [payment] or a [reversal]; with neither, nothing
-     * is remembered. A later response for the same ServiceID replaces the earlier one.
+     * is remembered. A later response for the same ServiceID replaces the earlier one. [ownerTransactionId] ties a
+     * related Giving reply to its payment's durable retention identity without altering that reply's protocol fields.
      */
+    @Synchronized
     fun remember(
         serviceId: String,
         payment: PaymentResponse? = null,
         reversal: ReversalResponse? = null,
+        ownerTransactionId: String? = null,
     ) {
         if (payment == null && reversal == null) return
-        bodies[serviceId] =
+        forget(setOf(serviceId), emptySet())
+        val transactionId = ownerTransactionId ?: payment?.poiData?.poiTransactionID?.transactionID
+        transactionId?.let {
+            byTransaction.getOrPut(it) { mutableSetOf() }.add(serviceId)
+        }
+        val body =
             RepeatedResponseMessageBody().apply {
                 paymentResponse = payment
                 reversalResponse = reversal
             }
+        bodies[serviceId] = Entry(body, transactionId)
     }
 
     /**
@@ -42,13 +75,22 @@ internal class CompletedTransactions {
      * remembered.
      */
     fun repeat(request: TransactionStatusRequest): TransactionStatusResponse? {
-        val body = request.messageReference?.serviceID?.let(bodies::get) ?: return null
+        val body =
+            request.messageReference
+                ?.serviceID
+                ?.let(bodies::get)
+                ?.body ?: return null
         return TransactionStatusResponse().apply {
             response = Response().apply { result = ResultType.SUCCESS }
             messageReference = request.messageReference
             repeatedMessageResponse = RepeatedMessageResponse().apply { repeatedResponseMessageBody = body }
         }
     }
+
+    private class Entry(
+        val body: RepeatedResponseMessageBody,
+        val transactionId: String?,
+    )
 
     /** Status responses for transactions that are not remembered. */
     companion object {

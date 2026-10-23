@@ -54,7 +54,10 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
 import app.minimpos.app.data.repo.ImportMode
@@ -90,6 +93,7 @@ import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.catalogue.Catalogue
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -173,6 +177,19 @@ private fun ExportChoice(
     }
 }
 
+/** Advances animated setup codes every 1.8 seconds only while [lifecycle] is STARTED; stops on destruction or cancellation. */
+internal suspend fun playTransferCodes(
+    lifecycle: Lifecycle,
+    advance: () -> Unit,
+) {
+    lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        while (isActive) {
+            delay(ADVANCE_MILLIS)
+            advance()
+        }
+    }
+}
+
 /** The transfer code (when there are secrets), the QR codes in a loop with their controls, and what they hold. */
 @Composable
 private fun ExportCodes(
@@ -183,11 +200,9 @@ private fun ExportCodes(
     var index by remember { mutableIntStateOf(0) }
     var playing by rememberSaveable { mutableStateOf(true) }
     KeepScreenOn()
-    LaunchedEffect(codes.size, playing) {
-        while (playing && codes.size > 1) {
-            delay(ADVANCE_MILLIS)
-            index = (index + 1) % codes.size
-        }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(codes.size, playing, lifecycle) {
+        if (playing && codes.size > 1) playTransferCodes(lifecycle) { index = (index + 1) % codes.size }
     }
     val dimens = LocalDimens.current
     Column(
@@ -205,7 +220,11 @@ private fun ExportCodes(
         )
         TransferCodeCard(export.code, Modifier.widthIn(max = 420.dp))
         val code = codes[index.coerceIn(0, codes.lastIndex)]
-        QrImage(code, Modifier.widthIn(max = 420.dp).fillMaxWidth().testTag("exportQr"))
+        QrImage(
+            code,
+            Modifier.widthIn(max = 420.dp).fillMaxWidth().testTag("exportQr"),
+            nextContent = codes.takeIf { it.size > 1 }?.get((index + 1) % codes.size),
+        )
         if (codes.size > 1) {
             CodeControls(
                 index = index,

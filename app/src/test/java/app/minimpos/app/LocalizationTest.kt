@@ -1,5 +1,6 @@
 package app.minimpos.app
 
+import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.feature.settings.currencyOptions
 import app.minimpos.app.feature.settings.localName
 import app.minimpos.app.receipt.PrintRenderer
@@ -248,7 +249,7 @@ class LocalizationTest {
         }
 
     @Test
-    fun `Android app language settings advertise both Chinese scripts`() {
+    fun `Android app language settings advertise both Chinese scripts in language tag order`() {
         val locales =
             DocumentBuilderFactory
                 .newInstance()
@@ -263,7 +264,20 @@ class LocalizationTest {
                     .getNamedItem("android:name")
                     .nodeValue
             }
-        assertThat(names).containsExactly("en", "zh-CN", "zh-Hant", "ja", "pt-BR", "es-MX", "fr-FR")
+        assertThat(names).containsExactly("en", "es-MX", "fr-FR", "ja", "pt-BR", "zh-CN", "zh-Hant").inOrder()
+        assertThat(AppSettings.LANGUAGE_TAGS).containsExactly("", *names.toTypedArray()).inOrder()
+    }
+
+    @Test
+    fun `language choices carry each language's own name in every app language`() {
+        // Endonyms (CLDR names), so a merchant can find their language without reading the current one.
+        val ownNames = listOf("English", "Español (México)", "Français (France)", "日本語", "Português (Brasil)", "简体中文", "繁體中文")
+        allResourceFolders.forEach { folder ->
+            val items = resourceEntries(folder).getValue("string-array:app_language_names")
+            assertWithMessage(folder).that(items.drop(1)).containsExactlyElementsIn(ownNames).inOrder()
+        }
+        assertThat(RuntimeEnvironment.getApplication().resources.getStringArray(R.array.app_language_names))
+            .hasLength(AppSettings.LANGUAGE_TAGS.size)
     }
 
     @Test

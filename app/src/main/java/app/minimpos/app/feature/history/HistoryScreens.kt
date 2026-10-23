@@ -145,6 +145,22 @@ fun HistoryScreen(
                 )
             }
             HistoryFilters(state.filter, vm::setFilter, state.methods, state.method, vm::setMethod)
+            if (state.hasNewer || state.hasOlder) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    SecondaryButton(
+                        stringResource(R.string.action_previous),
+                        vm::newer,
+                        modifier = Modifier.weight(1f),
+                        enabled = state.hasNewer,
+                    )
+                    SecondaryButton(
+                        stringResource(R.string.action_next),
+                        vm::older,
+                        modifier = Modifier.weight(1f),
+                        enabled = state.hasOlder,
+                    )
+                }
+            }
             OutcomeMessage(state.print)
             val gate = currentSetupGate()
             val showAll = {

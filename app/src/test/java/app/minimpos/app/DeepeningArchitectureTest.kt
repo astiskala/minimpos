@@ -20,6 +20,7 @@ import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.payment.AutoDelivery
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutRefunds
+import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SavedCardCharges
@@ -28,9 +29,11 @@ import app.minimpos.app.payment.StoredTransaction
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.receipt.ReceiptFactory
 import app.minimpos.app.receipt.ReceiptKind
+import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SharedKeySetupOutcome
+import app.minimpos.app.terminal.SimulatedTerminal
 import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.tax.StarterTax
@@ -47,6 +50,30 @@ import org.junit.Test
 
 /** Caller knowledge absorbed by capture execution, saved-card lookup, shared-key completion and automatic receipt delivery. */
 class DeepeningArchitectureTest {
+    @Test
+    fun `only committed history removal wiring releases process registries`() = historyRemoval.check(app)
+
+    @Test
+    fun `history lifetime rejects a caller discarding retained operations`() =
+        reject(listOf(historyRemoval), HistoryRemovalViolation::class.java)
+
+    private class HistoryRemovalViolation {
+        fun forget(receipts: ReceiptDelivery) = receipts.forget(setOf("unresolved"))
+
+        fun purge(receipts: ReceiptDelivery) = receipts.forgetAll()
+    }
+
+    @Test
+    fun `only the durable transaction lifecycle releases late answers`() = lateAnswerLifetime.check(app)
+
+    @Test
+    fun `late answer lifetime rejects premature caller acknowledgement`() =
+        reject(listOf(lateAnswerLifetime), LateAnswerViolation::class.java)
+
+    private class LateAnswerViolation {
+        fun release(attempt: Attempt.Made<*>) = attempt.onStored()
+    }
+
     @Test
     fun `test environment cannot fall back to real terminal or saved card transports`() =
         offlineFixture.check(ClassFileImporter().importClasses(TestEnvironment::class.java))
@@ -215,6 +242,26 @@ class DeepeningArchitectureTest {
     }
 
     private companion object {
+        // Cleanup must follow a committed history deletion, never a screen's guess about an unknown outcome.
+        val historyRemoval: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within(AppContainer::class.java.name))
+                .should()
+                .callMethodWhere(callTo(FinancialOperations::class.java.name, "forget", "forgetAll"))
+                .orShould()
+                .callMethodWhere(callTo(ReceiptDelivery::class.java.name, "forget", "forgetAll"))
+                .orShould()
+                .callMethodWhere(callTo(SimulatedTerminal::class.java.name, "forget", "forgetAll"))
+
+        // A late Tap to Pay answer is the only recovery evidence; release it only after durable financial settlement.
+        val lateAnswerLifetime: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within(TransactionLifecycle::class.java.name))
+                .should()
+                .callMethodWhere(callTo("app.minimpos.app.terminal.Attempt\$Made", "getOnStored"))
+
         // Missing fake wiring must fail offline, never turn a unit/UI test into a real network request.
         val offlineFixture: ArchRule =
             noClasses().should().dependOnClassesThat().belongToAnyOf(AdyenLocalTransport::class.java, CheckoutSavedCards::class.java)

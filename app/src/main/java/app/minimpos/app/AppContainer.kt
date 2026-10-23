@@ -8,8 +8,10 @@ import androidx.datastore.dataStoreFile
 import app.minimpos.app.data.db.AppDatabase
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.CatalogRepository
+import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
@@ -94,6 +96,7 @@ import app.minimpos.core.tax.StarterTax
 import app.minimpos.terminal.checkout.AdyenCheckout
 import app.minimpos.terminal.checkout.CheckoutApi
 import app.minimpos.terminal.checkout.CheckoutCredentials
+import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppCredentials
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
@@ -120,6 +123,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -130,6 +134,7 @@ import kotlinx.serialization.serializer
 import okhttp3.OkHttpClient
 import java.io.File
 import java.util.Locale
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 internal val Context.locale: Locale get() = resources.configuration.locales[0] ?: Locale.ROOT
@@ -258,7 +263,7 @@ class AppContainer(
     val refundRecords = RefundRepository(database, sales)
 
     /** The combined transaction history and its housekeeping. */
-    val history = HistoryRepository(database)
+    val history = HistoryRepository(database, onRemoved = ::historyRemoved, onPurged = ::historyPurged)
 
     /** Copies the catalogue, settings and secrets to another device by QR code, and imports the setup helper's codes. */
     val setupTransfer = SetupTransfer(catalog, settings, secrets, onTerminal = device.isAdyenTerminal, history = history)
@@ -329,7 +334,14 @@ class AppContainer(
                 CheckoutApi.of(
                     simulator.modifications,
                     SimulatedPaymentLinks(),
-                    simulator.savedCards { SavedCardCharges.simulatedCards(history.snapshot(), it) },
+                    simulator.savedCards { shopper ->
+                        history.reader
+                            .shopper(shopper, linkedMapOf<String, StoredCard>()) { cards, batch ->
+                                SavedCardCharges.simulatedCards(batch, shopper).forEach { cards.putIfAbsent(it.id, it) }
+                                cards
+                            }.values
+                            .toList()
+                    },
                 ),
             connect = checkout ?: { AdyenCheckout(it, application.toApplicationInfo(), http) },
             verifyAccess = SetupAccess(terminalDetails)::verify,
@@ -533,6 +545,28 @@ class AppContainer(
      */
     val operations = FinancialOperations(payments, refunds, savedCardCharges, checkoutRefunds, links, sales, refundRecords)
 
+    private fun historyPurged() {
+        operations.forgetAll()
+        receipts.forgetAll()
+        simulator.forgetAll()
+    }
+
+    private fun historyRemoved(
+        items: List<HistoryItem>,
+        tenders: List<SaleTenderEntity>,
+    ) {
+        val ids = items.map { it.id }.toSet()
+        operations.forget(ids)
+        receipts.forget(ids)
+        val chargeKeys =
+            items
+                .filterIsInstance<HistoryItem.Sale>()
+                .filter { it.sale.savedCard }
+                .map { SavedCardCharges.idempotencyKey(it.id) }
+                .toSet()
+        simulator.forget(items, tenders, chargeKeys)
+    }
+
     /**
      * One terminal reconciliation: rechecks unresolved terminal operations, reads or closes the period and compares its
      * totals against local accounting, so the screens only follow its outcome.
@@ -612,7 +646,11 @@ class AppContainer(
             historySwitches.recover()
             history.settleInterrupted()
             catalog.seedDefaults(starterTaxRates())
-            history.prune(settings.current().history.retentionDays, System.currentTimeMillis())
+            while (true) {
+                val busy = financialOperationRunning()
+                if (!busy) history.prune(settings.current().history.retentionDays, System.currentTimeMillis())
+                delay(if (busy) 15.minutes else 1.days)
+            }
         }
         appScope.launch {
             storage.awaitReady()

@@ -17,6 +17,7 @@ import app.minimpos.app.await
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.items
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.started
@@ -67,7 +68,7 @@ class PinAccessFlowTest {
 
     @Test
     fun `system Back on the new PIN pad cancels it like the arrow and stays in Security`() {
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_security")
         compose.onNodeWithTag("section_security").performScrollTo().performClick()
         waitForTag("setPin")
@@ -144,7 +145,7 @@ class PinAccessFlowTest {
     fun `an idle settings screen locks without navigating`() {
         await { container.pinManager.setPin("1357") }
         container.sessionLock.unlock()
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_security")
         ShadowSystemClock.advanceBy(Duration.ofMinutes(3))
         compose.mainClock.advanceTimeBy(1_100)

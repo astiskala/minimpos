@@ -102,6 +102,10 @@ class PaymentLinksTest {
         assertThat(second).isNotEqualTo(first)
         saleWhen(second) { it.status == SaleStatus.AWAITING_PAYMENT }
         assertThat(api.created).hasSize(2)
+        // Old starts remain rejected even after a newer checkout has advanced the bounded high-water mark.
+        assertThat(links.start(start)).isNull()
+        val field = PaymentLinks::class.java.getDeclaredField("linkedRevisions").apply { isAccessible = true }
+        assertThat(field.get(links) as Map<*, *>).hasSize(1)
     }
 
     @Test

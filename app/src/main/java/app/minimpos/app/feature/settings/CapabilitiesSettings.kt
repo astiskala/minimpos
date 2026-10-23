@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -69,6 +70,7 @@ internal fun ColumnScope.CapabilitiesSection(
                 events::onRefresh,
                 blocked = capabilities.refreshBlocked,
                 loading = capabilities.checking,
+                icon = Icons.Default.Refresh,
                 modifier = Modifier.testTag("refreshCapabilities"),
             )
         }

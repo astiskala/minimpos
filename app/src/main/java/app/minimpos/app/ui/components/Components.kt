@@ -216,19 +216,21 @@ fun LabeledValue(
     val compact = LocalDimens.current.compact
     // Smaller on narrow screens, so labels such as "Reference" are not split mid-word by long values.
     val style = if (compact) MaterialTheme.typography.bodyMedium else LocalTextStyle.current
-    Row(
-        modifier = modifier.fillMaxWidth().padding(vertical = if (compact) 3.dp else 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = style, modifier = Modifier.weight(1f))
-        Spacer(Modifier.width(if (compact) 8.dp else 12.dp))
-        Text(
-            value,
-            style = style,
-            fontWeight = if (emphasize) FontWeight.Bold else FontWeight.Normal,
-            textAlign = TextAlign.End,
-            modifier = Modifier.widthIn(max = if (compact) 180.dp else 240.dp),
-        )
+    // The label keeps 104 dp of the row (the value may always have half), so a long value wraps at its own words and the
+    // label wraps only between words ("Offline processing"), never inside one.
+    BoxWithConstraints(modifier.fillMaxWidth().padding(vertical = if (compact) 3.dp else 4.dp)) {
+        val valueMax = (maxWidth - 104.dp).coerceAtLeast(maxWidth * 0.5f)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = style, modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(if (compact) 8.dp else 12.dp))
+            Text(
+                value,
+                style = style,
+                fontWeight = if (emphasize) FontWeight.Bold else FontWeight.Normal,
+                textAlign = TextAlign.End,
+                modifier = Modifier.widthIn(max = valueMax),
+            )
+        }
     }
 }
 

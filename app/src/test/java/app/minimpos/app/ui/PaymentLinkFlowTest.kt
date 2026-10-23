@@ -104,7 +104,7 @@ class PaymentLinkFlowTest {
         links.status = PaymentLinkStatus.COMPLETED
         compose.onNodeWithTag("checkLink").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Approved"), 15_000)
-        waitForTag("linkCheckResult")
+        compose.waitUntilAtLeastOneExists(hasTestTag("linkCheckResult") and hasText("Approved"), 15_000)
         compose.onNodeWithTag("linkCheckResult").assertTextEquals("Approved")
         compose.onNodeWithTag("linkCheckResultOk").performClick()
         compose.onNodeWithText("Paid online with the payment link", substring = true).assertExists()
@@ -125,7 +125,7 @@ class PaymentLinkFlowTest {
 
     @Test
     fun `payment link settings offer expiry without a redundant API setup warning`() {
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_payments")
         compose.onNodeWithTag("section_payments").performScrollTo().performClick()
         compose.onNodeWithTag("paymentLinks").assertDoesNotExist()

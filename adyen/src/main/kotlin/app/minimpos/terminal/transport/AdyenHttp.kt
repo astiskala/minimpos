@@ -11,6 +11,7 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.NoRouteToHostException
 import java.net.UnknownHostException
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
 
 /** What one call to an Adyen API returned, see [AdyenHttp]. */
@@ -142,11 +143,10 @@ internal class AdyenHttp(
             val built = request.header("x-api-key", apiKey).build()
             try {
                 client
-                    .newBuilder()
-                    .callTimeout(timeout)
-                    .build()
                     .newCall(built)
-                    .execute()
+                    .apply {
+                        timeout().timeout(timeout.inWholeNanoseconds, TimeUnit.NANOSECONDS)
+                    }.execute()
                     .use { AdyenReply.Answered(it.code, it.body.string(), it.header("transient-error").equals("true", ignoreCase = true)) }
             } catch (e: IOException) {
                 AdyenReply.Failed(failure(built.url, e))

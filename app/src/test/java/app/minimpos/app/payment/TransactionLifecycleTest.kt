@@ -24,6 +24,7 @@ import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.actions
 import app.minimpos.app.history.standing
+import app.minimpos.app.items
 import app.minimpos.app.started
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
@@ -108,6 +109,107 @@ class TransactionLifecycleTest {
             it.copy(receipt = it.receipt.copy(autoPrint = true), simulator = it.simulator.copy(outcome = outcome))
         }
         await { container.terminalStatus.state.first { it.printerAvailable } }
+    }
+
+    private fun retainedRequests(lifecycle: TransactionLifecycle<*>): Map<*, *> {
+        val runner =
+            TransactionLifecycle::class.java
+                .getDeclaredField("runner")
+                .apply { isAccessible = true }
+                .get(lifecycle)
+        return OperationRunner::class.java
+            .getDeclaredField("unresolved")
+            .apply { isAccessible = true }
+            .get(runner) as Map<*, *>
+    }
+
+    @Test
+    fun `failed opens release orphan requests only after storage proves no record exists`() {
+        val delegate = SaleBook(container.sales)
+        val book =
+            object : TransactionBook<PaymentStart> by delegate {
+                override suspend fun open(
+                    id: String,
+                    request: PaymentStart,
+                    serviceId: String,
+                    createdAt: Long,
+                ) {
+                    error("failed before persistence")
+                }
+            }
+        val lifecycle = TransactionLifecycle(env.scope, container.gateway, book)
+        val id = checkNotNull(lifecycle.start(request()))
+        await { lifecycle.state.first { it == TransactionState.Finished(id) } }
+        assertThat(retainedRequests(lifecycle)).isEmpty()
+        assertThat(await { container.sales.get(id) }).isNull()
+        val unreadable =
+            object : TransactionBook<PaymentStart> by book {
+                override suspend fun settle(
+                    id: String,
+                    settlement: Settlement,
+                ): Boolean = error("database unavailable")
+            }
+        val conservative = TransactionLifecycle(env.scope, container.gateway, unreadable)
+        val unknown = checkNotNull(conservative.start(request()))
+        await { conservative.state.first { it == TransactionState.Finished(unknown) } }
+        assertThat(retainedRequests(conservative)).containsKey(unknown)
+    }
+
+    @Test
+    fun `recovery evidence is released only after durable settlement succeeds`() {
+        val terminal = FakeTerminal(passphrase = "passphrase")
+        val isolated = TestEnvironment(terminal = terminal)
+        try {
+            isolated.useLinks()
+            val delegate = SaleBook(isolated.container.sales)
+            var failOnce = true
+            val book =
+                object : TransactionBook<PaymentStart> by delegate {
+                    override suspend fun settle(
+                        id: String,
+                        settlement: Settlement,
+                    ): Boolean {
+                        if (failOnce) {
+                            failOnce = false
+                            error("storage unavailable")
+                        }
+                        return delegate.settle(id, settlement)
+                    }
+                }
+            val lifecycle = TransactionLifecycle(isolated.scope, isolated.container.gateway, book)
+            val id = checkNotNull(lifecycle.start(request()))
+            await { lifecycle.state.first { it == TransactionState.Finished(id) } }
+            assertThat(terminal.acknowledged).isEmpty()
+            assertThat(
+                await {
+                    isolated.container.sales
+                        .get(id)!!
+                        .sale.status
+                },
+            ).isEqualTo(SaleStatus.UNKNOWN)
+            await { assertThat(lifecycle.recheck(id)).isEqualTo(Recheck.Settled) }
+            val sale =
+                await {
+                    isolated.container.sales
+                        .get(id)!!
+                        .sale
+                }
+            assertThat(sale.status).isEqualTo(SaleStatus.APPROVED)
+            assertThat(terminal.acknowledged).containsExactly(sale.serviceId)
+        } finally {
+            isolated.close()
+        }
+    }
+
+    @Test
+    fun `finished attempts release transient abort identities`() {
+        repeat(3) {
+            val id = start()
+            finished(id)
+            payments.acknowledge()
+        }
+        val field = TransactionLifecycle::class.java.getDeclaredField("serviceIds").apply { isAccessible = true }
+        assertThat(field.get(payments) as Map<*, *>).isEmpty()
     }
 
     @Test

@@ -2,12 +2,16 @@ package app.minimpos.app.feature.sale
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -69,32 +73,45 @@ fun SavedCardScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val dimens = LocalDimens.current
     MiniScaffold(title = stringResource(R.string.saved_card_title), onBack = navigator::back, modifier = modifier) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(dimens.screenPadding),
+        val lookup = state.lookup
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(dimens.screenPadding),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                stringResource(R.string.saved_card_intro),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            ReferenceField(state, vm::setReference, vm::find)
-            val lookup = state.lookup
-            GatedButton(
-                stringResource(R.string.saved_card_find),
-                vm::find,
-                blocked = lookup.blocked,
-                enabled = state.shopperReference != null,
-                loading = lookup.finding,
-                requiresSetup = true,
-                icon = Icons.Default.Search,
-                modifier = Modifier.padding(top = dimens.spacing).testTag("findCards"),
-            )
-            lookup.failure?.let { ActionMessage(it.text(), isError = true) }
-            lookup.cards?.let { cards -> CardList(cards, lookup::chargeable) { navigator.push(Route.SavedCardSale(it.chosen())) } }
+            item(key = "search", contentType = "search") {
+                Column(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth()) {
+                    Text(
+                        stringResource(R.string.saved_card_intro),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    ReferenceField(state, vm::setReference, vm::find)
+                    GatedButton(
+                        stringResource(R.string.saved_card_find),
+                        vm::find,
+                        blocked = lookup.blocked,
+                        enabled = state.shopperReference != null,
+                        loading = lookup.finding,
+                        requiresSetup = true,
+                        icon = Icons.Default.Search,
+                        modifier = Modifier.padding(top = dimens.spacing).testTag("findCards"),
+                    )
+                    lookup.failure?.let { ActionMessage(it.text(), isError = true) }
+                    if (lookup.cards?.isEmpty() == true) {
+                        ActionMessage(
+                            stringResource(R.string.saved_card_none),
+                            isError = false,
+                            Modifier.testTag("noSavedCards"),
+                        )
+                    }
+                }
+            }
+            items(lookup.cards.orEmpty(), key = { it.id }, contentType = { "card" }) { card ->
+                Box(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth()) {
+                    CardRow(card, lookup.chargeable(card)) { navigator.push(Route.SavedCardSale(it.chosen())) }
+                }
+            }
         }
     }
 }
@@ -125,37 +142,30 @@ private fun ReferenceField(
 }
 
 @Composable
-private fun ColumnScope.CardList(
-    cards: List<StoredCard>,
-    chargeable: (StoredCard) -> Boolean,
+private fun CardRow(
+    card: StoredCard,
+    usable: Boolean,
     onChoose: (StoredCard) -> Unit,
 ) {
-    if (cards.isEmpty()) {
-        ActionMessage(stringResource(R.string.saved_card_none), isError = false, Modifier.testTag("noSavedCards"))
-        return
-    }
-    cards.forEach { card ->
-        val usable = chargeable(card)
-        ListItem(
-            headlineContent = { Text(cardLabel(card.id, card.brand, card.lastFour)) },
-            supportingContent = {
-                val details =
-                    listOfNotNull(
-                        card.holderName,
-                        card.expiryMonth?.let { month -> card.expiryYear?.let { stringResource(R.string.saved_card_expires, month, it) } },
-                        stringResource(R.string.saved_card_unsupported).takeUnless { usable },
-                    )
-                if (details.isNotEmpty()) Text(details.joinToString(" · "))
-            },
-            leadingContent = { Icon(Icons.Default.CreditCard, contentDescription = null) },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp)
-                    .clickable(enabled = usable) { onChoose(card) }
-                    .testTag("savedCard_${card.id}"),
-        )
-    }
+    ListItem(
+        headlineContent = { Text(cardLabel(card.id, card.brand, card.lastFour)) },
+        supportingContent = {
+            val details =
+                listOfNotNull(
+                    card.holderName,
+                    card.expiryMonth?.let { month -> card.expiryYear?.let { stringResource(R.string.saved_card_expires, month, it) } },
+                    stringResource(R.string.saved_card_unsupported).takeUnless { usable },
+                )
+            if (details.isNotEmpty()) Text(details.joinToString(" · "))
+        },
+        leadingContent = { Icon(Icons.Default.CreditCard, contentDescription = null) },
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .clickable(enabled = usable) { onChoose(card) }
+                .testTag("savedCard_${card.id}"),
+    )
 }
 
 /** The card as the operator recognises it: brand and last four digits, as far as Adyen sent them, else its token ID. */

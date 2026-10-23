@@ -85,6 +85,9 @@ class HistorySearch(
 ) {
     private val terms = text.trim().split(WHITESPACE).filter(String::isNotEmpty)
 
+    // Parse each query term once per currency rather than once per retained transaction.
+    private val amountsByCurrency = mutableMapOf<String, List<Long?>>()
+
     /** Whether anything narrows the list, so an empty result means no match rather than no history. */
     val isActive: Boolean get() = terms.isNotEmpty() || method != null
 
@@ -101,8 +104,14 @@ class HistorySearch(
                 is HistoryItem.Sale -> item.sale.currency to setOf(item.sale.amountMinor, item.sale.totalMinor)
                 is HistoryItem.Refund -> item.refund.currency to setOf(item.refund.amountMinor)
             }
-        val spec = runCatching { CurrencySpec.of(currency) }.getOrNull()
-        return terms.all { term -> texts.any { it.contains(term, ignoreCase = true) } || spec?.parseMinor(term) in amounts }
+        val parsed =
+            amountsByCurrency.getOrPut(currency) {
+                val spec = runCatching { CurrencySpec.of(currency) }.getOrNull()
+                terms.map { spec?.parseMinor(it) }
+            }
+        return terms.indices.all { index ->
+            texts.any { it.contains(terms[index], ignoreCase = true) } || parsed[index] in amounts
+        }
     }
 
     private fun saleTexts(sale: SaleEntity): List<String> =

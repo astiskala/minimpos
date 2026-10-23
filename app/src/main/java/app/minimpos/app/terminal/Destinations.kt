@@ -1,6 +1,8 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.TerminalMode
@@ -17,6 +19,7 @@ import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalIdentity
 import app.minimpos.terminal.paymentsapp.PaymentsAppLinks
 import app.minimpos.terminal.simulator.SimulatorConfig
+import app.minimpos.terminal.simulator.SimulatorRemoval
 import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.AdyenCloudDevices
 import app.minimpos.terminal.transport.CloudCredentials
@@ -42,11 +45,13 @@ sealed interface Connection {
      * @property client Sends them, with the app's SaleID and POIID and the destination's timeout and recovery.
      * @property destination What it can do besides payments and refunds ([DestinationRules.aborts],
      *   [DestinationRules.diagnoses]).
+     * @property acknowledge Releases transient late answers after their resolved financial result is durably stored.
      * @property context Reads only the setup and certificate belonging to this connection.
      */
     class Open(
         val client: TerminalClient,
         val destination: DestinationRules,
+        val acknowledge: (String) -> Unit,
         /** Reads the identity and certificate environment of this connection, never a later setup. */
         val context: () -> PaymentContext,
     ) : Connection
@@ -131,7 +136,9 @@ sealed interface Destination {
                         // Amounts cross the client in minor units; Adyen's decimals convert them for nexo.
                         currencyDigits = { AdyenCurrencies[it]?.decimals },
                     )
-                Connection.Open(client, rules) { setup.paymentContext(opening.environment() ?: setup.environment) }
+                Connection.Open(client, rules, opening.transport::acknowledge) {
+                    setup.paymentContext(opening.environment() ?: setup.environment)
+                }
             }
         }
 }
@@ -179,6 +186,27 @@ class SimulatedTerminal(
 
     /** Simulated saved cards: the [cards] the app knows simulated payments saved, charged with the simulator's outcome. */
     fun savedCards(cards: suspend (shopperReference: String) -> List<StoredCard>): SavedCardApi = simulator.savedCards(cards)
+
+    /** Clears simulator history bookkeeping after a confirmed complete purge, preserving its period totals. */
+    internal fun forgetAll() = simulator.forgetHistory()
+
+    /** Releases simulated identities only after the corresponding history records and tenders were durably deleted. */
+    internal fun forget(
+        items: List<HistoryItem>,
+        tenders: List<SaleTenderEntity>,
+        chargeKeys: Set<String>,
+    ) {
+        val sales = items.filterIsInstance<HistoryItem.Sale>().map { it.sale }
+        val refunds = items.filterIsInstance<HistoryItem.Refund>().map { it.refund }
+        simulator.forget(
+            SimulatorRemoval(
+                (sales.mapNotNull { it.serviceId } + refunds.mapNotNull { it.serviceId }).toSet(),
+                (sales.mapNotNull { it.poiTransactionId } + tenders.mapNotNull { it.poiTransactionId }).toSet(),
+                (sales.mapNotNull { it.pspReference } + tenders.mapNotNull { it.pspReference }).toSet(),
+                chargeKeys,
+            ),
+        )
+    }
 
     override suspend fun open(unlocked: UnlockedSetup): Opening {
         val sim = unlocked.setup.settings.simulator

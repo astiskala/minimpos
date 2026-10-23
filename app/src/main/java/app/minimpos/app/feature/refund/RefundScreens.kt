@@ -6,13 +6,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.CircularProgressIndicator
@@ -258,52 +260,70 @@ private fun RefundChoice(
 ) {
     val dimens = LocalDimens.current
     val money = rememberMoneyFormatter(original.currency)
-    val scroll = rememberScrollState()
-    // On small screens the sale details push the keypad below the fold, so bring it into view.
+    val scroll = rememberLazyListState()
+    val lines = remember(original.local) { original.local?.sortedLines.orEmpty() }
+    // The amount keypad is one lazy item below the original payment and mode selector on small screens.
     LaunchedEffect(state.option) {
         if (state.option == RefundOption.AMOUNT) {
             withFrameNanos { }
-            scroll.animateScrollTo(scroll.maxValue)
+            scroll.animateScrollToItem(1)
         }
     }
-    Column(
-        modifier
-            .fillMaxSize()
-            .verticalScroll(scroll)
-            .padding(dimens.screenPadding),
+    LazyColumn(
+        modifier.fillMaxSize().testTag("refundChoices"),
+        state = scroll,
+        contentPadding = PaddingValues(dimens.screenPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(Modifier.widthIn(max = LocalDimens.current.contentMaxWidth), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
-            OriginalPaymentCard(original, money, formatDateTime)
-            if (!original.itemsKnown) {
-                Text(
-                    stringResource(R.string.refund_not_local),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        item(key = "original", contentType = "original") {
+            Column(
+                Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+            ) {
+                OriginalPaymentCard(original, money, formatDateTime)
+                RefundOriginNote(original.itemsKnown)
+                RefundOptions(
+                    options = listOfNotNull(RefundOption.FULL, RefundOption.ITEMS.takeIf { original.itemsKnown }, RefundOption.AMOUNT),
+                    selected = state.option,
+                    onSelect = onSelectOption,
                 )
+                RefundAmount(state.refundMinor, original.remainingMinor, money)
             }
-            RefundOptions(
-                options = listOfNotNull(RefundOption.FULL, RefundOption.ITEMS.takeIf { original.itemsKnown }, RefundOption.AMOUNT),
-                selected = state.option,
-                onSelect = onSelectOption,
-            )
-            RefundAmount(state.refundMinor, original.remainingMinor, money)
-            when (state.option) {
-                RefundOption.FULL -> {}
+        }
+        when (state.option) {
+            RefundOption.FULL -> {}
 
-                RefundOption.ITEMS -> {
-                    RefundLines(original.local?.sortedLines.orEmpty(), state.selection, money, onQuantity)
+            RefundOption.ITEMS -> {
+                items(lines, key = { it.id }, contentType = { "line" }) { line ->
+                    Column(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth().padding(top = dimens.spacing)) {
+                        RefundLine(line, state.selection[line.id] ?: 0, money, onQuantity)
+                    }
                 }
+            }
 
-                RefundOption.AMOUNT -> {
-                    NumericKeypad(
-                        onDigit = { digit -> onAmount { it.append(digit) } },
-                        onDoubleZero = { onAmount { it.appendDoubleZero() } },
-                        onBackspace = { onAmount { it.backspace() } },
-                    )
+            RefundOption.AMOUNT -> {
+                item(key = "amount", contentType = "amount") {
+                    Column(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth().padding(top = dimens.spacing)) {
+                        NumericKeypad(
+                            onDigit = { digit -> onAmount { it.append(digit) } },
+                            onDoubleZero = { onAmount { it.appendDoubleZero() } },
+                            onBackspace = { onAmount { it.backspace() } },
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RefundOriginNote(itemsKnown: Boolean) {
+    if (!itemsKnown) {
+        Text(
+            stringResource(R.string.refund_not_local),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -383,36 +403,33 @@ private fun ColumnScope.RefundAmount(
     }
 }
 
-/** The sale's lines with steppers for the units to refund, up to what is left of each. */
+/** One refundable line, composed only while its lazy row is visible. */
 @Composable
-private fun ColumnScope.RefundLines(
-    lines: List<SaleLineEntity>,
-    selection: Map<Long, Int>,
+private fun ColumnScope.RefundLine(
+    line: SaleLineEntity,
+    selected: Int,
     money: MoneyFormatter,
     onQuantity: (lineId: Long, quantity: Int) -> Unit,
 ) {
-    lines.forEach { line ->
-        val remaining = line.quantity - line.refundedQuantity
-        val selected = selection[line.id] ?: 0
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(line.name, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(
-                    stringResource(R.string.refund_line_hint, money.format(line.unitPriceMinor), line.quantity, line.refundedQuantity),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            QuantityStepper(
-                selected,
-                line.name,
-                onChange = { onQuantity(line.id, it) },
-                max = remaining,
-                increaseTag = "increase_${line.id}",
+    val remaining = line.quantity - line.refundedQuantity
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(line.name, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                stringResource(R.string.refund_line_hint, money.format(line.unitPriceMinor), line.quantity, line.refundedQuantity),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        HorizontalDivider()
+        QuantityStepper(
+            selected,
+            line.name,
+            onChange = { onQuantity(line.id, it) },
+            max = remaining,
+            increaseTag = "increase_${line.id}",
+        )
     }
+    HorizontalDivider()
 }
 
 @Composable

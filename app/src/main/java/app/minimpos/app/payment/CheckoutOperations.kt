@@ -148,6 +148,12 @@ class CheckoutOperations<R, C>(
     /** The operation running now, which its screen follows to the result. */
     val state: StateFlow<TransactionState> = runner.state
 
+    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
+    internal fun forgetAll() = runner.forgetAll()
+
+    /** Releases process-only requests for records that history has already durably deleted. */
+    internal fun forget(ids: Set<String>) = runner.forget(ids)
+
     /**
      * Stores and sends [request] in the background and returns the new record's ID straight away; null, with nothing
      * stored or sent, while another operation of this kind is running (such as a second tap on the same action). Call
@@ -233,7 +239,10 @@ class CheckoutOperations<R, C>(
     private suspend fun interrupted(
         id: String,
         cause: Exception,
-    ) = book.interrupted(id, if (cause is SQLException || cause is IllegalStateException) DeviceFault.DATABASE else DeviceFault.UNEXPECTED)
+    ) {
+        book.interrupted(id, if (cause is SQLException || cause is IllegalStateException) DeviceFault.DATABASE else DeviceFault.UNEXPECTED)
+        if (book.unsent(id) == null) runner.resolved(id)
+    }
 
     /** Values shared with the operations' kinds and tests. */
     companion object {

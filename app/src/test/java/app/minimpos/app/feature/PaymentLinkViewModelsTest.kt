@@ -166,7 +166,12 @@ class PaymentLinkViewModelsTest {
         api.getResult = null
         api.status = PaymentLinkStatus.COMPLETED
         vm.check()
-        val paid = await { vm.state.first { it.sale?.status == SaleStatus.APPROVED && it.check.done } }
+        val paid =
+            await {
+                vm.state.first {
+                    it.sale?.status == SaleStatus.APPROVED && it.check.outcome == ActionOutcome.LinkChecked(SaleStatus.APPROVED)
+                }
+            }
         assertThat(paid.openLink).isNull()
         assertThat(paid.check.outcome).isEqualTo(ActionOutcome.LinkChecked(SaleStatus.APPROVED))
         vm.dismissCheckResult()
@@ -179,12 +184,20 @@ class PaymentLinkViewModelsTest {
         val id = sendLink()
         val vm = linkViewModel(id, poll = 20.milliseconds)
         await { vm.state.first { it.openLink != null } }
+        main.scheduler.advanceTimeBy(1.hours)
+        assertThat(api.asked).isEmpty()
+        vm.setPolling(true)
         await {
             while (api.asked.size < 2) {
                 main.scheduler.advanceTimeBy(20.milliseconds)
                 delay(10)
             }
         }
+        vm.setPolling(false)
+        val beforePause = api.asked.size
+        main.scheduler.advanceTimeBy(1.hours)
+        assertThat(api.asked).hasSize(beforePause)
+        vm.setPolling(true)
         api.status = PaymentLinkStatus.COMPLETED
         await {
             while (vm.state.value.sale

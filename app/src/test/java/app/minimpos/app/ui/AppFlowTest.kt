@@ -11,6 +11,8 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isOn
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -33,6 +35,7 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.items
 import app.minimpos.app.newInstallation
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.terminal.simulator.SimulatedOutcome
@@ -138,7 +141,7 @@ class AppFlowTest {
 
     @Test
     fun `terminal settings offer quick setup while using the simulator`() {
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         compose.waitForTag("quickSetupImport")
@@ -288,7 +291,7 @@ class AppFlowTest {
 
         // With tax switched off, products and custom items no longer ask.
         compose.waitForTag("settings")
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitForTag("section_tax")
         compose.onNodeWithTag("section_tax").performScrollTo().performClick()
         compose.waitForTag("chargeTax")
@@ -309,7 +312,7 @@ class AppFlowTest {
 
     @Test
     fun `an admin PIN locks settings`() {
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitForTag("section_security")
         compose.onNodeWithTag("section_security").performScrollTo().performClick()
         compose.waitForTag("setPin")
@@ -326,7 +329,7 @@ class AppFlowTest {
         compose.onNodeWithTag("back").performClick()
 
         compose.waitForTag("settings")
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitForTag("pin_1")
         listOf(9, 9, 9, 9).forEach { compose.onNodeWithTag("pin_$it").performClick() }
         compose.onNodeWithTag("pin_OK").performClick()
@@ -425,10 +428,14 @@ class AppFlowTest {
         compose.onNodeWithTag("paymentMethod").performClick()
         compose.onNodeWithText("Mastercard").assertIsDisplayed()
         compose.onNodeWithText("Apple Pay").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("paymentMethod") and isSelected() and hasText("Apple Pay"), 15_000)
         compose.onNodeWithTag("paymentMethod").assertIsSelected().assertTextContains("Apple Pay")
         compose.awaitCondition(
             "the payment method narrows the list",
-        ) { compose.onAllNodesWithText("REF-B").fetchSemanticsNodes().isEmpty() }
+        ) {
+            compose.onAllNodesWithText("REF-B").fetchSemanticsNodes().isEmpty() &&
+                compose.onAllNodesWithText("REF-A").fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithText("REF-A").assertIsDisplayed()
     }
 
@@ -554,6 +561,7 @@ class AppFlowTest {
             .performScrollTo()
             .assertIsOff()
             .performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("tipOnReceipt") and isOn(), 15_000)
         compose.onNodeWithTag("pay").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Awaiting tip"), 15_000)
         compose.onNodeWithText("Print the receipt so the customer can add a tip and sign it, then enter the tip.").assertIsDisplayed()
@@ -633,7 +641,7 @@ class AppFlowTest {
 
     @Test
     fun `any Adyen currency can be chosen, or automatic`() {
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitForTag("section_payments")
         compose.onNodeWithTag("section_payments").performScrollTo().performClick()
         compose.waitForTag("currency")
@@ -674,7 +682,7 @@ class AppFlowTest {
     fun `home shows just the tiles, and About shows where payments go and the printer`() {
         compose.onNodeWithText("Settings are not protected", substring = true).assertDoesNotExist()
         compose.onNodeWithText("printer available", substring = true).assertDoesNotExist()
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitForTag("section_about")
         compose.onNodeWithTag("section_about").performScrollTo().performClick()
         waitForText("Payments go to")
@@ -685,7 +693,7 @@ class AppFlowTest {
 
     @Test
     fun `receipt business name can be edited`() {
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitForTag("section_receipts")
         compose.onNodeWithTag("section_receipts").performClick()
         compose.waitForTag("businessName")

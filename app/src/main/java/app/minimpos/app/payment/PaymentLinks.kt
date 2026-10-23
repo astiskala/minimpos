@@ -3,6 +3,7 @@ package app.minimpos.app.payment
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.SaleEvent
@@ -101,8 +102,8 @@ class PaymentLinks(
             mutex = mutex,
         )
 
-    /** Checkouts that already started one link, by their session revision; see [start]. */
-    private val linkedRevisions = mutableSetOf<Long>()
+    /** Highest accepted revision per payment kind; older starts stay rejected without retaining every checkout. */
+    private val linkedRevisions = mutableMapOf<SaleKind, Long>()
 
     /**
      * Creates the payment link for [link] in the background and returns the new sale's ID straight away; null, with
@@ -112,13 +113,20 @@ class PaymentLinks(
      */
     fun start(link: PaymentLinkStart): String? {
         val revision = link.payment.sessionRevision ?: return started(link)
-        if (!synchronized(linkedRevisions) { linkedRevisions.add(revision) }) return null
-        val id = started(link)
-        if (id == null) synchronized(linkedRevisions) { linkedRevisions.remove(revision) }
-        return id
+        return synchronized(linkedRevisions) {
+            val kind = link.payment.kind
+            if (revision <= (linkedRevisions[kind] ?: -1L)) return@synchronized null
+            started(link)?.also { linkedRevisions[kind] = revision }
+        }
     }
 
     private fun started(link: PaymentLinkStart): String? = operations.start(link)
+
+    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
+    internal fun forgetAll() = operations.forgetAll()
+
+    /** Releases process-only requests for records that history has already durably deleted. */
+    internal fun forget(ids: Set<String>) = operations.forget(ids)
 
     /**
      * Asks Adyen where the link of sale [saleId] stands and stores it: paid, expired or still open. A sale whose link
@@ -304,12 +312,16 @@ class PaymentLinks(
         override suspend fun notSent(
             id: String,
             problem: SetupProblem,
-        ) = sales.record(id, SaleEvent.NotSetUp(problem))
+        ) {
+            sales.record(id, SaleEvent.NotSetUp(problem))
+        }
 
         override suspend fun interrupted(
             id: String,
             fault: DeviceFault,
-        ) = sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(fault)))
+        ) {
+            sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(fault)))
+        }
     }
 
     /** Payment link values. */

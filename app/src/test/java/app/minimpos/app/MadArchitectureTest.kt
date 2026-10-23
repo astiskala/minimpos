@@ -48,12 +48,19 @@ class MadArchitectureTest {
     fun `expensive state producers retain their dispatcher boundaries`() {
         cpuBoundaries.check(ArchitectureTest.app)
         pinBoundary.check(ArchitectureTest.app)
+        historyReaderBoundary.check(ArchitectureTest.app)
     }
 
     @Test
     fun `a history producer without offloading is rejected`() {
         val missing = fixture("app/minimpos/app/feature/history/HistoryViewModel", "java/lang/Object", "toString", false)
         assertTrue(cpuBoundaries.evaluate(missing).hasViolation())
+    }
+
+    @Test
+    fun `a bounded history reader without CPU dispatch is rejected`() {
+        val missing = fixture("app/minimpos/app/data/repo/HistoryRepository\$Reader", "java/lang/Object", "toString", false)
+        assertTrue(historyReaderBoundary.evaluate(missing).hasViolation())
     }
 
     @Test
@@ -151,7 +158,6 @@ class MadArchitectureTest {
 
         val cpuProducers =
             setOf(
-                "app.minimpos.app.data.repo.HistoryRepository",
                 "app.minimpos.app.feature.history.HistoryViewModel",
                 "app.minimpos.app.feature.products.ProductsViewModel",
                 "app.minimpos.app.feature.sale.SaleViewModel",
@@ -165,6 +171,13 @@ class MadArchitectureTest {
                         override fun test(input: JavaClass): Boolean = input.name in cpuProducers
                     },
                 ).should(callBoundary("kotlinx.coroutines.flow.FlowKt", "flowOn"))
+
+        // History aggregation now lives in bounded suspend reads; Room SQL alone does not offload their reducers.
+        val historyReaderBoundary: ArchRule =
+            classes()
+                .that()
+                .haveFullyQualifiedName("app.minimpos.app.data.repo.HistoryRepository\$Reader")
+                .should(callBoundary("kotlinx.coroutines.BuildersKt", "withContext"))
 
         // A suspend declaration alone does not move PBKDF2 off Main; behavior tests verify the injected dispatcher.
         val pinBoundary: ArchRule =

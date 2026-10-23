@@ -149,7 +149,7 @@ class TransferScreensTest {
     @Test
     fun `settings share the catalogue, settings and secrets, with a transfer code`() {
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_about")
         compose.onNodeWithTag("section_data").performScrollTo().performClick()
         waitForTag("shareToTerminal")
@@ -241,6 +241,7 @@ class TransferScreensTest {
             "Opening scanner",
         ) { vm.state.value is ImportUiState.Scanning }
         QrChunks.split(payload, "INIT").forEach { vm.onCode(it.encode()) }
+        compose.awaitCondition("Decoding transfer") { vm.state.value is ImportUiState.Ready }
         vm.setCode(fixtureCode)
         val stack = NavBackStack<NavKey>(Route.Onboarding, Route.TransferImport)
         val navigator = Navigator(stack)
@@ -353,6 +354,7 @@ class TransferScreensTest {
             "Opening scanner",
         ) { vm.state.value is ImportUiState.Scanning }
         QrChunks.split(payload, "LIVE").forEach { vm.onCode(it.encode()) }
+        compose.awaitCondition("Decoding transfer") { vm.state.value is ImportUiState.Ready }
         vm.setCode(fixtureCode)
         val before = await { container.settings.current() }
         val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport))

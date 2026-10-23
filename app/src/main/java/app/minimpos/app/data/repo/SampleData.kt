@@ -12,7 +12,6 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.tax.TaxRates
-import kotlinx.coroutines.flow.first
 import kotlin.uuid.Uuid
 
 /**
@@ -54,7 +53,7 @@ class SampleData(
         db.withTransaction {
             if (catalog.samples.exists() || history.hasSamples()) return@withTransaction false
             catalog.seedDefaults(starterRates())
-            val tax = checkNotNull(settings.payment.defaultTaxRate(catalog.taxRates.first()))
+            val tax = checkNotNull(settings.payment.defaultTaxRate(catalog.reader.taxRates()))
             val currency = CurrencySpec.of(settings.payment.resolvedCurrency(country))
             val products = catalog.samples.add(fixture().products(currency, tax.id), tax.id)
             products.filter { it.kind == SaleKind.SALE }.take(SAMPLE_STATUSES.size).forEachIndexed { index, product ->
@@ -65,10 +64,7 @@ class SampleData(
 
     /** Purges only tracked samples. Merchant records and sample categories they use remain. */
     suspend fun purge() {
-        db.withTransaction {
-            history.removeSamples()
-            catalog.samples.remove()
-        }
+        history.removeSamples { catalog.samples.remove() }
     }
 
     private suspend fun createSale(

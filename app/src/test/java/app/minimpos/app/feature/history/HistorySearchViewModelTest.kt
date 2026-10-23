@@ -83,6 +83,79 @@ class HistorySearchViewModelTest {
     private fun historyViewModel() = HistoryViewModel(env.container.history).also(viewModels::add)
 
     @Test
+    fun `row updates invalidate history and cached methods even when row counts stay unchanged`() =
+        runTest(dispatcher) {
+            val initial = sale("a", 100, "visa", "visa")
+            db.saleDao().insert(initial)
+            val vm = historyViewModel()
+            vm.state.first { it.loaded }
+            db.saleDao().update(initial.copy(paymentBrand = "mc", paymentMethodVariant = "mc", totalMinor = 200))
+            val updated = vm.state.first { it.methods.map { method -> method.label } == listOf("Mastercard") }
+            assertThat(
+                updated.days
+                    .single()
+                    .totals.salesMinor,
+            ).containsEntry("AUD", 200L)
+        }
+
+    @Test
+    fun `pages whole processing days and searches beyond the current page`() =
+        runTest(dispatcher) {
+            val day = Instant.parse("2026-10-01T12:00:00Z").toEpochMilli()
+            repeat(10) { offset ->
+                db.saleDao().insert(
+                    sale("day-$offset", 100, "visa", "visa", customer = "customer-$offset")
+                        .copy(createdAt = day + offset * 86_400_000L),
+                )
+            }
+            // A very busy date spans bounded row pages, but every page retains that whole day's totals.
+            repeat(260) { index ->
+                db.saleDao().insert(sale("same-day-$index", 100, "visa", "visa").copy(createdAt = day + 9 * 86_400_000L))
+            }
+            val vm = historyViewModel()
+            val first = vm.state.first { it.loaded }
+            assertThat(first.days).hasSize(1)
+            assertThat(first.days.single().items).hasSize(100)
+            assertThat(
+                first.days
+                    .single()
+                    .totals.saleCount,
+            ).isEqualTo(261)
+            assertThat(first.hasOlder).isTrue()
+            val seen =
+                first.days
+                    .flatMap { it.items }
+                    .map { it.id }
+                    .toMutableList()
+            var page = first
+            while (page.hasOlder) {
+                val lastId =
+                    page.days
+                        .last()
+                        .items
+                        .last()
+                        .id
+                vm.older()
+                page =
+                    vm.state.first {
+                        it.hasNewer && it.days
+                            .last()
+                            .items
+                            .last()
+                            .id != lastId
+                    }
+                assertThat(page.days.sumOf { it.items.size }).isAtMost(100)
+                seen += page.days.flatMap { it.items }.map { it.id }
+            }
+            assertThat(seen).hasSize(270)
+            assertThat(seen.distinct()).hasSize(270)
+            vm.newer()
+            assertThat(vm.state.first { it.hasOlder }.hasNewer).isTrue()
+            vm.setQuery("customer-0")
+            assertThat(vm.ids { it.query == "customer-0" }).containsExactly("day-0")
+        }
+
+    @Test
     fun `searches and filters by payment method, and shows everything again`() =
         runTest(dispatcher) {
             db.saleDao().insert(sale("a", 3400, "visa", "visa_applepay", customer = "CUST-1042"))

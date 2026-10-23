@@ -235,10 +235,14 @@ class LocalizedUiTest {
         await { env.container.session(SaleKind.SALE).addCustom("Merchant item", 1_200, TaxRateEntity(1, "No tax", 0)) }
         val original = await { env.container.settings.current() }
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("appLanguage"), 15_000)
         compose.onNodeWithTag("appLanguage").performScrollTo().performClick()
-        compose.onNodeWithText("繁體中文").assertIsDisplayed().performClick()
+        compose
+            .onNodeWithText("繁體中文")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         compose.waitUntilAtLeastOneExists(
             hasText("語言"),
             15_000,
@@ -252,7 +256,7 @@ class LocalizedUiTest {
                 .single()
                 .name,
         ).isEqualTo("Merchant item")
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         compose.onNodeWithTag("appLanguage").performScrollTo().performClick()
         compose.onNodeWithText("跟隨裝置").performClick()
         compose.waitUntilAtLeastOneExists(

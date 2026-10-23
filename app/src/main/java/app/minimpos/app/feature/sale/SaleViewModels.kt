@@ -53,7 +53,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -64,7 +63,59 @@ import java.time.Clock
 import java.time.ZoneId
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+
+/**
+ * Cached product filtering, reusable when only the cart or price display changes.
+ *
+ * @param products Products in catalogue order, retained by reference to validate reuse without scanning.
+ * @param query Search text.
+ * @param category Selected category ID; null includes all categories.
+ */
+class SaleBrowse(
+    private val products: List<ProductEntity>,
+    private val query: String,
+    private val category: Long?,
+) {
+    /** Products matching the search and category. */
+    val visible: List<ProductEntity> =
+        query.trim().let { search ->
+            products.filter { product ->
+                (category == null || product.categoryId == category) &&
+                    (search.isEmpty() || product.name.contains(search, ignoreCase = true) || product.sku?.contains(search) == true)
+            }
+        }
+
+    /** Whether the catalogue offers barcode scanning. */
+    val hasSkus: Boolean = products.any { !it.sku.isNullOrBlank() }
+
+    /** Whether this cached reading still describes these exact inputs. */
+    fun matches(
+        products: List<ProductEntity>,
+        query: String,
+        category: Long?,
+    ): Boolean = this.products === products && this.query == query && this.category == category
+}
+
+/**
+ * Quantities indexed once for an immutable cart, shared across search and display changes.
+ * @param cart Exact cart snapshot represented by this index.
+ */
+class SaleCartQuantities(
+    private val cart: Cart,
+) {
+    private val counts =
+        buildMap<Long?, Int> {
+            cart.lines.forEach { line -> put(line.productId, (get(line.productId) ?: 0) + line.quantity) }
+        }
+
+    /** Whether [cart] is the same immutable snapshot. */
+    fun matches(cart: Cart): Boolean = this.cart === cart
+
+    /** Units of [productId] across all cart lines, or zero when absent. */
+    fun quantity(productId: Long): Int = counts[productId] ?: 0
+}
 
 /**
  * What the sale screen shows: the product tiles and the cart.
@@ -83,6 +134,8 @@ import kotlin.time.Duration.Companion.seconds
  *   ([app.minimpos.app.data.settings.PaymentSettings.defaultTaxRate]); null only before any rate exists.
  * @property chargeTax Settings › Tax › Charge tax.
  * @property kind A sale, or a pre-authorisation, whose cart holds a single item.
+ * @param browse Cached product filtering, computed from public inputs by default.
+ * @param quantities Cached quantities for this exact cart; replaced when a copied state changes its cart.
  */
 data class SaleUiState(
     val loaded: Boolean = false,
@@ -97,30 +150,29 @@ data class SaleUiState(
     val defaultTaxRate: TaxRateEntity? = null,
     val chargeTax: Boolean = true,
     val kind: SaleKind = SaleKind.SALE,
+    private val browse: SaleBrowse = SaleBrowse(products, query, selectedCategory),
+    private val quantities: SaleCartQuantities = SaleCartQuantities(cart),
 ) {
     /** Whether this is a pre-authorisation, which holds one item. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
 
     // The readings below are worked out once per state, not on every recomposition that reads them.
 
+    private val productFilter =
+        browse.takeIf { it.matches(products, query, selectedCategory) }
+            ?: SaleBrowse(products, query, selectedCategory)
+
     /** The products matching [selectedCategory] and [query]. */
-    val visibleProducts: List<ProductEntity> =
-        query.trim().let { search ->
-            products.filter { product ->
-                (selectedCategory == null || product.categoryId == selectedCategory) &&
-                    (search.isEmpty() || product.name.contains(search, ignoreCase = true) || product.sku?.contains(search) == true)
-            }
-        }
+    val visibleProducts: List<ProductEntity> = productFilter.visible
 
     /** Whether any product has a SKU, which is when barcode scanning is offered. */
-    val hasSkus: Boolean = products.any { !it.sku.isNullOrBlank() }
+    val hasSkus: Boolean = productFilter.hasSkus
 
     /** Units in the cart by product ID (null for custom items), over all of each product's lines. */
-    private val cartQuantities: Map<Long?, Int> =
-        cart.lines.groupBy { it.productId }.mapValues { (_, lines) -> lines.sumOf { it.quantity } }
+    private val cartQuantities = quantities.takeIf { it.matches(cart) } ?: SaleCartQuantities(cart)
 
     /** How many units of product [productId] are in the cart, over all its lines; shown as a badge on its tile. */
-    fun quantityInCart(productId: Long): Int = cartQuantities[productId] ?: 0
+    fun quantityInCart(productId: Long): Int = cartQuantities.quantity(productId)
 }
 
 /**
@@ -156,9 +208,8 @@ class SaleViewModel(
             Triple(offered, shown, taxRates)
         }
 
-    /** The screen state, updated whenever the catalogue, cart, settings or filters change. */
-    val state: StateFlow<SaleUiState> =
-        combine(catalogue, session.cart, settings, filters) { (products, categories, taxRates), cart, appSettings, (query, category) ->
+    private val browsing =
+        combine(catalogue, filters) { (products, categories, taxRates), (query, category) ->
             SaleUiState(
                 loaded = true,
                 products = products,
@@ -166,12 +217,29 @@ class SaleViewModel(
                 taxRates = taxRates,
                 query = query,
                 selectedCategory = category,
-                cart = cart,
-                totals = cart.totals(appSettings.payment.taxMode, appSettings.payment.chargeTax),
-                currency = currency(appSettings),
-                defaultTaxRate = appSettings.payment.defaultTaxRate(taxRates),
-                chargeTax = appSettings.payment.chargeTax,
                 kind = kind,
+            )
+        }
+    private val prices = settings.map { it.payment.taxMode to it.payment.chargeTax }.distinctUntilChanged()
+    private val pricedCart =
+        combine(session.cart, prices) { cart, (mode, chargeTax) ->
+            Triple(cart, cart.totals(mode, chargeTax), SaleCartQuantities(cart))
+        }
+    private val display =
+        settings
+            .map { currency(it) to it.payment }
+            .distinctUntilChanged()
+
+    /** The screen state; product filtering and cart totals each react only to their own inputs. */
+    val state: StateFlow<SaleUiState> =
+        combine(browsing, pricedCart, display) { browse, (cart, totals, quantities), (unit, payment) ->
+            browse.copy(
+                cart = cart,
+                totals = totals,
+                quantities = quantities,
+                currency = unit,
+                defaultTaxRate = payment.defaultTaxRate(browse.taxRates),
+                chargeTax = payment.chargeTax,
             )
         }.flowOn(cpu).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SaleUiState(kind = kind))
 
@@ -214,7 +282,7 @@ class SaleViewModel(
     /** Adds the product of this screen's kind with this barcode/SKU; returns its name, or null when there is none. */
     suspend fun addBySku(sku: String): String? {
         val product = catalog.productBySku(sku, kind) ?: return null
-        val tax = catalog.taxRates.first().firstOrNull { it.id == product.taxRateId } ?: return null
+        val tax = catalog.reader.taxRates().firstOrNull { it.id == product.taxRateId } ?: return null
         session.addProduct(product, tax)
         return product.name
     }
@@ -236,6 +304,7 @@ class SaleViewModel(
  * @param discovery Memory-only, currency-filtered wallet availability; null offers none.
  * @param charges Looks up and charges the shopper's saved tokens; null offers no token charge.
  * @param lookupDelay How long the shopper reference must stay unchanged before its tokens are looked up.
+ * @param cpu Dispatcher for checkout calculation shared with saved-card lookup.
  */
 class CheckoutViewModel(
     private val session: SaleSession,
@@ -250,6 +319,7 @@ class CheckoutViewModel(
     discovery: WalletDiscovery? = null,
     charges: SavedCardCharges? = null,
     lookupDelay: Duration = 700.milliseconds,
+    private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val checkout =
         session.checkout(
@@ -261,14 +331,14 @@ class CheckoutViewModel(
         )
 
     /** The screen state, updated whenever the form, cart, settings, printer or payment link setup change. */
-    val state: StateFlow<Checkout> = checkout.stateIn(viewModelScope, SharingStarted.Eagerly, Checkout(kind = session.kind))
+    val state: StateFlow<Checkout> = checkout.flowOn(cpu).stateIn(viewModelScope, SharingStarted.Eagerly, Checkout(kind = session.kind))
 
     /**
      * The tokens saved for the entered shopper reference that can be charged with the recurring model, looked up in the
      * background once the reference stops changing; empty while there is none, the lookup fails or runs, or the sale
      * cannot be charged to a token (a pre-authorisation, or no Checkout API). A lookup changes nothing.
      */
-    private val cardLookup = charges?.lookup(viewModelScope, checkout, terminal, lookupDelay)
+    private val cardLookup = charges?.lookup(viewModelScope, state, terminal, lookupDelay)
 
     /** Current chargeable cards; freshness and recurring-model eligibility belong to the saved-card lookup. */
     val tokens: StateFlow<List<StoredCard>> =
@@ -366,6 +436,12 @@ class PaymentLinkViewModel(
     private val pollInterval: Duration = 10.seconds,
 ) : ViewModel() {
     private val local = MutableStateFlow(PaymentLinkUiState())
+    private val polling = MutableStateFlow(false)
+
+    /** Enables optional status polling only while the link screen is visible and started. */
+    fun setPolling(active: Boolean) {
+        polling.value = active
+    }
 
     /** The receipt (unpaid, with the link, until it is paid), printing, emailing and sharing it. */
     val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, operations, fresh)
@@ -379,12 +455,15 @@ class PaymentLinkViewModel(
     init {
         viewModelScope.launch {
             // Checking is quiet: a failed poll leaves the last answer shown, and the next one tries again.
-            state.map { it.openLink != null }.distinctUntilChanged().collectLatest { open ->
-                while (open) {
-                    delay(pollInterval)
-                    links.check(saleId)
+            combine(state, polling) { current, active -> current.openLink != null && active }
+                .distinctUntilChanged()
+                .collectLatest { active ->
+                    var interval = pollInterval
+                    while (active) {
+                        interval = if (links.check(saleId) == LinkUpdate.StillOpen) pollInterval else (interval * 2).coerceAtMost(2.minutes)
+                        delay(interval)
+                    }
                 }
-            }
         }
     }
 
@@ -395,7 +474,7 @@ class PaymentLinkViewModel(
         launchWrite({
             val update = links.check(saleId)
             if (update == LinkUpdate.Settled) {
-                val sale = payments.observe(saleId).first()?.sale
+                val sale = payments.get(saleId)?.sale
                 ActionState(
                     outcome = sale?.let { ActionOutcome.LinkChecked(it.status) } ?: ActionOutcome.Missing,
                     done = sale != null,

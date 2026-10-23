@@ -174,8 +174,10 @@ class RefundablePayment private constructor(
     val remainingMinor: Long get() = (amountMinor - refundedMinor).coerceAtLeast(0)
 
     /** The sale's lines with what is left of each, in cart order; empty when the sale is not [local]. */
-    val lines: List<RefundableLine>
-        get() = local?.sortedLines.orEmpty().map { RefundableLine(it.id, it.quantity, it.refundedQuantity, it.grossMinor) }
+    val lines: List<RefundableLine> =
+        local?.sortedLines.orEmpty().map { RefundableLine(it.id, it.quantity, it.refundedQuantity, it.grossMinor) }
+
+    private val linesById = lines.associateBy { it.lineId }
 
     /**
      * Whether items can be chosen, which needs the [local] sale; not for a captured pre-authorisation, whose capture can
@@ -198,7 +200,7 @@ class RefundablePayment private constructor(
     fun cappedQuantity(
         lineId: Long,
         quantity: Int,
-    ): Int? = lines.firstOrNull { it.lineId == lineId }?.let { quantity.coerceIn(0, it.remainingQuantity) }
+    ): Int? = linesById[lineId]?.let { quantity.coerceIn(0, it.remainingQuantity) }
 
     /**
      * The refund of [choice], or null when it is not [isValid]. Its merchant reference is generated from [now] in

@@ -205,9 +205,12 @@ sealed interface Attempt<out T> {
      *
      * @param T What came of it.
      * @property result The destination's answer, or why it could not be reached, as Adyen or the client worded it.
+     * @property onStored Releases transient recovery evidence after resolved settlement is durably stored; safe to call
+     *   once or repeatedly.
      */
     data class Made<out T>(
         val result: T,
+        val onStored: () -> Unit = {},
     ) : Attempt<T>
 
     /**
@@ -291,7 +294,7 @@ class TerminalGateway(
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
     ): Attempt<TransactionOutcome> =
-        send(paying = true, onSending, onContext, expected, expectedIdentity) {
+        send(paying = true, serviceId, onSending, onContext, expected, expectedIdentity) {
             it.pay(params, serviceId)
         }
 
@@ -316,7 +319,7 @@ class TerminalGateway(
         expected: PaymentContext? = null,
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
-    ): Attempt<TransactionOutcome> = send(paying = false, onSending, onContext, expected) { it.refund(params, serviceId) }
+    ): Attempt<TransactionOutcome> = send(paying = false, serviceId, onSending, onContext, expected) { it.refund(params, serviceId) }
 
     /**
      * Asks the terminal once for the result of the [kind] of transaction sent with [serviceId], see
@@ -331,7 +334,7 @@ class TerminalGateway(
     ): Attempt<TransactionOutcome> =
         attempt(unreachable = { TransactionOutcome.Unknown(it) }) { open ->
             if (expected == null || expected.matchesTerminal(open.context())) {
-                Attempt.Made(open.client.status(serviceId, kind))
+                Attempt.Made(open.client.status(serviceId, kind)) { open.acknowledge(serviceId) }
             } else {
                 Attempt.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
             }
@@ -495,6 +498,7 @@ class TerminalGateway(
      */
     private suspend fun send(
         paying: Boolean,
+        serviceId: String,
         onSending: suspend (poiId: String) -> Unit,
         onContext: suspend (PaymentContext) -> Unit,
         expected: PaymentContext? = null,
@@ -509,7 +513,7 @@ class TerminalGateway(
                 onSending(open.client.identity.poiId)
                 val outcome = call(open.client)
                 onContext(open.context())
-                Attempt.Made(outcome)
+                Attempt.Made(outcome) { open.acknowledge(serviceId) }
             }
         }
 

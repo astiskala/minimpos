@@ -7,14 +7,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Link
@@ -26,6 +29,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -322,29 +326,54 @@ private fun CheckoutDetails(
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
-    Column(
-        modifier.verticalScroll(rememberScrollState()).padding(dimens.screenPadding),
+    LazyColumn(
+        modifier,
+        contentPadding = PaddingValues(dimens.screenPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(Modifier.widthIn(max = dimens.contentMaxWidth), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
-            Text(
-                money.format(state.totals.amounts.gross),
-                style = dimens.amountStyle,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().testTag("checkoutAmount"),
-            )
-            if (state.preAuthorisation) {
+        item(key = "heading", contentType = "heading") {
+            Column(
+                Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth().padding(bottom = dimens.spacing),
+                verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+            ) {
                 Text(
-                    stringResource(R.string.checkout_pre_auth_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    money.format(state.totals.amounts.gross),
+                    style = dimens.amountStyle,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().testTag("preAuthNote"),
+                    modifier = Modifier.fillMaxWidth().testTag("checkoutAmount"),
                 )
+                if (state.preAuthorisation) {
+                    Text(
+                        stringResource(R.string.checkout_pre_auth_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().testTag("preAuthNote"),
+                    )
+                }
             }
-            CartSummary(state, money)
-            CheckoutFields(state, onUpdate)
-            CheckoutSwitches(state, onUpdate)
+        }
+        items(state.totals.lines, key = { "line-${it.line.key}" }, contentType = { "line" }) { priced ->
+            CartPart(
+                first =
+                    priced.line.key ==
+                        state.totals.lines
+                            .first()
+                            .line.key,
+                last = false,
+            ) {
+                LabeledValue("${priced.line.quantity} × ${priced.line.name}", money.format(priced.amounts.gross))
+            }
+        }
+        item(key = "totals", contentType = "totals") { CartSummary(state, money) }
+        item(key = "fields", contentType = "fields") {
+            Column(
+                Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth().padding(top = dimens.spacing),
+                verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+            ) {
+                CheckoutFields(state, onUpdate)
+                CheckoutSwitches(state, onUpdate)
+            }
         }
     }
 }
@@ -435,8 +464,8 @@ private fun TokenChoice(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.checkout_choose_token)) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                tokens.forEach { card ->
+            LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                items(tokens, key = { it.id }) { card ->
                     ListItem(
                         headlineContent = { Text(cardLabel(card.id, card.brand, card.lastFour)) },
                         supportingContent =
@@ -465,16 +494,46 @@ private fun LinkCheckoutButton(
     modifier = modifier.testTag("sendLink"),
 )
 
+/** One contiguous lazy section of the summary card, retaining its outer corners and original padding. */
+@Composable
+private fun CartPart(
+    first: Boolean,
+    last: Boolean,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val dimens = LocalDimens.current
+    val shape = MaterialTheme.shapes.medium
+    val square = CornerSize(0.dp)
+    Surface(
+        Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth(),
+        shape =
+            shape.copy(
+                topStart = if (first) shape.topStart else square,
+                topEnd = if (first) shape.topEnd else square,
+                bottomStart = if (last) shape.bottomStart else square,
+                bottomEnd = if (last) shape.bottomEnd else square,
+            ),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Column(
+            Modifier.padding(
+                start = dimens.cardPadding,
+                end = dimens.cardPadding,
+                top = if (first) dimens.cardPadding else 0.dp,
+                bottom = if (last) dimens.cardPadding else 0.dp,
+            ),
+            content = content,
+        )
+    }
+}
+
 /** The cart's lines, the tax (when it is charged) and the total. */
 @Composable
 private fun CartSummary(
     state: Checkout,
     money: MoneyFormatter,
 ) {
-    Card {
-        state.totals.lines.forEach { priced ->
-            LabeledValue("${priced.line.quantity} × ${priced.line.name}", money.format(priced.amounts.gross))
-        }
+    CartPart(first = state.totals.lines.isEmpty(), last = true) {
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
         if (state.showsTax) LabeledValue(stringResource(R.string.checkout_tax), money.format(state.totals.amounts.tax))
         LabeledValue(stringResource(R.string.checkout_total), money.format(state.totals.amounts.gross), emphasize = true)

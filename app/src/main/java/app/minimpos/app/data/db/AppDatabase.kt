@@ -22,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RefundEntity::class,
         HistorySwitchEntity::class,
     ],
-    version = 14,
+    version = 16,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -91,11 +91,41 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /** Adds covering activity and method indexes without changing retained financial records. */
+        val MIGRATION_14_15: Migration =
+            object : Migration(14, 15) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("DROP INDEX IF EXISTS `index_sales_createdAt`")
+                    db.execSQL("DROP INDEX IF EXISTS `index_refunds_createdAt`")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_sales_createdAt_id` ON `sales` (`createdAt`, `id`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_sales_processedAt_id` ON `sales` (`processedAt`, `id`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_sales_captureProcessedAt_id` ON `sales` (`captureProcessedAt`, `id`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_sales_captureStartedAt_id` ON `sales` (`captureStartedAt`, `id`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_refunds_createdAt_id` ON `refunds` (`createdAt`, `id`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_refunds_processedAt_id` ON `refunds` (`processedAt`, `id`)")
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_sales_paymentBrand_paymentMethodVariant_requestedWallet` " +
+                            "ON `sales` (`paymentBrand`, `paymentMethodVariant`, `requestedWallet`)",
+                    )
+                }
+            }
+
+        /** Adds shopper token lookup ordering without changing stored payment or recovery facts. */
+        val MIGRATION_15_16: Migration =
+            object : Migration(15, 16) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_sales_shopperReference_createdAt_id` " +
+                            "ON `sales` (`shopperReference`, `createdAt`, `id`)",
+                    )
+                }
+            }
+
         /** Opens lazily on first query with versioned migrations; no destructive fallback is configured. */
         fun create(context: Context): AppDatabase =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, "minimpos.db")
-                .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+                .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
                 .build()
     }
 }

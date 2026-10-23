@@ -18,6 +18,7 @@ import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.terminalOperation
+import app.minimpos.app.sales
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.tax.TaxMode

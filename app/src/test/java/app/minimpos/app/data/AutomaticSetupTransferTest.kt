@@ -18,6 +18,7 @@ import app.minimpos.app.data.security.TransferSeal
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.transfer.ImportOutcome
 import app.minimpos.app.data.transfer.ReceivedTransfer
+import app.minimpos.app.items
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.SetupImportOutcome
 import app.minimpos.app.terminal.TerminalConnection

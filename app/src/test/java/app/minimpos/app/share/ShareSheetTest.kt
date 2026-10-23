@@ -3,8 +3,11 @@ package app.minimpos.app.share
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.graphics.Canvas
 import android.net.Uri
 import androidx.core.content.IntentCompat
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.get
 import androidx.test.core.app.ApplicationProvider
 import app.minimpos.app.forgetSharedFileRoots
 import app.minimpos.core.receipt.Align
@@ -40,6 +43,41 @@ class ShareSheetTest {
                 ReceiptElement.Link("https://test.adyen.link/PL1", "Pay now"),
             ),
         )
+
+    @Test
+    fun `receipt viewport lookup handles boundaries and clipped rendering matches the full slip`() {
+        val ends = floatArrayOf(10f, 20f, 20f, 30f)
+        assertThat(ReceiptImage.visibleStart(ends, -1f)).isEqualTo(0)
+        assertThat(ReceiptImage.visibleStart(ends, 10f)).isEqualTo(1)
+        assertThat(ReceiptImage.visibleStart(ends, 20f)).isEqualTo(3)
+        assertThat(ReceiptImage.visibleStart(ends, 30f)).isEqualTo(4)
+        assertThat(ReceiptImage.visibleStart(floatArrayOf(), 0f)).isEqualTo(0)
+        val document = ReceiptDocument(List(100) { ReceiptElement.Row("Item $it", "9.00") })
+        val measured = ReceiptImage.measure(document, 288)
+        val full = ReceiptImage.render(document, 288)
+        val top = measured.height / 2
+        val clipped = createBitmap(288, 100)
+        val canvas = Canvas(clipped)
+        canvas.translate(0f, -top.toFloat())
+        measured.draw(canvas)
+        for (y in 0..<100) {
+            for (x in 0..<288) assertThat(clipped[x, y]).isEqualTo(full[x, y + top])
+        }
+        clipped.recycle()
+        full.recycle()
+    }
+
+    @Test
+    fun `long receipts keep full preview layout but bound shared bitmap allocation`() {
+        val long = ReceiptDocument(List(1000) { ReceiptElement.Row("Item $it", "$9.00") })
+        val measured = ReceiptImage.measure(long)
+        assertThat(measured.height).isGreaterThan(16_384)
+        val image = ReceiptImage.render(long)
+        assertThat(image.height).isAtMost(16_384)
+        assertThat(image.width.toLong() * image.height).isAtMost(4_000_000L)
+        assertThat(image.width.toDouble() / image.height).isWithin(0.001).of(measured.width.toDouble() / measured.height)
+        image.recycle()
+    }
 
     @Test
     fun `a reference shares its label's line whenever both fit the slip`() {

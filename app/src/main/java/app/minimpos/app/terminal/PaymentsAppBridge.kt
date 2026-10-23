@@ -70,6 +70,10 @@ class PaymentsAppBridge : AppLinkExchange {
 
     override fun lateReplies(): List<String> = late.toList()
 
+    override fun forgetLateReplies(urls: Set<String>) {
+        late.removeAll(urls)
+    }
+
     /** The activity started the Payments app with [id]'s link. */
     fun opened(id: Long) {
         pending?.takeIf { it.id == id }?.opened = true

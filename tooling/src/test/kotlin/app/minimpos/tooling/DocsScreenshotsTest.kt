@@ -22,8 +22,7 @@ class DocsScreenshotsTest {
                     val rgb =
                         when {
                             y < DocsScreenshots.BAR || y >= height - DocsScreenshots.BAR -> 0x000000
-                            x < width / 2 -> 0x0ABF53
-                            else -> (x * 255 / width shl 16) or (y * 255 / height shl 8) or 0x40
+                            else -> 0x0ABF53
                         }
                     setRGB(x, y, rgb)
                 }
@@ -48,15 +47,15 @@ class DocsScreenshotsTest {
     }
 
     @Test
-    fun `system bars take the adjacent rows' background and the result is a small indexed frame-sized image`() {
+    fun `both system bars are cropped away, so the app fills the saved frame-sized indexed image`() {
         val shot = DocsScreenshots.process(capture())
         assertThat(shot.width).isEqualTo(DocsScreenshots.WIDTH)
         assertThat(shot.height).isEqualTo(DocsScreenshots.HEIGHT)
         val model = shot.colorModel as IndexColorModel
         assertThat(model.mapSize).isAtMost(DocsScreenshots.COLOURS)
-        // The black bars are gone: across their whole width they show the adjacent row's background, the app's green.
+        // The black bars are gone: even the outermost rows and columns show the app's green.
         listOf(0, DocsScreenshots.HEIGHT - 1).forEach { y ->
-            listOf(5, DocsScreenshots.WIDTH - 5).forEach { x ->
+            listOf(0, DocsScreenshots.WIDTH - 1).forEach { x ->
                 val rgb = shot.getRGB(x, y)
                 assertThat(rgb shr 16 and 0xFF).isLessThan(0x20)
                 assertThat(rgb shr 8 and 0xFF).isGreaterThan(0xA0)
@@ -75,9 +74,9 @@ class DocsScreenshotsTest {
     }
 
     @Test
-    fun `AMS1 removes 36px status and 72px navigation bars without resizing or losing terminal identity`() {
-        val image = BufferedImage(480, 800, BufferedImage.TYPE_INT_RGB)
-        for (y in 36..<728) for (x in 0..<480) image.setRGB(x, y, 0x00843F)
+    fun `AMS1 crops its 36px bars without resizing or losing terminal identity`() {
+        val image = BufferedImage(480, 872, BufferedImage.TYPE_INT_RGB)
+        for (y in 36..<836) for (x in 0..<480) image.setRGB(x, y, 0x00843F)
         val processed = DocsScreenshots.process(image)
         assertThat(processed.width).isEqualTo(480)
         assertThat(processed.height).isEqualTo(800)

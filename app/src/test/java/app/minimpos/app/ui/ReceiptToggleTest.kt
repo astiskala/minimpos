@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
+import app.minimpos.app.awaitCondition
 import app.minimpos.app.feature.ReceiptToggle
 import app.minimpos.app.receipt.PrintRenderer
 import app.minimpos.app.share.ReceiptImage
@@ -39,10 +40,16 @@ class ReceiptToggleTest {
     @get:Rule
     val compose = createComposeRule()
 
+    private fun awaitSlips(count: Int = 1) =
+        compose.awaitCondition("receipt layout measured") {
+            compose.onAllNodesWithTag("receiptImage").fetchSemanticsNodes().size == count
+        }
+
     @Test
     fun `preview keeps the shared slip proportions on the smallest screen`() {
         val document = ReceiptDocument(listOf(ReceiptElement.Divider))
         compose.setContent { MiniMposTheme { ReceiptPreview(document) } }
+        awaitSlips()
         val bounds =
             compose
                 .onNodeWithTag("receiptImage")
@@ -73,6 +80,7 @@ class ReceiptToggleTest {
                 }
             }
         }
+        awaitSlips(2)
         val slips = compose.onAllNodesWithTag("receiptImage")
         assertThat(slips.fetchSemanticsNodes()).hasSize(2)
         val preview = slips[0].getUnclippedBoundsInRoot()
@@ -95,6 +103,7 @@ class ReceiptToggleTest {
                 ),
             )
         compose.setContent { MiniMposTheme { ReceiptPreview(document) } }
+        awaitSlips()
         val shared = ReceiptImage.render(document)
         val bounds = compose.onNodeWithTag("receiptImage").fetchSemanticsNode().boundsInRoot
         assertThat(bounds.height / bounds.width).isWithin(0.005f).of(shared.height.toFloat() / shared.width)
@@ -114,6 +123,7 @@ class ReceiptToggleTest {
         }
         compose.onNodeWithText("Receipt preview").assertDoesNotExist()
         compose.onNodeWithText("Show receipt").assertIsDisplayed().performClick()
+        awaitSlips()
         compose.onNodeWithText("Receipt preview").assertIsDisplayed()
         compose.onNodeWithText("Hide receipt").assertIsDisplayed()
         compose.onNodeWithTag("toggleReceipt").performClick()

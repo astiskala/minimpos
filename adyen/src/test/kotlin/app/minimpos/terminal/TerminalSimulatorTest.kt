@@ -190,6 +190,8 @@ class TerminalSimulatorTest {
             assertThat(client.status(id)).isInstanceOf(TransactionOutcome.Unknown::class.java)
             client.abort(id)
             payment.await()
+            simulator.acknowledge(id)
+            // Acknowledgement only retires late App Links, not a terminal's own recoverable ledger.
             assertThat(client.status(id)).isInstanceOf(TransactionOutcome.Completed::class.java)
         }
 

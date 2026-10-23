@@ -127,9 +127,12 @@ data class AppSettings(
                 ),
         )
 
-    /** The display languages Settings offers. */
+    /**
+     * The display languages Settings offers, "Follow device" (empty) first, then BCP 47 tags in alphabetical order.
+     * `R.array.app_language_names` lists each language's own name in the same order.
+     */
     companion object {
-        internal val LANGUAGE_TAGS = listOf("", "en", "zh-CN", "zh-Hant", "ja", "pt-BR", "es-MX", "fr-FR")
+        internal val LANGUAGE_TAGS = listOf("", "en", "es-MX", "fr-FR", "ja", "pt-BR", "zh-CN", "zh-Hant")
     }
 }
 
@@ -672,7 +675,7 @@ data class SimulatorSettings(
 /**
  * How long transactions are kept.
  *
- * @property retentionDays Sales and refunds older than this many days are deleted at startup; 0 keeps them forever.
+ * @property retentionDays Eligible sales and refunds older than this many days are deleted at startup and daily; 0 keeps them forever.
  *   Never negative.
  */
 @Serializable

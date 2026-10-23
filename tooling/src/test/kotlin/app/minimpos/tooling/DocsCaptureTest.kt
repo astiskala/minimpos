@@ -44,6 +44,16 @@ class DocsCaptureTest {
     }
 
     @Test
+    fun `captures use a display taller than the terminal by both system bars so the app fills the cropped screen`() {
+        val root = fixture()
+        assertThat(run(root, "locale", "zh-CN").code).isEqualTo(0)
+        val calls = Files.readAllLines(root.resolve("calls"))
+        assertThat(calls.indexOf("shell wm size 720x1376")).isGreaterThan(calls.indexOf("shell start"))
+        assertThat(run(root, "finish", reset = true).code).isEqualTo(0)
+        assertThat(Files.readAllLines(root.resolve("calls"))).contains("shell wm size reset")
+    }
+
+    @Test
     fun `launch waits for localized Home after a failed startup dump`() {
         val root = fixture()
         assertThat(run(root, "launch", "zh-CN", failOnce = true).code).isEqualTo(0)

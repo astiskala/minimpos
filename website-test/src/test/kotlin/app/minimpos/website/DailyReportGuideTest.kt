@@ -9,6 +9,24 @@ import kotlin.io.path.readText
 
 class DailyReportGuideTest {
     @Test
+    fun `history pagination and search across retained records are explained in every language`() {
+        val docs = Path.of(checkNotNull(System.getProperty("minimpos.website")))
+        mapOf(
+            "" to "seven days",
+            "zh-CN" to "七个",
+            "zh-Hant" to "七個",
+            "ja" to "7日分",
+            "pt-BR" to "sete dias",
+            "es-MX" to "siete días",
+            "fr-FR" to "sept jours",
+        ).forEach { (language, term) ->
+            val history = Jsoup.parse(docs.resolve(language).resolve("using.html").readText()).select("#history")
+            assertWithMessage(language).that(history.text()).contains(term)
+            assertWithMessage(language).that(history.text()).contains("100")
+        }
+    }
+
+    @Test
     fun `merchant scan guides preserve wallet limitations and recovery in every language`() {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         listOf("", "zh-CN", "zh-Hant", "ja").forEach { language ->

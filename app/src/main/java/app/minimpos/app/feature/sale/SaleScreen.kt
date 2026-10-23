@@ -76,6 +76,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -521,7 +522,8 @@ private fun ProductTile(
     minHeight: Dp,
     onClick: () -> Unit,
 ) {
-    val gap = LocalDimens.current.spacing
+    val dimens = LocalDimens.current
+    val gap = dimens.spacing
     val inCart = quantity > 0
     val inCartText = stringResource(R.string.sale_in_cart, quantity)
     // Products in the cart get a green outline and their count beside the price, where it never covers the name.
@@ -537,12 +539,18 @@ private fun ProductTile(
                 .semantics { if (inCart) stateDescription = inCartText }
                 .testTag("product_${product.id}"),
     ) {
-        Column(Modifier.padding(gap), verticalArrangement = Arrangement.SpaceBetween) {
-            Text(product.name, style = MaterialTheme.typography.titleSmall, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Row(Modifier.padding(top = gap / 2), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.padding(horizontal = gap, vertical = dimens.tileVerticalPadding), verticalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                product.name,
+                style = MaterialTheme.typography.titleSmall.copy(lineHeight = 18.sp),
+                minLines = 2,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(Modifier.padding(top = gap / 4), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     price,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     modifier = Modifier.weight(1f),

@@ -26,8 +26,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -73,8 +74,13 @@ class ProductsViewModel(
 ) : ViewModel() {
     /** The screen state, updated whenever the catalogue or settings change. */
     val state: StateFlow<ProductsUiState> =
-        combine(catalog.products, catalog.categories, catalog.taxRates, settingsState) { products, categories, taxRates, appSettings ->
-            ProductsUiState(products, categories, taxRates, currency(appSettings), appSettings.payment.chargeTax)
+        combine(
+            catalog.products,
+            catalog.categories,
+            catalog.taxRates,
+            settingsState.map { currency(it) to it.payment.chargeTax }.distinctUntilChanged(),
+        ) { products, categories, taxRates, (unit, chargeTax) ->
+            ProductsUiState(products, categories, taxRates, unit, chargeTax)
         }.flowOn(cpu).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProductsUiState())
 
     /** Adds [category] (ID 0) or renames it, trimming the name. */
@@ -181,8 +187,8 @@ class ProductEditViewModel(
         viewModelScope.launch {
             val appSettings = settingsState.value
             val spec = currency(appSettings)
-            val taxRates = catalog.taxRates.first()
-            val categories = catalog.categories.first()
+            val taxRates = catalog.reader.taxRates()
+            val categories = catalog.reader.categories()
             val product = productId?.let { catalog.product(it) }
             val defaultTaxRateId = appSettings.payment.defaultTaxRate(taxRates)?.id
             val form =

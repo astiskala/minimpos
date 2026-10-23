@@ -15,6 +15,8 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
   once whether the request may have taken effect. Convert transport exceptions there (`FaultException` only inside
   `:adyen`); client/checkout code must not see them. Results carry faults and `ExternalText`, never English sentences
   or exception messages.
+- \* HTTP senders reuse configured clients and attach independent call deadlines. Connection-timeout variants stay
+  bounded and preserve TLS, connection pools and retry policy; never rebuild a client for every request.
 - \* Only `client/Decline` interprets ErrorCondition and retry advice. Do not compare its strings elsewhere.
 - \* The nexo wire vocabulary (`AdditionalResponse`/`AdditionalData` keys, the Base64 tip-operation blob) has one owner,
   `client/NexoVocabulary.kt`: the client that writes requests and reads answers and the simulator that answers them

@@ -92,7 +92,7 @@ class TapToPaySettingsTest {
 
     private fun openTerminalSettings() {
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
     }

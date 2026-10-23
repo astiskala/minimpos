@@ -12,6 +12,9 @@ import app.minimpos.core.receipt.HtmlReceiptRenderer
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.shopper.ShopperReferences
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.UnsupportedEncodingException
 import javax.mail.MessagingException
 
@@ -58,6 +61,8 @@ class ReceiptEmailer(
     private val qrPng: (String) -> ByteArray,
     /** Reads resources in the current app language at delivery time. */
     private val currentTexts: () -> EmailTexts,
+    /** Dispatcher for QR PNGs and text rendering before SMTP delivery. */
+    private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private val texts: EmailTexts get() = currentTexts()
 
@@ -111,15 +116,17 @@ class ReceiptEmailer(
                 .replace("{business}", business)
                 .replace("{reference}", reference)
         val intro = envelope.intro
-        val images = document.qrCodes.mapIndexed { index, qr -> InlineImage("qr$index", qrPng(qr.content)) }
         val message =
-            EmailMessage(
-                to = to,
-                subject = subject,
-                html = HtmlReceiptRenderer().render(document, subject, intro),
-                text = intro + "\n\n" + PlainTextReceiptRenderer(current.receipt.charsPerLine).render(document),
-                images = images,
-            )
+            withContext(cpu) {
+                val images = document.qrCodes.mapIndexed { index, qr -> InlineImage("qr$index", qrPng(qr.content)) }
+                EmailMessage(
+                    to = to,
+                    subject = subject,
+                    html = HtmlReceiptRenderer().render(document, subject, intro),
+                    text = intro + "\n\n" + PlainTextReceiptRenderer(current.receipt.charsPerLine).render(document),
+                    images = images,
+                )
+            }
         return deliver(current, message)
     }
 

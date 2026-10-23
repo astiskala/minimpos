@@ -13,6 +13,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -77,6 +78,22 @@ class TransferViewModelsTest {
     }
 
     @Test
+    fun `completed transfer processing is dispatched and duplicate scans are ignored until decoding finishes`() {
+        val cpu = StandardTestDispatcher()
+        val (codes, _) = exportCodes()
+        val import = TransferImportViewModel("AUD", target.container.setupImport, cpu)
+        settled(import) { it is ImportUiState.Scanning }
+        codes.forEach(import::onCode)
+        assertThat(import.state.value).isEqualTo(ImportUiState.Importing)
+        import.onCode("not-a-transfer")
+        codes.forEach(import::onCode)
+        assertThat(import.state.value).isEqualTo(ImportUiState.Importing)
+        cpu.scheduler.runCurrent()
+        val ready = settled(import) { it is ImportUiState.Ready } as ImportUiState.Ready
+        assertThat(ready.received.catalogue!!.products).hasSize(2)
+    }
+
+    @Test
     fun `the export offers secrets only when some are set, and shows a new code each time`() {
         val export = TransferExportViewModel(source.container.setupTransfer, "AUD", chunkSize = 40)
         var state = await { export.state.first { true } }
@@ -116,7 +133,7 @@ class TransferViewModelsTest {
         codes.reversed().dropLast(1).forEach(import::onCode)
         assertThat((import.state.value as ImportUiState.Scanning).received).isEqualTo(codes.size - 1)
         import.onCode(codes.first())
-        val ready = import.state.value as ImportUiState.Ready
+        val ready = settled(import) { it is ImportUiState.Ready } as ImportUiState.Ready
         // The settings bring the currency along, so the catalogue's matches.
         assertThat(ready.currencyMatches).isTrue()
         assertThat(ready.received.catalogue!!.products).hasSize(2)
@@ -150,10 +167,10 @@ class TransferViewModelsTest {
         val import = TransferImportViewModel("NZD", target.container.setupImport)
         settled(import) { it is ImportUiState.Scanning }
         import.onCode("MPC1:ABCD:1/1:AAAA")
-        assertThat((import.state.value as ImportUiState.Scanning).error).isEqualTo(ImportError.CORRUPT)
+        assertThat((settled(import) { it is ImportUiState.Scanning } as ImportUiState.Scanning).error).isEqualTo(ImportError.CORRUPT)
         val (codes, _) = exportCodes()
         codes.forEach(import::onCode)
-        assertThat(import.state.value).isInstanceOf(ImportUiState.Ready::class.java)
+        assertThat(settled(import) { it is ImportUiState.Ready }).isInstanceOf(ImportUiState.Ready::class.java)
     }
 
     @Test
@@ -163,6 +180,7 @@ class TransferViewModelsTest {
         val import = TransferImportViewModel("NZD", target.container.setupImport)
         settled(import) { it is ImportUiState.Scanning }
         codes.forEach(import::onCode)
+        settled(import) { it is ImportUiState.Ready }
         import.import()
         assertThat((import.state.value as ImportUiState.Ready).wrongCode).isTrue()
         assertThat(await { target.container.secrets.get(Secret.SMTP_PASSWORD) }).isNull()
@@ -190,7 +208,7 @@ class TransferViewModelsTest {
         val catalogueOnly = TransferImportViewModel("NZD", target.container.setupImport)
         settled(catalogueOnly) { it is ImportUiState.Scanning }
         catalogueCodes.forEach(catalogueOnly::onCode)
-        val ready = catalogueOnly.state.value as ImportUiState.Ready
+        val ready = settled(catalogueOnly) { it is ImportUiState.Ready } as ImportUiState.Ready
         assertThat(ready.currencyMatches).isFalse()
         assertThat(ready.received.accepts("")).isFalse()
     }

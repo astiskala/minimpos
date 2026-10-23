@@ -695,12 +695,12 @@
   <string-array name="app_language_names">
     <item>@string/settings_language_device</item>
     <item>English</item>
-    <item>简体中文</item>
-    <item>繁體中文</item>
+    <item>Español (México)</item>
+    <item>Français (France)</item>
     <item>日本語</item>
     <item>Português (Brasil)</item>
-    <item>Español (México)</item>
-    <item>Français</item>
+    <item>简体中文</item>
+    <item>繁體中文</item>
   </string-array>
 
   <!-- Settings: terminal and Tap to Pay -->

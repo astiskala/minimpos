@@ -22,10 +22,10 @@ import java.net.NoRouteToHostException
 import java.net.UnknownHostException
 import java.util.Collections
 import java.util.IdentityHashMap
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLHandshakeException
 import javax.net.ssl.SSLPeerUnverifiedException
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * HTTP client for Adyen's [com.adyen.service.TerminalLocalAPI], built on OkHttp. The library's default Apache
@@ -59,6 +59,8 @@ class TerminalHttpClient(
             // Silently re-sending a payment request could charge the shopper twice.
             .retryOnConnectionFailure(false)
             .build()
+
+    private val clients = ConnectClients(client)
 
     override fun request(
         endpoint: String,
@@ -107,18 +109,15 @@ class TerminalHttpClient(
     ): String {
         val url = endpoint.toHttpUrl()
         val call =
-            client
-                .newBuilder()
-                .connectTimeout(config.connectionTimeoutMillis.milliseconds)
-                .callTimeout(config.readTimeoutMillis.milliseconds)
-                .build()
+            clients
+                .get(config.connectionTimeoutMillis)
                 .newCall(
                     Request
                         .Builder()
                         .url(url)
                         .post(body.toRequestBody(JSON))
                         .build(),
-                )
+                ).apply { timeout().timeout(config.readTimeoutMillis.toLong(), TimeUnit.MILLISECONDS) }
         val text =
             try {
                 call.execute().use { response ->

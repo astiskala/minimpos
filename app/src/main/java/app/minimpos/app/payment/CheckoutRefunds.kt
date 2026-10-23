@@ -62,6 +62,12 @@ class CheckoutRefunds(
      */
     fun start(request: RefundStart): String? = if (request.checkout && request.saleId != null) operations.start(request) else null
 
+    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
+    internal fun forgetAll() = operations.forgetAll()
+
+    /** Releases process-only requests for records that history has already durably deleted. */
+    internal fun forget(ids: Set<String>) = operations.forget(ids)
+
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next refund can start. */
     fun acknowledge() = operations.acknowledge()
 
@@ -146,12 +152,16 @@ class CheckoutRefunds(
         override suspend fun notSent(
             id: String,
             problem: SetupProblem,
-        ) = refunds.settle(id, RefundStatus.FAILED, null, null, StoredReason.NotDone(Failure.NotSetUp(problem)))
+        ) {
+            refunds.settle(id, RefundStatus.FAILED, null, null, StoredReason.NotDone(Failure.NotSetUp(problem)))
+        }
 
         override suspend fun interrupted(
             id: String,
             fault: DeviceFault,
-        ) = refunds.settle(id, RefundStatus.UNKNOWN, null, null, StoredReason.Unconfirmed(Failure.Device(fault)))
+        ) {
+            refunds.settle(id, RefundStatus.UNKNOWN, null, null, StoredReason.Unconfirmed(Failure.Device(fault)))
+        }
 
         /** The PSP reference of the saved-card sale refund [id] refunds; null when it is gone or has none. */
         private suspend fun pspReference(id: String): String? =

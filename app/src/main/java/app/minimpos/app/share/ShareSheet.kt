@@ -115,7 +115,11 @@ fun ShareEffect(
             val file =
                 withContext(io) {
                     val image = ReceiptImage.render(request.document)
-                    ShareSheet.write(context, image, request.reference).also { image.recycle() }
+                    try {
+                        ShareSheet.write(context, image, request.reference)
+                    } finally {
+                        image.recycle()
+                    }
                 }
             ShareSheet.open(context, file, shareSubject, text, chooser)
         } catch (ignored: IOException) {

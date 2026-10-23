@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Drives docs screenshot captures on the docs emulator (see .devin/skills/docs-screenshots/SKILL.md › Capture script).
 #
-#   scripts/docs-capture prepare             overlays off, no status icons, terminal device name, no animations
+#   scripts/docs-capture prepare             overlays off, terminal device name, no animations, full-screen display
 #   scripts/docs-capture locale LANG         device locale and time zone of a supported sample-data.json market
 #   scripts/docs-capture snapshot NAME.tar   app data into /data/local/tmp/NAME.tar
 #   scripts/docs-capture restore NAME.tar    app data from /data/local/tmp/NAME.tar
@@ -15,7 +15,7 @@
 #   scripts/docs-capture flow LANG NAME...   named flows listed below, each from docs-$SNAPSHOT-LANG.tar
 #   scripts/docs-capture batch [LANG...]     all flows; all seven languages by default, serially on one disposable clone
 #   scripts/docs-capture process             raw S1F2/AMS1 captures into docs/images[/LANG]/ via scripts/docs-assets
-#   scripts/docs-capture finish              remove the capture-only device settings
+#   scripts/docs-capture finish              remove the capture-only device settings and display size
 #   scripts/docs-capture shutdown            finish, then power off the owned disposable emulator
 #
 # ANDROID_SERIAL selects the emulator (default emulator-5570); SHOTS the raw folder (default /tmp/minimpos-shots);
@@ -31,14 +31,11 @@ package=app.minimpos
 device() { "$adb" -s "$serial" "$@"; }
 remote() { device shell "$@"; }
 
-demo_mode() {
-    remote settings put global sysui_demo_allowed 1
-    local demo=(am broadcast -a com.android.systemui.demo -e command)
-    remote "${demo[@]}" enter > /dev/null
-    remote "${demo[@]}" clock -e hhmm 0930 > /dev/null
-    remote "${demo[@]}" network -e wifi show -e level 4 > /dev/null
-    remote "${demo[@]}" battery -e level 100 -e plugged false > /dev/null
-    remote "${demo[@]}" notifications -e visible false > /dev/null
+# Adyen terminals show no system bars, so the app fills their screen. The emulator keeps its bars, so captures use a
+# logical display taller than the terminal's by one status bar and one gesture bar (24 dp each): the app lays out
+# between them as on the terminal and `process` crops the bars off. See DocsScreenshots.
+tall_display() {
+    remote wm size 720x1376
 }
 
 restart_framework() {
@@ -54,7 +51,7 @@ restart_framework() {
     done
     sleep 3
     remote settings put global device_name S1F2-000158213605014
-    demo_mode
+    tall_display
 }
 
 # The value of string resource $2 in language $1, unescaped as the app shows it.
@@ -107,8 +104,6 @@ prepare() {
     remote cmd overlay disable com.android.systemui.emulation.pixel_4a
     remote cmd overlay disable com.android.internal.systemui.navbar.threebutton
     remote cmd overlay enable com.android.internal.systemui.navbar.gestural
-    remote settings put secure icon_blacklist \
-        clock,battery,wifi,mobile,airplane,cast,hotspot,volume,bluetooth,location,alarm_clock,zen,ethernet,vpn,nfc,rotate,headset
     local scale
     for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
         remote settings put global "$scale" 0
@@ -239,13 +234,13 @@ tap() {
     exit 1
 }
 
-# Swipes up until KEY's node is clear of the bars, or shows but the screen cannot scroll further.
+# Swipes up until KEY's node is clear of the top app bar and bottom actions, or shows but the screen cannot scroll further.
 scroll() {
     local text y last=
     text=$(label "$1" "$2")
     for _ in $(seq 10); do
         y=$(centre "$text" | awk '{ print $2 }') || true
-        if [[ -n $y ]] && { ((y > 200 && y < 1050)) || [[ $y == "$last" ]]; }; then return; fi
+        if [[ -n $y ]] && { ((y > 200 && y < 1146)) || [[ $y == "$last" ]]; }; then return; fi
         last=$y
         remote input swipe 360 1000 360 550 500
         sleep 1.2
@@ -310,8 +305,7 @@ flow_overview() {
     tap "$1" home_history 2
     shot "$1" history
     tap "$1" history_search
-    remote input keyevent KEYCODE_EISU
-    remote input text "$(market "$1" | sed -n 's/^[^}]*"customerReference": *"\([^"]*\)".*/\1/p')"
+    type_verified "$(fixture_reference "$1" customerReference)"
     back
     shot "$1" history-search
 }
@@ -349,10 +343,32 @@ fixture_reference() {
     market "$1" | sed -n "s/^[^}]*\"$2\": *\"\\([^\"]*\\)\".*/\\1/p"
 }
 
+# Types $1 into the focused field one character at a time and rereads the field: the emulator's keyboard drops or
+# reorders characters typed in one burst, so retry from an emptied field until the dump shows the exact text.
+type_verified() {
+    local want=$1 char i
+    for _ in 1 2 3 4 5; do
+        remote input keyevent KEYCODE_EISU
+        remote input keyevent KEYCODE_MOVE_END
+        for _ in $(seq 24); do remote input keyevent KEYCODE_DEL; done
+        for ((i = 0; i < ${#want}; i++)); do
+            char=${want:i:1}
+            remote input text "$char"
+            sleep 0.3
+        done
+        sleep 0.5
+        remote uiautomator dump /data/local/tmp/ui.xml > /dev/null 2>&1
+        if device exec-out cat /data/local/tmp/ui.xml | grep -q "text=\"$want\""; then
+            return
+        fi
+    done
+    printf '%s\n' "Field never read back as: $want" >&2
+    exit 1
+}
+
 enter_reference() {
     tap "$1" checkout_customer_reference
-    remote input keyevent KEYCODE_EISU
-    remote input text "$(fixture_reference "$1" "$2")"
+    type_verified "$(fixture_reference "$1" "$2")"
     back
 }
 
@@ -404,6 +420,7 @@ flow_checkout() {
     shot "$1" processing
     sleep 10
     shot "$1" approved
+    scroll "$1" result_print
     tap "$1" result_print 3
     expand_receipt
     shot "$1" receipt
@@ -478,7 +495,9 @@ flow_gratuity() {
     back
     tap "$1" home_new_sale 2
     local product
-    for product in "Avocado toast" "Avocado toast" "Flat white" "Flat white"; do
+    # The grid is ordered by sales, so the top row's product goes first and the rest scroll into view.
+    for product in "Flat white" "Flat white" "Avocado toast" "Avocado toast"; do
+        scroll "$1" "=$(item "$1" "$product")"
         tap "$1" "=$(item "$1" "$product")" 0.5
     done
     tap "$1" ^sale_charge 2
@@ -522,16 +541,12 @@ flow_tax_dialog() {
 
 flow_ams1() {
     flow_cart "$1"
-    remote wm size 480x800
+    remote wm size 480x872
     remote wm density 240
-    remote cmd overlay enable com.android.internal.systemui.navbar.threebutton
-    remote cmd overlay disable com.android.internal.systemui.navbar.gestural
     sleep 4
     shot "$1" sale-ams1
-    remote wm size reset
+    tall_display
     remote wm density reset
-    remote cmd overlay disable com.android.internal.systemui.navbar.threebutton
-    remote cmd overlay enable com.android.internal.systemui.navbar.gestural
     sleep 3
 }
 
@@ -591,7 +606,7 @@ install() {
 
 batch() {
     require_clone
-    if [[ $# == 0 ]]; then set -- en zh-CN zh-Hant ja pt-BR es-MX fr-FR; fi
+    if [[ $# == 0 ]]; then set -- en es-MX fr-FR ja pt-BR zh-CN zh-Hant; fi
     local language
     for language in "$@"; do
         [[ -n $(string "$language" home_new_sale) ]] || exit 1
@@ -608,10 +623,10 @@ batch() {
 }
 
 finish() {
-    remote settings delete secure icon_blacklist
+    remote wm size reset
+    remote wm density reset
     remote settings delete global device_name
     remote settings put global auto_time 1
-    remote am broadcast -a com.android.systemui.demo -e command exit > /dev/null
 }
 
 shutdown() {

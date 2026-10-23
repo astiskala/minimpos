@@ -19,6 +19,7 @@ import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.sales
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
 import org.junit.Rule
@@ -128,7 +129,7 @@ class OnboardingUiTest {
                     .first()
             }
         val settings = env.container.settingsState.value
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitFor("section_simulator")
         compose.onNodeWithTag("section_simulator").performScrollTo().performClick()
         waitFor("exitDemo")
@@ -176,7 +177,7 @@ class OnboardingUiTest {
             },
         ).hasSize(11)
 
-        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
         waitFor("section_data")
         compose.onNodeWithTag("section_data").performScrollTo().performClick()
         waitFor("addSamples")

@@ -2,8 +2,8 @@ package app.minimpos.app.feature.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.minimpos.app.data.db.HistoryKey
 import app.minimpos.app.data.db.RefundEntity
-import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.HistoryRepository
@@ -15,7 +15,6 @@ import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.TransactionActionsState
 import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.feature.toState
-import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.HistoryDay
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.RefundablePayment
@@ -29,12 +28,17 @@ import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.app.payment.TerminalReconciliation
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -45,6 +49,8 @@ import java.time.ZoneId
  * What the history list shows.
  *
  * @property loaded False until history has been read.
+ * @property hasNewer Whether a newer page can be restored.
+ * @property hasOlder Whether older matching entries remain.
  * @property filter The selected filter.
  * @property days The matching transactions grouped by day, newest day first.
  * @property query The search field's text; see [HistorySearch] for what it matches.
@@ -58,15 +64,15 @@ import java.time.ZoneId
  */
 data class HistoryUiState(
     val loaded: Boolean = false,
+    val hasNewer: Boolean = false,
+    val hasOlder: Boolean = false,
     val filter: HistoryFilter = HistoryFilter.ALL,
     val days: List<HistoryDay> = emptyList(),
     val query: String = "",
     val method: PaymentMethodFilter? = null,
     val methods: List<PaymentMethodFilter> = emptyList(),
     val hasHistory: Boolean = false,
-    /** Whether daily reports can print on the current destination. */
     val canPrint: Boolean = false,
-    /** Latest whole-day print outcome. */
     val print: ActionState = ActionState(),
     val reconcile: ActionState = ActionState(),
     val reconciliation: TerminalReconciliationReport? = null,
@@ -76,6 +82,7 @@ data class HistoryUiState(
 }
 
 /** The history list: sales and refunds by day, with daily totals, filtered and searched. */
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class HistoryViewModel(
     history: HistoryRepository,
     /** The time zone days are counted in; read for each update, so it follows the device's setting. */
@@ -87,6 +94,8 @@ class HistoryViewModel(
     /** Dispatcher for filtering and whole-day accounting, including each search edit. */
     private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
+    private val pages = MutableStateFlow<List<HistoryKey>>(emptyList())
+
     private val print = MutableStateFlow(ActionState())
     private val reconcileState = MutableStateFlow<Pair<ActionState, TerminalReconciliationReport?>>(ActionState() to null)
     private val canPrint = receipts?.let(TransactionActions::canPrintReports) ?: flowOf(false)
@@ -94,33 +103,50 @@ class HistoryViewModel(
     private val query = MutableStateFlow("")
     private val method = MutableStateFlow<PaymentMethodFilter?>(null)
 
+    private val paging = HistoryPages(history.reader)
+
+    private var cachedMethods: Pair<Generation, List<PaymentMethodFilter>>? = null
+
     /** The list state, updated whenever history, the filter, the search or the payment method changes. */
     val state: StateFlow<HistoryUiState> =
-        combine(history.items(), filter, query, method) { items, selected, text, chosen ->
-            val sales = items.filterIsInstance<HistoryItem.Sale>().associate { it.id to it.sale }
-            val preAuths =
-                sales.values
-                    .filter { it.kind == SaleKind.PRE_AUTHORISATION }
-                    .map { it.id }
-                    .toSet()
+        combine(
+            history.changes.map(::Generation),
+            filter,
+            query.debounce { if (it.isEmpty()) 0L else SEARCH_DELAY_MILLIS },
+            method,
+            pages,
+        ) { generation, selected, text, chosen, cursors ->
+            HistoryRequest(selected, text, chosen, cursors, generation)
+        }.mapLatest { request ->
+            val selected = request.filter
+            val text = request.query
+            val chosen = request.method
+            val cursors = request.pages
+            val generation = request.generation
             val search = HistorySearch(text, chosen)
-            val shown =
-                items.filter { item ->
-                    val sale =
-                        when (item) {
-                            is HistoryItem.Sale -> item.sale
-                            is HistoryItem.Refund -> item.refund.saleId?.let(sales::get)
-                        }
-                    selected.matches(item, preAuths) && search.matches(item, sale)
+            val savedMethods = cachedMethods?.takeIf { it.first === generation }?.second
+            val availableMethods =
+                savedMethods ?: PaymentMethodFilter.available(history.reader.methods()).also {
+                    cachedMethods = generation to it
                 }
+            val (days, hasOlder) =
+                paging.read(
+                    cursors.lastOrNull(),
+                    selected,
+                    search,
+                    zone(),
+                    listOf(generation, selected, text, chosen),
+                )
             HistoryUiState(
                 loaded = true,
+                hasNewer = cursors.isNotEmpty(),
+                hasOlder = hasOlder,
                 filter = selected,
-                days = HistoryAccounting.days(shown, zone()),
+                days = days,
                 query = text,
                 method = chosen,
-                methods = PaymentMethodFilter.available(sales.values.toList()),
-                hasHistory = items.isNotEmpty(),
+                methods = availableMethods,
+                hasHistory = days.isNotEmpty() || generation.present,
             )
         }.flowOn(cpu)
             .combine(
@@ -135,6 +161,36 @@ class HistoryViewModel(
                     reconciliation = slice.reconciliation,
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
+
+    /** Shows up to 100 older matching entries across seven days; summaries still include each whole filtered day. */
+    fun older() {
+        val day = state.value.days.lastOrNull() ?: return
+        val item = day.items.lastOrNull() ?: return
+        val cursor = HistoryKey(item.id, day.times.getValue(item.id), item is HistoryItem.Refund)
+        if (state.value.hasOlder && pages.value.lastOrNull() != cursor) pages.value += cursor
+    }
+
+    /** Returns to the preceding, newer page. */
+    fun newer() {
+        pages.value = pages.value.dropLast(1)
+    }
+
+    private data class HistoryRequest(
+        val filter: HistoryFilter,
+        val query: String,
+        val method: PaymentMethodFilter?,
+        val pages: List<HistoryKey>,
+        val generation: Generation,
+    )
+
+    /** One observed history state; compared by identity, so every write invalidates caches built for the previous one. */
+    private class Generation(
+        val present: Boolean,
+    )
+
+    private companion object {
+        const val SEARCH_DELAY_MILLIS = 150L
+    }
 
     private data class ReconcileSlice(
         val canPrint: Boolean,
@@ -179,21 +235,25 @@ class HistoryViewModel(
 
     /** Shows the transactions matching [value]. */
     fun setFilter(value: HistoryFilter) {
+        pages.value = emptyList()
         filter.value = value
     }
 
     /** Shows the transactions matching every word of [value] ([HistorySearch]). */
     fun setQuery(value: String) {
+        pages.value = emptyList()
         query.value = value
     }
 
     /** Shows only the transactions paid with [value]; null shows every payment method. */
     fun setMethod(value: PaymentMethodFilter?) {
+        pages.value = emptyList()
         method.value = value
     }
 
     /** Shows every transaction again: no filter, search or payment method. */
     fun showAll() {
+        pages.value = emptyList()
         filter.value = HistoryFilter.ALL
         query.value = ""
         method.value = null

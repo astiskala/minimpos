@@ -9,6 +9,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -186,28 +192,54 @@ private fun WalletActions(
         if (state.stage ==
             WalletScanStage.PAUSED
         ) {
-            PrimaryButton(stringResource(R.string.wallet_again), onAgain, modifier = Modifier.testTag("walletAgain"))
+            PrimaryButton(
+                stringResource(R.string.wallet_again),
+                onAgain,
+                icon = Icons.Default.Refresh,
+                modifier = Modifier.testTag("walletAgain"),
+            )
         }
         if (state.stage == WalletScanStage.SCANNING && state.source == WalletScanSource.DEMO) {
-            PrimaryButton(stringResource(R.string.wallet_demo), onDemo, modifier = Modifier.testTag("walletDemo"))
+            PrimaryButton(
+                stringResource(R.string.wallet_demo),
+                onDemo,
+                icon = Icons.Default.QrCode,
+                modifier = Modifier.testTag("walletDemo"),
+            )
         }
         if (state.stage in setOf(WalletScanStage.SCANNING, WalletScanStage.PAUSED)) {
             if (state.source !=
                 WalletScanSource.CAMERA
             ) {
-                SecondaryButton(stringResource(R.string.wallet_camera), { onSource(WalletScanSource.CAMERA) })
+                SecondaryButton(
+                    stringResource(R.string.wallet_camera),
+                    { onSource(WalletScanSource.CAMERA) },
+                    icon = Icons.Default.PhotoCamera,
+                )
             }
             if (state.nativeScanner &&
                 state.source != WalletScanSource.NATIVE
             ) {
-                SecondaryButton(stringResource(R.string.wallet_native), { onSource(WalletScanSource.NATIVE) })
+                SecondaryButton(
+                    stringResource(R.string.wallet_native),
+                    { onSource(WalletScanSource.NATIVE) },
+                    icon = Icons.Default.QrCodeScanner,
+                )
             }
             if (state.simulated &&
                 state.source != WalletScanSource.DEMO
             ) {
-                SecondaryButton(stringResource(R.string.wallet_demo_source), { onSource(WalletScanSource.DEMO) })
+                SecondaryButton(
+                    stringResource(R.string.wallet_demo_source),
+                    { onSource(WalletScanSource.DEMO) },
+                    icon = Icons.Default.QrCode,
+                )
             }
-            if (state.wallets.size > 1) SecondaryButton(stringResource(R.string.wallet_change), { onChoose(null) })
+            if (state.wallets.size >
+                1
+            ) {
+                SecondaryButton(stringResource(R.string.wallet_change), { onChoose(null) }, icon = Icons.Default.AccountBalanceWallet)
+            }
         }
         SecondaryButton(stringResource(R.string.action_cancel), onBack)
     }

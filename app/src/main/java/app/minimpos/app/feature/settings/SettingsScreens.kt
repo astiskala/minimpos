@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Percent
 import androidx.compose.material.icons.filled.PhonelinkSetup
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
@@ -858,6 +859,7 @@ private fun WalletSettings(
             onRefresh,
             blocked = state.refreshBlocked,
             loading = state.checking,
+            icon = Icons.Default.Refresh,
             modifier = Modifier.testTag("refreshWallets"),
         )
     }

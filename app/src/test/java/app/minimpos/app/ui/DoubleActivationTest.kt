@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isOn
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,6 +19,7 @@ import app.minimpos.app.awaitCondition
 import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.items
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
 import org.junit.Before
@@ -125,6 +127,7 @@ class DoubleActivationTest {
         await { container.managerPin.setPin("2468") }
         checkout(1, 2, 5, 0)
         compose.onNodeWithTag("motoSwitch").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("motoSwitch") and isOn(), 15_000)
         doubleTap("pay")
         waitForTag("confirm")
         doubleTap("confirm")
@@ -145,7 +148,7 @@ class DoubleActivationTest {
         compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Approved"), 15_000)
         val sale = sales().single()
         val record = await { container.sales.get(sale.id)!! }
-        assertThat(record.tenders).hasSize(2)
+        assertThat(await { container.database.saleDao().historyTenders(listOf(record.sale.id)) }).hasSize(2)
         assertThat(record.sale.isPartiallyPaid).isFalse()
     }
 

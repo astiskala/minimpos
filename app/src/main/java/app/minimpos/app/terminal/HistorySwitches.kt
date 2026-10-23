@@ -6,7 +6,6 @@ import app.minimpos.app.data.repo.retentionEligible
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -56,14 +55,27 @@ class HistorySwitches(
         val original = settings.current().terminal
         if (target == original) return null
         val after = target.historyEnvironment(automaticMode)
-        val items = history.items().first()
-        val recorded = items.mapNotNull(::recordedEnvironment).toSet()
+        val facts =
+            history.reader.fold(SwitchFacts()) { current, batch ->
+                SwitchFacts(
+                    current.present || batch.isNotEmpty(),
+                    current.unfinished || batch.any(::unfinished),
+                    current.environments + batch.mapNotNull(::recordedEnvironment),
+                )
+            }
+        val recorded = facts.environments
         val before = original.historyEnvironment(automaticMode) ?: recorded.singleOrNull()
         val changed = before != after && (after != null || before == "SIMULATOR")
         val mismatched = before == null && after != null && recorded.any { it != after }
-        if (items.isEmpty() || (!changed && !mismatched)) return null
-        return HistorySwitchPlan(original, target, items.any(::unfinished))
+        if (!facts.present || (!changed && !mismatched)) return null
+        return HistorySwitchPlan(original, target, facts.unfinished)
     }
+
+    private data class SwitchFacts(
+        val present: Boolean = false,
+        val unfinished: Boolean = false,
+        val environments: Set<String> = emptySet(),
+    )
 
     private fun recordedEnvironment(item: HistoryItem): String? {
         val context =

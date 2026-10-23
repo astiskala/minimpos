@@ -24,10 +24,13 @@ import app.minimpos.core.codec.QrChunks
 import app.minimpos.core.codec.TransferCodec
 import app.minimpos.core.codec.TransferFormatException
 import app.minimpos.core.ids.Ids
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
 /**
@@ -61,12 +64,14 @@ data class ExportUiState(
  * @param currencyCode The currency the prices are in, carried in the catalogue.
  * @param chunkSize Data characters per QR code.
  * @param random Source of the set ID; tests make it predictable.
+ * @param cpu Dispatcher for chunk encoding outside the UI thread.
  */
 class TransferExportViewModel(
     private val setup: SetupTransfer,
     private val currencyCode: String,
     private val chunkSize: Int = QrChunks.DEFAULT_MAX_DATA_CHARS,
     private val random: Random = Random.Default,
+    private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     /** The export state. */
     val state: StateFlow<ExportUiState>
@@ -94,7 +99,7 @@ class TransferExportViewModel(
             // The secrets set are looked up again, in case they were asked for before they had been read.
             val export = setup.export(current.contents, currencyCode)
             val setId = Ids.randomString(QrChunks.SET_ID_LENGTH, random)
-            val codes = QrChunks.split(export.payload, setId, chunkSize).map { it.encode() }
+            val codes = withContext(cpu) { QrChunks.split(export.payload, setId, chunkSize).map { it.encode() } }
             state.update { it.copy(loading = false, export = export, codes = codes) }
         }
     }
@@ -185,10 +190,12 @@ enum class ImportError {
  *
  * @param currencyCode This terminal's currency, to warn when the catalogue's differs.
  * @param importer Reads the authenticated transfer, verifies candidate setup before activation, and resumes encrypted interrupted commits.
+ * @param cpu Dispatcher for final assembly, decoding, decompression and candidate parsing.
  */
 class TransferImportViewModel(
     private val currencyCode: String,
     private val importer: SetupImport,
+    private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val assembler = QrChunkAssembler()
 
@@ -215,14 +222,19 @@ class TransferImportViewModel(
             state.value = ImportUiState.Scanning(assembler.received, assembler.expected)
             return
         }
-        state.value =
-            try {
-                val received = importer.receive(TransferCodec.decode(assembler.assemble()))
-                ImportUiState.Ready(received, received.currencyMatches(currencyCode))
-            } catch (ignored: TransferFormatException) {
-                assembler.reset()
-                ImportUiState.Scanning(error = ImportError.CORRUPT)
-            }
+        state.value = ImportUiState.Importing
+        viewModelScope.launch {
+            state.value =
+                withContext(cpu) {
+                    try {
+                        val received = importer.receive(TransferCodec.decode(assembler.assemble()))
+                        ImportUiState.Ready(received, received.currencyMatches(currencyCode))
+                    } catch (ignored: TransferFormatException) {
+                        assembler.reset()
+                        ImportUiState.Scanning(error = ImportError.CORRUPT)
+                    }
+                }
+        }
     }
 
     /** Chooses how the catalogue is combined with this one; ignored unless [ImportUiState.Ready]. */

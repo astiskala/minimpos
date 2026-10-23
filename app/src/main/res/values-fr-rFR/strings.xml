@@ -15,7 +15,7 @@
   <string name="onboarding_connect_hint">Configurez les paiements sur cet appareil avec votre compte Adyen.</string>
   <string name="onboarding_scan_hint">Utilisez les codes de l’assistant de configuration ou d’un autre appareil.</string>
   <string name="setup_codes_computer">Depuis un ordinateur</string>
-  <string name="setup_codes_computer_hint">Ouvrez minimpos.app/fr-FR/setup.html sur un ordinateur de confiance. Entrez vos coordonnées et choisissez Créer des codes QR.</string>
+  <string name="setup_codes_computer_hint">Ouvrez minimpos.app/fr-FR/setup sur un ordinateur de confiance. Entrez vos coordonnées et choisissez Créer des codes QR.</string>
   <string name="setup_codes_device">Depuis un autre appareil</string>
   <string name="setup_codes_device_hint">Ouvrez Mini mPOS › Paramètres › Données et transfert › Partager avec un autre appareil, puis Afficher les codes QR.</string>
   <string name="setup_codes_transfer_hint">Gardez l’écran source ouvert. Scannez chaque code QR, puis entrez le code de transfert distinct à 12 caractères qu’il affiche pour vérifier et importer.</string>
@@ -707,7 +707,7 @@
 
   <!-- Settings: terminal and Tap to Pay -->
   <string name="settings_quick_setup">Configuration rapide</string>
-  <string name="settings_quick_setup_hint">Ouvrez minimpos.app/fr-FR/setup.html sur un ordinateur, puis scannez ses codes ici. Aucun choix de destination ou d’environnement n’est nécessaire au préalable.</string>
+  <string name="settings_quick_setup_hint">Ouvrez minimpos.app/fr-FR/setup sur un ordinateur, puis scannez ses codes ici. Aucun choix de destination ou d’environnement n’est nécessaire au préalable.</string>
   <string name="settings_quick_setup_import">Scanner les codes de configuration</string>
   <string name="settings_manual_setup">Ou configurer sur cet appareil</string>
   <string name="settings_scan_discard_drafts">Les clés non enregistrées seront supprimées lorsque vous ouvrirez le scanner. Les paramètres enregistrés ne changeront pas tant que vous n’aurez pas importé.</string>

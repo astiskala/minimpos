@@ -1,0 +1,51 @@
+{
+  "id": "/",
+  "name": "Mini mPOS guides",
+  "short_name": "Mini mPOS",
+  "description": "Setup, daily tasks and troubleshooting for Mini mPOS.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#00843F",
+  "background_color": "#FFFFFF",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quick start",
+      "url": "/quick-start"
+    },
+    {
+      "name": "Using Mini mPOS",
+      "url": "/using"
+    },
+    {
+      "name": "Troubleshooting",
+      "url": "/troubleshooting"
+    },
+    {
+      "name": "Setup helper",
+      "url": "/setup"
+    }
+  ]
+}

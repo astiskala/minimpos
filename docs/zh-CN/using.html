@@ -2,32 +2,44 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>使用 Mini mPOS</title>
-  <meta name="description" content="Mini mPOS 日常操作：银行卡收款、退款、发送收据、每日平账，以及付款链接、订金和小费。">
+  <title>使用 Mini mPOS：收款、退款与收据</title>
+  <meta name="description" content="了解如何使用 Adyen 收款、扫描二维码退款、打印或发送收据及每日平账。另有商品管理、付款链接、订金和小费操作指南。">
+  <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="describedby" href="../llms.txt" type="text/plain">
+  <meta name="application-name" content="Mini mPOS 指南">
   <link rel="stylesheet" href="../styles.css">
-  <link rel="canonical" href="https://minimpos.app/zh-CN/using.html">
+  <link rel="canonical" href="https://minimpos.app/zh-CN/using">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="使用 Mini mPOS">
-  <meta property="og:description" content="分步骤的日常操作：付款、退款、收据和每日平账。">
-  <meta property="og:url" content="https://minimpos.app/zh-CN/using.html">
+  <meta property="og:site_name" content="Mini mPOS">
+  <meta property="og:title" content="使用 Mini mPOS：收款、退款与收据">
+  <meta property="og:description" content="了解如何使用 Adyen 收款、扫描二维码退款、打印或发送收据及每日平账。另有商品管理、付款链接、订金和小费操作指南。">
+  <meta property="og:url" content="https://minimpos.app/zh-CN/using">
   <meta property="og:image" content="https://minimpos.app/images/zh-CN/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
   <meta property="og:image:alt" content="Adyen 终端示意图中的 Mini mPOS，展示简体中文模拟器演示。">
   <meta name="twitter:image" content="https://minimpos.app/images/zh-CN/social.png">
   <meta name="twitter:image:alt" content="Adyen 终端示意图中的 Mini mPOS，展示简体中文模拟器演示。">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="使用 Mini mPOS">
-  <meta name="twitter:description" content="分步骤的日常操作：付款、退款、收据和每日平账。">
+  <meta name="twitter:title" content="使用 Mini mPOS：收款、退款与收据">
+  <meta name="twitter:description" content="了解如何使用 Adyen 收款、扫描二维码退款、打印或发送收据及每日平账。另有商品管理、付款链接、订金和小费操作指南。">
   <meta name="theme-color" content="#00843F">
-    <link href="https://minimpos.app/using.html" hreflang="en" rel="alternate">
-    <link href="https://minimpos.app/es-MX/using.html" hreflang="es-MX" rel="alternate">
-    <link href="https://minimpos.app/fr-FR/using.html" hreflang="fr-FR" rel="alternate">
-    <link href="https://minimpos.app/ja/using.html" hreflang="ja" rel="alternate">
-    <link href="https://minimpos.app/pt-BR/using.html" hreflang="pt-BR" rel="alternate">
-    <link href="https://minimpos.app/zh-CN/using.html" hreflang="zh-CN" rel="alternate">
-    <link href="https://minimpos.app/zh-Hant/using.html" hreflang="zh-Hant" rel="alternate">
-    <link href="https://minimpos.app/using.html" hreflang="x-default" rel="alternate">
+    <link href="https://minimpos.app/using" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/using" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/using" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/using" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/using" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/using" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/using" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/using" hreflang="x-default" rel="alternate">
     <meta content="en_US" property="og:locale:alternate">
     <meta content="zh_CN" property="og:locale">
     <meta content="es_MX" property="og:locale:alternate">
@@ -41,22 +53,22 @@
   <header class="site-header"><div class="wrap header-row">
     <a class="brand" href="./" aria-label="Mini mPOS 首页"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
     <nav class="desktop-nav" aria-label="主导航"><ul class="nav">
-      <li><a href="quick-start.html">快速入门</a></li><li><a href="using.html" aria-current="page">使用 Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html">设置助手</a></li>
+      <li><a href="quick-start">快速入门</a></li><li><a href="using" aria-current="page">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting">故障排查</a></li><li><a href="setup">设置助手</a></li>
     </ul></nav>
     <details class="mobile-menu"><summary>菜单</summary><div class="mobile-panel"><nav aria-label="主导航"><ul class="nav">
-      <li><a href="quick-start.html">快速入门</a></li><li><a href="using.html" aria-current="page">使用 Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html">设置助手</a></li>
+      <li><a href="quick-start">快速入门</a></li><li><a href="using" aria-current="page">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting">故障排查</a></li><li><a href="setup">设置助手</a></li>
     </ul></nav>
-      <nav class="mobile-languages" aria-label="语言"><p>语言</p><ul><li><a href="../using.html" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/using.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/using.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/using.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/using.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a aria-current="page" href="../zh-CN/using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/using.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+      <nav class="mobile-languages" aria-label="语言"><p>语言</p><ul><li><a href="../using" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/using" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/using" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/using" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/using" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a aria-current="page" href="../zh-CN/using" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/using" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
     </div></details>
-    <details class="language-menu"><summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary><nav aria-label="语言"><ul><li><a href="../using.html" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/using.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/using.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/using.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/using.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a aria-current="page" href="../zh-CN/using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/using.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
+    <details class="language-menu"><summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary><nav aria-label="语言"><ul><li><a href="../using" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/using" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/using" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/using" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/using" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a aria-current="page" href="../zh-CN/using" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/using" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
   </div></header>
   <main id="main">
     <section class="guide-hero"><div class="wrap"><p class="eyebrow">指南</p><h1>使用 Mini mPOS</h1><p class="lead">日常工作的分步操作：收款、退款、发送收据和每日平账。可选流程放在最后。</p></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="指南导航">
-        <p class="toc-title">指南</p><p><a href="quick-start.html">快速入门</a><br><a href="using.html" aria-current="page">使用 Mini mPOS</a><br><a href="troubleshooting.html">故障排查</a></p>
+        <p class="toc-title">指南</p><p><a href="quick-start">快速入门</a><br><a href="using" aria-current="page">使用 Mini mPOS</a><br><a href="troubleshooting">故障排查</a></p>
         <div class="desktop-contents"><p class="toc-title">本页目录</p><ol>
           <li><a href="#business">开始销售前</a><ul>
             <li><a href="#pricing">币种和税费</a></li><li><a href="#products">商品</a></li><li><a href="#staff">员工 PIN</a></li>
@@ -97,7 +109,7 @@
       <div class="guide-body">
         <section id="business">
           <h2>准备商品、税费和员工权限</h2>
-          <p>真实收款前，请完成<a href="quick-start.html">连接 Adyen 的设置</a>。需要支付终端或 Adyen Payments 应用。然后一次性准备商品、税费和员工权限。</p>
+          <p>真实收款前，请完成<a href="quick-start">连接 Adyen 的设置</a>。需要支付终端或 Adyen Payments 应用。然后一次性准备商品、税费和员工权限。</p>
           <h3 id="pricing">设置币种和税费</h3>
           <ol>
             <li>在<strong>设置 › 支付</strong>中选择商家账户接受线下付款的<strong>币种</strong>。</li>
@@ -119,20 +131,20 @@
             <li>在<strong>设置 › 安全</strong>中点按<strong>设置 PIN</strong>。它保护设置和商品管理。选择应用多久后重新锁定。</li>
             <li>可选：点按<strong>设置经理 PIN</strong>。之后退款、取消、扣款、金额调整和录入小费都需要输入它。</li>
           </ol>
-          <p>如需更换或移除管理员 PIN，请使用<strong>更改管理员 PIN</strong>或<strong>移除管理员 PIN</strong>；移除它也会移除经理 PIN。多次输错会暂时锁定 PIN 输入。忘记 PIN 时请参阅 <a href="troubleshooting.html#access">PIN 问题</a>。</p>
+          <p>如需更换或移除管理员 PIN，请使用<strong>更改管理员 PIN</strong>或<strong>移除管理员 PIN</strong>；移除它也会移除经理 PIN。多次输错会暂时锁定 PIN 输入。忘记 PIN 时请参阅 <a href="troubleshooting#access">PIN 问题</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="capabilities">
           <h2>检查并配置 Adyen 功能</h2>
           <p>连接收款目标后，打开<strong>设置 › Adyen 功能</strong>。页面将功能标为<strong>可用</strong>、<strong>需要配置</strong>或<strong>此收款目标不支持</strong>。这些只是设置状态，不代表商家账户、银行卡或付款方式一定能完成交易。完成收款设置前，此页面会显示<strong>完成收款设置</strong>。</p>
           <ol>
-            <li>点按<strong>刷新功能状态</strong>，读取所选终端的设置。检查真实终端需要<a href="quick-start.html#credentials">快速入门中列出的 Management API 角色</a>。</li>
+            <li>点按<strong>刷新功能状态</strong>，读取所选终端的设置。检查真实终端需要<a href="quick-start#credentials">快速入门中列出的 Management API 角色</a>。</li>
             <li>对于支持的终端，可配置付款币种的终端小费、DCC、MOTO 或离线限额。这些控件会更新 Adyen 上的终端设置，而不只是 Mini mPOS，且只在点按<strong>保存到 Adyen</strong>时更新。“主货币单位”使用货币的主单位；最小单位金额使用 Adyen 的货币精度。</li>
             <li>在设置中的<strong>支付</strong>、<strong>小费与捐款</strong>或<strong>购物者端终端屏幕</strong>中启用所需结账选项，并在 TEST 中测试。功能列表还包括 Adyen Giving、部分授权、附加费、礼品卡、终端对账和购物者端屏幕，但并非每项都有配置控件。</li>
           </ol>
           <p>Tap to Pay 不提供终端小费、购物者端屏幕、MOTO/MKE、离线支付或终端对账等实体终端功能。部分授权是独立的付款选项。账户开通和付款方式要求请参阅 <a href="https://docs.adyen.com/point-of-sale">Adyen 线下支付文档</a>。模拟器中可用不代表真实终端支持。</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/capabilities.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：Adyen 功能的可用状态和配置状态"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/capabilities.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：Adyen 功能的可用状态和配置状态" decoding="async"></div>
             <figcaption class="fine">简体中文模拟器演示。此处显示可用不代表真实终端已通过验证。</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
@@ -152,9 +164,9 @@
           </div>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">警告</p>
-            <p><strong>结果未知</strong>不表示付款失败。再次收款前，请<a href="troubleshooting.html#unknown">查询原付款</a>。</p>
+            <p><strong>结果未知</strong>不表示付款失败。再次收款前，请<a href="troubleshooting#unknown">查询原付款</a>。</p>
           </div>
-          <p>购物者识别号、保存卡片和小费均可选；参见<a href="#shoppers">识别号和保存卡片</a>。如需让购物者在自己的手机上付款，请使用<a href="#payment-links">付款链接</a>。付款被拒绝时，请参阅<a href="troubleshooting.html#declines">付款被拒绝</a>。</p>
+          <p>购物者识别号、保存卡片和小费均可选；参见<a href="#shoppers">识别号和保存卡片</a>。如需让购物者在自己的手机上付款，请使用<a href="#payment-links">付款链接</a>。付款被拒绝时，请参阅<a href="troubleshooting#declines">付款被拒绝</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="terminal-checkout">
@@ -162,9 +174,9 @@
           <p>只在设置中启用需要的结账选项。除部分授权外，这些流程需要支持的实体终端，不适用于 Tap to Pay。请先检查 <a href="#capabilities">Adyen 功能</a>并测试实际配置。</p>
           <h3 id="partial-payments">收取部分授权后的剩余金额</h3>
           <p>开启<strong>允许部分授权</strong>，即可接受银行卡批准低于请求金额的付款。结果显示<strong>部分已付</strong>时，核对已付和剩余金额，然后在该结果页面点按<strong>支付剩余</strong>，用另一张卡收取差额。应用将各次付款保留在同一笔销售中。全部金额获批前，不要将销售视为全额付清。</p>
-          <p>未收到答复不等于部分批准。继续收款前请<a href="troubleshooting.html#unknown">解决未知结果</a>。不要按原合计金额另开一笔销售：已批准的部分已经付款。</p>
+          <p>未收到答复不等于部分批准。继续收款前请<a href="troubleshooting#unknown">解决未知结果</a>。不要按原合计金额另开一笔销售：已批准的部分已经付款。</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/partial-payment.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：已支付 10.70 新元、剩余 10.69 新元和支付剩余金额按钮"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/partial-payment.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：已支付 10.70 新元、剩余 10.69 新元和支付剩余金额按钮" decoding="async"></div>
             <figcaption class="fine">简体中文模拟器部分授权演示，并非已全额支付的销售。</figcaption>
           </figure>
           <h3 id="shopper-display">使用购物者端终端屏幕</h3>
@@ -186,16 +198,16 @@
           <h2>识别离线付款和待确认批次</h2>
           <p>离线 EMV 和存储转发式（Store-and-Forward）支付需要通过本地连接访问支持的终端：Mini mPOS 运行在该终端上，或连接同一网络中的终端。云路由和 Tap to Pay 不提供此功能。请先与 Adyen 安排离线处理并评估风险，再在 <a href="#capabilities">Adyen 功能</a>中设置限额。Mini mPOS 本身不会排队保存付款，也不能在本地网络中断时恢复终端连接。</p>
           <p>交易记录会标记终端报告的离线销售。打开销售可查看<strong>离线处理</strong>、使用的是离线 EMV 还是存储转发式，以及终端报告的<strong>未确认离线批次</strong>。离线批准可能暂时没有 PSP 识别号。它不是未知结果，但也不代表 Adyen 已收到或结算该付款。</p>
-          <p>恢复终端与 Adyen 的连接后，在商户后台核对上传的付款和最终结果。进行<a href="#reconciliation">终端对账</a>时检查离线和未确认批次警告；总额一致不代表离线付款已结算。若未收到明确付款答复，请遵循<a href="troubleshooting.html#unknown">未知结果恢复步骤</a>，不要自行认定已离线批准或再次收款。</p>
+          <p>恢复终端与 Adyen 的连接后，在商户后台核对上传的付款和最终结果。进行<a href="#reconciliation">终端对账</a>时检查离线和未确认批次警告；总额一致不代表离线付款已结算。若未收到明确付款答复，请遵循<a href="troubleshooting#unknown">未知结果恢复步骤</a>，不要自行认定已离线批准或再次收款。</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/offline-payment.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：存储转发式付款详情和一个未确认离线批次"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/offline-payment.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：存储转发式付款详情和一个未确认离线批次" decoding="async"></div>
             <figcaption class="fine">简体中文模拟器离线详情演示，不代表已上传或结算。</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="wallets">
           <h2>扫描购物者的钱包付款码</h2>
-          <p>在销售结账时使用<strong>扫描钱包</strong>读取购物者钱包应用中的付款码。这与扫描商品条码或退款收据不同。此功能需要实体支付终端，不适用于 Tap to Pay；<a href="quick-start.html#credentials">钱包查询需要只读权限</a>。</p>
+          <p>在销售结账时使用<strong>扫描钱包</strong>读取购物者钱包应用中的付款码。这与扫描商品条码或退款收据不同。此功能需要实体支付终端，不适用于 Tap to Pay；<a href="quick-start#credentials">钱包查询需要只读权限</a>。</p>
           <ol>
             <li>核对合计和结账字段后点按<strong>扫描钱包</strong>。若已选择收据小费，请确认不使用该选项：钱包会立即收取合计，而不是进行预授权。</li>
             <li>选择购物者的钱包。只有一个可用钱包时会自动选择。仅显示单独配置的钱包；Alipay+ 不代表 GCash、DANA、Kakao Pay 或 TrueMoney 已分别启用。</li>
@@ -203,11 +215,11 @@
             <li>扫描购物者的付款二维码或付款条码。一个有效扫描会立即开始支付。等待普通支付结果并提供收据。</li>
           </ol>
           <p>取消会保留购物车和结账字段。无效码不会付款：请重新扫描或更换钱包。终端扫描最多持续 30 秒；之后可点按<strong>重新扫描</strong>或使用摄像头。离开应用会停止扫描，返回后需明确重新开始。不能手动输入或粘贴付款码。</p>
-          <p>购物者识别号和授权允许时，<strong>保存卡片</strong>会尝试保存支付信息，是否支持取决于钱包。只有返回保存的支付令牌才表示成功保存；没有令牌的已批准付款仍然有效。请参阅<a href="troubleshooting.html#wallets">钱包查询和支付问题</a>；不要通过再次扫码替代<a href="troubleshooting.html#unknown">结果未知的原付款</a>。</p>
+          <p>购物者识别号和授权允许时，<strong>保存卡片</strong>会尝试保存支付信息，是否支持取决于钱包。只有返回保存的支付令牌才表示成功保存；没有令牌的已批准付款仍然有效。请参阅<a href="troubleshooting#wallets">钱包查询和支付问题</a>；不要通过再次扫码替代<a href="troubleshooting#unknown">结果未知的原付款</a>。</p>
           <p>请使用 <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen 钱包指南</a>和 <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen PayPal 和 Venmo 指南</a>核对钱包开通情况和 TEST 行为。</p>
           <div class="shot-pair">
-            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/wallets.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：为 33.50 新元的销售选择钱包"></div>
-            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/wallet-scan.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：WeChat Pay 扫码流程和离线演示付款码按钮"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/wallets.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：为 33.50 新元的销售选择钱包" decoding="async"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/wallet-scan.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：WeChat Pay 扫码流程和离线演示付款码按钮" decoding="async"></div>
           </div>
           <p class="fine">钱包扫描的简体中文模拟器演示。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
@@ -227,7 +239,7 @@
           <p>每笔退款都关联原付款，不支持无原付款的退款。已支付的付款链接请在商户后台退款。</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
-            <p><strong>已请求退款</strong>表示 Adyen 已收到请求，不表示购物者已收到款项。请在商户后台确认最终结果。退款结果未知时，<a href="troubleshooting.html#unknown">重试前请先查询</a>。</p>
+            <p><strong>已请求退款</strong>表示 Adyen 已收到请求，不表示购物者已收到款项。请在商户后台确认最终结果。退款结果未知时，<a href="troubleshooting#unknown">重试前请先查询</a>。</p>
           </div>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -267,7 +279,7 @@
             <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li>
             <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
           </ul>
-          <p>收据无法打印或发送时，请参阅<a href="troubleshooting.html#receipts">打印机和邮件问题</a>。</p>
+          <p>收据无法打印或发送时，请参阅<a href="troubleshooting#receipts">打印机和邮件问题</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="history">
@@ -281,7 +293,7 @@
           <p>屏幕上的合计受搜索和筛选影响。冻结的付款（如订金和收据小费）在扣款被受理当日计入销售。</p>
           <h3 id="close-day">每日平账</h3>
           <ol>
-            <li>打开<strong>交易记录</strong>，筛选<strong>需处理</strong>并逐一处理；参见<a href="troubleshooting.html#unknown">结果未知</a>。</li>
+            <li>打开<strong>交易记录</strong>，筛选<strong>需处理</strong>并逐一处理；参见<a href="troubleshooting#unknown">结果未知</a>。</li>
             <li>检查<strong>待填写小费</strong>和预授权筛选。录入小费，并在冻结到期前为订金扣款或取消。</li>
             <li>点按日期旁的打印图标，打印<strong>本地每日汇总</strong>。</li>
             <li>与商户后台中的 Adyen 报告对账；参见 <a href="https://docs.adyen.com/reporting/settlement-reconciliation">Adyen 结算对账指南</a>。</li>
@@ -304,7 +316,7 @@
           </ol>
           <p>此功能适用于实体终端和模拟器，不适用于 Tap to Pay。总额一致或周期结束都不代表结算、退款完成或离线付款已上传。最终财务结果仍请以商户后台为准。</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/reconciliation.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：33.50 新元总额一致，仍有离线销售和未确认批次警告"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/reconciliation.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：33.50 新元总额一致，仍有离线销售和未确认批次警告" decoding="async"></div>
             <figcaption class="fine">简体中文模拟器演示。总额一致时仍可能有未确认的离线批次。</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
@@ -346,7 +358,7 @@
             <p class="callout-title">重要</p>
             <p>有效期内任何持有真实链接的人均可付款。已支付的链接请在<strong>商户后台 › Payments › Payment list</strong>中退款，应用无法为其退款。</p>
           </div>
-          <p>链接未显示或不更新时，请参阅<a href="troubleshooting.html#links">付款链接问题</a>。</p>
+          <p>链接未显示或不更新时，请参阅<a href="troubleshooting#links">付款链接问题</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="preauth">
@@ -371,7 +383,7 @@
           <p><strong>已请求扣款</strong>不是最终确认，请检查商户后台。如需立即获得金额调整结果，请按 <a href="https://docs.adyen.com/online-payments/adjust-authorisation">Adyen 授权调整指南</a>启用 <strong>Return adjust authorisation data</strong>。</p>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">警告</p>
-            <p>冻结金额会到期。请每天检查预授权筛选，并及时扣款或取消。操作失败或结果未知时，请参阅<a href="troubleshooting.html#modifications">扣款问题</a>。</p>
+            <p>冻结金额会到期。请每天检查预授权筛选，并及时扣款或取消。操作失败或结果未知时，请参阅<a href="troubleshooting#modifications">扣款问题</a>。</p>
           </div>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -384,7 +396,7 @@
           </ol>
           <p>此流程不需要打印机，也无需稍后录入小费。终端小费和<a href="#tips">收据小费</a>不能同时选择。两者均不用于预授权、扫码钱包付款或付款链接；Tap to Pay 不提供终端小费。</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/terminal-tipping.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：小费与捐款中已启用终端小费和动态小费建议"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/zh-CN/terminal-tipping.png" width="540" height="960" loading="lazy" alt="简体中文模拟器演示：小费与捐款中已启用终端小费和动态小费建议" decoding="async"></div>
             <figcaption class="fine">简体中文模拟器结账偏好演示。终端配置需在 Adyen 功能中单独设置。</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
@@ -408,7 +420,7 @@
           <p>应用会扣款账单加小费的总额。超过 20% 的小费需要发卡行先增加冻结金额；若被拒绝，请输入较少的小费或不加小费。小费保存后不能更改。录入小费前应取消付款而不是退款；录入后的退款包括小费。</p>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">警告</p>
-            <p>请及时录入每笔小费（包括零小费），以便在冻结到期前完成扣款。扣款失败或结果未知时，请参阅<a href="troubleshooting.html#modifications">扣款问题</a>。</p>
+            <p>请及时录入每笔小费（包括零小费），以便在冻结到期前完成扣款。扣款失败或结果未知时，请参阅<a href="troubleshooting#modifications">扣款问题</a>。</p>
           </div>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -426,8 +438,8 @@
             <p>这是一次性复制，不是同步，也不是交易记录备份。各设备保留各自的付款。在 Android 中清除应用数据会删除设备上的全部商品、设置和交易记录。</p>
           </div>
           <p>在<strong>设置 › 数据与传输</strong>中设置<strong>交易保留时长</strong>或点按<strong>清除已完成的交易记录</strong>；未解决的付款始终保留。</p>
-          <p>在平板或手机上，Mini mPOS 会在启动时检查新版本。如果首页显示<strong>更新</strong>，点按后会在浏览器中打开 APK，再安装下载的文件。Adyen 终端通过商户后台更新，不会显示此提示。您也可以获取<a href="https://github.com/astiskala/minimpos/releases/latest">最新发布版本</a>并按<a href="quick-start.html#install">安装步骤</a>操作。保持相同签名来源，直接覆盖安装；不要卸载应用或清除数据。</p>
-          <p>导入问题请参阅 <a href="troubleshooting.html#access">PIN 和传输问题</a>。</p>
+          <p>在平板或手机上，Mini mPOS 会在启动时检查新版本。如果首页显示<strong>更新</strong>，点按后会在浏览器中打开 APK，再安装下载的文件。Adyen 终端通过商户后台更新，不会显示此提示。您也可以获取<a href="https://github.com/astiskala/minimpos/releases/latest">最新发布版本</a>并按<a href="quick-start#install">安装步骤</a>操作。保持相同签名来源，直接覆盖安装；不要卸载应用或清除数据。</p>
+          <p>导入问题请参阅 <a href="troubleshooting#access">PIN 和传输问题</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
       </div>
@@ -435,8 +447,8 @@
   </main>
   <footer class="site-footer"><div class="wrap footer-row">
     <nav aria-label="指南和设置"><ul class="footer-nav">
-      <li><a href="quick-start.html">快速入门</a></li><li><a href="using.html" aria-current="page">使用 Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html">设置助手</a></li>
+      <li><a href="quick-start">快速入门</a></li><li><a href="using" aria-current="page">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting">故障排查</a></li><li><a href="setup">设置助手</a></li>
     </ul></nav>
     <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT 许可证 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p><p class="fine">Adyen 是 Adyen N.V. 的商标。Mini mPOS 是独立项目，与 Adyen 无关联，未获其背书，也不由其提供支持。</p>
   </div></footer>

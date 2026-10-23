@@ -2,32 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Using Mini mPOS</title>
-  <meta name="description" content="Daily operations with Mini mPOS: take card payments, refund, deliver receipts, close the day, and handle payment links, deposits and tips.">
+  <title>Using Mini mPOS: payments, refunds and receipts</title>
+  <meta name="description" content="Take payments with Adyen, refund by QR code, print or email receipts and close the day. Guides to products, payment links, deposits and tips.">
+  <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="describedby" href="llms.txt" type="text/plain">
+  <meta name="application-name" content="Mini mPOS guides">
   <link rel="stylesheet" href="styles.css">
-  <link rel="canonical" href="https://minimpos.app/using.html">
+  <link rel="canonical" href="https://minimpos.app/using">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Using Mini mPOS">
-  <meta property="og:description" content="Step-by-step daily operations: payments, refunds, receipts and closing the day.">
-  <meta property="og:url" content="https://minimpos.app/using.html">
+  <meta property="og:site_name" content="Mini mPOS">
+  <meta property="og:title" content="Using Mini mPOS: payments, refunds and receipts">
+  <meta property="og:description" content="Take payments with Adyen, refund by QR code, print or email receipts and close the day. Guides to products, payment links, deposits and tips.">
+  <meta property="og:url" content="https://minimpos.app/using">
   <meta property="og:image" content="https://minimpos.app/images/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
   <meta property="og:image:alt" content="Mini mPOS on illustrated Adyen terminals, showing English simulator demos.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Using Mini mPOS">
-  <meta name="twitter:description" content="Step-by-step daily operations: payments, refunds, receipts and closing the day.">
+  <meta name="twitter:title" content="Using Mini mPOS: payments, refunds and receipts">
+  <meta name="twitter:description" content="Take payments with Adyen, refund by QR code, print or email receipts and close the day. Guides to products, payment links, deposits and tips.">
   <meta name="twitter:image" content="https://minimpos.app/images/social.png">
   <meta name="twitter:image:alt" content="Mini mPOS on illustrated Adyen terminals, showing English simulator demos.">
   <meta name="theme-color" content="#00843F">
-    <link href="https://minimpos.app/using.html" hreflang="en" rel="alternate">
-    <link href="https://minimpos.app/es-MX/using.html" hreflang="es-MX" rel="alternate">
-    <link href="https://minimpos.app/fr-FR/using.html" hreflang="fr-FR" rel="alternate">
-    <link href="https://minimpos.app/ja/using.html" hreflang="ja" rel="alternate">
-    <link href="https://minimpos.app/pt-BR/using.html" hreflang="pt-BR" rel="alternate">
-    <link href="https://minimpos.app/zh-CN/using.html" hreflang="zh-CN" rel="alternate">
-    <link href="https://minimpos.app/zh-Hant/using.html" hreflang="zh-Hant" rel="alternate">
-    <link href="https://minimpos.app/using.html" hreflang="x-default" rel="alternate">
+    <link href="https://minimpos.app/using" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/using" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/using" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/using" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/using" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/using" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/using" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/using" hreflang="x-default" rel="alternate">
     <meta content="en_US" property="og:locale">
     <meta content="es_MX" property="og:locale:alternate">
     <meta content="fr_FR" property="og:locale:alternate">
@@ -41,25 +53,25 @@
   <header class="site-header"><div class="wrap header-row">
     <a class="brand" href="./" aria-label="Mini mPOS home"><img src="favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
     <nav class="desktop-nav" aria-label="Main"><ul class="nav">
-      <li><a href="quick-start.html">Quick start</a></li><li><a href="using.html" aria-current="page">Using Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+      <li><a href="quick-start">Quick start</a></li><li><a href="using" aria-current="page">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting">Troubleshooting</a></li><li><a href="setup">Setup helper</a></li>
     </ul></nav>
     <details class="mobile-menu"><summary>Menu</summary><div class="mobile-panel"><nav aria-label="Main"><ul class="nav">
-      <li><a href="quick-start.html">Quick start</a></li><li><a href="using.html" aria-current="page">Using Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+      <li><a href="quick-start">Quick start</a></li><li><a href="using" aria-current="page">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting">Troubleshooting</a></li><li><a href="setup">Setup helper</a></li>
     </ul></nav>
-      <nav class="mobile-languages" aria-label="Language"><p>Language</p><ul><li><a aria-current="page" href="using.html" hreflang="en" lang="en">English</a></li><li><a href="es-MX/using.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/using.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/using.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/using.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/using.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+      <nav class="mobile-languages" aria-label="Language"><p>Language</p><ul><li><a aria-current="page" href="using" hreflang="en" lang="en">English</a></li><li><a href="es-MX/using" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/using" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/using" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/using" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/using" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/using" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
     </div></details>
     <details class="language-menu">
       <summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary>
-      <nav aria-label="Language"><ul><li><a aria-current="page" href="using.html" hreflang="en" lang="en">English</a></li><li><a href="es-MX/using.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/using.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/using.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/using.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/using.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+      <nav aria-label="Language"><ul><li><a aria-current="page" href="using" hreflang="en" lang="en">English</a></li><li><a href="es-MX/using" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/using" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/using" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/using" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/using" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/using" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
     </details>
   </div></header>
   <main id="main">
     <section class="guide-hero"><div class="wrap"><p class="eyebrow">Guide</p><h1>Using Mini mPOS</h1><p class="lead">Step-by-step procedures for everyday work: take payments, refund, deliver receipts and close the day. Optional workflows follow at the end.</p></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="Guide navigation">
-        <p class="toc-title">Guides</p><p><a href="quick-start.html">Quick start</a><br><a href="using.html" aria-current="page">Using Mini mPOS</a><br><a href="troubleshooting.html">Troubleshooting</a></p>
+        <p class="toc-title">Guides</p><p><a href="quick-start">Quick start</a><br><a href="using" aria-current="page">Using Mini mPOS</a><br><a href="troubleshooting">Troubleshooting</a></p>
         <div class="desktop-contents"><p class="toc-title">On this page</p><ol>
           <li><a href="#business">Before you sell</a><ul>
             <li><a href="#pricing">Currency and tax</a></li><li><a href="#products">Products</a></li><li><a href="#staff">Staff PINs</a></li>
@@ -100,7 +112,7 @@
       <div class="guide-body">
         <section id="business">
           <h2>Prepare products, tax and staff access</h2>
-          <p>Before you take real payments, complete <a href="quick-start.html">the Adyen connection setup</a>. You need a payment terminal or the Adyen Payments app. Then prepare your products, tax and staff access once.</p>
+          <p>Before you take real payments, complete <a href="quick-start">the Adyen connection setup</a>. You need a payment terminal or the Adyen Payments app. Then prepare your products, tax and staff access once.</p>
           <h3 id="pricing">Set the currency and tax</h3>
           <ol>
             <li>In <strong>Settings › Payments</strong>, choose a <strong>Currency</strong> that your merchant account accepts for in-person payments.</li>
@@ -122,20 +134,20 @@
             <li>In <strong>Settings › Security</strong>, tap <strong>Set PIN</strong>. It protects Settings and Products. Choose how soon the app locks again.</li>
             <li>Optionally, tap <strong>Set Manager PIN</strong>. Staff then need it for refunds, cancellations, captures, amount adjustments and entering tips.</li>
           </ol>
-          <p>To replace or remove the admin PIN, use <strong>Change Admin PIN</strong> or <strong>Remove Admin PIN</strong>; removing it also removes the Manager PIN. Repeated wrong attempts lock PIN entry for a while. For a forgotten PIN, see <a href="troubleshooting.html#access">PIN problems</a>.</p>
+          <p>To replace or remove the admin PIN, use <strong>Change Admin PIN</strong> or <strong>Remove Admin PIN</strong>; removing it also removes the Manager PIN. Repeated wrong attempts lock PIN entry for a while. For a forgotten PIN, see <a href="troubleshooting#access">PIN problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="capabilities">
           <h2>Check and configure Adyen capabilities</h2>
           <p>Open <strong>Settings › Adyen capabilities</strong> after connecting your payment destination. The screen shows features as <strong>Available</strong>, <strong>Needs configuration</strong> or <strong>Unsupported on this destination</strong>. These are setup indicators, not proof that your merchant account, card or payment method can complete a transaction. Until payments are set up, the screen offers <strong>Finish setting up payments</strong> instead.</p>
           <ol>
-            <li>Tap <strong>Refresh capabilities</strong> to read the selected terminal's settings. Real terminal inspection uses the <a href="quick-start.html#credentials">Management API roles in Quick start</a>.</li>
+            <li>Tap <strong>Refresh capabilities</strong> to read the selected terminal's settings. Real terminal inspection uses the <a href="quick-start#credentials">Management API roles in Quick start</a>.</li>
             <li>For supported terminals, configure terminal tipping for the payment currency, DCC, MOTO or offline limits. These controls update terminal settings at Adyen, not just Mini mPOS, and only when you tap <strong>Save to Adyen</strong>. Amounts labeled major units use whole currency units; minor-unit amounts use Adyen's currency precision.</li>
             <li>Enable the checkout options you need under <strong>Payments</strong>, <strong>Tips and donations</strong> or <strong>Shopper terminal display</strong> in Settings, then test them in TEST. The matrix also lists Adyen Giving, partial authorization, surcharge, gift cards, terminal reconciliation and shopper display; it does not provide an editor for every feature.</li>
           </ol>
           <p>Tap to Pay does not offer physical-terminal features such as terminal tipping, shopper display, MOTO/MKE, offline payments or terminal reconciliation. Partial authorization is a separate payment option. For account enablement and payment-method requirements, follow the <a href="https://docs.adyen.com/point-of-sale">Adyen in-person payments documentation</a>. Simulator availability does not establish real-terminal support.</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="images/capabilities.png" width="540" height="960" loading="lazy" alt="English simulator demo: Adyen capability availability and configuration status"></div>
+            <div class="terminal terminal-s1f2"><img src="images/capabilities.png" width="540" height="960" loading="lazy" alt="English simulator demo: Adyen capability availability and configuration status" decoding="async"></div>
             <figcaption class="fine">English simulator demo. Availability here does not verify a real terminal.</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
@@ -155,9 +167,9 @@
           </div>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">Warning</p>
-            <p><strong>Result unknown</strong> does not mean the payment failed. <a href="troubleshooting.html#unknown">Check the original payment</a> before charging again.</p>
+            <p><strong>Result unknown</strong> does not mean the payment failed. <a href="troubleshooting#unknown">Check the original payment</a> before charging again.</p>
           </div>
-          <p>Customer references, card saving and tips are optional; see <a href="#shoppers">references and saved cards</a>. To let customers pay on their own phone, use a <a href="#payment-links">payment link</a>. If a payment is declined, see <a href="troubleshooting.html#declines">declined payments</a>.</p>
+          <p>Customer references, card saving and tips are optional; see <a href="#shoppers">references and saved cards</a>. To let customers pay on their own phone, use a <a href="#payment-links">payment link</a>. If a payment is declined, see <a href="troubleshooting#declines">declined payments</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="terminal-checkout">
@@ -165,9 +177,9 @@
           <p>Enable only the checkout options you need in Settings. Except for partial authorization, these workflows need a supported physical terminal, not Tap to Pay. Check <a href="#capabilities">Adyen capabilities</a> and test your actual setup first.</p>
           <h3 id="partial-payments">Collect a partially authorized payment</h3>
           <p>Turn on <strong>Allow partial authorizations</strong> to accept a card approval for less than the requested amount. When the result shows <strong>Partially paid</strong>, check the paid and remaining amounts, then tap <strong>Pay remaining</strong> on that result screen and collect the balance on another card. The app keeps the attempts on the same sale. Do not treat the sale as fully paid until the whole amount is approved.</p>
-          <p>A missing answer is not a partial approval. <a href="troubleshooting.html#unknown">Resolve unknown results</a> before collecting more. Do not start a new sale for the full original total: an approved portion has already been paid.</p>
+          <p>A missing answer is not a partial approval. <a href="troubleshooting#unknown">Resolve unknown results</a> before collecting more. Do not start a new sale for the full original total: an approved portion has already been paid.</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="images/partial-payment.png" width="540" height="960" loading="lazy" alt="English simulator demo: $10.70 paid, $10.69 remaining and a Pay remaining button"></div>
+            <div class="terminal terminal-s1f2"><img src="images/partial-payment.png" width="540" height="960" loading="lazy" alt="English simulator demo: $10.70 paid, $10.69 remaining and a Pay remaining button" decoding="async"></div>
             <figcaption class="fine">English simulator demo of a partial approval, not a fully paid sale.</figcaption>
           </figure>
           <h3 id="shopper-display">Use the shopper-facing terminal screen</h3>
@@ -189,16 +201,16 @@
           <h2>Recognize offline payments and pending batches</h2>
           <p>Offline EMV and Store-and-Forward need a supported terminal reached locally: Mini mPOS on that terminal or a terminal on your network. They are not offered through cloud routing or Tap to Pay. Arrange offline processing with Adyen and review its risks before setting limits in <a href="#capabilities">Adyen capabilities</a>; Mini mPOS does not queue payments itself or make a terminal reachable when your local network is down.</p>
           <p>History marks reported offline sales. Open a sale to see <strong>Offline processing</strong>, whether it used offline EMV or Store-and-Forward, and any <strong>Unconfirmed offline batches</strong> reported by the terminal. An offline approval can have no PSP reference yet. It is not an unknown result, but it does not confirm that Adyen has received or settled the payment.</p>
-          <p>Restore the terminal's connection to Adyen and verify uploaded payments and final outcomes in the Customer Area. Check the offline and unconfirmed-batch warnings during <a href="#reconciliation">terminal reconciliation</a>; matching totals do not confirm offline settlement. If no conclusive payment answer arrived, follow <a href="troubleshooting.html#unknown">unknown-result recovery</a> instead of assuming offline approval or charging again.</p>
+          <p>Restore the terminal's connection to Adyen and verify uploaded payments and final outcomes in the Customer Area. Check the offline and unconfirmed-batch warnings during <a href="#reconciliation">terminal reconciliation</a>; matching totals do not confirm offline settlement. If no conclusive payment answer arrived, follow <a href="troubleshooting#unknown">unknown-result recovery</a> instead of assuming offline approval or charging again.</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="images/offline-payment.png" width="540" height="960" loading="lazy" alt="English simulator demo: Store-and-Forward payment details with one unconfirmed offline batch"></div>
+            <div class="terminal terminal-s1f2"><img src="images/offline-payment.png" width="540" height="960" loading="lazy" alt="English simulator demo: Store-and-Forward payment details with one unconfirmed offline batch" decoding="async"></div>
             <figcaption class="fine">English simulator demo of offline details, not proof of upload or settlement.</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="wallets">
           <h2>Scan a shopper wallet code</h2>
-          <p>Use <strong>Scan wallet</strong> at sale checkout to read a payment code from the shopper’s wallet app. This is different from scanning a product barcode or a refund receipt. It works with a physical payment terminal, not Tap to Pay; <a href="quick-start.html#credentials">wallet discovery needs a read role</a>.</p>
+          <p>Use <strong>Scan wallet</strong> at sale checkout to read a payment code from the shopper’s wallet app. This is different from scanning a product barcode or a refund receipt. It works with a physical payment terminal, not Tap to Pay; <a href="quick-start#credentials">wallet discovery needs a read role</a>.</p>
           <ol>
             <li>Check the total and checkout fields, then tap <strong>Scan wallet</strong>. If receipt tipping is selected, confirm paying without it: the wallet charges the total immediately, not a pre-authorization.</li>
             <li>Choose the shopper’s wallet. A single available wallet is selected automatically. Only individually configured wallets appear; Alipay+ does not imply separate GCash, DANA, Kakao Pay or TrueMoney choices.</li>
@@ -206,11 +218,11 @@
             <li>Scan the shopper’s payment QR code or payment barcode. One valid scan starts payment immediately. Wait for the normal payment result and deliver its receipt.</li>
           </ol>
           <p>Canceling keeps the cart and checkout fields. Invalid codes do not pay: scan again or change wallet. A native scan expires after 30 seconds; use <strong>Scan again</strong> or the camera. Leaving the app stops scanning; returning requires an explicit new scan. Codes cannot be typed or pasted.</p>
-          <p><strong>Save card</strong> requests best-effort saving when shopper reference and consent allow it. Wallet support varies; only a returned stored-payment token means details were saved. An approved payment without a token is still approved. <a href="troubleshooting.html#wallets">Handle wallet discovery or payment problems</a>; never replace an <a href="troubleshooting.html#unknown">unknown payment</a> by scanning again.</p>
+          <p><strong>Save card</strong> requests best-effort saving when shopper reference and consent allow it. Wallet support varies; only a returned stored-payment token means details were saved. An approved payment without a token is still approved. <a href="troubleshooting#wallets">Handle wallet discovery or payment problems</a>; never replace an <a href="troubleshooting#unknown">unknown payment</a> by scanning again.</p>
           <p>Confirm your wallet setup and test behavior with the <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen wallet guide</a> and <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen PayPal and Venmo guide</a>.</p>
           <div class="shot-pair">
-            <div class="terminal terminal-s1f2"><img src="images/wallets.png" width="540" height="960" loading="lazy" alt="English simulator demo: choose a wallet for a $34.00 sale"></div>
-            <div class="terminal terminal-s1f2"><img src="images/wallet-scan.png" width="540" height="960" loading="lazy" alt="English simulator demo: WeChat Pay scan flow with an offline demo-code action"></div>
+            <div class="terminal terminal-s1f2"><img src="images/wallets.png" width="540" height="960" loading="lazy" alt="English simulator demo: choose a wallet for a $34.00 sale" decoding="async"></div>
+            <div class="terminal terminal-s1f2"><img src="images/wallet-scan.png" width="540" height="960" loading="lazy" alt="English simulator demo: WeChat Pay scan flow with an offline demo-code action" decoding="async"></div>
           </div>
           <p class="fine">English simulator demos of wallet scanning.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
@@ -230,7 +242,7 @@
           <p>Every refund is linked to its original payment; refunds without one are not supported. Refund paid payment links in the Customer Area.</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Important</p>
-            <p><strong>Refund requested</strong> means Adyen received the request, not that the customer has the money. Check the final outcome in the Customer Area. If a refund's result is unknown, <a href="troubleshooting.html#unknown">check it before retrying</a>.</p>
+            <p><strong>Refund requested</strong> means Adyen received the request, not that the customer has the money. Check the final outcome in the Customer Area. If a refund's result is unknown, <a href="troubleshooting#unknown">check it before retrying</a>.</p>
           </div>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -270,7 +282,7 @@
             <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li>
             <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
           </ul>
-          <p>If receipts do not print or send, see <a href="troubleshooting.html#receipts">printer and email problems</a>.</p>
+          <p>If receipts do not print or send, see <a href="troubleshooting#receipts">printer and email problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="history">
@@ -284,7 +296,7 @@
           <p>On-screen totals follow your search and filters. Held payments, such as deposits and tips on the receipt, count as sales on the day their capture is accepted.</p>
           <h3 id="close-day">Close the day</h3>
           <ol>
-            <li>Open <strong>History</strong>, filter by <strong>Needs attention</strong> and resolve each entry; see <a href="troubleshooting.html#unknown">unknown results</a>.</li>
+            <li>Open <strong>History</strong>, filter by <strong>Needs attention</strong> and resolve each entry; see <a href="troubleshooting#unknown">unknown results</a>.</li>
             <li>Check the <strong>Awaiting tip</strong> and pre-authorization filters. Enter tips, and capture or cancel deposits before their holds expire.</li>
             <li>Tap the print icon beside the day to print the <strong>Local daily summary</strong>.</li>
             <li>Reconcile with Adyen's reports in the Customer Area; see the <a href="https://docs.adyen.com/reporting/settlement-reconciliation">Adyen settlement reconciliation guide</a>.</li>
@@ -307,7 +319,7 @@
           </ol>
           <p>This is available for physical terminals and the simulator, not Tap to Pay. A matching comparison or closed period does not confirm settlement, refund completion or offline upload. Keep using the Customer Area for final financial outcomes.</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="images/reconciliation.png" width="540" height="960" loading="lazy" alt="English simulator demo: matching $34.00 totals with an offline-sale and unconfirmed-batch warning"></div>
+            <div class="terminal terminal-s1f2"><img src="images/reconciliation.png" width="540" height="960" loading="lazy" alt="English simulator demo: matching $34.00 totals with an offline-sale and unconfirmed-batch warning" decoding="async"></div>
             <figcaption class="fine">English simulator demo. Matching totals can still have an unconfirmed offline batch.</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
@@ -349,7 +361,7 @@
             <p class="callout-title">Important</p>
             <p>Anyone with a real link can pay until it expires. Refund paid links in <strong>Customer Area › Payments › Payment list</strong>; the app cannot refund them.</p>
           </div>
-          <p>If a link is missing or not updating, see <a href="troubleshooting.html#links">payment link problems</a>.</p>
+          <p>If a link is missing or not updating, see <a href="troubleshooting#links">payment link problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="preauth">
@@ -374,7 +386,7 @@
           <p><strong>Capture requested</strong> is not final confirmation; check the Customer Area. For immediate answers to adjustments, enable <strong>Return adjust authorisation data</strong> as described in the <a href="https://docs.adyen.com/online-payments/adjust-authorisation">Adyen authorization adjustment guide</a>.</p>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">Warning</p>
-            <p>Holds expire. Check the pre-authorization filter daily and capture or cancel promptly. For failed or unknown operations, see <a href="troubleshooting.html#modifications">capture problems</a>.</p>
+            <p>Holds expire. Check the pre-authorization filter daily and capture or cancel promptly. For failed or unknown operations, see <a href="troubleshooting#modifications">capture problems</a>.</p>
           </div>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -387,7 +399,7 @@
           </ol>
           <p>This does not need a printer or later tip entry. Terminal tipping and <a href="#tips">tips on the receipt</a> cannot be selected together. Neither is offered for pre-authorizations, scanned-wallet payments or payment links; terminal tipping is not offered with Tap to Pay.</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="images/terminal-tipping.png" width="540" height="960" loading="lazy" alt="English simulator demo: terminal tipping enabled with dynamic basket suggestions in Tips and donations"></div>
+            <div class="terminal terminal-s1f2"><img src="images/terminal-tipping.png" width="540" height="960" loading="lazy" alt="English simulator demo: terminal tipping enabled with dynamic basket suggestions in Tips and donations" decoding="async"></div>
             <figcaption class="fine">English simulator demo of checkout preferences. Configure the terminal separately in Adyen capabilities.</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
@@ -411,7 +423,7 @@
           <p>The app captures the bill plus the tip. Tips over 20% first need the card issuer to increase the hold; if it refuses, enter a smaller tip or none. A saved tip cannot be changed. Before a tip is entered, cancel the payment instead of refunding it; afterward, refunds include the tip.</p>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">Warning</p>
-            <p>Enter every tip promptly, including zero tips, so the bills are captured before their holds expire. For failed or unknown captures, see <a href="troubleshooting.html#modifications">capture problems</a>.</p>
+            <p>Enter every tip promptly, including zero tips, so the bills are captured before their holds expire. For failed or unknown captures, see <a href="troubleshooting#modifications">capture problems</a>.</p>
           </div>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -429,8 +441,8 @@
             <p>This is a one-time copy, not synchronization or a backup of payment history. Each device keeps its own payments. Clearing the app's data in Android deletes all products, settings and history on the device.</p>
           </div>
           <p>In <strong>Settings › Data and transfer</strong>, set <strong>Keep transactions for</strong> or tap <strong>Clear settled history</strong>; unresolved payments are always kept.</p>
-          <p>On a tablet or phone, Mini mPOS checks for a newer version at startup. If Home offers <strong>Update</strong>, tap it to open the APK in your browser, then install the download. Adyen terminals update through the Customer Area, not this prompt. You can also get the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a> and follow the <a href="quick-start.html#install">installation steps</a>. Keep the same signing source and install over the existing app; do not uninstall or clear its data.</p>
-          <p>For import problems, see <a href="troubleshooting.html#access">PIN and transfer problems</a>.</p>
+          <p>On a tablet or phone, Mini mPOS checks for a newer version at startup. If Home offers <strong>Update</strong>, tap it to open the APK in your browser, then install the download. Adyen terminals update through the Customer Area, not this prompt. You can also get the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a> and follow the <a href="quick-start#install">installation steps</a>. Keep the same signing source and install over the existing app; do not uninstall or clear its data.</p>
+          <p>For import problems, see <a href="troubleshooting#access">PIN and transfer problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
       </div>
@@ -438,8 +450,8 @@
   </main>
   <footer class="site-footer"><div class="wrap footer-row">
     <nav aria-label="Guides and setup"><ul class="footer-nav">
-      <li><a href="quick-start.html">Quick start</a></li><li><a href="using.html" aria-current="page">Using Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+      <li><a href="quick-start">Quick start</a></li><li><a href="using" aria-current="page">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting">Troubleshooting</a></li><li><a href="setup">Setup helper</a></li>
     </ul></nav>
     <p><img src="favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT license · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Security</a></p><p class="fine">Adyen is a trademark of Adyen N.V. Mini mPOS is independent and is not affiliated with, endorsed by or supported by Adyen.</p>
   </div></footer>

@@ -2,36 +2,46 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
   <meta name="referrer" content="no-referrer">
-  <title>設定助手 – Mini mPOS</title>
-  <meta name="description" content="在方便打開商戶後台的電腦上填寫 Adyen 密鑰和帳戶資訊，再以二維碼形式掃描到 Mini mPOS 中，無需在設備上輸入冗長的 API 密鑰。">
+  <meta name="robots" content="max-image-preview:large">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adyen 二維碼設定助手 – Mini mPOS</title>
+  <meta name="description" content="在電腦上設定 Mini mPOS，將 Adyen 憑據及可選的收據或電郵設定轉成加密二維碼，再用設備掃描匯入，毋須輸入冗長的密鑰。">
+  <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
-  <link rel="canonical" href="https://minimpos.app/zh-Hant/setup.html">
+  <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="describedby" href="../llms.txt" type="text/plain">
+  <meta name="application-name" content="Mini mPOS 指南">
+  <link rel="canonical" href="https://minimpos.app/zh-Hant/setup">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Mini mPOS 設定助手">
-  <meta property="og:description" content="在電腦上複製 Adyen 密鑰，再以二維碼形式掃描到 Mini mPOS 中。">
-  <meta property="og:url" content="https://minimpos.app/zh-Hant/setup.html">
+  <meta property="og:site_name" content="Mini mPOS">
+  <meta property="og:title" content="Adyen 二維碼設定助手 – Mini mPOS">
+  <meta property="og:description" content="在電腦上設定 Mini mPOS，將 Adyen 憑據及可選的收據或電郵設定轉成加密二維碼，再用設備掃描匯入，毋須輸入冗長的密鑰。">
+  <meta property="og:url" content="https://minimpos.app/zh-Hant/setup">
   <meta property="og:image" content="https://minimpos.app/images/zh-Hant/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
   <meta content="Adyen 支付終端示意圖上的 Mini mPOS，展示繁體中文演示畫面。" property="og:image:alt">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#00843F">
   <link rel="stylesheet" href="../styles.css">
-  <meta content="Mini mPOS 設定助手" name="twitter:title">
-  <meta content="在電腦上複製 Adyen 密鑰，再以二維碼形式掃描到 Mini mPOS 中。" name="twitter:description">
+  <meta content="Adyen 二維碼設定助手 – Mini mPOS" name="twitter:title">
+  <meta content="在電腦上設定 Mini mPOS，將 Adyen 憑據及可選的收據或電郵設定轉成加密二維碼，再用設備掃描匯入，毋須輸入冗長的密鑰。" name="twitter:description">
   <meta content="https://minimpos.app/images/zh-Hant/social.png" name="twitter:image">
   <meta content="Adyen 支付終端示意圖上的 Mini mPOS，展示繁體中文演示畫面。" name="twitter:image:alt">
   <script defer src="../js/qrcodegen.js"></script>
   <script defer src="../js/setup.js"></script>
-    <link href="https://minimpos.app/setup.html" hreflang="en" rel="alternate">
-    <link href="https://minimpos.app/es-MX/setup.html" hreflang="es-MX" rel="alternate">
-    <link href="https://minimpos.app/fr-FR/setup.html" hreflang="fr-FR" rel="alternate">
-    <link href="https://minimpos.app/ja/setup.html" hreflang="ja" rel="alternate">
-    <link href="https://minimpos.app/pt-BR/setup.html" hreflang="pt-BR" rel="alternate">
-    <link href="https://minimpos.app/zh-CN/setup.html" hreflang="zh-CN" rel="alternate">
-    <link href="https://minimpos.app/zh-Hant/setup.html" hreflang="zh-Hant" rel="alternate">
-    <link href="https://minimpos.app/setup.html" hreflang="x-default" rel="alternate">
+    <link href="https://minimpos.app/setup" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/setup" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/setup" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/setup" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/setup" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/setup" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/setup" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/setup" hreflang="x-default" rel="alternate">
     <meta content="en_US" property="og:locale:alternate">
     <meta content="zh_CN" property="og:locale:alternate">
     <meta content="zh_HK" property="og:locale">
@@ -51,22 +61,22 @@
       </a>
       <nav class="desktop-nav" aria-label="主導航">
         <ul class="nav">
-          <li><a href="quick-start.html">快速入門</a></li>
-          <li><a href="using.html">使用 Mini mPOS</a></li>
-          <li><a href="troubleshooting.html">疑難排解</a></li>
-          <li><a href="setup.html" aria-current="page">設定助手</a></li>
+          <li><a href="quick-start">快速入門</a></li>
+          <li><a href="using">使用 Mini mPOS</a></li>
+          <li><a href="troubleshooting">疑難排解</a></li>
+          <li><a href="setup" aria-current="page">設定助手</a></li>
         </ul>
       </nav>
       <details class="mobile-menu"><summary>選單</summary><div class="mobile-panel"><nav aria-label="主導航"><ul class="nav">
-        <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
-        <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html" aria-current="page">設定助手</a></li>
+        <li><a href="quick-start">快速入門</a></li><li><a href="using">使用 Mini mPOS</a></li>
+        <li><a href="troubleshooting">疑難排解</a></li><li><a href="setup" aria-current="page">設定助手</a></li>
       </ul></nav>
-        <nav class="mobile-languages" aria-label="語言"><p>語言</p><ul><li><a href="../setup.html" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/setup.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/setup.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/setup.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/setup.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/setup.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="../zh-Hant/setup.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+        <nav class="mobile-languages" aria-label="語言"><p>語言</p><ul><li><a href="../setup" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/setup" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/setup" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/setup" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/setup" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/setup" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="../zh-Hant/setup" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
       </div></details>
       <details class="language-menu">
         <summary aria-label="語言：繁體中文" title="語言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">繁體中文</span></summary>
         <nav aria-label="語言">
-          <ul><li><a href="../setup.html" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/setup.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/setup.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/setup.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/setup.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/setup.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="../zh-Hant/setup.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul>
+          <ul><li><a href="../setup" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/setup" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/setup" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/setup" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/setup" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/setup" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="../zh-Hant/setup" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul>
         </nav>
       </details>
     </div>
@@ -85,9 +95,9 @@
 
     <div class="wrap setup">
       <div class="setup-main">
-        <p>初次使用 Mini mPOS？填寫前請先<a href="quick-start.html#choose">選擇設定方式</a>並<a href="quick-start.html#credentials">準備憑據</a>。</p>
+        <p>初次使用 Mini mPOS？填寫前請先<a href="quick-start#choose">選擇設定方式</a>並<a href="quick-start#credentials">準備憑據</a>。</p>
         <p class="hint" id="customer-area-note">商戶後台連結會在新分頁中打開，方便保留此表單。</p>
-        <p class="note" id="setup-noscript">設定助手需要 JavaScript。請為此頁面啟用 JavaScript，或按照<a href="quick-start.html#connect">快速入門指南</a>在應用程式中輸入。</p>
+        <p class="note" id="setup-noscript">設定助手需要 JavaScript。請為此頁面啟用 JavaScript，或按照<a href="quick-start#connect">快速入門指南</a>在應用程式中輸入。</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
               data-msg-making="正在生成二維碼…"
@@ -117,11 +127,11 @@
             <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手動</strong>：在電腦上輸入全部連接資訊</span></label>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>請先遵循<a href="quick-start.html#tap-to-pay">Tap to Pay 準備步驟</a>並安裝 Payments 應用程式。Mini mPOS 使用 Adyen API 密鑰自動建立註冊憑據。請在此輸入共享密鑰；Mini mPOS 不會查詢共享密鑰。匯入完成前，手機會要求明確執行註冊操作。</p>
+          <p class="hint" data-only="tapToPay" hidden>請先遵循<a href="quick-start#tap-to-pay">Tap to Pay 準備步驟</a>並安裝 Payments 應用程式。Mini mPOS 使用 Adyen API 密鑰自動建立註冊憑據。請在此輸入共享密鑰；Mini mPOS 不會查詢共享密鑰。匯入完成前，手機會要求明確執行註冊操作。</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API 密鑰</legend>
-            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中建立憑據並生成 API 密鑰。<span data-only="tapToPay" hidden>此密鑰用於 Checkout 和自動建立註冊憑據。</span>所有設定都需要相同的主憑據角色；參見<a href="quick-start.html#credentials">憑據要求</a>。</p>
+            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中建立憑據並生成 API 密鑰。<span data-only="tapToPay" hidden>此密鑰用於 Checkout 和自動建立註冊憑據。</span>所有設定都需要相同的主憑據角色；參見<a href="quick-start#credentials">憑據要求</a>。</p>
             <label for="apiKey">API 密鑰</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -168,7 +178,7 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS 自動建立具有 Adyen Payments App role 和客戶端密鑰的獨立憑據。毋須輸入或傳送額外密鑰。參見<a href="troubleshooting.html#tap-to-pay-check">Tap to Pay 疑難排解</a>和 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式指南</a>。</p>
+            <p class="hint">Mini mPOS 自動建立具有 Adyen Payments App role 和客戶端密鑰的獨立憑據。毋須輸入或傳送額外密鑰。參見<a href="troubleshooting#tap-to-pay-check">Tap to Pay 疑難排解</a>和 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式指南</a>。</p>
             <label for="storeId">店舖 ID（可選）</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
             <p class="hint">如只為一家店舖設定本手機：填寫 <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> 中該店舖的 ID（不是其 reference）。</p>
@@ -207,7 +217,7 @@
               <input id="receiptTitle" name="receiptTitle" type="text">
               <label for="receiptFooter">頁尾（可選）</label>
               <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
-              <p class="hint">只有已填寫的手動文字會更改已儲存值，留空會保留原文字。稅務編號、標題和頁尾需手動輸入，不從 Adyen 匯入。參見<a href="using.html#receipts">收據設定</a>。</p>
+              <p class="hint">只有已填寫的手動文字會更改已儲存值，留空會保留原文字。稅務編號、標題和頁尾需手動輸入，不從 Adyen 匯入。參見<a href="using#receipts">收據設定</a>。</p>
             </fieldset>
           </fieldset>
 
@@ -215,7 +225,7 @@
             <legend>電子收據（可選）</legend>
             <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>保留現有郵件設定</span></label>
             <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>包含 SMTP 設定</span></label>
-            <p class="hint">請先檢查<a href="using.html#email">郵件設定及服務商要求</a>；設定助手無法測試伺服器。</p>
+            <p class="hint">請先檢查<a href="using#email">郵件設定及服務商要求</a>；設定助手無法測試伺服器。</p>
 
             <fieldset id="smtp-fields" data-email="true" hidden disabled>
               <legend>SMTP 伺服器</legend>
@@ -268,7 +278,7 @@
             <li>檢查支付目標和環境。輸入必需的<strong>傳輸碼</strong>，再點按<strong>驗證並匯入</strong>。</li>
           </ol>
           <p>如包含 SMTP 設定，請檢查<strong>設定 › 電郵收據</strong>併發送測試郵件。</p>
-          <p><a href="troubleshooting.html#access">匯入問題？</a> · <a href="troubleshooting.html#connection">連接問題？</a></p>
+          <p><a href="troubleshooting#access">匯入問題？</a> · <a href="troubleshooting#connection">連接問題？</a></p>
         </div>
       </section>
 
@@ -278,7 +288,7 @@
           <li><strong>資料不會離開此頁面。</strong>二維碼在您的瀏覽器中生成；頁面不會發送或儲存任何內容。完成後請關閉頁面。</li>
           <li><strong>密鑰經過加密。</strong>二維碼中的密碼和密鑰使用傳輸碼加密，傳輸碼只在這裡顯示，因此僅拍攝二維碼不會洩露它們。</li>
           <li><strong>請保密傳輸碼。</strong>同時持有二維碼和傳輸碼的人可解密密鑰。按需生成新傳輸，完成後關閉頁面。</li>
-          <li><strong>需要完整說明？</strong>參閱<a href="quick-start.html">快速入門</a>；匯入或連接問題參見<a href="troubleshooting.html">疑難排解</a>。</li>
+          <li><strong>需要完整說明？</strong>參閱<a href="quick-start">快速入門</a>；匯入或連接問題參見<a href="troubleshooting">疑難排解</a>。</li>
         </ul>
       </div></aside>
     </div>
@@ -287,8 +297,8 @@
   <footer class="site-footer">
     <div class="wrap footer-row">
       <nav aria-label="指南和設定"><ul class="footer-nav">
-        <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
-        <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html" aria-current="page">設定助手</a></li>
+        <li><a href="quick-start">快速入門</a></li><li><a href="using">使用 Mini mPOS</a></li>
+        <li><a href="troubleshooting">疑難排解</a></li><li><a href="setup" aria-current="page">設定助手</a></li>
       </ul></nav>
       <p>
         <img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT 授權條款 ·

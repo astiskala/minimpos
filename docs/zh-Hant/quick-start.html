@@ -2,32 +2,44 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>快速入門 – Mini mPOS</title>
-  <meta name="description" content="安裝 Mini mPOS，連接 Adyen，並在上線前驗證 TEST 設定。">
+  <title>快速入門：安裝及連接 Adyen – Mini mPOS</title>
+  <meta name="description" content="在 Adyen Android 支付終端、平板或手機上安裝 Mini mPOS。連接終端或 Tap to Pay，在 TEST 環境驗證設定後再接受真實付款。">
+  <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="describedby" href="../llms.txt" type="text/plain">
+  <meta name="application-name" content="Mini mPOS 指南">
   <link rel="stylesheet" href="../styles.css">
-  <link rel="canonical" href="https://minimpos.app/zh-Hant/quick-start.html">
+  <link rel="canonical" href="https://minimpos.app/zh-Hant/quick-start">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Mini mPOS 快速入門">
-  <meta property="og:description" content="前提條件、安裝、連接 Adyen 和上線前的 TEST 驗證。">
-  <meta property="og:url" content="https://minimpos.app/zh-Hant/quick-start.html">
+  <meta property="og:site_name" content="Mini mPOS">
+  <meta property="og:title" content="快速入門：安裝及連接 Adyen – Mini mPOS">
+  <meta property="og:description" content="在 Adyen Android 支付終端、平板或手機上安裝 Mini mPOS。連接終端或 Tap to Pay，在 TEST 環境驗證設定後再接受真實付款。">
+  <meta property="og:url" content="https://minimpos.app/zh-Hant/quick-start">
   <meta property="og:image" content="https://minimpos.app/images/zh-Hant/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
   <meta property="og:image:alt" content="Adyen 終端示意圖中的 Mini mPOS，展示繁體中文模擬器演示。">
   <meta name="twitter:image" content="https://minimpos.app/images/zh-Hant/social.png">
   <meta name="twitter:image:alt" content="Adyen 終端示意圖中的 Mini mPOS，展示繁體中文模擬器演示。">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Mini mPOS 快速入門">
-  <meta name="twitter:description" content="前提條件、安裝、連接 Adyen 和上線前的 TEST 驗證。">
+  <meta name="twitter:title" content="快速入門：安裝及連接 Adyen – Mini mPOS">
+  <meta name="twitter:description" content="在 Adyen Android 支付終端、平板或手機上安裝 Mini mPOS。連接終端或 Tap to Pay，在 TEST 環境驗證設定後再接受真實付款。">
   <meta name="theme-color" content="#00843F">
-    <link href="https://minimpos.app/quick-start.html" hreflang="en" rel="alternate">
-    <link href="https://minimpos.app/es-MX/quick-start.html" hreflang="es-MX" rel="alternate">
-    <link href="https://minimpos.app/fr-FR/quick-start.html" hreflang="fr-FR" rel="alternate">
-    <link href="https://minimpos.app/ja/quick-start.html" hreflang="ja" rel="alternate">
-    <link href="https://minimpos.app/pt-BR/quick-start.html" hreflang="pt-BR" rel="alternate">
-    <link href="https://minimpos.app/zh-CN/quick-start.html" hreflang="zh-CN" rel="alternate">
-    <link href="https://minimpos.app/zh-Hant/quick-start.html" hreflang="zh-Hant" rel="alternate">
-    <link href="https://minimpos.app/quick-start.html" hreflang="x-default" rel="alternate">
+    <link href="https://minimpos.app/quick-start" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/quick-start" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/quick-start" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/quick-start" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/quick-start" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/quick-start" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/quick-start" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/quick-start" hreflang="x-default" rel="alternate">
     <meta content="en_US" property="og:locale:alternate">
     <meta content="zh_CN" property="og:locale:alternate">
     <meta content="zh_HK" property="og:locale">
@@ -41,22 +53,22 @@
   <header class="site-header"><div class="wrap header-row">
     <a class="brand" href="./" aria-label="Mini mPOS 首頁"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
     <nav class="desktop-nav" aria-label="主導航"><ul class="nav">
-      <li><a href="quick-start.html" aria-current="page">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html">設定助手</a></li>
+      <li><a href="quick-start" aria-current="page">快速入門</a></li><li><a href="using">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting">疑難排解</a></li><li><a href="setup">設定助手</a></li>
     </ul></nav>
     <details class="mobile-menu"><summary>選單</summary><div class="mobile-panel"><nav aria-label="主導航"><ul class="nav">
-      <li><a href="quick-start.html" aria-current="page">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html">設定助手</a></li>
+      <li><a href="quick-start" aria-current="page">快速入門</a></li><li><a href="using">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting">疑難排解</a></li><li><a href="setup">設定助手</a></li>
     </ul></nav>
-      <nav class="mobile-languages" aria-label="語言"><p>語言</p><ul><li><a href="../quick-start.html" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/quick-start.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/quick-start.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/quick-start.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/quick-start.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/quick-start.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="../zh-Hant/quick-start.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+      <nav class="mobile-languages" aria-label="語言"><p>語言</p><ul><li><a href="../quick-start" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/quick-start" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/quick-start" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/quick-start" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/quick-start" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/quick-start" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="../zh-Hant/quick-start" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
     </div></details>
-    <details class="language-menu"><summary aria-label="語言：繁體中文" title="語言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">繁體中文</span></summary><nav aria-label="語言"><ul><li><a href="../quick-start.html" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/quick-start.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/quick-start.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/quick-start.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/quick-start.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/quick-start.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="../zh-Hant/quick-start.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
+    <details class="language-menu"><summary aria-label="語言：繁體中文" title="語言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">繁體中文</span></summary><nav aria-label="語言"><ul><li><a href="../quick-start" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/quick-start" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/quick-start" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/quick-start" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/quick-start" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/quick-start" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="../zh-Hant/quick-start" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
   </div></header>
   <main id="main">
     <section class="guide-hero"><div class="wrap"><p class="eyebrow">指南</p><h1>快速入門</h1><p class="lead">安裝 Mini mPOS，連接 Adyen，並驗證第一筆 TEST 付款。只需按照您的設備設定操作。</p><p>只是想體驗？無需 Adyen 帳戶或終端即可<a href="#try">試用模擬器</a>。</p></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="指南導航">
-        <p class="toc-title">指南</p><p><a href="quick-start.html" aria-current="page">快速入門</a><br><a href="using.html">使用 Mini mPOS</a><br><a href="troubleshooting.html">疑難排解</a></p>
+        <p class="toc-title">指南</p><p><a href="quick-start" aria-current="page">快速入門</a><br><a href="using">使用 Mini mPOS</a><br><a href="troubleshooting">疑難排解</a></p>
         <div class="desktop-contents"><p class="toc-title">本頁目錄</p><ol>
           <li><a href="#choose">檢查前提條件</a><ul>
             <li><a href="#devices">設備</a></li><li><a href="#network-requirements">網絡</a></li><li><a href="#credentials">Adyen 憑據</a></li>
@@ -151,16 +163,16 @@
         </section>
         <section id="connect">
           <h2>連接 Adyen</h2>
-          <p>連接會將 Mini mPOS 與其終端或 Adyen Payments 應用程式綁定（終端綁定），並檢查 Adyen API 密鑰。只需按照您的設定操作。每種設定都有兩種方式：<a href="setup.html">設定助手</a>（建議），或在<strong>設定 › 終端</strong>中手動輸入。</p>
+          <p>連接會將 Mini mPOS 與其終端或 Adyen Payments 應用程式綁定（終端綁定），並檢查 Adyen API 密鑰。只需按照您的設定操作。每種設定都有兩種方式：<a href="setup">設定助手</a>（建議），或在<strong>設定 › 終端</strong>中手動輸入。</p>
           <figure class="guide-shot">
             <div class="terminal terminal-s1f2">
-              <img alt="終端設定中的二維碼設定快捷入口及模擬器支付目標" height="960" loading="lazy" src="../images/zh-Hant/terminal-setup.png" width="540">
+              <img alt="終端設定中的二維碼設定快捷入口及模擬器支付目標" height="960" loading="lazy" src="../images/zh-Hant/terminal-setup.png" width="540" decoding="async">
             </div>
             <figcaption class="fine">繁體中文模擬設備設定演示。</figcaption>
           </figure>
           <h3 id="helper">從電腦掃描設定二維碼</h3>
           <ol>
-            <li>在可信電腦上打開<a href="setup.html">設定助手</a>。它離線運行，不發送任何資料。</li>
+            <li>在可信電腦上打開<a href="setup">設定助手</a>。它離線運行，不發送任何資料。</li>
             <li>選擇 Mini mPOS 的運行位置和環境：<strong>TEST</strong> 或 <strong>LIVE</strong>。</li>
             <li>選擇<strong>自動（建議）</strong>只需輸入 Adyen API 密鑰，其餘由設備查詢；選擇<strong>手動</strong>則輸入全部連接資訊。</li>
             <li>填寫所需資訊。</li>
@@ -180,7 +192,7 @@
           </div>
           <dl class="settings-list setup-route">
             <dt>設定助手（建議）</dt>
-            <dd>在<a href="setup.html">設定助手</a>中選擇<strong>在 Adyen 終端上運行</strong>、終端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境及<strong>自動</strong>。輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。</dd>
+            <dd>在<a href="setup">設定助手</a>中選擇<strong>在 Adyen 終端上運行</strong>、終端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境及<strong>自動</strong>。輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -200,7 +212,7 @@
           </div>
           <dl class="settings-list setup-route">
             <dt>設定助手（建議）</dt>
-            <dd>在<a href="setup.html">設定助手</a>中選擇<strong>在平板電腦或手機上運行</strong>、配合同一網絡中的終端，以及終端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境和<strong>自動</strong>。輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。找到多台終端時，請選擇您的終端。</dd>
+            <dd>在<a href="setup">設定助手</a>中選擇<strong>在平板電腦或手機上運行</strong>、配合同一網絡中的終端，以及終端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境和<strong>自動</strong>。輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。找到多台終端時，請選擇您的終端。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -222,7 +234,7 @@
           </div>
           <dl class="settings-list setup-route">
             <dt>設定助手（建議）</dt>
-            <dd>在<a href="setup.html">設定助手</a>中選擇<strong>在平板電腦或手機上運行</strong>、配合通過互聯網連接的終端（雲端），以及終端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境和<strong>自動</strong>。輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。找到多台終端時，請選擇您的終端。</dd>
+            <dd>在<a href="setup">設定助手</a>中選擇<strong>在平板電腦或手機上運行</strong>、配合通過互聯網連接的終端（雲端），以及終端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境和<strong>自動</strong>。輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。找到多台終端時，請選擇您的終端。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -247,7 +259,7 @@
           </ol>
           <dl class="settings-list setup-route">
             <dt>設定助手（建議）</dt>
-            <dd>在<a href="setup.html">設定助手</a>中選擇<strong>在手機上運行</strong>、使用 Adyen Payments 應用程式的 Tap to Pay，以及 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境。輸入對應環境的 Adyen API 密鑰、商戶帳戶和共享密鑰，可選填店舖 ID。<a href="#helper">掃描二維碼</a>後點按<strong>驗證並匯入</strong>。Mini mPOS 會建立註冊憑據並開啟 Payments 應用程式，在匯入過程中完成註冊。</dd>
+            <dd>在<a href="setup">設定助手</a>中選擇<strong>在手機上運行</strong>、使用 Adyen Payments 應用程式的 Tap to Pay，以及 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境。輸入對應環境的 Adyen API 密鑰、商戶帳戶和共享密鑰，可選填店舖 ID。<a href="#helper">掃描二維碼</a>後點按<strong>驗證並匯入</strong>。Mini mPOS 會建立註冊憑據並開啟 Payments 應用程式，在匯入過程中完成註冊。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -263,7 +275,7 @@
           <p>如果實體終端還沒有加密密鑰，憑據和帳戶檢查通過後，設定會提供<strong>建立加密密鑰</strong>。</p>
           <ol>
             <li>檢查顯示的終端 ID 和環境，然後確認。建立期間，請勿在其他位置更改此終端的設定。</li>
-            <li>如果連接尚未驗證，請更新終端設定；參見<a href="troubleshooting.html#key-setup">密鑰設定恢復</a>。</li>
+            <li>如果連接尚未驗證，請更新終端設定；參見<a href="troubleshooting#key-setup">密鑰設定恢復</a>。</li>
             <li>如果建立中斷，請點按<strong>繼續密鑰設定</strong>。二維碼設定請重新掃描同一組二維碼並輸入其傳輸碼。</li>
           </ol>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
@@ -280,23 +292,23 @@
             <li>在首頁點按<strong>新建銷售</strong>，新增<strong>自訂商品</strong>，然後點按<strong>收款</strong>。</li>
             <li>點按<strong>支付</strong>，按照 <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Adyen POS 測試指南</a>完成一筆成功付款。</li>
             <li>確認結果為批准，且收據上的金額、貨幣和稅額正確。在<strong>交易紀錄</strong>中打開銷售紀錄，用其 <strong>PSP 參考編號</strong>核對 TEST 商戶後台中的付款。</li>
-            <li><a href="using.html#refund">為該付款退款</a>，並在 TEST 商戶後台確認最終退款結果。<strong>已請求退款</strong>並非最終確認。</li>
-            <li>按照 <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Adyen POS 測試指南</a>的拒付場景再次測試銷售。確認 Mini mPOS 顯示拒付，而非批准；參見<a href="troubleshooting.html#declines">付款被拒絕</a>。</li>
+            <li><a href="using#refund">為該付款退款</a>，並在 TEST 商戶後台確認最終退款結果。<strong>已請求退款</strong>並非最終確認。</li>
+            <li>按照 <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Adyen POS 測試指南</a>的拒付場景再次測試銷售。確認 Mini mPOS 顯示拒付，而非批准；參見<a href="troubleshooting#declines">付款被拒絕</a>。</li>
           </ol>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">警告</p>
-            <p>如果結果未知，請勿再次付款。請先按<a href="troubleshooting.html#unknown">恢復步驟</a>處理。</p>
+            <p>如果結果未知，請勿再次付款。請先按<a href="troubleshooting#unknown">恢復步驟</a>處理。</p>
           </div>
-          <p>接下來，請在<a href="using.html">使用 Mini mPOS</a>中設定商品、收據和員工權限。</p>
+          <p>接下來，請在<a href="using">使用 Mini mPOS</a>中設定商品、收據和員工權限。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="live">
           <h2>正式上線</h2>
-          <p>使用可選終端功能前，請檢查 <a href="using.html#capabilities">Adyen 功能</a>並測試實際收款目標：<a href="using.html#terminal-tips">終端小費</a>、<a href="using.html#terminal-checkout">部分付款、顧客提示、Giving 和手動輸入卡號</a>、<a href="using.html#offline">離線處理</a>及<a href="using.html#reconciliation">終端對帳</a>。可用性取決於 Adyen 設定和收款目標；模擬器結果不等於真實終端驗證。</p>
+          <p>使用可選終端功能前，請檢查 <a href="using#capabilities">Adyen 功能</a>並測試實際收款目標：<a href="using#terminal-tips">終端小費</a>、<a href="using#terminal-checkout">部分付款、顧客提示、Giving 和手動輸入卡號</a>、<a href="using#offline">離線處理</a>及<a href="using#reconciliation">終端對帳</a>。可用性取決於 Adyen 設定和收款目標；模擬器結果不等於真實終端驗證。</p>
           <ol>
-            <li>在 TEST 中測試計劃使用的可選流程：<a href="using.html#preauth">訂金</a>、<a href="using.html#tips">收據小費</a>、<a href="using.html#payment-links">付款連結</a>或<a href="using.html#wallets">掃描錢包</a>。訂金和收據小費會凍結資金，直至扣款。請在商戶後台確認最終扣款結果。</li>
+            <li>在 TEST 中測試計劃使用的可選流程：<a href="using#preauth">訂金</a>、<a href="using#tips">收據小費</a>、<a href="using#payment-links">付款連結</a>或<a href="using#wallets">掃描錢包</a>。訂金和收據小費會凍結資金，直至扣款。請在商戶後台確認最終扣款結果。</li>
             <li>測試計劃使用的收據交付方式：用實體打印機列印、發送測試郵件或分享收據。</li>
-            <li>設定管理員 PIN，需要時另設經理 PIN；參見<a href="using.html#staff">員工權限</a>。</li>
+            <li>設定管理員 PIN，需要時另設經理 PIN；參見<a href="using#staff">員工權限</a>。</li>
             <li>改用 LIVE 終端或 LIVE 版 Payments 應用程式及 LIVE 憑據。網絡或雲端終端及 Tap to Pay 請在<strong>環境</strong>中選擇 <strong>LIVE</strong>。輸入 <strong>LIVE URL 前置字元</strong>；參見 <a href="https://docs.adyen.com/development-resources/live-endpoints">Adyen LIVE 端點指南</a>。Tap to Pay 需要在所選環境中重新註冊。</li>
             <li>在<strong>設定 › 終端</strong>中，確認環境為 <strong>LIVE</strong>。完成最後的<strong>測試連接</strong>步驟，驗證 API 存取和受支援的連接檢查。
               <ul>
@@ -308,19 +320,19 @@
             <p class="callout-title">警告</p>
             <p>在 TEST、LIVE 和模擬器之間切換會刪除設備上的全部交易紀錄，包括未完成付款的恢複資料。請先處理<strong>需處理</strong>中的所有付款。</p>
           </div>
-          <p>日常檢查和對帳請參閱<a href="using.html#close-day">日終結算</a>。</p>
+          <p>日常檢查和對帳請參閱<a href="using#close-day">日終結算</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="try">
           <h2>試用模擬器</h2>
-          <p>要示範離線警告，請在<strong>設定 › 模擬器</strong>中開啟<strong>離線批准</strong>（Store-and-Forward）。獲批的模擬銷售將沒有 PSP 參考編號，並報告未確認批次。在交易紀錄中查看銷售並嘗試<a href="using.html#reconciliation">終端對帳</a>。這只是示範，不會驗證真實離線授權或稍後上傳 Adyen 的流程。</p>
+          <p>要示範離線警告，請在<strong>設定 › 模擬器</strong>中開啟<strong>離線批准</strong>（Store-and-Forward）。獲批的模擬銷售將沒有 PSP 參考編號，並報告未確認批次。在交易紀錄中查看銷售並嘗試<a href="using#reconciliation">終端對帳</a>。這只是示範，不會驗證真實離線授權或稍後上傳 Adyen 的流程。</p>
           <p>無需 Adyen 帳戶或終端即可體驗 Mini mPOS，不會扣款。</p>
           <ol>
             <li>在 Android 9+ 手機或模擬器上<a href="#install">安裝應用程式</a>。</li>
             <li>在歡迎畫面選擇<strong>試用示範</strong>，點按<strong>繼續</strong>。其他選項為<strong>掃描設定二維碼</strong>（來自設定助手或另一台設備）及<strong>連接 Adyen</strong>。Adyen 終端預設選擇連接，其他設備預設選擇示範。</li>
             <li>在<strong>設定 › 模擬器</strong>中選擇支付結果、延遲以及是否有打印機。</li>
           </ol>
-          <p>示例商品和交易紀錄會標為演示。每次<strong>新增示例資料</strong>都會以虛構咖啡店資料取代收據商戶資料，即使示例已存在；收據版面和傳送設定保持不變。示例計入演示每日總計和報告，並非真實付款。在<strong>設定 › 資料與轉移</strong>中可<strong>新增示例資料</strong>或<strong>刪除示例資料</strong>；刪除會保留您自己的商品、交易紀錄和設定。離線演示連結請參閱<a href="using.html#payment-links">付款連結</a>。</p>
+          <p>示例商品和交易紀錄會標為演示。每次<strong>新增示例資料</strong>都會以虛構咖啡店資料取代收據商戶資料，即使示例已存在；收據版面和傳送設定保持不變。示例計入演示每日總計和報告，並非真實付款。在<strong>設定 › 資料與轉移</strong>中可<strong>新增示例資料</strong>或<strong>刪除示例資料</strong>；刪除會保留您自己的商品、交易紀錄和設定。離線演示連結請參閱<a href="using#payment-links">付款連結</a>。</p>
           <p>準備連接時，在<strong>設定 › 模擬器</strong>中點按<strong>設定真實付款</strong>。透過捷徑檢查示例資料及收據，再點按<strong>繼續設定</strong>。開啟設定不會更改資料。確認切換至 TEST 或 LIVE 後，所有本機記錄（包括未完成的操作）都會刪除；示例商品及收據資料會保留。請另外移除不需要的示例，並在真實付款前檢查虛構的收據商戶資料。先使用 TEST 測試。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
@@ -329,8 +341,8 @@
   </main>
   <footer class="site-footer"><div class="wrap footer-row">
     <nav aria-label="指南和設定"><ul class="footer-nav">
-      <li><a href="quick-start.html" aria-current="page">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html">設定助手</a></li>
+      <li><a href="quick-start" aria-current="page">快速入門</a></li><li><a href="using">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting">疑難排解</a></li><li><a href="setup">設定助手</a></li>
     </ul></nav>
     <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT 授權條款 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p><p class="fine">Adyen 是 Adyen N.V. 的商標。Mini mPOS 是獨立項目，與 Adyen 無關聯，未獲其認可，也不由其提供支援。</p>
   </div></footer>

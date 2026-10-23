@@ -63,17 +63,17 @@ class TerminalFeaturesGuideTest {
                 assertWithMessage("$language #$id navigation").that(using.select("nav.toc a[href='#$id']")).isNotEmpty()
             }
             listOf("capabilities", "terminal-tips", "terminal-checkout", "offline", "reconciliation").forEach { id ->
-                assertWithMessage("$language setup link #$id").that(setup.select("a[href='using.html#$id']")).isNotEmpty()
+                assertWithMessage("$language setup link #$id").that(setup.select("a[href='using#$id']")).isNotEmpty()
             }
             listOf("DCC", "MOTO", "MKE", "Adyen Giving").forEach { term ->
                 assertThat(using.select("#capabilities").text()).contains(term)
             }
-            assertThat(using.select("#terminal-checkout a[href='troubleshooting.html#unknown']")).isNotEmpty()
-            assertThat(using.select("#offline a[href='troubleshooting.html#unknown']")).isNotEmpty()
+            assertThat(using.select("#terminal-checkout a[href='troubleshooting#unknown']")).isNotEmpty()
+            assertThat(using.select("#offline a[href='troubleshooting#unknown']")).isNotEmpty()
             val trouble = Jsoup.parse(directory.resolve("troubleshooting.html").readText())
             listOf("capabilities", "partial-payments", "reconciliation", "offline").forEach { id ->
                 assertWithMessage("$language troubleshooting link #$id")
-                    .that(trouble.select("a[href='using.html#$id']"))
+                    .that(trouble.select("a[href='using#$id']"))
                     .isNotEmpty()
             }
         }

@@ -12,7 +12,7 @@ class GuideLayoutTest {
         HelperBrowser().use { browser ->
             for (language in listOf("", "zh-CN/", "zh-Hant/", "ja/", "pt-BR/", "es-MX/", "fr-FR/")) {
                 for (page in listOf("index.html", "quick-start.html", "using.html", "troubleshooting.html", "setup.html")) {
-                    for (width in listOf(390, 1280)) {
+                    for (width in listOf(320, 390, 1280)) {
                         browser.viewport(width)
                         browser.openPage(docs.resolve(language + page))
                         val broken =

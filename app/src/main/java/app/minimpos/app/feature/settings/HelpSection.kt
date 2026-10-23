@@ -26,13 +26,13 @@ internal fun ColumnScope.HelpSection(
     SettingActions {
         SecondaryButton(
             stringResource(R.string.help_user_guide),
-            { uri.openUri("https://minimpos.app/using.html") },
+            { uri.openUri("https://minimpos.app/using") },
             Modifier.testTag("helpUserGuide"),
             icon = Icons.AutoMirrored.Filled.MenuBook,
         )
         SecondaryButton(
             stringResource(R.string.help_troubleshooting),
-            { uri.openUri("https://minimpos.app/troubleshooting.html") },
+            { uri.openUri("https://minimpos.app/troubleshooting") },
             Modifier.testTag("helpTroubleshooting"),
             icon = Icons.AutoMirrored.Filled.HelpOutline,
         )

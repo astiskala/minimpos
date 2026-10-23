@@ -2,32 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Troubleshooting – Mini mPOS</title>
-  <meta name="description" content="Fix unknown results, declined payments, pairing and network problems, captures, payment links, printers, email, PINs and installation in Mini mPOS.">
+  <title>Troubleshooting Adyen payments and setup – Mini mPOS</title>
+  <meta name="description" content="Fix unknown payment results, declines, Adyen connections, printing and email in Mini mPOS. Find recovery steps for payments, setup and installation.">
+  <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="describedby" href="llms.txt" type="text/plain">
+  <meta name="application-name" content="Mini mPOS guides">
   <link rel="stylesheet" href="styles.css">
-  <link rel="canonical" href="https://minimpos.app/troubleshooting.html">
+  <link rel="canonical" href="https://minimpos.app/troubleshooting">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Troubleshooting Mini mPOS">
-  <meta property="og:description" content="Symptoms, causes and fixes, starting with payments whose result is unknown.">
-  <meta property="og:url" content="https://minimpos.app/troubleshooting.html">
+  <meta property="og:site_name" content="Mini mPOS">
+  <meta property="og:title" content="Troubleshooting Adyen payments and setup – Mini mPOS">
+  <meta property="og:description" content="Fix unknown payment results, declines, Adyen connections, printing and email in Mini mPOS. Find recovery steps for payments, setup and installation.">
+  <meta property="og:url" content="https://minimpos.app/troubleshooting">
   <meta property="og:image" content="https://minimpos.app/images/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
   <meta property="og:image:alt" content="Mini mPOS on illustrated Adyen terminals, showing English simulator demos.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Troubleshooting Mini mPOS">
-  <meta name="twitter:description" content="Symptoms, causes and fixes, starting with payments whose result is unknown.">
+  <meta name="twitter:title" content="Troubleshooting Adyen payments and setup – Mini mPOS">
+  <meta name="twitter:description" content="Fix unknown payment results, declines, Adyen connections, printing and email in Mini mPOS. Find recovery steps for payments, setup and installation.">
   <meta name="twitter:image" content="https://minimpos.app/images/social.png">
   <meta name="twitter:image:alt" content="Mini mPOS on illustrated Adyen terminals, showing English simulator demos.">
   <meta name="theme-color" content="#00843F">
-    <link href="https://minimpos.app/troubleshooting.html" hreflang="en" rel="alternate">
-    <link href="https://minimpos.app/es-MX/troubleshooting.html" hreflang="es-MX" rel="alternate">
-    <link href="https://minimpos.app/fr-FR/troubleshooting.html" hreflang="fr-FR" rel="alternate">
-    <link href="https://minimpos.app/ja/troubleshooting.html" hreflang="ja" rel="alternate">
-    <link href="https://minimpos.app/pt-BR/troubleshooting.html" hreflang="pt-BR" rel="alternate">
-    <link href="https://minimpos.app/zh-CN/troubleshooting.html" hreflang="zh-CN" rel="alternate">
-    <link href="https://minimpos.app/zh-Hant/troubleshooting.html" hreflang="zh-Hant" rel="alternate">
-    <link href="https://minimpos.app/troubleshooting.html" hreflang="x-default" rel="alternate">
+    <link href="https://minimpos.app/troubleshooting" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/troubleshooting" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/troubleshooting" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/troubleshooting" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/troubleshooting" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/troubleshooting" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/troubleshooting" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/troubleshooting" hreflang="x-default" rel="alternate">
     <meta content="en_US" property="og:locale">
     <meta content="es_MX" property="og:locale:alternate">
     <meta content="fr_FR" property="og:locale:alternate">
@@ -41,22 +53,22 @@
   <header class="site-header"><div class="wrap header-row">
     <a class="brand" href="./" aria-label="Mini mPOS home"><img src="favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
     <nav class="desktop-nav" aria-label="Main"><ul class="nav">
-      <li><a href="quick-start.html">Quick start</a></li><li><a href="using.html">Using Mini mPOS</a></li>
-      <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+      <li><a href="quick-start">Quick start</a></li><li><a href="using">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting" aria-current="page">Troubleshooting</a></li><li><a href="setup">Setup helper</a></li>
     </ul></nav>
     <details class="mobile-menu"><summary>Menu</summary><div class="mobile-panel"><nav aria-label="Main"><ul class="nav">
-      <li><a href="quick-start.html">Quick start</a></li><li><a href="using.html">Using Mini mPOS</a></li>
-      <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+      <li><a href="quick-start">Quick start</a></li><li><a href="using">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting" aria-current="page">Troubleshooting</a></li><li><a href="setup">Setup helper</a></li>
     </ul></nav>
-      <nav class="mobile-languages" aria-label="Language"><p>Language</p><ul><li><a aria-current="page" href="troubleshooting.html" hreflang="en" lang="en">English</a></li><li><a href="es-MX/troubleshooting.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/troubleshooting.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/troubleshooting.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/troubleshooting.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/troubleshooting.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+      <nav class="mobile-languages" aria-label="Language"><p>Language</p><ul><li><a aria-current="page" href="troubleshooting" hreflang="en" lang="en">English</a></li><li><a href="es-MX/troubleshooting" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/troubleshooting" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/troubleshooting" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/troubleshooting" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/troubleshooting" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/troubleshooting" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
     </div></details>
-    <details class="language-menu"><summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary><nav aria-label="Language"><ul><li><a aria-current="page" href="troubleshooting.html" hreflang="en" lang="en">English</a></li><li><a href="es-MX/troubleshooting.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/troubleshooting.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/troubleshooting.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/troubleshooting.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/troubleshooting.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
+    <details class="language-menu"><summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary><nav aria-label="Language"><ul><li><a aria-current="page" href="troubleshooting" hreflang="en" lang="en">English</a></li><li><a href="es-MX/troubleshooting" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/troubleshooting" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/troubleshooting" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/troubleshooting" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/troubleshooting" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/troubleshooting" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
   </div></header>
   <main id="main">
     <section class="guide-hero"><div class="wrap"><p class="eyebrow">Guide</p><h1>Troubleshooting</h1><p class="lead">Find what you see, check the likely cause and follow the fix. If a payment was in progress, check its result first: fixing a connection does not tell you whether an earlier payment went through.</p></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="Guide navigation">
-        <p class="toc-title">Guides</p><p><a href="quick-start.html">Quick start</a><br><a href="using.html">Using Mini mPOS</a><br><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></p>
+        <p class="toc-title">Guides</p><p><a href="quick-start">Quick start</a><br><a href="using">Using Mini mPOS</a><br><a href="troubleshooting" aria-current="page">Troubleshooting</a></p>
         <div class="desktop-contents"><p class="toc-title">On this page</p><ol>
           <li><a href="#unknown">Unknown result</a></li><li><a href="#declines">Declined payments</a></li>
           <li><a href="#terminal-features">Optional terminal features</a></li>
@@ -121,27 +133,27 @@
         <section id="terminal-features">
           <h2>An optional terminal feature is missing or totals differ</h2>
           <dl class="fixes">
-            <div><dt>A terminal feature is missing or rejected</dt><dd><p>Check the selected destination and <a href="using.html#capabilities">Adyen capabilities</a>, refresh its settings, and confirm the API roles and Adyen account configuration. Local checkout switches alone do not enable a service at Adyen. Tap to Pay does not offer the physical-terminal workflows. For tips, compare <a href="using.html#terminal-tips">terminal tipping</a> with <a href="using.html#tips">receipt tipping</a>.</p></dd></div>
-            <div><dt>Only part of the amount was approved</dt><dd><p>Follow the <a href="using.html#partial-payments">partial-payment workflow</a> from the result screen. Do not charge the full original total again. If a later attempt's result is unknown, <a href="#unknown">resolve it</a> before collecting more.</p></dd></div>
-            <div><dt>Terminal totals do not match Mini mPOS</dt><dd><p>Review the terminal period, other devices using that terminal, retained local history and unresolved transactions in <a href="using.html#reconciliation">terminal reconciliation</a>. Closing the period does not fix differences or confirm settlement.</p></dd></div>
-            <div><dt>An offline sale has no PSP reference or unconfirmed batches remain</dt><dd><p>Follow <a href="using.html#offline">offline-payment checks</a>. Restore the terminal's connection to Adyen and verify its uploaded payments in the Customer Area. Do not collect an approved payment again just because its PSP reference is missing.</p></dd></div>
+            <div><dt>A terminal feature is missing or rejected</dt><dd><p>Check the selected destination and <a href="using#capabilities">Adyen capabilities</a>, refresh its settings, and confirm the API roles and Adyen account configuration. Local checkout switches alone do not enable a service at Adyen. Tap to Pay does not offer the physical-terminal workflows. For tips, compare <a href="using#terminal-tips">terminal tipping</a> with <a href="using#tips">receipt tipping</a>.</p></dd></div>
+            <div><dt>Only part of the amount was approved</dt><dd><p>Follow the <a href="using#partial-payments">partial-payment workflow</a> from the result screen. Do not charge the full original total again. If a later attempt's result is unknown, <a href="#unknown">resolve it</a> before collecting more.</p></dd></div>
+            <div><dt>Terminal totals do not match Mini mPOS</dt><dd><p>Review the terminal period, other devices using that terminal, retained local history and unresolved transactions in <a href="using#reconciliation">terminal reconciliation</a>. Closing the period does not fix differences or confirm settlement.</p></dd></div>
+            <div><dt>An offline sale has no PSP reference or unconfirmed batches remain</dt><dd><p>Follow <a href="using#offline">offline-payment checks</a>. Restore the terminal's connection to Adyen and verify its uploaded payments in the Customer Area. Do not collect an approved payment again just because its PSP reference is missing.</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="wallets">
           <h2>Scan wallet is missing or scanning fails</h2>
           <dl class="fixes">
-            <div><dt>No Scan wallet button</dt><dd><p>Open <strong>Settings › Terminal</strong> and tap <strong>Refresh scanned wallets</strong>. A successful check with no eligible POS wallets leaves the button hidden. Check the assigned store, current currency and <a href="quick-start.html#credentials">API key roles</a>. Tap to Pay and pre-authorizations do not offer this action.</p></dd></div>
+            <div><dt>No Scan wallet button</dt><dd><p>Open <strong>Settings › Terminal</strong> and tap <strong>Refresh scanned wallets</strong>. A successful check with no eligible POS wallets leaves the button hidden. Check the assigned store, current currency and <a href="quick-start#credentials">API key roles</a>. Tap to Pay and pre-authorizations do not offer this action.</p></dd></div>
             <div><dt>Wallet discovery reports an error</dt><dd><p>The error appears only in Settings and does not block ordinary payments. Fix credential/environment or read access problems there. A temporary refresh failure keeps the last verified list for unchanged setup; a successful empty check or access failure removes it. Configuration is checked at startup/setup changes and manual refresh, not before every sale.</p></dd></div>
             <div><dt>The code is invalid or no code arrives</dt><dd><p>Use the shopper’s payment code, not a profile, transfer or receipt QR. Choose the correct wallet. Native scanning ends after 30 seconds: tap <strong>Scan again</strong> or <strong>Use camera</strong>. Allow camera permission when requested. Returning from the background requires a new scan.</p></dd></div>
             <div><dt>Saving is rejected or no token is created</dt><dd><p>Follow the payment’s result. An approved payment stays approved without a saved token. Only after a conclusive rejection, return to checkout, turn off <strong>Save card</strong> and explicitly start another scan if appropriate. There is no automatic replacement payment. For <strong>Result unknown</strong>, <a href="#unknown">check the original transaction</a> instead.</p></dd></div>
           </dl>
-          <p>See <a href="using.html#wallets">the wallet payment procedure</a>. History’s requested wallet is intent, not proof that payment succeeded or that Adyen used that method.</p>
+          <p>See <a href="using#wallets">the wallet payment procedure</a>. History’s requested wallet is intent, not proof that payment succeeded or that Adyen used that method.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="connection">
           <h2>Pairing or setup fails</h2>
-          <p>Start with the message on Home, then open <strong>Settings › Terminal</strong> and complete the final <strong>Test connection</strong> step. This verifies API access and the connection checks supported by your integration. Network and cloud setup use <strong>Find terminal to set up</strong> to test API access and list terminals; <strong>Test API</strong> is offered for on-device terminals and Tap to Pay. For the full steps, see <a href="quick-start.html#connect">Connect to Adyen</a>.</p>
+          <p>Start with the message on Home, then open <strong>Settings › Terminal</strong> and complete the final <strong>Test connection</strong> step. This verifies API access and the connection checks supported by your integration. Network and cloud setup use <strong>Find terminal to set up</strong> to test API access and list terminals; <strong>Test API</strong> is offered for on-device terminals and Tap to Pay. For the full steps, see <a href="quick-start#connect">Connect to Adyen</a>.</p>
           <p>For any integration, open <strong>Settings › Help and troubleshooting › Troubleshooting details</strong>. Results include setup gaps, API access, supported connection checks, timestamps and device details; unsupported checks are identified. These checks do not prove that payments, refunds or printing will succeed and do not take payments, register phones or change keys. Use <strong>Share redacted report</strong> to share the displayed details: merchant, terminal, installation and credential IDs remain; secrets, unstructured messages and shopper data are excluded.</p>
           <dl class="fixes">
             <div><dt>Home says “Payments aren’t set up yet”</dt>
@@ -149,7 +161,7 @@
                 <p><span class="fix-label">Fix</span>Tap <strong>Finish setting up payments</strong>. In <strong>Settings › Terminal</strong>, enter what is missing, or enter the key again, then tap <strong>Test connection</strong>.</p></dd></div>
             <div><dt>The API test fails or setup reports an access problem</dt>
               <dd><p><span class="fix-label">Cause</span>The API key, merchant account or live URL prefix is wrong, a role is missing, or the credential is from another company account or environment.</p>
-                <p><span class="fix-label">Fix</span>Check the credential's roles and access against the <a href="quick-start.html#credentials">credential requirements</a>. For LIVE, check the <strong>Live URL prefix</strong>.</p></dd></div>
+                <p><span class="fix-label">Fix</span>Check the credential's roles and access against the <a href="quick-start#credentials">credential requirements</a>. For LIVE, check the <strong>Live URL prefix</strong>.</p></dd></div>
             <div><dt>“The merchant account does not match this terminal’s current assignment.”</dt>
               <dd><p><span class="fix-label">Cause</span>The terminal is assigned to a different merchant account at Adyen.</p>
                 <p><span class="fix-label">Fix</span>Enter the merchant account that the terminal is assigned to, or reassign the terminal in the Customer Area.</p></dd></div>
@@ -168,12 +180,12 @@
             <div id="tap-to-pay-check"><dt>Tap to Pay returns UnavailableService before card presentation</dt>
               <dd><p>The Payments app could not complete the request. This generic error does not prove an Adyen outage or a missing client key.</p>
                 <p>Run <strong>Test connection</strong> in <strong>Settings › Terminal</strong>. For a compact table of checks and a redacted report, expand <strong>Settings › Help and troubleshooting › Troubleshooting details</strong>.</p>
-                <p><strong>Set up Tap to Pay</strong> automatically provisions the registration credential and client key using your primary API key. Check its <a href="quick-start.html#credentials">required roles</a> if provisioning is denied. Allow a few minutes for new keys to propagate, then run <strong>Test connection</strong> again. If recovery still fails, retry later or ask Adyen Support to inspect the matching <a href="https://ca-test.adyen.com/">TEST Customer Area</a> or <a href="https://ca-live.adyen.com/">LIVE Customer Area</a>. See the <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments app requirements</a>.</p>
+                <p><strong>Set up Tap to Pay</strong> automatically provisions the registration credential and client key using your primary API key. Check its <a href="quick-start#credentials">required roles</a> if provisioning is denied. Allow a few minutes for new keys to propagate, then run <strong>Test connection</strong> again. If recovery still fails, retry later or ask Adyen Support to inspect the matching <a href="https://ca-test.adyen.com/">TEST Customer Area</a> or <a href="https://ca-live.adyen.com/">LIVE Customer Area</a>. See the <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments app requirements</a>.</p>
                 <p>The client key must belong to the same credential used for boarding.</p>
                 <p>Use <strong>Share redacted report</strong> to share exactly the rows shown: app version, API access and connection results with their UTC check time, integration and environment, account, store, installation and shared-key identifiers, Android, device and Payments app versions, and for Tap to Pay the client-key and boarding checks with the verified credential identity.</p></dd></div>
             <div id="key-setup"><dt>“The new key is saved. Update this terminal’s config”</dt>
               <dd><p><span class="fix-label">Cause</span>The encryption key was created at Adyen, but the terminal has not loaded it yet.</p>
-                <p><span class="fix-label">Fix</span>On the terminal, open <strong>Admin menu › Config › Update</strong>, then return to Mini mPOS and tap <strong>Check again</strong>. If creation was interrupted, tap <strong>Resume key setup</strong>; it does not create a second key. See <a href="quick-start.html#shared-key-creation">key creation</a> and the <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Adyen configuration update guide</a>.</p></dd></div>
+                <p><span class="fix-label">Fix</span>On the terminal, open <strong>Admin menu › Config › Update</strong>, then return to Mini mPOS and tap <strong>Check again</strong>. If creation was interrupted, tap <strong>Resume key setup</strong>; it does not create a second key. See <a href="quick-start#shared-key-creation">key creation</a> and the <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Adyen configuration update guide</a>.</p></dd></div>
             <div><dt>Actions on an older payment are blocked</dt>
               <dd><p><span class="fix-label">Cause</span>The merchant account, environment or terminal changed after that payment.</p>
                 <p><span class="fix-label">Fix</span>Restore the setup that took the payment, or handle it in the Customer Area. Do not process it under another account.</p></dd></div>
@@ -193,7 +205,7 @@
                 <ol>
                   <li>Check the terminal's IP address on its Device info screen and update it in <strong>Settings › Terminal</strong>.</li>
                   <li>Connect the device and terminal to the same network. Avoid guest Wi-Fi, which often isolates devices.</li>
-                  <li>Ask the network administrator to allow TCP 8443 between them and to reserve the terminal's IP address; see <a href="quick-start.html#network-requirements">network requirements</a>.</li>
+                  <li>Ask the network administrator to allow TCP 8443 between them and to reserve the terminal's IP address; see <a href="quick-start#network-requirements">network requirements</a>.</li>
                 </ol></dd></div>
             <div><dt>Payments or API tests fail on every setup</dt>
               <dd><p><span class="fix-label">Cause</span>The device or terminal has no internet access, or a firewall blocks Adyen.</p>
@@ -219,7 +231,7 @@
               <dd><p><span class="fix-label">Cause</span>These mean Adyen accepted the request. Mini mPOS has no server, so it never receives the final confirmation.</p>
                 <p><span class="fix-label">Fix</span>Check the final outcome in the Customer Area.</p></dd></div>
           </dl>
-          <p>Holds expire, so resolve these promptly. For the normal steps, see <a href="using.html#preauth">deposits</a> and <a href="using.html#tips">tips on the receipt</a>.</p>
+          <p>Holds expire, so resolve these promptly. For the normal steps, see <a href="using#preauth">deposits</a> and <a href="using#tips">tips on the receipt</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="links">
@@ -227,7 +239,7 @@
           <dl class="fixes">
             <div><dt>Checkout has no <strong>Create payment link</strong></dt>
               <dd><p><span class="fix-label">Cause</span>Checkout API setup is incomplete, or the checkout is for a pre-authorization or a tip on the receipt.</p>
-                <p><span class="fix-label">Fix</span>Complete Checkout API setup in <strong>Settings › Terminal</strong>. Links are offered for sales only. For offline demos, see <a href="using.html#payment-links">payment links</a>.</p></dd></div>
+                <p><span class="fix-label">Fix</span>Complete Checkout API setup in <strong>Settings › Terminal</strong>. Links are offered for sales only. For offline demos, see <a href="using#payment-links">payment links</a>.</p></dd></div>
             <div><dt>A paid link still shows <strong>Awaiting payment</strong></dt>
               <dd><p><span class="fix-label">Cause</span>The app checks only while the link screen is open.</p>
                 <p><span class="fix-label">Fix</span>Open the entry in History and tap <strong>Check payment</strong>.</p></dd></div>
@@ -252,7 +264,7 @@
               <dd><p><span class="fix-label">Fix</span>Change <strong>Characters per line</strong> in <strong>Settings › Receipts</strong> and print a test receipt.</p></dd></div>
             <div><dt>The test email fails</dt>
               <dd><p><span class="fix-label">Cause</span>Wrong server, port, security or password, or the provider blocks SMTP or password login.</p>
-                <p><span class="fix-label">Fix</span>In <strong>Settings › Email receipts</strong>, check the server, port, STARTTLS or SSL/TLS, username and password. Your provider may require SMTP access to be turned on or an app password; see <a href="using.html#email">email setup</a>.</p></dd></div>
+                <p><span class="fix-label">Fix</span>In <strong>Settings › Email receipts</strong>, check the server, port, STARTTLS or SSL/TLS, username and password. Your provider may require SMTP access to be turned on or an app password; see <a href="using#email">email setup</a>.</p></dd></div>
             <div><dt>Test emails work, but customers get no receipt</dt>
               <dd><p><span class="fix-label">Fix</span>In <strong>Settings › Email receipts</strong>, check when the email is asked for and whether receipts are sent automatically.</p></dd></div>
           </dl>
@@ -268,9 +280,9 @@
                 <p>To start again without the admin PIN, follow <a href="#storage">storage recovery</a>. Read the data-loss warning before resetting.</p></dd></div>
             <div><dt>The transfer code is rejected, or keys are missing after import</dt>
               <dd><p><span class="fix-label">Cause</span>The code does not belong to these QR codes, or it was left blank.</p>
-                <p><span class="fix-label">Fix</span>Use the code shown with these QR codes, not a newly generated one. Every transfer needs its code. A wrong or blank code imports nothing. After copying, check the destination and credentials on the new device; see <a href="using.html#more">more devices</a>.</p></dd></div>
+                <p><span class="fix-label">Fix</span>Use the code shown with these QR codes, not a newly generated one. Every transfer needs its code. A wrong or blank code imports nothing. After copying, check the destination and credentials on the new device; see <a href="using#more">more devices</a>.</p></dd></div>
           </dl>
-          <p>To review which actions each PIN protects, see <a href="using.html#staff">staff PINs</a>.</p>
+          <p>To review which actions each PIN protects, see <a href="using#staff">staff PINs</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="storage">
@@ -280,7 +292,7 @@
             <li>Restart the device and open Mini mPOS again. If device storage is full, free space outside Mini mPOS first. Clearing only the app's cache does not reset its saved settings.</li>
             <li>Before resetting, keep the records you need and resolve unfinished payments, refunds, captures and adjustments. If the app cannot open, check their outcomes in the Customer Area; see <a href="#unknown">unknown results</a>. If an outcome is still uncertain, keep the app's data and reconcile it with Adyen first. Do not send the operation again just because the app cannot open.</li>
             <li>If the error persists and you accept losing all local data, reset Mini mPOS. On a phone or tablet, open Android <strong>Settings › Apps › Mini mPOS › Storage &amp; cache › Clear storage</strong> (labels vary by device), or uninstall Mini mPOS and reinstall it from the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a>. On an Adyen terminal, have the person managing your terminal apps arrange the reset or removal and reinstallation; see the <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen app deployment guide</a>.</li>
-            <li>Set up Mini mPOS again, or import a trusted setup transfer, then complete <strong>Test connection</strong> before taking real payments. See <a href="quick-start.html#connect">Connect to Adyen</a>.</li>
+            <li>Set up Mini mPOS again, or import a trusted setup transfer, then complete <strong>Test connection</strong> before taking real payments. See <a href="quick-start#connect">Connect to Adyen</a>.</li>
           </ol>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">Warning</p>
@@ -300,7 +312,7 @@
                 <p><span class="fix-label">Fix</span>Keep the original signing source. If you need to change it, ask Adyen Support about removing earlier versions.</p></dd></div>
             <div><dt>The Android version is not supported</dt>
               <dd><p><span class="fix-label">Cause</span>Mini mPOS needs Android 9 or later; the older S1E runs Android 7.1.</p>
-                <p><span class="fix-label">Fix</span>Use a supported terminal; see <a href="quick-start.html#install">installation</a>.</p></dd></div>
+                <p><span class="fix-label">Fix</span>Use a supported terminal; see <a href="quick-start#install">installation</a>.</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -325,10 +337,10 @@
                 <p><span class="fix-label">Fix</span>Check the terminal’s Wi-Fi, Ethernet or mobile data, then run <strong>Test connection</strong>.</p></dd></div>
             <div><dt>“Adyen did not accept the API key. Check it in Terminal settings.”</dt>
               <dd><p><span class="fix-label">Cause</span>The API key is wrong, revoked or from the other environment.</p>
-                <p><span class="fix-label">Fix</span>Enter the key again and check it against the <a href="quick-start.html#credentials">credential requirements</a>.</p></dd></div>
+                <p><span class="fix-label">Fix</span>Enter the key again and check it against the <a href="quick-start#credentials">credential requirements</a>.</p></dd></div>
             <div><dt>“The API key lacks a role or access to this merchant account. Check the API credential in your Customer Area.”</dt>
               <dd><p><span class="fix-label">Cause</span>The credential lacks a role or access to this merchant account. The brackets name the missing role when it is known.</p>
-                <p><span class="fix-label">Fix</span>Add the role or account access in the Customer Area; see the <a href="quick-start.html#credentials">credential requirements</a>.</p></dd></div>
+                <p><span class="fix-label">Fix</span>Add the role or account access in the Customer Area; see the <a href="quick-start#credentials">credential requirements</a>.</p></dd></div>
             <div><dt>“Adyen is busy or temporarily unavailable.”</dt>
               <dd><p><span class="fix-label">Cause</span>Adyen is limiting requests or is briefly unavailable.</p>
                 <p><span class="fix-label">Fix</span>Wait a moment, then try again. For a payment, capture or payment link, <a href="#unknown">check its result</a> first.</p></dd></div>
@@ -340,7 +352,7 @@
                 <p><span class="fix-label">Fix</span>Find the payment in the Customer Area before charging again.</p></dd></div>
             <div><dt>“The Adyen Payments app could not be opened. Check that it is installed.”</dt>
               <dd><p><span class="fix-label">Cause</span>The Payments app is not installed, or was removed.</p>
-                <p><span class="fix-label">Fix</span>Install the Payments app for your environment, then try again. See <a href="quick-start.html#connect">Connect to Adyen</a>.</p></dd></div>
+                <p><span class="fix-label">Fix</span>Install the Payments app for your environment, then try again. See <a href="quick-start#connect">Connect to Adyen</a>.</p></dd></div>
             <div><dt>“The mail server did not accept the username or password. Check them in Settings › Email receipts.”</dt>
               <dd><p><span class="fix-label">Cause</span>The SMTP username or password is wrong, or the provider requires an app password.</p>
                 <p><span class="fix-label">Fix</span>Correct them, then send a test email.</p></dd></div>
@@ -364,8 +376,8 @@
   </main>
   <footer class="site-footer"><div class="wrap footer-row">
     <nav aria-label="Guides and setup"><ul class="footer-nav">
-      <li><a href="quick-start.html">Quick start</a></li><li><a href="using.html">Using Mini mPOS</a></li>
-      <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+      <li><a href="quick-start">Quick start</a></li><li><a href="using">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting" aria-current="page">Troubleshooting</a></li><li><a href="setup">Setup helper</a></li>
     </ul></nav>
     <p><img src="favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT license · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Security</a></p><p class="fine">Adyen is a trademark of Adyen N.V. Mini mPOS is independent and is not affiliated with, endorsed by or supported by Adyen.</p>
   </div></footer>

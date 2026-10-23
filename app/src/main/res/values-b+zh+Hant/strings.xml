@@ -15,7 +15,7 @@
   <string name="onboarding_connect_hint">使用你的 Adyen 帳戶在此設備上設定付款。</string>
   <string name="onboarding_scan_hint">使用設定助手或另一台設備顯示的二維碼。</string>
   <string name="setup_codes_computer">從電腦產生</string>
-  <string name="setup_codes_computer_hint">在可信電腦上開啟 minimpos.app/zh-Hant/setup.html，輸入詳情，選擇「生成二維碼」。</string>
+  <string name="setup_codes_computer_hint">在可信電腦上開啟 minimpos.app/zh-Hant/setup，輸入詳情，選擇「生成二維碼」。</string>
   <string name="setup_codes_device">從另一台設備產生</string>
   <string name="setup_codes_device_hint">開啟 Mini mPOS › 設定 › 資料與轉移 › 共享至另一台設備，再點按「顯示二維碼」。</string>
   <string name="setup_codes_transfer_hint">保持來源畫面開啟。掃描所有二維碼，再輸入另外的 12 位傳輸碼以驗證並匯入。</string>
@@ -703,7 +703,7 @@
 
   <!-- Settings: terminal and Tap to Pay -->
   <string name="settings_quick_setup">快速設定</string>
-  <string name="settings_quick_setup_hint">在電腦上打開 minimpos.app/zh-Hant/setup.html，然後在此掃描二維碼。無需先選擇支付目標或環境。</string>
+  <string name="settings_quick_setup_hint">在電腦上打開 minimpos.app/zh-Hant/setup，然後在此掃描二維碼。無需先選擇支付目標或環境。</string>
   <string name="settings_quick_setup_import">掃描設定二維碼</string>
   <string name="settings_manual_setup">或在此設備上設定</string>
   <string name="settings_scan_discard_drafts">打開掃描器將捨棄未儲存的密鑰。在匯入之前，已儲存的設定不會改變。</string>

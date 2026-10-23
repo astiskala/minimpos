@@ -272,9 +272,13 @@ settings() {
 }
 
 # Named flows for language $1, each starting from its fixture snapshot docs-<snapshot>-$1.tar (SNAPSHOT, default 1017).
-flow_settings() {
+flow_terminal_setup() {
     settings "$1" settings_terminal
     shot "$1" terminal-setup
+}
+
+flow_settings() {
+    flow_terminal_setup "$1"
     back
     scroll "$1" settings_tax
     tap "$1" settings_tax 2

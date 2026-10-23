@@ -199,7 +199,7 @@ class DocumentationRefreshTest {
                 assertWithMessage("$language transfer and update safety").that(using.select("#more").text()).contains(phrase)
             }
             assertWithMessage("$language update installation steps")
-                .that(using.select("#more a[href='quick-start.html#install']"))
+                .that(using.select("#more a[href='quick-start#install']"))
                 .isNotEmpty()
         }
     }

@@ -43,6 +43,7 @@ jsoup = "1.23.2"
 nuValidator = "26.10.7"
 # Stands in for the checker's log4j 1.2.17 (end of life, with unfixed advisories); a drop-in fork with them fixed.
 reload4j = "1.2.26"
+slf4j = "2.0.19"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -94,6 +95,7 @@ kotlin-metadata-jvm = { module = "org.jetbrains.kotlin:kotlin-metadata-jvm", ver
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 nu-validator = { module = "nu.validator:validator", version.ref = "nuValidator" }
 reload4j = { module = "ch.qos.reload4j:reload4j", version.ref = "reload4j" }
+slf4j-jdk14 = { module = "org.slf4j:slf4j-jdk14", version.ref = "slf4j" }
 
 compose-rules-detekt = { module = "io.nlopez.compose.rules:detekt", version.ref = "composeRules" }
 

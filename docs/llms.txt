@@ -1,0 +1,64 @@
+# Mini mPOS
+
+> Free, open-source Android point of sale for Adyen terminals, tablets and phones.
+
+This is the official merchant documentation. Choose the language below, then use Quick start for setup,
+Using Mini mPOS for daily tasks, and Troubleshooting for recovery. The guides are the authoritative source
+for device requirements, Adyen prerequisites and payment behavior. The setup helper creates encrypted QR
+codes locally in the browser; it does not send credentials to a server.
+
+## English
+
+- [Mini mPOS guides](https://minimpos.app/)
+- [Quick start](https://minimpos.app/quick-start)
+- [Using Mini mPOS](https://minimpos.app/using)
+- [Troubleshooting](https://minimpos.app/troubleshooting)
+- [Setup helper](https://minimpos.app/setup)
+
+## Español (México)
+
+- [Guías de Mini mPOS](https://minimpos.app/es-MX/)
+- [Inicio rápido](https://minimpos.app/es-MX/quick-start)
+- [Usando Mini mPOS](https://minimpos.app/es-MX/using)
+- [Solución de problemas](https://minimpos.app/es-MX/troubleshooting)
+- [Ayudante de configuración](https://minimpos.app/es-MX/setup)
+
+## Français (France)
+
+- [Guides Mini mPOS](https://minimpos.app/fr-FR/)
+- [Démarrage rapide](https://minimpos.app/fr-FR/quick-start)
+- [Utilisation de Mini mPOS](https://minimpos.app/fr-FR/using)
+- [Dépannage](https://minimpos.app/fr-FR/troubleshooting)
+- [Aide à la configuration](https://minimpos.app/fr-FR/setup)
+
+## 日本語
+
+- [Mini mPOS ガイド](https://minimpos.app/ja/)
+- [クイックスタート](https://minimpos.app/ja/quick-start)
+- [Mini mPOS の使い方](https://minimpos.app/ja/using)
+- [トラブルシューティング](https://minimpos.app/ja/troubleshooting)
+- [セットアップヘルパー](https://minimpos.app/ja/setup)
+
+## Português (Brasil)
+
+- [Guias do Mini mPOS](https://minimpos.app/pt-BR/)
+- [Início rápido](https://minimpos.app/pt-BR/quick-start)
+- [Usando Mini mPOS](https://minimpos.app/pt-BR/using)
+- [Solução de problemas](https://minimpos.app/pt-BR/troubleshooting)
+- [Auxiliar de configuração](https://minimpos.app/pt-BR/setup)
+
+## 简体中文
+
+- [Mini mPOS 指南](https://minimpos.app/zh-CN/)
+- [快速入门](https://minimpos.app/zh-CN/quick-start)
+- [使用 Mini mPOS](https://minimpos.app/zh-CN/using)
+- [故障排查](https://minimpos.app/zh-CN/troubleshooting)
+- [设置助手](https://minimpos.app/zh-CN/setup)
+
+## 繁體中文
+
+- [Mini mPOS 指南](https://minimpos.app/zh-Hant/)
+- [快速入門](https://minimpos.app/zh-Hant/quick-start)
+- [使用 Mini mPOS](https://minimpos.app/zh-Hant/using)
+- [疑難排解](https://minimpos.app/zh-Hant/troubleshooting)
+- [設定助手](https://minimpos.app/zh-Hant/setup)

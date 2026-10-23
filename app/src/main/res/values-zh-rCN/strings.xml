@@ -15,7 +15,7 @@
   <string name="onboarding_connect_hint">使用您的 Adyen 账户在此设备上设置支付。</string>
   <string name="onboarding_scan_hint">使用设置助手或另一台设备显示的二维码。</string>
   <string name="setup_codes_computer">从电脑生成</string>
-  <string name="setup_codes_computer_hint">在可信电脑上打开 minimpos.app/zh-CN/setup.html，输入详情，选择“生成二维码”。</string>
+  <string name="setup_codes_computer_hint">在可信电脑上打开 minimpos.app/zh-CN/setup，输入详情，选择“生成二维码”。</string>
   <string name="setup_codes_device">从另一台设备生成</string>
   <string name="setup_codes_device_hint">打开 Mini mPOS › 设置 › 数据与传输 › 共享至另一台设备，再点按“显示二维码”。</string>
   <string name="setup_codes_transfer_hint">保持来源屏幕打开。扫描所有二维码，再输入单独的 12 位传输码以验证并导入。</string>
@@ -703,7 +703,7 @@
 
   <!-- Settings: terminal and Tap to Pay -->
   <string name="settings_quick_setup">快速设置</string>
-  <string name="settings_quick_setup_hint">在电脑上打开 minimpos.app/zh-CN/setup.html，然后在此扫描二维码。无需先选择支付目标或环境。</string>
+  <string name="settings_quick_setup_hint">在电脑上打开 minimpos.app/zh-CN/setup，然后在此扫描二维码。无需先选择支付目标或环境。</string>
   <string name="settings_quick_setup_import">扫描设置二维码</string>
   <string name="settings_manual_setup">或在此设备上设置</string>
   <string name="settings_scan_discard_drafts">打开扫描器将丢弃未保存的密钥。在导入之前，已保存的设置不会改变。</string>

@@ -2,36 +2,46 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
   <meta name="referrer" content="no-referrer">
-  <title>Setup helper – Mini mPOS</title>
-  <meta name="description" content="Type your Adyen keys and account details on a computer, where the Customer Area is easy to reach, and scan them into Mini mPOS as QR codes instead of typing long API keys on the device.">
+  <meta name="robots" content="max-image-preview:large">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adyen setup helper: scan credentials by QR – Mini mPOS</title>
+  <meta name="description" content="Set up Mini mPOS from your computer. Turn Adyen credentials and optional receipt or email settings into encrypted QR codes to scan on your device.">
+  <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="canonical" href="https://minimpos.app/setup.html">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="describedby" href="llms.txt" type="text/plain">
+  <meta name="application-name" content="Mini mPOS guides">
+  <link rel="canonical" href="https://minimpos.app/setup">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Mini mPOS setup helper">
-  <meta property="og:description" content="Copy your Adyen keys on a computer and scan them into Mini mPOS as QR codes.">
-  <meta property="og:url" content="https://minimpos.app/setup.html">
+  <meta property="og:site_name" content="Mini mPOS">
+  <meta property="og:title" content="Adyen setup helper: scan credentials by QR – Mini mPOS">
+  <meta property="og:description" content="Set up Mini mPOS from your computer. Turn Adyen credentials and optional receipt or email settings into encrypted QR codes to scan on your device.">
+  <meta property="og:url" content="https://minimpos.app/setup">
   <meta property="og:image" content="https://minimpos.app/images/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#00843F">
   <link rel="stylesheet" href="styles.css">
   <meta content="Mini mPOS on illustrated Adyen payment terminals, with English demo screens." property="og:image:alt">
-  <meta content="Mini mPOS setup helper" name="twitter:title">
-  <meta content="Copy your Adyen keys on a computer and scan them into Mini mPOS as QR codes." name="twitter:description">
+  <meta content="Adyen setup helper: scan credentials by QR – Mini mPOS" name="twitter:title">
+  <meta content="Set up Mini mPOS from your computer. Turn Adyen credentials and optional receipt or email settings into encrypted QR codes to scan on your device." name="twitter:description">
   <meta content="https://minimpos.app/images/social.png" name="twitter:image">
   <meta content="Mini mPOS on illustrated Adyen payment terminals, with English demo screens." name="twitter:image:alt">
   <script defer src="js/qrcodegen.js"></script>
   <script defer src="js/setup.js"></script>
-    <link href="https://minimpos.app/setup.html" hreflang="en" rel="alternate">
-    <link href="https://minimpos.app/es-MX/setup.html" hreflang="es-MX" rel="alternate">
-    <link href="https://minimpos.app/fr-FR/setup.html" hreflang="fr-FR" rel="alternate">
-    <link href="https://minimpos.app/ja/setup.html" hreflang="ja" rel="alternate">
-    <link href="https://minimpos.app/pt-BR/setup.html" hreflang="pt-BR" rel="alternate">
-    <link href="https://minimpos.app/zh-CN/setup.html" hreflang="zh-CN" rel="alternate">
-    <link href="https://minimpos.app/zh-Hant/setup.html" hreflang="zh-Hant" rel="alternate">
-    <link href="https://minimpos.app/setup.html" hreflang="x-default" rel="alternate">
+    <link href="https://minimpos.app/setup" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/setup" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/setup" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/setup" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/setup" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/setup" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/setup" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/setup" hreflang="x-default" rel="alternate">
     <meta content="en_US" property="og:locale">
     <meta content="es_MX" property="og:locale:alternate">
     <meta content="fr_FR" property="og:locale:alternate">
@@ -51,22 +61,22 @@
       </a>
       <nav class="desktop-nav" aria-label="Main">
         <ul class="nav">
-          <li><a href="quick-start.html">Quick start</a></li>
-          <li><a href="using.html">Using Mini mPOS</a></li>
-          <li><a href="troubleshooting.html">Troubleshooting</a></li>
-          <li><a href="setup.html" aria-current="page">Setup helper</a></li>
+          <li><a href="quick-start">Quick start</a></li>
+          <li><a href="using">Using Mini mPOS</a></li>
+          <li><a href="troubleshooting">Troubleshooting</a></li>
+          <li><a href="setup" aria-current="page">Setup helper</a></li>
         </ul>
       </nav>
       <details class="mobile-menu"><summary>Menu</summary><div class="mobile-panel"><nav aria-label="Main"><ul class="nav">
-        <li><a href="quick-start.html">Quick start</a></li><li><a href="using.html">Using Mini mPOS</a></li>
-        <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html" aria-current="page">Setup helper</a></li>
+        <li><a href="quick-start">Quick start</a></li><li><a href="using">Using Mini mPOS</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li><li><a href="setup" aria-current="page">Setup helper</a></li>
       </ul></nav>
-        <nav class="mobile-languages" aria-label="Language"><p>Language</p><ul><li><a aria-current="page" href="setup.html" hreflang="en" lang="en">English</a></li><li><a href="es-MX/setup.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/setup.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/setup.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/setup.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/setup.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/setup.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+        <nav class="mobile-languages" aria-label="Language"><p>Language</p><ul><li><a aria-current="page" href="setup" hreflang="en" lang="en">English</a></li><li><a href="es-MX/setup" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/setup" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/setup" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/setup" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/setup" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/setup" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
       </div></details>
       <details class="language-menu">
         <summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary>
         <nav aria-label="Language">
-          <ul><li><a aria-current="page" href="setup.html" hreflang="en" lang="en">English</a></li><li><a href="es-MX/setup.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/setup.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/setup.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/setup.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/setup.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/setup.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul>
+          <ul><li><a aria-current="page" href="setup" hreflang="en" lang="en">English</a></li><li><a href="es-MX/setup" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/setup" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/setup" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/setup" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/setup" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/setup" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul>
         </nav>
       </details>
     </div>
@@ -86,11 +96,11 @@
 
     <div class="wrap setup">
       <div class="setup-main">
-        <p>New to Mini mPOS? <a href="quick-start.html#choose">Choose your setup</a> and
-          <a href="quick-start.html#credentials">prepare your credentials</a> before filling in this form.</p>
+        <p>New to Mini mPOS? <a href="quick-start#choose">Choose your setup</a> and
+          <a href="quick-start#credentials">prepare your credentials</a> before filling in this form.</p>
         <p class="hint" id="customer-area-note">Customer Area links open in a new tab so you can keep this form open.</p>
         <p class="note" id="setup-noscript">The setup helper needs JavaScript. Switch it on for this page, or enter the
-          details in the app as the <a href="quick-start.html#connect">quick start guide</a> describes.</p>
+          details in the app as the <a href="quick-start#connect">quick start guide</a> describes.</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
               data-msg-making="Making the codes…"
@@ -121,13 +131,13 @@
             <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>Manual</strong>: enter all connection details on this computer</span></label>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>Follow the <a href="quick-start.html#tap-to-pay">Tap to Pay prerequisites</a> and install the Payments app first. Mini mPOS uses your Adyen API key to create the phone’s registration credential automatically. Enter the shared key here; Mini mPOS does not look it up. Registration is an explicit action on the phone before import finishes.</p>
+          <p class="hint" data-only="tapToPay" hidden>Follow the <a href="quick-start#tap-to-pay">Tap to Pay prerequisites</a> and install the Payments app first. Mini mPOS uses your Adyen API key to create the phone’s registration credential automatically. Enter the shared key here; Mini mPOS does not look it up. Registration is an explicit action on the phone before import finishes.</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API key</legend>
             <p class="hint">Create a credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> and generate its API key.
               <span data-only="tapToPay" hidden>This key handles Checkout and provisions the phone’s separate registration credential.</span>
-              Every setup requires the same main credential roles; see the <a href="quick-start.html#credentials">credential requirements</a>.</p>
+              Every setup requires the same main credential roles; see the <a href="quick-start#credentials">credential requirements</a>.</p>
             <label for="apiKey">API key</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -175,7 +185,7 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS automatically creates a separate credential with the Adyen Payments App role and a client key. No extra key to enter or transfer. See <a href="troubleshooting.html#tap-to-pay-check">Tap to Pay troubleshooting</a> and
+            <p class="hint">Mini mPOS automatically creates a separate credential with the Adyen Payments App role and a client key. No extra key to enter or transfer. See <a href="troubleshooting#tap-to-pay-check">Tap to Pay troubleshooting</a> and
               the <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments app guide</a>.</p>
             <label for="storeId">Store ID, optional</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
@@ -215,7 +225,7 @@
               <input id="receiptTitle" name="receiptTitle" type="text">
               <label for="receiptFooter">Footer, optional</label>
               <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
-              <p class="hint">Only supplied manual text changes saved values. Blank fields keep existing text. Tax ID, title and footer are entered manually, not imported from Adyen. See <a href="using.html#receipts">receipt setup</a>.</p>
+              <p class="hint">Only supplied manual text changes saved values. Blank fields keep existing text. Tax ID, title and footer are entered manually, not imported from Adyen. See <a href="using#receipts">receipt setup</a>.</p>
             </fieldset>
           </fieldset>
 
@@ -223,7 +233,7 @@
             <legend>Email receipts (optional)</legend>
             <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>Leave email settings unchanged</span></label>
             <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>Include SMTP settings</span></label>
-            <p class="hint">Check <a href="using.html#email">email setup and provider requirements</a> first; the helper cannot test the server.</p>
+            <p class="hint">Check <a href="using#email">email setup and provider requirements</a> first; the helper cannot test the server.</p>
 
             <fieldset id="smtp-fields" data-email="true" hidden disabled>
               <legend>SMTP server</legend>
@@ -278,7 +288,7 @@
               and tap <strong>Verify and import</strong>.</li>
           </ol>
           <p>If you included SMTP settings, review <strong>Settings › Email receipts</strong> and send a test email.</p>
-          <p><a href="troubleshooting.html#access">Import problem?</a> · <a href="troubleshooting.html#connection">Connection problem?</a></p>
+          <p><a href="troubleshooting#access">Import problem?</a> · <a href="troubleshooting#connection">Connection problem?</a></p>
         </div>
       </section>
 
@@ -291,8 +301,8 @@
             code, which is shown only here, so a photo of the codes alone does not reveal them.</li>
           <li><strong>Keep the transfer code private.</strong> Anyone with both the codes and the transfer code can
             open the keys. Generate a fresh transfer when needed; close this page when finished.</li>
-          <li><strong>Need the full instructions?</strong> Follow <a href="quick-start.html">Quick start</a>;
-            for an import or connection problem, see <a href="troubleshooting.html">Troubleshooting</a>.</li>
+          <li><strong>Need the full instructions?</strong> Follow <a href="quick-start">Quick start</a>;
+            for an import or connection problem, see <a href="troubleshooting">Troubleshooting</a>.</li>
         </ul>
       </div></aside>
     </div>
@@ -301,8 +311,8 @@
   <footer class="site-footer">
     <div class="wrap footer-row">
       <nav aria-label="Guides and setup"><ul class="footer-nav">
-        <li><a href="quick-start.html">Quick start</a></li><li><a href="using.html">Using Mini mPOS</a></li>
-        <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html" aria-current="page">Setup helper</a></li>
+        <li><a href="quick-start">Quick start</a></li><li><a href="using">Using Mini mPOS</a></li>
+        <li><a href="troubleshooting">Troubleshooting</a></li><li><a href="setup" aria-current="page">Setup helper</a></li>
       </ul></nav>
       <p>
         <img src="favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT license ·

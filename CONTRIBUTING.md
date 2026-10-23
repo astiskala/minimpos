@@ -16,7 +16,7 @@ macOS and Linux; its pinned Markdown/workflow linter binaries are not available 
 
 Run on an Android 9+ phone or emulator. Away from a terminal, the app defaults to the simulator. Set its outcomes,
 delay and printer in Settings › Simulator. Adyen terminals have no adb: use the simulator for debugging or configure
-a terminal on your network for integration testing. Follow the merchant [Quick start guide](docs/quick-start.html).
+a terminal on your network for integration testing. Follow the merchant [Quick start guide](https://minimpos.app/quick-start).
 
 Android Studio is the simplest editor. The repository's VS Code settings disable the Java extension's Gradle import;
 there is no Java code, and that importer cannot handle this build.
@@ -319,6 +319,11 @@ and reciprocal language switches. Website tests protect workflow coverage and tr
 of pages or headings.
 For a quick check, run `./gradlew :website-test:check`; the full gate remains required.
 
+Each language has a `site.webmanifest` with localized guide shortcuts and its home page as the launch URL. Keep the
+shared application ID and site-wide scope when editing them. `docs/llms.txt` indexes the canonical pages in all seven
+languages; update it when routes or guide names change. The guides' print stylesheet reveals manual instructions;
+the setup helper excludes credentials and generated codes from printouts.
+
 Use [the screenshot skill](.devin/skills/docs-screenshots/SKILL.md) to capture simulator demos and social images in all
 seven supported languages, with its fictional local companies, prices and currencies. Each translated page uses its
 own language's captures. Screenshots must match their original terminal frames: S1F2 540×960, AMS1 480×800.
@@ -333,6 +338,9 @@ background. The website rounds its corners in CSS. The Android vector foreground
 canvas, mapping the source's 512-unit square into the central 66 dp so every stroke stays inside the safe circle.
 The same white foreground supplies the themed monochrome layer. Keep the application icon as density-specific PNGs
 for Adyen's Customer Area, with 25% rounded corners; only the launcher activity uses the adaptive icon.
+The website's `docs/icons/` PNGs also come from this SVG: 32 px favicon, 180 px Apple touch icon, and 192/512 px
+manifest icons. The 512 px maskable icon scales the source to 384 px with 64 px green padding on every side, keeping
+the artwork inside its safe circle.
 
 [`app/src/main/ic_launcher-playstore.png`](app/src/main/ic_launcher-playstore.png) is the separate store asset:
 512×512, 32-bit sRGB PNG, opaque square background, no corner mask or shadow, following
@@ -376,7 +384,7 @@ folder; processing selects dimensions and bar heights from the terminal-specific
 Chrome/Chromium or `chrome-headless-shell` executable. `review` validates language parity, frame dimensions and indexed
 palettes, then writes labeled contact sheets to `build/docs-assets` (`DOCS_WORK` overrides it). Inspect them: valid
 dimensions do not prove the correct screen or transaction. Website checks also render all seven languages' five pages at
-390/1280 px, reject broken images and horizontal overflow, and save 70 screenshots in
+320/390/1280 px, reject broken images and horizontal overflow, and save 105 screenshots in
 `website-test/build/reports/guide-layout`. Run `scripts/dev finish` before committing.
 
 ## Dependency and build maintenance

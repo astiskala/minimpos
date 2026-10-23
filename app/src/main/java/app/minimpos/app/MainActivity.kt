@@ -222,7 +222,7 @@ private fun StorageUnavailable() {
                 ""
             }
         }
-    val guide = "https://minimpos.app/${language}troubleshooting.html#storage"
+    val guide = "https://minimpos.app/${language}troubleshooting#storage"
     CenteredScrollColumn(
         Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),

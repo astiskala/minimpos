@@ -6,6 +6,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.junit.Test
 import java.nio.file.Path
+import kotlin.io.path.extension
 import kotlin.io.path.readText
 
 class LatinLanguageWebsiteTest {
@@ -27,7 +28,7 @@ class LatinLanguageWebsiteTest {
                     .containsExactlyElementsIn(english.select("[id]").map { it.id() })
                     .inOrder()
                 assertThat(page.select("html").attr("lang")).isEqualTo(language)
-                val url = "https://minimpos.app/$language/" + file.takeUnless { it == "index.html" }.orEmpty()
+                val url = "https://minimpos.app/$language/" + file.takeUnless { it == "index.html" }.orEmpty().removeSuffix(".html")
                 assertThat(page.select("link[rel=canonical]").attr("href")).isEqualTo(url)
                 assertThat(page.select("meta[property=og:url]").attr("content")).isEqualTo(url)
                 assertThat(page.select("link[rel=alternate]").map { it.attr("hreflang") })
@@ -40,7 +41,7 @@ class LatinLanguageWebsiteTest {
                         val target = link.attr("hreflang")
                         val expected = docs.resolve((if (target == "en") "" else "$target/") + file)
                         val actual = path.parent.resolve(link.attr("href")).normalize()
-                        assertThat(if (actual.toFile().isDirectory) actual.resolve("index.html") else actual).isEqualTo(expected)
+                        assertThat(actual.sourcePage()).isEqualTo(expected)
                     }
                 }
                 assertThat(page.select("code").map { it.text() }).isEqualTo(english.select("code").map { it.text() })
@@ -81,4 +82,11 @@ class LatinLanguageWebsiteTest {
             }
         }
     }
+
+    private fun Path.sourcePage(): Path =
+        when {
+            toFile().isDirectory -> resolve("index.html")
+            extension.isEmpty() -> resolveSibling("$fileName.html")
+            else -> this
+        }
 }

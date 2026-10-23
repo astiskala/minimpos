@@ -75,9 +75,11 @@ class LocalizationTest {
             "values-es-rMX" to "es-MX/",
             "values-fr-rFR" to "fr-FR/",
         ).forEach { (folder, path) ->
-            assertWithMessage(folder)
-                .that(resourceEntries(folder).getValue("string:settings_quick_setup_hint").single())
-                .contains("minimpos.app/${path}setup.html")
+            listOf("setup_codes_computer_hint", "settings_quick_setup_hint").forEach { name ->
+                val hint = resourceEntries(folder).getValue("string:$name").single()
+                assertWithMessage("$folder $name").that(hint).contains("minimpos.app/${path}setup")
+                assertWithMessage("$folder $name").that(hint).doesNotContain(".html")
+            }
         }
     }
 
@@ -290,7 +292,7 @@ class LocalizationTest {
             assertWithMessage(qualifiers).that(context.getString(R.string.home_history)).isEqualTo("交易紀錄")
             assertWithMessage(qualifiers)
                 .that(context.getString(R.string.settings_quick_setup_hint))
-                .contains("minimpos.app/zh-Hant/setup.html")
+                .contains("minimpos.app/zh-Hant/setup")
         }
         RuntimeEnvironment.setQualifiers("zh-rCN")
         assertThat(RuntimeEnvironment.getApplication().getString(R.string.home_settings)).isEqualTo("设置")

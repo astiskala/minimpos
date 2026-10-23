@@ -136,15 +136,15 @@ class QuickStartGuideTest {
             assertThat(validation.text()).contains(references.getValue(language))
             assertThat(validation.text()).contains(pending.getValue(language))
             assertThat(validation.select("a[href='https://docs.adyen.com/point-of-sale/testing-pos-payments']")).hasSize(2)
-            assertThat(validation.select("a[href='using.html#refund']")).hasSize(1)
-            assertThat(validation.select("a[href='troubleshooting.html#declines']")).hasSize(1)
-            assertThat(validation.select("a[href='troubleshooting.html#unknown']")).hasSize(1)
+            assertThat(validation.select("a[href='using#refund']")).hasSize(1)
+            assertThat(validation.select("a[href='troubleshooting#declines']")).hasSize(1)
+            assertThat(validation.select("a[href='troubleshooting#unknown']")).hasSize(1)
             listOf("preauth", "tips", "payment-links", "wallets").forEach { workflow ->
                 assertWithMessage("${guide.name} optional $workflow")
-                    .that(guide.document.select("#live a[href='using.html#$workflow']"))
+                    .that(guide.document.select("#live a[href='using#$workflow']"))
                     .hasSize(1)
             }
-            assertThat(guide.document.select("#live a[href='using.html#close-day']")).hasSize(1)
+            assertThat(guide.document.select("#live a[href='using#close-day']")).hasSize(1)
         }
     }
 }
@@ -256,7 +256,7 @@ class WebsiteTest {
 
     @Test
     fun `every page exposes the guides and helper in desktop mobile and footer navigation`() {
-        val destinations = listOf(Kind.GUIDE, Kind.USING, Kind.TROUBLE, Kind.SETUP).map { it.file }
+        val destinations = listOf(Kind.GUIDE, Kind.USING, Kind.TROUBLE, Kind.SETUP).map { it.route }
         allPages.forEach { (key, page) ->
             val (language, kind) = key
             val labels =
@@ -272,7 +272,7 @@ class WebsiteTest {
                 links.forEach { link ->
                     assertWithMessage("${page.name} $selector ${link.attr("href")}")
                         .that(link.attr("aria-current"))
-                        .isEqualTo(if (link.attr("href") == kind.file) "page" else "")
+                        .isEqualTo(if (link.attr("href") == kind.route) "page" else "")
                 }
             }
             val menu = page.document.select("details.mobile-menu").single()
@@ -302,7 +302,7 @@ class WebsiteTest {
             assertWithMessage(page.name).that(sections.indexOf(guides)).isLessThan(sections.indexOfFirst { it.id() == "features" })
             assertWithMessage(page.name)
                 .that(guides.select(".guide-card a").map { it.attr("href") })
-                .containsExactly(Kind.GUIDE.file, Kind.USING.file, Kind.TROUBLE.file)
+                .containsExactly(Kind.GUIDE.route, Kind.USING.route, Kind.TROUBLE.route)
                 .inOrder()
             assertWithMessage(page.name)
                 .that(
@@ -310,8 +310,8 @@ class WebsiteTest {
                         .select(".hero .actions a")
                         .first()!!
                         .attr("href"),
-                ).isEqualTo(Kind.GUIDE.file)
-            assertWithMessage(page.name).that(page.document.select(".feature a[href='setup.html']")).isEmpty()
+                ).isEqualTo(Kind.GUIDE.route)
+            assertWithMessage(page.name).that(page.document.select(".feature a[href='setup']")).isEmpty()
             page.document.select(".feature").forEach { feature ->
                 val links = feature.select(".feature-link a")
                 assertWithMessage(page.name).that(links).isNotEmpty()
@@ -363,10 +363,10 @@ class WebsiteTest {
             val helper = pages.getValue(language to Kind.SETUP)
             assertWithMessage(helper.name)
                 .that(helper.document.select(".setup-main > p a").map { it.attr("href") })
-                .containsAtLeast("quick-start.html#choose", "quick-start.html#credentials")
+                .containsAtLeast("quick-start#choose", "quick-start#credentials")
             assertWithMessage(helper.name)
                 .that(helper.document.select("#setup-codes a").map { it.attr("href") })
-                .containsExactly("troubleshooting.html#access", "troubleshooting.html#connection")
+                .containsExactly("troubleshooting#access", "troubleshooting#connection")
                 .inOrder()
             assertWithMessage(helper.name).that(helper.document.select("#setup-codes ol > li")).hasSize(3)
             val notice = helper.document.getElementById("customer-area-note")!!
@@ -429,18 +429,18 @@ class WebsiteTest {
             val page = pages.getValue(language to Kind.USING)
             routes.forEach { (task, recovery) ->
                 assertWithMessage("${page.name} #$task")
-                    .that(page.document.select("#$task a[href='troubleshooting.html#$recovery']"))
+                    .that(page.document.select("#$task a[href='troubleshooting#$recovery']"))
                     .isNotEmpty()
             }
             assertWithMessage("${page.name} #sell declines")
-                .that(page.document.select("#sell a[href='troubleshooting.html#declines']"))
+                .that(page.document.select("#sell a[href='troubleshooting#declines']"))
                 .isNotEmpty()
         }
     }
 
     @Test
     fun `local links, fragments and assets exist`() {
-        pages.values.forEach { page ->
+        allPages.values.forEach { page ->
             assertWithMessage("${page.name} has duplicate IDs").that(page.ids).containsNoDuplicates()
             page.document.allElements.forEach { element ->
                 listOf("src", "href").filter(element::hasAttr).forEach { resolveLocal(page, element.attr(it)) }
@@ -477,7 +477,7 @@ class WebsiteTest {
                 }
                 GUIDE_TOPICS.keys.forEach { target ->
                     assertWithMessage("${page.name} → $target")
-                        .that(page.document.select("nav.toc a[href='${target.file}']"))
+                        .that(page.document.select("nav.toc a[href='${target.route}']"))
                         .isNotEmpty()
                 }
             }
@@ -869,7 +869,7 @@ class WebsitePresentationTest {
             // Every page of the site leads to the setup helper.
             Kind.entries.forEach { kind ->
                 val other = pages.getValue(language to kind)
-                assertWithMessage(other.name).that(other.document.select("ul.nav a[href$=setup.html]")).isNotEmpty()
+                assertWithMessage(other.name).that(other.document.select("ul.nav a[href$=setup]")).isNotEmpty()
             }
         }
     }
@@ -1073,11 +1073,11 @@ class SetupGuideTest {
             assertThat(guide.document.getElementById("shared-key-creation")).isNotNull()
             assertThat(guide.text).contains(create.getValue(language))
             assertThat(guide.text).contains(resume.getValue(language))
-            assertThat(guide.document.select("a[href='troubleshooting.html#key-setup']")).isNotEmpty()
+            assertThat(guide.document.select("a[href='troubleshooting#key-setup']")).isNotEmpty()
             val recovery = pages.getValue(language to Kind.TROUBLE).document.getElementById("key-setup")!!
             assertThat(recovery.text()).contains("Admin menu › Config › Update")
             assertThat(recovery.text()).contains(resume.getValue(language))
-            assertThat(recovery.select("a[href='quick-start.html#shared-key-creation']")).isNotEmpty()
+            assertThat(recovery.select("a[href='quick-start#shared-key-creation']")).isNotEmpty()
         }
     }
 
@@ -1116,7 +1116,7 @@ class SetupGuideTest {
             val options = following.first { it.tagName() == "dl" }
             assertThat(options.select("dt")).hasSize(1)
             assertThat(options.select("dd")).hasSize(1)
-            assertThat(options.select("a").map { it.attr("href") }).containsExactly("setup.html", "#helper").inOrder()
+            assertThat(options.select("a").map { it.attr("href") }).containsExactly("setup", "#helper").inOrder()
             assertThat(following.single { it.hasClass("manual-setup") }.text()).doesNotContain("Adyen Payments App role")
         }
         val english =
@@ -1152,7 +1152,7 @@ class SetupGuideTest {
                     .isEqualTo(helperLabels.getValue(language))
                 assertThat(helper.select("dd")).hasSize(1)
                 assertThat(helper.parents().any { it.tagName() == "details" }).isFalse()
-                assertThat(helper.select("a").map { it.attr("href") }).containsExactly("setup.html", "#helper").inOrder()
+                assertThat(helper.select("a").map { it.attr("href") }).containsExactly("setup", "#helper").inOrder()
                 val flowLabels =
                     if (destination == "tap-to-pay") {
                         listOf(registrationLabels.getValue(language))
@@ -1205,7 +1205,7 @@ class SetupGuideTest {
             assertThat(security.map { it.attr("value") }).containsExactly("STARTTLS", "SSL", "NONE").inOrder()
             assertThat(security.first()!!.hasAttr("checked")).isTrue()
             assertThat(fields.select("#smtpPort").single().attr("value")).isEqualTo("587")
-            assertThat(helper.document.select("#setup-form a[href='using.html#email']")).isNotEmpty()
+            assertThat(helper.document.select("#setup-form a[href='using#email']")).isNotEmpty()
             val using = pages.getValue(language to Kind.USING)
             assertThat(
                 using.document
@@ -1274,6 +1274,9 @@ private enum class Kind(
     USING("using.html"),
     TROUBLE("troubleshooting.html"),
     SETUP("setup.html"),
+    ;
+
+    val route: String get() = file.removeSuffix("index.html").removeSuffix(".html")
 }
 
 private val allPages: Map<Pair<String, Kind>, Page> =
@@ -1291,7 +1294,7 @@ private fun relativePage(
 private fun publicUrl(
     language: String,
     kind: Kind,
-) = BASE + relativePage(language, kind).removeSuffix(Kind.LANDING.file)
+) = BASE + relativePage(language, kind).removeSuffix(Kind.LANDING.file).removeSuffix(".html")
 
 private fun hasScheme(href: String) = Regex("^[A-Za-z][A-Za-z0-9+.-]*:").containsMatchIn(href) || href.startsWith("//")
 
@@ -1317,7 +1320,13 @@ private fun resolveLocal(
                     .resolve(decode(path))
                     .normalize()
             }
-        ).let { if (it.isDirectory()) it.resolve("index.html") else it }
+        ).let {
+            when {
+                it.isDirectory() -> it.resolve("index.html")
+                it.extension.isEmpty() -> it.resolveSibling("${it.fileName}.html")
+                else -> it
+            }
+        }
     assertWithMessage("${page.name}: $href leaves the site").that(target.startsWith(docs) && target != docs).isTrue()
     assertWithMessage("${page.name}: $href does not exist").that(target.isRegularFile()).isTrue()
     if (fragment.isNotEmpty()) {

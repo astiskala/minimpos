@@ -48,7 +48,8 @@ restores one before each named flow:
 - `home`: home only; `overview`: home, history, history-search; `catalog`: products; `preferences`: settings,
   capabilities.
 - `cart`: sale; `checkout`: sale, checkout, wallets, wallet-scan, processing, approved, receipt, refund.
-- `authorize`: pre-auth; `preauth`: pre-auth-detail; `settings`: terminal-setup, tax, terminal-tipping.
+- `authorize`: pre-auth; `preauth`: pre-auth-detail; `terminal_setup`: terminal-setup;
+  `settings`: terminal-setup, tax, terminal-tipping.
 - `transfer`: transfer, export; `partial`: partial-payment; `gratuity`: tip-receipt, tip; `tax_dialog`: tax-dialog.
 - `offline`: offline-payment, reconciliation.
 - `ams1`: sale and the sale-ams1 image (raw 480×872). Both terminal sizes share the raw processing directory.

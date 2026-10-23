@@ -41,7 +41,7 @@ ordinary transaction facts; missing answers are recovered by transaction status,
 
 A missing answer does not prove a request failed. Operations are persisted before sending; unknown outcomes need
 reconciliation, not a fresh charge. Merchant recovery instructions are in
-[Troubleshooting](docs/troubleshooting.html#unknown).
+[Troubleshooting](https://minimpos.app/troubleshooting#unknown).
 
 ### Local storage
 
@@ -61,10 +61,10 @@ reveal the secrets. Anyone with both can decrypt them,
 so keep the code private and generate a fresh transfer when needed. Transfers are protected by admin access when an
 admin PIN is configured; they are not a remote revocation mechanism.
 
-The [setup helper](docs/setup.html) generates connection codes locally in a trusted browser. It loads no third-party
+The [setup helper](https://minimpos.app/setup) generates connection codes locally in a trusted browser. It loads no third-party
 resources, sends no form data, and stores no entered credentials. Its Content Security Policy blocks network requests
 and form submission. Close the page when finished. Device-to-device copying and browser setup have different import
-scopes; see [devices and data](docs/using.html#more).
+scopes; see [devices and data](https://minimpos.app/using#more).
 
 Receipts shared through Android are written as a single cached image. The selected app receives read access to that
 file, not the app's private database. Email sends receipt/customer information through the configured SMTP service.
@@ -76,13 +76,13 @@ Encryption at rest does not make a compromised or unlocked device safe. Tablets 
 payment terminals; prefer a network terminal where practical.
 
 - Use dedicated, least-privilege API credentials with the
-  [roles and account access required for your destination](docs/quick-start.html#credentials).
+  [roles and account access required for your destination](https://minimpos.app/quick-start#credentials).
   Boarding uses a separate Adyen Payments app credential, created automatically with the primary key. For Tap to Pay
   only, the primary key needs credential-management write access: compromise can permit creating or modifying API
   credentials within its account scope. Generated boarding credentials and creation-recovery records stay encrypted on
   this device and are never transferred by QR.
 - Set an admin PIN; optionally require a Manager PIN for financial follow-up actions. Keep phone/tablet screen locks
-  and Android security updates enabled. Review [staff access](docs/using.html#business).
+  and Android security updates enabled. Review [staff access](https://minimpos.app/using#business).
 - Keep TEST and LIVE credentials separate. Verify the selected or detected environment in Settings › Terminal before
   live payments.
 - For a lost or compromised device, revoke its API credentials in the Customer Area and rotate exposed shared keys.

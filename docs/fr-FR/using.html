@@ -2,32 +2,44 @@
 <html lang="fr-FR">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Utilisation de Mini mPOS</title>
-  <meta name="description" content="Opérations quotidiennes avec Mini mPOS : accepter les paiements par carte, rembourser, remettre les reçus, clôturer la journée et gérer les liens de paiement, les dépôts et les pourboires.">
+  <title>Utilisation de Mini mPOS : paiements, remboursements et reçus</title>
+  <meta name="description" content="Encaissez avec Adyen, remboursez par QR, imprimez ou envoyez des reçus et clôturez la journée. Guides des produits, liens de paiement et pourboires.">
+  <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="describedby" href="../llms.txt" type="text/plain">
+  <meta name="application-name" content="Guides Mini mPOS">
   <link rel="stylesheet" href="../styles.css">
-  <link rel="canonical" href="https://minimpos.app/fr-FR/using.html">
+  <link rel="canonical" href="https://minimpos.app/fr-FR/using">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Utilisation de Mini mPOS">
-  <meta property="og:description" content="Opérations quotidiennes étape par étape : paiements, remboursements, encaissements et clôture de la journée.">
-  <meta property="og:url" content="https://minimpos.app/fr-FR/using.html">
+  <meta property="og:site_name" content="Mini mPOS">
+  <meta property="og:title" content="Utilisation de Mini mPOS : paiements, remboursements et reçus">
+  <meta property="og:description" content="Encaissez avec Adyen, remboursez par QR, imprimez ou envoyez des reçus et clôturez la journée. Guides des produits, liens de paiement et pourboires.">
+  <meta property="og:url" content="https://minimpos.app/fr-FR/using">
   <meta property="og:image" content="https://minimpos.app/images/fr-FR/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
   <meta property="og:image:alt" content="Mini mPOS sur des terminaux Adyen illustrés, montrant des démos de simulateur en français.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Utilisation de Mini mPOS">
-  <meta name="twitter:description" content="Opérations quotidiennes étape par étape : paiements, remboursements, encaissements et clôture de la journée.">
+  <meta name="twitter:title" content="Utilisation de Mini mPOS : paiements, remboursements et reçus">
+  <meta name="twitter:description" content="Encaissez avec Adyen, remboursez par QR, imprimez ou envoyez des reçus et clôturez la journée. Guides des produits, liens de paiement et pourboires.">
   <meta name="twitter:image" content="https://minimpos.app/images/fr-FR/social.png">
   <meta name="twitter:image:alt" content="Mini mPOS sur des terminaux Adyen illustrés, montrant des démos de simulateur en français.">
   <meta name="theme-color" content="#00843F">
-    <link href="https://minimpos.app/using.html" hreflang="en" rel="alternate">
-    <link href="https://minimpos.app/es-MX/using.html" hreflang="es-MX" rel="alternate">
-    <link href="https://minimpos.app/fr-FR/using.html" hreflang="fr-FR" rel="alternate">
-    <link href="https://minimpos.app/ja/using.html" hreflang="ja" rel="alternate">
-    <link href="https://minimpos.app/pt-BR/using.html" hreflang="pt-BR" rel="alternate">
-    <link href="https://minimpos.app/zh-CN/using.html" hreflang="zh-CN" rel="alternate">
-    <link href="https://minimpos.app/zh-Hant/using.html" hreflang="zh-Hant" rel="alternate">
-    <link href="https://minimpos.app/using.html" hreflang="x-default" rel="alternate">
+    <link href="https://minimpos.app/using" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/using" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/using" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/using" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/using" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/using" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/using" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/using" hreflang="x-default" rel="alternate">
     <meta content="en_US" property="og:locale:alternate">
     <meta content="es_MX" property="og:locale:alternate">
     <meta content="ja_JP" property="og:locale:alternate">
@@ -41,25 +53,25 @@
   <header class="site-header"><div class="wrap header-row">
     <a class="brand" href="./" aria-label="Accueil Mini mPOS"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
     <nav class="desktop-nav" aria-label="Principal"><ul class="nav">
-      <li><a href="quick-start.html">Démarrage rapide</a></li><li><a href="using.html" aria-current="page">Utilisation de Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">Dépannage</a></li><li><a href="setup.html">Aide à la configuration</a></li>
+      <li><a href="quick-start">Démarrage rapide</a></li><li><a href="using" aria-current="page">Utilisation de Mini mPOS</a></li>
+      <li><a href="troubleshooting">Dépannage</a></li><li><a href="setup">Aide à la configuration</a></li>
     </ul></nav>
     <details class="mobile-menu"><summary>Menu</summary><div class="mobile-panel"><nav aria-label="Principal"><ul class="nav">
-      <li><a href="quick-start.html">Démarrage rapide</a></li><li><a href="using.html" aria-current="page">Utilisation de Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">Dépannage</a></li><li><a href="setup.html">Aide à la configuration</a></li>
+      <li><a href="quick-start">Démarrage rapide</a></li><li><a href="using" aria-current="page">Utilisation de Mini mPOS</a></li>
+      <li><a href="troubleshooting">Dépannage</a></li><li><a href="setup">Aide à la configuration</a></li>
     </ul></nav>
-      <nav class="mobile-languages" aria-label="Langue"><p>Langue</p><ul><li><a href="../using.html" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/using.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a aria-current="page" href="../fr-FR/using.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/using.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/using.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/using.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+      <nav class="mobile-languages" aria-label="Langue"><p>Langue</p><ul><li><a href="../using" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/using" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a aria-current="page" href="../fr-FR/using" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/using" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/using" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/using" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/using" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
     </div></details>
     <details class="language-menu">
       <summary aria-label="Langue : Français (France)" title="Langue"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">Français (France)</span></summary>
-      <nav aria-label="Langue"><ul><li><a href="../using.html" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/using.html" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a aria-current="page" href="../fr-FR/using.html" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/using.html" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/using.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/using.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+      <nav aria-label="Langue"><ul><li><a href="../using" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/using" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a aria-current="page" href="../fr-FR/using" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/using" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/using" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/using" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/using" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
     </details>
   </div></header>
   <main id="main">
     <section class="guide-hero"><div class="wrap"><p class="eyebrow">Guider</p><h1>Utilisation de Mini mPOS</h1><p class="lead">Procédures étape par étape pour le travail quotidien : accepter les paiements, rembourser, remettre les reçus et clôturer la journée. Des flux de travail facultatifs suivent à la fin.</p></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="Navigation des guides">
-        <p class="toc-title">Guides</p><p><a href="quick-start.html">Démarrage rapide</a><br><a href="using.html" aria-current="page">Utilisation de Mini mPOS</a><br><a href="troubleshooting.html">Dépannage</a></p>
+        <p class="toc-title">Guides</p><p><a href="quick-start">Démarrage rapide</a><br><a href="using" aria-current="page">Utilisation de Mini mPOS</a><br><a href="troubleshooting">Dépannage</a></p>
         <div class="desktop-contents"><p class="toc-title">Sur cette page</p><ol>
           <li><a href="#business">Avant de vendre</a><ul>
             <li><a href="#pricing">Devise et taxes</a></li><li><a href="#products">Produits</a></li><li><a href="#staff">Personnel PINs</a></li>
@@ -100,7 +112,7 @@
       <div class="guide-body">
         <section id="business">
           <h2>Préparer les produits, les taxes et les accès du personnel</h2>
-          <p>Avant d'accepter des paiements réels, complétez <a href="quick-start.html">la configuration de la connexion Adyen</a>. Vous avez besoin d'un terminal de paiement ou de l'application Adyen Payments. Préparez ensuite vos produits, taxes et accès du personnel une seule fois.</p>
+          <p>Avant d'accepter des paiements réels, complétez <a href="quick-start">la configuration de la connexion Adyen</a>. Vous avez besoin d'un terminal de paiement ou de l'application Adyen Payments. Préparez ensuite vos produits, taxes et accès du personnel une seule fois.</p>
           <h3 id="pricing">Définir la devise et la taxe</h3>
           <ol>
             <li>Dans <strong>Paramètres › Paiements</strong>, choisissez un <strong>Devise</strong> que votre compte marchand accepte pour les paiements en personne.</li>
@@ -122,20 +134,20 @@
             <li>Dans <strong>Paramètres › Sécurité</strong>, appuyez sur <strong>Définir le PIN</strong>. Il protège les paramètres et les produits. Choisissez la date à laquelle l'application se verrouille à nouveau.</li>
             <li>Vous pouvez éventuellement appuyer sur <strong>Définir le PIN responsable</strong>. Le personnel en a ensuite besoin pour les remboursements, les annulations, les captures, les ajustements de montant et la saisie des pourboires.</li>
           </ol>
-          <p>Pour remplacer ou supprimer le PIN administrateur, utilisez <strong>Modifier le PIN administrateur</strong> ou <strong>Supprimer le PIN administrateur</strong>; sa suppression supprime également le PIN responsable. Des tentatives erronées répétées verrouillent l'entrée PIN pendant un certain temps. Pour un PIN oublié, voir <a href="troubleshooting.html#access">Problèmes PIN</a>.</p>
+          <p>Pour remplacer ou supprimer le PIN administrateur, utilisez <strong>Modifier le PIN administrateur</strong> ou <strong>Supprimer le PIN administrateur</strong>; sa suppression supprime également le PIN responsable. Des tentatives erronées répétées verrouillent l'entrée PIN pendant un certain temps. Pour un PIN oublié, voir <a href="troubleshooting#access">Problèmes PIN</a>.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="capabilities">
           <h2>Vérifier et configurer les fonctionnalités d'Adyen</h2>
           <p>Ouvrez <strong>Paramètres › Capacités d’Adyen</strong> après avoir connecté votre destination de paiement. L'écran affiche les fonctionnalités comme <strong>Disponible</strong>, <strong>Configuration nécessaire</strong> ou <strong>Non pris en charge sur cette destination</strong>. Il s'agit d'indicateurs de configuration, et non d'une preuve que votre compte marchand, votre carte ou votre mode de paiement peut effectuer une transaction. Jusqu'à ce que les paiements soient configurés, l'écran propose <strong>Terminer la configuration des paiements</strong> à la place.</p>
           <ol>
-            <li>Appuyez sur <strong>Actualiser les capacités</strong> pour lire les paramètres du terminal sélectionné. L'inspection réelle des terminaux utilise le <a href="quick-start.html#credentials">Rôles de gestion API dans Démarrage rapide</a>.</li>
+            <li>Appuyez sur <strong>Actualiser les capacités</strong> pour lire les paramètres du terminal sélectionné. L'inspection réelle des terminaux utilise le <a href="quick-start#credentials">Rôles de gestion API dans Démarrage rapide</a>.</li>
             <li>Pour les terminaux pris en charge, configurez le pourboire du terminal pour la devise de paiement, DCC, MOTO ou les limites hors ligne. Ces commandes mettent à jour les paramètres du terminal chez Adyen, pas seulement sur Mini mPOS, et uniquement lorsque vous appuyez sur <strong>Enregistrer sur Adyen</strong>. Les montants libellés en unités principales utilisent des unités monétaires entières ; les montants en unités mineures utilisent la précision monétaire d'Adyen.</li>
             <li>Activez les options de paiement dont vous avez besoin sous <strong>Paiements</strong>, <strong>Pourboires et dons</strong> ou <strong>Affichage du terminal pour le client</strong> dans Paramètres, puis testez-les dans TEST. La matrice répertorie également Adyen Giving, l'autorisation partielle, le supplément, les cartes cadeaux, le rapprochement des terminaux et l'affichage des acheteurs ; il ne fournit pas d'éditeur pour chaque fonctionnalité.</li>
           </ol>
           <p>Tap to Pay n'offre pas de fonctionnalités de terminal physique telles que le pourboire sur terminal, l'affichage client, MOTO/MKE, les paiements hors ligne ou le rapprochement de terminal. L'autorisation partielle est une option de paiement distincte. Pour connaître les exigences en matière d'activation de compte et de mode de paiement, suivez les <a href="https://docs.adyen.com/point-of-sale">Documentation relative aux paiements en personne Adyen</a>. La disponibilité du simulateur n’établit pas de prise en charge du terminal réel.</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/capabilities.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: capabilities"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/capabilities.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: capabilities" decoding="async"></div>
             <figcaption class="fine">Démo du simulateur en français. La disponibilité ici ne vérifie pas un vrai terminal.</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
@@ -155,9 +167,9 @@
           </div>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">Avertissement</p>
-            <p><strong>Résultat inconnu</strong> ne signifie pas que le paiement a échoué. <a href="troubleshooting.html#unknown">Vérifiez le paiement initial</a> avant de débiter à nouveau.</p>
+            <p><strong>Résultat inconnu</strong> ne signifie pas que le paiement a échoué. <a href="troubleshooting#unknown">Vérifiez le paiement initial</a> avant de débiter à nouveau.</p>
           </div>
-          <p>Les références clients, la sauvegarde de la carte et les pourboires sont facultatifs ; voir <a href="#shoppers">références et fiches sauvegardées</a>. Pour permettre aux clients de payer sur leur propre téléphone, utilisez un <a href="#payment-links">lien de paiement</a>. Si un paiement est refusé, voir <a href="troubleshooting.html#declines">paiements refusés</a>.</p>
+          <p>Les références clients, la sauvegarde de la carte et les pourboires sont facultatifs ; voir <a href="#shoppers">références et fiches sauvegardées</a>. Pour permettre aux clients de payer sur leur propre téléphone, utilisez un <a href="#payment-links">lien de paiement</a>. Si un paiement est refusé, voir <a href="troubleshooting#declines">paiements refusés</a>.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="terminal-checkout">
@@ -165,9 +177,9 @@
           <p>Activez uniquement les options de paiement dont vous avez besoin dans Paramètres. À l'exception d'une autorisation partielle, ces flux de travail nécessitent un terminal physique pris en charge, et non Tap to Pay. Vérifier <a href="#capabilities">Capacités d'Adyen</a> et testez d'abord votre configuration réelle.</p>
           <h3 id="partial-payments">Encaisser un paiement partiellement autorisé</h3>
           <p>Allumer <strong>Autoriser les autorisations partielles</strong> d'accepter une approbation de carte pour un montant inférieur au montant demandé. Quand le résultat apparaît <strong>Partiellement payé</strong>, vérifiez les montants payés et restants, puis appuyez sur <strong>Payer le reste</strong> sur cet écran de résultat et récupérez le solde sur une autre carte. L'application conserve les tentatives sur une même vente. Ne considérez pas la vente comme entièrement payée tant que le montant total n’est pas approuvé.</p>
-          <p>Une réponse manquante n’est pas une approbation partielle. <a href="troubleshooting.html#unknown">Résoudre les résultats inconnus</a> avant d’en collecter davantage. Ne démarrez pas une nouvelle vente pour le total initial : une partie approuvée a déjà été payée.</p>
+          <p>Une réponse manquante n’est pas une approbation partielle. <a href="troubleshooting#unknown">Résoudre les résultats inconnus</a> avant d’en collecter davantage. Ne démarrez pas une nouvelle vente pour le total initial : une partie approuvée a déjà été payée.</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/partial-payment.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Autorisation partielle"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/partial-payment.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Autorisation partielle" decoding="async"></div>
             <figcaption class="fine">Démo sur simulateur en français d'une approbation partielle, pas d'une vente entièrement payée.</figcaption>
           </figure>
           <h3 id="shopper-display">Utilisez l'écran du terminal destiné aux acheteurs</h3>
@@ -189,16 +201,16 @@
           <h2>Reconnaître les paiements hors ligne et les lots en attente</h2>
           <p>Les modes EMV et Store-and-Forward hors ligne nécessitent un terminal pris en charge atteint localement : Mini mPOS sur ce terminal ou un terminal sur votre réseau. Ils ne sont pas proposés via le routage cloud ou Tap to Pay. Organisez le traitement hors ligne avec Adyen et examinez ses risques avant de fixer des limites dans <a href="#capabilities">Capacités d'Adyen</a>; Mini mPOS ne met pas lui-même les paiements en file d'attente et ne rend pas un terminal accessible lorsque votre réseau local est en panne.</p>
           <p>L'historique marque les ventes hors ligne signalées. Ouvrez une vente pour voir <strong>Traitement hors ligne</strong>, qu'il ait utilisé EMV hors ligne ou Store-and-Forward, et tout <strong>Lots hors ligne non confirmés</strong> signalé par le terminal. Une approbation hors ligne ne peut pas encore avoir de référence PSP. Il ne s'agit pas d'un résultat inconnu, mais cela ne confirme pas qu'Adyen a reçu ou réglé le paiement.</p>
-          <p>Restaurez la connexion du terminal à Adyen et vérifiez les paiements téléchargés et les résultats finaux dans le Customer Area. Vérifiez les avertissements hors ligne et de lots non confirmés pendant <a href="#reconciliation">rapprochement des terminaux</a>; les totaux correspondants ne confirment pas le règlement hors ligne. Si aucune réponse de paiement concluante n'est arrivée, suivez <a href="troubleshooting.html#unknown">récupération à résultat inconnu</a> au lieu d'assumer une approbation hors ligne ou de facturer à nouveau.</p>
+          <p>Restaurez la connexion du terminal à Adyen et vérifiez les paiements téléchargés et les résultats finaux dans le Customer Area. Vérifiez les avertissements hors ligne et de lots non confirmés pendant <a href="#reconciliation">rapprochement des terminaux</a>; les totaux correspondants ne confirment pas le règlement hors ligne. Si aucune réponse de paiement concluante n'est arrivée, suivez <a href="troubleshooting#unknown">récupération à résultat inconnu</a> au lieu d'assumer une approbation hors ligne ou de facturer à nouveau.</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/offline-payment.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Paiement hors ligne"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/offline-payment.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Paiement hors ligne" decoding="async"></div>
             <figcaption class="fine">Démo du simulateur en français des détails hors ligne, pas de preuve de téléchargement ou de règlement.</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="wallets">
           <h2>Scanner le code d'un portefeuille d'acheteur</h2>
-          <p>Utilisez <strong>Scanner le portefeuille</strong> lors du paiement des soldes pour lire un code de paiement provenant de l'application de portefeuille de l'acheteur. Ceci est différent de la numérisation d’un code-barres de produit ou d’un reçu de remboursement. Il fonctionne avec un terminal de paiement physique, et non avec Tap to Pay ; <a href="quick-start.html#credentials">La découverte du portefeuille nécessite un rôle de lecture</a>.</p>
+          <p>Utilisez <strong>Scanner le portefeuille</strong> lors du paiement des soldes pour lire un code de paiement provenant de l'application de portefeuille de l'acheteur. Ceci est différent de la numérisation d’un code-barres de produit ou d’un reçu de remboursement. Il fonctionne avec un terminal de paiement physique, et non avec Tap to Pay ; <a href="quick-start#credentials">La découverte du portefeuille nécessite un rôle de lecture</a>.</p>
           <ol>
             <li>Vérifiez les champs de total et de paiement, puis appuyez sur <strong>Scanner le portefeuille</strong>. Si le pourboire sur reçu est sélectionné, confirmez le paiement sans ce pourboire : le portefeuille facture le total immédiatement, et non une pré-autorisation.</li>
             <li>Choisissez le portefeuille de l'acheteur. Un seul portefeuille disponible est sélectionné automatiquement. Seuls les portefeuilles configurés individuellement apparaissent ; Alipay+ n'implique pas d'options distinctes GCash, DANA, Kakao Pay ou TrueMoney.</li>
@@ -206,11 +218,11 @@
             <li>Scannez le code de paiement QR ou le code-barres de paiement de l'acheteur. Un scan valide démarre le paiement immédiatement. Attendez le résultat normal du paiement et remettez son reçu.</li>
           </ol>
           <p>L'annulation conserve les champs du panier et du paiement. Les codes invalides ne paient pas : scannez à nouveau ou changez de portefeuille. Une analyse native expire après 30 secondes ; utiliser <strong>Scannez à nouveau</strong> ou la caméra. Quitter l'application arrête la numérisation ; le retour nécessite une nouvelle analyse explicite. Les codes ne peuvent pas être saisis ou collés.</p>
-          <p><strong>Enregistrer la carte</strong> tente d’enregistrer les données de paiement lorsque la référence et le consentement de l'acheteur le permettent. La prise en charge du portefeuille varie ; seul un jeton de paiement stocké renvoyé signifie que les détails ont été enregistrés. Un paiement approuvé sans jeton est toujours approuvé. <a href="troubleshooting.html#wallets">Gérer les problèmes de découverte de portefeuille ou de paiement</a>; ne remplacez jamais un <a href="troubleshooting.html#unknown">paiement inconnu</a> en scannant à nouveau.</p>
+          <p><strong>Enregistrer la carte</strong> tente d’enregistrer les données de paiement lorsque la référence et le consentement de l'acheteur le permettent. La prise en charge du portefeuille varie ; seul un jeton de paiement stocké renvoyé signifie que les détails ont été enregistrés. Un paiement approuvé sans jeton est toujours approuvé. <a href="troubleshooting#wallets">Gérer les problèmes de découverte de portefeuille ou de paiement</a>; ne remplacez jamais un <a href="troubleshooting#unknown">paiement inconnu</a> en scannant à nouveau.</p>
           <p>Confirmez la configuration de votre portefeuille et testez le comportement avec le <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Guide du portefeuille Adyen</a> et <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Guide Adyen PayPal et Venmo</a>.</p>
           <div class="shot-pair">
-            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/wallets.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Choisir un portefeuille numérique"></div>
-            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/wallet-scan.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Scanner un portefeuille numérique"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/wallets.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Choisir un portefeuille numérique" decoding="async"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/wallet-scan.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Scanner un portefeuille numérique" decoding="async"></div>
           </div>
           <p class="fine">Démonstrations de simulation en français de numérisation de portefeuille.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
@@ -230,7 +242,7 @@
           <p>Chaque remboursement est lié à son paiement initial ; les remboursements sans un ne sont pas pris en charge. Remboursez les liens de paiement payés dans le Customer Area.</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Important</p>
-            <p><strong>Remboursement demandé</strong> Cela signifie qu'Adyen a reçu la demande, et non que le client a l'argent. Vérifiez le résultat final dans le Customer Area. Si le résultat d'un remboursement est inconnu, <a href="troubleshooting.html#unknown">vérifie-le avant de réessayer</a>.</p>
+            <p><strong>Remboursement demandé</strong> Cela signifie qu'Adyen a reçu la demande, et non que le client a l'argent. Vérifiez le résultat final dans le Customer Area. Si le résultat d'un remboursement est inconnu, <a href="troubleshooting#unknown">vérifie-le avant de réessayer</a>.</p>
           </div>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
@@ -270,7 +282,7 @@
             <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Courrier</a></li>
             <li><a href="https://proton.me/support/smtp-submission">Courrier à protons</a></li>
           </ul>
-          <p>Si les reçus ne s'impriment pas ou ne sont pas envoyés, voir <a href="troubleshooting.html#receipts">problèmes d'imprimante et de messagerie</a>.</p>
+          <p>Si les reçus ne s'impriment pas ou ne sont pas envoyés, voir <a href="troubleshooting#receipts">problèmes d'imprimante et de messagerie</a>.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="history">
@@ -284,7 +296,7 @@
           <p>Les totaux à l'écran suivent votre recherche et vos filtres. Les paiements retenus, tels que les dépôts et les pourboires sur le reçu, comptent comme des ventes le jour où leur capture est acceptée.</p>
           <h3 id="close-day">Clôture la journée</h3>
           <ol>
-            <li>Ouvrez <strong>Historique</strong>, filtrer par <strong>A besoin d’attention</strong> et résoudre chaque entrée ; voir <a href="troubleshooting.html#unknown">résultats inconnus</a>.</li>
+            <li>Ouvrez <strong>Historique</strong>, filtrer par <strong>A besoin d’attention</strong> et résoudre chaque entrée ; voir <a href="troubleshooting#unknown">résultats inconnus</a>.</li>
             <li>Vérifiez le <strong>En attente de pourboire</strong> et filtres de préautorisation. Saisissez les pourboires et capturez ou annulez les dépôts avant l'expiration de leurs retenues.</li>
             <li>Appuyez sur l'icône d'impression à côté du jour pour imprimer le <strong>Résumé quotidien local</strong>.</li>
             <li>Réconcilier avec les rapports d'Adyen dans le Customer Area ; voir le <a href="https://docs.adyen.com/reporting/settlement-reconciliation">Guide de réconciliation des règlements Adyen</a>.</li>
@@ -307,7 +319,7 @@
           </ol>
           <p>Ceci est disponible pour les terminaux physiques et le simulateur, pas pour Tap to Pay. Une comparaison correspondante ou une période fermée ne confirme pas le règlement, l'achèvement du remboursement ou le téléchargement hors ligne. Continuez à utiliser le Customer Area pour connaître les résultats financiers finaux.</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/reconciliation.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Rapprochement du terminal"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/reconciliation.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Rapprochement du terminal" decoding="async"></div>
             <figcaption class="fine">Démo du simulateur en français. Les totaux correspondants peuvent toujours contenir un lot hors ligne non confirmé.</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
@@ -349,7 +361,7 @@
             <p class="callout-title">Important</p>
             <p>Toute personne disposant d’un vrai lien peut payer jusqu’à son expiration. Rembourser les liens payants dans <strong>Customer Area › Paiements › Liste de paiements</strong>; l'application ne peut pas les rembourser.</p>
           </div>
-          <p>Si un lien est manquant ou n'est pas mis à jour, voir <a href="troubleshooting.html#links">problèmes de lien de paiement</a>.</p>
+          <p>Si un lien est manquant ou n'est pas mis à jour, voir <a href="troubleshooting#links">problèmes de lien de paiement</a>.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="preauth">
@@ -374,7 +386,7 @@
           <p><strong>Capture demandée</strong> n'est pas une confirmation définitive ; vérifiez le Customer Area. Pour des réponses immédiates aux ajustements, activez <strong>Renvoyer les données d'autorisation d'ajustement</strong> comme décrit dans le <a href="https://docs.adyen.com/online-payments/adjust-authorisation">Guide de réglage des autorisations Adyen</a>.</p>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">Avertissement</p>
-            <p>Les retenues expirent. Vérifiez quotidiennement le filtre de préautorisation et capturez ou annulez rapidement. Pour les opérations ayant échoué ou inconnues, voir <a href="troubleshooting.html#modifications">capturer les problèmes</a>.</p>
+            <p>Les retenues expirent. Vérifiez quotidiennement le filtre de préautorisation et capturez ou annulez rapidement. Pour les opérations ayant échoué ou inconnues, voir <a href="troubleshooting#modifications">capturer les problèmes</a>.</p>
           </div>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
@@ -387,7 +399,7 @@
           </ol>
           <p>Cela ne nécessite pas d’imprimante ni d’entrée de pourboire ultérieure. Pourboires sur le terminal et <a href="#tips">pourboires sur le reçu</a> ne peuvent pas être sélectionnés ensemble. Ni l'un ni l'autre n'est proposé pour les préautorisations, les paiements par portefeuille numérisé ou les liens de paiement ; les pourboires sur le terminal ne sont pas proposés avec Tap to Pay.</p>
           <figure class="guide-shot">
-            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/terminal-tipping.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Pourboires sur le terminal"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/fr-FR/terminal-tipping.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Pourboires sur le terminal" decoding="async"></div>
             <figcaption class="fine">Démo du simulateur en français des préférences de paiement. Configurez le terminal séparément dans les fonctionnalités Adyen.</figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
@@ -411,7 +423,7 @@
           <p>L’application capture le montant de l’addition et le pourboire. Pour les pourboires supérieurs à 20 %, l'émetteur de la carte doit d'abord augmenter la retenue ; s'il refuse, entrez un pourboire plus petit ou aucun. Un pourboire enregistré ne peut pas être modifié. Avant de saisir un pourboire, annulez le paiement au lieu de le rembourser ; par la suite, les remboursements incluent le pourboire.</p>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">Avertissement</p>
-            <p>Saisissez rapidement chaque pourboire, y compris zéro pourboire, afin que les factures soient capturées avant l'expiration de leur retenue. Pour les captures échouées ou inconnues, voir <a href="troubleshooting.html#modifications">capturer les problèmes</a>.</p>
+            <p>Saisissez rapidement chaque pourboire, y compris zéro pourboire, afin que les factures soient capturées avant l'expiration de leur retenue. Pour les captures échouées ou inconnues, voir <a href="troubleshooting#modifications">capturer les problèmes</a>.</p>
           </div>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
@@ -429,8 +441,8 @@
             <p>Il s'agit d'une copie unique, et non d'une synchronisation ou d'une sauvegarde de l'historique des paiements. Chaque appareil conserve ses propres paiements. La suppression des données de l'application dans Android supprime tous les produits, paramètres et historiques de l'appareil.</p>
           </div>
           <p>Dans <strong>Paramètres › Données et transfert</strong>, définir <strong>Conservez les transactions pour</strong> ou appuyez sur <strong>Effacer l’historique réglé</strong>; les paiements non résolus sont toujours conservés.</p>
-          <p>Sur une tablette ou un téléphone, Mini mPOS recherche une version plus récente au démarrage. Si Accueil propose <strong>Mettre à jour</strong>, appuyez dessus pour ouvrir l’APK dans votre navigateur, puis installez le téléchargement. Les terminaux Adyen se mettent à jour via le Customer Area, pas cette invite. Vous pouvez également obtenir le <a href="https://github.com/astiskala/minimpos/releases/latest">dernière version</a> et suivez le <a href="quick-start.html#install">étapes d'installation</a>. Conservez la même source de signature et installez-la sur l'application existante ; ne désinstallez pas et n’effacez pas ses données.</p>
-          <p>Pour les problèmes d'importation, voir <a href="troubleshooting.html#access">PIN et problèmes de transfert</a>.</p>
+          <p>Sur une tablette ou un téléphone, Mini mPOS recherche une version plus récente au démarrage. Si Accueil propose <strong>Mettre à jour</strong>, appuyez dessus pour ouvrir l’APK dans votre navigateur, puis installez le téléchargement. Les terminaux Adyen se mettent à jour via le Customer Area, pas cette invite. Vous pouvez également obtenir le <a href="https://github.com/astiskala/minimpos/releases/latest">dernière version</a> et suivez le <a href="quick-start#install">étapes d'installation</a>. Conservez la même source de signature et installez-la sur l'application existante ; ne désinstallez pas et n’effacez pas ses données.</p>
+          <p>Pour les problèmes d'importation, voir <a href="troubleshooting#access">PIN et problèmes de transfert</a>.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
       </div>
@@ -438,8 +450,8 @@
   </main>
   <footer class="site-footer"><div class="wrap footer-row">
     <nav aria-label="Guides et configuration"><ul class="footer-nav">
-      <li><a href="quick-start.html">Démarrage rapide</a></li><li><a href="using.html" aria-current="page">Utilisation de Mini mPOS</a></li>
-      <li><a href="troubleshooting.html">Dépannage</a></li><li><a href="setup.html">Aide à la configuration</a></li>
+      <li><a href="quick-start">Démarrage rapide</a></li><li><a href="using" aria-current="page">Utilisation de Mini mPOS</a></li>
+      <li><a href="troubleshooting">Dépannage</a></li><li><a href="setup">Aide à la configuration</a></li>
     </ul></nav>
     <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · Licence MIT · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Sécurité</a></p><p class="fine">Adyen est une marque commerciale d'Adyen N.V. Mini mPOS est indépendant et n'est pas affilié, approuvé ou soutenu par Adyen.</p>
   </div></footer>

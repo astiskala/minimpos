@@ -15,7 +15,7 @@
   <string name="onboarding_connect_hint">Adyen アカウントでこのデバイスの決済を設定します。</string>
   <string name="onboarding_scan_hint">設定ヘルパーや別のデバイスのコードを使います。</string>
   <string name="setup_codes_computer">パソコンで作成</string>
-  <string name="setup_codes_computer_hint">信頼できるパソコンで minimpos.app/ja/setup.html を開き、情報を入力して「QRコードを作成」を選びます。</string>
+  <string name="setup_codes_computer_hint">信頼できるパソコンで minimpos.app/ja/setup を開き、情報を入力して「QRコードを作成」を選びます。</string>
   <string name="setup_codes_device">別のデバイスで作成</string>
   <string name="setup_codes_device_hint">Mini mPOS › 設定 › データと転送 › 別のデバイスに共有を開き、「QRコードを表示」をタップします。</string>
   <string name="setup_codes_transfer_hint">送信元の画面を開いたまま、すべての QR コードを読み込みます。別途表示される 12 文字の転送コードを入力し、検証・インポートします。</string>
@@ -703,7 +703,7 @@
 
   <!-- Settings: terminal and Tap to Pay -->
   <string name="settings_quick_setup">かんたんセットアップ</string>
-  <string name="settings_quick_setup_hint">パソコンでminimpos.app/ja/setup.htmlを開き、ここでコードを読み取ります。決済先や環境を先に選ぶ必要はありません。</string>
+  <string name="settings_quick_setup_hint">パソコンでminimpos.app/ja/setupを開き、ここでコードを読み取ります。決済先や環境を先に選ぶ必要はありません。</string>
   <string name="settings_quick_setup_import">設定コードを読み取る</string>
   <string name="settings_manual_setup">またはこのデバイスで設定</string>
   <string name="settings_scan_discard_drafts">スキャナーを開くと、未保存のキーは破棄されます。インポートするまで保存済みの設定は変わりません。</string>

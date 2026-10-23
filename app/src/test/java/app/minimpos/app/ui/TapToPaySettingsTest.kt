@@ -116,8 +116,8 @@ class TapToPaySettingsTest {
         openHelp()
         val application = ApplicationProvider.getApplicationContext<Application>()
         listOf(
-            "helpUserGuide" to "https://minimpos.app/using.html",
-            "helpTroubleshooting" to "https://minimpos.app/troubleshooting.html",
+            "helpUserGuide" to "https://minimpos.app/using",
+            "helpTroubleshooting" to "https://minimpos.app/troubleshooting",
             "helpReportIssue" to "https://github.com/astiskala/minimpos/issues",
         ).forEach { (tag, url) ->
             compose.onNodeWithTag(tag).performScrollTo().performClick()

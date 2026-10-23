@@ -1,4 +1,6 @@
+import com.sun.net.httpserver.HttpServer
 import java.io.ByteArrayOutputStream
+import java.net.InetSocketAddress
 
 // Checks the static website in docs/ (published as is by GitHub Pages, so the build files cannot live there): JUnit
 // tests of its links, languages, metadata and screenshots, and the W3C Nu Html Checker on its pages and styles.
@@ -42,6 +44,8 @@ val htmlChecker =
 
 dependencies {
     htmlChecker(libs.nu.validator)
+    // The validator's HTTP client uses SLF4J; keep its diagnostics through the JDK logger.
+    htmlChecker(libs.slf4j.jdk14)
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)
@@ -94,6 +98,10 @@ abstract class HtmlCheck : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val pages: ConfigurableFileCollection
 
+    /** Source root for public routes; [pages] tracks the inputs independently of this checkout's absolute path. */
+    @get:Internal
+    abstract val siteRoot: DirectoryProperty
+
     @get:OutputFile
     abstract val stamp: RegularFileProperty
 
@@ -103,16 +111,54 @@ abstract class HtmlCheck : DefaultTask() {
     @TaskAction
     fun check() {
         val output = ByteArrayOutputStream()
-        val result =
-            execOperations.javaexec {
-                classpath(checker)
-                mainClass.set("nu.validator.client.SimpleCommandLineValidator")
-                args(listOf("--also-check-css", "--format", "gnu", "--exit-zero-always") + pages.files.map { it.path }.sorted())
-                standardOutput = output
-                errorOutput = output
-                isIgnoreExitValue = true
+        val documents =
+            pages.files.associateBy {
+                "/" +
+                    it
+                        .relativeTo(siteRoot.get().asFile)
+                        .invariantSeparatorsPath
+                        .removeSuffix("index.html")
+                        .removeSuffix(".html")
             }
-        val messages = output.toString(Charsets.UTF_8).trim()
+        // CSP 'self' needs an HTTP origin: file URLs have opaque origins in the checker. Serve only the exact
+        // validation inputs on loopback so every policy, HTML and CSS diagnostic remains enabled offline.
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/") { exchange ->
+            exchange.use {
+                val file = documents[exchange.requestURI.path]
+                if (file == null) {
+                    exchange.sendResponseHeaders(404, -1)
+                } else {
+                    val content = file.readBytes()
+                    val type = if (file.extension == "css") "text/css" else "text/html"
+                    exchange.responseHeaders.set("Content-Type", "$type; charset=utf-8")
+                    exchange.sendResponseHeaders(200, content.size.toLong())
+                    exchange.responseBody.write(content)
+                }
+            }
+        }
+        server.start()
+        val origin = "http://127.0.0.1:${server.address.port}"
+        val result =
+            try {
+                execOperations.javaexec {
+                    classpath(checker)
+                    mainClass.set("nu.validator.client.SimpleCommandLineValidator")
+                    // This process only checks the loopback URLs supplied below, never untrusted remote URLs.
+                    systemProperty("nu.validator.servlet.allow-forbidden-hosts", "true")
+                    systemProperty("nu.validator.xml.promiscuous-ssl", "false")
+                    args(listOf("--also-check-css", "--format", "gnu", "--exit-zero-always") + documents.keys.sorted().map { origin + it })
+                    standardOutput = output
+                    errorOutput = output
+                    isIgnoreExitValue = true
+                }
+            } finally {
+                server.stop(0)
+            }
+        val messages =
+            documents.entries.sortedByDescending { it.key.length }.fold(output.toString(Charsets.UTF_8).trim()) { messages, (route, file) ->
+                messages.replace(origin + route, file.toURI().toString())
+            }
         if (result.exitValue != 0 || messages.isNotEmpty()) {
             throw GradleException("The W3C Nu Html Checker (exit value ${result.exitValue}) reported:\n$messages")
         }
@@ -126,6 +172,7 @@ val htmlCheck =
         description = "Checks the website's HTML and CSS with the W3C Nu Html Checker."
         checker.from(htmlChecker)
         pages.from(fileTree(website) { include("**/*.html", "**/*.css") })
+        siteRoot.set(website)
         stamp.set(layout.buildDirectory.file("html-check/OK"))
     }
 

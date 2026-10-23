@@ -15,7 +15,7 @@
   <string name="onboarding_connect_hint">Set up payments on this device with your Adyen account.</string>
   <string name="onboarding_scan_hint">Use codes from the setup helper or another device.</string>
   <string name="setup_codes_computer">From a computer</string>
-  <string name="setup_codes_computer_hint">Open minimpos.app/setup.html on a trusted computer. Enter your details and choose Make QR codes.</string>
+  <string name="setup_codes_computer_hint">Open minimpos.app/setup on a trusted computer. Enter your details and choose Make QR codes.</string>
   <string name="setup_codes_device">From another device</string>
   <string name="setup_codes_device_hint">Open Mini mPOS › Settings › Data and transfer › Share with another device, then Show QR codes.</string>
   <string name="setup_codes_transfer_hint">Keep the source screen open. Scan every QR code, then enter the separate 12-character transfer code it shows to verify and import.</string>
@@ -705,7 +705,7 @@
 
   <!-- Settings: terminal and Tap to Pay -->
   <string name="settings_quick_setup">Quick setup</string>
-  <string name="settings_quick_setup_hint">Open minimpos.app/setup.html on a computer, then scan its codes here. No destination or environment choice is needed first.</string>
+  <string name="settings_quick_setup_hint">Open minimpos.app/setup on a computer, then scan its codes here. No destination or environment choice is needed first.</string>
   <string name="settings_quick_setup_import">Scan setup codes</string>
   <string name="settings_manual_setup">Or set up on this device</string>
   <string name="settings_scan_discard_drafts">Unsaved keys will be discarded when you open the scanner. Saved settings will not change until you import.</string>

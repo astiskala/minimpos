@@ -15,7 +15,7 @@
   <string name="onboarding_connect_hint">Configure pagamentos neste dispositivo com sua conta Adyen.</string>
   <string name="onboarding_scan_hint">Utilize códigos do assistente de configuração ou de outro dispositivo.</string>
   <string name="setup_codes_computer">De um computador</string>
-  <string name="setup_codes_computer_hint">Abra minimpos.app/pt-BR/setup.html em um computador confiável. Insira seus dados e escolha Criar códigos QR.</string>
+  <string name="setup_codes_computer_hint">Abra minimpos.app/pt-BR/setup em um computador confiável. Insira seus dados e escolha Criar códigos QR.</string>
   <string name="setup_codes_device">De outro dispositivo</string>
   <string name="setup_codes_device_hint">Abra Mini mPOS › Configurações › Dados e transferência › Compartilhar com outro dispositivo e, em seguida, Mostrar códigos QR.</string>
   <string name="setup_codes_transfer_hint">Manter a tela de origem aberta. Digitalize cada código QR e insira o código de transferência separado de 12 caracteres mostrado para verificar e importar.</string>
@@ -707,7 +707,7 @@
 
   <!-- Settings: terminal and Tap to Pay -->
   <string name="settings_quick_setup">Configuração rápida</string>
-  <string name="settings_quick_setup_hint">Abra minimpos.app/pt-BR/setup.html em um computador e, em seguida, escaneie seus códigos aqui. Nenhuma escolha de destino ou ambiente é necessária primeiro.</string>
+  <string name="settings_quick_setup_hint">Abra minimpos.app/pt-BR/setup em um computador e, em seguida, escaneie seus códigos aqui. Nenhuma escolha de destino ou ambiente é necessária primeiro.</string>
   <string name="settings_quick_setup_import">Digitalizar códigos de configuração</string>
   <string name="settings_manual_setup">Ou configure neste dispositivo</string>
   <string name="settings_scan_discard_drafts">As chaves não salvas serão descartadas quando você abrir o scanner. As configurações salvas não serão alteradas até você importar.</string>

@@ -18,6 +18,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 88px; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; }
 }
 
 body {
@@ -305,6 +306,10 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green); outlin
 .section-alt { background: var(--grey-light); }
 
 .section-dark { background: var(--navy); color: #fff; }
+
+.section-dark a:not(.button) { color: #7fe0b1; }
+
+.section-dark a:focus-visible { outline-color: #7fe0b1; }
 
 .section-lead { font-size: 1.1rem; color: var(--grey); max-width: 44em; margin-bottom: 40px; }
 
@@ -881,4 +886,31 @@ button.button { font: inherit; font-weight: 700; cursor: pointer; }
   .setup-actions .button { flex: 1 1 auto; text-align: center; }
   .setup-codes { padding: 16px; }
   .setup-scan { padding: 10px; }
+}
+
+/* Guides remain readable on paper or as PDFs, including collapsed manual instructions. The setup helper's
+   credentials and generated codes stay out of printouts. */
+@media print {
+  html { scroll-behavior: auto; }
+  body { font-size: 11pt; color: #000; background: #fff; }
+  .site-header, .site-footer, .toc, .back-to-contents,
+  .setup-form, .setup-codes, .setup-side { display: none !important; }
+  .wrap { max-width: none; padding: 0; }
+  .guide, .setup { display: block; padding-bottom: 0; }
+  .guide-body, .setup-main { max-width: none; }
+  .guide-hero, .hero, .section { padding: 16pt 0; background: none; }
+  .section-dark { color: #000; background: none; }
+  .section-dark p, .section-dark li { color: #000; }
+  a, .section-dark a:not(.button) { color: #000; text-decoration: underline; }
+  a.button { color: #000; background: none; border-color: #777; }
+  pre, code { color: #000; background: none; white-space: pre-wrap; overflow-wrap: anywhere; }
+  h1, h2, h3, dt, summary { break-after: avoid; }
+  figure, .callout, .note { break-inside: avoid; }
+  .guide-shot, .guide-body .shot-pair { max-width: 320px; }
+  .guide-shot .terminal { max-width: 180px; }
+  .terminal { filter: none; }
+  details::details-content { content-visibility: visible; }
+  details > :not(summary) { display: block; }
+  .manual-setup { border-color: #aaa; }
+  .manual-setup > summary { border-bottom: 1px solid #aaa; }
 }

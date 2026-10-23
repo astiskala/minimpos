@@ -1,14 +1,62 @@
 # Mini mPOS
 
-Android POS for Adyen Android terminals, also usable on tablets and phones with a network/cloud terminal or the
-Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
+Kotlin Android POS for Adyen Android terminals, also usable on tablets and phones with a network/cloud terminal or the
+Adyen Payments app (Tap to Pay). There is no backend. The built-in simulator needs no Adyen account.
 
-## Read only what the task needs
+## Where things live
 
-- Before changing `app/` or `adyen/`, read that module's `AGENTS.md`. Their starred rules are enforced by ArchUnit.
-- `CONTEXT.md`: domain vocabulary and decision owners. Use its terms; add a new concept there before naming a module.
-- `CONTRIBUTING.md`: development, verification, dependency maintenance and releases. KDoc: detailed code contracts.
-- `README.md` and `docs/`: merchant documentation. `SECURITY.md`: reporting and data protection.
+| Path | Contents | Local rules |
+| --- | --- | --- |
+| `core/` | Android-free money/tax, cart, refunds, receipts, QR formats, currencies, payment methods, original payment context. | `core` `ArchitectureTest` |
+| `adyen/` | Android-free Terminal, Checkout, Cloud device and Management integration, transports, simulator. | [adyen/AGENTS.md](adyen/AGENTS.md) |
+| `app/` | Compose UI, Room, DataStore, Keystore, email, camera scanning; manual DI in `AppContainer`. | [app/AGENTS.md](app/AGENTS.md) |
+| `docs/` | Static merchant website in seven languages and the offline setup helper. | [Documentation changes](#documentation-changes) |
+| `website-test/` | Website and setup-helper tests; no app code. | |
+| `tooling/` | Kotlin/JVM release CLI, signing-property extraction and shell-script regression tests. | |
+| `scripts/` | Gradle/dev runners, CI entry point, docs capture, release verification. | |
+| `.factory/`, `security-findings.json` | STRIDE threat model, security-review settings and the latest scan result. | |
+
+Nested `AGENTS.md` files add module rules to this file and never relax it. Their starred rules are enforced by ArchUnit.
+Read the module file before changing that module. Read the rest only when the task needs it:
+
+- [CONTEXT.md](CONTEXT.md): domain vocabulary and decision owners. Use its terms; add a new concept there before naming
+  a module.
+- [CONTRIBUTING.md](CONTRIBUTING.md): command behavior, test setup, dependency, website and release procedures, and
+  real-Adyen verification gaps. KDoc holds detailed code contracts.
+- [minimpos-iteration](.devin/skills/minimpos-iteration/SKILL.md) (change recipes) and
+  [minimpos-tests](.devin/skills/minimpos-tests/SKILL.md) (test starters). Use
+  [docs-screenshots](.devin/skills/docs-screenshots/SKILL.md) only when capturing screenshots or running the AMS1 emulator.
+- `README.md` and `docs/`: merchant documentation. [SECURITY.md](SECURITY.md): reporting and data protection.
+
+## Commands
+
+Gradle resolves all dependencies; there is no separate install step. Prerequisites are in CONTRIBUTING's
+[Build and run](CONTRIBUTING.md#build-and-run). Use `scripts/gradle <tasks/flags>` instead of `./gradlew` for build
+and test runs: concise output, a full private log under `build/gradle-logs/` and an unchanged exit status.
+
+| Purpose | Command |
+| --- | --- |
+| Check JDK, SDK and Chrome | `scripts/dev preflight` |
+| Install a debug build | `scripts/gradle :app:installDebug` |
+| Run matching tests | `scripts/dev test MODULE 'PATTERN'` (`core`, `adyen`, `app`, `website-test`, `tooling`) |
+| Run a focused lane | `scripts/dev check AREA` (module, `architecture`, `localization`, `ui`, `db`, `payment`, `website`…) |
+| Format (ktlint, Markdown, whitespace) | `scripts/dev format` |
+| Full gate: format, then `qualityGate --continue` | `scripts/dev finish` |
+| After dependency changes | `scripts/gradle :app:assembleRelease` |
+
+- Run one Gradle invocation at a time per checkout. Format after an edit batch, never concurrently with edits.
+- Fast lanes are feedback, not completion evidence. Do not routinely run `clean` or `--rerun-tasks`.
+- On failure, read the `repair.txt` and log the runner prints; `scripts/dev report` adds JUnit details.
+- After changing `.editorconfig`, run `./gradlew --stop` so ktlint reloads it.
+
+## Done means
+
+- `scripts/dev finish` passes on the final checkout. The gate fails on Kotlin warnings, Android Lint warnings, detekt
+  findings, unresolved KDoc links, Markdown/workflow/shell linters, HTML checker messages, coverage bounds and ArchUnit.
+- Dependency changes also pass the release build: R8 may need keep rules.
+- Fix findings, don't silence them: no new suppressions, lint ignores, baselines or rule exclusions. Do not suppress
+  plugin deprecations either; investigate with the command in CONTRIBUTING.
+- Simulator and fake coverage do not prove real-Adyen behavior; report unverifiable gaps honestly.
 
 ## Non-negotiable constraints
 
@@ -24,9 +72,27 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   of a percent. No floating-point money or separate country/region setting.
 - Secrets go through `SecretStore`; never log them, payment data or requests. Do not commit keys, keystores,
   `keystore.properties` or `local.properties`. No logging in production modules.
-- Fix findings, don't silence them: no new suppressions, lint ignores, baselines or rule exclusions.
-- Do not change `version.properties` by hand. Releases use the Release workflow; see `CONTRIBUTING.md`.
 - Commits use Adam Stiskala <github@adamstiskala.com>, not the Adyen work email, with no bot attribution.
+
+## Do not edit by hand
+
+- `version.properties`: only the Release workflow changes it; see CONTRIBUTING's
+  [Release the app](CONTRIBUTING.md#release-the-app).
+- Exported Room schemas in `app/schemas/`: the build writes them. Never alter a released schema.
+- Released stored-format fixtures in `app/src/test/resources/stored/<version>/`; add a new version's directory instead.
+- Vendored `docs/js/qrcodegen.js`, generated `gradle/gradle-daemon-jvm.properties` and the Gradle wrapper files.
+- `security-findings.json`: the security review writes it.
+
+## Code conventions
+
+- A new architectural decision needs its ArchUnit rule in the same change, a reason comment and a deliberate-violation
+  check. Keep every Kotlin source set covered by type-resolved detekt; aggregate app coverage must not compile release.
+- Public/protected declarations need useful KDoc (tests exempt): units, null meaning, threading, formats, errors.
+  Once constructor tags are used, cover every parameter in order (`@property` for public properties, otherwise `@param`).
+- QR contracts have one current format. Change the app, setup helper, format tests and helper test vectors together.
+  `docs/js/setup.js` mirrors `TransferCodec`, `QrChunks` and `TransferSeal`; retain its no-network CSP.
+- The release's `update.json` asset has one current format. Change the app, the Release workflow and their tests
+  together; it is read only on devices that are not Adyen terminals.
 
 ## Payment and product boundaries
 
@@ -62,21 +128,10 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   New installations use Customer reference as the shopper reference, no extra transaction reference; automatic printing
   is on.
 - API keys on the device are a documented trade-off, not a bug to solve by adding a backend. Mobile SDK card readers
-  are deliberately not integrated. Real-Adyen verification gaps are listed in `CONTRIBUTING.md`.
+  are deliberately not integrated. Real-Adyen verification gaps are listed in CONTRIBUTING.
 
-## Editing and verification
+## User text and localization
 
-- Run `./gradlew qualityGate` after changes; `./gradlew spotlessApply` fixes formatting, including Markdown.
-  After changing `.editorconfig`, stop the Gradle daemon so ktlint reloads it. Build release after dependency changes.
-- For agent build/test runs, use `scripts/gradle <tasks/flags>` (see `CONTRIBUTING.md`): concise output,
-  full private logs and unchanged exit status. Read relevant log sections on failure; never suppress warnings.
-  `scripts/dev` adds fast lanes and `finish` (format + full gate); see CONTRIBUTING's Fast iteration section.
-- Kotlin warnings, Android Lint warnings, detekt findings, unresolved KDoc links and HTML checker messages fail the
-  gate. Do not suppress plugin deprecations either; investigate with the command in `CONTRIBUTING.md`.
-- A new architectural decision needs its ArchUnit rule in the same change, a reason comment and a deliberate-violation
-  check. Keep every Kotlin source set covered by type-resolved detekt; aggregate app coverage must not compile release.
-- Public/protected declarations need useful KDoc (tests exempt): units, null meaning, threading, formats, errors.
-  Once constructor tags are used, cover every parameter in order (`@property` for public properties, otherwise `@param`).
 - User text is short US English; keep identifier/stored-value spelling and Adyen text unchanged. Update English,
   Mexican Spanish (`es-MX`), French (`fr-FR`), Japanese, Brazilian Portuguese (`pt-BR`), Simplified Chinese and Hong
   Kong-style Traditional Chinese (`zh-Hant`) together, with matching resource keys/format arguments.
@@ -87,10 +142,6 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   `zh-CN`, `zh-Hant`. A new language goes at its tag's position everywhere.
 - New-install defaults may depend on country/language; never overwrite saved merchant text or imported catalogs.
   Receipt labels are read at delivery, Adyen receipt fields stay verbatim. Keep `StarterTax`'s rates current.
-- QR contracts have one current format. Change the app, setup helper, format tests and helper test vectors together.
-  `docs/js/setup.js` mirrors `TransferCodec`, `QrChunks` and `TransferSeal`; retain its no-network CSP.
-- The release's `update.json` asset has one current format. Change the app, the Release workflow and their tests
-  together; it is read only on devices that are not Adyen terminals.
 
 ## Documentation changes
 
@@ -100,7 +151,11 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   website tests together. Only setup helpers run scripts; all assets are local. HTML void elements have no trailing slash.
 - Explain Mini mPOS's requirements; link to Adyen for Adyen account/platform procedures. Avoid older-app warnings,
   country-specific tax compliance, invoice requirements and country-specific receipt defaults.
-- Screenshots are disclosed simulator demos in the page's supported language and original terminal frames. Use
-  `.devin/skills/docs-screenshots/SKILL.md` only when capturing screenshots or running the AMS1 emulator.
-- Keep this file small: retain actionable constraints and non-obvious decisions, not feature inventories, code tours,
-  historical fixes or copies of contributor instructions. Put module-specific pitfalls in the module's file.
+- Screenshots are disclosed simulator demos in the page's supported language and original terminal frames.
+- Prose is wrapped by hand at 120 columns; `scripts/dev format` fixes what it can and the gate checks relative links.
+
+## Maintaining these instructions
+
+Keep this file small: retain actionable constraints and non-obvious decisions, not feature inventories, code tours,
+historical fixes or copies of contributor instructions. Put module-specific pitfalls in the module's file and command
+behavior in CONTRIBUTING.

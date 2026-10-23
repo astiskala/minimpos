@@ -12,5 +12,5 @@ code-blocks = false
 reflow = false
 
 [MD033]
-# The README lays out its screenshots in a table of images.
+# The README lays out its screenshots in a centered paragraph of images.
 allowed-elements = ["p", "img"]

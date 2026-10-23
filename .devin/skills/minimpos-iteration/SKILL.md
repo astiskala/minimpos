@@ -29,7 +29,7 @@ then wait for completion. Pass multiple tasks in one invocation when collecting 
 
 ### UI text and merchant guides
 
-- Identify authoritative English resource/page; update Chinese and Japanese in the same batch.
+- Identify the authoritative English resource/page; update all seven languages in the same batch.
 - Resources: match keys, placeholders and plural contracts. Start with `scripts/dev check localization`.
 - Pages: update reciprocal switches and canonical/hreflang metadata; `scripts/dev check website`.
 - Follow [language and documentation rules](../../../AGENTS.md); do not translate stored identifiers or Adyen fields.
@@ -69,8 +69,6 @@ then wait for completion. Pass multiple tasks in one invocation when collecting 
 
 ## Measure, do not guess
 
-`scripts/dev report` reads existing report snapshots, not one guaranteed full run. Check timestamps.
-Compare repeated `scripts/dev profile 1 'PATTERN'` and `scripts/dev profile 2 'PATTERN'` runs on the same checkout,
-without another build running. Use Gradle's profile for wall time; suite times overlap under parallel workers.
-Keep the two-worker default unless repeated measurements justify changing it. Profile fixture startup, navigation
-and polling before adding workers or moving tests. Do not remove coverage or checks to improve measurements.
+Follow CONTRIBUTING's [profiling guidance](../../../CONTRIBUTING.md#fast-iteration) before changing test workers or
+moving tests. `scripts/dev report` reads existing report snapshots; check timestamps. Do not remove coverage or checks
+to improve measurements.

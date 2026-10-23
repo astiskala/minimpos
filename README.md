@@ -79,8 +79,17 @@ keys on a server. Use narrowly scoped credentials, protect the device, and revie
 
 ## For contributors
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for building, testing, architecture and releases—including signing your own APK.
-Use [CONTEXT.md](CONTEXT.md) for domain terminology. Report vulnerabilities privately through
+The app is Kotlin with Jetpack Compose, built with Gradle. With JDK 17+ and the Android SDK installed, build and
+install a debug copy on an Android 9+ device or emulator, then run the full verification gate:
+
+```sh
+./gradlew :app:installDebug
+./gradlew qualityGate
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for prerequisites, testing, architecture and releases—including signing your
+own APK. Coding agents start at [AGENTS.md](AGENTS.md). Use [CONTEXT.md](CONTEXT.md) for domain terminology. Report
+vulnerabilities privately through
 [the security policy](SECURITY.md), not a public issue.
 
 ## License

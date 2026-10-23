@@ -35,7 +35,7 @@ updates:
           - "org.robolectric*"
           - "com.squareup.okhttp3:mockwebserver*"
           - "org.jsoup*"
-    # The Adyen library (com.adyen) stays ungrouped: each upgrade needs its own review (see AGENTS.md).
+    # The Adyen library (com.adyen) stays ungrouped: each upgrade needs its own review (see CONTRIBUTING.md).
 
   - package-ecosystem: github-actions
     directory: /

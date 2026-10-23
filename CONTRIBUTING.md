@@ -451,7 +451,8 @@ Forks must maintain their own release process, credentials and signing history.
 
 ## Release the app
 
-`version.properties` is managed by **Actions › Release › Run workflow** on `main`. Choose patch/minor/major;
+`version.properties` is managed by **Actions › Release › Run workflow** on `main`. Choose patch/minor/major and supply
+the release notes following [the style below](#release-note-style);
 the workflow commits the new version first. It reuses a successful main push/manual CI run for that exact commit
 only when its retained artifact passes current commit, version, run-attempt and SHA-256 verification. Missing or
 expired artifacts require fresh CI; changed or invalid artifacts block release. Pending, failed, cancelled and PR
@@ -492,3 +493,30 @@ checks. SDK `apksigner`, `zipalign` and `aapt2` verify the released APK's signat
 application ID, version and minimum SDK. `MINIMPOS_BUILD_TOOLS` overrides the detected SDK build-tools directory.
 Kotlin tooling checks the two GitHub SHA-256 asset digests and exact `update.json` contract against the release tag's
 version file. Verification files stay in a fresh `build/release-check.*` directory; the checkout and refs stay unchanged.
+
+### Release-note style
+
+Write GitHub release notes in US English for merchants deciding whether to update. Use a short bullet list, normally
+one to five bullets; larger feature releases may need more. Lead with new capabilities and significant fixes, grouping
+related changes. Describe the visible behavior and useful conditions or limitations, rather than copying commit titles.
+Small releases need only one specific bullet; do not pad them with generic claims of improvements or reliability.
+
+For example:
+
+- Added French, Mexican Spanish, and Brazilian Portuguese across the app and merchant guides.
+- Receipt business imports now let you fill missing details or replace saved details. Blank imported fields preserve
+  saved values.
+- Fixed a crash when using Charge token in release builds.
+
+Compare the previous published tag with the exact release commit, including direct commits as well as merged PRs.
+Check the relevant diffs when a commit title is vague; describe only behavior included in that release. Keep historically
+accurate capabilities and limitations. Mention required merchant action or compatibility changes when applicable, and
+never imply that simulator tests establish real-Adyen support.
+
+Omit routine dependency bumps, refactoring, test/CI results, signing details, contributor lists and internal identifiers.
+If a release contains only internal maintenance, use one specific plain-English maintenance bullet without inventing
+merchant benefits. Do not use GitHub's generated notes as the final body. The workflow requires nonblank authored notes
+before changing the version and appends a **Full Changelog** comparison link automatically. With the CLI, pass a UTF-8
+Markdown file using `gh workflow run release.yml -f bump=patch -F notes=@/absolute/path/release-notes.md`.
+Supply notes again when resuming; review the full range from the previous published release, including any later fixes.
+After publication, read back the GitHub release body along with the usual artifact verification.

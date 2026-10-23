@@ -3,11 +3,11 @@ agp = "9.4.1"
 kotlin = "2.4.21"
 ksp = "2.3.12"
 kover = "0.9.11"
-spotless = "8.10.3"
+spotless = "8.10.4"
 ktlint = "1.8.0"
 # detekt 1.x is built on Kotlin 2.0 and cannot analyse this project's Kotlin 2.4 code; 2.0 is built on Kotlin 2.4.
 detekt = "2.0.0-alpha.6"
-composeRules = "0.6.7"
+composeRules = "0.6.8"
 # Only used to check KDoc: every module's check fails when a [link] does not resolve.
 dokka = "2.2.0"
 # Mutation testing (./gradlew mutationTest); not part of the quality gate.
@@ -40,7 +40,7 @@ androidxTestCore = "1.7.0"
 archunit = "1.5.1"
 jsoup = "1.23.2"
 # The W3C Nu Html Checker (validator.w3.org/nu), run on the website by :website-test.
-nuValidator = "26.10.7"
+nuValidator = "26.10.12"
 # Stands in for the checker's log4j 1.2.17 (end of life, with unfixed advisories); a drop-in fork with them fixed.
 reload4j = "1.2.26"
 slf4j = "2.0.19"

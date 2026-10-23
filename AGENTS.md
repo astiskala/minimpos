@@ -57,6 +57,8 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
 - Fix findings, don't silence them: no new suppressions, lint ignores, baselines or rule exclusions. Do not suppress
   plugin deprecations either; investigate with the command in CONTRIBUTING.
 - Simulator and fake coverage do not prove real-Adyen behavior; report unverifiable gaps honestly.
+- GitHub release notes follow [the release-note style](CONTRIBUTING.md#release-note-style). Read the tagged changes,
+  write concise merchant-facing notes, and supply them when dispatching Release; generated changelogs are not notes.
 
 ## Non-negotiable constraints
 

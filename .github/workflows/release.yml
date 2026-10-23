@@ -9,6 +9,10 @@ on:
         type: choice
         options: [patch, minor, major, resume]
         default: patch
+      notes:
+        description: Merchant-facing English Markdown bullets (see CONTRIBUTING release-note style)
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -29,9 +33,19 @@ jobs:
       commit: ${{ steps.version.outputs.commit }}
       name: ${{ steps.version.outputs.name }}
       code: ${{ steps.version.outputs.code }}
+      previous: ${{ steps.version.outputs.previous }}
       run: ${{ steps.reuse.outputs.run }}
       attempt: ${{ steps.reuse.outputs.attempt }}
     steps:
+      - name: Require authored release notes before preparing a version
+        env:
+          RELEASE_NOTES: ${{ inputs.notes }}
+        run: |
+          if [[ ! "$RELEASE_NOTES" =~ [^[:space:]] ]]; then
+              printf '%s\n' "::error::Supply merchant-facing release notes following CONTRIBUTING.md."
+              exit 1
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -56,6 +70,7 @@ jobs:
               printf '%s\n' "::error::Main advanced after this workflow was selected. Run Release on current main."
               exit 1
           fi
+          previous=$(gh api "repos/$REPOSITORY/releases/latest" --jq .tag_name)
           name=$(sed -n 's/^versionName=//p' version.properties)
           version_commit=$(git log -1 --format=%H -- version.properties)
           subject=$(git log -1 --format=%s "$version_commit")
@@ -90,6 +105,7 @@ jobs:
               printf '%s\n' "commit=$(git rev-parse HEAD)"
               printf '%s\n' "name=$name"
               printf '%s\n' "code=$(sed -n 's/^versionCode=//p' version.properties)"
+              printf '%s\n' "previous=$previous"
           } >> "$GITHUB_OUTPUT"
           printf '%s\n' "Prepared $name at $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
       - name: Reuse successful exact-commit CI when available
@@ -278,11 +294,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.prepare.outputs.name }}
+          RELEASE_NOTES: ${{ inputs.notes }}
+          PREVIOUS_TAG: ${{ needs.prepare.outputs.previous }}
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
           # The app reads this small metadata asset to compare the release's versionCode with its own.
           java -jar "$RUNNER_TEMP/release-artifact/minimpos-tooling.jar" release update --out "$RUNNER_TEMP/update.json"
+          printf '%s\n\n**Full Changelog**: %s/compare/%s...v%s\n' \
+              "$RELEASE_NOTES" "$REPOSITORY_URL" "$PREVIOUS_TAG" "$VERSION" > "$RUNNER_TEMP/release-notes.md"
           gh release create "v$VERSION" "$RUNNER_TEMP/minimpos-$VERSION.apk" "$RUNNER_TEMP/update.json" \
-              --verify-tag --title "Mini mPOS $VERSION" --generate-notes
+              --verify-tag --title "Mini mPOS $VERSION" --notes-file "$RUNNER_TEMP/release-notes.md"
 
       - name: Remove signing material
         if: ${{ always() }}

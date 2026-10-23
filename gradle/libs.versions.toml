@@ -42,7 +42,7 @@ jsoup = "1.23.2"
 # The W3C Nu Html Checker (validator.w3.org/nu), run on the website by :website-test.
 nuValidator = "26.10.7"
 # Stands in for the checker's log4j 1.2.17 (end of life, with unfixed advisories); a drop-in fork with them fixed.
-reload4j = "1.2.26"
+reload4j = "1.2.27"
 slf4j = "2.0.19"
 
 [libraries]

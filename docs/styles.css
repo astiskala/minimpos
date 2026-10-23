@@ -673,7 +673,9 @@ pre {
   .guide-body .shot-pair .terminal:last-child { margin-top: 0; }
 }
 
+/* Single-word titles such as "Troubleshooting" must fit 320 px screens with classic scrollbars and wider fonts. */
 @media (max-width: 360px) {
+  h1 { font-size: 1.8rem; overflow-wrap: break-word; }
   .hero-shots { height: 325px; }
   .hero-shots .terminal { width: 145px; }
 }

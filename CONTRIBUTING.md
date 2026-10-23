@@ -23,17 +23,10 @@ there is no Java code, and that importer cannot handle this build.
 
 ## Find the right code
 
-| Module | Responsibility |
-| --- | --- |
-| `core` | Android-free money/tax, cart, refunds, receipt model/renderers, QR formats, currencies, payment methods and original payment context. |
-| `adyen` | Android-free Terminal, Checkout, Cloud device and Management API integration, transports and simulator. |
-| `app` | Compose UI, Room, DataStore, Keystore, email, camera scanning and manual DI in `AppContainer`. |
-| `website-test` | Tests and validation for the static website in `docs/`; no app code. |
-| `tooling` | Kotlin/JVM release CLI, signing-property extraction and shell-runner regression tests; no app dependencies. |
-
-[CONTEXT.md](CONTEXT.md) defines domain terms and decision owners. Read the relevant
-[module rules](app/AGENTS.md) ([Adyen module](adyen/AGENTS.md)) before changing a module. Their starred architectural
-rules are enforced by ArchUnit. Detailed contracts belong in KDoc, not a parallel architecture manual.
+[AGENTS.md](AGENTS.md#where-things-live) maps the modules. [CONTEXT.md](CONTEXT.md) defines domain terms and
+decision owners. Read the relevant [module rules](app/AGENTS.md) ([Adyen module](adyen/AGENTS.md)) before changing a
+module; their starred architectural rules are enforced by ArchUnit. Detailed contracts belong in KDoc, not a parallel
+architecture manual.
 
 On a terminal, the app sends encrypted Terminal API requests to `https://localhost:8443/nexo`. Network setups reach
 the same API on another terminal; cloud setups use Adyen's HTTPS device API; Tap to Pay uses encrypted App Links to
@@ -54,14 +47,11 @@ scripts/gradle :core:test --tests '*MoneyTest'
 scripts/gradle qualityGate
 ```
 
-It overrides console mode to plain and removes only known task/cache progress. Warnings,
-unknown output, failure diagnostics and the exit status survive. Every run saves complete stdout/stderr in a separate
-private log under ignored `build/gradle-logs/`; the runner prints its path. It does not use `--quiet`, disable checks or
-truncate failures. Signals are forwarded to Gradle and return a nonzero status. Use regular `./gradlew` for interactive
-progress or detailed logging (`--info`, `--stacktrace`). The runner uses Bash and standard system tools, without a
-bootstrap build, an installed Kotlin compiler or Node. Failed runs also save a private `repair.txt` beside the log:
-exit status, shell-quoted rerun, failed tasks, assertions and source frames extracted from that run. This is navigation,
-not a replacement for the full diagnostics.
+It uses plain console output and removes only known task/cache progress; warnings, unknown output, failure diagnostics
+and the exit status survive. Every run saves complete stdout/stderr to a private log under ignored
+`build/gradle-logs/` and prints its path. Failed runs also save a `repair.txt` beside it with the exit status, a quoted
+rerun, failed tasks, assertions and source frames: navigation, not a replacement for the full log. Use regular
+`./gradlew` for interactive progress or `--info`/`--stacktrace`.
 
 ### Fast iteration
 
@@ -120,13 +110,12 @@ The gate checks:
 | Dokka | All KDoc links resolve, including private code; generated HTML is in `<module>/build/dokka/html`. |
 | Android Lint | All checks, including normally disabled checks and test sources; warnings fail. |
 | Tests | JVM, Robolectric, Compose, ArchUnit and Android API-level tests; app tests run on Robolectric SDK 33 and again on the minimum SDK 28. |
-| Kover | Core 95/85%, Adyen 90/75% line/branch coverage; app non-UI 80% lines via `koverVerifyDebug`. |
+| Kover | Line/branch bounds in each module's `build.gradle.kts`; the app's apply to non-UI debug code via `koverVerifyDebug`. |
 | Manifest | Debug and release satisfy Adyen's constraints, including a PNG-only application icon and allowed permissions. |
 
-Kotlin warnings are errors. Fix findings instead of adding suppressions, exclusions, ignores or baselines. Existing
-exceptions have reasons. A new architectural decision needs a rule, a reason comment, and a check that a deliberate
-violation fails. Keep new source sets covered by type-resolved detekt; don't add the overlapping plain `detekt` task.
-Aggregate app coverage has no bounds and must not pull release compilation into the gate.
+Kotlin warnings are errors. Fix findings instead of adding suppressions, exclusions, ignores or baselines; existing
+exceptions have reasons. [Code conventions](AGENTS.md#code-conventions) cover new architectural rules and detekt
+coverage; don't add the overlapping plain `detekt` task. Aggregate app coverage has no bounds.
 
 Build `./gradlew :app:assembleRelease` after dependency changes: R8 may need keep rules. CI runs the gate and release
 build on pull requests. JVM modules aren't checked by Android Lint for API availability; `AndroidApiLevelTest` checks
@@ -201,20 +190,16 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
 
 ## Make changes that fit
 
-- Follow [repository constraints](AGENTS.md) and existing module patterns. Use `Long` minor units and Adyen's decimals,
-  never floating-point money; tax rates are thousandths of a percent.
-- Use the Adyen library for every modeled API payload, crypto and certificate checks; see
-  [Adyen API model ownership](#adyen-api-model-ownership) and the [Adyen rules](adyen/AGENTS.md).
-- Every public/protected declaration needs KDoc (tests exempt): useful contracts, units, null meaning, threading,
-  formats and errors. Constructor tags, when used, cover every parameter in order: public properties use `@property`,
-  others `@param`. Don't merely repeat a declaration's name.
+[AGENTS.md](AGENTS.md) is the single list of repository constraints for every contributor: money, compatibility,
+security, payment boundaries, code conventions (KDoc, QR and `update.json` formats) and localization. This section
+adds how to meet them.
+
+- Follow existing module patterns. Use the Adyen library for every modeled API payload, crypto and certificate check;
+  see [Adyen API model ownership](#adyen-api-model-ownership) and the [Adyen rules](adyen/AGENTS.md).
 - Keep Compose components small. Pass state/callbacks rather than view models below screen level, reuse components,
   and use `ColumnScope`/`RowScope` extensions for siblings that need parent spacing.
-- Put user text in resources, in short US English, with Mexican Spanish, French, Japanese, Brazilian Portuguese
-  and Simplified/Traditional Chinese translations
-  and matching format arguments. Group `strings.xml` by feature, keeping the same section and resource order in every
+- Put user text in resources. Group `strings.xml` by feature, keeping the same section and resource order in every
   language; place new entries beside related strings.
-  CJK plurals use `other`. Preserve identifiers, stored spelling and Adyen text; keep Customer Area paths English.
   Follow the [Adyen partner style guide](https://docs.adyen.com/development-resources/partner-style-guide) for app copy
   and merchant guides: short active sentences, consistent terms and numbered instructions. Name Adyen in documentation
   link text and link to pages, not fragments. Use reserved example domains and IP addresses. Keep exact UI labels,
@@ -225,12 +210,10 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
   data, including unfinished financial operations. Never add destructive fallback or reset local data silently.
 - Settings, secrets, JSON columns and journal payloads have no Room schema export, and an unreadable settings or
   secrets file is preserved: storage health blocks access and startup work until the app can read it after restart.
-  `StoredFormatTest` keeps their format in `stored/formats.txt` and loads the
-  files each release wrote from `app/src/test/resources/stored/<version>/`. When a release changes the format, copy
-  `app/build/reports/stored-formats/current/` (written by that test) to `stored/<version>/` before releasing.
-- QR formats retain one current contract. Update the app, setup helper, format tests and helper vectors together;
-  see [repository constraints](AGENTS.md).
-- New-install localized/regional defaults must not overwrite stored text or imported settings.
+  `StoredFormatTest` keeps their format in `app/src/test/resources/stored/formats.txt` and loads the files each
+  release wrote from `stored/<version>/`. When the format changes, keep every released fixture loading, copy the
+  test's `app/build/reports/stored-formats/formats.txt` over `stored/formats.txt`, and before releasing copy
+  `app/build/reports/stored-formats/current/` to `stored/<version>/`.
 
 ### Translation terminology
 
@@ -302,22 +285,13 @@ or publication.
 
 The Pages workflow validates the website before publishing `docs/` unchanged. It runs on website, helper-contract,
 website-test and relevant build changes, or manually; app-only and version-only commits do not redeploy the site.
-The public site is <https://minimpos.app/>. Verify domain ownership in the GitHub account settings, then set
-**Settings › Pages › Custom domain** to `minimpos.app` before configuring DNS. Follow
-[GitHub's custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
-for the apex records and optional `www` redirect, then enable **Enforce HTTPS**. This Actions-based deployment uses
-repository settings, not a `CNAME` file, to select the domain; DNS and repository settings are not configured by a commit.
+The public site is <https://minimpos.app/>.
 
-Keep the existing visual design and script-free guides; only the setup
-helper runs `docs/js/setup.js` and the vendored `qrcodegen.js`. Preserve the helper's no-network policy and update its
-format alongside `TransferCodec`, `QrChunks`, `TransferSeal` and the helper vectors in `SetupTransferTest`.
-
-The merchant documentation has three guides: setup, using the app, troubleshooting. Each fact has one home, with
-links from elsewhere. Update English, Mexican Spanish, French, Japanese, Brazilian Portuguese, Simplified Chinese and
-Traditional Chinese together, including metadata
-and reciprocal language switches. Website tests protect workflow coverage and translation parity, not a fixed count
-of pages or headings.
-For a quick check, run `./gradlew :website-test:check`; the full gate remains required.
+[Documentation changes](AGENTS.md#documentation-changes) lists the content and translation rules. Only the setup
+helper runs scripts (`docs/js/setup.js` and the vendored `qrcodegen.js`); its format changes alongside
+`TransferCodec`, `QrChunks`, `TransferSeal` and the helper vectors in `SetupTransferTest`. Website tests protect
+workflow coverage and translation parity, not a fixed count of pages or headings. For a quick check, run
+`scripts/dev check website`; the full gate remains required.
 
 Each language has a `site.webmanifest` with localized guide shortcuts and its home page as the launch URL. Keep the
 shared application ID and site-wide scope when editing them. `docs/llms.txt` indexes the canonical pages in all seven
@@ -397,6 +371,8 @@ dimensions do not prove the correct screen or transaction. Website checks also r
 - For transitive advisories, pin a patched version in `settings.gradle.kts`'s `patched` table, check
   `./gradlew <module>:dependencies buildEnvironment`, then run the gate and signed release build. Remove overrides
   when upstream catches up. Dependency submission sends the resolved graph to GitHub.
+- Dependabot leaves the Adyen Java library ungrouped so each upgrade is reviewed alone: check its model changes
+  against [API model ownership](#adyen-api-model-ownership), then run the gate and release build.
 - Adyen's library ships no R8 rules. Keep its model/serialization rules in `app/proguard-rules.pro`. The
   `TrustAllX509TrustManager` lint exception depends on stripping the TEST-only API; `verifyReleaseShrunkClasses`
   (run by every `assembleRelease`) fails when R8 keeps it, any trust manager in the library or Apache HttpClient 5.
@@ -436,6 +412,11 @@ workflow syntax, so no reusable-workflow call or linter exception is needed.
   forces compiler execution for extraction. Check the first analysis's source coverage before retiring default setup.
 - After deploying `pages.yml`, set Settings › Pages › Build and deployment › Source to **GitHub Actions**, then run
   Pages manually for the first verified deployment. Keep the `github-pages` environment restricted to main.
+- For the custom domain, verify ownership in the GitHub account settings, then set **Settings › Pages › Custom domain**
+  to `minimpos.app` before configuring DNS. Follow
+  [GitHub's custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
+  for the apex records and optional `www` redirect, then enable **Enforce HTTPS**. The Actions-based deployment selects
+  the domain from repository settings, not a `CNAME` file.
 - Dependency submission runs when Gradle scripts, properties, wrapper/catalog or its workflow change, weekly, and
   manually. After a successful explicit submission, verify its resolved transitive snapshot, including the security
   floors in `settings.gradle.kts`, then disable Settings › Advanced Security › Automatic dependency submission.
@@ -466,8 +447,7 @@ an unsigned APK, which Adyen accepts as an upload but terminals cannot install. 
 `app.minimpos`; each ID is tied to the key used for its first upload. Keep the same key and use a higher
 version code for each deployment. A signing-key mismatch requires Adyen Support to remove earlier uploads.
 
-Do not bump this repository's version by hand. Use the release workflow for releases; forks must maintain their own
-release process, credentials and signing history.
+Forks must maintain their own release process, credentials and signing history.
 
 ## Release the app
 

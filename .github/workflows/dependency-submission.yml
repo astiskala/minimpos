@@ -1,7 +1,8 @@
 name: Dependency submission
 
 # Sends the resolved Gradle dependency graph, transitive dependencies included, to GitHub, so that Dependabot alerts on
-# advisories in libraries no build file declares (the `patched` table in settings.gradle.kts handles those).
+# advisories in libraries no build file declares (the `patched` table in gradle/dependency-floors.settings.gradle.kts
+# handles those).
 on:
   push:
     branches: [main]
@@ -9,6 +10,7 @@ on:
       - '*.gradle.kts'
       - '*/build.gradle.kts'
       - 'gradle/**'
+      - 'build-logic/**'
       - 'gradle.properties'
       - '.github/workflows/dependency-submission.yml'
   schedule:

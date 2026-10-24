@@ -5,26 +5,7 @@ import java.net.InetSocketAddress
 // Checks the static website in docs/ (published as is by GitHub Pages, so the build files cannot live there): JUnit
 // tests of its links, languages, metadata and screenshots, and the W3C Nu Html Checker on its pages and styles.
 plugins {
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.detekt)
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        allWarningsAsErrors.set(true)
-        extraWarnings.set(true)
-    }
-}
-
-detekt {
-    buildUponDefaultConfig = true
-    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+    id("minimpos.kotlin-jvm")
 }
 
 val htmlChecker =
@@ -177,6 +158,5 @@ val htmlCheck =
     }
 
 tasks.named("check") {
-    setDependsOn(dependsOn - tasks.named("detekt"))
-    dependsOn(htmlCheck, "detektTest")
+    dependsOn(htmlCheck)
 }

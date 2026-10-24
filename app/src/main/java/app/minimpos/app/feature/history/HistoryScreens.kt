@@ -261,7 +261,7 @@ private fun HistoryFilters(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (methods.isNotEmpty() || method != null) item(key = "method") { PaymentMethodChip(methods, method, onMethod) }
-        items(HistoryFilter.entries) { filter ->
+        items(HistoryFilter.entries, key = { it.name }) { filter ->
             FilterChip(
                 selected = selected == filter,
                 onClick = { onSelect(filter) },

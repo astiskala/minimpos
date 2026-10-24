@@ -9,6 +9,7 @@ on:
       - 'core/**'
       - '*.gradle.kts'
       - 'gradle/**'
+      - 'build-logic/**'
       - 'gradle.properties'
       - 'config/detekt/**'
       - '.github/workflows/pages.yml'

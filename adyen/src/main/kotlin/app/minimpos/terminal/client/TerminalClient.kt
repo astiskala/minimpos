@@ -631,7 +631,7 @@ class TerminalClient(
         transactionStatusRequest =
             TransactionStatusRequest().apply {
                 // Ask for the receipts again, so a recovered payment can be printed like any other.
-                setReceiptReprintFlag(true)
+                if (recovery.reprintReceipts) setReceiptReprintFlag(true)
                 documentQualifier += listOf(DocumentQualifierType.CASHIER_RECEIPT, DocumentQualifierType.CUSTOMER_RECEIPT)
                 messageReference =
                     MessageReference().apply {

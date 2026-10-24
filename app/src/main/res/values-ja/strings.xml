@@ -852,7 +852,7 @@
   <string name="capability_abort">POS からのキャンセル要求</string>
   <string name="capability_diagnosis">端末診断</string>
   <string name="capability_remote_status">取引状態のリモート照会</string>
-  <string name="capability_late_reply_hint">Tap to Pay には独自のキャンセルボタンがあります。応答が届かない取引はリモート照会できず、すでに受信した遅延応答でのみ結果を確認できます。端末診断なしでも設定の確認は可能です。</string>
+  <string name="capability_late_reply_hint">Tap to Pay には独自のキャンセルボタンがあります。状態照会には Payments アプリ 1.8.0 以降が必要です。ベータ版の利用可否は Adyen に確認してください。遅れて届いた応答も利用できます。結果が不明な場合は、再請求前に Customer Area を確認してください。</string>
   <string name="capability_terminal_tipping">端末でのチップ</string>
   <string name="capability_dcc">通貨選択決済（DCC）</string>
   <string name="capability_giving">Adyen Giving</string>
@@ -1191,7 +1191,7 @@
   <string name="fault_not_started">Adyen Paymentsアプリを開けませんでした。インストールされているか確認してください。</string>
   <string name="fault_app_refused">Adyen Paymentsアプリがリクエストを受け付けませんでした。</string>
   <string name="fault_unsupported">この決済先はこのリクエストに対応していません。</string>
-  <string name="fault_no_late_reply">Paymentsアプリからの応答はまだ届いていません。結果を問い合わせることはできないため、Customer Areaで決済を確認してください。</string>
+  <string name="fault_no_late_reply">Payments アプリの結果はまだ不明です。選択した Payments アプリを更新し、状態照会の利用可否を Adyen に確認してください。再請求前に Customer Area を確認してください。</string>
   <string name="fault_no_record">端末にこの取引の記録がないため、処理されていません。</string>
   <string name="fault_request_not_encrypted">リクエストを暗号化できませんでした。端末設定で共有キーを確認してください。</string>
   <string name="fault_credential_adyen">AdyenがAPIキーを受け付けませんでした。端末設定で確認してください。</string>

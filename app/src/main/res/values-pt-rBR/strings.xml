@@ -856,7 +856,7 @@
   <string name="capability_abort">Cancelamento solicitado por POS</string>
   <string name="capability_diagnosis">Diagnóstico terminal</string>
   <string name="capability_remote_status">Status da transação remota</string>
-  <string name="capability_late_reply_hint">Tap to Pay possui seu próprio botão Cancelar. As respostas faltantes não podem ser consultadas remotamente; apenas uma resposta tardia já recebida pode resolvê-los. As verificações de configuração permanecem disponíveis sem diagnóstico terminal.</string>
+  <string name="capability_late_reply_hint">Tap to Pay tem seu próprio botão Cancelar. As consultas exigem Payments 1.8.0 ou posterior; confirme o acesso beta com a Adyen. Respostas tardias continuam válidas. Se o resultado permanecer desconhecido, consulte a Customer Area antes de cobrar novamente.</string>
   <string name="capability_terminal_tipping">Gorjetas no terminal</string>
   <string name="capability_dcc">Conversão Dinâmica de Moeda (DCC)</string>
   <string name="capability_giving">Adyen Giving</string>
@@ -1203,7 +1203,7 @@
   <string name="fault_not_started">O aplicativo Adyen Payments não pôde ser aberto. Verifique se ele está instalado.</string>
   <string name="fault_app_refused">O app Adyen Payments não aceitou a solicitação.</string>
   <string name="fault_unsupported">Este destino não suporta esta solicitação.</string>
-  <string name="fault_no_late_reply">Nenhuma resposta do aplicativo Adyen Payments chegou ainda. Não pode ser solicitado o resultado, portanto verifique o pagamento no seu Customer Area.</string>
+  <string name="fault_no_late_reply">O resultado do Payments ainda é desconhecido. Atualize o aplicativo Payments selecionado, confirme o acesso às consultas com a Adyen e consulte a Customer Area antes de cobrar novamente.</string>
   <string name="fault_no_record">O terminal não possui registro desta transação, portanto ela não foi processada.</string>
   <string name="fault_request_not_encrypted">A solicitação não pôde ser criptografada. Verifique a chave compartilhada nas configurações do Terminal.</string>
   <string name="fault_credential_adyen">Adyen não aceitou a chave API. Verifique nas configurações do Terminal.</string>

@@ -39,6 +39,8 @@ class PaymentsAppBridgeTest {
             }
         assertThat(reply).isEqualTo(AppLinkAnswer.Returned(answer))
         assertThat(bridge.awaitingAnswer).isNull()
+        assertThat(bridge.lateReplies()).containsExactly(answer)
+        bridge.forgetLateReplies(setOf(answer))
         assertThat(bridge.lateReplies()).isEmpty()
     }
 
@@ -73,5 +75,29 @@ class PaymentsAppBridgeTest {
     fun `an answer with no exchange waiting is kept for status checks`() {
         assertThat(bridge.deliver(answer)).isTrue()
         assertThat(bridge.lateReplies()).containsExactly(answer)
+    }
+
+    @Test
+    fun `a late financial callback racing a status exchange survives until durable acknowledgement`() {
+        val status = "$answer-status"
+        exchange { launch ->
+            bridge.opened(launch.id)
+            bridge.deliver(answer)
+            bridge.deliver(status)
+        }
+        assertThat(bridge.lateReplies()).containsExactly(answer, status).inOrder()
+        bridge.forgetLateReplies(setOf(answer))
+        assertThat(bridge.lateReplies()).containsExactly(status)
+    }
+
+    @Test
+    fun `a boarding callback cannot consume a pending financial exchange`() {
+        val returned =
+            exchange { launch ->
+                bridge.opened(launch.id)
+                bridge.deliver("${PaymentsAppBridge.RETURN_URL}/boarded?boarded=true")
+                bridge.deliver(answer)
+            }
+        assertThat(returned).isEqualTo(AppLinkAnswer.Returned(answer))
     }
 }

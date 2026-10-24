@@ -171,6 +171,8 @@ standalone release builds retain release lint by default. R8, signing and packag
 
 There is no real Adyen test account in CI. Still needing real-device/API verification: cloud offline/busy event
 notifications; Payments app dual-install TEST/LIVE routing and separate boarding on physical phones;
+Payments app v1.8.0+ transaction-status beta enablement, missing-callback/process-death recovery, InProgress and
+NotFound behavior on physical phones (automated encrypted App Link/simulator tests do not establish enablement);
 Payments app return-URL encoding, error answers and size limits, boarding-credential `/me` permissions
 and client-key propagation on physical phones; Management v3 Payments app role assignment, credential creation,
 interrupted-creation listing/API-key recovery and propagation before boarding; TEST payment-link paid/PATCH answers

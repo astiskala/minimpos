@@ -854,7 +854,7 @@
   <string name="capability_abort">POS-requested cancellation</string>
   <string name="capability_diagnosis">Terminal diagnosis</string>
   <string name="capability_remote_status">Remote transaction status</string>
-  <string name="capability_late_reply_hint">Tap to Pay has its own Cancel button. Missing answers cannot be queried remotely; only an already received late reply can resolve them. Setup checks remain available without terminal diagnosis.</string>
+  <string name="capability_late_reply_hint">Tap to Pay has its own Cancel button. Status checks need Payments app 1.8.0 or later; beta access must be confirmed with Adyen. Late replies remain usable. If the result stays unknown, check Customer Area before charging again.</string>
   <string name="capability_terminal_tipping">Terminal tipping</string>
   <string name="capability_dcc">Dynamic Currency Conversion (DCC)</string>
   <string name="capability_giving">Adyen Giving</string>
@@ -1197,7 +1197,7 @@
   <string name="fault_not_started">The Adyen Payments app could not be opened. Check that it is installed.</string>
   <string name="fault_app_refused">The Adyen Payments app did not accept the request.</string>
   <string name="fault_unsupported">This destination does not support this request.</string>
-  <string name="fault_no_late_reply">No reply from the Payments app has arrived yet. It cannot be asked for the result, so check the payment in your Customer Area.</string>
+  <string name="fault_no_late_reply">The Payments app result is still unknown. Update the selected Payments app, confirm status access with Adyen, and check Customer Area before charging again.</string>
   <string name="fault_no_record">The terminal has no record of this transaction, so it was not processed.</string>
   <string name="fault_request_not_encrypted">The request could not be encrypted. Check the shared key in Terminal settings.</string>
   <string name="fault_credential_adyen">Adyen did not accept the API key. Check it in Terminal settings.</string>

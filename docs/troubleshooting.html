@@ -112,9 +112,10 @@
           </ol>
           <p>A crash or restart leaves the interrupted operation in History as unknown. Do not clear the app's data to
             remove it.</p>
-          <p>With Tap to Pay, the Payments app cannot be asked for a status. <strong>Check result again</strong> uses
-            only a late answer that has already arrived. If there is none, check the Customer Area before charging
-            again.</p>
+          <p id="tap-to-pay-recovery">With Tap to Pay, <strong>Check result again</strong> first uses a received late
+            answer, then asks the selected Payments app for the original result. Status checks require version 1.8.0
+            or later; confirm beta access with Adyen. A missing callback or NotFound leaves the result unknown. Check
+            <strong>Customer Area › Payments › Payment list</strong> before charging again.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="declines">
@@ -542,12 +543,11 @@
 <p><span class="fix-label">Fix</span><a href="#unknown">Check the result</a>. Do not charge again until you know it.</p>
   <details class="cause"><summary>Cause</summary><p>The request was sent, but no answer arrived, so its outcome is
   unknown.</p></details></dd></div>
-            <div><dt>“No reply from the Payments app has arrived yet. It cannot be asked for the result, so check the
-              payment in your Customer Area.”</dt>
+            <div><dt>“The Payments app result is still unknown. Update the selected Payments app, confirm status access with
+              Adyen, and check Customer Area before charging again.”</dt>
               <dd>
 <p><span class="fix-label">Fix</span>Find the payment in the Customer Area before charging again.</p>
-  <details class="cause"><summary>Cause</summary><p>With Tap to Pay, the Payments app cannot be asked for a result, and
-  no late answer has arrived.</p></details></dd></div>
+  <details class="cause"><summary>Cause</summary><p><a href="#tap-to-pay-recovery">Tap to Pay result recovery</a>.</p></details></dd></div>
             <div><dt>“The Adyen Payments app could not be opened. Check that it is installed.”</dt>
               <dd>
 <p><span class="fix-label">Fix</span>Install the Payments app for your environment, then try again. See

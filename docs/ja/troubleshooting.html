@@ -104,8 +104,9 @@
               から決済を探します。確認してから次の操作を決めてください。</li>
           </ol>
           <p>クラッシュや再起動で中断した操作は、不明として取引履歴に残ります。消すためにアプリデータを消去しないでください。</p>
-          <p>Tap to Pay では、Payments アプリに状態を問い合わせられません。<strong>結果を再確認</strong>は、すでに届いている遅れた応答だけを使います。応答がなければ、再請求の前に
-            Customer Area を確認してください。</p>
+          <p id="tap-to-pay-recovery">Tap to Pay の<strong>結果を再確認</strong>は、まず受信済みの遅延応答を使い、次に選択した Payments
+            アプリへ元の結果を照会します。状態照会には 1.8.0 以降が必要です。ベータ版の利用可否は Adyen に確認してください。応答がない場合や NotFound の場合は、結果は不明のままです。再請求前に
+            <strong>Customer Area › 「Payments」 › 「Payment list」</strong> を確認してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="declines">
@@ -463,10 +464,9 @@
               <dd>
 <p><span class="fix-label">対処</span><a href="#unknown">結果を確認</a>してください。結果が分かるまで再請求しないでください。</p><details class="cause">
   <summary>原因</summary><p>リクエストは送信されましたが応答がなかったため、結果は不明です。</p></details></dd></div>
-            <div><dt>「Paymentsアプリからの応答はまだ届いていません。結果を問い合わせることはできないため、Customer Areaで決済を確認してください。」</dt>
+            <div><dt>「Payments アプリの結果はまだ不明です。選択した Payments アプリを更新し、状態照会の利用可否を Adyen に確認してください。再請求前に Customer Area を確認してください。」</dt>
               <dd>
-<p><span class="fix-label">対処</span>再請求の前に、Customer Area で決済を確認してください。</p><details class="cause"><summary>原因</summary>
-  <p>Tap to Payでは、Paymentsアプリに結果を問い合わせることができず、遅れて届く応答もまだありません。</p></details></dd></div>
+<p><span class="fix-label">対処</span>再請求の前に、Customer Area で決済を確認してください。</p><details class="cause"><summary>原因</summary><p><a href="#tap-to-pay-recovery">Tap to Pay の結果の確認</a>.</p></details></dd></div>
             <div><dt>「Adyen Paymentsアプリを開けませんでした。インストールされているか確認してください。」</dt>
               <dd>
 <p><span class="fix-label">対処</span>環境に合ったPaymentsアプリをインストールしてから、再試行してください。<a href="quick-start#connect">Adyenに接続</a>

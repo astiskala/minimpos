@@ -248,7 +248,7 @@ private fun ColumnScope.InteractionCapabilitiesMatrix(
         standing = capabilities.remoteStatusStanding,
         tag = "cap_remote_status",
     )
-    if (!capabilities.capabilities.supportsRemoteStatus) {
+    if (capabilities.remoteStatusStanding != CapabilityStanding.AVAILABLE) {
         SettingNote(stringResource(R.string.capability_late_reply_hint))
     }
 }

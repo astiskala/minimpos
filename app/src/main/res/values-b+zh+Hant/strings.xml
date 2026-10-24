@@ -852,7 +852,7 @@
   <string name="capability_abort">POS 發起取消</string>
   <string name="capability_diagnosis">終端診斷</string>
   <string name="capability_remote_status">遙距交易狀態查詢</string>
-  <string name="capability_late_reply_hint">Tap to Pay 有自己的取消按鈕。無法遙距查詢未收到回覆的交易；只有已收到的延遲回覆才能確認結果。毋須終端診斷也可檢查設定。</string>
+  <string name="capability_late_reply_hint">Tap to Pay 有自己的取消按鈕。狀態查詢需要 Payments 應用程式 1.8.0 或以上版本；請向 Adyen 確認測試版使用權限。延遲的回覆仍可使用。若結果仍未知，再次收款前請檢查商戶後台。</string>
   <string name="capability_terminal_tipping">終端小費</string>
   <string name="capability_dcc">動態貨幣轉換 (DCC)</string>
   <string name="capability_giving">Adyen Giving</string>
@@ -1191,7 +1191,7 @@
   <string name="fault_not_started">無法開啟 Adyen Payments 應用程式。請確認已安裝該應用程式。</string>
   <string name="fault_app_refused">Adyen Payments 應用程式未接受請求。</string>
   <string name="fault_unsupported">此收款目標不支援該請求。</string>
-  <string name="fault_no_late_reply">尚未收到 Payments 應用程式的回覆。無法向其查詢結果，請在商戶後台核實此次支付。</string>
+  <string name="fault_no_late_reply">Payments 應用程式的結果仍未知。請更新所選 Payments 應用程式，向 Adyen 確認狀態查詢權限，並在再次收款前檢查商戶後台。</string>
   <string name="fault_no_record">終端沒有此交易的記錄，因此未處理。</string>
   <string name="fault_request_not_encrypted">無法加密請求。請在終端設定中檢查共享密鑰。</string>
   <string name="fault_credential_adyen">Adyen 未接受 API 密鑰。請在終端設定中檢查。</string>

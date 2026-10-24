@@ -603,9 +603,11 @@ data class DiagnosisResult(
  * @property attempts How many status checks may go unanswered (connection errors or no usable reply).
  * @property intervalMillis The pause before each status check; Adyen advises every 5 seconds.
  * @property maxInProgressChecks How many InProgress replies to accept before giving up.
+ * @property reprintReceipts Whether status may request terminal receipt reprinting; unsupported by the Payments app.
  */
 data class RecoveryPolicy(
     val attempts: Int = 12,
     val intervalMillis: Long = 5_000,
     val maxInProgressChecks: Int = 120,
+    val reprintReceipts: Boolean = true,
 )

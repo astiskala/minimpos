@@ -220,7 +220,7 @@ data class AdyenCapabilitiesState(
 
     /** Whether transaction status is queried remotely, not merely recovered from an already received late reply. */
     val remoteStatusStanding: CapabilityStanding
-        get() = if (capabilities.supportsRemoteStatus) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
+        get() = capabilities.remoteStatus
 
     /** Device-camera scanning for products, refunds and setup; camera permission is requested only when scanning. */
     val cameraScanningStanding: CapabilityStanding

@@ -43,7 +43,10 @@ sealed interface DestinationRules {
     val supportsPrinting: Boolean get() = true
 
     /** Whether a missing transaction answer can be queried remotely, rather than only recovered from a late reply. */
-    val supportsRemoteStatus: Boolean get() = true
+    fun remoteStatus(
+        device: DeviceInfo,
+        environment: TerminalEnvironment?,
+    ): CapabilityStanding = CapabilityStanding.AVAILABLE
 
     /** Whether local offline EMV and store-and-forward processing are supported on this destination. */
     val supportsOfflinePayments: Boolean get() = false

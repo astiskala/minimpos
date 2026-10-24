@@ -90,6 +90,7 @@ class ShopperReferenceFlowTest {
         compose.clickWhenEnabled("charge")
         waitForTag("pay")
         compose.onNodeWithTag("customerReference").performTextInput("CUST-1042")
+        waitForTag("tokenize")
         compose.onNodeWithText("Save card for future payments").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("tokenize") and isOn(), 15_000)
         compose.onNodeWithTag("tokenize").assertIsOn()

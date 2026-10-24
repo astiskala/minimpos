@@ -50,6 +50,7 @@ import kotlinx.serialization.serializer
  *   ([app.minimpos.app.data.settings.TerminalSettings.environment]); null
  *   for the simulator and until known.
  * @property paymentsApps The environments of the Adyen Payments apps installed on the device when it was resolved.
+ * @property remoteStatus Readiness of status recovery for the selected destination and installed app version.
  */
 data class TerminalSetup(
     val settings: AppSettings,
@@ -61,6 +62,7 @@ data class TerminalSetup(
     val apiSetup: ApiSetup,
     val environment: TerminalEnvironment?,
     val paymentsApps: Set<TerminalEnvironment> = emptySet(),
+    val remoteStatus: CapabilityStanding = CapabilityStanding.AVAILABLE,
 ) {
     /**
      * Where payments go: [TerminalMode.TERMINAL], [TerminalMode.CLOUD], [TerminalMode.PAYMENTS_APP] or
@@ -94,7 +96,7 @@ data class TerminalSetup(
                 supportsPrinting = destination.supportsPrinting,
                 aborts = destination.aborts,
                 diagnoses = destination.diagnoses,
-                supportsRemoteStatus = destination.supportsRemoteStatus,
+                remoteStatus = remoteStatus,
             )
 
     internal val needsSharedKey: Boolean get() = Secret.TERMINAL_PASSPHRASE in destination.secrets
@@ -237,6 +239,7 @@ data class TerminalSetup(
                 gated,
                 environment,
                 device.paymentsApps,
+                destination.remoteStatus(device, environment),
             )
         }
 
@@ -332,7 +335,7 @@ data class TerminalSetup(
  * @property supportsPrinting Whether print requests are supported, independently of hardware and local preferences.
  * @property aborts Whether the POS can request cancellation of a running terminal transaction.
  * @property diagnoses Whether terminal diagnosis requests are supported.
- * @property supportsRemoteStatus Whether missing transaction answers can be queried remotely; false for late-reply-only recovery.
+ * @property remoteStatus Whether status recovery is available, needs verification/enablement, or is unsupported.
  */
 data class DestinationCapabilities(
     val discoversTerminals: Boolean = false,
@@ -345,7 +348,7 @@ data class DestinationCapabilities(
     val supportsPrinting: Boolean = true,
     val aborts: Boolean = true,
     val diagnoses: Boolean = true,
-    val supportsRemoteStatus: Boolean = true,
+    val remoteStatus: CapabilityStanding = CapabilityStanding.AVAILABLE,
 )
 
 /**

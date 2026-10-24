@@ -101,7 +101,9 @@
             <li>如果结果仍未知，请按识别号、时间和金额在<strong>商户后台 › Payments › Payment list</strong>中查找该付款。确认后再决定下一步。</li>
           </ol>
           <p>崩溃或重启后，中断的操作会以未知状态保留在交易记录中。不要通过清除应用数据来移除它。</p>
-          <p>使用 Tap to Pay 时，无法向 Payments 应用查询状态。<strong>重新查询结果</strong>只能使用已经送达的迟到响应。若没有响应，再次收款前请检查商户后台。</p>
+          <p id="tap-to-pay-recovery">使用 Tap to Pay 时，<strong>重新查询结果</strong>先使用已收到的迟到回复，再向所选 Payments 应用查询原始结果。状态查询需要
+            1.8.0 或更高版本；请向 Adyen 确认测试版使用权限。未收到回调或返回 NotFound 时，结果仍未知。再次收款前，请检查<strong>商户后台 › “Payments” › “Payment
+            list”</strong>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="declines">
@@ -429,10 +431,9 @@
               <dd>
 <p><span class="fix-label">解决</span>请<a href="#unknown">查询结果</a>。在确认结果前，请勿再次收款。</p><details class="cause"><summary>原因
   </summary><p>请求已发出，但未收到响应，因此结果未知。</p></details></dd></div>
-            <div><dt>“尚未收到 Payments 应用的回复。无法向其查询结果，请在商户后台核实此次支付。”</dt>
+            <div><dt>“Payments 应用的结果仍未知。请更新所选 Payments 应用，向 Adyen 确认状态查询权限，并在再次收款前检查商户后台。”</dt>
               <dd>
-<p><span class="fix-label">解决</span>再次收款前，请在商户后台中查找此次付款。</p><details class="cause"><summary>原因</summary><p>使用 Tap to Pay
-  时，无法向 Payments 应用查询结果，且尚未收到迟到的回复。</p></details></dd></div>
+<p><span class="fix-label">解决</span>再次收款前，请在商户后台中查找此次付款。</p><details class="cause"><summary>原因</summary><p><a href="#tap-to-pay-recovery">Tap to Pay 结果恢复</a>.</p></details></dd></div>
             <div><dt>“无法打开 Adyen Payments 应用。请确认已安装该应用。”</dt>
               <dd>
 <p><span class="fix-label">解决</span>安装与您的环境对应的 Payments 应用，然后重试。请参阅<a href="quick-start#connect">连接 Adyen</a>。</p>

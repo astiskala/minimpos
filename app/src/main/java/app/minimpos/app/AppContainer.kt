@@ -322,7 +322,14 @@ class AppContainer(
             setups = terminalSetup,
             simulator = simulator,
             application = application,
-            paymentsApp = { key, environment -> PaymentsAppTransport(key, environment, paymentsAppLinks, PaymentsAppBridge.RETURN_URL) },
+            paymentsApp = { key, environment ->
+                PaymentsAppTransport(
+                    key,
+                    environment,
+                    paymentsAppLinks,
+                    PaymentsAppBridge.RETURN_URL,
+                ) { device.paymentsAppVersion(environment) }
+            },
             connect = terminalTransport,
             cloud = cloudDevices,
             localEnvironment = terminalEnvironment,

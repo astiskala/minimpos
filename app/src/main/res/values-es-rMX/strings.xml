@@ -856,7 +856,7 @@
   <string name="capability_abort">Cancelación solicitada por POS</string>
   <string name="capability_diagnosis">Diagnóstico terminal</string>
   <string name="capability_remote_status">Estado de transacción remota</string>
-  <string name="capability_late_reply_hint">Tap to Pay tiene su propio botón Cancelar. Las respuestas faltantes no se pueden consultar de forma remota; sólo una respuesta tardía ya recibida puede resolverlos. Las comprobaciones de configuración siguen estando disponibles sin diagnóstico del terminal.</string>
+  <string name="capability_late_reply_hint">Tap to Pay tiene su propio botón Cancelar. Las consultas de estado requieren Payments 1.8.0 o posterior; confirma el acceso beta con Adyen. Las respuestas tardías siguen siendo válidas. Si el resultado sigue siendo desconocido, revisa Área de Clientes antes de volver a cobrar.</string>
   <string name="capability_terminal_tipping">Propinas en el terminal</string>
   <string name="capability_dcc">Conversión dinámica de divisas (DCC)</string>
   <string name="capability_giving">Adyen Giving</string>
@@ -1203,7 +1203,7 @@
   <string name="fault_not_started">No se pudo abrir la aplicación Adyen Payments. Comprueba que esté instalado.</string>
   <string name="fault_app_refused">La aplicación Adyen Payments no aceptó la solicitud.</string>
   <string name="fault_unsupported">Este destino no admite esta solicitud.</string>
-  <string name="fault_no_late_reply">Aún no ha llegado ninguna respuesta de la aplicación Adyen Payments. No se puede pedir el resultado, así que revisa el pago en tu Área de Clientes.</string>
+  <string name="fault_no_late_reply">El resultado de Payments sigue siendo desconocido. Actualiza la aplicación Payments seleccionada, confirma el acceso a las consultas con Adyen y revisa el Área de Clientes antes de volver a cobrar.</string>
   <string name="fault_no_record">La terminal no tiene registro de esta transacción, por lo que no fue procesada.</string>
   <string name="fault_request_not_encrypted">La solicitud no se pudo cifrar. Verifique la clave compartida en la configuración de la Terminal.</string>
   <string name="fault_credential_adyen">Adyen no aceptó la clave API. Compruébalo en la configuración del Terminal.</string>

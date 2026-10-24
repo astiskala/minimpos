@@ -115,9 +115,11 @@
           </ol>
           <p>Un crash ou un redémarrage laisse l'opération interrompue dans l'historique comme inconnue. N'effacez pas
             les données de l'application pour la supprimer.</p>
-          <p>Avec Tap to Pay, il n'est pas possible de demander un statut à l'application Adyen Payments. <strong>
-            Vérifiez à nouveau le résultat</strong> utilise uniquement une réponse tardive déjà arrivée. S'il n'y en a
-            pas, vérifiez le Customer Area avant de le débiter à nouveau.</p>
+          <p id="tap-to-pay-recovery">Avec Tap to Pay, <strong>Vérifiez à nouveau le résultat</strong> utilise d’abord
+            une réponse tardive reçue, puis interroge l’application Payments sélectionnée sur le résultat initial. Les
+            vérifications nécessitent la version 1.8.0 ou ultérieure ; confirmez l’accès bêta avec Adyen. Sans réponse
+            ou avec NotFound, le résultat reste inconnu. Consultez <strong>Customer Area › Payments › Payment
+            list</strong> avant de facturer à nouveau.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="declines">
@@ -576,12 +578,11 @@
 <p><span class="fix-label">Corriger</span><a href="#unknown">Vérifiez le résultat</a>. Ne rechargez pas jusqu'à ce que
   vous le sachiez.</p><details class="cause"><summary>Parce que</summary><p>La demande a été envoyée, mais aucune
   réponse n’est arrivée, son résultat est donc inconnu.</p></details></dd></div>
-            <div><dt>"Aucune réponse de l'application Adyen Payments n'est encore arrivée. On ne peut pas lui demander
-              le résultat, alors vérifiez le paiement dans votre Customer Area. "</dt>
+            <div><dt>“Le résultat de Payments reste inconnu. Mettez à jour l’application Payments sélectionnée, confirmez l’accès
+              aux vérifications avec Adyen et consultez le Customer Area avant de facturer à nouveau.”</dt>
               <dd>
 <p><span class="fix-label">Corriger</span>Recherchez le paiement dans le Customer Area avant de facturer à nouveau.</p>
-  <details class="cause"><summary>Parce que</summary><p>Avec Tap to Pay, il n'est pas possible de demander un résultat à
-  l'application Adyen Payments et aucune réponse tardive n'est arrivée.</p></details></dd></div>
+  <details class="cause"><summary>Parce que</summary><p><a href="#tap-to-pay-recovery">Récupération du résultat Tap to Pay</a>.</p></details></dd></div>
             <div><dt>"L'application Adyen Payments n'a pas pu être ouverte. Vérifiez qu'elle est installée. "</dt>
               <dd>
 <p><span class="fix-label">Corriger</span>Installez l'application Adyen Payments pour votre environnement, puis

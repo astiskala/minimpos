@@ -856,7 +856,7 @@
   <string name="capability_abort">Annulation demandée par POS</string>
   <string name="capability_diagnosis">Diagnostic terminal</string>
   <string name="capability_remote_status">Statut de la transaction à distance</string>
-  <string name="capability_late_reply_hint">Tap to Pay possède son propre bouton Annuler. Les réponses manquantes ne peuvent pas être interrogées à distance ; seule une réponse tardive déjà reçue peut les résoudre. Les contrôles de configuration restent disponibles sans diagnostic de terminal.</string>
+  <string name="capability_late_reply_hint">Tap to Pay a son propre bouton Annuler. Les vérifications nécessitent Payments 1.8.0 ou version ultérieure ; confirmez l’accès bêta avec Adyen. Les réponses tardives restent utilisables. Si le résultat reste inconnu, consultez le Customer Area avant de facturer à nouveau.</string>
   <string name="capability_terminal_tipping">Pourboires sur le terminal</string>
   <string name="capability_dcc">Conversion de devises dynamique (DCC)</string>
   <string name="capability_giving">Adyen Giving</string>
@@ -1203,7 +1203,7 @@
   <string name="fault_not_started">L’application Adyen Payments n’a pas pu être ouverte. Vérifiez qu’il est installé.</string>
   <string name="fault_app_refused">L’application Adyen Payments n’a pas accepté la demande.</string>
   <string name="fault_unsupported">Cette destination ne prend pas en charge cette demande.</string>
-  <string name="fault_no_late_reply">Aucune réponse de l’application Adyen Payments n’est encore arrivée. Le résultat ne peut pas être demandé, vérifiez donc le paiement dans votre Customer Area.</string>
+  <string name="fault_no_late_reply">Le résultat de Payments reste inconnu. Mettez à jour l’application Payments sélectionnée, confirmez l’accès aux vérifications avec Adyen et consultez le Customer Area avant de facturer à nouveau.</string>
   <string name="fault_no_record">Le terminal n’a aucune trace de cette transaction, elle n’a donc pas été traitée.</string>
   <string name="fault_request_not_encrypted">La demande n’a pas pu être chiffrée. Vérifiez la clé partagée dans les paramètres du terminal.</string>
   <string name="fault_credential_adyen">Adyen n’a pas accepté la clé API. Vérifiez-le dans les paramètres du terminal.</string>

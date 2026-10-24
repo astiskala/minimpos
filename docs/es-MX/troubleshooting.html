@@ -113,9 +113,11 @@
           </ol>
           <p>Un bloqueo o reinicio deja la operación interrumpida en el Historial como desconocida. No borre los datos
             de la aplicación para eliminarla.</p>
-          <p>Con Tap to Pay, no se puede solicitar un estado a la aplicación Adyen Payments. <strong>Comprobar el
-            resultado de nuevo</strong> utiliza sólo una respuesta tardía que ya ha llegado. Si no hay ninguno,
-            verifique el Área de Clientes antes de volver a cargarlo.</p>
+          <p id="tap-to-pay-recovery">Con Tap to Pay, <strong>Comprobar el resultado de nuevo</strong> usa primero una
+            respuesta tardía y luego consulta el resultado original en la aplicación Payments seleccionada. Las
+            consultas requieren la versión 1.8.0 o posterior; confirma el acceso beta con Adyen. Sin respuesta o con
+            NotFound, el resultado sigue siendo desconocido. Revisa <strong>Customer Area › Payments › Payment
+            list</strong> antes de volver a cobrar.</p>
           <p class="back-to-contents"><a href="#contents">Volver al contenido</a></p>
         </section>
         <section id="declines">
@@ -570,12 +572,11 @@
 <p><span class="fix-label">Arreglar</span><a href="#unknown">Comprueba el resultado</a>. No vuelvas a cargar hasta que
   lo sepas.</p><details class="cause"><summary>causa</summary><p>La solicitud fue enviada, pero no llegó respuesta, por
   lo que se desconoce su resultado.</p></details></dd></div>
-            <div><dt>"Aún no ha llegado ninguna respuesta de la aplicación Adyen Payments. No se puede solicitar el
-              resultado, así que verifique el pago en su Área de Clientes".</dt>
+            <div><dt>“El resultado de Payments sigue siendo desconocido. Actualiza la aplicación Payments seleccionada, confirma
+              el acceso a las consultas con Adyen y revisa el Área de Clientes antes de volver a cobrar.”</dt>
               <dd>
 <p><span class="fix-label">Arreglar</span>Encuentra el pago en el Área de Clientes antes de volver a cobrar.</p>
-  <details class="cause"><summary>causa</summary><p>Con Tap to Pay, no se puede solicitar un resultado a la aplicación
-  Adyen Payments y no ha llegado ninguna respuesta tardía.</p></details></dd></div>
+  <details class="cause"><summary>causa</summary><p><a href="#tap-to-pay-recovery">Recuperar el resultado de Tap to Pay</a>.</p></details></dd></div>
             <div><dt>"No se pudo abrir la aplicación Adyen Payments. Verifique que esté instalada".</dt>
               <dd>
 <p><span class="fix-label">Arreglar</span>Instale la aplicación Adyen Payments para su entorno y vuelva a intentarlo.

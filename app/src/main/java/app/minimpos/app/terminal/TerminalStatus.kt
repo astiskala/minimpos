@@ -260,7 +260,7 @@ class TerminalStatus(
                 actual.environment?.let { device.paymentsAppVersion(it) }?.let { put("paymentsAppVersion", it) }
                 put("supportsDiagnosis", actual.capabilities.diagnoses.toString())
                 put("supportsPrinting", actual.capabilities.supportsPrinting.toString())
-                put("supportsRemoteStatus", actual.capabilities.supportsRemoteStatus.toString())
+                put("remoteStatus", actual.capabilities.remoteStatus.name)
                 put("setupProblem", actual.problem?.name.orEmpty())
                 put("connectionProblem", actual.connectionProblem?.name.orEmpty())
             },

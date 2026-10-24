@@ -123,6 +123,14 @@
   <string name="checkout_pre_auth_note">Este valor fica apenas retido no cartão. Capture ou cancele a pré-autorização mais tarde no Histórico.</string>
   <string name="checkout_tip_on_receipt">Gorjeta no recibo</string>
   <string name="checkout_tip_on_receipt_hint">O cliente escreve uma gorjeta no recibo impresso e o assina. Digite a gorjeta depois para capturar o total.</string>
+  <string name="checkout_audio_guidance">Orientação por áudio</string>
+  <string name="checkout_audio_hint">Somente para este comprador. O terminal lê as instruções de pagamento em voz alta. Aguarde mais tempo para o pagamento e o PIN.</string>
+  <string name="checkout_audio_confirm">Confirmar configuração acessível</string>
+  <string name="checkout_audio_requirements">Confirme o software %1$s ou posterior e a ativação pelo Suporte da Adyen para este terminal. Use um cartão que não exija assinatura. O idioma do terminal não pode ser estoniano, letão, islandês ou lituano. Pule as autorizações parciais e as solicitações da tela do comprador neste pagamento.</string>
+  <string name="checkout_audio_conflicts">Desative gorjetas, Giving e a entrada especial de cartão para continuar. Desative a orientação por áudio para usar um link, uma carteira escaneada ou um token.</string>
+  <string name="checkout_audio_unavailable">A orientação por áudio exige um terminal Android compatível e ativado. Ela não está disponível para este destino ou modelo desconhecido.</string>
+  <string name="capability_audio_detail">Confirme modelo, software, idioma, ativação pelo Suporte e um cartão sem assinatura no pagamento. Consulte o guia Usar o Mini mPOS.</string>
+  <string name="checkout_audio_demo_requirements">Somente demonstração offline. Simule a orientação por áudio e pule as autorizações parciais e as solicitações da tela do comprador neste pagamento. O áudio do terminal e a compatibilidade do equipamento real não são verificados.</string>
   <string name="checkout_tip_on_terminal">Gorjeta no terminal</string>
   <string name="checkout_tip_on_terminal_hint">Peça uma gorjeta ao comprador na tela do terminal antes de cobrar o cartão.</string>
   <string name="checkout_ask_giving">Doação de caridade (Adyen Giving)</string>

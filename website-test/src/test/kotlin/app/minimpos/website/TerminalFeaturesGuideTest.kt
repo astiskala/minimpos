@@ -25,6 +25,7 @@ class TerminalFeaturesGuideTest {
         val labels =
             mapOf(
                 "capabilities" to listOf("settings_capabilities", "capability_status_needs_config", "capability_status_unsupported"),
+                "audio-guidance" to listOf("checkout_audio_guidance", "checkout_audio_confirm"),
                 "terminal-tips" to listOf("checkout_tip_on_terminal", "settings_dynamic_tip_override", "settings_tip_on_pre_tax"),
                 "partial-payments" to listOf("settings_allow_partial_auth", "status_partially_paid"),
                 "shopper-display" to listOf("settings_shopper_display"),
@@ -76,6 +77,29 @@ class TerminalFeaturesGuideTest {
                     .that(trouble.select("a[href='using#$id']"))
                     .isNotEmpty()
             }
+        }
+    }
+
+    @Test
+    fun `audio guidance documents hardware software limits and provider requirements in every language`() {
+        val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
+        resources.keys.forEach { language ->
+            val directory = docs.resolve(if (language == "en") "" else language)
+            val using = Jsoup.parse(directory.resolve("using.html").readText())
+            val audio = checkNotNull(using.getElementById("audio-guidance"))
+            val audioText =
+                generateSequence(audio.nextElementSibling()) { it.nextElementSibling() }
+                    .takeWhile { it.tagName() != "h3" }
+                    .joinToString(" ") { it.text() }
+            listOf("AMS1", "S1F2L", "S1E2L", "S1U2", "M450", "P630", "SFO1", "1.117", "1.124").forEach {
+                assertWithMessage("$language audio guidance requirement").that(audioText).contains(it)
+            }
+            assertThat(
+                using.select(
+                    "#terminal-checkout a[href='https://docs.adyen.com/point-of-sale/android-terminals/" +
+                        "accessibility-mode/accessibility-from-pos']",
+                ),
+            ).isNotEmpty()
         }
     }
 }

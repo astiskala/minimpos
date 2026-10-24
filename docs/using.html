@@ -87,7 +87,7 @@
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Check Adyen capabilities</a></li><li><a href="#terminal-checkout">
-  Optional checkout workflows</a><ul><li><a href="#partial-payments">Partial payments</a></li><li>
+  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#partial-payments">Partial payments</a></li><li>
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
@@ -103,7 +103,7 @@
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Check Adyen capabilities</a></li><li><a href="#terminal-checkout">
-  Optional checkout workflows</a><ul><li><a href="#partial-payments">Partial payments</a></li><li>
+  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#partial-payments">Partial payments</a></li><li>
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
@@ -370,6 +370,23 @@
           <p>Enable only the checkout options you need in Settings. Except for partial authorization, these workflows
             need a supported physical terminal, not Tap to Pay. Check <a href="#capabilities">Adyen capabilities</a> and
             test your actual setup first.</p>
+          <h3 id="audio-guidance">Use audio-guided payments</h3>
+          <p>At checkout, turn on <strong>Audio guidance</strong> for this shopper. It is available on AMS1, S1F2,
+            S1F2L, S1E2L and S1U2 with software 1.117 or later, and M450, P630 and SFO1 with 1.124 or later. Adyen
+            Support must enable it for the terminal. Tap to Pay and unlisted or unknown models are unavailable. See
+            <a
+            href="https://docs.adyen.com/point-of-sale/android-terminals/accessibility-mode/accessibility-from-pos">Adyen’s
+            accessible payment requirements</a>.</p>
+          <p>Turn off terminal and receipt tipping, Giving and special card entry. Select <strong>Confirm accessible
+            setup</strong> only after checking the software and enablement. Use a card that does not require a
+            signature and a terminal language other than Estonian, Latvian, Icelandic or Lithuanian. Confirmation
+            also requests the full amount without partial authorizations and skips configured shopper-display
+            prompts for this payment. Turn audio guidance off to choose a payment link, scanned wallet or token.</p>
+          <p>The terminal reads payment instructions aloud. Allow time for payment and PIN entry; audio guidance
+            ends after payment or cancellation. Mini mPOS waits up to ten minutes before checking the original
+            transaction. If Adyen configured longer screen timeouts or an answer is missing, <a
+            href="troubleshooting#unknown">check the unknown result</a> before another payment. The choice resets
+            after starting this attempt. Simulator demos do not play audio or verify real terminal support.</p>
           <h3 id="partial-payments">Collect a partially authorized payment</h3>
           <p>Turn on <strong>Allow partial authorizations</strong> to accept a card approval for less than the requested
             amount. When the result shows <strong>Partially paid</strong>, check the paid and remaining amounts, then

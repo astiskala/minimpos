@@ -122,6 +122,14 @@
   <string name="checkout_pre_auth_note">This only holds the amount on the card. Capture or cancel it later from History.</string>
   <string name="checkout_tip_on_receipt">Tip on the receipt</string>
   <string name="checkout_tip_on_receipt_hint">The customer writes a tip on the printed receipt and signs it. Enter the tip afterwards to capture the total.</string>
+  <string name="checkout_audio_guidance">Audio guidance</string>
+  <string name="checkout_audio_hint">For this shopper only. The terminal reads payment instructions aloud. Allow extra time for payment and PIN entry.</string>
+  <string name="checkout_audio_confirm">Confirm accessible setup</string>
+  <string name="checkout_audio_requirements">Confirm software %1$s or later and Adyen Support enablement for this terminal. Use a card that needs no signature. Terminal language cannot be Estonian, Latvian, Icelandic or Lithuanian. Skip partial authorizations and shopper-display prompts for this payment.</string>
+  <string name="checkout_audio_conflicts">Turn off tipping, Giving and special card entry to continue. Turn off audio guidance to use a link, scanned wallet or token.</string>
+  <string name="checkout_audio_unavailable">Audio guidance needs an enabled, supported Android terminal. It is unavailable for this destination or unknown model.</string>
+  <string name="capability_audio_detail">Confirm model, software, language, Support enablement and a card without signature at checkout. See the Using Mini mPOS guide.</string>
+  <string name="checkout_audio_demo_requirements">Offline demo only. Simulate audio guidance and skip partial authorizations and shopper-display prompts for this payment. No terminal audio or real hardware support is verified.</string>
   <string name="checkout_tip_on_terminal">Tip on the terminal</string>
   <string name="checkout_tip_on_terminal_hint">Ask the shopper for a tip on the terminal screen before charging the card.</string>
   <string name="checkout_ask_giving">Charity donation (Adyen Giving)</string>

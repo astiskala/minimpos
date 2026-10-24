@@ -1,7 +1,7 @@
 package app.minimpos.terminal.client
 
 /**
- * The string vocabulary of the nexo `AdditionalResponse`/`AdditionalData` fields and the Base64 tip-operation blob, in
+ * The string vocabulary of the nexo `AdditionalResponse`/`AdditionalData` fields and the Base64 payment-operation blob, in
  * one place for everyone that writes or reads it: [TerminalClient]'s request building and answer mapping, [Decline]'s
  * busy-transaction reading, the shopper display and the simulator that stands in for a terminal. The simulator reads
  * what the client writes rather than a copy, so a key renamed on one side no longer compiles on the other.
@@ -97,8 +97,14 @@ internal object NexoVocabulary {
     /** The decoded scanned value of a native barcode scan answer. */
     const val BARCODE_DATA = "Barcode.Data"
 
-    /** Tip-operation blob: the list of operations the payment request carries. */
+    /** Payment-operation blob: the list of operations the payment request carries. */
     const val OPERATION = "Operation"
+
+    /** Payment operation variant key. */
+    const val VARIANT = "Variant"
+
+    /** Per-payment audio guidance on enabled Android terminals. */
+    const val ENABLE_ACCESSIBILITY = "EnableAccessibilityMode"
 
     /** Tip-operation blob: the tip options of the payment operation. */
     const val TIP_OPTIONS = "TipOptions"

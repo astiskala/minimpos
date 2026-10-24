@@ -188,6 +188,8 @@ model reporting, single-scan/end behavior on local/network/cloud terminals, and 
 merchant scanning is intentionally best-effort: Adyen's published wallet guide excludes it, and simulator success does
 not establish support. Also needing real-terminal verification: scoped Management `terminalSettings` updates for
 gratuities, DCC, MOTO and offline limits; `AskGratuity` with `SaleToPOIData` `TipOptions`/`AmountToTipOn`;
+audio-guided `EnableAccessibilityMode` payments on AMS1/S1F2/S1F2L/S1E2L/S1U2 (1.117+) and M450/P630/SFO1 (1.124+),
+Support enablement, terminal language/card eligibility, signature refusals, long PIN entry, cancellation and status recovery;
 `GetTotalsRequest` and `ReconciliationRequest` (`SaleReconciliation`); chained `AdminRequest` waiting-screen sessions with
 `DisplayRequest` and `InputRequest`; `AllowPartialAuthorisation` (`Result=Partial`); `AskGiving` two-step
 `TransactionStatus` (`SaleID=AdyenGiving`) lookups; `MOTO` and `ForceEntryMode=Keyed` (MKE); and offline EMV /
@@ -267,7 +269,8 @@ Gson builder. HTTP paths, query parameters, authentication, idempotency and time
 not SDK service clients, except the local Terminal service with our Android-compatible HTTP client installed.
 
 Not every wire field has an SDK type. `AdminRequest.ServiceIdentification` (shopper sessions and barcode scans) and
-`SaleData.SaleToPOIData` (tip options) contain Base64 JSON in SDK string fields. `AdditionalData`, `AdditionalResponse`,
+`SaleData.SaleToPOIData` (tip options and audio-guidance operations) contain Base64 JSON in SDK string
+fields. `AdditionalData`, `AdditionalResponse`,
 metadata and string-valued tender options remain extensible. Payments app App Links and unstructured short errors are
 also hand-mapped. Raw response reads are limited to these extensions, unmodeled amount-update `refusalReason` and
 unknown-enum diagnostics; modeled saved-card refusal reasons use `PaymentResponse.refusalReason`.

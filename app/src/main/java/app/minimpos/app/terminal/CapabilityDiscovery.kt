@@ -3,6 +3,7 @@ package app.minimpos.app.terminal
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.core.payment.PaymentContext
+import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.RemoteTerminalCapabilities
 import app.minimpos.terminal.transport.TerminalCapabilitiesApi
@@ -115,6 +116,16 @@ data class AdyenCapabilitiesState(
     val cameraAvailable: Boolean = false,
     val nativeScanner: Boolean? = null,
 ) {
+    /** Model support is advisory: Management does not verify accessibility software or Support enablement. */
+    val audioGuidanceStanding: CapabilityStanding
+        get() =
+            when {
+                !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
+                simulated -> CapabilityStanding.AVAILABLE
+                TerminalClient.audioGuidanceMinimumSoftware(context?.poiId) != null -> CapabilityStanding.NEEDS_CONFIGURATION
+                else -> CapabilityStanding.UNSUPPORTED
+            }
+
     /** Why a refresh cannot run now: the setup [problem] it would only report again; null when it can. */
     val refreshBlocked: Failure? get() = problem?.let(Failure::NotSetUp)
 

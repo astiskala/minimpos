@@ -121,6 +121,14 @@
   <string name="checkout_pre_auth_note">カードの利用枠を確保するだけです。後で「取引履歴」からキャプチャまたはキャンセルしてください。</string>
   <string name="checkout_tip_on_receipt">領収書にチップを記入</string>
   <string name="checkout_tip_on_receipt_hint">購入者が印刷した領収書にチップを記入して署名します。その後チップを入力して合計額をキャプチャします。</string>
+  <string name="checkout_audio_guidance">音声ガイド</string>
+  <string name="checkout_audio_hint">このお客様のお支払いにのみ適用します。端末が支払い手順を読み上げます。支払いとPIN入力には通常より時間がかかります。</string>
+  <string name="checkout_audio_confirm">音声ガイドの設定を確認</string>
+  <string name="checkout_audio_requirements">この端末のソフトウェアが%1$s以降で、Adyenサポートによる有効化が済んでいることを確認してください。署名不要のカードを使用してください。端末の言語にはエストニア語、ラトビア語、アイスランド語、リトアニア語は使えません。この支払いでは一部承認とお客様用画面の案内を使いません。</string>
+  <string name="checkout_audio_conflicts">続行するには、チップ、Giving、特殊なカード入力をオフにしてください。リンク、スキャン式ウォレット、トークンを使うには音声ガイドをオフにしてください。</string>
+  <string name="checkout_audio_unavailable">音声ガイドには有効化済みの対応Android端末が必要です。この接続先または不明な機種では利用できません。</string>
+  <string name="capability_audio_detail">支払い時に機種、ソフトウェア、言語、サポートによる有効化、署名不要のカードを確認してください。「Mini mPOSの使い方」を参照してください。</string>
+  <string name="checkout_audio_demo_requirements">オフラインデモです。この支払いでは音声ガイドをシミュレートし、一部承認とお客様用画面の案内を使いません。端末の音声や実機の対応は確認されません。</string>
   <string name="checkout_tip_on_terminal">端末でチップを入力</string>
   <string name="checkout_tip_on_terminal_hint">カード決済の前に端末画面で購入者にチップを尋ねます。</string>
   <string name="checkout_ask_giving">チャリティ寄付（Adyen Giving）</string>

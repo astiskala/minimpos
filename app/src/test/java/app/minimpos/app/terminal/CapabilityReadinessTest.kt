@@ -1,9 +1,11 @@
 package app.minimpos.app.terminal
 
 import app.minimpos.app.FakeDevice
+import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.WalletMethod
 import com.google.common.truth.Truth.assertThat
@@ -19,6 +21,27 @@ class CapabilityReadinessTest {
             channel = "pos",
             currencies = setOf("AUD"),
         )
+
+    @Test
+    fun `audio guidance distinguishes model eligibility from software and Support enablement`() {
+        val physical = TerminalState(poiId = "AMS1-123", apiSetup = ApiSetup.Incomplete(SetupProblem.API_KEY))
+        assertThat(physical.audioGuidanceMinimumSoftware).isEqualTo("1.117")
+        assertThat(physical.copy(poiId = "P630-123").audioGuidanceMinimumSoftware).isEqualTo("1.124")
+        assertThat(physical.copy(poiId = "S1E-123").audioGuidanceMinimumSoftware).isNull()
+        assertThat(
+            physical
+                .copy(capabilities = DestinationCapabilities(supportsTerminalFeatures = false))
+                .audioGuidanceMinimumSoftware,
+        ).isNull()
+        assertThat(
+            AdyenCapabilitiesState(
+                context =
+                    PaymentContext("TERMINAL", "AMS1-123", "POS1", "merchant", "TEST", null),
+            ).audioGuidanceStanding,
+        ).isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
+        assertThat(AdyenCapabilitiesState(simulated = true).audioGuidanceStanding).isEqualTo(CapabilityStanding.AVAILABLE)
+        assertThat(AdyenCapabilitiesState().audioGuidanceStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
+    }
 
     @Test
     fun `Tap to Pay leaves device camera usable but blocks terminal-only features`() {

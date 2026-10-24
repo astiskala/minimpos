@@ -340,3 +340,17 @@ private fun simulatedTokenization(
         acquirerData.shopperEmail?.let { put(NexoVocabulary.SHOPPER_EMAIL, it) }
     }
 }
+
+/** Reads the actual wire variant; the simulated terminal exits guidance after every outcome. */
+internal fun simulatedAudioGuidance(saleData: SaleData?): Boolean =
+    saleData?.saleToPOIData?.let { encoded ->
+        runCatching {
+            JsonParser
+                .parseString(String(Base64.decode(encoded), Charsets.UTF_8))
+                .asJsonObject
+                .getAsJsonArray(NexoVocabulary.OPERATION)
+                .any { element ->
+                    element.asJsonObject.get(NexoVocabulary.VARIANT)?.asString == NexoVocabulary.ENABLE_ACCESSIBILITY
+                }
+        }.getOrDefault(false)
+    } == true

@@ -349,12 +349,16 @@ class CheckoutViewModel(
             ?: MutableStateFlow(emptyList())
 
     /** Updates the form (kept in the [SaleSession] so it survives going back to the cart). */
-    fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateForm(transform)
+    fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateForm(transform = transform)
 
     /** Starts the payment ([Checkout.paymentStart]); returns false when the form is not ready or a payment is running. */
     fun pay(): Boolean {
         val start = session.paymentStart(state.value, clock.instant(), zone()) ?: return false
-        return payments.start(start) != null
+        if (payments.start(start) != null) return true
+        if (start.audioGuidance) {
+            session.updateForm(start) { it.copy(audioGuidance = true, audioGuidanceConfirmedFor = start.audioGuidancePoiId) }
+        }
+        return false
     }
 
     /** Prepares the unchanged sale for wallet scanning; false when unavailable or already busy. */

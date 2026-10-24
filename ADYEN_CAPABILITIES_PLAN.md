@@ -149,13 +149,13 @@ Commit: `feat: offer audio-guided terminal payments`
 Read first: `adyen/.../client/TerminalClient.kt`, `ClientModels.kt`, `ShopperDisplay.kt`, `app/.../payment/Checkout.kt`,
 `terminal/CapabilityDiscovery.kt`, and the checkout/settings screens.
 
-- [ ] Add a per-payment audio-guidance choice and documented model/software/enablement eligibility, including AMS1.
-- [ ] Use one owner for composing Base64 SaleToPOIData operations. Avoid overwriting existing tip-operation data.
-- [ ] Explain incompatible tipping, Giving, and signature flows before sending; resolve the selection explicitly.
+- [x] Add a per-payment audio-guidance choice and documented model/software/enablement eligibility, including AMS1.
+- [x] Use one owner for composing Base64 SaleToPOIData operations. Avoid overwriting existing tip-operation data.
+- [x] Explain incompatible tipping, Giving, and signature flows before sending; resolve the selection explicitly.
   Account for extended payment/PIN interactions without turning a slow accessible flow into a false failure.
-- [ ] Persist required request facts, simulate accessible behavior, and confirm the option resets appropriately after
+- [x] Persist required request facts, simulate accessible behavior, and confirm the option resets appropriately after
   completion/cancellation rather than affecting an unrelated next shopper.
-- [ ] Test eligibility, outgoing operation data, incompatible selections, timeout/status recovery, cancellation, and UI
+- [x] Test eligibility, outgoing operation data, incompatible selections, timeout/status recovery, cancellation, and UI
   readability. Preserve ordinary payments on destinations that do not offer this feature.
 
 Start with `TerminalClientTest`, `CapabilityReadinessTest`, and focused Checkout tests. Done when an eligible shopper
@@ -415,8 +415,8 @@ independently, with the provider/destination and evidence location.
 
 | ID | Feature | Status | Implementation commit | Automated evidence | Real-Adyen evidence/gaps |
 | --- | --- | --- | --- | --- | --- |
-| 01 | Payments app recovery | implemented | this commit | `scripts/dev finish`; 100% Adyen line coverage | Beta access and physical-phone checks unconfirmed |
-| 02 | Accessible payments | not started | - | - | Model/software/enablement unconfirmed |
+| 01 | Payments app recovery | implemented | `100b1a3` | `scripts/dev finish`; 100% Adyen line coverage | Beta access and physical-phone checks unconfirmed |
+| 02 | Accessible payments | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; 100% Adyen line coverage | Physical terminal/software/enablement unconfirmed |
 | 03 | Surcharge accounting | not started | - | - | Configured TEST surcharges needed |
 | 04 | Tokens and Settings navigation | not started | - | - | Token permissions/setup unconfirmed |
 | 05 | Split payments and cash | not started | - | - | Partial-approval scenarios needed |
@@ -426,8 +426,11 @@ independently, with the provider/destination and evidence location.
 | 09 | Cashback/Cashout | not started | - | - | With-purchase/standalone enablement unconfirmed |
 | 10 | Unreferenced card refunds | not started | - | - | Eligible country/account enablement unconfirmed |
 
-Resume note: milestone 01 is complete on `codex/adyen-capabilities`. Begin milestone 02 next. Milestones 02–10
-remain unstarted. No schema, stored-format or dependency changes were needed for 01.
+Resume note: milestones 01 (`100b1a3`) and 02 (this commit) are implemented on `codex/adyen-capabilities`.
+Begin milestone 03 next; milestones 03–10 remain unstarted. Milestone 02 adds database version 17 with a
+preserving 16→17 migration and generated schema. There are no settings, transfer, stored-JSON or dependency changes.
+The full gate passed. Physical terminal/phone verification, accessibility enablement and Payments app beta access
+remain unconfirmed; real calls still require separate authorization.
 
 Milestone 01 evidence:
 
@@ -446,6 +449,42 @@ Milestone 01 evidence:
 - Physical TEST checks are still needed for status beta enablement, installed-version behavior, dual-install routing,
   missing callbacks/process death, InProgress/NotFound and resulting receipts/history. No real Adyen calls, pushes or
   releases were made. Separate explicit authorization is still required for real calls.
+
+Milestone 02 evidence:
+
+- Revalidated Adyen's [POS accessibility requirements](https://docs.adyen.com/point-of-sale/android-terminals/accessibility-mode/accessibility-from-pos)
+  and [terminal release notes](https://docs.adyen.com/point-of-sale/firmware-release-notes) on October 24, 2026.
+  AMS1, S1F2, S1F2L, S1E2L and S1U2 require 1.117+; M450, P630 and SFO1 require 1.124+. Support must enable
+  accessibility on each terminal. Tipping, Giving, signature CVM and Estonian/Latvian/Icelandic/Lithuanian are excluded.
+- Model eligibility is advisory, never proof of installed software or enablement. Checkout asks the operator to
+  confirm software, Support enablement, language and non-signature card suitability for this terminal per shopper.
+  Confirmation explicitly requests the full amount without partial authorization and skips shopper-display prompts;
+  incompatible tip/Giving/special-entry choices must be turned off. Links, scanned wallets and tokens require turning
+  audio guidance off first.
+- One Payment-operation composer preserves normal tip overrides and adds the documented Base64 accessibility variant.
+  Accessible payments wait at least ten minutes before status recovery, allowing the default payment/PIN screen
+  timeouts; longer Support-configured timeouts can still leave an unknown result. Recovery never aborts or resends.
+- The choice is consumed when an attempt starts, with stale-snapshot protection; cancellation or an unknown result
+  cannot carry it into an unrelated shopper's attempt. A durable sale flag retains the original request fact, alongside
+  the existing ServiceID, Payment category, amount and original context. Schema 17 is generated by Room; older data
+  migrates with audio guidance false. No settings/transfer/stored-JSON format changes are needed.
+- Simulator tests exercise guidance while waiting, cancellation, signature refusal, missing-answer recovery and reset.
+  Simulator mode produces no audio and establishes no hardware support. Seven-language checkout, capability guidance
+  and Using Mini mPOS sections explain the workflow and limitations.
+- Focused architecture, all Adyen tests, payment/history/receipt tests, database upgrade/repository tests,
+  localization/CJK UI, AMS1 layouts, app/Adyen type-resolved detekt and website checks passed; log
+  `build/gradle-logs/run-6XUh1y/output.log`. Preflight passed (JDK 21, SDK 37, build tools and Chrome).
+- Full gate passed: `scripts/dev finish`, log `build/gradle-logs/run-k8gbuE/output.log`. This includes SDK 33 and 28,
+  architecture/dead-code checks, lint, detekt, Dokka, localization, website and coverage. Adyen line coverage is 100%.
+- Final focused protocol, checkout, durable recovery, capability, AMS1/CJK layout and dead-code tests passed, including
+  SDK 28 UI cases and static/website checks: `build/gradle-logs/run-XcFj0N/output.log`. Busy starts restore the audio
+  choice only while its originating session revision is current; an accepted attempt consumes it once.
+- The gate exposed an existing SDK 28 AppFlowTest race: it now waits for the charge amount after adding the item,
+  the token option after entering the shopper reference and the enabled Pay action. Both SDK suites passed focused
+  AppFlowTest checks (`build/gradle-logs/run-kjQM36/output.log`) and the full gate. No ordinary payment behavior changed.
+- Physical TEST completion/refusal/cancellation, long PIN interactions, Support enablement, actual software/language
+  behavior, missing-answer recovery and receipt/history checks remain unverified on all listed models, including AMS1.
+  Milestone 01's physical-phone and Payments app beta gaps remain open. No real Adyen calls, pushes or releases made.
 
 ## Adyen source map
 

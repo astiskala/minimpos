@@ -79,7 +79,7 @@
   <a href="#receipts">收据</a><ul><li><a href="#customize-receipts">自定义收据</a></li><li><a href="#language-receipts">收据语言
   </a></li><li><a href="#email">电子收据</a></li></ul></li><li><a href="#history">交易记录</a><ul><li><a href="#close-day">每日平账
   </a></li><li><a href="#reconciliation">与终端对账</a></li></ul></li><li class="advanced-start"><a href="#capabilities">检查
-  Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#partial-payments">部分付款</a></li><li>
+  Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#audio-guidance">使用语音引导付款</a></li><li><a href="#partial-payments">部分付款</a></li><li>
   <a href="#shopper-display">购物者端屏幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">离线支付</a></li><li><a href="#wallets">扫描钱包付款码</a></li><li><a href="#shoppers">
   识别号和保存卡片</a><ul><li><a href="#saved-card">令牌扣款</a></li></ul></li><li><a href="#payment-links">付款链接</a></li><li>
@@ -92,7 +92,7 @@
   <a href="#receipts">收据</a><ul><li><a href="#customize-receipts">自定义收据</a></li><li><a href="#language-receipts">收据语言
   </a></li><li><a href="#email">电子收据</a></li></ul></li><li><a href="#history">交易记录</a><ul><li><a href="#close-day">每日平账
   </a></li><li><a href="#reconciliation">与终端对账</a></li></ul></li><li class="advanced-start"><a href="#capabilities">检查
-  Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#partial-payments">部分付款</a></li><li>
+  Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#audio-guidance">使用语音引导付款</a></li><li><a href="#partial-payments">部分付款</a></li><li>
   <a href="#shopper-display">购物者端屏幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">离线支付</a></li><li><a href="#wallets">扫描钱包付款码</a></li><li><a href="#shoppers">
   识别号和保存卡片</a><ul><li><a href="#saved-card">令牌扣款</a></li></ul></li><li><a href="#payment-links">付款链接</a></li><li>
@@ -292,6 +292,27 @@
         <section id="terminal-checkout">
           <h2>使用可选结账流程</h2>
           <p>只在设置中启用需要的结账选项。除部分授权外，这些流程需要支持的实体终端，不适用于 Tap to Pay。请先检查 <a href="#capabilities">Adyen 功能</a>并测试实际配置。</p>
+          <h3 id="audio-guidance">使用语音引导付款</h3>
+          <p>
+            在结账时为本次顾客开启<strong>语音引导</strong>。
+            AMS1、S1F2、S1F2L、S1E2L和S1U2需软件1.117或更高版本，M450、P630和SFO1需1.124或更高版本。
+            Adyen支持团队必须先为终端启用此功能。
+            Tap to Pay、未列出的型号和未知型号不支持此功能。
+            请参阅<a
+            href="https://docs.adyen.com/point-of-sale/android-terminals/accessibility-mode/accessibility-from-pos">Adyen无障碍付款要求</a>。</p>
+          <p>
+            关闭终端小费、收据小费、Giving和特殊卡输入方式。
+            检查软件和启用状态后，再选择<strong>确认无障碍设置</strong>。
+            请使用无需签名的卡，终端语言不能为爱沙尼亚语、拉脱维亚语、冰岛语或立陶宛语。
+            确认后，此次付款将请求全额付款而不接受部分授权，并跳过已配置的顾客屏幕提示。
+            如需选择付款链接、扫码钱包或令牌，请关闭语音引导。</p>
+          <p>终端会朗读付款说明。
+            请为付款和输入PIN码留足时间；付款或取消后语音引导会结束。
+            Mini mPOS最多等待十分钟后再查询原交易。
+            如果Adyen配置了更长的超时，或未收到响应，请在再次付款前<a
+            href="troubleshooting#unknown">查询结果不明的交易</a>。
+            本次尝试开始后，此选项会重置。
+            模拟演示不会播放语音，也不能验证真实终端支持。</p>
           <h3 id="partial-payments">收取部分授权后的剩余金额</h3>
           <p>开启<strong>允许部分授权</strong>，即可接受银行卡批准低于请求金额的付款。结果显示<strong>部分已付</strong>时，核对已付和剩余金额，然后在该结果页面点按<strong>支付剩余</strong>，用另一张卡收取差额。应用将各次付款保留在同一笔销售中。全部金额获批前，不要将销售视为全额付清。</p>
           <p>未收到答复不等于部分批准。继续收款前请<a href="troubleshooting#unknown">解决未知结果</a>。不要按原合计金额另开一笔销售：已批准的部分已经付款。</p>

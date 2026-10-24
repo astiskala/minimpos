@@ -335,18 +335,26 @@ class TerminalGateway(
     /**
      * Takes a card payment, see [TerminalClient.pay]. [onSending] is called with the terminal's POIID right before the
      * request is sent; without complete setup, the Checkout API included, nothing is sent ([Attempt.NotSetUp]), and an
-     * unreachable destination is [TransactionOutcome.NotProcessed].
+     * unreachable destination is [TransactionOutcome.NotProcessed]. For audio guidance, [audioGuidancePoiId] names the
+     * terminal whose requirements the operator confirmed; changed or unsupported destinations send no payment.
      */
     suspend fun pay(
         params: PaymentParams,
         serviceId: String,
+        audioGuidancePoiId: String? = null,
         expected: PaymentContext? = null,
         expectedIdentity: String? = null,
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
     ): Attempt<TransactionOutcome> =
         send(paying = true, serviceId, onSending, onContext, expected, expectedIdentity) {
-            it.pay(params, serviceId)
+            val supportsModel = it.destination.simulatesApi || TerminalClient.audioGuidanceMinimumSoftware(it.client.identity.poiId) != null
+            val compatible = it.destination.supportsTerminalFeatures && supportsModel && audioGuidancePoiId == it.client.identity.poiId
+            if (params.audioGuidance && !compatible) {
+                TransactionOutcome.NotProcessed(Fault.Unsupported)
+            } else {
+                it.client.pay(params, serviceId)
+            }
         }
 
     /** Opens native scanning only for the unchanged [expected] destination and [identity] fingerprint; null when blocked. */
@@ -370,7 +378,7 @@ class TerminalGateway(
         expected: PaymentContext? = null,
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
-    ): Attempt<TransactionOutcome> = send(paying = false, serviceId, onSending, onContext, expected) { it.refund(params, serviceId) }
+    ): Attempt<TransactionOutcome> = send(paying = false, serviceId, onSending, onContext, expected) { it.client.refund(params, serviceId) }
 
     /**
      * Asks the terminal once for the result of the [kind] of transaction sent with [serviceId], see
@@ -554,7 +562,7 @@ class TerminalGateway(
         onContext: suspend (PaymentContext) -> Unit,
         expected: PaymentContext? = null,
         expectedIdentity: String? = null,
-        call: suspend (TerminalClient) -> TransactionOutcome,
+        call: suspend (Connection.Open) -> TransactionOutcome,
     ): Attempt<TransactionOutcome> =
         attempt(paying, expectedIdentity, unreachable = { TransactionOutcome.NotProcessed(it) }) { open ->
             if (expected != null && !expected.matchesTerminal(open.context())) {
@@ -562,7 +570,7 @@ class TerminalGateway(
             } else {
                 onContext(open.context())
                 onSending(open.client.identity.poiId)
-                val outcome = call(open.client)
+                val outcome = call(open)
                 onContext(open.context())
                 Attempt.Made(outcome) { open.acknowledge(serviceId) }
             }

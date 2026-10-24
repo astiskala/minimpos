@@ -297,6 +297,7 @@ class TerminalSimulator(
         settings: SimulatorConfig,
     ): TerminalAPIResponse {
         val serviceId = header.serviceID.orEmpty()
+        val accessible = simulatedAudioGuidance(request.saleData)
         inProgress += serviceId
         var waited = 0L
         try {
@@ -310,6 +311,8 @@ class TerminalSimulator(
         val outcome =
             if (aborted.remove(serviceId)) {
                 null
+            } else if (accessible && settings.signatureRequired) {
+                SimulatedOutcome.DECLINE
             } else if (settings.outcome == SimulatedOutcome.RANDOM) {
                 if (random.nextInt(PERCENT) < RANDOM_APPROVAL_PERCENT) SimulatedOutcome.APPROVE else SimulatedOutcome.DECLINE
             } else {

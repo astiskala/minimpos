@@ -25,7 +25,7 @@ import kotlin.uuid.Uuid
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun exportedSchema(version: Int = 16): JSONObject =
+    private fun exportedSchema(version: Int = 17): JSONObject =
         listOf("schemas", "app/schemas")
             .map { File(it, "app.minimpos.app.data.db.AppDatabase/$version.json") }
             .first { it.exists() }
@@ -33,7 +33,7 @@ class DatabaseSchemaTest {
 
     private fun createExportedDatabase(
         name: String,
-        version: Int = 16,
+        version: Int = 17,
     ) {
         val schema = exportedSchema(version)
         val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
@@ -69,12 +69,48 @@ class DatabaseSchemaTest {
                     AppDatabase.MIGRATION_13_14,
                     AppDatabase.MIGRATION_14_15,
                     AppDatabase.MIGRATION_15_16,
+                    AppDatabase.MIGRATION_16_17,
                 ).allowMainThreadQueries()
                 .build()
         try {
             return block(db)
         } finally {
             db.close()
+        }
+    }
+
+    @Test
+    fun `version 16 migration preserves unknown payment identity and stores the next audio request`() {
+        val name = "schema-v16-${Uuid.random()}"
+        createExportedDatabase(name, 16)
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
+            raw.execSQL(
+                "INSERT INTO sales (id, sample, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, " +
+                    "status, merchantReference, tokenizationRequested, signatureRequired, refundedMinor, kind, " +
+                    "tipOnReceipt, holdCancelled, paymentLink, adjustmentPending, serviceId, customerReceiptJson) " +
+                    "VALUES ('unknown', 0, 100, 'AUD', 'INCLUSIVE', 100, 0, 100, 'UNKNOWN', 'MP-16', " +
+                    "0, 0, 0, 'SALE', 0, 0, 0, 0, 'original-service', '[original-receipt]')",
+            )
+        }
+        try {
+            withDatabase(name) { db ->
+                runBlocking {
+                    val original = checkNotNull(db.saleDao().sale("unknown")).sale
+                    assertThat(original.audioGuidance).isFalse()
+                    assertThat(original.status).isEqualTo(SaleStatus.UNKNOWN)
+                    assertThat(original.serviceId).isEqualTo("original-service")
+                    assertThat(original.customerReceiptJson).isEqualTo("[original-receipt]")
+                    db.saleDao().insert(original.copy(id = "audio", audioGuidance = true))
+                    assertThat(
+                        db
+                            .saleDao()
+                            .sale("audio")!!
+                            .sale.audioGuidance,
+                    ).isTrue()
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
         }
     }
 
@@ -243,7 +279,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.merchantReference).isEqualTo("MP-10")
                     assertThat(sale.poiReconciliationId).isNull()
                     assertThat(sale.savedCard).isFalse()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(17)
                 }
             }
         } finally {
@@ -290,7 +326,7 @@ class DatabaseSchemaTest {
                             .single()
                             .name,
                     ).isEqualTo("GST")
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(17)
                 }
             }
         } finally {
@@ -321,7 +357,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.status).isEqualTo(SaleStatus.DECLINED)
                     assertThat(sale.errorCondition).isEqualTo("Busy")
                     assertThat(sale.busyServiceId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(17)
                 }
             }
         } finally {
@@ -354,7 +390,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.captureStartedAt).isEqualTo(200)
                     assertThat(sale.captureStatus?.name).isEqualTo("UNKNOWN")
                     assertThat(sale.totalMinor).isEqualTo(1000)
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(17)
                 }
             }
         } finally {

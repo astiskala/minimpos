@@ -87,7 +87,7 @@
   </li><li><a href="#email">Reçus par e-mail</a></li></ul></li><li><a href="#history">Historique</a><ul><li>
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
   </ul></li><li class="advanced-start"><a href="#capabilities">Vérifier les capacités d&#x27;Adyen</a></li><li>
-  <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#partial-payments">Paiements
+  <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#partial-payments">Paiements
   partiels</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
@@ -103,7 +103,7 @@
   </li><li><a href="#email">Reçus par e-mail</a></li></ul></li><li><a href="#history">Historique</a><ul><li>
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
   </ul></li><li class="advanced-start"><a href="#capabilities">Vérifier les capacités d&#x27;Adyen</a></li><li>
-  <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#partial-payments">Paiements
+  <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#partial-payments">Paiements
   partiels</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
@@ -399,6 +399,25 @@
             autorisation partielle, ces flux de travail nécessitent un terminal physique pris en charge, et non Tap to
             Pay. Vérifier <a href="#capabilities">Capacités d'Adyen</a> et testez d'abord votre configuration réelle.
             </p>
+          <h3 id="audio-guidance">Accepter des paiements avec guidage audio</h3>
+          <p>Au paiement, activez <strong>Guidage audio</strong> pour ce client. Il est disponible sur AMS1, S1F2,
+            S1F2L, S1E2L et S1U2 avec le logiciel 1.117 ou ultérieur, et sur M450, P630 et SFO1 avec 1.124 ou
+            ultérieur. Le support Adyen doit l’activer pour le terminal. Tap to Pay et les modèles inconnus ou non
+            répertoriés ne sont pas pris en charge. Consultez les <a
+            href="https://docs.adyen.com/point-of-sale/android-terminals/accessibility-mode/accessibility-from-pos">conditions
+            des paiements accessibles d’Adyen</a>.</p>
+          <p>Désactivez les pourboires sur le terminal et le reçu, Giving et la saisie spéciale des cartes.
+            Sélectionnez <strong>Confirmer la configuration accessible</strong> après vérification du logiciel et de
+            l’activation. Utilisez une carte sans signature et une langue du terminal autre que l’estonien, le
+            letton, l’islandais ou le lituanien. La confirmation demande aussi le montant total sans autorisation
+            partielle et ignore les invites de l’écran client pour ce paiement. Désactivez le guidage audio pour
+            choisir un lien, un portefeuille scanné ou un token.</p>
+          <p>Le terminal lit les instructions à voix haute. Prévoyez du temps pour le paiement et le code PIN ; le
+            guidage se termine après le paiement ou l’annulation. Mini mPOS attend jusqu’à dix minutes avant de
+            vérifier la transaction originale. Si Adyen a configuré des délais plus longs ou si la réponse manque,
+            <a href="troubleshooting#unknown">vérifiez le résultat inconnu</a> avant un autre paiement. Le choix est
+            réinitialisé au démarrage de la tentative. Les démonstrations ne diffusent aucun son et ne vérifient pas
+            les terminaux réels.</p>
           <h3 id="partial-payments">Encaisser un paiement partiellement autorisé</h3>
           <p>Activez <strong>Autoriser les autorisations partielles</strong> pour accepter une approbation de carte pour
             un montant inférieur au montant demandé. Quand le résultat apparaît <strong>Partiellement payé</strong>,

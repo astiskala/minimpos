@@ -4,6 +4,7 @@ import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.settings.AppSettings
+import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.core.cart.AppliedTax
@@ -39,6 +40,8 @@ import kotlin.uuid.Uuid
  * @property tipOnReceipt "Tip on the receipt": null until the operator touches the switch, as with [tokenize].
  * @property askGratuity "Tip on terminal": null until the operator touches the switch; mutually exclusive with [tipOnReceipt].
  * @property askGiving "Charity donation (Adyen Giving)": null until the operator touches the switch.
+ * @property audioGuidance Whether this shopper requests audio instructions on the terminal.
+ * @property audioGuidanceConfirmedFor POIID whose software, Support enablement and non-signature card flow the operator confirmed.
  * @property cardEntryOverride Selected card entry mode (`NORMAL`, `MOTO` or `MKE`).
  */
 data class CheckoutForm(
@@ -49,6 +52,8 @@ data class CheckoutForm(
     val tipOnReceipt: Boolean? = null,
     val askGratuity: Boolean? = null,
     val askGiving: Boolean? = null,
+    val audioGuidance: Boolean = false,
+    val audioGuidanceConfirmedFor: String? = null,
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
 )
 
@@ -138,6 +143,9 @@ class SaleSession(
                         shopperDisplayAvailable = shopperDisplay,
                         shopperTexts = if (shopperDisplay) shopperTexts.invoke() else null,
                         emailOnTerminal = appSettings.asksEmailOnTerminal,
+                        audioGuidanceMinimumSoftware = status.audioGuidanceMinimumSoftware,
+                        audioGuidanceSimulated = status.apiSetup == ApiSetup.Simulated,
+                        audioGuidanceTarget = status.poiId,
                     )
                 },
             )
@@ -171,6 +179,8 @@ class SaleSession(
     /**
      * Builds a payment from the displayed [checkout] at [now] in [zone] (for [walletScan], only when [checkout] and
      * the offered wallet still match [WalletScanStart.actual]); null when not ready or an edit made it stale.
+     * Building an audio-guided start consumes its per-shopper choice and retains the new revision for completion.
+     * A caller whose runner refuses the start restores its choice through [updateForm], fenced by that start.
      */
     fun paymentStart(
         checkout: Checkout,
@@ -179,7 +189,16 @@ class SaleSession(
         walletScan: WalletScanStart? = null,
     ): PaymentStart? {
         val current = current(checkout) ?: return null
-        if (walletScan == null) return current.paymentStart(now, zone)
+        if (walletScan == null) {
+            val start = current.paymentStart(now, zone) ?: return null
+            if (!current.form.audioGuidance) return start
+            // Consume this shopper's choice once, even if the attempt is cancelled or its result stays unknown.
+            return synchronized(this) {
+                if (current(checkout) == null) return@synchronized null
+                updateForm { it.copy(audioGuidance = false, audioGuidanceConfirmedFor = null) }
+                start.copy(sessionRevision = revision)
+            }
+        }
         return current
             .takeIf { it.matchesWalletCheckout(walletScan.actual, walletScan.wallet) }
             ?.walletStart(now, zone)
@@ -240,8 +259,19 @@ class SaleSession(
     /** Removes the line with [key]; an unknown key changes nothing. */
     fun remove(key: String) = edited { cart.update { it.remove(key) } }
 
-    /** Updates the checkout form atomically; [transform] must not have side effects, as it can run more than once. */
-    fun updateForm(transform: (CheckoutForm) -> CheckoutForm) = edited { form.update(transform) }
+    /**
+     * Updates the form atomically; [transform] must have no side effects, as it can run more than once.
+     * A non-null [start] fences restoration of a rejected start to its originating kind and current revision.
+     */
+    fun updateForm(
+        start: PaymentStart? = null,
+        transform: (CheckoutForm) -> CheckoutForm,
+    ) {
+        synchronized(this) {
+            if (start != null && (start.kind != kind || start.sessionRevision != revision)) return
+            edited { form.update(transform) }
+        }
+    }
 
     /** Preserves displayed unit prices when moving from [before] to [after]; increments the originating revision. */
     internal fun reprice(
@@ -289,6 +319,7 @@ fun SaleSession.savedCardStart(
     zone: ZoneId,
     fromCheckout: Boolean = false,
 ): SavedCardStart? {
+    if (checkout.form.audioGuidance) return null
     // The session's payment start is null once an edit made checkout stale; the charge is built from checkout itself.
     paymentStart(checkout, now, zone) ?: return null
     return checkout.savedCardStart(card, now, zone, fromCheckout = fromCheckout)

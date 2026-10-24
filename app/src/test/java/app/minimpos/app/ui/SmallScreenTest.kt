@@ -25,6 +25,7 @@ import app.minimpos.app.FakeDevice
 import app.minimpos.app.FakeTerminal
 import app.minimpos.app.GST_RATES
 import app.minimpos.app.MiniMposApp
+import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
@@ -86,6 +87,27 @@ class SmallScreenTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "mini-key")) }
         await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
         env.useCheckoutApi()
+    }
+
+    @Test
+    fun `physical AMS1 audio requirements can be read and confirmed with Pay still visible`() {
+        configureKey()
+        container.session(SaleKind.SALE).addCustom("Item", 1200, TaxRateEntity(name = "No tax", rateMilliPercent = 0))
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("newSale").performClick()
+        waitForTag("charge")
+        compose.clickWhenEnabled("charge")
+        waitForTag("pay")
+        compose.onNodeWithTag("audioGuidance").performScrollTo().performClick()
+        waitForTag("audioGuidanceConfirm")
+        compose
+            .onNodeWithTag("audioGuidanceConfirm")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertTextContains(env.context.getString(R.string.checkout_audio_requirements, "1.117"))
+            .performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("pay") and isEnabled(), 15_000)
+        compose.onNodeWithTag("pay").assertIsDisplayed().assert(isEnabled())
     }
 
     @Test

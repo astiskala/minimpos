@@ -284,6 +284,8 @@ data class SaleEntity(
      * printed with lines for a tip, and captured with the tip once it is entered. Added in database version 6.
      */
     @ColumnInfo(defaultValue = "0") val tipOnReceipt: Boolean = false,
+    /** Frozen per-payment audio-guidance request; status recovery never replays the payment. Added in version 17. */
+    @ColumnInfo(defaultValue = "0") val audioGuidance: Boolean = false,
     /** The tip written on the receipt; null while it is awaited (or for other sales), 0 for no tip. Added in version 6. */
     val tipMinor: Long? = null,
     /**

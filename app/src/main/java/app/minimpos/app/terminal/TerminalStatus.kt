@@ -2,6 +2,7 @@ package app.minimpos.app.terminal
 
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.CoroutineScope
@@ -71,6 +72,10 @@ data class TerminalState(
     val connectionProblem: SetupProblem? = null,
     val printingStanding: CapabilityStanding = CapabilityStanding.NEEDS_CONFIGURATION,
 ) {
+    /** Minimum software for this model; installed software and Support enablement still need merchant confirmation. */
+    val audioGuidanceMinimumSoftware: String?
+        get() = if (capabilities.supportsTerminalFeatures) TerminalClient.audioGuidanceMinimumSoftware(poiId) else null
+
     /**
      * Why printing cannot be tried now: what the destination still needs, else [SetupProblem.PRINTER] while printing is
      * not offered; null when a print can be sent.

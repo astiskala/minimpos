@@ -121,6 +121,14 @@
   <string name="checkout_pre_auth_note">仅冻结卡内金额。稍后可在“交易记录”中扣款或取消。</string>
   <string name="checkout_tip_on_receipt">在收据上填写小费</string>
   <string name="checkout_tip_on_receipt_hint">购物者在打印的收据上填写小费并签名。随后输入小费，即可扣取总额。</string>
+  <string name="checkout_audio_guidance">语音引导</string>
+  <string name="checkout_audio_hint">仅用于本次顾客付款。终端会朗读付款说明。付款和输入PIN码需要更多时间。</string>
+  <string name="checkout_audio_confirm">确认无障碍设置</string>
+  <string name="checkout_audio_requirements">请确认此终端的软件为%1$s或更高版本，且已由Adyen支持团队启用。请使用无需签名的卡。终端语言不能为爱沙尼亚语、拉脱维亚语、冰岛语或立陶宛语。此次付款将跳过部分授权和顾客屏幕提示。</string>
+  <string name="checkout_audio_conflicts">请关闭小费、Giving和特殊卡输入方式后继续。如需使用付款链接、扫码钱包或令牌，请关闭语音引导。</string>
+  <string name="checkout_audio_unavailable">语音引导需要已启用且受支持的Android终端。当前付款目标或未知型号不支持此功能。</string>
+  <string name="capability_audio_detail">请在付款时确认型号、软件、语言、支持团队启用状态及无需签名的卡。请参阅“使用Mini mPOS”指南。</string>
+  <string name="checkout_audio_demo_requirements">仅供离线演示。此次付款将模拟语音引导并跳过部分授权和顾客屏幕提示。不会验证终端音频或真实硬件支持。</string>
   <string name="checkout_tip_on_terminal">在终端上输入小费</string>
   <string name="checkout_tip_on_terminal_hint">刷卡扣款前在终端屏幕上请购物者选择或输入小费。</string>
   <string name="checkout_ask_giving">慈善捐款（Adyen Giving）</string>

@@ -128,11 +128,13 @@ sealed interface TerminalOperation {
      * A card payment. MOTO and MKE payments need Manager approval; ordinary card entry does not.
      *
      * @property params What to charge.
+     * @property audioGuidancePoiId Confirmed audio-guidance terminal; null for ordinary payments.
      * @property expected Original destination for a scanned payment; null for ordinary terminal collection.
      * @property setupIdentity Exact checked scan setup fingerprint; null for ordinary terminal collection.
      */
     data class Pay(
         val params: PaymentParams,
+        val audioGuidancePoiId: String? = null,
         val expected: PaymentContext? = null,
         val setupIdentity: String? = null,
     ) : TerminalOperation {
@@ -361,6 +363,7 @@ class TransactionLifecycle<R>(
                         gateway.pay(
                             operation.params,
                             serviceId,
+                            audioGuidancePoiId = operation.audioGuidancePoiId,
                             expected = operation.expected,
                             expectedIdentity = operation.setupIdentity,
                             onSending = onSending,

@@ -125,6 +125,12 @@ private fun ColumnScope.CapabilitiesMatrix(
     currency: String,
 ) {
     CapabilityStandingRow(
+        title = stringResource(R.string.checkout_audio_guidance),
+        standing = capabilities.audioGuidanceStanding,
+        detail = stringResource(R.string.capability_audio_detail),
+        tag = "cap_audio_guidance",
+    )
+    CapabilityStandingRow(
         title = stringResource(R.string.capability_terminal_tipping),
         standing =
             capabilities.tippingStanding(

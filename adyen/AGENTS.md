@@ -18,7 +18,7 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
 - \* HTTP senders reuse configured clients and attach independent call deadlines. Connection-timeout variants stay
   bounded and preserve TLS, connection pools and retry policy; never rebuild a client for every request.
 - \* Only `client/Decline` interprets ErrorCondition and retry advice. Do not compare its strings elsewhere.
-- \* The nexo wire vocabulary (`AdditionalResponse`/`AdditionalData` keys, the Base64 tip-operation blob) has one owner,
+- \* The nexo wire vocabulary (`AdditionalResponse`/`AdditionalData` keys, the Base64 payment-operation blob) has one owner,
   `client/NexoVocabulary.kt`: the client that writes requests and reads answers and the simulator that answers them
   both read it, so a renamed key fails to compile instead of silently changing simulator answers. Reading the body of a
   simple one-request answer (transport fault, empty or unexpected shape) is likewise one owner
@@ -38,8 +38,9 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
   Jackson annotations/methods/constructors and field names/access in release R8 rules: publicizing private SDK fields
   leaks bookkeeping into JSON. `AdyenModelR8Test` exercises optimized models offline. HTTP still goes through `AdyenHttp`.
   Raw fields are only for unmodeled amount-update `refusalReason`, unknown-status diagnostics, extensible
-  `AdditionalData`/`AdditionalResponse`, Base64 admin/tip payloads in SDK string fields, Payments app App Links and
-  unstructured terminal rejections. See CONTRIBUTING's API model ownership for the coverage and transport boundary.
+  `AdditionalData`/`AdditionalResponse`, Base64 admin/payment-operation payloads in SDK string fields,
+  Payments app App Links and unstructured terminal rejections. See CONTRIBUTING's API model ownership for the coverage
+  and transport boundary.
 - Amounts cross `TerminalClient` in minor units with typed intents (such as `appPrintsReceipts`); only the client
   converts them to and from nexo's major units, with the Adyen decimals it is constructed with (`currencyDigits`).
 - `TerminalLocalAPI` posts to `<endpoint>:8443/nexo/`; `xerces:xercesImpl` supplies `DatatypeFactory` on Android.

@@ -123,6 +123,14 @@
   <string name="checkout_pre_auth_note">Este importe solo se retiene en la tarjeta. Capture o cancele la preautorización más tarde desde Historial.</string>
   <string name="checkout_tip_on_receipt">Propina sobre el recibo</string>
   <string name="checkout_tip_on_receipt_hint">El cliente escribe una propina en el recibo impreso y lo firma. Ingrese la propina luego para capturar el total.</string>
+  <string name="checkout_audio_guidance">Guía por audio</string>
+  <string name="checkout_audio_hint">Solo para este comprador. La terminal lee las instrucciones de pago en voz alta. Permite más tiempo para el pago y el PIN.</string>
+  <string name="checkout_audio_confirm">Confirmar configuración accesible</string>
+  <string name="checkout_audio_requirements">Confirma software %1$s o posterior y la activación por Soporte de Adyen para esta terminal. Usa una tarjeta que no requiera firma. El idioma de la terminal no puede ser estonio, letón, islandés ni lituano. Omite las autorizaciones parciales y las indicaciones de la pantalla para el comprador en este pago.</string>
+  <string name="checkout_audio_conflicts">Desactiva propinas, Giving y la captura especial de tarjetas para continuar. Desactiva la guía por audio para usar un enlace, una billetera escaneada o un token.</string>
+  <string name="checkout_audio_unavailable">La guía por audio necesita una terminal Android compatible y habilitada. No está disponible para este destino o modelo desconocido.</string>
+  <string name="capability_audio_detail">Confirma modelo, software, idioma, activación por Soporte y una tarjeta sin firma al pagar. Consulta la guía Usar Mini mPOS.</string>
+  <string name="checkout_audio_demo_requirements">Solo demostración sin conexión. Simula la guía por audio y omite las autorizaciones parciales y las indicaciones de la pantalla del comprador en este pago. No se verifica el audio de la terminal ni la compatibilidad del equipo real.</string>
   <string name="checkout_tip_on_terminal">Propina sobre la terminal</string>
   <string name="checkout_tip_on_terminal_hint">Solicite una propina al comprador en la pantalla del terminal antes de cobrar la tarjeta.</string>
   <string name="checkout_ask_giving">Donación benéfica (Adyen Giving)</string>

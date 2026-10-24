@@ -16,7 +16,7 @@ private const val SALE_HISTORY_COLUMNS = """
     tokenizationRequested, storedPaymentMethodId, serviceId, poiId, poiTransactionId, poiTimestamp,
     pspReference, paymentBrand, maskedPan, entryMode, authCode, message, NULL AS customerReceiptJson,
     NULL AS cashierReceiptJson, signatureRequired, refundedMinor, emailedTo, errorCondition,
-    refusalReason, kind, tipOnReceipt, tipMinor, authorisedMinor, adjustment, NULL AS
+    refusalReason, kind, tipOnReceipt, audioGuidance, tipMinor, authorisedMinor, adjustment, NULL AS
     adjustAuthorisationData, capturedMinor, captureStatus, modificationMessage, paymentMethodVariant,
     holdCancelled, paymentLink, paymentLinkId, paymentLinkUrl, paymentLinkExpiresAt, reason,
     modificationReason, context, linkLocale, linkCountry, linkRecurringModel, adjustmentKey,

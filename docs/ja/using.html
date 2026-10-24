@@ -80,7 +80,7 @@
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Adyen機能を確認</a></li><li><a href="#terminal-checkout">任意の会計フロー</a>
-  <ul><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
+  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
   <a href="#saved-card">トークンで請求</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
@@ -94,7 +94,7 @@
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Adyen機能を確認</a></li><li><a href="#terminal-checkout">任意の会計フロー</a>
-  <ul><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
+  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
   <a href="#saved-card">トークンで請求</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
@@ -313,6 +313,28 @@
           <h2>任意の会計フローを使う</h2>
           <p>設定で必要な会計項目だけを有効にします。一部承認を除き、これらの機能には対応する物理端末が必要で、Tap to Payでは使えません。先に<a href="#capabilities">Adyen機能</a>
             を確認し、実際の構成でテストしてください。</p>
+          <h3 id="audio-guidance">音声ガイド付きの支払いを受け付ける</h3>
+          <p>
+            支払い画面で、このお客様のために<strong>音声ガイド</strong>をオンにします。
+            AMS1、S1F2、S1F2L、S1E2L、S1U2はソフトウェア1.117以降、M450、P630、SFO1は1.124以降に対応しています。
+            Adyenサポートによる端末の有効化が必要です。
+            Tap to Pay、未掲載の機種、不明な機種では利用できません。<a
+            href="https://docs.adyen.com/point-of-sale/android-terminals/accessibility-mode/accessibility-from-pos">Adyenの音声ガイドの要件</a>を参照してください。</p>
+          <p>
+            端末とレシートでのチップ、Giving、特殊なカード入力をオフにします。
+            ソフトウェアと有効化を確認してから<strong>音声ガイドの設定を確認</strong>を選びます。
+            署名不要のカードを使用し、端末の言語をエストニア語、ラトビア語、アイスランド語、リトアニア語以外にしてください。
+            確認すると、この支払いでは一部承認を使わず全額を要求し、設定済みのお客様用画面の案内も省略します。
+            リンク、スキャン式ウォレット、トークンを選ぶには音声ガイドをオフにします。</p>
+          <p>端末が支払い手順を読み上げます。
+            支払いとPIN入力には十分な時間を取ってください。
+            支払いまたはキャンセル後に音声ガイドは終了します。
+            Mini
+            mPOSは最大10分待ってから元の取引を確認します。
+            Adyen側で待ち時間を延長した場合や応答が届かない場合は、次の支払い前に<a
+            href="troubleshooting#unknown">結果不明の取引を確認</a>してください。
+            この設定は今回の試行開始時にリセットされます。
+            シミュレーターデモでは音声を再生せず、実機の対応も確認できません。</p>
           <h3 id="partial-payments">一部承認された決済の残額を受け取る</h3>
           <p><strong>一部承認を許可</strong>をオンにすると、要求額より少ないカード承認を受け付けられます。結果が<strong>一部支払済み</strong>の場合は支払額と残額を確認し、その結果画面で
             <strong>残額を支払う</strong>ボタンをタップして別のカードで残額を受け取ります。各決済の試行は同じ販売に保存されます。全額が承認されるまでは支払い完了としないでください。</p>

@@ -55,6 +55,91 @@ class CheckoutTest {
     ) = Checkout(form, payment, totals, aud, kind, printer)
 
     @Test
+    fun `busy payment runner restores audio choice without restoring stale checkout access`() =
+        runBlocking {
+            val session = SaleSession()
+            session.addCustom("Item", 1200, TaxRateEntity(1, "Zero", 0))
+            session.updateForm { it.copy(audioGuidance = true, audioGuidanceConfirmedFor = "AMS1-123") }
+            val terminal = flowOf(TerminalState(poiId = "AMS1-123"))
+            val checkout = session.checkout(flowOf(AppSettings()), terminal = terminal, currency = { aud }).first()
+            val start = checkNotNull(session.paymentStart(checkout, now, ZoneOffset.UTC))
+            session.updateForm(start) { it.copy(audioGuidance = true, audioGuidanceConfirmedFor = start.audioGuidancePoiId) }
+            assertThat(session.form.value.audioGuidance).isTrue()
+            assertThat(session.form.value.audioGuidanceConfirmedFor).isEqualTo("AMS1-123")
+            assertThat(session.paymentStart(checkout, now, ZoneOffset.UTC)).isNull()
+            session.complete(start)
+            assertThat(session.cart.value.lines).hasSize(1)
+            session.updateForm { it.copy(audioGuidance = false, audioGuidanceConfirmedFor = null) }
+            session.updateForm(start) { it.copy(audioGuidance = true, audioGuidanceConfirmedFor = start.audioGuidancePoiId) }
+            assertThat(session.form.value.audioGuidance).isFalse()
+        }
+
+    @Test
+    fun `audio guidance needs terminal confirmation and explicit conflict resolution`() {
+        val audio =
+            checkout(form = CheckoutForm(audioGuidance = true))
+                .copy(audioGuidanceMinimumSoftware = "1.117", audioGuidanceTarget = "AMS1-123")
+        assertThat(audio.canPay).isFalse()
+        val ready = audio.copy(form = audio.form.copy(audioGuidanceConfirmedFor = "AMS1-123"))
+        assertThat(ready.canPay).isTrue()
+        val start = checkNotNull(ready.paymentStart(now, ZoneOffset.UTC))
+        assertThat(start.audioGuidance).isTrue()
+        assertThat(start.audioGuidancePoiId).isEqualTo("AMS1-123")
+        assertThat(start.shopperFlow).isNull()
+        val fullAmount =
+            checkNotNull(
+                ready
+                    .copy(payment = ready.payment.copy(allowPartialAuthorisation = true))
+                    .paymentStart(now, ZoneOffset.UTC),
+            )
+        assertThat(fullAmount.allowPartialAuthorisation).isFalse()
+        assertThrows(IllegalArgumentException::class.java) { fullAmount.copy(allowPartialAuthorisation = true) }
+        assertThat(ready.copy(audioGuidanceTarget = "AMS1-other").canPay).isFalse()
+        assertThat(ready.copy(audioGuidanceMinimumSoftware = null).canPay).isFalse()
+        assertThat(
+            ready
+                .copy(
+                    form = ready.form.copy(askGratuity = true),
+                    payment = ready.payment.copy(terminalTipping = ReceiptTipping.DEFAULT_ON),
+                ).canPay,
+        ).isFalse()
+        assertThat(ready.copy(form = ready.form.copy(tipOnReceipt = true)).canPay).isFalse()
+        assertThat(
+            ready
+                .copy(
+                    form = ready.form.copy(askGiving = true),
+                    payment = ready.payment.copy(askGiving = ReceiptTipping.DEFAULT_ON),
+                ).canPay,
+        ).isFalse()
+        assertThat(
+            ready
+                .copy(
+                    form = ready.form.copy(cardEntryOverride = CardEntryOverride.MKE),
+                    payment = ready.payment.copy(allowMke = true),
+                ).canPay,
+        ).isFalse()
+        assertThat(ready.copy(linksAvailable = true).canSendLink).isFalse()
+        assertThat(ready.copy(wallets = listOf(ScanWallet.WECHAT_PAY)).canScanWallet).isFalse()
+    }
+
+    @Test
+    fun `audio choice is consumed once and stale checkout cannot start another shopper`() =
+        runBlocking {
+            val session = SaleSession()
+            session.addCustom("Item", 1200, TaxRateEntity(1, "Zero", 0))
+            session.updateForm { it.copy(audioGuidance = true, audioGuidanceConfirmedFor = "AMS1-123") }
+            val terminal = flowOf(TerminalState(poiId = "AMS1-123"))
+            val checkout = session.checkout(flowOf(AppSettings()), terminal = terminal, currency = { aud }).first()
+            val start = checkNotNull(session.paymentStart(checkout, now, ZoneOffset.UTC))
+            assertThat(start.audioGuidance).isTrue()
+            assertThat(session.form.value.audioGuidance).isFalse()
+            assertThat(session.form.value.audioGuidanceConfirmedFor).isNull()
+            assertThat(session.paymentStart(checkout, now, ZoneOffset.UTC)).isNull()
+            session.complete(start)
+            assertThat(session.cart.value.lines).isEmpty()
+        }
+
+    @Test
     fun `each tender's ceremony says what it drops, then the special entry warning, then Manager approval`() {
         val giving = PaymentSettings(receiptTipping = ReceiptTipping.DEFAULT_ON, askGiving = ReceiptTipping.DEFAULT_ON)
         val tipped = checkout(payment = giving.copy(askGiving = ReceiptTipping.DISABLED))

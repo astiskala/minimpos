@@ -64,6 +64,9 @@ data class ShopperPromptTexts(
  * @property shopperTexts App-localized terminal prompts; required when [shopperDisplayAvailable].
  * @property emailOnTerminal Whether the terminal asks for an email when none was entered
  *   ([app.minimpos.app.data.settings.AppSettings.asksEmailOnTerminal]).
+ * @property audioGuidanceMinimumSoftware Minimum supported software for the resolved model; null when unsupported or unknown.
+ * @property audioGuidanceSimulated Whether the choice demonstrates the flow without physical terminal requirements.
+ * @property audioGuidanceTarget Resolved terminal POIID; binds the per-shopper confirmation to that terminal.
  */
 data class Checkout(
     val form: CheckoutForm = CheckoutForm(),
@@ -79,6 +82,9 @@ data class Checkout(
     val shopperDisplayAvailable: Boolean = false,
     val shopperTexts: ShopperPromptTexts? = null,
     val emailOnTerminal: Boolean = false,
+    val audioGuidanceMinimumSoftware: String? = null,
+    val audioGuidanceSimulated: Boolean = false,
+    val audioGuidanceTarget: String? = null,
 ) {
     /** Whether the amount is only held (a pre-authorisation) rather than charged. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
@@ -287,8 +293,19 @@ data class Checkout(
         )
     }
 
+    /** Whether this shopper's accessible flow is compatible and its setup was explicitly confirmed for this terminal. */
+    val audioGuidanceReady: Boolean
+        get() =
+            !form.audioGuidance || (
+                (audioGuidanceSimulated || audioGuidanceMinimumSoftware != null) && audioGuidanceTarget != null &&
+                    form.audioGuidanceConfirmedFor == audioGuidanceTarget &&
+                    !askGratuity && !tipOnReceipt && !askGiving && effectiveCardEntry == CardEntryOverride.NORMAL
+            )
+
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */
-    val canPay: Boolean get() = !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid
+    val canPay: Boolean get() =
+        !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid &&
+            audioGuidanceReady
 
     /**
      * The payment to start, or null unless [canPay]. A blank merchant reference is generated from [now] in [zone] with
@@ -300,7 +317,7 @@ data class Checkout(
     ): PaymentStart? {
         if (!canPay) return null
         val reference = form.transactionReference.trim().ifEmpty { Ids.transactionReference(payment.referencePrefix, now, zone) }
-        val allowPartial = payment.allowPartialAuthorisation && !preAuthorisation && !tipOnReceipt
+        val allowPartial = payment.allowPartialAuthorisation && !preAuthorisation && !tipOnReceipt && !form.audioGuidance
         return PaymentStart(
             totals = totals,
             currency = currency,
@@ -313,10 +330,12 @@ data class Checkout(
             shopperReference = shopperReference,
             sessionRevision = sessionRevision,
             terminalTip = terminalTipOptions(),
-            shopperFlow = shopperSessionFlow(reference),
+            shopperFlow = if (form.audioGuidance) null else shopperSessionFlow(reference),
             allowPartialAuthorisation = allowPartial,
             askGiving = askGiving,
             cardEntryOverride = effectiveCardEntry,
+            audioGuidance = form.audioGuidance,
+            audioGuidancePoiId = audioGuidanceTarget.takeIf { form.audioGuidance },
         )
     }
 
@@ -324,7 +343,7 @@ data class Checkout(
      * Whether a payment link is offered instead of the terminal: for a sale (a pre-authorisation always goes to the
      * terminal) that [canPay], while links are [linksAvailable].
      */
-    val canSendLink: Boolean get() = !preAuthorisation && linksAvailable && canPay
+    val canSendLink: Boolean get() = !form.audioGuidance && !preAuthorisation && linksAvailable && canPay
 
     /**
      * The payment link to create, or null unless [canSendLink]: the [paymentStart] at [now] in [zone] without tipping on
@@ -361,13 +380,14 @@ data class Checkout(
         fromCheckout: Boolean = false,
     ): SavedCardStart? {
         val model = payment.recurringModel().value
+        if (form.audioGuidance) return null
         if (preAuthorisation || shopperReference == null || !card.supports(model)) return null
         val start = paymentStart(now, zone)?.forSavedCard() ?: return null
         return SavedCardStart(start, card, model, fromCheckout = fromCheckout)
     }
 
     /** Whether scanned wallets are offered, independently of entered-field validation. */
-    val offersScanWallet: Boolean get() = !preAuthorisation && wallets.isNotEmpty()
+    val offersScanWallet: Boolean get() = !form.audioGuidance && !preAuthorisation && wallets.isNotEmpty()
 
     /** Whether a configured scanned wallet can pay this checkout now. */
     val canScanWallet: Boolean get() = offersScanWallet && canPay

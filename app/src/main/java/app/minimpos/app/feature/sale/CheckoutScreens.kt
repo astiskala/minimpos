@@ -128,7 +128,7 @@ fun CheckoutScreen(
         navigator = navigator,
         kind = kind,
         actions = CheckoutCallbacks(vm::pay, vm::scanWallet, vm::sendLink, vm::update),
-        tokens = tokens.isNotEmpty(),
+        tokens = tokens.isNotEmpty() && !state.form.audioGuidance,
         onChooseToken = { choosingToken = true },
         modifier = modifier,
     )
@@ -602,6 +602,7 @@ private fun ColumnScope.CheckoutSwitches(
     state: Checkout,
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
 ) {
+    AudioGuidanceSwitches(state, onUpdate)
     if (state.canTokenize) {
         SaveCardSwitch(
             checked = state.tokenize,
@@ -641,6 +642,53 @@ private fun ColumnScope.CheckoutSwitches(
         )
     }
     SpecialEntrySwitches(state, onUpdate)
+}
+
+@Composable
+private fun ColumnScope.AudioGuidanceSwitches(
+    state: Checkout,
+    onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
+) {
+    val minimumSoftware = state.audioGuidanceMinimumSoftware
+    if (minimumSoftware == null && !state.audioGuidanceSimulated && !state.form.audioGuidance) {
+        Text(stringResource(R.string.checkout_audio_unavailable), style = MaterialTheme.typography.bodySmall)
+        return
+    }
+    LabeledSwitch(
+        title = stringResource(R.string.checkout_audio_guidance),
+        hint = stringResource(R.string.checkout_audio_hint),
+        checked = state.form.audioGuidance,
+        onChange = { checked -> onUpdate { it.copy(audioGuidance = checked, audioGuidanceConfirmedFor = null) } },
+        tag = "audioGuidance",
+    )
+    if (state.form.audioGuidance) {
+        if (minimumSoftware != null || state.audioGuidanceSimulated) {
+            LabeledSwitch(
+                title = stringResource(R.string.checkout_audio_confirm),
+                hint =
+                    if (state.audioGuidanceSimulated) {
+                        stringResource(R.string.checkout_audio_demo_requirements)
+                    } else {
+                        stringResource(R.string.checkout_audio_requirements, checkNotNull(minimumSoftware))
+                    },
+                checked = state.form.audioGuidanceConfirmedFor == state.audioGuidanceTarget,
+                onChange = { checked ->
+                    onUpdate { it.copy(audioGuidanceConfirmedFor = state.audioGuidanceTarget.takeIf { checked }) }
+                },
+                tag = "audioGuidanceConfirm",
+            )
+        }
+        Text(
+            stringResource(
+                if (minimumSoftware == null && !state.audioGuidanceSimulated) {
+                    R.string.checkout_audio_unavailable
+                } else {
+                    R.string.checkout_audio_conflicts
+                },
+            ),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
 }
 
 @Composable

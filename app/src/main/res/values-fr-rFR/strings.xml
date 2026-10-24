@@ -123,6 +123,14 @@
   <string name="checkout_pre_auth_note">Ce montant est uniquement réservé sur la carte. Capturez ou annulez la pré-autorisation plus tard depuis l’Historique.</string>
   <string name="checkout_tip_on_receipt">Pourboire sur le reçu</string>
   <string name="checkout_tip_on_receipt_hint">Le client écrit un pourboire sur le reçu imprimé et le signe. Saisissez ensuite le pourboire pour capturer le total.</string>
+  <string name="checkout_audio_guidance">Guidage audio</string>
+  <string name="checkout_audio_hint">Pour ce client uniquement. Le terminal lit les instructions de paiement à voix haute. Prévoyez plus de temps pour le paiement et le code PIN.</string>
+  <string name="checkout_audio_confirm">Confirmer la configuration accessible</string>
+  <string name="checkout_audio_requirements">Confirmez le logiciel %1$s ou ultérieur et l’activation par le support Adyen pour ce terminal. Utilisez une carte sans signature. La langue du terminal ne peut pas être l’estonien, le letton, l’islandais ou le lituanien. Ignorez les autorisations partielles et les invites de l’écran client pour ce paiement.</string>
+  <string name="checkout_audio_conflicts">Désactivez les pourboires, Giving et la saisie spéciale des cartes pour continuer. Désactivez le guidage audio pour utiliser un lien, un portefeuille scanné ou un token.</string>
+  <string name="checkout_audio_unavailable">Le guidage audio nécessite un terminal Android compatible et activé. Il est indisponible pour cette destination ou ce modèle inconnu.</string>
+  <string name="capability_audio_detail">Confirmez le modèle, le logiciel, la langue, l’activation par le support et une carte sans signature au paiement. Consultez le guide Utiliser Mini mPOS.</string>
+  <string name="checkout_audio_demo_requirements">Démonstration hors ligne uniquement. Simulez le guidage audio et ignorez les autorisations partielles et les invites de l’écran client pour ce paiement. Le son du terminal et la compatibilité du matériel réel ne sont pas vérifiés.</string>
   <string name="checkout_tip_on_terminal">Pourboire sur le terminal</string>
   <string name="checkout_tip_on_terminal_hint">Demandez un pourboire à l’acheteur sur l’écran du terminal avant de débiter la carte.</string>
   <string name="checkout_ask_giving">Don de charité (Adyen Giving)</string>

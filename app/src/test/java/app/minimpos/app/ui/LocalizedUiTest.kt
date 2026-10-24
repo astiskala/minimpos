@@ -76,6 +76,17 @@ class LocalizedUiTest {
     }
 
     @Test
+    fun `Japanese audio guidance confirmation fits an AMS1`() = saleFits(audioGuidance = true)
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese audio guidance confirmation fits an AMS1`() = saleFits(audioGuidance = true)
+
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese audio guidance confirmation fits an AMS1`() = saleFits(audioGuidance = true)
+
+    @Test
     fun `Japanese sale primary actions fit an AMS1`() = saleFits()
 
     @Test
@@ -285,7 +296,7 @@ class LocalizedUiTest {
         compose.onNodeWithText(env.context.getString(R.string.wallet_demo_note)).assertIsDisplayed()
     }
 
-    private fun saleFits() {
+    private fun saleFits(audioGuidance: Boolean = false) {
         val context = env.context
         compose.setContent { MiniMposApp(env.container) }
         listOf("newSale", "refund", "history", "products", "settings").forEach {
@@ -308,7 +319,17 @@ class LocalizedUiTest {
         compose.onNodeWithTag("charge").assertIsDisplayed()
         compose.clickWhenEnabled("charge")
         compose.waitUntilAtLeastOneExists(hasTestTag("pay"), 15_000)
-        compose.onNodeWithTag("pay").assertIsDisplayed().performClick()
+        if (audioGuidance) {
+            compose.onNodeWithTag("audioGuidance").performScrollTo().performClick()
+            compose.waitUntilAtLeastOneExists(hasTestTag("audioGuidanceConfirm"), 15_000)
+            compose
+                .onNodeWithTag("audioGuidanceConfirm")
+                .performScrollTo()
+                .assertIsDisplayed()
+                .performClick()
+        }
+        compose.onNodeWithTag("pay").assertIsDisplayed()
+        compose.clickWhenEnabled("pay")
         compose.waitUntilAtLeastOneExists(hasTestTag("newSaleAfter"), 15_000)
         compose.onNodeWithTag("resultStatus").assertTextContains(context.getString(R.string.status_approved))
         compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()

@@ -98,12 +98,14 @@ class AppFlowTest {
     fun `rings up a custom amount, pays, prints and starts a new sale`() {
         compose.onNodeWithTag("modeBanner").assertIsDisplayed()
         ringUpCustomAmount(1, 2, 5, 0)
+        waitForText("Charge $12.50")
         compose.onNodeWithText("Charge $12.50").assertIsDisplayed()
         compose.clickWhenEnabled("charge")
         compose.waitForTag("pay")
         compose.onNodeWithTag("customerReference").performTextInput("CUST-42")
+        compose.waitForTag("tokenize")
         compose.onNodeWithTag("tokenize").performClick()
-        compose.onNodeWithTag("pay").performClick()
+        compose.clickWhenEnabled("pay")
 
         waitForText("Approved")
         compose.onNodeWithText("$12.50").assertIsDisplayed()

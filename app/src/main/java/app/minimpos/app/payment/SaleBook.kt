@@ -42,6 +42,8 @@ import app.minimpos.terminal.client.TransactionKind
  * @property requestedAmountMinor Amount requested for this tender in minor units; defaults to `totals.amounts.gross`.
  * @property existingSaleId Existing partially paid sale ID when collecting the remaining balance; null for a new sale.
  * @property askGiving Whether `AskGiving` is sent on this payment.
+ * @property audioGuidance Whether audio guidance was selected and explicitly confirmed for this shopper.
+ * @property audioGuidancePoiId Confirmed terminal POIID; checked again immediately before sending.
  * @property cardEntryOverride Card entry override (`NORMAL`, `MOTO` or `MKE`).
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
@@ -66,9 +68,19 @@ data class PaymentStart(
     val requestedAmountMinor: Long = totals.amounts.gross,
     val existingSaleId: String? = null,
     val askGiving: Boolean = false,
+    val audioGuidance: Boolean = false,
+    val audioGuidancePoiId: String? = null,
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
 ) {
     init {
+        require(
+            !audioGuidance || (
+                !tipOnReceipt && terminalTip == null && !askGiving && !allowPartialAuthorisation && shopperFlow == null &&
+                    scannedPayment == null && cardEntryOverride == CardEntryOverride.NORMAL && audioGuidancePoiId != null
+            ),
+        ) {
+            "Audio guidance requires a confirmed compatible card flow"
+        }
         require(!tipOnReceipt || kind == SaleKind.SALE) { "Only a sale can be taken for tipping on the receipt" }
         require(terminalTip == null || (kind == SaleKind.SALE && !tipOnReceipt && scannedPayment == null)) {
             "Terminal tipping requires an immediate-charge card sale"
@@ -94,6 +106,8 @@ data class PaymentStart(
     fun forSavedCard(): PaymentStart =
         copy(
             tokenization = null,
+            audioGuidance = false,
+            audioGuidancePoiId = null,
             tipOnReceipt = false,
             terminalTip = null,
             shopperFlow = null,
@@ -177,12 +191,14 @@ class SaleBook(
                 preAuthorisation = request.manualCapture,
                 scannedPayment = request.scannedPayment,
                 terminalTip = request.terminalTip,
+                audioGuidance = request.audioGuidance,
                 shopperFlow = request.shopperFlow,
                 allowPartialAuthorisation = request.allowPartialAuthorisation,
                 saleReferenceId = request.merchantReference.takeIf { isSplit || request.allowPartialAuthorisation },
                 askGiving = request.askGiving,
                 cardEntryOverride = request.cardEntryOverride,
             ),
+            audioGuidancePoiId = request.audioGuidancePoiId,
             expected = request.walletContext,
             setupIdentity = request.walletSetupIdentity,
         )
@@ -267,6 +283,7 @@ class SaleBook(
                 context = request.walletContext,
                 kind = request.kind,
                 tipOnReceipt = request.tipOnReceipt,
+                audioGuidance = request.audioGuidance,
             )
         }
 

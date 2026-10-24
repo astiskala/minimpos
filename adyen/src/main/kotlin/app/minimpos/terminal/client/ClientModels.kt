@@ -235,10 +235,20 @@ data class PaymentParams(
     val saleReferenceId: String? = null,
     /** Sends `AskGiving` in `SaleToAcquirerData.tenderOption` to prompt for a charity donation after purchase. */
     val askGiving: Boolean = false,
+    /** Requests audio guidance for this payment; caller confirms software, enablement and no signature requirement. */
+    val audioGuidance: Boolean = false,
     /** Overrides how the card is entered on the terminal (`MOTO` tender option or `ForceEntryMode=Keyed`). */
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
 ) {
     init {
+        require(
+            !audioGuidance || (
+                terminalTip == null && !askGiving && scannedPayment == null &&
+                    shopperFlow == null && cardEntryOverride == CardEntryOverride.NORMAL
+            ),
+        ) {
+            "Audio guidance requires a card payment without tipping, Giving, special entry or shopper prompts"
+        }
         require(scannedPayment == null || !preAuthorisation) { "Scanned wallets require an immediate-charge sale" }
         require(terminalTip == null || (!preAuthorisation && scannedPayment == null)) {
             "Terminal tipping requires an immediate-charge card sale"

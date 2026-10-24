@@ -117,6 +117,9 @@ class TerminalClient(
      * unreadable reply), the payment's status is checked as the [RecoveryPolicy] says until the terminal gives a result;
      * a payment that stays unconfirmed is [TransactionOutcome.Unknown].
      *
+     * Audio guidance allows [ACCESSIBLE_TRANSACTION_TIMEOUT] before recovery, covering the default extended payment
+     * and PIN screens. Longer Support-configured screens can still yield an unknown result; no timeout aborts a payment.
+     *
      * Callers that persist the [serviceId] before sending can later reconcile the payment with [status].
      *
      * @param params What to charge and how.
@@ -155,15 +158,7 @@ class TerminalClient(
                                                 additionalData = mapOf(MANUAL_CAPTURE to "true")
                                             }
                                         }
-                                    effectiveParams.terminalTip?.let { tip ->
-                                        tip.suggestions?.let { suggestions ->
-                                            saleToPOIData =
-                                                encodeTipOperation(
-                                                    tip.amountToTipOnMinor?.let { money.major(it, effectiveParams.currency) },
-                                                    suggestions,
-                                                )
-                                        }
-                                    }
+                                    saleToPOIData = paymentOperations(effectiveParams)
                                     if (effectiveParams.requestCardAlias) tokenRequestedType = TokenRequestedType.CUSTOMER
                                 }
                             paymentData = effectiveParams.scannedPayment?.let(::scannedInstrument)
@@ -171,7 +166,12 @@ class TerminalClient(
                         }
                 }
             onStarted(serviceId)
-            execute(serviceId, MessageCategoryType.PAYMENT, request) {
+            execute(
+                serviceId,
+                MessageCategoryType.PAYMENT,
+                request,
+                timeout = if (params.audioGuidance) maxOf(transactionTimeout, ACCESSIBLE_TRANSACTION_TIMEOUT) else transactionTimeout,
+            ) {
                 it.paymentResponse?.let { answer ->
                     mapPayment(answer, money::minor)
                 }
@@ -540,10 +540,11 @@ class TerminalClient(
         serviceId: String,
         category: MessageCategoryType,
         request: SaleToPOIRequest,
+        timeout: Duration = transactionTimeout,
         extract: (SaleToPOIResponse) -> TransactionDetails?,
     ): TransactionOutcome {
         val response =
-            when (val delivery = transport.send(wrap(request), transactionTimeout)) {
+            when (val delivery = transport.send(wrap(request), timeout)) {
                 is Delivery.Answered -> delivery.response
                 is Delivery.Failed if !delivery.fault.mayHaveTakenEffect -> return TransactionOutcome.NotProcessed(delivery.fault)
                 is Delivery.Failed -> return recover(serviceId, category, delivery.fault)
@@ -672,10 +673,28 @@ class TerminalClient(
 
     private fun wrap(request: SaleToPOIRequest) = TerminalAPIRequest().apply { saleToPOIRequest = request }
 
-    private fun encodeTipOperation(
+    // One owner composes every Payment operation, so adding a variant cannot overwrite tip overrides.
+    private fun paymentOperations(params: PaymentParams): String? {
+        val operation =
+            buildMap<String, Any> {
+                put("Type", "Payment")
+                if (params.audioGuidance) put(NexoVocabulary.VARIANT, NexoVocabulary.ENABLE_ACCESSIBILITY)
+                params.terminalTip?.let { tip ->
+                    tip.suggestions?.let { suggestions ->
+                        put(
+                            NexoVocabulary.TIP_OPTIONS,
+                            tipOptions(tip.amountToTipOnMinor?.let { money.major(it, params.currency) }, suggestions),
+                        )
+                    }
+                }
+            }
+        return if (operation.size == 1) null else base64Json(mapOf(NexoVocabulary.OPERATION to listOf(operation)))
+    }
+
+    private fun tipOptions(
         amountToTipOn: BigDecimal?,
         configured: TerminalTipSuggestions,
-    ): String {
+    ): Map<String, Any> {
         val suggestions =
             when (configured) {
                 is TerminalTipSuggestions.Percentages -> {
@@ -696,13 +715,10 @@ class TerminalClient(
                     }
                 }
             }
-        val tipOptions =
-            buildMap<String, Any> {
-                amountToTipOn?.let { put(NexoVocabulary.AMOUNT_TO_TIP_ON, it) }
-                put(NexoVocabulary.TIP_SUGGESTIONS, suggestions)
-            }
-        val operation = mapOf(NexoVocabulary.OPERATION to listOf(mapOf("Type" to "Payment", NexoVocabulary.TIP_OPTIONS to tipOptions)))
-        return base64Json(operation)
+        return buildMap<String, Any> {
+            amountToTipOn?.let { put(NexoVocabulary.AMOUNT_TO_TIP_ON, it) }
+            put(NexoVocabulary.TIP_SUGGESTIONS, suggestions)
+        }
     }
 
     private fun TransactionKind.category(): MessageCategoryType =
@@ -718,6 +734,21 @@ class TerminalClient(
 
         /** How long to wait for a payment or refund response before checking its status, as Adyen advises. */
         val DEFAULT_TRANSACTION_TIMEOUT: Duration = 120.seconds
+
+        /** Covers the default two-minute payment and five-minute PIN screens, plus transitions; timeout still means unknown. */
+        val ACCESSIBLE_TRANSACTION_TIMEOUT: Duration = 600.seconds
+
+        /**
+         * Minimum Adyen software for POS-requested audio guidance on [poiId], or null for an unlisted/unknown model.
+         * Model eligibility alone does not establish installed software or Support enablement (checked October 24, 2026).
+         */
+        fun audioGuidanceMinimumSoftware(poiId: String?): String? =
+            when (poiId?.substringBefore('-')?.uppercase()) {
+                "AMS1", "S1F2", "S1F2L", "S1E2L", "S1U2" -> "1.117"
+                "M450", "P630", "SFO1" -> "1.124"
+                else -> null
+            }
+
         private val TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
 
         /**

@@ -69,6 +69,7 @@ import app.minimpos.app.feature.refund.refundStatusKind
 import app.minimpos.app.feature.refund.refundStatusTitle
 import app.minimpos.app.feature.sale.EnterTipButton
 import app.minimpos.app.feature.sale.HoldNotes
+import app.minimpos.app.feature.sale.SplitProgress
 import app.minimpos.app.feature.sale.adviceText
 import app.minimpos.app.feature.sale.statusKind
 import app.minimpos.app.feature.sale.statusTitle
@@ -499,6 +500,7 @@ fun SaleDetailScreen(
                 onCancel = { gate.run { approval = { cancelling = true } } },
                 onShowLink = { navigator.push(Route.PaymentLink(sale.id)) },
             )
+            SplitProgress(record, money) { navigator.push(Route.Split(saleId = sale.id)) }
             if (sale.approved) {
                 ReceiptActions(state.transaction, vm.transaction, MerchantCopy.ALWAYS, email = sale.shopperEmail.orEmpty())
             }

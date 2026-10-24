@@ -30,6 +30,7 @@ import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.items
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.OperationAmount
+import app.minimpos.app.payment.RefundStarted
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.receipt.ReceiptCopy
@@ -416,9 +417,9 @@ class ViewModelsTest {
                 .append(9)
         }
         assertThat(vm.state.value.amountValid).isFalse()
-        assertThat(vm.refund()).isFalse()
+        assertThat(vm.refund()).isEqualTo(RefundStarted.NONE)
         vm.selectOption(RefundOption.ITEMS)
-        assertThat(vm.refund()).isTrue()
+        assertThat(vm.refund()).isEqualTo(RefundStarted.SINGLE)
         val refundId = await { (container.refunds.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
         val refund = await { container.refundRecords.get(refundId)!! }
         assertThat(refund.amountMinor).isEqualTo(450)
@@ -451,7 +452,7 @@ class ViewModelsTest {
         await { vm.state.first { it.load is Refundability.Refundable } }
         vm.selectOption(RefundOption.ITEMS)
         vm.setQuantity(lineId, 1)
-        assertThat(vm.refund()).isTrue()
+        assertThat(vm.refund()).isEqualTo(RefundStarted.SINGLE)
         val refundId = await { (container.refunds.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
         // The result right after the refund claims its automatic receipt.
         val justMade = RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.operations)
@@ -487,11 +488,11 @@ class ViewModelsTest {
         val ready = await { vm.state.first { it.load is Refundability.Refundable } }
         assertThat(ready.original!!.local).isNull()
         assertThat(ready.original!!.timestamp).isEqualTo("2026-01-01T00:00:00.000Z")
-        assertThat(vm.refund()).isFalse()
+        assertThat(vm.refund()).isEqualTo(RefundStarted.NONE)
         vm.reviewRemote(true)
-        assertThat(vm.refund()).isTrue()
+        assertThat(vm.refund()).isEqualTo(RefundStarted.SINGLE)
         await { container.refunds.state.first { it is TransactionState.Finished } }
-        assertThat(vm.refund()).isTrue()
+        assertThat(vm.refund()).isEqualTo(RefundStarted.SINGLE)
         container.refunds.acknowledge()
 
         fun invalid(

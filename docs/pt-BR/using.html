@@ -88,7 +88,7 @@
   <a href="#close-day">Fechar o dia</a></li><li><a href="#reconciliation">Reconciliar com o terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Verifique as capacidades da Adyen</a></li><li>
   <a href="#terminal-checkout">Fluxos de trabalho de checkout opcionais</a><ul><li><a href="#audio-guidance">Aceitar pagamentos com orientação por áudio</a></li><li><a href="#partial-payments">
-  Pagamentos parciais</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
+  Pagamentos parciais</a></li><li><a href="#split-payments">Divisão e dinheiro</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
   caridade</a></li><li><a href="#keyed-entry">MOTO e MKE</a></li></ul></li><li><a href="#offline">Pagamentos off-line
   </a></li><li><a href="#wallets">Digitalizar códigos de carteira</a></li><li><a href="#shoppers">Referências e cartões
   salvos</a><ul><li><a href="#saved-card">Gerenciar tokens</a></li></ul></li><li><a href="#payment-links">Links de
@@ -104,7 +104,7 @@
   <a href="#close-day">Fechar o dia</a></li><li><a href="#reconciliation">Reconciliar com o terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Verifique as capacidades da Adyen</a></li><li>
   <a href="#terminal-checkout">Fluxos de trabalho de checkout opcionais</a><ul><li><a href="#audio-guidance">Aceitar pagamentos com orientação por áudio</a></li><li><a href="#partial-payments">
-  Pagamentos parciais</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
+  Pagamentos parciais</a></li><li><a href="#split-payments">Divisão e dinheiro</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
   caridade</a></li><li><a href="#keyed-entry">MOTO e MKE</a></li></ul></li><li><a href="#offline">Pagamentos off-line
   </a></li><li><a href="#wallets">Digitalizar códigos de carteira</a></li><li><a href="#shoppers">Referências e cartões
   salvos</a><ul><li><a href="#saved-card">Gerenciar tokens</a></li></ul></li><li><a href="#payment-links">Links de
@@ -209,6 +209,10 @@
           </ol>
           <p>Cada reembolso está vinculado ao seu pagamento original; reembolsos sem um não são suportados. Reembolsar
             links de pagamento pagos na Customer Area.</p>
+          <p id="split-refunds">Uma venda dividida é reembolsada aos pagamentos originais. O Mini mPOS propõe quanto volta para cada cartão e quanto
+            dinheiro devolver; toque em um pagamento para ajustá-lo dentro do que ele pode devolver. Os cartões são
+            reembolsados primeiro, um de cada vez, e depois o dinheiro. Devolver dinheiro exige um PIN de gerente. Se um
+            reembolso no cartão não for aceito, nada mais é devolvido; abra a venda para revisar o restante.</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Importante</p>
             <p><strong>Reembolso solicitado</strong> significa que a Adyen recebeu a solicitação, e não que o cliente
@@ -443,6 +447,17 @@
             <figcaption class="fine">Demonstração do simulador em português do Brasil de uma aprovação parcial, não de
               uma venda integralmente paga.<span class="shot-control">Parcialmente pago</span><a class="screenshot-link shot-expand" href="../images/pt-BR/partial-payment.png">Abrir captura no tamanho original</a></figcaption>
           </figure>
+          <h3 id="split-payments">Dividir uma venda ou receber em dinheiro</h3>
+          <p>No checkout, toque em <strong>Dividir ou pagar em dinheiro</strong>. Escolha um <strong>Valor</strong>,
+            <strong>Partes</strong> iguais ou os <strong>Itens</strong> deste pagamento e toque em <strong>Cartão</strong> ou
+            <strong>Dinheiro</strong>. Preços e impostos não mudam, e qualquer centavo extra vai para as primeiras partes. Para
+            dinheiro, informe o valor entregue pelo comprador, devolva o troco indicado e confirme. O dinheiro é registrado
+            só neste dispositivo e nunca chega ao terminal.</p>
+          <p>A venda fica <strong>Parcialmente pago</strong> até ser paga por completo. Toque em <strong>Cobrar saldo</strong> no
+            resultado ou em <strong>Histórico</strong> para continuar, inclusive após reiniciar. Desative gorjetas, doações, orientação por
+            áudio e MOTO ou digitação manual antes de dividir. Itens são cobrados por completo; outros valores no cartão
+            ainda podem ser aprovados parcialmente pelo emissor. Resolva um resultado desconhecido antes de cobrar mais. O
+            recibo lista cada pagamento e o relatório diário separa o dinheiro; os totais do terminal nunca o incluem.</p>
           <h3 id="shopper-display">Usar a tela do terminal voltada para o cliente</h3>
           <p>Com um terminal de rede/nuvem separado, abra <strong>Configurações › Tela do terminal para o cliente</strong>. Escolha se deseja mostrar os detalhes do item antes do pagamento, pedir ao comprador para
             confirmar o pedido ou receber um e-mail quando a finalização da compra não tiver nenhum. Solicitar um e-mail

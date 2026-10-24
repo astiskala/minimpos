@@ -1266,6 +1266,7 @@ class ArchitectureTest {
 
         val pureDecisions: DescribedPredicate<JavaClass> =
             declaredIn("app.minimpos.app.payment", "Checkout.kt")
+                .or(declaredIn("app.minimpos.app.data.repo", "TenderBalance.kt"))
                 .or(declaredIn("app.minimpos.app.payment", "PaymentLinkRequests.kt"))
                 .or(declaredIn("app.minimpos.app.data.repo", "SaleEvent.kt"))
                 .or(declaredIn("app.minimpos.app.data.settings", "AppSettings.kt"))

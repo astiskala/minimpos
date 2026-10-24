@@ -3,6 +3,7 @@ package app.minimpos.app.payment
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.TerminalState
@@ -323,4 +324,22 @@ fun SaleSession.savedCardStart(
     // The session's payment start is null once an edit made checkout stale; the charge is built from checkout itself.
     paymentStart(checkout, now, zone) ?: return null
     return checkout.savedCardStart(card, now, zone, fromCheckout = fromCheckout)
+}
+
+/**
+ * Builds the first tender of a split of the displayed [checkout] at [now] in [zone] ([Checkout.splitStart]) for
+ * [amountMinor] chosen as [allocation]; null when unavailable or an edit made it stale. A card tender and a confirmed
+ * cash tender both complete only this revision once they collect money.
+ */
+fun SaleSession.splitStart(
+    checkout: Checkout,
+    now: Instant,
+    zone: ZoneId,
+    amountMinor: Long,
+    allocation: TenderAllocation?,
+): PaymentStart? {
+    // Splitting never carries audio guidance, so checking freshness cannot consume a shopper's audio choice.
+    if (!checkout.canSplit) return null
+    paymentStart(checkout, now, zone) ?: return null
+    return checkout.splitStart(now, zone, amountMinor, allocation)
 }

@@ -79,7 +79,7 @@
   <a href="#receipts">收據</a><ul><li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a>
   </li><li><a href="#email">電子收據</a></li></ul></li><li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a>
   </li><li><a href="#reconciliation">與終端對帳</a></li></ul></li><li class="advanced-start"><a href="#capabilities">檢查 Adyen
-  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#partial-payments">部分付款</a></li><li>
+  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li>
   <a href="#shopper-display">顧客端螢幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">離線支付</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#shoppers">
   參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#payment-links">付款連結</a></li><li>
@@ -92,7 +92,7 @@
   <a href="#receipts">收據</a><ul><li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a>
   </li><li><a href="#email">電子收據</a></li></ul></li><li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a>
   </li><li><a href="#reconciliation">與終端對帳</a></li></ul></li><li class="advanced-start"><a href="#capabilities">檢查 Adyen
-  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#partial-payments">部分付款</a></li><li>
+  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li>
   <a href="#shopper-display">顧客端螢幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">離線支付</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#shoppers">
   參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#payment-links">付款連結</a></li><li>
@@ -172,6 +172,7 @@
             <li>確認退款，如有提示則輸入經理 PIN。</li>
           </ol>
           <p>每筆退款都關聯原付款，不支援無原付款的退款。已支付的付款連結請在商戶後台退款。</p>
+          <p id="split-refunds">拆分的銷售會退回原付款。Mini mPOS 會建議退回每張信用卡的金額和要退還的現金；點按某筆付款即可在可退範圍內調整金額。先逐筆退款到信用卡，最後退還現金。退還現金需要經理PIN。如果某筆信用卡退款未被受理，其餘付款不會退回；請開啟此筆銷售查看剩餘部分。</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
             <p><strong>已請求退款</strong>表示 Adyen 已收到請求，不表示顧客已收到款項。請在商戶後台確認最終結果。退款結果未知時，<a href="troubleshooting#unknown">
@@ -341,6 +342,9 @@
               </div></a>
             <figcaption class="fine">繁體中文模擬器部分授權演示，並非已全額支付的銷售。<span class="shot-control">部分已付</span><a class="screenshot-link shot-expand" href="../images/zh-Hant/partial-payment.png">查看原尺寸螢幕截圖</a></figcaption>
           </figure>
+          <h3 id="split-payments">拆分銷售或收取現金</h3>
+          <p>在結帳頁點按<strong>拆分或以現金付款</strong>。選擇本次付款的<strong>金額</strong>、<strong>均分</strong>或<strong>商品</strong>，然後點按<strong>刷卡</strong>或<strong>現金</strong>。價格和稅額保持登記時不變，多出的最小貨幣單位分給前幾份。現金付款時，輸入顧客給的金額，找回顯示的零錢，然後確認。現金只記錄在本裝置上，不會傳送到終端。</p>
+          <p>銷售在付清前保持<strong>部分已付</strong>。在結果頁或<strong>交易紀錄</strong>中點按<strong>收取餘額</strong>即可繼續，重新啟動後也可以。拆分前請關閉小費、捐款、語音指引及 MOTO 或手動輸入。按商品付款時全額收取；其他刷卡金額仍可能由發卡機構部分授權。刷卡結果未知時，請先確認再繼續收款。收據會列出每筆付款，每日報告會另列現金；終端合計從不包含現金。</p>
           <h3 id="shopper-display">使用顧客端終端螢幕</h3>
           <p>使用獨立的網絡或雲端終端時，開啟<strong>設定 › 顧客端終端螢幕</strong>。可選擇在付款前顯示商品明細、請顧客確認訂單，或在結帳未填寫電郵時收集電郵。收集電郵需要先設定
             <a href="#receipts">電郵收據</a>；開啟<strong>自動發送電子收據</strong>後，收據會自動發送。批准後可顯示二維碼並邀請顧客進行 0–10 評分；終端回傳的評分顯示在交易詳情中。

@@ -66,12 +66,12 @@ class SurchargeUiTest {
             }
             compose.awaitCondition("original card loaded") { vm.state.value.original != null }
             compose.onNodeWithTag("startRefund").assertIsDisplayed()
+            // Both original cards are proposed their own share; neither takes the other's balance.
+            assertThat(vm.state.value.refundMinor).isEqualTo(1200)
+            assertThat(vm.state.value.allocation).containsExactly("fee-1", 550L, "fee-2", 650L)
+            compose.onNodeWithTag("refundTender_fee-1").performScrollTo().assertIsDisplayed()
             compose.onNodeWithTag("refundTender_fee-2").performScrollTo().performClick()
-            compose.awaitCondition("second original card selected") {
-                vm.state.value.original
-                    ?.transactionId == "T.P2"
-            }
-            assertThat(vm.state.value.refundMinor).isEqualTo(650)
+            compose.awaitCondition("second original card selected for adjustment") { vm.state.value.editingLeg == "fee-2" }
             compose.onNodeWithText(env.context.getString(R.string.surcharge_return_fee)).performScrollTo().assertIsDisplayed()
             compose.onNodeWithTag("startRefund").assertIsDisplayed()
         } finally {

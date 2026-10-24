@@ -4,7 +4,9 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
+import app.minimpos.app.data.db.TenderKind
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.data.repo.recordedEnvironment
 import app.minimpos.terminal.client.TerminalTotalsOutcome
 import java.time.Instant
 import java.time.LocalDate
@@ -26,6 +28,8 @@ data class HistoryActivity(
     val surchargeMinor: Long? = null,
     /** Cash returned, already included in [amountMinor], distinct from purchase. */
     val cashBackMinor: Long = 0,
+    /** Whether the amount is cash recorded locally rather than card money the terminal reports. */
+    val cash: Boolean = false,
 ) {
     /** ISO 4217 currency code, unchanged from the original operation. */
     val currency: String get() =
@@ -36,15 +40,11 @@ data class HistoryActivity(
 
     /** Original account environment, or demo when no real money moved. */
     val scope: HistoryScope get() {
-        val context =
-            when (item) {
-                is HistoryItem.Sale -> item.sale.context
-                is HistoryItem.Refund -> item.refund.context
-            }
+        val environment = item.recordedEnvironment
         return when {
-            (item is HistoryItem.Sale && item.sale.sample) || context?.historyEnvironment == "SIMULATOR" -> HistoryScope.DEMO
-            context?.historyEnvironment == "LIVE" -> HistoryScope.LIVE
-            context?.historyEnvironment == "TEST" -> HistoryScope.TEST
+            (item is HistoryItem.Sale && item.sale.sample) || environment == "SIMULATOR" -> HistoryScope.DEMO
+            environment == "LIVE" -> HistoryScope.LIVE
+            environment == "TEST" -> HistoryScope.TEST
             else -> HistoryScope.UNKNOWN
         }
     }
@@ -117,6 +117,10 @@ data class CurrencyHistoryTotals(
     val refundedSurchargesMinor: Long = 0,
     /** Accepted returns whose fee component is unreported. */
     val unknownRefundSurchargeCount: Int = 0,
+    /** Cash tenders already included in [salesMinor], recorded locally and never in terminal totals. */
+    val cashSalesMinor: Long = 0,
+    /** Cash handed back, already included in [refundsMinor], recorded locally and never in terminal totals. */
+    val cashRefundsMinor: Long = 0,
 ) {
     /** Local sales minus accepted refund requests, in minor units. */
     val netMinor: Long get() = salesMinor - refundsMinor
@@ -318,6 +322,8 @@ object HistoryAccounting {
                 Math.addExact(a.purchaseMinor, b.purchaseMinor),
                 Math.addExact(a.refundedSurchargesMinor, b.refundedSurchargesMinor),
                 a.unknownRefundSurchargeCount + b.unknownRefundSurchargeCount,
+                Math.addExact(a.cashSalesMinor, b.cashSalesMinor),
+                Math.addExact(a.cashRefundsMinor, b.cashRefundsMinor),
             )
         }
     }
@@ -473,6 +479,7 @@ object HistoryAccounting {
                                     amountMinor = refund.amountMinor,
                                     tipMinor = refund.tipMinor ?: 0,
                                     surchargeMinor = refund.surchargeMinor,
+                                    cash = refund.cash,
                                 ),
                             )
                         }
@@ -484,9 +491,15 @@ object HistoryAccounting {
             }
         }
 
-    /** Older tender rows never override legacy sale totals or fabricate missing components. */
+    /**
+     * Approved tenders whose amounts are complete; older card rows never override legacy sale totals or fabricate
+     * missing components. Unresolved attempts and refused ones collected nothing.
+     */
     private fun reportedTenders(item: HistoryItem.Sale): List<SaleTenderEntity> =
-        item.tenders.takeIf { rows -> rows.all { it.serviceId != null && it.authorisedMinor != null } }.orEmpty()
+        item.tenders
+            .filter { it.approved }
+            .takeIf { rows -> rows.all { (it.kind == TenderKind.CASH || it.serviceId != null) && it.authorisedMinor != null } }
+            .orEmpty()
 
     /** One terminal processing event; amounts override only complete, newly recorded tender facts. */
     private data class TerminalActivity(
@@ -504,10 +517,16 @@ object HistoryAccounting {
 
             is HistoryItem.Sale -> {
                 val tenders = reportedTenders(item).takeUnless { item.sale.manualCapture }.orEmpty()
-                if (tenders.isEmpty()) {
-                    listOf(TerminalActivity(item, item.sale.processedAt ?: item.createdAt, item.sale.poiReconciliationId))
-                } else {
-                    tenders.map { TerminalActivity(item, it.createdAt, it.poiReconciliationId, it.authorisedMinor) }
+                val cards = tenders.filter { it.kind == TenderKind.CARD }
+                when {
+                    tenders.isEmpty() -> {
+                        listOf(TerminalActivity(item, item.sale.processedAt ?: item.createdAt, item.sale.poiReconciliationId))
+                    }
+
+                    // Cash never reaches the terminal, so only card tenders are compared with its totals.
+                    else -> {
+                        cards.map { TerminalActivity(item, it.createdAt, it.poiReconciliationId, it.authorisedMinor) }
+                    }
                 }
             }
         }
@@ -527,6 +546,7 @@ object HistoryAccounting {
                             tender.tipMinor ?: 0,
                             tender.surchargeMinor,
                             tender.cashBackMinor ?: 0,
+                            cash = tender.kind == TenderKind.CASH,
                         ),
                     )
                 }
@@ -620,6 +640,8 @@ object HistoryAccounting {
                         .size,
                 refundedSurchargesMinor = refunds.fold(0L) { sum, refund -> Math.addExact(sum, refund.surchargeMinor ?: 0) },
                 unknownRefundSurchargeCount = refunds.count { it.surchargeMinor == null },
+                cashSalesMinor = sales.filter { it.cash }.sumOf { it.amountMinor },
+                cashRefundsMinor = refunds.filter { it.cash }.sumOf { it.amountMinor },
                 purchaseMinor =
                     sales.filter { it.surchargeMinor != null }.sumOf {
                         (it.amountMinor - it.tipMinor - (it.surchargeMinor ?: 0) - it.cashBackMinor).coerceAtLeast(0)

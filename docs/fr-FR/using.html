@@ -88,7 +88,7 @@
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
   </ul></li><li class="advanced-start"><a href="#capabilities">Vérifier les capacités d&#x27;Adyen</a></li><li>
   <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#partial-payments">Paiements
-  partiels</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
+  partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
   </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#payment-links">Liens de paiement
@@ -104,7 +104,7 @@
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
   </ul></li><li class="advanced-start"><a href="#capabilities">Vérifier les capacités d&#x27;Adyen</a></li><li>
   <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#partial-payments">Paiements
-  partiels</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
+  partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
   </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#payment-links">Liens de paiement
@@ -211,6 +211,11 @@
           </ol>
           <p>Chaque remboursement est lié à son paiement initial ; les remboursements sans un ne sont pas pris en
             charge. Remboursez les liens de paiement payés dans le Customer Area.</p>
+          <p id="split-refunds">Une vente partagée est remboursée sur ses paiements d’origine. Mini mPOS propose le montant restitué à chaque carte
+            et les espèces à rendre ; touchez un paiement pour l’ajuster dans la limite de ce qu’il peut restituer. Les
+            cartes sont remboursées d’abord, une à la fois, puis les espèces. Rendre des espèces nécessite un PIN responsable.
+            Si un remboursement par carte n’est pas accepté, rien d’autre n’est restitué ; ouvrez la vente pour vérifier le
+            reste.</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Important</p>
             <p><strong>Remboursement demandé</strong> Cela signifie qu'Adyen a reçu la demande, et non que le client a
@@ -457,6 +462,18 @@
             <figcaption class="fine">Démo sur simulateur en français d'une approbation partielle, pas d'une vente
               entièrement payée.<span class="shot-control">Partiellement payé</span><a class="screenshot-link shot-expand" href="../images/fr-FR/partial-payment.png">Ouvrir la capture en taille réelle</a></figcaption>
           </figure>
+          <h3 id="split-payments">Partager une vente ou encaisser en espèces</h3>
+          <p>Au paiement, touchez <strong>Partager ou payer en espèces</strong>. Choisissez un <strong>Montant</strong>, des
+            <strong>Parts</strong> égales ou les <strong>Articles</strong> couverts, puis touchez <strong>Carte</strong> ou
+            <strong>Espèces</strong>. Les prix et taxes restent ceux de la vente, et tout centime supplémentaire va aux premières
+            parts. Pour des espèces, saisissez la somme reçue, rendez la monnaie indiquée, puis confirmez. Les espèces sont
+            enregistrées sur cet appareil seulement et n’atteignent jamais le terminal.</p>
+          <p>La vente reste <strong>Partiellement payé</strong> jusqu’au paiement complet. Touchez <strong>Encaisser le
+            solde</strong> sur son résultat ou dans <strong>Historique</strong> pour continuer, même après un redémarrage. Désactivez
+            pourboires, dons, guidage audio et MOTO ou saisie manuelle avant de partager. Les articles sont encaissés en
+            entier ; les autres montants par carte peuvent encore être partiellement autorisés par l’émetteur. Résolvez un
+            résultat inconnu avant d’encaisser davantage. Le reçu liste chaque paiement et le rapport du jour sépare les
+            espèces ; les totaux du terminal ne les incluent jamais.</p>
           <h3 id="shopper-display">Utilisez l'écran du terminal destiné aux acheteurs</h3>
           <p>Avec un terminal réseau/cloud séparé, ouvrez <strong>Paramètres › Affichage du terminal pour le client</strong>. Choisissez d’afficher les articles avant le paiement, de demander au client de confirmer la commande ou de saisir son adresse e-mail si elle manque au paiement. Configurez d’abord les <a href="#receipts">reçus par e-mail</a>. Le reçu est envoyé automatiquement si <strong>Envoyez automatiquement le reçu par e-mail
             </strong> est activé. Après approbation, vous pouvez afficher un code QR et demander une note de 0 à 10 ; la note reçue apparaît dans les détails de la transaction.</p>

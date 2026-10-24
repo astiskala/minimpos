@@ -2,6 +2,7 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.RefundStart
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -98,9 +99,22 @@ class FinancialOperations(
      */
     fun refund(request: RefundStart): String? =
         when {
-            currentRefund is TransactionState.Processing -> null
+            currentRefund is TransactionState.Processing || request.cash -> null
             request.checkout -> checkoutRefunds.start(request)
             else -> refunds.start(request)
+        }
+
+    /**
+     * Starts one card leg [request] of a multi-leg return on the terminal with the [grant] the whole return started
+     * with; null while a refund is running, or for a cash or Checkout leg, which are not terminal reversals.
+     */
+    internal fun refundLeg(
+        request: RefundStart,
+        grant: ManagerApproval.Grant,
+    ): String? =
+        when {
+            currentRefund is TransactionState.Processing || request.cash || request.checkout -> null
+            else -> refunds.start(request, grant)
         }
 
     /** Leaves a finished refund, whichever way it was sent, so the next one can start. */

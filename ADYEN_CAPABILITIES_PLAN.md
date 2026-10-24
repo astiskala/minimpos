@@ -216,22 +216,22 @@ Read first: `app/.../payment/Checkout.kt`, `SaleBook.kt`, `TransactionLifecycle.
 `data/db/Entities.kt`, `data/repo/SaleEvent.kt`, sale/refund repositories, history/refund/receipt owners, and core
 money/cart.
 
-- [ ] Extend existing tender records with the type, frozen requested amount, item/quantity allocation where applicable,
+- [x] Extend existing tender records with the type, frozen requested amount, item/quantity allocation where applicable,
   original context, remaining refundable balance, and complete pending/recovery facts. Audit existing multi-tender
   refunds before extending them; never route the whole return to only the latest card.
-- [ ] Add operator-selected amounts, equal shares, and item quantities for immediate sales. Preserve sale-level tax and
+- [x] Add operator-selected amounts, equal shares, and item quantities for immediate sales. Preserve sale-level tax and
   pricing; allocate minor-unit remainders deterministically and show the result. Freeze relevant sale facts after
   collection begins. Item allocation must not allow double payment/refund or silently recalculate the merchant's
   original tax.
-- [ ] Record cash received, change, and confirmation locally without a Terminal API call. Introduce the minimal durable
+- [x] Record cash received, change, and confirmation locally without a Terminal API call. Introduce the minimal durable
   cash-movement/handover accounting needed by later gift-card and debit cash-out. Full till/shift management is not
   required.
-- [ ] Reject overpayment and concurrent/stale starts. Resolve unknown electronic tenders before collecting their
+- [x] Reject overpayment and concurrent/stale starts. Resolve unknown electronic tenders before collecting their
   possibly paid balance. Resume partially paid sales and preserve issuer partial-authorization behavior.
-- [ ] Automatically propose refund allocation to original tenders; permit review/adjustment within their balances.
+- [x] Automatically propose refund allocation to original tenders; permit review/adjustment within their balances.
   Persist each refund leg independently, route card legs by original context, and record cash returned without a card
   refund. Reserve pending refund amounts so simultaneous or uncertain returns cannot over-refund a tender.
-- [ ] Deliver one sale receipt with a tender breakdown plus required Adyen card receipts. Separate cash in local reports
+- [x] Deliver one sale receipt with a tender breakdown plus required Adyen card receipts. Separate cash in local reports
   and exclude it from terminal-only totals. Test mixed/partial/unknown results and interrupted multi-leg refunds.
 
 Start with Checkout, SaleEvent/repositories, RefundablePayment, HistoryAccounting, and receipt tests, then UI wiring and
@@ -418,22 +418,23 @@ independently, with the provider/destination and evidence location.
 | 01 | Payments app recovery | implemented | `100b1a3` | `scripts/dev finish`; 100% Adyen line coverage | Beta access and physical-phone checks unconfirmed |
 | 02 | Accessible payments | implemented | `c8752cc` | `scripts/dev finish`; SDK 33 + 28; 100% Adyen line coverage | Physical terminal/software/enablement unconfirmed |
 | 03 | Surcharge accounting | implemented | `c62d133` | `scripts/dev finish`; SDK 33 + 28; schema 18 | Configured TEST surcharge/refund checks unconfirmed |
-| 04 | Tokens and Settings navigation | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 18 unchanged | TEST roles, deletion and propagation unconfirmed |
-| 05 | Split payments and cash | not started | - | - | Partial-approval scenarios needed |
+| 04 | Tokens and Settings navigation | implemented | `3f1c712` | `scripts/dev finish`; SDK 33 + 28; schema 18 unchanged | TEST roles, deletion and propagation unconfirmed |
+| 05 | Split payments and cash | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 19 | Partial-approval, linking and multi-leg refund checks unconfirmed |
 | 06 | Gift-card lifecycle | not started | - | - | Provider onboarding/TEST cards unconfirmed |
 | 07 | Mexican installments | not started | - | - | Eligible Mexican TEST setup unconfirmed |
 | 08 | Meal vouchers | not started | - | - | Country/provider TEST setups unconfirmed |
 | 09 | Cashback/Cashout | not started | - | - | With-purchase/standalone enablement unconfirmed |
 | 10 | Unreferenced card refunds | not started | - | - | Eligible country/account enablement unconfirmed |
 
-Resume note: milestones 01 (`100b1a3`), 02 (`c8752cc`), 03 (`c62d133`) and 04 (this commit) are implemented on
-`codex/adyen-capabilities`. Stopped after milestone 04 as requested; milestones 05–10 remain unstarted. Database
-version remains 18; no migration or dependency change was needed in milestone 04. The configured Manager PIN
-requirement for token deletion follows the plan’s provisional working default, not a separately confirmed preference.
-`scripts/dev finish` passed on October 25, 2026, including SDK 33 and SDK 28; full log
-`build/gradle-logs/run-KtNk3T/output.log`. Physical terminal/phone checks, accessibility enablement, Payments app beta
-access, configured TEST surcharge/refund checks and actual TEST token-role/deletion/propagation checks remain
-unconfirmed. Real calls, pushes, publications and releases require separate authorization.
+Resume note: milestones 01 (`100b1a3`), 02 (`c8752cc`), 03 (`c62d133`), 04 (`3f1c712`) and 05 (this commit) are
+implemented on `codex/adyen-capabilities`. Stopped after milestone 05 as requested; milestones 06–10 remain unstarted.
+Database version is 19 (preserving `MIGRATION_18_19`, build-generated schema, upgrade test); no dependency changed.
+The configured Manager PIN requirement for token deletion and cash refunds follows the plan’s provisional working
+default, not a separately confirmed preference. `scripts/dev finish` passed on October 25, 2026, including SDK 33 and
+SDK 28; see milestone 05 evidence for the log. Physical terminal/phone checks, accessibility enablement, Payments app
+beta access, configured TEST surcharge/refund checks, TEST token-role/deletion/propagation checks and real split,
+partial-approval and multi-leg refund checks remain unconfirmed. Real calls, pushes, publications and releases require
+separate authorization.
 
 Milestone 01 evidence:
 
@@ -600,6 +601,57 @@ Milestone 04 evidence:
 - Actual TEST credential-role reporting, DELETE completion/refusals, listing propagation and missing-response
   reconciliation remain unverified with Adyen. Earlier hardware, accessibility, Payments app beta and configured
   surcharge/refund gaps remain open. No real Adyen calls, pushes, publications or releases were made.
+
+Milestone 05 evidence:
+
+- Revalidated Adyen’s [partial authorizations](https://docs.adyen.com/point-of-sale/partial-authorizations),
+  [terminal tipping](https://docs.adyen.com/point-of-sale/tipping/tipping-from-terminal),
+  [surcharge](https://docs.adyen.com/point-of-sale/surcharge) and
+  [referenced refunds](https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/referenced) on
+  October 25, 2026. `AllowPartialAuthorisation` is a tender option; `Result=Partial` returns a lower `AuthorizedAmount`,
+  which also includes any tip; the balance is collected by a further request linked by `SaleReferenceID` or in cash.
+  Surcharge pages give no split guidance beyond the adjustment restriction. Referenced refunds allow several partial
+  refunds per payment and complete asynchronously. The pinned SDK 43.1.0 already carries every field used; no Adyen
+  model, request or dependency changed. Every tender keeps the sale’s merchant reference as `SaleReferenceID`.
+- Audit of existing multi-tender refunds: the refund screen made staff pick one card, never proposed the others, and
+  item returns were unavailable with more than one card. No path sent a whole return to only the latest card: tender
+  rows exist since schema 11 and stored refunds without a tender identity were already refused for multi-card sales.
+  Split sales are now read as one return across every original tender.
+- Schema 19 adds tender kind, frozen allocation JSON, cash received/change and cash history environment to
+  `sale_tenders`, and a cash flag to `refunds`; existing rows stay approved card tenders and card returns. Each card
+  tender row is inserted PENDING with its ServiceID, frozen amount and allocation before sending, records its context,
+  settles in place and becomes UNKNOWN on interruption. Refundable balances are derived from the refund legs naming each
+  tender, including pending and unknown reservations. The allocation format joins the reviewed stored-format snapshot.
+- Splits support operator amounts, equal shares (remainders on the first shares, the last share takes what is unpaid
+  after a partial approval) and sold item units at their apportioned sold gross; prices and tax never change once the
+  cart is frozen into the stored sale. Item tenders are collected without partial authorization so units are paid
+  once; other card tenders keep the issuer’s partial approvals. Tipping, donations, audio guidance and MOTO/MKE must be
+  turned off before splitting, so no option is dropped silently. `TenderBalance` checks the reviewed paid amount,
+  balance, allocation and unresolved tenders inside each storing transaction; stale, excessive, duplicate and
+  concurrent starts store nothing, and a stale card start no longer marks its sale unknown.
+- Cash tenders record the cash received, change and confirmed amount locally through `CashTenders`, with the history
+  environment, never a Terminal API call. Partially paid sales resume from the result, History detail or after restart.
+  Unknown card tenders must be resolved first. Only one automatic receipt is delivered, once nothing is due; it lists
+  every tender, cash received, change and any balance, plus each card’s verbatim Adyen receipt lines.
+- Returns of split sales propose legs across all original tenders (units first to the item tenders that paid them,
+  then in proportion to what each can return); staff adjust legs within balances and the total must match. `RefundLegs`
+  persists each leg before sending, sends card legs in their original contexts with the approval taken at confirmation,
+  then records cash handed back locally, which requires a configured Manager PIN under the plan’s provisional default.
+  A leg that is not accepted stops the rest. Daily reports show cash tenders and cash returned separately; terminal
+  comparison excludes cash. A new ArchUnit rule with a deliberate-violation check keeps cash recording in its owners.
+- Seven-language strings, the Using Mini mPOS split and refund guidance, CONTEXT and module rules are updated. Tests
+  cover pure allocation, shares and partial approvals, item double allocation, cash change, stale/excessive/concurrent
+  starts, interrupted tenders, proposals and adjusted allocations, cash legs and Manager approval, stale legs,
+  accounting/reconciliation, receipts, the 18→19 upgrade and AMS1 English/Japanese/Traditional Chinese split flows.
+- Preflight passed. Focused architecture, payment/history/repository/schema tests, detekt, localization and website
+  lanes passed. Full gate passed on October 25, 2026: `scripts/dev finish`, log
+  `build/gradle-logs/run-mpPTTN/output.log`, including SDK 33 and 28, lint, detekt, coverage and website checks.
+- The gate exposed two existing AppFlowTest races: Products→Home now waits for Settings before its second Back, and
+  the card-saving payment waits for the switch state before paying. Lint’s synthetic-accessor findings were fixed by
+  widening helper visibility to internal; nothing was suppressed.
+- Real-Adyen gaps: partial approvals within splits, `SaleReferenceID` linking in the Customer Area, terminal totals
+  beside local cash, multi-leg referenced refunds and their Customer Area outcomes remain unverified. Earlier gaps
+  remain open. No real Adyen calls, pushes, publications or releases were made.
 
 ## Adyen source map
 

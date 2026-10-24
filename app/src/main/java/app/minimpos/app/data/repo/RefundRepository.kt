@@ -9,6 +9,7 @@ import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.data.db.TenderKind
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.TransactionDetails
 import kotlinx.coroutines.flow.Flow
@@ -81,6 +82,26 @@ class RefundRepository(
         stored.status == RefundStatus.PENDING
     }
 
+    /**
+     * Records cash handed back for a cash tender ([RefundEntity.cash]), confirmed by the operator, without a Terminal
+     * API call: within current balances it is stored accepted at [now] and applied to its sale in one transaction.
+     * A changed [reviewedRefunds] snapshot or balance stores nothing and returns false.
+     */
+    suspend fun recordCashReturn(
+        refund: RefundEntity,
+        reviewedRefunds: Map<String, RefundStatus>?,
+    ): Boolean =
+        db.withTransaction {
+            val saleId = refund.saleId
+            require(refund.cash && saleId != null && refund.tenderId != null) { "Cash returns belong to a cash tender" }
+            val record = sales.get(saleId) ?: return@withTransaction false
+            if (!record.allows(refund, reviewedRefunds)) return@withTransaction false
+            val stored = refund.copy(status = RefundStatus.REQUESTED, processedAt = now())
+            dao.insert(stored)
+            sales.applyRefund(stored)
+            true
+        }
+
     private fun SaleWithLines.allows(
         refund: RefundEntity,
         reviewedRefunds: Map<String, RefundStatus>?,
@@ -97,9 +118,10 @@ class RefundRepository(
                 0L,
             ) { sum, priorRefund -> Math.addExact(sum, priorRefund.amountMinor) }
         val remaining = sale.amountMinor - (sale.cashBackMinor ?: 0) - sale.refundedMinor - pending
-        if (refund.amountMinor !in 1..remaining || (tenders.size > 1 && refund.tenderId == null)) return false
-        val id = refund.tenderId ?: return true
-        val tender = tenders.firstOrNull { it.id == id } ?: return false
+        val approved = tenders.filter { it.approved }
+        if (refund.amountMinor !in 1..remaining || (approved.size > 1 && refund.tenderId == null)) return false
+        val id = refund.tenderId ?: return !refund.cash
+        val tender = approved.firstOrNull { it.id == id } ?: return false
         return tender.allows(refund, prior)
     }
 
@@ -107,14 +129,16 @@ class RefundRepository(
         refund: RefundEntity,
         prior: List<RefundEntity>,
     ): Boolean {
-        if (refund.originalTransactionId != poiTransactionId) return false
+        val cashTender = kind == TenderKind.CASH
+        if (refund.cash != cashTender) return false
+        if (refund.originalTransactionId != (if (cashTender) id else poiTransactionId)) return false
         val reserved =
             prior
-                .filter {
-                    it.originalTransactionId == poiTransactionId
-                }.fold(0L) { sum, priorRefund -> Math.addExact(sum, priorRefund.amountMinor) }
+                .filter { it.returnsTo(this) }
+                .fold(0L) { sum, priorRefund -> Math.addExact(sum, priorRefund.amountMinor) }
         val balance = (authorisedMinor ?: 0) - (cashBackMinor ?: 0) - reserved
-        return refund.amountMinor in 1..balance && (!refund.full || (reserved == 0L && refund.amountMinor == authorisedMinor))
+        return refund.amountMinor in 1..balance &&
+            (!refund.full || (!cashTender && reserved == 0L && refund.amountMinor == authorisedMinor))
     }
 
     /** Returns the refund with ID [id], or null if there is none. */
@@ -180,3 +204,10 @@ class RefundRepository(
             true
         }
 }
+
+/**
+ * Whether this refund leg returns money to [tender]: it names the tender, or (recorded before refunds named their
+ * tender) it reverses the tender's card transaction.
+ */
+fun RefundEntity.returnsTo(tender: SaleTenderEntity): Boolean =
+    tenderId == tender.id || (tenderId == null && tender.kind == TenderKind.CARD && originalTransactionId == tender.poiTransactionId)

@@ -41,6 +41,12 @@ enum class ReportText {
     /** Accepted refund requests. */
     REFUNDS,
 
+    /** Cash tenders included in sales, recorded locally and never in terminal totals. */
+    CASH_SALES,
+
+    /** Cash handed back, included in refunds. */
+    CASH_REFUNDS,
+
     /** Surcharge already included in accepted refunds. */
     REFUND_SURCHARGES,
 
@@ -152,8 +158,14 @@ internal object DailyReport {
             add(ReceiptElement.Row(text(ReportText.PURCHASE), money.format(total.purchaseMinor)))
             add(ReceiptElement.Row(text(ReportText.SURCHARGES), money.format(total.surchargesMinor)))
             add(ReceiptElement.Row(text(ReportText.UNKNOWN_SURCHARGES), total.unknownSurchargeCount.toString()))
+            if (total.cashSalesMinor != 0L) add(ReceiptElement.Row(text(ReportText.CASH_SALES), money.format(total.cashSalesMinor)))
             if (dated) {
                 add(ReceiptElement.Row("${text(ReportText.REFUNDS)} (${total.refundCount})", money.format(total.refundsMinor)))
+                if (total.cashRefundsMinor !=
+                    0L
+                ) {
+                    add(ReceiptElement.Row(text(ReportText.CASH_REFUNDS), money.format(total.cashRefundsMinor)))
+                }
                 add(ReceiptElement.Row(text(ReportText.REFUND_SURCHARGES), money.format(total.refundedSurchargesMinor)))
                 add(ReceiptElement.Row(text(ReportText.UNKNOWN_REFUND_SURCHARGES), total.unknownRefundSurchargeCount.toString()))
                 add(ReceiptElement.Row(text(ReportText.NET), money.format(total.netMinor), TextStyle.BOLD))

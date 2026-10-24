@@ -88,4 +88,5 @@ internal fun RefundStart.pendingRefund(
         tenderId = tenderId,
         surchargeMinor = surchargeMinor,
         tipMinor = tipMinor,
+        cash = cash,
     )

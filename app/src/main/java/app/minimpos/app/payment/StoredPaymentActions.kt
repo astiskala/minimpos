@@ -21,6 +21,7 @@ import java.time.ZoneId
  * @param settings Current saved settings, read at each initiation for the reference prefix.
  * @param clock Stamps the merchant reference of a refund or cancellation.
  * @param zone The time zone of that reference, read for each initiation.
+ * @param legs Runs returns split across several tenders or including cash; null offers none.
  */
 class StoredPaymentActions(
     private val operations: FinancialOperations,
@@ -28,16 +29,30 @@ class StoredPaymentActions(
     private val settings: StateFlow<AppSettings>,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
+    private val legs: RefundLegs? = null,
 ) {
     /**
-     * Starts [choice] of [payment] as a referenced refund; false for an invalid choice or while a refund is running.
-     * A foreign receipt must have been independently reviewed by the caller, as on the refund screen.
-     * Amounts use the payment's original currency minor units. True means started, not accepted or confirmed.
+     * Starts [choice] of [payment] returned to its original tenders as [allocation] (the proposal, possibly adjusted
+     * by staff within each tender's balance): one card leg is followed like any refund, several legs or any cash run as
+     * one multi-leg return through [legs]. [RefundStarted.NONE] for an invalid allocation or while a refund runs.
+     * A foreign receipt must have been independently reviewed by the caller, as on the refund screen. Amounts use the
+     * payment's original currency minor units; starting means neither accepted nor confirmed.
      */
     fun refund(
         payment: RefundablePayment,
         choice: RefundChoice,
-    ): Boolean = start(payment.request(choice, settings.value.payment.referencePrefix, clock.instant(), zone())) != null
+        allocation: Map<String, Long>,
+    ): RefundStarted {
+        val requests =
+            payment.requests(choice, allocation, settings.value.payment.referencePrefix, clock.instant(), zone())
+                ?: return RefundStarted.NONE
+        val single = requests.singleOrNull()?.takeUnless { it.cash }
+        return when {
+            single != null -> if (start(single) != null) RefundStarted.SINGLE else RefundStarted.NONE
+            legs?.start(requests) == true -> RefundStarted.LEGS
+            else -> RefundStarted.NONE
+        }
+    }
 
     /** Starts a full reversal of [record]'s held payment; null when not cancellable or a refund is already running. */
     fun cancel(record: SaleWithLines): String? =
@@ -47,4 +62,16 @@ class StoredPaymentActions(
     suspend fun retryCapture(saleId: String): CaptureResult = captures.retryCapture(saleId)
 
     private fun start(request: RefundStart?): String? = request?.let(operations::refund)
+}
+
+/** How a reviewed return was started, so its screen follows the right progress. */
+enum class RefundStarted {
+    /** One card reversal, followed by [FinancialOperations.refundProgress]. */
+    SINGLE,
+
+    /** Several legs or cash, followed by [RefundLegs.state]. */
+    LEGS,
+
+    /** Nothing was started: the allocation is invalid or a refund is already running. */
+    NONE,
 }

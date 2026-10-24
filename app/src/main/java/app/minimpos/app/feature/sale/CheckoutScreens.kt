@@ -223,7 +223,7 @@ private fun CheckoutContent(
             )
         },
     ) { padding ->
-        CheckoutDetails(state, money, actions.update, Modifier.fillMaxSize().padding(padding))
+        CheckoutDetails(state, money, actions.update, { navigator.push(Route.Split()) }, Modifier.fillMaxSize().padding(padding))
     }
 }
 
@@ -323,6 +323,7 @@ private fun CheckoutDetails(
     state: Checkout,
     money: MoneyFormatter,
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
+    onSplit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
@@ -375,6 +376,7 @@ private fun CheckoutDetails(
                 CheckoutSwitches(state, onUpdate)
             }
         }
+        if (!state.preAuthorisation) item(key = "split", contentType = "split") { SplitEntry(state, onSplit) }
     }
 }
 
@@ -898,6 +900,7 @@ fun SaleResultScreen(
                 )
             }
             SalePaymentCard(record.sale)
+            SplitProgress(record, money) { navigator.push(Route.Split(saleId = saleId)) }
             if (state.approved) {
                 if (PaymentAction.ENTER_TIP in state.actions) EnterTipButton({ gate.run { navigator.push(Route.Tip(saleId)) } })
                 ReceiptActions(state.transaction, vm.transaction, MerchantCopy.WHEN_DUE, email = record.sale.shopperEmail.orEmpty())

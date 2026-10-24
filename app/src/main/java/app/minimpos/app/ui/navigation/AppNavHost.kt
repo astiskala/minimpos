@@ -39,6 +39,7 @@ import app.minimpos.app.feature.lock.PinGate
 import app.minimpos.app.feature.onboarding.OnboardingScreen
 import app.minimpos.app.feature.products.ProductEditScreen
 import app.minimpos.app.feature.products.ProductsScreen
+import app.minimpos.app.feature.refund.RefundLegsScreen
 import app.minimpos.app.feature.refund.RefundProcessingScreen
 import app.minimpos.app.feature.refund.RefundResultScreen
 import app.minimpos.app.feature.refund.RefundScanScreen
@@ -50,6 +51,7 @@ import app.minimpos.app.feature.sale.SaleResultScreen
 import app.minimpos.app.feature.sale.SaleScreen
 import app.minimpos.app.feature.sale.SavedCardReviewScreen
 import app.minimpos.app.feature.sale.SavedCardScreen
+import app.minimpos.app.feature.sale.SplitScreen
 import app.minimpos.app.feature.sale.WalletScreen
 import app.minimpos.app.feature.settings.SettingsScreen
 import app.minimpos.app.feature.settings.SettingsSectionScreen
@@ -124,12 +126,14 @@ private fun AppEntries(
                 entry<Route.WalletScan> { WalletScreen(navigator) }
                 entry<Route.Payment> { PaymentScreen(navigator, it.kind) }
                 entry<Route.SaleResult> { SaleResultScreen(it.saleId, navigator) }
+                entry<Route.Split> { SplitScreen(it.saleId, navigator) }
                 entry<Route.PaymentLink> { PaymentLinkScreen(it.saleId, it.fresh, navigator) }
                 entry<Route.Tip> { PinGate(navigator, manager = true) { TipScreen(it.saleId, navigator) } }
                 entry<Route.Capture> { PinGate(navigator, manager = true) { CaptureScreen(it.saleId, it.adjustOnly, navigator) } }
                 entry<Route.RefundScan> { PinGate(navigator, manager = true) { RefundScanScreen(navigator) } }
                 entry<Route.Refund> { PinGate(navigator, manager = true) { RefundScreen(it.payload, it.saleId, navigator) } }
                 entry<Route.RefundProcessing> { RefundProcessingScreen(navigator) }
+                entry<Route.RefundLegs> { RefundLegsScreen(navigator) }
                 entry<Route.RefundResult> { RefundResultScreen(it.refundId, navigator) }
                 entry<Route.SavedCard> { PinGate(navigator, manager = true) { SavedCardScreen(navigator) } }
                 entry<Route.SavedCardSale> { PinGate(navigator, manager = true) { SaleScreen(navigator, SaleKind.SALE, card = it.card) } }

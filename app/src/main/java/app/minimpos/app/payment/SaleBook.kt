@@ -6,9 +6,12 @@ import app.minimpos.app.data.db.SaleLineEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
+import app.minimpos.app.data.repo.TenderAllocation
+import app.minimpos.app.data.repo.TenderBalance
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
+import app.minimpos.core.split.AllocatableLine
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.RecurringModel
@@ -45,6 +48,9 @@ import app.minimpos.terminal.client.TransactionKind
  * @property audioGuidance Whether audio guidance was selected and explicitly confirmed for this shopper.
  * @property audioGuidancePoiId Confirmed terminal POIID; checked again immediately before sending.
  * @property cardEntryOverride Card entry override (`NORMAL`, `MOTO` or `MKE`).
+ * @property allocation Equal-share or item allocation this tender pays; null for an amount or the whole balance.
+ * @property reviewedPaidMinor Purchase already paid when an [existingSaleId] tender was reviewed; a changed stored
+ *   amount refuses the start as stale.
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
  */
@@ -71,8 +77,13 @@ data class PaymentStart(
     val audioGuidance: Boolean = false,
     val audioGuidancePoiId: String? = null,
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
+    val allocation: TenderAllocation? = null,
+    val reviewedPaidMinor: Long = 0,
 ) {
     init {
+        require(allocation !is TenderAllocation.Items || !allowPartialAuthorisation) {
+            "Item tenders are collected in full so their units are paid exactly once"
+        }
         require(
             !audioGuidance || (
                 !tipOnReceipt && terminalTip == null && !askGiving && !allowPartialAuthorisation && shopperFlow == null &&
@@ -115,6 +126,7 @@ data class PaymentStart(
             requestedAmountMinor = totals.amounts.gross,
             askGiving = false,
             cardEntryOverride = CardEntryOverride.NORMAL,
+            allocation = null,
         )
 
     /** What this payment requests on its tender, in [currency]. */
@@ -158,11 +170,19 @@ class SaleBook(
         serviceId: String,
         createdAt: Long,
     ): Boolean {
-        if (request.existingSaleId == null) {
-            sales.createPending(pendingSale(id, request, createdAt).copy(serviceId = serviceId), lines(id, request.totals))
-        } else {
-            check(sales.record(id, SaleEvent.TenderOpened(serviceId, request.requestedAmountMinor)))
+        val existing = request.existingSaleId
+        if (existing != null) {
+            val opened = SaleEvent.TenderOpened(serviceId, request.requestedAmountMinor, request.reviewedPaidMinor)
+            return sales.openTender(existing, opened, request.allocation, createdAt)
         }
+        val split = request.requestedAmountMinor != request.totals.amounts.gross || request.allocation != null
+        if (split && !splitBalance(request).accepts(request.requestedAmountMinor, request.allocation)) return false
+        val tender = SaleRepository.openedTender(id, 1, request.requestedAmountMinor, request.allocation, createdAt)
+        sales.createPending(
+            pendingSale(id, request, createdAt).copy(serviceId = serviceId),
+            lines(id, request.totals),
+            tender.copy(serviceId = serviceId),
+        )
         return true
     }
 
@@ -261,6 +281,22 @@ class SaleBook(
 
     /** Terminal API values and conversions shared with refunds, and the stored form of a payment, shared with links. */
     companion object {
+        /** How a new sale's frozen cart is divided before anything is paid, its lines keyed by cart position. */
+        fun splitBalance(request: PaymentStart): TenderBalance = splitBalance(request.totals, request.manualCapture)
+
+        /** How the priced cart [totals] would be divided before anything is paid; no items for a [manualCapture]. */
+        fun splitBalance(
+            totals: CartTotals,
+            manualCapture: Boolean,
+        ): TenderBalance =
+            TenderBalance(
+                totals.amounts.gross,
+                0,
+                totals.lines.mapIndexed { index, priced -> AllocatableLine(index.toLong(), priced.line.quantity, 0, priced.amounts.gross) },
+                emptyList(),
+                itemsAllowed = !manualCapture,
+            )
+
         /** [request] as the new PENDING sale [id], started at [createdAt] (epoch ms), before anything is sent. */
         internal fun pendingSale(
             id: String,

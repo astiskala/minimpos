@@ -30,7 +30,7 @@ private const val REFUND_HISTORY_COLUMNS = """
     id, saleId, createdAt, merchantReference, originalTransactionId, originalTimestamp,
     originalReference, currency, amountMinor, full, tenderId, surchargeMinor, tipMinor, status, serviceId, pspReference, message, NULL AS
     customerReceiptJson, NULL AS linesJson, cancellation, reason, context, processedAt,
-    poiReconciliationId, checkoutRefund
+    poiReconciliationId, checkoutRefund, cash
 """
 
 /**
@@ -234,7 +234,8 @@ interface SaleDao {
     @Query(
         """SELECT id, saleId, sequence, requestedMinor, authorisedMinor, status, poiTransactionId, poiTimestamp,
         pspReference, paymentBrand, maskedPan, createdAt, tipMinor, surchargeMinor, cashBackMinor, serviceId, context,
-        poiReconciliationId, NULL AS customerReceiptJson, NULL AS cashierReceiptJson FROM sale_tenders WHERE saleId IN (:ids)""",
+        poiReconciliationId, NULL AS customerReceiptJson, NULL AS cashierReceiptJson, kind, allocationJson,
+        cashReceivedMinor, changeMinor, environment FROM sale_tenders WHERE saleId IN (:ids)""",
     )
     suspend fun historyTenders(ids: List<String>): List<SaleTenderEntity>
 
@@ -357,9 +358,9 @@ interface SaleDao {
     @Query("SELECT * FROM sales WHERE id = :id")
     suspend fun header(id: String): SaleEntity?
 
-    /** Identity-only duplicate check; settlement never loads full sale relations. */
+    /** Identity-only check for an approved duplicate; settlement never loads full sale relations. */
     @Query(
-        """SELECT EXISTS(SELECT 1 FROM sale_tenders WHERE saleId = :saleId
+        """SELECT EXISTS(SELECT 1 FROM sale_tenders WHERE saleId = :saleId AND status = 'APPROVED'
             AND (serviceId = :serviceId OR poiTransactionId = :transactionId))""",
     )
     suspend fun tenderRecorded(
@@ -367,6 +368,17 @@ interface SaleDao {
         serviceId: String?,
         transactionId: String?,
     ): Boolean
+
+    /** The unsettled tender row of the attempt sent with [serviceId], if one was opened before sending. */
+    @Query("SELECT * FROM sale_tenders WHERE saleId = :saleId AND serviceId = :serviceId AND status != 'APPROVED' LIMIT 1")
+    suspend fun openTender(
+        saleId: String,
+        serviceId: String,
+    ): SaleTenderEntity?
+
+    /** Marks tenders still being sent at the last stop as possibly sent; their sales recover through status checks. */
+    @Query("UPDATE sale_tenders SET status = 'UNKNOWN' WHERE status = 'PENDING'")
+    suspend fun interruptPendingTenders(): Int
 
     /** Number of retained tenders, read inside the settlement transaction before appending one. */
     @Query("SELECT COUNT(*) FROM sale_tenders WHERE saleId = :saleId")

@@ -119,15 +119,19 @@ class SurchargeWorkflowTest {
         reversals: () -> Int,
     ) {
         val id = paid.sale.id
-        val payment = (RefundablePayment.check(paid) as Refundability.Refundable).payment
+        val payment = (RefundablePayment.check(paid) as Refundability.Refundable).payment.legs.first()
         val refund = checkNotNull(payment.request(RefundChoice.Everything, "", Instant.now(), ZoneOffset.UTC))
         val refundId = checkNotNull(container.operations.refund(refund))
         await { container.operations.refundProgress.first { it == TransactionState.Finished(refundId) } }
         assertThat(await { container.refundRecords.get(refundId) }!!.status).isEqualTo(RefundStatus.REQUESTED)
         val after = await { checkNotNull(container.sales.get(id)) }
         assertThat(after.sale.refundedMinor).isEqualTo(550)
-        assertThat((RefundablePayment.check(after) as Refundability.Refundable).payment.transactionId)
-            .isNotEqualTo(payment.transactionId)
+        assertThat(
+            (RefundablePayment.check(after) as Refundability.Refundable)
+                .payment.legs
+                .first()
+                .remainingMinor,
+        ).isEqualTo(0)
         container.operations.acknowledgeRefund()
         val staleId = checkNotNull(container.operations.refund(refund))
         await { container.operations.refundProgress.first { it == TransactionState.Finished(staleId) } }
@@ -135,13 +139,14 @@ class SurchargeWorkflowTest {
         assertThat(await { container.sales.get(id) }!!.sale.refundedMinor).isEqualTo(550)
         assertThat(reversals()).isEqualTo(1)
         container.operations.acknowledgeRefund()
-        val second = (RefundablePayment.check(after) as Refundability.Refundable).payment
+        val second = (RefundablePayment.check(after) as Refundability.Refundable).payment.legs.last()
         val partialReturn = checkNotNull(second.request(RefundChoice.Amount(500), "", Instant.now(), ZoneOffset.UTC))
         assertThat(partialReturn.surchargeMinor).isEqualTo(0)
         val partialId = checkNotNull(container.operations.refund(partialReturn))
         await { container.operations.refundProgress.first { it == TransactionState.Finished(partialId) } }
         container.operations.acknowledgeRefund()
-        val feeOnly = (RefundablePayment.check(await { checkNotNull(container.sales.get(id)) }) as Refundability.Refundable).payment
+        val feeOnly =
+            (RefundablePayment.check(await { checkNotNull(container.sales.get(id)) }) as Refundability.Refundable).payment.legs.last()
         val last = checkNotNull(feeOnly.request(RefundChoice.Everything, "", Instant.now(), ZoneOffset.UTC))
         assertThat(last.amountMinor).isEqualTo(50)
         assertThat(last.surchargeMinor).isEqualTo(50)

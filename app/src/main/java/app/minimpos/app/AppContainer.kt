@@ -42,6 +42,7 @@ import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.payment.Captures
+import app.minimpos.app.payment.CashTenders
 import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.PaymentLinks
@@ -50,6 +51,7 @@ import app.minimpos.app.payment.PricingChanges
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.ReceiptRecords
 import app.minimpos.app.payment.RefundBook
+import app.minimpos.app.payment.RefundLegs
 import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.SavedCardCharges
@@ -272,17 +274,11 @@ class AppContainer(
     /** Copies the catalogue, settings and secrets to another device by QR code, and imports the setup helper's codes. */
     val setupTransfer = SetupTransfer(catalog, settings, secrets, onTerminal = device.isAdyenTerminal, history = history)
 
+    /** Where AUTO sends payments on this device: its own terminal, else the simulator; history environments follow it. */
+    private val automaticMode = if (device.isAdyenTerminal) TerminalMode.TERMINAL else TerminalMode.SIMULATOR
+
     /** Explicit environment-switch history deletion and recovery; unrelated merchant configuration remains. */
-    val historySwitches =
-        HistorySwitches(
-            settings,
-            history,
-            if (device.isAdyenTerminal) {
-                TerminalMode.TERMINAL
-            } else {
-                TerminalMode.SIMULATOR
-            },
-        )
+    val historySwitches = HistorySwitches(settings, history, automaticMode)
 
     /** What the simulator prints, shown on screen instead of paper. */
     val virtualPrinter = VirtualPrinter()
@@ -578,6 +574,12 @@ class AppContainer(
         simulator.forget(items, tenders, chargeKeys)
     }
 
+    /** Returns split across several tenders or including cash, one persisted leg at a time. */
+    val refundLegs = RefundLegs(appScope, operations, refundRecords, managerApproval)
+
+    /** Cash tenders of immediate sales, recorded locally after confirmation without reaching Adyen. */
+    val cashTenders = CashTenders(sales, { settingsState.value.terminal.historyEnvironment(automaticMode) }, ::completeSale)
+
     /**
      * One terminal reconciliation: rechecks unresolved terminal operations, reads or closes the period and compares its
      * totals against local accounting, so the screens only follow its outcome.
@@ -586,7 +588,7 @@ class AppContainer(
         TerminalReconciliation(history, operations, gateway, terminalStatus.state, approval = managerApproval)
 
     /** Refund/cancellation initiation and capture retries, keeping reference facts out of screens. */
-    val storedPaymentActions = StoredPaymentActions(operations, captures, settingsState)
+    val storedPaymentActions = StoredPaymentActions(operations, captures, settingsState, legs = refundLegs)
 
     /** Whether a financial operation is being sent now, see [FinancialOperations.running]. */
     private fun financialOperationRunning(): Boolean = operations.running
@@ -784,6 +786,8 @@ class AppContainer(
                         ReportText.PURCHASE -> R.string.surcharge_purchase_known
                         ReportText.UNKNOWN_SURCHARGES -> R.string.surcharge_unknown_count
                         ReportText.REFUNDS -> R.string.report_refunds
+                        ReportText.CASH_SALES -> R.string.report_cash_sales
+                        ReportText.CASH_REFUNDS -> R.string.report_cash_refunds
                         ReportText.REFUND_SURCHARGES -> R.string.surcharge_return_fee
                         ReportText.UNKNOWN_REFUND_SURCHARGES -> R.string.surcharge_unknown_refund_count
                         ReportText.NET -> R.string.report_net
@@ -842,6 +846,12 @@ class AppContainer(
             unreported = localizedContext.getString(R.string.surcharge_unknown),
             charged = localizedContext.getString(R.string.surcharge_charged),
             purchase = localizedContext.getString(R.string.surcharge_purchase),
+            tenderCard = localizedContext.getString(R.string.split_tender_card),
+            tenderCash = localizedContext.getString(R.string.split_tender_cash),
+            cashReceived = localizedContext.getString(R.string.split_cash_received),
+            change = localizedContext.getString(R.string.split_change),
+            balanceDue = localizedContext.getString(R.string.receipt_balance_due),
+            cashReturned = localizedContext.getString(R.string.split_cash_returned),
             tipTotal = localizedContext.getString(R.string.receipt_tip_total),
             signature = localizedContext.getString(R.string.receipt_signature),
             heldNow = localizedContext.getString(R.string.receipt_held_now),

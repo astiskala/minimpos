@@ -87,7 +87,7 @@
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Check Adyen capabilities</a></li><li><a href="#terminal-checkout">
-  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#partial-payments">Partial payments</a></li><li>
+  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li>
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
@@ -103,7 +103,7 @@
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Check Adyen capabilities</a></li><li><a href="#terminal-checkout">
-  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#partial-payments">Partial payments</a></li><li>
+  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li>
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
@@ -203,6 +203,10 @@
           </ol>
           <p>Every refund is linked to its original payment; refunds without one are not supported. Refund paid payment
             links in the Customer Area.</p>
+          <p id="split-refunds">A split sale is refunded to its original payments. Mini mPOS proposes how much goes back to each card and how
+            much cash to hand back; tap a payment to adjust it within what it can return. Cards are refunded first, one at
+            a time, then cash. Returning cash needs a Manager PIN. If a card refund is not accepted, nothing more is
+            returned; open the sale to review what is left.</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Important</p>
             <p><strong>Refund requested</strong> means Adyen received the request, not that the customer has the money.
@@ -423,6 +427,16 @@
               </div></a>
             <figcaption class="fine">English simulator demo of a partial approval, not a fully paid sale.<span class="shot-control">Partially paid</span><a class="screenshot-link shot-expand" href="images/partial-payment.png">Open full-size screenshot</a></figcaption>
           </figure>
+          <h3 id="split-payments">Split a sale or take cash</h3>
+          <p>At checkout, tap <strong>Split or pay cash</strong>. Choose an <strong>Amount</strong>, equal <strong>Shares</strong>
+            or the <strong>Items</strong> this payment covers, then tap <strong>Card</strong> or <strong>Cash</strong>. Prices and
+            tax stay as rung up, and any extra cent goes to the first shares. For cash, enter what the shopper gave, hand
+            back the change shown, then confirm. Cash is recorded on this device only and never reaches the terminal.</p>
+          <p>The sale stays <strong>Partially paid</strong> until it is paid in full. Tap <strong>Collect balance</strong> on its
+            result or in <strong>History</strong> to continue, also after a restart. Turn off tipping, donations, audio guidance and MOTO or
+            manual entry before splitting. Items are collected in full; other card amounts can still be partially approved
+            by the issuer. Resolve an unknown card result before collecting more. The receipt lists every payment, and the
+            daily report shows cash separately; terminal totals never include it.</p>
           <h3 id="shopper-display">Use the shopper-facing terminal screen</h3>
           <p>With a separate network/cloud terminal, open <strong>Settings › Shopper terminal display</strong>. Choose
             whether to show item details before payment, ask the shopper to confirm the order, or collect an email when

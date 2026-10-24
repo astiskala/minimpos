@@ -98,6 +98,8 @@ class AppFlowTest {
         compose.onNodeWithTag("customerReference").performTextInput("CUST-42")
         compose.waitForTag("tokenize")
         compose.onNodeWithTag("tokenize").performClick()
+        // Pay only once checkout shows the saved choice, so the start is built from the current form.
+        compose.waitUntilAtLeastOneExists(hasTestTag("tokenize") and isOn(), 15_000)
         compose.clickWhenEnabled("pay")
 
         waitForText("Approved")
@@ -705,8 +707,11 @@ internal fun ComposeContentTestRule.openProducts() {
     onNodeWithTag("products").performClick()
 }
 
+@OptIn(ExperimentalTestApi::class)
 internal fun ComposeContentTestRule.productsToHome() {
     onNodeWithTag("back").performClick()
+    // Back from Products returns to Settings; wait for it before leaving Settings, so the second press is not lost.
+    waitUntilAtLeastOneExists(hasTestTag("products"), 15_000)
     onNodeWithTag("back").performClick()
 }
 

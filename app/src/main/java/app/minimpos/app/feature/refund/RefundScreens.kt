@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -49,21 +50,26 @@ import app.minimpos.app.R
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleLineEntity
+import app.minimpos.app.data.db.SaleTenderEntity
+import app.minimpos.app.data.db.TenderKind
 import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.ReceiptActions
 import app.minimpos.app.feature.ResultAction
 import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.outcomeNote
-import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.RefundInvalidReason
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.payment.RefundLegSkip
+import app.minimpos.app.payment.RefundLegState
+import app.minimpos.app.payment.RefundStarted
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.scan.ScanHint
 import app.minimpos.app.scan.ScanMode
 import app.minimpos.app.scan.ScannerView
 import app.minimpos.app.share.ShareEffect
+import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
@@ -142,12 +148,14 @@ fun RefundScreen(
     var confirm by rememberSaveable { mutableStateOf(false) }
     val ready = state.load as? Refundability.Refundable
     val gate = currentSetupGate()
+    val managerConfigured by container.managerPin.pinConfigured.collectAsStateWithLifecycle(initialValue = false)
+    val cashBlocked = state.returnsCash && !managerConfigured
 
     MiniScaffold(
         title = stringResource(R.string.refund_title),
         onBack = navigator::back,
         modifier = modifier,
-        bottomBar = { if (ready != null) RefundBar(ready.payment.currency, state) { gate.run { confirm = true } } },
+        bottomBar = { if (ready != null) RefundBar(ready.payment.currency, state, cashBlocked) { gate.run { confirm = true } } },
     ) { padding ->
         when (val load = state.load) {
             null -> {
@@ -167,27 +175,49 @@ fun RefundScreen(
                     original = load.payment,
                     formatDateTime = container::formatDateTime,
                     onSelectOption = vm::selectOption,
-                    onTender = vm::selectTender,
+                    onEditLeg = vm::editLeg,
+                    onLegAmount = vm::updateLeg,
+                    onResetAllocation = vm::resetAllocation,
                     onQuantity = vm::setQuantity,
                     onAmount = vm::updateAmount,
                     modifier = Modifier.padding(padding),
                 )
                 if (confirm) {
-                    val money = rememberMoneyFormatter(load.payment.currency)
-                    ConfirmDialog(
-                        title = stringResource(R.string.refund_confirm_title),
-                        message = stringResource(R.string.refund_confirm_message, money.format(state.refundMinor)),
-                        confirmLabel = stringResource(R.string.refund_confirm),
-                        onConfirm = {
-                            confirm = false
-                            if (vm.refund()) navigator.replace(Route.RefundProcessing)
-                        },
-                        onDismiss = { confirm = false },
-                    )
+                    RefundConfirmation(state, load.payment.currency, onDismiss = { confirm = false }) {
+                        confirm = false
+                        when (vm.refund()) {
+                            RefundStarted.SINGLE -> navigator.replace(Route.RefundProcessing)
+                            RefundStarted.LEGS -> navigator.replace(Route.RefundLegs)
+                            RefundStarted.NONE -> Unit
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+/** Confirms returning the chosen amount, to one card or, split across original payments, cards first and cash last. */
+@Composable
+private fun RefundConfirmation(
+    state: RefundUiState,
+    currency: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val money = rememberMoneyFormatter(currency)
+    val split = state.allocation.count { it.value > 0 } > 1 || state.returnsCash
+    ConfirmDialog(
+        title = stringResource(R.string.refund_confirm_title),
+        message =
+            stringResource(
+                if (split) R.string.split_refund_confirm_message else R.string.refund_confirm_message,
+                money.format(state.refundMinor),
+            ),
+        confirmLabel = stringResource(R.string.refund_confirm),
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    )
 }
 
 /** "Refund" with the amount, pinned under the refund's choice, asking to confirm ([onRefund]) once the amount is valid. */
@@ -195,16 +225,18 @@ fun RefundScreen(
 private fun RefundBar(
     currency: String,
     state: RefundUiState,
+    cashBlocked: Boolean,
     onRefund: () -> Unit,
 ) {
     val money = rememberMoneyFormatter(currency)
     BottomActions {
         PrimaryButton(
             text = stringResource(R.string.refund_button, money.format(state.refundMinor)),
-            enabled = state.amountValid,
+            enabled = state.amountValid && !cashBlocked,
             onClick = onRefund,
             modifier = Modifier.testTag("startRefund"),
         )
+        if (cashBlocked) BlockedReason(stringResource(R.string.split_cash_refund_manager))
     }
 }
 
@@ -258,7 +290,9 @@ private fun RefundChoice(
     original: RefundablePayment,
     formatDateTime: (Long) -> String,
     onSelectOption: (RefundOption) -> Unit,
-    onTender: (String) -> Unit,
+    onEditLeg: (String?) -> Unit,
+    onLegAmount: ((AmountEntry) -> AmountEntry) -> Unit,
+    onResetAllocation: () -> Unit,
     onQuantity: (lineId: Long, quantity: Int) -> Unit,
     onAmount: ((AmountEntry) -> AmountEntry) -> Unit,
     modifier: Modifier = Modifier,
@@ -268,8 +302,8 @@ private fun RefundChoice(
     val scroll = rememberLazyListState()
     val lines = remember(original.local) { original.local?.sortedLines.orEmpty() }
     // The amount keypad is one lazy item below the original payment and mode selector on small screens.
-    LaunchedEffect(state.option) {
-        if (state.option == RefundOption.AMOUNT) {
+    LaunchedEffect(state.option, state.editingLeg) {
+        if (state.option == RefundOption.AMOUNT || state.editingLeg != null) {
             withFrameNanos { }
             scroll.animateScrollToItem(1)
         }
@@ -285,7 +319,6 @@ private fun RefundChoice(
                 Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(dimens.spacing),
             ) {
-                TenderChoices(original, money, onTender)
                 OriginalPaymentCard(original, money, formatDateTime)
                 RefundOriginNote(original.local != null)
                 RefundOptions(
@@ -294,8 +327,13 @@ private fun RefundChoice(
                     onSelect = onSelectOption,
                 )
                 RefundAmount(state.refundMinor, original.remainingMinor, money)
-                ReturnComponents(original, state.choice, money)
+                RefundAllocation(state, original, money, onEditLeg, onResetAllocation)
+                ReturnComponents(original, state, money)
             }
+        }
+        if (state.editingLeg != null) {
+            keypad("legAmount", onLegAmount)
+            return@LazyColumn
         }
         when (state.option) {
             RefundOption.FULL -> {}
@@ -309,17 +347,24 @@ private fun RefundChoice(
             }
 
             RefundOption.AMOUNT -> {
-                item(key = "amount", contentType = "amount") {
-                    Column(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth().padding(top = dimens.spacing)) {
-                        NumericKeypad(
-                            onDigit = { digit -> onAmount { it.append(digit) } },
-                            onDoubleZero = { onAmount { it.appendDoubleZero() } },
-                            onBackspace = { onAmount { it.backspace() } },
-                        )
-                    }
-                }
+                keypad("amount", onAmount)
             }
         }
+    }
+}
+
+/** The keypad editing an amount, as one lazy item [key] below the choices. */
+private fun LazyListScope.keypad(
+    key: String,
+    onAmount: ((AmountEntry) -> AmountEntry) -> Unit,
+) = item(key = key, contentType = "amount") {
+    val dimens = LocalDimens.current
+    Column(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth().padding(top = dimens.spacing)) {
+        NumericKeypad(
+            onDigit = { digit -> onAmount { it.append(digit) } },
+            onDoubleZero = { onAmount { it.appendDoubleZero() } },
+            onBackspace = { onAmount { it.backspace() } },
+        )
     }
 }
 
@@ -327,37 +372,75 @@ private fun RefundChoice(
 @Composable
 private fun ReturnComponents(
     original: RefundablePayment,
-    choice: RefundChoice,
+    state: RefundUiState,
     money: MoneyFormatter,
 ) {
+    val split = original.legs.isNotEmpty()
     LabeledValue(
         stringResource(R.string.surcharge_return_fee),
-        original.surchargeFor(choice)?.let(money::format) ?: stringResource(R.string.surcharge_unknown),
+        (if (split) original.surchargeFor(state.allocation) else original.surchargeFor(state.choice))?.let(money::format)
+            ?: stringResource(R.string.surcharge_unknown),
     )
     LabeledValue(
         stringResource(R.string.surcharge_return_tip),
-        original.tipFor(choice)?.let(money::format) ?: stringResource(R.string.surcharge_unknown),
+        (if (split) original.tipFor(state.allocation) else original.tipFor(state.choice))?.let(money::format)
+            ?: stringResource(R.string.surcharge_unknown),
     )
 }
 
-/** Selects one original card; each button shows its remaining refundable balance. */
+/**
+ * What each original tender returns of the chosen refund, proposed automatically; selecting a tender lets staff adjust
+ * its amount on the keypad within what it can still return, and the total must match before the refund starts.
+ */
 @Composable
-private fun TenderChoices(
+private fun RefundAllocation(
+    state: RefundUiState,
     original: RefundablePayment,
     money: MoneyFormatter,
-    onTender: (String) -> Unit,
+    onEditLeg: (String?) -> Unit,
+    onReset: () -> Unit,
 ) {
-    if (original.tenderOptions.size <= 1) return
-    Text(stringResource(R.string.surcharge_refund_tender))
-    original.tenderOptions.forEach { option ->
-        val tender = option.tender ?: return@forEach
+    if (original.legs.size <= 1) return
+    Column(verticalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+        AllocationLegs(state, original, money, onEditLeg, onReset)
+    }
+}
+
+@Composable
+private fun ColumnScope.AllocationLegs(
+    state: RefundUiState,
+    original: RefundablePayment,
+    money: MoneyFormatter,
+    onEditLeg: (String?) -> Unit,
+    onReset: () -> Unit,
+) {
+    Text(stringResource(R.string.split_refund_tenders), style = MaterialTheme.typography.titleSmall)
+    original.legs.forEach { leg ->
+        val tender = leg.tender ?: return@forEach
         FilterChip(
-            selected = tender.id == original.tender?.id,
-            modifier = Modifier.testTag("refundTender_${tender.id}"),
-            onClick = { onTender(tender.id) },
-            label = { Text("${tender.sequence} · ${tender.maskedPan.orEmpty()} · ${money.format(option.remainingMinor)}") },
+            selected = state.editingLeg == tender.id,
+            modifier = Modifier.fillMaxWidth().testTag("refundTender_${tender.id}"),
+            onClick = { onEditLeg(tender.id.takeUnless { it == state.editingLeg }) },
+            label = {
+                Text(
+                    stringResource(
+                        R.string.split_refund_tender_line,
+                        tenderLabel(tender),
+                        money.format(state.allocation[tender.id] ?: 0),
+                        money.format(leg.remainingMinor),
+                    ),
+                )
+            },
         )
     }
+    val allocated = state.allocation.values.sum()
+    if (allocated != state.refundMinor) {
+        Text(
+            stringResource(R.string.split_refund_unallocated, money.format(allocated), money.format(state.refundMinor)),
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+    if (state.adjusted != null) SecondaryButton(stringResource(R.string.split_refund_reset), onReset, Modifier.testTag("resetAllocation"))
 }
 
 @Composable
@@ -396,7 +479,7 @@ private fun OriginalPaymentCard(
         if (original.refundedMinor > 0) {
             LabeledValue(stringResource(R.string.refund_already_refunded), money.format(original.refundedMinor))
         }
-        original.local?.sale?.let { sale ->
+        original.local?.sale?.takeIf { original.legs.size <= 1 }?.let { sale ->
             LabeledValue(
                 stringResource(R.string.detail_card),
                 listOfNotNull(
@@ -501,6 +584,89 @@ private fun refundViewModel(
         RefundViewModel(payload, saleId, container.sales, container.storedPaymentActions)
     }
 }
+
+/**
+ * A return across several original tenders: each leg as it is sent and stored, cards first and cash last, then their
+ * outcomes, each opening its own refund. Back waits until every leg was attempted; Home then leaves the run.
+ */
+@Composable
+fun RefundLegsScreen(
+    navigator: Navigator,
+    modifier: Modifier = Modifier,
+) {
+    val container = LocalAppContainer.current
+    val run by container.refundLegs.state.collectAsStateWithLifecycle()
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val wait = stringResource(R.string.processing_wait)
+    val finished = run?.finished != false
+
+    fun done() {
+        container.refundLegs.acknowledge()
+        navigator.home()
+    }
+    BackHandler { if (finished) done() else scope.launch { snackbar.showSnackbar(wait) } }
+    MiniScaffold(
+        title = stringResource(R.string.split_refund_title),
+        onBack = { if (finished) done() else scope.launch { snackbar.showSnackbar(wait) } },
+        modifier = modifier,
+        snackbarHostState = snackbar,
+        bottomBar = { if (finished) ResultBar(onHome = { done() }, next = null) },
+    ) { padding ->
+        val current = run ?: return@MiniScaffold
+        ScreenColumn(padding, horizontalAlignment = Alignment.CenterHorizontally) {
+            if (!current.finished) CircularProgressIndicator(Modifier.testTag("progress"))
+            current.legs.forEachIndexed { index, leg ->
+                RefundLegRow(index, leg) { id -> navigator.push(Route.RefundDetail(id)) }
+            }
+            if (current.finished && current.legs.any { it.status != RefundStatus.REQUESTED }) {
+                OutcomeNote(stringResource(R.string.split_refund_incomplete))
+            }
+        }
+    }
+}
+
+@Composable
+private fun RefundLegRow(
+    index: Int,
+    leg: RefundLegState,
+    onOpen: (String) -> Unit,
+) {
+    val money = rememberMoneyFormatter(leg.amount.currency)
+    val status =
+        when {
+            leg.skipped != null -> stringResource(R.string.split_refund_not_sent)
+            leg.status == null -> stringResource(R.string.status_pending)
+            leg.cash && leg.status == RefundStatus.REQUESTED -> stringResource(R.string.split_cash_returned)
+            else -> refundStatusTitle(leg.status)
+        }
+    Card(Modifier.testTag("refundLeg_$index")) {
+        LabeledValue(
+            stringResource(if (leg.cash) R.string.split_tender_cash else R.string.split_tender_card),
+            money.format(leg.amount.amountMinor),
+            emphasize = true,
+        )
+        LabeledValue(stringResource(R.string.split_leg_status), status)
+        if (leg.cash && leg.status == RefundStatus.REQUESTED) OutcomeNote(stringResource(R.string.split_cash_hand_back))
+        if (leg.skipped == RefundLegSkip.MANAGER_APPROVAL) OutcomeNote(stringResource(R.string.split_cash_refund_manager))
+        if (leg.skipped == RefundLegSkip.BALANCE_CHANGED) OutcomeNote(stringResource(R.string.split_balance_changed))
+        leg.refundId?.let { id -> SecondaryButton(stringResource(R.string.split_refund_open), { onOpen(id) }) }
+    }
+}
+
+/** How an original tender is named where staff choose what it returns. */
+@Composable
+@ReadOnlyComposable
+internal fun tenderLabel(tender: SaleTenderEntity): String =
+    if (tender.kind == TenderKind.CASH) {
+        stringResource(R.string.split_tender_cash)
+    } else {
+        listOf(
+            stringResource(R.string.split_tender_card),
+            tender.paymentBrand?.uppercase(),
+            tender.maskedPan,
+        ).filterNotNull().joinToString(" ")
+    }
 
 /**
  * Waits while the terminal handles the refund (or the cancellation of a pre-authorisation), then shows its result. Back

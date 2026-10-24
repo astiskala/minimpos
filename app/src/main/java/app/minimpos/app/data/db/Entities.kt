@@ -290,7 +290,7 @@ data class SaleEntity(
     val tipMinor: Long? = null,
     /** Reported surcharge included in the terminal total; null if any tender is unreported. Added in version 18. */
     val surchargeMinor: Long? = null,
-    /** Total authorized across terminal tenders, including tips, surcharge and cashback; null for historical data. */
+    /** Total collected across tenders (cards with their tips, surcharge and cashback, and cash); null for historical data. */
     val terminalPaidMinor: Long? = null,
     /** Frozen amount of the active terminal attempt, excluding terminal-added components; null for old history. */
     val tenderRequestedMinor: Long? = null,
@@ -637,16 +637,32 @@ data class RefundEntity(
     val surchargeMinor: Long? = null,
     /** Tip returned within [amountMinor]; null if original or prior refund components are unknown. */
     val tipMinor: Long? = null,
+    /**
+     * Cash handed back for a cash tender, recorded locally after explicit confirmation without a Terminal API call:
+     * [originalTransactionId] is then the local tender ID and [originalTimestamp] its recording time. Added in version 19.
+     */
+    @ColumnInfo(defaultValue = "0") val cash: Boolean = false,
 )
 
+/** How one tender of a sale was paid; stored by name in `sale_tenders.kind`. Added in database version 19. */
+enum class TenderKind {
+    /** A card or wallet on the terminal, sent as a Terminal API payment. */
+    CARD,
+
+    /** Cash recorded locally after explicit confirmation; no Terminal API call and no terminal totals. */
+    CASH,
+}
+
 /**
- * One payment tender of a sale (table `sale_tenders`), allowing a single sale to be paid across multiple cards or
- * partial authorizations. Deleted with its sale (foreign key `CASCADE`).
+ * One payment tender of a sale (table `sale_tenders`), allowing a single sale to be paid across multiple cards, cash or
+ * partial authorizations. A card tender is inserted PENDING with its ServiceID, frozen requested amount and allocation
+ * before it is sent, and settled in place; a cash tender is recorded approved once its handover was confirmed. Deleted
+ * with its sale (foreign key `CASCADE`).
  *
  * @property id Deterministic tender ID (`<saleId>-<sequence>`).
  * @property saleId The [SaleEntity] this tender belongs to.
  * @property sequence One-based sequence number of the tender within the sale.
- * @property requestedMinor Amount requested from the terminal for this tender, in minor units.
+ * @property requestedMinor Frozen purchase amount this tender asked for (or cash applied), in minor units.
  * @property authorisedMinor Amount approved by the terminal for this tender, in minor units; null when not approved.
  * @property status Outcome status of this tender ([SaleStatus]).
  * @property poiTransactionId Terminal `POITransactionID.TransactionID` for this tender.
@@ -663,6 +679,13 @@ data class RefundEntity(
  * @property poiReconciliationId Original terminal reconciliation period; null when unavailable.
  * @property customerReceiptJson Original customer receipt fields; null for historical rows.
  * @property cashierReceiptJson Original merchant receipt fields; null for historical rows.
+ * @property kind Card on the terminal or locally recorded cash.
+ * @property allocationJson Frozen equal-share or item allocation as JSON
+ *   ([app.minimpos.app.data.repo.TenderAllocationJson]); null for an amount or the whole balance.
+ * @property cashReceivedMinor Cash received from the shopper for a cash tender; null for cards.
+ * @property changeMinor Change handed back for a cash tender; null for cards.
+ * @property environment History environment (LIVE, TEST or SIMULATOR) a cash tender was recorded in; null for cards,
+ *   whose [context] says it, or while unestablished.
  */
 @Entity(
     tableName = "sale_tenders",
@@ -705,7 +728,18 @@ data class SaleTenderEntity(
     val customerReceiptJson: String? = null,
     /** Original merchant receipt fields, preserved verbatim; null for historical tenders. */
     val cashierReceiptJson: String? = null,
-)
+    @ColumnInfo(defaultValue = "CARD") val kind: TenderKind = TenderKind.CARD,
+    val allocationJson: String? = null,
+    val cashReceivedMinor: Long? = null,
+    val changeMinor: Long? = null,
+    val environment: String? = null,
+) {
+    /** Whether this tender collected money: an approved card or recorded cash. */
+    val approved: Boolean get() = status == SaleStatus.APPROVED
+
+    /** Whether it may still have collected money: sent or being sent without a known outcome. */
+    val unresolved: Boolean get() = status == SaleStatus.PENDING || status == SaleStatus.UNKNOWN
+}
 
 /**
  * A sale with its lines, loaded together by Room (the DAO queries run in a transaction).

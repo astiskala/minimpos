@@ -75,10 +75,14 @@ class StoredPaymentActionsTest {
         val payment = refundable(pay())
         val actions = actions()
         env.updateSettings { it.copy(payment = it.payment.copy(referencePrefix = " NEW ")) }
-        assertThat(actions.refund(payment, RefundChoice.Amount(0))).isFalse()
-        assertThat(actions.refund(payment, RefundChoice.Amount(1001))).isFalse()
+        assertThat(actions.refund(payment, RefundChoice.Amount(0), payment.proposal(RefundChoice.Amount(0)))).isEqualTo(RefundStarted.NONE)
+        assertThat(
+            actions.refund(payment, RefundChoice.Amount(1001), payment.proposal(RefundChoice.Amount(1001))),
+        ).isEqualTo(RefundStarted.NONE)
         assertThat(container.refunds.state.value).isEqualTo(TransactionState.Idle)
-        assertThat(actions.refund(payment, RefundChoice.Everything)).isTrue()
+        assertThat(
+            actions.refund(payment, RefundChoice.Everything, payment.proposal(RefundChoice.Everything)),
+        ).isEqualTo(RefundStarted.SINGLE)
         val refund = finishedRefund()
         assertThat(refund.status).isEqualTo(RefundStatus.REQUESTED)
         assertThat(refund.amountMinor).isEqualTo(1000)
@@ -121,9 +125,11 @@ class StoredPaymentActionsTest {
                     container.refundRecords,
                 )
             val actions = StoredPaymentActions(operations, container.captures, container.settingsState, clock)
-            assertThat(actions.refund(refundable(sale), RefundChoice.Everything)).isTrue()
+            val payment = refundable(sale)
+            val everything = payment.proposal(RefundChoice.Everything)
+            assertThat(actions.refund(payment, RefundChoice.Everything, everything)).isEqualTo(RefundStarted.SINGLE)
             assertThat(operations.running).isTrue()
-            assertThat(actions.refund(refundable(sale), RefundChoice.Everything)).isFalse()
+            assertThat(actions.refund(payment, RefundChoice.Everything, everything)).isEqualTo(RefundStarted.NONE)
             assertThat(actions.cancel(held)).isNull()
         }
 
@@ -132,7 +138,9 @@ class StoredPaymentActionsTest {
         env.useSimulator()
         val payment = refundable(pay())
         await { container.managerPin.setPin("2468") }
-        assertThat(actions().refund(payment, RefundChoice.Everything)).isTrue()
+        assertThat(
+            actions().refund(payment, RefundChoice.Everything, payment.proposal(RefundChoice.Everything)),
+        ).isEqualTo(RefundStarted.SINGLE)
         val refund = finishedRefund()
         assertThat(refund.status).isEqualTo(RefundStatus.FAILED)
         assertThat(refund.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))

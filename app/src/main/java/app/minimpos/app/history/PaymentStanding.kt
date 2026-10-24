@@ -7,6 +7,7 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.repo.remainingAmountKnown
 import app.minimpos.terminal.client.Decline
 import app.minimpos.terminal.client.RetryAdvice
 
@@ -134,9 +135,6 @@ enum class SaleResultNext {
     NONE,
 }
 
-/** New partial responses with an unreported surcharge cannot establish the remaining purchase amount. */
-val SaleEntity.remainingAmountKnown: Boolean get() = terminalPaidMinor == null || surchargeMinor != null
-
 /**
  * What the result of [sale] offers beside Home, the one reading of its outcome: collecting its remaining balance, the
  * next payment once it was approved, or a retry after a refusal the terminal's advice allows. A payment link takes its
@@ -260,7 +258,7 @@ val SaleEntity.paidOnline: Boolean get() = paymentLink && standing.charged
 val SaleEntity.terminalOperation: Boolean get() = !sample && !paymentLink && !savedCard
 
 /** Whether this refund was sent to a terminal, so terminal totals include it: not a Checkout refund of a saved-card charge. */
-val RefundEntity.terminalOperation: Boolean get() = !checkoutRefund
+val RefundEntity.terminalOperation: Boolean get() = !checkoutRefund && !cash
 
 /** What about a stored sale still needs attention, see [issues]. */
 enum class PaymentIssue {

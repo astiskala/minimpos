@@ -9,6 +9,9 @@ import app.minimpos.app.data.db.SaleLineEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.TenderKind
+import app.minimpos.core.payment.PaymentContext
+import app.minimpos.terminal.client.TransactionDetails
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -31,13 +34,99 @@ class SaleRepository(
     private val dao = db.saleDao()
     private val observations = RecordObservations(source = dao::observeSale)
 
-    /** Inserts a new [sale] (normally PENDING) with its [lines] in one transaction. */
+    /**
+     * Inserts a new [sale] (normally PENDING) with its [lines] in one transaction, and the [tender] row it is about to
+     * send, so the attempt's identity, requested amount and allocation exist before anything is sent.
+     */
     suspend fun createPending(
         sale: SaleEntity,
         lines: List<SaleLineEntity>,
+        tender: SaleTenderEntity? = null,
     ) = db.withTransaction {
         dao.insert(sale)
         dao.insertLines(lines)
+        if (tender != null) dao.upsertTender(tender)
+    }
+
+    /**
+     * Opens the next card attempt [event] of partially paid sale [id] with its [allocation], storing the sale's new
+     * identity and a PENDING tender row in one transaction. Returns false, storing nothing, when the sale is missing,
+     * its balance changed since the review, a tender is unresolved, or the amount or allocation is not acceptable.
+     */
+    suspend fun openTender(
+        id: String,
+        event: SaleEvent.TenderOpened,
+        allocation: TenderAllocation?,
+        createdAt: Long,
+    ): Boolean =
+        db.withTransaction {
+            val record = dao.sale(id) ?: return@withTransaction false
+            val sale = record.sale
+            val balance = TenderBalance.of(sale, record.lines, record.tenders)
+            if (!sale.acceptsTender(event.amountMinor, event.paidMinor) || !balance.accepts(event.amountMinor, allocation)) {
+                return@withTransaction false
+            }
+            dao.update(sale.after(event))
+            dao.upsertTender(
+                openedTender(sale.id, record.tenders.size + 1, event.amountMinor, allocation, createdAt)
+                    .copy(serviceId = event.serviceId, context = sale.context),
+            )
+            true
+        }
+
+    /**
+     * Records confirmed [cash] on partially paid sale [id] with its [allocation] in [environment] (see
+     * [SaleTenderEntity.environment]): an approved cash tender and the sale's new paid amount in one transaction.
+     * Returns false, storing nothing, for a missing sale, a changed balance, an unresolved tender or an unacceptable
+     * amount or allocation.
+     */
+    suspend fun recordCash(
+        id: String,
+        cash: SaleEvent.CashTendered,
+        allocation: TenderAllocation?,
+        environment: String?,
+    ): Boolean =
+        db.withTransaction {
+            val record = dao.sale(id) ?: return@withTransaction false
+            val sale = record.sale
+            val amount = cash.cash.amountMinor
+            val balance = TenderBalance.of(sale, record.lines, record.tenders)
+            if (!sale.acceptsTender(amount, cash.paidMinor) || !balance.accepts(amount, allocation)) return@withTransaction false
+            val stamped = cash.stamped(now()) as SaleEvent.CashTendered
+            dao.update(sale.after(stamped))
+            dao.upsertTender(cashTender(sale.id, record.tenders.size + 1, stamped, allocation, environment))
+            true
+        }
+
+    /**
+     * Stores the new [sale] paid first with confirmed [cash] (its [lines] as sold and an approved cash tender with its
+     * [allocation]) in one transaction, recorded in [environment]. The sale is approved for what the cash covers,
+     * and partially paid while a balance remains; no card is saved by cash.
+     */
+    suspend fun createCash(
+        sale: SaleEntity,
+        lines: List<SaleLineEntity>,
+        cash: SaleEvent.CashTendered,
+        allocation: TenderAllocation?,
+        environment: String?,
+    ) = db.withTransaction {
+        val stamped = cash.stamped(now()) as SaleEvent.CashTendered
+        val amount = stamped.cash.amountMinor
+        require(amount in 1..sale.totalMinor) { "Cash exceeds the sale" }
+        dao.insert(
+            sale.copy(
+                status = SaleStatus.APPROVED,
+                tokenizationRequested = false,
+                paidMinor = amount,
+                terminalPaidMinor = amount,
+                surchargeMinor = 0,
+                cashBackMinor = 0,
+                tenderRequestedMinor = amount,
+                processedAt = stamped.processedAt,
+            ),
+        )
+        dao.insertLines(lines)
+        dao.upsertTender(cashTender(sale.id, 1, stamped, allocation, environment))
     }
 
     /** Returns the sale with ID [id] and its lines, or null if there is none (for example after pruning). */
@@ -52,7 +141,10 @@ class SaleRepository(
      */
     suspend fun findByTransactionId(transactionId: String): SaleWithLines? = dao.saleByTransactionId(transactionId)
 
-    /** Records [event] for sale [id] without unchanged writes; returns false only when a healthy read proves it absent. */
+    /**
+     * Records [event] for sale [id] without unchanged writes; returns false only when a healthy read proves it absent.
+     * The tender row opened for the sale's current attempt follows its context and settlement in the same transaction.
+     */
     suspend fun record(
         id: String,
         event: SaleEvent,
@@ -68,39 +160,60 @@ class SaleRepository(
             }
             val updated = sale.after(stamped)
             if (updated != sale) dao.update(updated)
-            if (stamped is SaleEvent.Settled && !stamped.repeated) recordApprovedTender(sale, stamped)
+            val open = sale.serviceId?.let { dao.openTender(id, it) }
+            when {
+                stamped is SaleEvent.ContextRecorded && open != null -> dao.upsertTender(open.copy(context = stamped.context))
+                stamped is SaleEvent.Settled && !stamped.repeated -> settleTender(sale, open, stamped)
+            }
             true
         }
+
+    /** Settles the attempt's [open] row in place, or appends an approved row for an attempt opened before rows existed. */
+    private suspend fun settleTender(
+        sale: SaleEntity,
+        open: SaleTenderEntity?,
+        settled: SaleEvent.Settled,
+    ) {
+        val details = settled.details
+        if (open == null) {
+            if (details != null) recordApprovedTender(sale, settled, details)
+            return
+        }
+        dao.upsertTender(
+            if (settled.status == SaleStatus.APPROVED && details != null) {
+                answeredTender(
+                    open,
+                    details,
+                    details.amountMinor ?: open.requestedMinor,
+                    settled.processedAt ?: now(),
+                    sale.context,
+                )
+            } else {
+                open.copy(status = settled.status)
+            },
+        )
+    }
 
     private suspend fun recordApprovedTender(
         sale: SaleEntity,
         settled: SaleEvent.Settled,
+        details: TransactionDetails,
     ) {
-        val details = settled.details ?: return
         val tender = settled.approvedTender(sale.totalMinor, sale.paidMinor) ?: return
         val seq = dao.tenderCount(sale.id) + 1
         dao.upsertTender(
-            SaleTenderEntity(
-                id = "${sale.id}-$seq",
-                saleId = sale.id,
-                sequence = seq,
-                requestedMinor = tender.requestedMinor,
-                authorisedMinor = tender.authorisedMinor,
-                status = settled.status,
-                poiTransactionId = details.poiTransactionId,
-                poiTimestamp = details.poiTimestamp,
-                pspReference = details.pspReference,
-                paymentBrand = details.paymentBrand,
-                maskedPan = details.maskedPan,
-                createdAt = settled.processedAt ?: now(),
-                serviceId = sale.serviceId,
-                context = sale.context,
-                poiReconciliationId = details.poiReconciliationId,
-                tipMinor = details.tipMinor,
-                surchargeMinor = details.surchargeMinor,
-                cashBackMinor = details.cashBackMinor,
-                customerReceiptJson = ReceiptLinesJson.encodeFields(details.customerReceipt),
-                cashierReceiptJson = ReceiptLinesJson.encodeFields(details.cashierReceipt),
+            answeredTender(
+                SaleTenderEntity(
+                    id = "${sale.id}-$seq",
+                    saleId = sale.id,
+                    sequence = seq,
+                    requestedMinor = tender.requestedMinor,
+                    serviceId = sale.serviceId,
+                ),
+                details,
+                tender.authorisedMinor,
+                settled.processedAt ?: now(),
+                sale.context,
             ),
         )
     }
@@ -121,5 +234,77 @@ class SaleRepository(
             if (refunded.lines != record.lines) dao.updateLines(refunded.lines)
             dao.update(refunded.sale)
         }
+    }
+
+    /** Building tender rows, shared by card attempts and cash. */
+    internal companion object {
+        /** A PENDING card attempt row for sale [saleId] as tender [sequence], before it is sent. */
+        fun openedTender(
+            saleId: String,
+            sequence: Int,
+            amountMinor: Long,
+            allocation: TenderAllocation?,
+            createdAt: Long,
+        ): SaleTenderEntity =
+            SaleTenderEntity(
+                id = "$saleId-$sequence",
+                saleId = saleId,
+                sequence = sequence,
+                requestedMinor = amountMinor,
+                status = SaleStatus.PENDING,
+                createdAt = createdAt,
+                allocationJson = TenderAllocationJson.encode(allocation),
+            )
+
+        fun cashTender(
+            saleId: String,
+            sequence: Int,
+            cash: SaleEvent.CashTendered,
+            allocation: TenderAllocation?,
+            environment: String?,
+        ): SaleTenderEntity =
+            SaleTenderEntity(
+                id = "$saleId-$sequence",
+                saleId = saleId,
+                sequence = sequence,
+                requestedMinor = cash.cash.amountMinor,
+                authorisedMinor = cash.cash.amountMinor,
+                status = SaleStatus.APPROVED,
+                createdAt = checkNotNull(cash.processedAt),
+                tipMinor = 0,
+                surchargeMinor = 0,
+                cashBackMinor = 0,
+                kind = TenderKind.CASH,
+                allocationJson = TenderAllocationJson.encode(allocation),
+                cashReceivedMinor = cash.cash.receivedMinor,
+                changeMinor = cash.cash.changeMinor,
+                environment = environment,
+            )
+
+        /** [tender] approved for [authorisedMinor] with the terminal's [details], answered at [processedAt], sent in [context]. */
+        fun answeredTender(
+            tender: SaleTenderEntity,
+            details: TransactionDetails,
+            authorisedMinor: Long,
+            processedAt: Long,
+            context: PaymentContext?,
+        ): SaleTenderEntity =
+            tender.copy(
+                authorisedMinor = authorisedMinor,
+                status = SaleStatus.APPROVED,
+                poiTransactionId = details.poiTransactionId,
+                poiTimestamp = details.poiTimestamp,
+                pspReference = details.pspReference,
+                paymentBrand = details.paymentBrand,
+                maskedPan = details.maskedPan,
+                createdAt = processedAt,
+                context = context ?: tender.context,
+                poiReconciliationId = details.poiReconciliationId,
+                tipMinor = details.tipMinor,
+                surchargeMinor = details.surchargeMinor,
+                cashBackMinor = details.cashBackMinor,
+                customerReceiptJson = ReceiptLinesJson.encodeFields(details.customerReceipt),
+                cashierReceiptJson = ReceiptLinesJson.encodeFields(details.cashierReceipt),
+            )
     }
 }

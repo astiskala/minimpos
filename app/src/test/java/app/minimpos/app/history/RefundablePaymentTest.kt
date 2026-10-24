@@ -9,7 +9,11 @@ import app.minimpos.app.data.db.SaleLineEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.repo.AllocatedLine
 import app.minimpos.app.data.repo.RefundedLine
+import app.minimpos.app.data.repo.TenderAllocation
+import app.minimpos.app.data.repo.TenderAllocationJson
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.payment.PaymentContext
 import com.google.common.truth.Truth.assertThat
@@ -48,13 +52,13 @@ class RefundablePaymentTest {
     private fun reason(record: SaleWithLines) = (RefundablePayment.check(record) as Refundability.NotRefundable).reason
 
     @Test
-    fun `each original card caps its own return and unknown attempts reserve its balance`() {
+    fun `a split sale proposes returns across every original tender and reserves unknown legs`() {
         val first =
             SaleTenderEntity(
                 "s1-1",
                 "s1",
                 1,
-                1000,
+                500,
                 550,
                 poiTransactionId = "FIRST.PSP1",
                 poiTimestamp = sale.poiTimestamp,
@@ -68,15 +72,52 @@ class RefundablePaymentTest {
                 tenders = listOf(first, second),
             )
         val payment = refundable(split)
-        assertThat(payment.amountMinor).isEqualTo(550)
-        assertThat(payment.itemsKnown).isFalse()
-        assertThat(payment.isValid(RefundChoice.Amount(551))).isFalse()
-        val request = checkNotNull(payment.request(RefundChoice.Everything, "", now, ZoneOffset.UTC))
-        assertThat(request.originalTransactionId).isEqualTo("FIRST.PSP1")
-        assertThat(request.tenderId).isEqualTo("s1-1")
-        assertThat(request.surchargeMinor).isEqualTo(50)
-        assertThat(request.tipMinor).isEqualTo(0)
-        assertThat(request.full).isTrue()
+        assertThat(payment.amountMinor).isEqualTo(1150)
+        assertThat(payment.legs.map { it.tender?.id }).containsExactly("s1-1", "s1-2").inOrder()
+        assertThat(payment.itemsKnown).isTrue()
+        assertThat(payment.isValid(RefundChoice.Amount(1151))).isFalse()
+        // Never the whole return to the latest card: every original tender gets its own leg.
+        val everything = payment.proposal(RefundChoice.Everything)
+        assertThat(everything).containsExactly("s1-1", 550L, "s1-2", 600L)
+        val requests = checkNotNull(payment.requests(RefundChoice.Everything, everything, "", now, ZoneOffset.UTC))
+        assertThat(requests.map { it.originalTransactionId }).containsExactly("FIRST.PSP1", "SECOND.PSP2").inOrder()
+        assertThat(requests.map { it.tenderId }).containsExactly("s1-1", "s1-2").inOrder()
+        assertThat(requests.all { it.full }).isTrue()
+        assertThat(requests.first().surchargeMinor).isEqualTo(50)
+        assertThat(requests.last().tipMinor).isEqualTo(50)
+        assertThat(payment.surchargeFor(everything)).isEqualTo(100)
+        assertThat(payment.tipFor(everything)).isEqualTo(50)
+    }
+
+    @Test
+    fun `partial and reserved split returns stay within each original tender`() {
+        val first =
+            SaleTenderEntity(
+                "s1-1",
+                "s1",
+                1,
+                500,
+                550,
+                poiTransactionId = "FIRST.PSP1",
+                poiTimestamp = sale.poiTimestamp,
+                surchargeMinor = 50,
+                tipMinor = 0,
+            )
+        val second = first.copy(id = "s1-2", sequence = 2, authorisedMinor = 600, poiTransactionId = "SECOND.PSP2", tipMinor = 50)
+        val split =
+            record.copy(
+                sale = sale.copy(terminalPaidMinor = 1150, surchargeMinor = 100, tipMinor = 50),
+                tenders = listOf(first, second),
+            )
+        val payment = refundable(split)
+        // Partial returns are shared in proportion to what each tender can still return.
+        val partial = payment.proposal(RefundChoice.Amount(115))
+        assertThat(partial).containsExactly("s1-1", 55L, "s1-2", 60L)
+        assertThat(payment.allocationValid(RefundChoice.Amount(115), mapOf("s1-1" to 115L))).isTrue()
+        assertThat(payment.allocationValid(RefundChoice.Amount(115), mapOf("s1-1" to 100L))).isFalse()
+        assertThat(payment.allocationValid(RefundChoice.Amount(700), mapOf("s1-1" to 700L))).isFalse()
+        assertThat(payment.allocationValid(RefundChoice.Amount(115), mapOf("other" to 115L))).isFalse()
+        assertThat(payment.requests(RefundChoice.Amount(115), mapOf("s1-1" to 1L), "", now, ZoneOffset.UTC)).isNull()
         val pending =
             RefundEntity(
                 "r",
@@ -95,16 +136,77 @@ class RefundablePaymentTest {
                 tipMinor = 0,
             )
         val reserved = refundable(split.copy(refunds = listOf(pending)))
-        assertThat(reserved.transactionId).isEqualTo("SECOND.PSP2")
         assertThat(reserved.remainingMinor).isEqualTo(600)
-        assertThat(reserved.forTender(first.id)!!.remainingMinor).isEqualTo(0)
-        val partial = checkNotNull(reserved.request(RefundChoice.Amount(510), "", now, ZoneOffset.UTC))
-        assertThat(partial.full).isFalse()
-        assertThat(partial.tipMinor).isEqualTo(10)
-        assertThat(partial.surchargeMinor).isEqualTo(0)
-        val cash = refundable(split.copy(tenders = listOf(first.copy(cashBackMinor = 100))))
-        assertThat(cash.amountMinor).isEqualTo(450)
-        assertThat(cash.request(RefundChoice.Everything, "", now, ZoneOffset.UTC)!!.full).isFalse()
+        assertThat(reserved.legs.first { it.tender?.id == first.id }.remainingMinor).isEqualTo(0)
+        assertThat(reserved.proposal(RefundChoice.Everything)).containsExactly("s1-1", 0L, "s1-2", 600L)
+        val rest = checkNotNull(reserved.requests(RefundChoice.Amount(510), mapOf("s1-2" to 510L), "", now, ZoneOffset.UTC)).single()
+        assertThat(rest.full).isFalse()
+        assertThat(rest.tipMinor).isEqualTo(10)
+        assertThat(rest.surchargeMinor).isEqualTo(0)
+        assertThat(rest.reviewedRefunds).containsExactly("r", RefundStatus.UNKNOWN)
+        val cashBack =
+            refundable(split.copy(sale = split.sale.copy(cashBackMinor = 100), tenders = listOf(first.copy(cashBackMinor = 100))))
+        assertThat(cashBack.amountMinor).isEqualTo(1050)
+        assertThat(cashBack.legs.single().amountMinor).isEqualTo(450)
+        assertThat(cashBack.requests(RefundChoice.Everything, mapOf("s1-1" to 450L), "", now, ZoneOffset.UTC)!!.single().full).isFalse()
+    }
+
+    @Test
+    fun `cash legs are handed back last locally and item returns go first to the tenders that paid for them`() {
+        val items = TenderAllocationJson.encode(TenderAllocation.Items(listOf(AllocatedLine(1, 1, 100))))
+        val card =
+            SaleTenderEntity(
+                "s1-1",
+                "s1",
+                1,
+                900,
+                900,
+                poiTransactionId = "CARD.PSP",
+                poiTimestamp = sale.poiTimestamp,
+                surchargeMinor = 0,
+                tipMinor = 0,
+            )
+        val cash =
+            SaleTenderEntity(
+                "s1-2",
+                "s1",
+                2,
+                100,
+                100,
+                createdAt = 1_790_679_900_000,
+                tipMinor = 0,
+                surchargeMinor = 0,
+                cashBackMinor = 0,
+                kind = TenderKind.CASH,
+                allocationJson = items,
+                cashReceivedMinor = 200,
+                changeMinor = 100,
+            )
+        val split =
+            record.copy(
+                sale = sale.copy(terminalPaidMinor = 1000, surchargeMinor = 0, paidMinor = 1000),
+                tenders = listOf(card, cash),
+            )
+        val payment = refundable(split)
+        val water = RefundChoice.Items(mapOf(2L to 1))
+        assertThat(payment.amountFor(water)).isEqualTo(100)
+        assertThat(payment.proposal(water)).containsExactly("s1-1", 0L, "s1-2", 100L)
+        val leg = checkNotNull(payment.requests(water, payment.proposal(water), "", now, ZoneOffset.UTC)).single()
+        assertThat(leg.cash).isTrue()
+        assertThat(leg.originalTransactionId).isEqualTo("s1-2")
+        assertThat(leg.originalTimestamp).isEqualTo(Instant.ofEpochMilli(1_790_679_900_000).toString())
+        assertThat(leg.expectedContext).isNull()
+        assertThat(leg.full).isFalse()
+        assertThat(leg.lines.single().lineId).isEqualTo(2)
+        // The refund QR code identifies the card, never cash.
+        assertThat(RefundQrPayload.decode(RefundablePayment.qrCode(split)!!)!!.transactionId).isEqualTo("CARD.PSP")
+        val cashOnly =
+            record.copy(
+                sale = sale.copy(terminalPaidMinor = 1000, surchargeMinor = 0),
+                tenders = listOf(cash.copy(authorisedMinor = 1000)),
+            )
+        assertThat(RefundablePayment.qrCode(cashOnly)).isNull()
+        assertThat(refundable(cashOnly).legs.single().cash).isTrue()
     }
 
     @Test

@@ -194,6 +194,9 @@ audio-guided `EnableAccessibilityMode` payments on AMS1/S1F2/S1F2L/S1E2L/S1U2 (1
 Support enablement, terminal language/card eligibility, signature refusals, long PIN entry, cancellation and status recovery;
 configuration-based surcharge `TotalFeesAmount`/`AuthorizedAmount` with tips, partial approvals and referenced refunds,
 receipt disclosure and DCC/adjustment restrictions;
+split tenders with operator amounts, equal shares and item units, including issuer partial approvals of a share,
+`SaleReferenceID` linking in the Customer Area, terminal totals beside locally recorded cash, and multi-leg referenced
+refunds of split sales;
 `GetTotalsRequest` and `ReconciliationRequest` (`SaleReconciliation`); chained `AdminRequest` waiting-screen sessions with
 `DisplayRequest` and `InputRequest`; `AllowPartialAuthorisation` (`Result=Partial`); `AskGiving` two-step
 `TransactionStatus` (`SaleID=AdyenGiving`) lookups; `MOTO` and `ForceEntryMode=Keyed` (MKE); and offline EMV /

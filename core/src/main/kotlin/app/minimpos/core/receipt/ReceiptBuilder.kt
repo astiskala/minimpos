@@ -220,6 +220,28 @@ class ReceiptBuilder(
             }
         }
         receipt.chargedAmount?.let { out += Row(labels.charged, money.format(it), TextStyle.BOLD) }
+        tenders(out, receipt)
+    }
+
+    /** The tender breakdown of a split or cash sale, and any balance still due. */
+    private fun tenders(
+        out: MutableList<ReceiptElement>,
+        receipt: SaleReceipt,
+    ) {
+        val tenders = receipt.tenders
+        if (tenders.size > 1 || tenders.any { it.kind == ReceiptTenderKind.CASH }) {
+            tenders.forEach { tender ->
+                val label =
+                    when (tender.kind) {
+                        ReceiptTenderKind.CARD -> listOfNotNull(labels.tenderCard, tender.detail).joinToString(" ")
+                        ReceiptTenderKind.CASH -> labels.tenderCash
+                    }
+                out += Row(label, money.format(tender.amountMinor))
+                tender.receivedMinor?.let { out += Row(labels.cashReceived, money.format(it)) }
+                tender.changeMinor?.let { out += Row(labels.change, money.format(it)) }
+            }
+        }
+        receipt.balanceDueMinor?.takeIf { it > 0 }?.let { out += Row(labels.balanceDue, money.format(it), TextStyle.BOLD) }
     }
 
     /**

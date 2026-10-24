@@ -2,10 +2,11 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.repo.TenderAllocation
+import app.minimpos.app.data.repo.acceptsTender
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
-import app.minimpos.app.history.remainingAmountKnown
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.ids.Ids
@@ -341,6 +342,45 @@ data class Checkout(
     }
 
     /**
+     * Whether this sale can be split across tenders now: an immediate-charge sale that [canPay] and asks for nothing a
+     * split cannot carry on every tender. Tipping, donations, audio guidance and MOTO/MKE entry must be turned off
+     * first ([splitBlocked]), so no selected option is dropped silently.
+     */
+    val canSplit: Boolean get() = !preAuthorisation && canPay && !blocksSplit()
+
+    /** Whether a chosen option prevents splitting until the operator turns it off. */
+    val splitBlocked: Boolean get() = blocksSplit()
+
+    private fun blocksSplit(): Boolean =
+        tipOnReceipt || askGratuity || askGiving || form.audioGuidance || effectiveCardEntry != CardEntryOverride.NORMAL
+
+    /**
+     * The first tender of a split of this sale at [now] in [zone]: [amountMinor] of its total chosen as [allocation]
+     * (null for an amount), or null unless [canSplit] and the allocation is acceptable. It keeps the references and any
+     * card-saving consent, asks no tip or donation, and allows the issuer's partial approval when the settings do,
+     * except for items, which are collected in full.
+     */
+    fun splitStart(
+        now: Instant,
+        zone: ZoneId,
+        amountMinor: Long,
+        allocation: TenderAllocation?,
+    ): PaymentStart? {
+        if (!canSplit) return null
+        val payment = paymentStart(now, zone) ?: return null
+        val start =
+            payment.copy(
+                terminalTip = null,
+                shopperFlow = null,
+                askGiving = false,
+                requestedAmountMinor = amountMinor,
+                allocation = allocation,
+                allowPartialAuthorisation = payment.allowPartialAuthorisation && allocation !is TenderAllocation.Items,
+            )
+        return start.takeIf { SaleBook.splitBalance(it).accepts(amountMinor, allocation) }
+    }
+
+    /**
      * Whether a payment link is offered instead of the terminal: for a sale (a pre-authorisation always goes to the
      * terminal) that [canPay], while links are [linksAvailable].
      */
@@ -422,12 +462,17 @@ data class Checkout(
     /** Checkout limits and continuation of stored partially paid sales. */
     companion object {
         /**
-         * Next card tender for a stored partially paid [sale], or null when no balance can be collected.
-         * Reuses its references and currency, without repeating consent, tips or shopper-display prompts.
+         * Next card tender for a stored partially paid [sale], or null when no balance can be collected: [amountMinor] of
+         * its unpaid balance chosen as [allocation] (the whole balance by default). Reuses its references and currency,
+         * without repeating consent, tips or shopper-display prompts; items are collected in full, other amounts allow
+         * the issuer's partial approval. The paid amount it was reviewed with makes a later change refuse it as stale.
          */
-        fun remainingPayment(sale: SaleEntity): PaymentStart? {
-            val remaining = sale.remainingMinor
-            if (remaining <= 0 || !sale.remainingAmountKnown) return null
+        fun remainingPayment(
+            sale: SaleEntity,
+            amountMinor: Long = sale.remainingMinor,
+            allocation: TenderAllocation? = null,
+        ): PaymentStart? {
+            if (!sale.acceptsTender(amountMinor, sale.paidMinor)) return null
             return PaymentStart(
                 totals = Cart().totals(TaxMode.INCLUSIVE),
                 currency = CurrencySpec.of(sale.currency),
@@ -438,10 +483,12 @@ data class Checkout(
                 kind = sale.kind,
                 tipOnReceipt = false,
                 shopperReference = sale.shopperReference,
-                allowPartialAuthorisation = true,
-                requestedAmountMinor = remaining,
+                allowPartialAuthorisation = allocation !is TenderAllocation.Items,
+                requestedAmountMinor = amountMinor,
                 existingSaleId = sale.id,
                 walletContext = sale.context,
+                allocation = allocation,
+                reviewedPaidMinor = sale.paidMinor,
             )
         }
 

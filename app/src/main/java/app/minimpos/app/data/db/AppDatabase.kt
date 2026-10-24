@@ -22,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RefundEntity::class,
         HistorySwitchEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -149,6 +149,22 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /**
+         * Preserves every version-18 sale, tender and refund: existing tenders are approved cards with no allocation,
+         * and existing refunds returned no cash.
+         */
+        val MIGRATION_18_19: Migration =
+            object : Migration(18, 19) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `kind` TEXT NOT NULL DEFAULT 'CARD'")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `allocationJson` TEXT")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `cashReceivedMinor` INTEGER")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `changeMinor` INTEGER")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `environment` TEXT")
+                    db.execSQL("ALTER TABLE `refunds` ADD COLUMN `cash` INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+
         /** Opens lazily on first query with versioned migrations; no destructive fallback is configured. */
         fun create(context: Context): AppDatabase =
             Room
@@ -162,6 +178,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_15_16,
                     MIGRATION_16_17,
                     MIGRATION_17_18,
+                    MIGRATION_18_19,
                 ).build()
     }
 }

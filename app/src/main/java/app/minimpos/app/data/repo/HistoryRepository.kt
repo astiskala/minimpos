@@ -81,15 +81,17 @@ class HistoryRepository(
 
     /**
      * Marks sales and refunds that never got an answer (for example because the app was killed mid-payment) as UNKNOWN,
-     * so staff can check them from history, and captures that were being requested as UNKNOWN, so they can be sent
-     * again; all for [StoredReason.Interrupted] (a sale's [SaleEvent.Interrupted]). Only safe at startup, before any
-     * payment, refund or capture starts, because it treats every PENDING row as interrupted.
+     * so staff can check them from history, together with the tender rows they were sending, and captures that were
+     * being requested as UNKNOWN, so they can be sent again; all for [StoredReason.Interrupted] (a sale's
+     * [SaleEvent.Interrupted]). Only safe at startup, before any payment, refund or capture starts, because it treats
+     * every PENDING row as interrupted.
      */
     suspend fun settleInterrupted() {
         db.withTransaction {
             (saleDao.pendingSales() + saleDao.pendingCaptures()).distinctBy { it.id }.forEach {
                 saleDao.update(it.after(SaleEvent.Interrupted))
             }
+            saleDao.interruptPendingTenders()
             refundDao.pendingRefunds().forEach {
                 refundDao.update(it.copy(status = RefundStatus.UNKNOWN, message = null, reason = StoredReason.Interrupted))
             }
@@ -320,3 +322,24 @@ data class HistoryBatch(
     fun item(key: HistoryKey): HistoryItem? =
         if (key.refund) refunds[key.id]?.let(HistoryItem::Refund) else sales[key.id]?.let { HistoryItem.Sale(it, tenders[it.id].orEmpty()) }
 }
+
+/**
+ * The history environment (LIVE, TEST or SIMULATOR) this record's money moved in: its original payment context, else
+ * the environment its cash tenders were recorded in; null while unknown. Sample history is simulated.
+ */
+val HistoryItem.recordedEnvironment: String?
+    get() =
+        when (this) {
+            is HistoryItem.Sale -> {
+                if (sale.sample) {
+                    "SIMULATOR"
+                } else {
+                    sale.context?.historyEnvironment
+                        ?: tenders.firstNotNullOfOrNull { it.environment }
+                }
+            }
+
+            is HistoryItem.Refund -> {
+                refund.context?.historyEnvironment
+            }
+        }

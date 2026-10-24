@@ -2,6 +2,7 @@ package app.minimpos.app.terminal
 
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.HistoryRepository
+import app.minimpos.app.data.repo.recordedEnvironment
 import app.minimpos.app.data.repo.retentionEligible
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalMode
@@ -77,14 +78,7 @@ class HistorySwitches(
         val environments: Set<String> = emptySet(),
     )
 
-    private fun recordedEnvironment(item: HistoryItem): String? {
-        val context =
-            when (item) {
-                is HistoryItem.Sale -> item.sale.context
-                is HistoryItem.Refund -> item.refund.context
-            }
-        return if (item is HistoryItem.Sale && item.sale.sample) "SIMULATOR" else context?.historyEnvironment
-    }
+    private fun recordedEnvironment(item: HistoryItem): String? = item.recordedEnvironment
 
     private fun unfinished(item: HistoryItem): Boolean =
         when (item) {

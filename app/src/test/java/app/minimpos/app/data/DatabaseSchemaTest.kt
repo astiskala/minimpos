@@ -13,6 +13,7 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.app.data.db.TenderKind
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
@@ -26,7 +27,7 @@ import kotlin.uuid.Uuid
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun exportedSchema(version: Int = 18): JSONObject =
+    private fun exportedSchema(version: Int = 19): JSONObject =
         listOf("schemas", "app/schemas")
             .map { File(it, "app.minimpos.app.data.db.AppDatabase/$version.json") }
             .first { it.exists() }
@@ -34,7 +35,7 @@ class DatabaseSchemaTest {
 
     private fun createExportedDatabase(
         name: String,
-        version: Int = 18,
+        version: Int = 19,
     ) {
         val schema = exportedSchema(version)
         val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
@@ -72,12 +73,61 @@ class DatabaseSchemaTest {
                     AppDatabase.MIGRATION_15_16,
                     AppDatabase.MIGRATION_16_17,
                     AppDatabase.MIGRATION_17_18,
+                    AppDatabase.MIGRATION_18_19,
                 ).allowMainThreadQueries()
                 .build()
         try {
             return block(db)
         } finally {
             db.close()
+        }
+    }
+
+    @Test
+    fun `version 18 keeps tenders as approved cards and unfinished refunds as card returns`() {
+        val name = "schema-v18-${Uuid.random()}"
+        createExportedDatabase(name, 18)
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
+            raw.execSQL(
+                "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
+                    "serviceId, paidMinor, terminalPaidMinor, surchargeMinor, tenderRequestedMinor, audioGuidance, " +
+                    "tokenizationRequested, signatureRequired, refundedMinor, adjustmentPending) VALUES " +
+                    "('split', 100, 'AUD', 'INCLUSIVE', 1000, 0, 1000, 'UNKNOWN', 'MP-18', 'PAY18', 600, 650, 50, 400, 0, 0, 0, 0, 0)",
+            )
+            raw.execSQL(
+                "INSERT INTO sale_tenders (id, saleId, sequence, requestedMinor, authorisedMinor, status, poiTransactionId, " +
+                    "poiTimestamp, createdAt, surchargeMinor, serviceId) VALUES " +
+                    "('split-1', 'split', 1, 1000, 650, 'APPROVED', 'T.P1', '2026-10-01T00:00:00Z', 100, 50, 'PAY17')",
+            )
+            raw.execSQL(
+                "INSERT INTO refunds (id, saleId, createdAt, merchantReference, originalTransactionId, originalTimestamp, currency, " +
+                    "amountMinor, full, status, serviceId, tenderId) VALUES " +
+                    "('refund', 'split', 200, 'R-18', 'T.P1', '2026-10-01T00:00:00Z', 'AUD', 100, 0, 'UNKNOWN', 'REF18', 'split-1')",
+            )
+        }
+        try {
+            withDatabase(name) { db ->
+                runBlocking {
+                    val record = checkNotNull(db.saleDao().sale("split"))
+                    assertThat(record.sale.serviceId).isEqualTo("PAY18")
+                    assertThat(record.sale.paidMinor).isEqualTo(600)
+                    assertThat(record.sale.tenderRequestedMinor).isEqualTo(400)
+                    val tender = record.tenders.single()
+                    assertThat(tender.kind).isEqualTo(TenderKind.CARD)
+                    assertThat(tender.allocationJson).isNull()
+                    assertThat(tender.cashReceivedMinor).isNull()
+                    assertThat(tender.environment).isNull()
+                    assertThat(tender.authorisedMinor).isEqualTo(650)
+                    assertThat(tender.serviceId).isEqualTo("PAY17")
+                    val refund = record.refunds.single()
+                    assertThat(refund.cash).isFalse()
+                    assertThat(refund.status).isEqualTo(RefundStatus.UNKNOWN)
+                    assertThat(refund.serviceId).isEqualTo("REF18")
+                    assertThat(refund.tenderId).isEqualTo("split-1")
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
         }
     }
 
@@ -324,7 +374,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.merchantReference).isEqualTo("MP-10")
                     assertThat(sale.poiReconciliationId).isNull()
                     assertThat(sale.savedCard).isFalse()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(18)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(19)
                 }
             }
         } finally {
@@ -371,7 +421,7 @@ class DatabaseSchemaTest {
                             .single()
                             .name,
                     ).isEqualTo("GST")
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(18)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(19)
                 }
             }
         } finally {
@@ -402,7 +452,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.status).isEqualTo(SaleStatus.DECLINED)
                     assertThat(sale.errorCondition).isEqualTo("Busy")
                     assertThat(sale.busyServiceId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(18)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(19)
                 }
             }
         } finally {
@@ -435,7 +485,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.captureStartedAt).isEqualTo(200)
                     assertThat(sale.captureStatus?.name).isEqualTo("UNKNOWN")
                     assertThat(sale.totalMinor).isEqualTo(1000)
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(18)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(19)
                 }
             }
         } finally {

@@ -277,9 +277,17 @@ class TransactionLifecycle<R>(
      * sent, while a transaction is already in progress (such as a second tap on the same action). Call it when the
      * operator starts the transaction: it keeps the Manager approval held now.
      */
-    fun start(request: R): String? {
-        val grant = approval.grant()
-        return runner.start(
+    fun start(request: R): String? = start(request, approval.grant())
+
+    /**
+     * Starts [request] like [start], holding [grant], which a multi-leg operation took when the operator started it, so
+     * each of its later legs keeps the approval the whole operation was given.
+     */
+    fun start(
+        request: R,
+        grant: ManagerApproval.Grant,
+    ): String? =
+        runner.start(
             request,
             id = { book.existingId(request) ?: newId() },
             interrupted = { id, _ ->
@@ -295,7 +303,6 @@ class TransactionLifecycle<R>(
                 synchronized(serviceIds) { serviceIds.remove(id) }
             }
         }
-    }
 
     /**
      * Asks the terminal to cancel the running transaction (an AbortRequest). Does nothing before its request is being

@@ -3,6 +3,7 @@ package app.minimpos.app.receipt
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.TenderKind
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.history.HistoryReport
@@ -21,6 +22,8 @@ import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.receipt.ReceiptItem
 import app.minimpos.core.receipt.ReceiptLabels
 import app.minimpos.core.receipt.ReceiptOptions
+import app.minimpos.core.receipt.ReceiptTender
+import app.minimpos.core.receipt.ReceiptTenderKind
 import app.minimpos.core.receipt.RefundReceipt
 import app.minimpos.core.receipt.SaleReceipt
 import app.minimpos.core.receipt.TipLines
@@ -150,6 +153,7 @@ class ReceiptFactory(
                 approved = standing.approved,
                 cardReceipt =
                     record.tenders
+                        .filter { it.approved && it.kind == TenderKind.CARD }
                         .sortedBy { it.sequence }
                         .flatMap {
                             ReceiptLinesJson.decode(if (copy == ReceiptCopy.CUSTOMER) it.customerReceiptJson else it.cashierReceiptJson)
@@ -179,6 +183,8 @@ class ReceiptFactory(
                         (sale.amountMinor - it - (sale.tipMinor ?: 0) - (sale.cashBackMinor ?: 0)).coerceAtLeast(0)
                     },
                 discloseSurcharge = standing.approved && !sale.paymentLink && !sale.savedCard,
+                tenders = receiptTenders(record),
+                balanceDueMinor = sale.remainingMinor.takeIf { sale.isPartiallyPaid },
             )
         return builder(settings, currency, resolved, simulated).sale(receipt, copy)
     }
@@ -205,7 +211,7 @@ class ReceiptFactory(
                 cardReceipt = ReceiptLinesJson.decode(refund.customerReceiptJson),
                 cancellation = refund.cancellation,
                 full = refund.full,
-                standingNote = resolved.refund(refund.status),
+                standingNote = if (refund.cash) resolved.labels.cashReturned else resolved.refund(refund.status),
                 surchargeMinor = refund.surchargeMinor,
                 tipMinor = refund.tipMinor,
             )
@@ -306,3 +312,14 @@ class ReceiptFactory(
         val SAMPLE_TOTALS = TaxAmounts(1_118, 82, 1_200)
     }
 }
+
+/** [record]'s approved tenders in payment order, as its receipt breakdown lists them. */
+internal fun receiptTenders(record: SaleWithLines): List<ReceiptTender> =
+    record.tenders.filter { it.approved }.sortedBy { it.sequence }.map { tender ->
+        if (tender.kind == TenderKind.CASH) {
+            ReceiptTender(ReceiptTenderKind.CASH, null, tender.requestedMinor, tender.cashReceivedMinor, tender.changeMinor)
+        } else {
+            val detail = listOfNotNull(tender.paymentBrand?.uppercase(), tender.maskedPan).joinToString(" ").ifBlank { null }
+            ReceiptTender(ReceiptTenderKind.CARD, detail, tender.authorisedMinor ?: tender.requestedMinor)
+        }
+    }

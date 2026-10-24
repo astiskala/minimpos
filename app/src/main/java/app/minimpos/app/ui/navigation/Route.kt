@@ -65,6 +65,18 @@ sealed interface Route : NavKey {
     ) : Route
 
     /**
+     * Splitting a sale across tenders: the sale being rung up, or the next tender of a stored partially paid sale.
+     * Cash tenders stay local, so it opens before payments are set up; card tenders pass the setup gate.
+     *
+     * @property saleId The stored sale to collect, or null for the sale being rung up.
+     */
+    @Serializable data class Split(
+        val saleId: String? = null,
+    ) : Route {
+        override val requiresSetup get() = false
+    }
+
+    /**
      * The payment link of a sale: its QR code and address to share, email or print, whether it was paid, and cancelling
      * it.
      *
@@ -120,6 +132,11 @@ sealed interface Route : NavKey {
 
     /** Waiting for the terminal to accept the refund. */
     @Serializable data object RefundProcessing : Route {
+        override val requiresManager get() = true
+    }
+
+    /** A return split across original tenders: each leg as it is sent, then their outcomes. */
+    @Serializable data object RefundLegs : Route {
         override val requiresManager get() = true
     }
 

@@ -5,6 +5,7 @@ import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.PaymentContextConverter
 import app.minimpos.app.data.repo.RefundedLine
+import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretBlob
@@ -48,6 +49,7 @@ class StoredFormatTest {
             "Room column: payment context" to serializer<PaymentContext>().descriptor,
             "Room column: card receipt lines" to serializer<List<CardReceiptLine>>().descriptor,
             "Room column: refunded lines" to serializer<List<RefundedLine>>().descriptor,
+            "Room column: tender allocation" to serializer<TenderAllocation>().descriptor,
             "Room column: history switch target" to serializer<TerminalSettings>().descriptor,
             "Encrypted journal: setup import" to journal("app.minimpos.app.data.transfer.PendingSetupImport"),
             "Encrypted journal: Tap to Pay registration" to journal("app.minimpos.app.terminal.TapToPaySetup\$RegistrationRecovery"),

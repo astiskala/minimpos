@@ -119,6 +119,12 @@ data class ReceiptOptions(
  * @property unreported Unavailable component, distinct from zero.
  * @property charged Total charged across original tenders.
  * @property purchase Purchase component excluding tips, surcharge and cash movement.
+ * @property tenderCard Label of a card tender in the breakdown, followed by its brand and masked number.
+ * @property tenderCash Label of a cash tender in the breakdown.
+ * @property cashReceived Label of the cash received for a cash tender.
+ * @property change Label of the change handed back for a cash tender.
+ * @property balanceDue Label of the purchase balance still due on a partially paid sale.
+ * @property cashReturned Note on the receipt of cash handed back for a cash tender, instead of a request outcome.
  */
 data class ReceiptLabels(
     val date: String = "Date",
@@ -169,6 +175,18 @@ data class ReceiptLabels(
     val charged: String = "CHARGED",
     /** Purchase component excluding tip, fee and cash movement. */
     val purchase: String = "Purchase",
+    /** A card tender in the breakdown. */
+    val tenderCard: String = "Card",
+    /** A cash tender in the breakdown. */
+    val tenderCash: String = "Cash",
+    /** Cash the shopper handed over for a cash tender. */
+    val cashReceived: String = "Cash received",
+    /** Change handed back for a cash tender. */
+    val change: String = "Change",
+    /** Purchase balance still to be paid on a partially paid sale. */
+    val balanceDue: String = "BALANCE DUE",
+    /** Note on the receipt of cash handed back for a cash tender. */
+    val cashReturned: String = "Cash returned",
 )
 
 /**
@@ -259,6 +277,9 @@ enum class ReceiptCopy {
  * @property chargedAmount Total authorized across tenders; null for old or non-terminal receipts.
  * @property purchaseMinor Known purchase component in minor units; null when unreported.
  * @property discloseSurcharge Whether the original fee component, including unknown, must be shown.
+ * @property tenders Approved tenders in payment order, printed as a breakdown when there are several or any is cash.
+ * @property balanceDueMinor Purchase balance still due in minor units, printed as [ReceiptLabels.balanceDue]; null
+ *   when nothing is due.
  */
 data class SaleReceipt(
     val reference: String,
@@ -291,6 +312,34 @@ data class SaleReceipt(
     val purchaseMinor: Long? = null,
     /** Show an explicit unknown fee for historical terminal payments. */
     val discloseSurcharge: Boolean = false,
+    val tenders: List<ReceiptTender> = emptyList(),
+    val balanceDueMinor: Long? = null,
+)
+
+/** How one tender of a sale was paid, as its receipt breakdown names it. */
+enum class ReceiptTenderKind {
+    /** A card or wallet on the terminal, whose own Adyen receipt lines follow verbatim. */
+    CARD,
+
+    /** Cash recorded locally, with what was received and the change. */
+    CASH,
+}
+
+/**
+ * One approved tender in a sale receipt's breakdown.
+ *
+ * @property kind How it was paid.
+ * @property detail Card brand and masked number as the terminal reported them; null for cash or when unreported.
+ * @property amountMinor Amount the tender collected (for a card including its tip and fee), in minor units.
+ * @property receivedMinor Cash received; null for a card.
+ * @property changeMinor Change handed back; null for a card.
+ */
+data class ReceiptTender(
+    val kind: ReceiptTenderKind,
+    val detail: String?,
+    val amountMinor: Long,
+    val receivedMinor: Long? = null,
+    val changeMinor: Long? = null,
 )
 
 /**

@@ -139,6 +139,18 @@ Room column: refunded lines: list of
     grossMinor required: long
     taxRateMilliPercent: int
 
+Room column: tender allocation: sealed app.minimpos.app.data.repo.TenderAllocation
+  items: items
+    lines required: list of
+      - app.minimpos.app.data.repo.AllocatedLine
+        position required: int
+        quantity required: int
+        grossMinor required: long
+  share: share
+    index required: int
+    count required: int
+    baseMinor required: long
+
 Room column: history switch target: app.minimpos.app.data.settings.TerminalSettings
   mode: enum app.minimpos.app.data.settings.TerminalMode [AUTO, TERMINAL, CLOUD, PAYMENTS_APP, SIMULATOR]
   environment?: enum app.minimpos.terminal.transport.TerminalEnvironment [TEST, LIVE]

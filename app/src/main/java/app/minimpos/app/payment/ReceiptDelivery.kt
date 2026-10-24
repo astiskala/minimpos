@@ -377,6 +377,8 @@ class ReceiptDelivery(
 
     private suspend fun automationForSale(saleId: String): DeliveryPlan {
         val sale = records.sales.get(saleId)?.sale ?: return DeliveryPlan()
+        // A split sale gets one automatic receipt with every tender, once nothing is left to pay.
+        if (sale.isPartiallyPaid) return DeliveryPlan()
         val current = settings.current()
         return DeliveryPlan(
             print = printsAutomatically(current),

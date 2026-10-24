@@ -80,7 +80,7 @@
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Adyen機能を確認</a></li><li><a href="#terminal-checkout">任意の会計フロー</a>
-  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
+  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
   <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
@@ -94,7 +94,7 @@
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Adyen機能を確認</a></li><li><a href="#terminal-checkout">任意の会計フロー</a>
-  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
+  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
   <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
@@ -180,6 +180,7 @@
             <li>返金を確定し、求められたらマネージャーPINを入力します。</li>
           </ol>
           <p>返金は必ず元の決済に紐づきます。元の決済がない返金には対応しません。支払済みの決済リンクは Customer Area で返金します。</p>
+          <p id="split-refunds">分割した販売は元の支払いに返金されます。Mini mPOS が各カードへの返金額と返す現金を提案します。支払いをタップすると、返金できる範囲で金額を調整できます。カードが1件ずつ先に返金され、現金は最後です。現金を返すにはマネージャーPINが必要です。カードの返金が受理されなかった場合、以降は返金されません。販売を開いて残りを確認してください。</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
             <p><strong>返金要求済み</strong>は Adyen がリクエストを受け取ったという意味で、購入者への入金完了ではありません。最終結果は Customer Area
@@ -367,6 +368,9 @@
               </div></a>
             <figcaption class="fine">日本語のシミュレーターでの一部承認です。販売全額の支払完了ではありません。<span class="shot-control">一部支払済み</span><a class="screenshot-link shot-expand" href="../images/ja/partial-payment.png">スクリーンショットを元のサイズで開く</a></figcaption>
           </figure>
+          <h3 id="split-payments">販売を分割する・現金で受け取る</h3>
+          <p>会計画面で<strong>分割または現金で支払う</strong>をタップします。この支払いで払う<strong>金額</strong>、<strong>均等割</strong>または<strong>商品</strong>を選び、<strong>カード</strong>または<strong>現金</strong>をタップします。価格と税は登録時のままで、端数の1単位は最初の分割に加わります。現金の場合は受け取った額を入力し、表示されたお釣りを渡してから確定します。現金はこの端末にのみ記録され、決済端末には送られません。</p>
+          <p>全額が支払われるまで販売は<strong>一部支払済み</strong>のままです。結果画面または<strong>取引履歴</strong>で<strong>残高を回収</strong>をタップすると、再起動後も続けられます。分割する前に、チップ、寄付、音声ガイド、MOTO・手動入力をオフにしてください。商品は全額で回収し、それ以外のカード金額はカード発行会社が一部承認することがあります。カードの結果が不明な場合は、先に確認してから回収を続けてください。レシートにはすべての支払いが記載され、日次レポートでは現金が区別されます。端末の合計に現金は含まれません。</p>
           <h3 id="shopper-display">購入者向け端末画面を使う</h3>
           <p>別のネットワーク端末またはクラウド端末を使う場合、<strong>設定 › 購入者向け端末画面</strong>を開きます。決済前の明細表示、注文確認、会計のメール欄が空の場合のメール入力を選べます。メール入力には
             <a href="#receipts">領収書のメール送信</a>の設定が必要です。<strong>領収書を自動でメール送信</strong>

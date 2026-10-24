@@ -1,6 +1,6 @@
 # Mini mPOS threat model
 
-Version: 1.0.0. Updated: 2026-10-08. Method: STRIDE. Local pre-deployment audit context, not a certification.
+Version: 1.1.0. Updated: 2026-10-24. Method: STRIDE. Local pre-deployment audit context, not a certification.
 
 ## 1. System Overview
 
@@ -108,4 +108,7 @@ controls remain trusted. Cache writes stay scoped to trusted main builds; forks 
 
 ## 9. Version Changelog
 
-1.0.0: Initial local model for build-workflow deployment and pre-commit security analysis.
+- 1.0.0: Initial local model for build-workflow deployment and pre-commit security analysis.
+- 1.1.0: Moved out of the agent-specific `.factory/` directory; reviews follow
+  [minimpos-security-review](../.agents/skills/minimpos-security-review/SKILL.md) and report in the change, not a
+  committed findings file.

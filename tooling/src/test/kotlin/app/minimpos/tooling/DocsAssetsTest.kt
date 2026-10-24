@@ -30,8 +30,8 @@ class DocsAssetsTest {
             assertThat(page).contains(if (language == "zh-Hant") "lang=\"zh-Hant-HK\"" else "lang=\"$language\"")
         }
         val source = temporary.newFolder("bad template").toPath()
-        val templates = Files.createDirectories(source.resolve(".devin/skills/docs-screenshots"))
-        Files.copy(root.resolve(".devin/skills/docs-screenshots/social-copy.json"), templates.resolve("social-copy.json"))
+        val templates = Files.createDirectories(source.resolve(".agents/skills/docs-screenshots"))
+        Files.copy(root.resolve(".agents/skills/docs-screenshots/social-copy.json"), templates.resolve("social-copy.json"))
         Files.writeString(templates.resolve("social.html"), "{{missing}}")
         assertThrows(IllegalArgumentException::class.java) { DocsAssets.run("pages", source, work) }
         assertThat(Cli.run("docs-assets").code).isEqualTo(1)

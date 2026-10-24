@@ -39,6 +39,13 @@ enum class RefundInvalidReason {
      * cancelled, from history ([PaymentAction.CANCEL]).
      */
     AWAITING_TIP,
+
+    /**
+     * The scanned code is of a saved-card charge that is not in this device's history (taken on another device, or
+     * cleared). It is refunded through the Checkout API, which needs the original payment context only the charging
+     * device's history has, so it is refunded there or in the Customer Area, never with a terminal reversal.
+     */
+    CHARGED_ELSEWHERE,
 }
 
 /** What the operator chose to refund of a [RefundablePayment]. */
@@ -313,6 +320,10 @@ class RefundablePayment private constructor(
                     check(record)
                 }
 
+                qr != null && isCheckoutTransaction(qr.transactionId) -> {
+                    Refundability.NotRefundable(RefundInvalidReason.CHARGED_ELSEWHERE)
+                }
+
                 qr != null -> {
                     refundable(
                         RefundablePayment(
@@ -333,13 +344,15 @@ class RefundablePayment private constructor(
             }
 
         /**
-         * The refund QR code content for [record]'s receipt, or null when the sale could never be refunded with one (a
-         * pre-authorisation, a saved-card charge, which is refunded from history through the Checkout API, or its
-         * transaction ID cannot be carried in the code). Printed whether or not something is left to refund.
+         * The refund QR code content for [record]'s receipt, or null when the sale cannot be refunded with one (nothing
+         * was charged: it was not approved, or it still holds its amount, or its transaction ID cannot be carried in the
+         * code). Captured pre-authorisations get one for what was captured. A saved-card charge's code carries its
+         * Checkout transaction ID ([isCheckoutTransaction]), so it is refunded from this device's history through the
+         * Checkout API. Printed whether or not something is left to refund.
          */
         fun qrCode(record: SaleWithLines): String? {
             val sale = record.sale
-            if (sale.kind == SaleKind.PRE_AUTHORISATION || sale.savedCard || !sale.standing.charged) return null
+            if (!sale.standing.charged) return null
             val payment = eligible(record) ?: return null
             // Eligibility already requires a time stamp with a time zone, so it is one instant.
             val instant = checkNotNull(TerminalClient.instantOf(payment.timestamp))
@@ -347,6 +360,12 @@ class RefundablePayment private constructor(
                 RefundQrPayload(payment.transactionId, instant, payment.amountMinor, payment.currency, payment.reference).encode()
             }.getOrNull()
         }
+
+        /**
+         * Whether [transactionId] is a saved-card charge's: Checkout payments have no terminal tender, so their stored
+         * POITransactionID is only the separator and the PSP reference (`.<pspReference>`).
+         */
+        fun isCheckoutTransaction(transactionId: String): Boolean = transactionId.startsWith(".")
 
         private fun eligible(record: SaleWithLines): RefundablePayment? {
             val sale = record.sale

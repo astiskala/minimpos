@@ -19,6 +19,8 @@ Adyen platform, terminal, Payments app, Customer Area or Adyen Java library vuln
 
 ## Data and trust boundaries
 
+Contributors' STRIDE [threat model](security/threat-model.md) covers these boundaries, the build and the release.
+
 ### Payment processing
 
 Adyen's terminal or Payments app reads the card, not Mini mPOS. The app receives payment results and receipt data,

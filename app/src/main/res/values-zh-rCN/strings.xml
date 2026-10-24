@@ -336,6 +336,7 @@
   <string name="refund_unknown_outcome">终端未确认退款结果。再次退款前，请先在商户后台核实。</string>
   <string name="refund_async_note">Adyen 异步处理退款；最终结果将显示在商户后台。</string>
   <string name="refund_pre_authorisation">此预授权尚未扣款，因此暂时无法退款。请在“交易记录”中扣款或取消。</string>
+  <string name="refund_charged_elsewhere">此“令牌扣款”不在本设备的“交易记录”中。请在完成扣款的设备上或在 Customer Area 中退款。</string>
   <string name="refund_awaiting_tip">此次支付正在等待添加小费并扣款。请在“交易记录”中输入小费或取消支付。</string>
   <string name="refund_review_title">核对原支付</string>
   <string name="refund_review_message">本设备没有原销售记录。二维码不能确认扣款、后续小费或退款，也不能确认支付目标。请在商户后台核对原支付和剩余可退金额。确认所选终端及环境正确。本次退款只发送核对的金额，不会执行不限金额的整笔撤销。</string>

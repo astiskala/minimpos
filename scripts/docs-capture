@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Drives docs screenshot captures on the docs emulator (see .devin/skills/docs-screenshots/SKILL.md › Capture script).
+# Drives docs screenshot captures on the docs emulator (see .agents/skills/docs-screenshots/SKILL.md › Capture script).
 #
 #   scripts/docs-capture prepare             overlays off, terminal device name, no animations, full-screen display
 #   scripts/docs-capture locale LANG         device locale and time zone of a supported sample-data.json market
@@ -197,6 +197,9 @@ require_clone() {
 }
 
 launch() {
+    # Debug builds leave the simulator banner out while this marker exists (AndroidDeviceInfo.docsCapture); the site
+    # discloses the screenshots as simulator demos instead.
+    remote "mkdir -p /data/data/$package/files && touch /data/data/$package/files/docs-capture"
     remote am start -n "$package/.app.MainActivity" > /dev/null
     ready "${1:-en}" home_new_sale
 }
@@ -631,6 +634,7 @@ finish() {
     remote wm density reset
     remote settings delete global device_name
     remote settings put global auto_time 1
+    remote rm -f "/data/data/$package/files/docs-capture"
 }
 
 shutdown() {

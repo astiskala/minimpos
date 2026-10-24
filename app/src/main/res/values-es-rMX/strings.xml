@@ -338,6 +338,7 @@
   <string name="refund_unknown_outcome">La terminal no confirmó el reembolso. Compruébalo en tu Área de Clientes antes de volver a reembolsar.</string>
   <string name="refund_async_note">Adyen procesa los reembolsos de forma asincrónica; el resultado final aparece en tu Área de Clientes.</string>
   <string name="refund_pre_authorisation">Esta preautorización aún no se ha capturado, por lo que no hay nada que reembolsar. Captúrela o cancélela desde Historial.</string>
+  <string name="refund_charged_elsewhere">Este pago con Cobrar token no está en el Historial de este dispositivo. Reembólselo en el dispositivo que lo cobró o en el Área de Clientes.</string>
   <string name="refund_awaiting_tip">Este pago espera la captura de la propina. Ingrésela desde Historial o cancele el pago allí.</string>
   <string name="refund_review_title">Revisar el pago original</string>
   <string name="refund_review_message">Este dispositivo no tiene registro de venta original. El código QR no puede confirmar la captura, las propinas o reembolsos posteriores ni el destino del pago. En tu Área de Clientes, verifica el pago original y el monto reembolsable restante. Confirme que el terminal y el entorno seleccionados sean correctos. Este reembolso envía solo el monto que verificaste, no una reversión completa sin límite de monto.</string>

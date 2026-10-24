@@ -52,7 +52,7 @@ internal object DocsAssets {
         root: Path,
         output: Path,
     ): List<Path> {
-        val source = root.resolve(".devin/skills/docs-screenshots")
+        val source = root.resolve(".agents/skills/docs-screenshots")
         val template = Files.readString(source.resolve("social.html"))
         val copy = Release.readJson(source.resolve("social-copy.json")) as JsonObject
         return languages.map { language ->

@@ -338,6 +338,7 @@
   <string name="refund_unknown_outcome">Le terminal n’a pas confirmé le remboursement. Vérifiez-le dans votre Customer Area avant de procéder à un nouveau remboursement.</string>
   <string name="refund_async_note">Adyen traite les remboursements de manière asynchrone ; le résultat final apparaît dans votre Customer Area.</string>
   <string name="refund_pre_authorisation">Cette pré-autorisation n’a pas encore été capturée, il n’y a donc rien à rembourser. Capturez-la ou annulez-la depuis l’Historique.</string>
+  <string name="refund_charged_elsewhere">Ce paiement Débiter un jeton ne figure pas dans l’Historique de cet appareil. Remboursez-le sur l’appareil qui l’a débité ou dans le Customer Area.</string>
   <string name="refund_awaiting_tip">Ce paiement attend la capture du pourboire. Saisissez-le dans l’Historique ou annulez le paiement depuis cet écran.</string>
   <string name="refund_review_title">Vérifier le paiement initial</string>
   <string name="refund_review_message">Cet appareil n’a aucun enregistrement de vente original. Le code QR ne peut pas confirmer la capture, les pourboires ou remboursements ultérieurs, ni la destination du paiement. Dans votre Customer Area, vérifiez le paiement initial et le montant remboursable restant. Confirmez que le terminal et l’environnement sélectionnés sont corrects. Ce remboursement envoie uniquement le montant que vous avez vérifié, et non une annulation complète sans limite de montant.</string>

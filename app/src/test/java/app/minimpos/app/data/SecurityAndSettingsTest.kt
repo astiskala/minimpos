@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.LocaleList
 import androidx.datastore.core.CorruptionException
 import app.minimpos.app.AppContainer
+import app.minimpos.app.BuildConfig
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.security.PinCheck
@@ -33,6 +34,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.security.ProviderException
 import java.util.Locale
 
@@ -203,6 +205,20 @@ class SecurityAndSettingsTest {
             assertThat(EmailSettings(host = "smtp", fromAddress = "a@b.co").isConfigured).isTrue()
             assertThat(EmailSettings().isConfigured).isFalse()
         }
+
+    @Test
+    fun `only the docs capture marker of a debug build hides the simulator banner`() {
+        val application = RuntimeEnvironment.getApplication()
+        val marker = File(application.filesDir, AndroidDeviceInfo.DOCS_CAPTURE_MARKER)
+        try {
+            assertThat(AndroidDeviceInfo(application).docsCapture).isFalse()
+            marker.writeText("")
+            // Unit tests run the debug build; release builds never read the marker.
+            assertThat(AndroidDeviceInfo(application).docsCapture).isEqualTo(BuildConfig.DEBUG)
+        } finally {
+            marker.delete()
+        }
+    }
 
     @Test
     fun `app language cannot change the device country used for automatic pricing`() {

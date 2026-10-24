@@ -161,6 +161,7 @@ class TerminalSimulator(
 ) : TerminalTransport {
     private val completed = CompletedTransactions()
     private val chargeAnswers = ConcurrentHashMap<String, CardChargeResult>()
+    private val deletedTokens = ConcurrentHashMap.newKeySet<Pair<String, String>>()
     private val aborted = ConcurrentHashMap.newKeySet<String>()
     private val inProgress = ConcurrentHashMap.newKeySet<String>()
     private val ledger = SimulatedLedger()
@@ -176,7 +177,7 @@ class TerminalSimulator(
      * simulator's outcome and remembered in the ledger [modifications] shares.
      */
     fun savedCards(cards: suspend (shopperReference: String) -> List<StoredCard>): SimulatedSavedCards =
-        SimulatedSavedCards(random, ledger, cards, chargeAnswers) { config().outcome }
+        SimulatedSavedCards(random, ledger, cards, chargeAnswers, deletedTokens) { config().outcome }
 
     /** Forgets all history identities after confirmed purge, retaining independent reconciliation period totals. */
     fun forgetHistory() {
@@ -184,6 +185,7 @@ class TerminalSimulator(
         aborted.clear()
         paymentAmountsByTransactionId.clear()
         chargeAnswers.clear()
+        deletedTokens.clear()
         ledger.clear()
     }
 

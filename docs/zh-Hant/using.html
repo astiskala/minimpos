@@ -82,7 +82,7 @@
   功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#partial-payments">部分付款</a></li><li>
   <a href="#shopper-display">顧客端螢幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">離線支付</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#shoppers">
-  參考編號和儲存卡</a><ul><li><a href="#saved-card">代碼扣款</a></li></ul></li><li><a href="#payment-links">付款連結</a></li><li>
+  參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#payment-links">付款連結</a></li><li>
   <a href="#preauth">訂金</a></li><li><a href="#terminal-tips">終端小費</a></li><li><a href="#tips">收據小費</a></li><li>
   <a href="#more">更多設備和資料</a></li>
 </ol></div>
@@ -95,7 +95,7 @@
   功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#partial-payments">部分付款</a></li><li>
   <a href="#shopper-display">顧客端螢幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">離線支付</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#shoppers">
-  參考編號和儲存卡</a><ul><li><a href="#saved-card">代碼扣款</a></li></ul></li><li><a href="#payment-links">付款連結</a></li><li>
+  參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#payment-links">付款連結</a></li><li>
   <a href="#preauth">訂金</a></li><li><a href="#terminal-tips">終端小費</a></li><li><a href="#tips">收據小費</a></li><li>
   <a href="#more">更多設備和資料</a></li>
 </ol></details>
@@ -115,9 +115,15 @@
             <p class="callout-title">重要</p>
             <p>更改貨幣會保留價格中的數值，不會按匯率換算。更改後請檢查商品價格。</p>
           </div>
+          <p id="settings-navigation">
+            在主頁點按右上角的<strong>設定</strong>圖示，直接開啟主設定。
+            如有要求，請輸入管理員PIN。
+            在其中開啟<strong>商品</strong>；返回會先回到設定，再回到主頁。
+            付款設定完成前仍可進入設定及連線設定。
+          </p>
           <h3 id="products">新增商品</h3>
           <ol>
-            <li>打開<strong>商品</strong>，點按 <strong>+</strong>。</li>
+            <li>打開<strong>設定 › 商品</strong>，點按 <strong>+</strong>。</li>
             <li>輸入名稱、價格和稅率。可選新增分類和條碼（輸入或掃描）。</li>
             <li>訂金商品請開啟<strong>預授權商品</strong>，使其只出現在預授權中。</li>
           </ol>
@@ -413,18 +419,27 @@
             <dt>顧客參考編號</dt><dd>在<strong>設定 › 支付</strong>中選擇<strong>顧客參考編號</strong>：結帳時輸入的顧客參考編號（預設）、顧客電郵或無。它會隨每筆付款發送給
               Adyen。電郵參考編號預設經過雜湊處理；所有設備請使用相同的鹽值。</dd>
             <dt>儲存卡</dt><dd>設定顧客參考編號後，開啟<strong>提供儲存卡選項</strong>，並選擇適合您 Adyen 設定的<strong>循環扣款模式</strong>。勾選<strong>
-              儲存卡以供今後支付</strong>前須取得顧客同意。之後如需扣款，請參見<a href="#saved-card">代碼扣款</a>。</dd>
+              儲存卡以供今後支付</strong>前須取得顧客同意。之後如需扣款，請參見<a href="#saved-card">管理代碼</a>。</dd>
           </dl>
-          <h3 id="saved-card">代碼扣款</h3>
+          <h3 id="saved-card">管理代碼</h3>
           <ol>
-            <li>在主頁點按<strong>代碼扣款</strong>，如有要求請輸入經理 PIN。</li>
+            <li>在主頁點按<strong>代碼</strong>，如有要求請輸入經理 PIN。</li>
             <li>輸入顧客參考編號（或用作參考編號的電郵地址），然後點按<strong>尋找代碼</strong>。</li>
-            <li>選擇一個代碼，然後加入商品或<strong>自訂商品</strong>。此購物車與<strong>新建銷售</strong>的購物車互相獨立。</li>
+            <li>點按代碼旁的<strong>扣款</strong>，然後加入商品或<strong>自訂商品</strong>。此購物車與<strong>新建銷售</strong>的購物車互相獨立。</li>
             <li>核對扣款資料後點按<strong>扣款</strong>。</li>
           </ol>
-          <p>顧客不在場，因此請先取得其同意。為其他<strong>循環扣款模式</strong>儲存的代碼無法選擇。請在<strong>交易紀錄</strong>
+          <p>顧客不在場，因此請先取得其同意。為其他<strong>循環扣款模式</strong>儲存的代碼無法在此扣款。請在<strong>交易紀錄</strong>
             中為這些付款退款；其退款二維碼僅在完成扣款的裝置上有效。如果扣款結果未知，請在七天內從交易紀錄中核查，之後請在 Customer Area 中核查。在新建銷售的結帳頁面，輸入的顧客參考編號有已儲存的代碼時，<strong>掃描錢包
             </strong>和<strong>建立付款連結</strong>之間會顯示<strong>代碼扣款</strong>：經理批准後，選擇一個代碼即可向其扣款。</p>
+          <p id="token-deletion">
+            點按清單中代碼的<strong>刪除</strong>即可刪除，包括目前無法扣款的代碼。
+            核對卡片摘要、代碼ID、顧客、商戶帳戶及環境，確認後使用經理PIN批准。
+            必須已設定經理PIN。
+            刪除會將代碼從Adyen移除，Mini mPOS及使用此代碼的其他整合均無法再用它作日後付款，而且無法復原。
+            歷史付款及其相關退款仍可使用。
+            如未收到回應，Mini mPOS會令已有選擇失效並重新取得清單。
+            如結果仍未確認，請使用<strong>檢查刪除結果</strong>，在解決前不要扣款或再次刪除。
+          </p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="payment-links">

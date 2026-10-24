@@ -360,6 +360,7 @@ private val SetupProblem.textRes: Int
             SetupProblem.PRINTER -> R.string.setup_printer
             SetupProblem.CHARGE_TOO_OLD -> R.string.setup_charge_too_old
             SetupProblem.OPERATION_RECONCILIATION -> R.string.setup_operation_reconciliation
+            SetupProblem.TOKEN_DELETION_PENDING -> R.string.setup_token_deletion_pending
             SetupProblem.SHOPPER_REFERENCE -> R.string.setup_shopper_reference
             SetupProblem.TOTALS -> R.string.setup_totals
         }

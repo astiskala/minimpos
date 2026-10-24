@@ -20,11 +20,18 @@ import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
+import app.minimpos.terminal.checkout.StoredCardDeletion
 import app.minimpos.terminal.checkout.StoredCardListing
+import app.minimpos.terminal.transport.Fault
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import kotlin.time.Duration
 import kotlin.uuid.Uuid
@@ -36,7 +43,7 @@ import kotlin.uuid.Uuid
  * @property card The saved card to charge.
  * @property recurringModel Adyen's `recurringProcessingModel` to charge it with, frozen with the sale.
  * @property fromCheckout Whether the sale was rung up as a New sale and charged from its checkout, so that session
- *   (rather than Charge token's own) is cleared once the token is charged.
+ *   (rather than Tokens’ own) is cleared once the token is charged.
  * @property lookupContext Original context of the selected listing; null only for context-free tests or direct test starts.
  * @throws IllegalArgumentException for a payment that is not an immediate-charge sale with a shopper reference.
  */
@@ -101,16 +108,32 @@ sealed interface CardLookup {
  * @param targets Current targets, including credential changes; fixed-target tests may use the default one reading.
  */
 class SavedCardCharges(
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     sales: SaleRepository,
     private val target: suspend () -> ApiTarget,
     onCharged: (id: String, start: SavedCardStart) -> Unit = { _, _ -> },
     clock: Clock = Clock.systemUTC(),
     newId: () -> String = { Uuid.random().toString() },
-    approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
+    private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
     private val targets: Flow<ApiTarget> = flow { emit(target()) },
 ) {
-    private val operations = CheckoutOperations(scope, Book(sales), target, onCharged, clock, newId, approval)
+    private val mutex = Mutex()
+    private val operations = CheckoutOperations(scope, Book(sales), target, onCharged, clock, newId, approval, mutex)
+    private var deletionOrigin: ApiTarget? = null
+
+    /** Invalidates every explicit and automatic selection synchronously when token management changes its evidence. */
+    internal val tokenRevision: StateFlow<Long>
+        field = MutableStateFlow(0L)
+
+    /** Latest deletion and its read-only reconciliation; retained across navigation, never replayed after restart. */
+    val deletion: StateFlow<TokenDeletionState>
+        field = MutableStateFlow(TokenDeletionState())
+
+    /** Whether token management is sending or reconciling an API request; setup changes wait for it. */
+    val managing: Boolean get() = deletion.value.status in setOf(TokenDeletionStatus.DELETING, TokenDeletionStatus.CHECKING)
+
+    internal val unresolvedDeletion: Boolean
+        get() = managing || deletion.value.status == TokenDeletionStatus.UNKNOWN
 
     /** The charge running now, which the charging screen follows to its result. */
     val state: StateFlow<TransactionState> = operations.state
@@ -155,10 +178,162 @@ class SavedCardCharges(
      * Charges [start] in the background and returns the new sale's ID straight away; null, with nothing stored or sent,
      * while another charge is running (such as a second tap on the same action).
      */
-    fun start(start: SavedCardStart): String? = operations.start(start)
+    fun start(start: SavedCardStart): String? =
+        synchronized(this) {
+            if (unresolvedDeletion) null else operations.start(start)
+        }
+
+    /** Starts a charge only while its listing revision remains current, including before flow collectors catch up. */
+    internal fun start(
+        start: SavedCardStart,
+        revision: Long,
+    ): String? =
+        synchronized(this) {
+            if (tokenRevision.value != revision) null else start(start)
+        }
+
+    /** Starts a confirmed deletion only for a current listed token; approval is rechecked immediately before DELETE. */
+    internal fun delete(
+        card: StoredCard,
+        reference: String,
+        origin: ApiTarget,
+        revision: Long,
+    ): Boolean =
+        synchronized(this) {
+            if (unresolvedDeletion || state.value is TransactionState.Processing) return false
+            if (mutex.isLocked || tokenRevision.value != revision) return false
+            val grant = approval.grant()
+            deletionOrigin = origin
+            deletion.value = TokenDeletionState(card, reference, TokenDeletionStatus.DELETING)
+            tokenRevision.value++
+            scope.launch {
+                mutex.withLock {
+                    val result =
+                        try {
+                            when {
+                                target() != origin -> {
+                                    TokenDeletionState(
+                                        card,
+                                        reference,
+                                        TokenDeletionStatus.FAILED,
+                                        Failure.NotSetUp(SetupProblem.SETUP_CHANGED),
+                                    )
+                                }
+
+                                !approval.allowsConfigured(grant) -> {
+                                    TokenDeletionState(
+                                        card,
+                                        reference,
+                                        TokenDeletionStatus.FAILED,
+                                        Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL),
+                                    )
+                                }
+
+                                else -> {
+                                    deleteAtOrigin(card, reference, origin)
+                                }
+                            }
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            TokenDeletionState(card, reference, TokenDeletionStatus.UNKNOWN, Failure.Device(DeviceFault.UNEXPECTED))
+                        }
+                    finishDeletion(result)
+                }
+            }
+            true
+        }
+
+    private suspend fun deleteAtOrigin(
+        card: StoredCard,
+        reference: String,
+        origin: ApiTarget,
+    ): TokenDeletionState {
+        val previous = TokenDeletionState(card, reference, TokenDeletionStatus.UNKNOWN)
+        val access = origin.savedCards(origin.context)
+        if (access is ApiAccess.Blocked) {
+            return previous.copy(status = TokenDeletionStatus.FAILED, failure = Failure.NotSetUp(access.problem))
+        }
+        val result = (access as ApiAccess.Ready).client.delete(reference, card.id)
+        return when (result) {
+            StoredCardDeletion.Deleted -> {
+                previous.copy(status = TokenDeletionStatus.DELETED)
+            }
+
+            is StoredCardDeletion.Failed -> {
+                val uncertain = result.fault.mayHaveTakenEffect || (result.fault as? Fault.AdyenRejected)?.http == HTTP_TOKEN_MISSING
+                val failed =
+                    previous.copy(
+                        status = if (uncertain) TokenDeletionStatus.UNKNOWN else TokenDeletionStatus.FAILED,
+                        failure = Failure.Remote(result.fault),
+                    )
+                if (uncertain) reconcile(failed, origin) else failed
+            }
+        }
+    }
+
+    /** Reconciles by listing the original account/environment with current eligible credentials; never replays DELETE. */
+    fun recheckDeletion(): Boolean =
+        synchronized(this) {
+            val previous = deletion.value
+            val origin = deletionOrigin ?: return false
+            if (previous.status != TokenDeletionStatus.UNKNOWN) return false
+            if (state.value is TransactionState.Processing || mutex.isLocked) return false
+            deletion.value = previous.copy(status = TokenDeletionStatus.CHECKING)
+            scope.launch {
+                mutex.withLock {
+                    val result =
+                        try {
+                            reconcile(previous, origin)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            previous.copy(failure = Failure.Device(DeviceFault.UNEXPECTED))
+                        }
+                    finishDeletion(result)
+                }
+            }
+            true
+        }
+
+    private suspend fun reconcile(
+        previous: TokenDeletionState,
+        origin: ApiTarget,
+    ): TokenDeletionState {
+        val current = target()
+        // Tokens belong to the merchant/shopper, not an SDK client instance. A restored or rotated credential may
+        // read their status, just as it may check a historical payment, only after original-context validation.
+        val access = current.savedCards(origin.context)
+        if (access is ApiAccess.Blocked) {
+            return previous.copy(status = TokenDeletionStatus.UNKNOWN, failure = Failure.NotSetUp(access.problem))
+        }
+        val found = cards(checkNotNull(previous.reference), current)
+        return when (found) {
+            is CardLookup.NotDone -> {
+                previous.copy(status = TokenDeletionStatus.UNKNOWN, failure = found.failure)
+            }
+
+            is CardLookup.Listed -> {
+                val absent = found.cards.none { it.id == previous.card?.id }
+                previous.copy(status = if (absent) TokenDeletionStatus.DELETED else TokenDeletionStatus.UNKNOWN, failure = null)
+            }
+        }
+    }
+
+    private fun finishDeletion(result: TokenDeletionState) =
+        synchronized(this) {
+            deletion.value = result
+            tokenRevision.value++
+        }
 
     /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
-    internal fun forgetAll() = operations.forgetAll()
+    internal fun forgetAll() =
+        synchronized(this) {
+            operations.forgetAll()
+            deletionOrigin = null
+            deletion.value = TokenDeletionState()
+            tokenRevision.value++
+        }
 
     /** Releases process-only requests for records that history has already durably deleted. */
     internal fun forget(ids: Set<String>) = operations.forget(ids)
@@ -247,6 +422,7 @@ class SavedCardCharges(
     /** Values shared with tests and history. */
     companion object {
         private const val LAST_FOUR = 4
+        private const val HTTP_TOKEN_MISSING = 404
 
         /**
          * Why saved cards cannot be found or charged now: no shopper reference is made ([source] is

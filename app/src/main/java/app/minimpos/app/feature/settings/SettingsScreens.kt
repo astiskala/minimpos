@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
@@ -396,6 +397,7 @@ fun SettingsScreen(
                     simulatorOutcome = settings.simulator.outcome.takeIf { mode == TerminalMode.SIMULATOR },
                     onOpen = ::open,
                 )
+                ProductsRow { navigator.openFrom(Route.Settings, Route.Products) }
                 SectionHeader(stringResource(R.string.checkout_title))
                 PaymentSectionRows(
                     currency = container.currency(settings).code,
@@ -421,6 +423,18 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+/** The catalog is administered from main Settings and returns there with Back. */
+@Composable
+private fun ProductsRow(onOpen: () -> Unit) {
+    SettingNavRow(
+        Icons.Default.Inventory2,
+        stringResource(R.string.home_products),
+        stringResource(R.string.settings_products_summary),
+        onOpen,
+        tag = "products",
+    )
 }
 
 /** Help and app information, following the language choice in Settings. */

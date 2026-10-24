@@ -53,10 +53,13 @@ class FinancialOperations(
 
     /**
      * Whether a card payment, refund, saved-card charge or Checkout refund is being sent now, so the configuration it
-     * is sent with must not be replaced. Unfinished history alone does not count.
+     * is sent with must not be replaced. Token deletion and its active reconciliation also hold credentials steady.
+     * Unfinished history alone does not count.
      */
     val running: Boolean
-        get() = listOf(payments.state, refunds.state, charges.state, checkoutRefunds.state).any { it.value is TransactionState.Processing }
+        get() =
+            charges.managing ||
+                listOf(payments.state, refunds.state, charges.state, checkoutRefunds.state).any { it.value is TransactionState.Processing }
 
     /**
      * The payment running or just finished, whichever way it is sent: on the terminal (scanned wallets included) or as a

@@ -48,7 +48,7 @@ open class SmtpSettingsScreen(
         env.useSimulator { it.copy(email = EmailSettings(username = "cafe@example.com")) }
         await { container.terminalStatus.state.first { it.loaded } }
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_email")
         compose.onNodeWithTag("section_email").performScrollTo().performClick()
         waitForTag("smtpProvider_GMAIL")

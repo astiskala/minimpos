@@ -65,7 +65,7 @@ class SmallScreenHomeTest {
     fun `home tiles keep their labels and touch size beside the setup card on the smallest terminal`() {
         compose.setContent { MiniMposApp(container) }
         assertHomeTilesUsable()
-        // Home scrolls to its admin buttons here; once payments are set up, every tile fits unscrolled (a sale fits).
+        // Settings stays in the app bar; tile content can scroll when setup needs more room.
     }
 
     @Test
@@ -198,11 +198,10 @@ class SmallScreenHomeTest {
             // A label squeezed by its tile measures far less than a line.
             assertWithMessage("$tag label height").that(text.height).isAtLeast(14.dp)
         }
-        listOf("products", "settings").forEach {
+        listOf("settings").forEach {
             val button =
                 compose
                     .onNodeWithTag(it)
-                    .performScrollTo()
                     .assertIsDisplayed()
                     .fetchSemanticsNode()
             // Compact buttons draw at 44 dp; Compose expands their effective touch area independently.

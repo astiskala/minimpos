@@ -19,7 +19,7 @@ import kotlin.time.Duration
 /**
  * One memory-only saved-card lookup reading.
  *
- * @property reference Shopper reference actually queried; null before lookup or after invalidation.
+ * @property reference Shopper reference owned by the current query; null before an eligible input reading.
  * @property finding Whether the current reading is being queried.
  * @property cards All listed cards in Adyen's order; null before a current answer.
  * @property eligible Listed cards supporting the current recurring model; the only cards that may start a charge.
@@ -43,7 +43,7 @@ data class SavedCardLookupState(
 }
 
 /**
- * Saved-card listing freshness and selection, shared by checkout's automatic lookup and Charge token's explicit one.
+ * Saved-card listing freshness and selection, shared by checkout's automatic lookup and Tokens’ explicit one.
  * Changed shopper reference, recurring model, readiness or target invalidates the whole reading. Late answers cannot
  * revive it, and starts retain the listing's original payment context even if they are queued behind setup changes.
  *
@@ -67,6 +67,7 @@ class SavedCardLookup internal constructor(
         val model: String,
         val origin: ApiTarget,
         val blocked: Failure?,
+        val revision: Long,
     ) {
         val available: Boolean get() = reference != null && blocked == null
 
@@ -82,17 +83,19 @@ class SavedCardLookup internal constructor(
 
     init {
         scope.launch {
-            combine(checkouts, terminal, targets) { checkout, status, origin ->
+            combine(checkouts, terminal, targets, charges.tokenRevision) { checkout, status, origin, revision ->
                 Query(
                     checkout.shopperReference.takeUnless { checkout.preAuthorisation },
                     checkout.payment.recurringModel().value,
                     origin,
-                    SavedCardCharges.blocked(checkout.payment.shopperReferenceSource, status),
+                    Failure.NotSetUp(SetupProblem.TOKEN_DELETION_PENDING).takeIf { charges.unresolvedDeletion }
+                        ?: SavedCardCharges.blocked(checkout.payment.shopperReferenceSource, status),
+                    revision,
                 )
             }.distinctUntilChanged().collectLatest { query ->
                 synchronized(this@SavedCardLookup) {
                     current = query
-                    state.value = SavedCardLookupState(blocked = query.blocked)
+                    state.value = SavedCardLookupState(reference = query.reference, blocked = query.blocked)
                 }
                 if (lookupDelay != null && query.reference != null && query.blocked == null) {
                     delay(lookupDelay)
@@ -119,12 +122,39 @@ class SavedCardLookup internal constructor(
             val card = reading.eligible.firstOrNull { it.id == start.card.id } ?: return null
             if (!query.available || reading.finding) return null
             if (reading.reference != query.reference || !query.matches(start)) return null
-            charges.start(start.forLookup(card, query.origin.context))
+            charges.start(start.forLookup(card, query.origin.context), query.revision)
         }
+
+    /** Latest management outcome shared by all lookups. */
+    val deletion: StateFlow<TokenDeletionState> get() = charges.deletion
+
+    /** Freezes a listed token's identity for confirmation, regardless of whether it supports charging. */
+    fun removal(card: StoredCard): TokenDeletionOffer? =
+        synchronized(this) {
+            val query = current ?: return null
+            val reading = state.value
+            val listed = reading.cards?.firstOrNull { it == card } ?: return null
+            if (!query.available || reading.finding) return null
+            if (reading.reference != query.reference) return null
+            TokenDeletionOffer(listed, checkNotNull(query.reference), query.origin.context, query.origin, query.revision, query)
+        }
+
+    /** Sends only the exact [offer] confirmed from the current listing, after checking its frozen reference and target. */
+    fun delete(offer: TokenDeletionOffer): Boolean =
+        synchronized(this) {
+            val query = current ?: return false
+            if (query !== offer.identity) return false
+            if (state.value.cards?.contains(offer.card) != true) return false
+            charges.delete(offer.card, offer.reference, offer.origin, offer.revision)
+        }
+
+    /** Reconciles the last uncertain deletion with a fresh listing; never resends DELETE. */
+    fun recheckDeletion() = charges.recheckDeletion()
 
     private fun begin(query: Query): Boolean =
         synchronized(this) {
-            if (current !== query || !query.available || state.value.finding) {
+            if (current !== query || query.revision != charges.tokenRevision.value) return false
+            if (!query.available || state.value.finding) {
                 false
             } else {
                 state.value = SavedCardLookupState(reference = query.reference, finding = true)
@@ -135,7 +165,7 @@ class SavedCardLookup internal constructor(
     private suspend fun fetch(query: Query) {
         val found = charges.cards(checkNotNull(query.reference), query.origin)
         synchronized(this) {
-            if (current !== query) return
+            if (current !== query || query.revision != charges.tokenRevision.value) return
             state.value =
                 when (found) {
                     is CardLookup.Listed -> {

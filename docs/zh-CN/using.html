@@ -82,7 +82,7 @@
   Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#audio-guidance">使用语音引导付款</a></li><li><a href="#partial-payments">部分付款</a></li><li>
   <a href="#shopper-display">购物者端屏幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">离线支付</a></li><li><a href="#wallets">扫描钱包付款码</a></li><li><a href="#shoppers">
-  识别号和保存卡片</a><ul><li><a href="#saved-card">令牌扣款</a></li></ul></li><li><a href="#payment-links">付款链接</a></li><li>
+  识别号和保存卡片</a><ul><li><a href="#saved-card">管理令牌</a></li></ul></li><li><a href="#payment-links">付款链接</a></li><li>
   <a href="#preauth">订金</a></li><li><a href="#terminal-tips">终端小费</a></li><li><a href="#tips">收据小费</a></li><li>
   <a href="#more">更多设备和数据</a></li>
 </ol></div>
@@ -95,7 +95,7 @@
   Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#audio-guidance">使用语音引导付款</a></li><li><a href="#partial-payments">部分付款</a></li><li>
   <a href="#shopper-display">购物者端屏幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">离线支付</a></li><li><a href="#wallets">扫描钱包付款码</a></li><li><a href="#shoppers">
-  识别号和保存卡片</a><ul><li><a href="#saved-card">令牌扣款</a></li></ul></li><li><a href="#payment-links">付款链接</a></li><li>
+  识别号和保存卡片</a><ul><li><a href="#saved-card">管理令牌</a></li></ul></li><li><a href="#payment-links">付款链接</a></li><li>
   <a href="#preauth">订金</a></li><li><a href="#terminal-tips">终端小费</a></li><li><a href="#tips">收据小费</a></li><li>
   <a href="#more">更多设备和数据</a></li>
 </ol></details>
@@ -115,9 +115,15 @@
             <p class="callout-title">重要</p>
             <p>更改币种会保留价格中的数值，不会按汇率换算。更改后请检查商品价格。</p>
           </div>
+          <p id="settings-navigation">
+            在主页点按右上角的<strong>设置</strong>图标，直接打开主设置。
+            如有要求，请输入管理员PIN。
+            在其中打开<strong>商品</strong>；返回会先回到设置，再回到主页。
+            付款设置完成前仍可进入设置和连接设置。
+          </p>
           <h3 id="products">添加商品</h3>
           <ol>
-            <li>打开<strong>商品</strong>，点按 <strong>+</strong>。</li>
+            <li>打开<strong>设置 › 商品</strong>，点按 <strong>+</strong>。</li>
             <li>输入名称、价格和税率。可选添加分类和条形码（输入或扫描）。</li>
             <li>订金商品请开启<strong>预授权商品</strong>，使其只出现在预授权中。</li>
           </ol>
@@ -413,18 +419,27 @@
             <dt>购物者识别号</dt><dd>在<strong>设置 › 支付</strong>中选择<strong>购物者识别号</strong>：结账时输入的购物者识别号（默认）、购物者电子邮件或无。它会随每笔付款发送给
               Adyen。电子邮件识别号默认经过哈希处理；所有设备请使用相同的盐值。</dd>
             <dt>保存卡片</dt><dd>设置购物者识别号后，开启<strong>提供保存卡片选项</strong>，并选择适合您 Adyen 配置的<strong>循环扣款模式</strong>。勾选<strong>
-              保存卡片以供今后支付</strong>前须取得购物者同意。之后如需扣款，请参见<a href="#saved-card">令牌扣款</a>。</dd>
+              保存卡片以供今后支付</strong>前须取得购物者同意。之后如需扣款，请参见<a href="#saved-card">管理令牌</a>。</dd>
           </dl>
-          <h3 id="saved-card">令牌扣款</h3>
+          <h3 id="saved-card">管理令牌</h3>
           <ol>
-            <li>在主页点按<strong>令牌扣款</strong>，如有要求请输入经理 PIN。</li>
+            <li>在主页点按<strong>令牌</strong>，如有要求请输入经理 PIN。</li>
             <li>输入购物者识别号（或用作识别号的电子邮件地址），然后点按<strong>查找令牌</strong>。</li>
-            <li>选择一个令牌，然后添加商品或<strong>自定义商品</strong>。此购物车与<strong>新建销售</strong>的购物车相互独立。</li>
+            <li>点按令牌旁的<strong>扣款</strong>，然后添加商品或<strong>自定义商品</strong>。此购物车与<strong>新建销售</strong>的购物车相互独立。</li>
             <li>核对扣款信息后点按<strong>扣款</strong>。</li>
           </ol>
-          <p>购物者不在场，因此请先征得其同意。为其他<strong>循环扣款模式</strong>保存的令牌无法选择。请在<strong>交易记录</strong>
+          <p>购物者不在场，因此请先征得其同意。为其他<strong>循环扣款模式</strong>保存的令牌无法在此扣款。请在<strong>交易记录</strong>
             中为这些付款退款；其退款二维码仅在完成扣款的设备上有效。如果扣款结果未知，请在七天内从交易记录中核查，之后请在 Customer Area 中核查。在新建销售的结账页面，输入的购物者识别号有已保存的令牌时，<strong>扫描钱包
             </strong>和<strong>创建付款链接</strong>之间会显示<strong>令牌扣款</strong>：经理批准后，选择一个令牌即可向其扣款。</p>
+          <p id="token-deletion">
+            点按列表中令牌的<strong>删除</strong>即可删除，包括当前无法扣款的令牌。
+            核对卡片摘要、令牌ID、购物者、商户账户和环境，确认后使用经理PIN批准。
+            必须已设置经理PIN。
+            删除会将令牌从Adyen移除，Mini mPOS以及使用该令牌的其他集成均无法再用它进行后续付款，且无法撤销。
+            历史付款及其关联退款仍可使用。
+            如未收到响应，Mini mPOS会使已有选择失效并重新获取列表。
+            如结果仍未确认，请使用<strong>检查删除结果</strong>，在解决前不要扣款或再次删除。
+          </p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="payment-links">

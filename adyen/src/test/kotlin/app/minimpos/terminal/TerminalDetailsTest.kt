@@ -97,7 +97,7 @@ class TerminalDetailsTest {
                 api.credential(TerminalEnvironment.TEST),
             ).isEqualTo(CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList())))
             // The same complete set is required even without cloud or Tap to Pay.
-            listOf(AdyenRole.CLOUD_DEVICE, AdyenRole.API_CREDENTIALS).forEach { role ->
+            listOf(AdyenRole.CLOUD_DEVICE, AdyenRole.API_CREDENTIALS, AdyenRole.TOKENISE).forEach { role ->
                 reply(rolesReply(ALL_ROLES - role.displayName))
                 val denied = api.credential(TerminalEnvironment.TEST) as CredentialLookup.Failed
                 assertThat(denied.fault).isEqualTo(Fault.Permission(ApiKey.ADYEN, role.displayName))
@@ -455,6 +455,7 @@ class TerminalDetailsTest {
                 "Management API - Stores read",
                 "Management API - Accounts read",
                 "Merchant Recurring role",
+                "API tokenise payment details",
                 "Cloud Device API role",
             )
         val ROLES = ALL_ROLES.joinToString(", ")

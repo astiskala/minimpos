@@ -68,7 +68,7 @@ class PinAccessFlowTest {
 
     @Test
     fun `system Back on the new PIN pad cancels it like the arrow and stays in Security`() {
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_security")
         compose.onNodeWithTag("section_security").performScrollTo().performClick()
         waitForTag("setPin")
@@ -145,7 +145,7 @@ class PinAccessFlowTest {
     fun `an idle settings screen locks without navigating`() {
         await { container.pinManager.setPin("1357") }
         container.sessionLock.unlock()
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_security")
         ShadowSystemClock.advanceBy(Duration.ofMinutes(3))
         compose.mainClock.advanceTimeBy(1_100)

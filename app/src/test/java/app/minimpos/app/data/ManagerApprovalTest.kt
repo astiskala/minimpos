@@ -51,6 +51,21 @@ class ManagerApprovalTest {
             assertThat(ManagerApproval.NOT_REQUIRED.allows(ManagerApproval.NOT_REQUIRED.grant())).isTrue()
         }
 
+    @Test
+    fun `protected deletion requires a configured PIN and does not accept admin or absent Manager access`() =
+        runBlocking {
+            configured = false
+            session.unlock()
+            val grant = approval.grant()
+            assertThat(approval.allowsConfigured(grant)).isFalse()
+            configured = true
+            assertThat(approval.allowsConfigured(grant)).isTrue()
+            session.lock()
+            assertThat(approval.allowsConfigured(grant)).isTrue()
+            now += TIMEOUT
+            assertThat(approval.allowsConfigured(grant)).isFalse()
+        }
+
     private companion object {
         const val TIMEOUT = 60_000L
     }

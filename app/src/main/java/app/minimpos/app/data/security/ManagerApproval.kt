@@ -6,7 +6,8 @@ package app.minimpos.app.data.security
  * operation takes its [Grant] when the operator starts it ([grant]) and keeps it until it is sent, so navigating to a
  * waiting screen, which closes the approval session, cannot refuse an operation the operator just approved; inactivity
  * past the auto-lock time still does. Follow-ups without a start of their own (resending an unknown operation,
- * captures, link changes) check the session as it is now ([allowsNow]). Without a Manager PIN everything is allowed.
+ * captures, link changes) check the session as it is now ([allowsNow]). Without a Manager PIN optional approvals are
+ * allowed; protected token deletion requires a configured PIN through [allowsConfigured].
  * Only PIN entry opens the session; this never verifies a PIN.
  *
  * @param configured Whether a Manager PIN is set; read for each decision.
@@ -30,6 +31,13 @@ class ManagerApproval(
      */
     suspend fun allows(grant: Grant): Boolean {
         if (!configured()) return true
+        return unexpired(grant)
+    }
+
+    /** Whether a Manager PIN exists and [grant] still permits a protected token deletion. */
+    suspend fun allowsConfigured(grant: Grant): Boolean = configured() && unexpired(grant)
+
+    private fun unexpired(grant: Grant): Boolean {
         val timeout = autoLockMillis()
         return session.allows(timeout) || grant.approvedAt?.let { session.unexpired(it, timeout) } == true
     }
@@ -48,7 +56,7 @@ class ManagerApproval(
 
     /** Approval for code without a Manager PIN. */
     companion object {
-        /** Allows everything: no Manager PIN can be set, as for operations whose runner is not approved. */
+        /** Permits optional-approval operations; actions requiring a configured PIN remain blocked. */
         val NOT_REQUIRED = ManagerApproval({ false }, SessionLock { 0L }, { 0L })
     }
 }

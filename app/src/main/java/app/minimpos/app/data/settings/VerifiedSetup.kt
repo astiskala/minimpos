@@ -22,8 +22,9 @@ internal object VerifiedSetup {
         environment: TerminalEnvironment?,
         destination: TerminalMode,
     ): String =
+        // Token management adds a required credential role; older verified setups must pass fresh access checks.
         StorageJson.encodeToString(serializer<TerminalSettings>(), terminal.withoutLearnedFacts()) +
-            ":terminal-settings-write:${destination.name}:${poiId.orEmpty()}:${environment?.name.orEmpty()}"
+            ":token-management:${destination.name}:${poiId.orEmpty()}:${environment?.name.orEmpty()}"
 
     /** Whether writing [after] over [before] changes connection fields the fingerprint covers, so it must be cleared. */
     fun invalidatedBy(

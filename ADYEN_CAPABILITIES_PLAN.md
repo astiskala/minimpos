@@ -191,17 +191,17 @@ Read first: `adyen/.../checkout/SavedCards.kt`, `app/.../payment/SavedCardLookup
 `feature/sale/SavedCardScreens.kt`, `SavedCardViewModel.kt`, `feature/home/HomeScreen.kt`,
 `feature/settings/SettingsScreens.kt`, `ui/navigation/Route.kt`, and `AppNavHost.kt`.
 
-- [ ] Rename the Home/lookup entry to Tokens. Keep the charge action named Charge and preserve the existing dedicated
+- [x] Rename the Home/lookup entry to Tokens. Keep the charge action named Charge and preserve the existing dedicated
   charge cart, checkout shortcut, shopper-reference lookup, consent/context checks, and charge eligibility.
-- [ ] Add explicit token-level Charge and Delete actions. Deletion must remain available for listed tokens that cannot
+- [x] Add explicit token-level Charge and Delete actions. Deletion must remain available for listed tokens that cannot
   currently be charged. Confirm the specific token and its Adyen-wide effect before deletion.
-- [ ] Add Checkout DELETE support and permission readiness, Manager policy, concurrency protection, uncertain-outcome
+- [x] Add Checkout DELETE support and permission readiness, Manager policy, concurrency protection, uncertain-outcome
   handling through a fresh listing, and invalidation of all stale token selections. Preserve historical
   payments/refunds.
-- [ ] Add the direct top-right Settings icon. Add Products to main Settings, opening the existing Products route. Remove
+- [x] Add the direct top-right Settings icon. Add Products to main Settings, opening the existing Products route. Remove
   Home's bottom Products/Settings buttons and preserve the Back stack, setup access, and admin locking. Update the root
   Home rule and guides describing navigation.
-- [ ] Test success, refusal, missing token, deletion timeout/recheck, changed shopper/account/environment, charge/delete
+- [x] Test success, refusal, missing token, deletion timeout/recheck, changed shopper/account/environment, charge/delete
   races, stale checkout selections, navigation, and admin/Manager separation.
 
 Start with `SavedCardsTest`, `SavedCardLookupTest`, `SavedCardFlowTest`, `SavedCardBackTest`, `CheckoutTokenTest`,
@@ -417,8 +417,8 @@ independently, with the provider/destination and evidence location.
 | --- | --- | --- | --- | --- | --- |
 | 01 | Payments app recovery | implemented | `100b1a3` | `scripts/dev finish`; 100% Adyen line coverage | Beta access and physical-phone checks unconfirmed |
 | 02 | Accessible payments | implemented | `c8752cc` | `scripts/dev finish`; SDK 33 + 28; 100% Adyen line coverage | Physical terminal/software/enablement unconfirmed |
-| 03 | Surcharge accounting | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 18 | Configured TEST surcharge/refund checks unconfirmed |
-| 04 | Tokens and Settings navigation | not started | - | - | Token permissions/setup unconfirmed |
+| 03 | Surcharge accounting | implemented | `c62d133` | `scripts/dev finish`; SDK 33 + 28; schema 18 | Configured TEST surcharge/refund checks unconfirmed |
+| 04 | Tokens and Settings navigation | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 18 unchanged | TEST roles, deletion and propagation unconfirmed |
 | 05 | Split payments and cash | not started | - | - | Partial-approval scenarios needed |
 | 06 | Gift-card lifecycle | not started | - | - | Provider onboarding/TEST cards unconfirmed |
 | 07 | Mexican installments | not started | - | - | Eligible Mexican TEST setup unconfirmed |
@@ -426,14 +426,14 @@ independently, with the provider/destination and evidence location.
 | 09 | Cashback/Cashout | not started | - | - | With-purchase/standalone enablement unconfirmed |
 | 10 | Unreferenced card refunds | not started | - | - | Eligible country/account enablement unconfirmed |
 
-Resume note: milestones 01 (`100b1a3`), 02 (`c8752cc`) and 03 (this commit) are implemented on
-`codex/adyen-capabilities`. Stopped after milestone 03 as requested; milestones 04–10 remain unstarted.
-Database version 18 has a preserving 17→18 migration and a Room-generated schema. Historical fee components and
-request facts remain null, and prior totals are unchanged. No settings, transfer, stored-JSON or dependency format
-changes were needed. `scripts/dev finish` passed on October 25, 2026, including SDK 33 and SDK 28; full log
-`build/gradle-logs/run-WKC6Sd/output.log`. Physical terminal/phone verification, accessibility enablement, Payments app
-beta access and configured TEST surcharge/refund checks remain unconfirmed. Real calls, pushes and releases remain
-unauthorized without a separate request.
+Resume note: milestones 01 (`100b1a3`), 02 (`c8752cc`), 03 (`c62d133`) and 04 (this commit) are implemented on
+`codex/adyen-capabilities`. Stopped after milestone 04 as requested; milestones 05–10 remain unstarted. Database
+version remains 18; no migration or dependency change was needed in milestone 04. The configured Manager PIN
+requirement for token deletion follows the plan’s provisional working default, not a separately confirmed preference.
+`scripts/dev finish` passed on October 25, 2026, including SDK 33 and SDK 28; full log
+`build/gradle-logs/run-KtNk3T/output.log`. Physical terminal/phone checks, accessibility enablement, Payments app beta
+access, configured TEST surcharge/refund checks and actual TEST token-role/deletion/propagation checks remain
+unconfirmed. Real calls, pushes, publications and releases require separate authorization.
 
 Milestone 01 evidence:
 
@@ -538,6 +538,68 @@ Milestone 03 evidence:
 - Physical TEST surcharges with tips, partial approvals, full/partial returns, DCC configuration, actual receipt
   disclosure and Customer Area completion remain unverified. Milestones 01–02’s hardware/enablement gaps remain open.
   No real Adyen calls, pushes, publications or releases were made.
+
+Milestone 04 evidence:
+
+- Revalidated Adyen’s [token-management guide](https://docs.adyen.com/online-payments/tokenization/managing-tokens),
+  [Checkout DELETE endpoint](https://docs.adyen.com/api-explorer/Checkout/72/delete/storedPaymentMethods/(storedPaymentMethodId))
+  and [credential roles](https://docs.adyen.com/development-resources/api-credentials/roles) on October 25, 2026.
+  DELETE takes the exact token ID, merchant account and shopper reference, returns HTTP 204 without a response body,
+  and prevents future payment requests using that token. The endpoint requires `API tokenise payment details`.
+  The pinned SDK 43.1.0 includes `RecurringApi.deleteTokenForStoredPaymentDetails`, returning void; no upgrade or
+  handwritten request/response model was needed. Requests retain the existing bounded, no-retry HTTP transport.
+- Setup checks and seven-language credential guidance now include the additional token-management role. Older verified
+  fingerprints require fresh access checks. No schema, serialized data, transfer or dependency format changed;
+  database version remains 18 and milestone 03’s preserving migration is unchanged.
+- Tokens offers independent Charge and Delete actions, including deletion of listed tokens supporting another recurring
+  model. Confirmation freezes the card summary, token ID, shopper reference, account, environment and listing identity;
+  it explains the effect across integrations using that Adyen token. A configured Manager PIN and unexpired approval
+  are required at send time under the plan’s provisional working default, not a separately confirmed preference.
+  Admin unlock does not approve deletion. Setup gating is checked again when the confirmed action starts.
+- Deletion, token charges and their recovery sends share serialization. Management requests participate in the global
+  running-operation reading so setup replacement waits. Starting and settling deletion invalidates every explicit and
+  checkout lookup; late reads and stale offers cannot restore selections. Confirmed complete history purges release
+  the process-only management evidence too. Historical payments, original contexts and PSP-based refunds are unchanged.
+- HTTP refusals remain known not deleted. A missing response, uncertain HTTP result or missing-token response triggers
+  a complete fresh listing for the original account/environment with current eligible credentials. Absence establishes
+  that the token is unavailable; continued presence or failed listing stays unconfirmed and blocks new token charges.
+  Check deletion only lists again; it never resends DELETE. Malformed/incomplete or explicitly mismatched listings
+  cannot prove absence.
+  Credential rotation or SDK-client recreation can still perform this read-only check after original-context validation.
+  Management evidence and listings are memory-only: process recreation requires a fresh listing, never replaying
+  deletion.
+- Home now has Tokens/Refund and History/Reconciliation below both full-width payment tiles. Its top-right Settings
+  icon opens main Settings under the existing admin lock; Products opens there and Back returns through Settings to
+  Home. Settings/setup remain available before verification. No placeholder tiles or overflow menu were added.
+  Seven-language resources, setup/operation guides and navigation/localization tests reflect the change. The docs
+  capture driver also reaches Products through Settings; no emulator or merchant data was reset.
+- Simulator and fake tests cover success, refusal, missing token, lost DELETE response without transport retry,
+  read-only timeout reconciliation, continued presence, stale/late selections, shopper/account/environment/credential
+  changes, charge/delete double activation, Manager expiry/admin separation and process recreation. Simulator removal
+  survives adapter replacement within its ledger’s process lifetime and preserves earlier charge/refund identities.
+  English, Japanese and Traditional Chinese deletion confirmations are exercised at AMS1 size, with scrollable text.
+- Preflight passed. Focused protocol, token/Manager, setup, navigation, localization/CJK, app-flow, type-resolved
+  main/test detekt and website checks passed in `build/gradle-logs/run-YYzr2B/output.log`.
+- Focused token, navigation, localization and receipt-tip view-model checks passed on both SDK 33 and SDK 28 in
+  `build/gradle-logs/run-qMrMXm/output.log`. Find waits for the lookup owner’s current shopper reading; the SDK 28
+  flow test waits for its enabled action. Receipt-tip tests now close and join their view models before resetting
+  Main, fixing an existing teardown race without changing payment behavior or assertions.
+- Lint encountered the same Kotlin comment-traversal stall seen in milestone 03. The private thread dump is retained
+  at `build/gradle-logs/run-YefyzC/threads.txt`; restarting the owned daemon resolved it. The subsequent full SDK 33
+  and 28 suites passed. Lint findings from the removed Home lock label and test-helper visibility were fixed directly.
+  No checks were excluded or suppressed. The receipt-print popup test now waits for its asynchronously measured
+  preview and enabled Print action before tapping, preventing a layout shift from moving the button out of view.
+- Final focused token, stale-selection, rotated-credential/context and popup checks passed on SDK 33 and 28 in
+  `build/gradle-logs/run-IKVqbr/output.log`. Pending deletion has its own seven-language readiness message, independent
+  of financial-operation retry permission. Existing stored-format and upgrade tests remain valid.
+- Full gate passed on October 25, 2026: `scripts/dev finish`, log `build/gradle-logs/run-KtNk3T/output.log`. This includes
+  SDK 33 and 28, architecture/dead-code checks, migrations/repositories, payment recovery, lint, main/test detekt,
+  Dokka, localization, website/helper checks, shell/workflow/Markdown checks and coverage. Core and Adyen line coverage
+  remain 100%. Milestones 01–03, including surcharge accounting and the two-line audio/receipt-tip descriptions,
+  remain intact.
+- Actual TEST credential-role reporting, DELETE completion/refusals, listing propagation and missing-response
+  reconciliation remain unverified with Adyen. Earlier hardware, accessibility, Payments app beta and configured
+  surcharge/refund gaps remain open. No real Adyen calls, pushes, publications or releases were made.
 
 ## Adyen source map
 

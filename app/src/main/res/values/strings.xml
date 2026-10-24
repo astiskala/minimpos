@@ -2,7 +2,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
   <!-- App, onboarding, and common actions -->
   <string name="app_name">Mini mPOS</string>
-  <string name="locked">Locked</string>
   <string name="banner_simulator">SIMULATOR – no real payments</string>
   <string name="virtual_printer_title">Simulated printer</string>
   <string name="onboarding_title">Welcome to Mini mPOS</string>
@@ -54,7 +53,7 @@
   <string name="home_new_sale_hint">Add products or a custom amount</string>
   <string name="home_pre_auth">New pre-authorization</string>
   <string name="home_pre_auth_hint">Hold an amount on a card</string>
-  <string name="home_saved_card">Charge token</string>
+  <string name="home_saved_card">Tokens</string>
   <string name="home_refund">Refund</string>
   <string name="home_history">History</string>
   <string name="home_reconciliation">Reconciliation</string>
@@ -156,12 +155,21 @@
   <string name="shopper_rating_prompt">Rate your experience (0–10)</string>
 
   <!-- Saved cards -->
-  <string name="saved_card_title">Charge token</string>
-  <string name="saved_card_intro">Find the tokens saved for a shopper, choose one, then ring up what to charge. The shopper does not need to be present; get their consent first.</string>
+  <string name="saved_card_title">Tokens</string>
+  <string name="saved_card_intro">Find tokens saved for a shopper. Charge with consent, or delete a token from Adyen.</string>
   <string name="saved_card_find">Find tokens</string>
   <string name="saved_card_none">No tokens are saved for this shopper.</string>
   <string name="saved_card_expires">Expires %1$s/%2$s</string>
   <string name="saved_card_unsupported">Saved for another kind of payment; it cannot be charged here.</string>
+  <string name="token_charge">Charge</string>
+  <string name="token_delete_title">Delete token?</string>
+  <string name="token_delete_confirm">Delete %1$s (token %2$s) for shopper %3$s, merchant %4$s, %5$s? This removes the token from Adyen, so it cannot be used for future payments in Mini mPOS or other integrations using it. Existing payments and refunds stay available. This cannot be undone.</string>
+  <string name="token_delete_manager">Set a Manager PIN in Settings › Security to delete tokens.</string>
+  <string name="token_deleted">Token %1$s for shopper %2$s is no longer available at Adyen.</string>
+  <string name="token_delete_failed">Token %1$s for shopper %2$s was not deleted.</string>
+  <string name="token_delete_unknown">Deletion of token %1$s for shopper %2$s is unconfirmed. Check again to refresh the Adyen listing. Do not charge or retry deletion yet.</string>
+  <string name="token_deleting">Checking deletion of token %1$s for shopper %2$s…</string>
+  <string name="token_delete_recheck">Check deletion</string>
   <string name="saved_card_card">Card</string>
   <string name="saved_card_charge">Charge %1$s</string>
   <string name="saved_card_charging">Charging the token…</string>
@@ -665,6 +673,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">Settings</string>
+  <string name="settings_products_summary">Products and categories</string>
   <string name="settings_changes_saved">Changes saved.</string>
   <string name="settings_choose">Choose a section to change its settings.</string>
   <string name="settings_terminal">Terminal</string>
@@ -736,6 +745,7 @@
   <string name="settings_api_key">API key</string>
   <string name="settings_adyen_key_hint">In your Customer Area, open Developers › API credentials. Create a credential and generate its API key.</string>
   <string name="settings_adyen_roles_hint">In addition to the default roles, this API key needs the following additional roles:</string>
+  <string name="settings_adyen_role_tokens">API tokenise payment details</string>
   <string name="settings_adyen_role_cloud">Cloud Device API role</string>
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
@@ -963,7 +973,7 @@
   <string name="settings_ask_transaction_reference_hint">Enter an order or booking number to identify the payment in Adyen. Leave blank to generate one.</string>
   <string name="settings_tokenization">Shoppers and saved cards</string>
   <string name="settings_offer_card_saving">Offer to save cards</string>
-  <string name="settings_offer_card_saving_hint">Checkout offers to save the card when there is a shopper reference. Ask the customer for consent. Charge tokens later with Charge token on Home.</string>
+  <string name="settings_offer_card_saving_hint">Checkout offers to save the card when there is a shopper reference. Ask the customer for consent. Charge tokens later from Tokens on Home.</string>
   <string name="settings_tokenize_default">Save cards by default</string>
   <string name="settings_tokenize_default_hint">Sales start with Save card on when there is a shopper reference.</string>
   <string name="settings_pre_auth_tokenize_default">Save cards for pre-authorizations</string>
@@ -1192,6 +1202,7 @@
   <string name="setup_charge_too_old">This is too old to send again safely. Check its outcome in your Customer Area.</string>
   <string name="setup_shopper_reference">Choose a shopper reference in Settings › Payments to use tokens.</string>
   <string name="setup_totals">Terminal totals are not available where payments go now. Tap to Pay does not report them.</string>
+  <string name="setup_token_deletion_pending">Resolve the token deletion in Tokens before charging or deleting another token.</string>
   <string name="setup_operation_reconciliation">Adyen did not permit a retry. Check this operation’s outcome in your Customer Area.</string>
   <string name="payment_context_mismatch">This setup does not match the original payment’s terminal, merchant account or environment. Restore the original setup before you continue.</string>
   <string name="fault_unreachable_terminal">The terminal could not be reached. Check that it is on, on the same network and at this IP address.</string>

@@ -8,7 +8,9 @@ import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
+import app.minimpos.terminal.checkout.StoredCardDeletion
 import app.minimpos.terminal.checkout.StoredCardListing
 import app.minimpos.terminal.simulator.SimulatedLedger
 import app.minimpos.terminal.simulator.SimulatedModifications
@@ -16,6 +18,8 @@ import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.SimulatorRemoval
 import app.minimpos.terminal.simulator.TerminalSimulator
+import app.minimpos.terminal.transport.AdyenRole
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -24,8 +28,10 @@ import com.google.gson.JsonParser
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Test
+import java.net.SocketTimeoutException
 import kotlin.random.Random
 
 class SavedCardsTest {
@@ -76,7 +82,6 @@ class SavedCardsTest {
                 {"merchantAccount":"HarbourCoffeeCOM","shopperReference":"CUST-001","storedPaymentMethods":[
                 {"id":"TOKEN1","brand":"visa","lastFour":"1111","expiryMonth":"03","expiryYear":"2030","holderName":"Ann Lee",
                 "supportedRecurringProcessingModels":["UnscheduledCardOnFile","CardOnFile"],"type":"scheme"},
-                {"brand":"mc","lastFour":"4444"},
                 {"id":"TOKEN2","brand":"","lastFour":""}]}
                 """.trimIndent(),
             )
@@ -96,7 +101,7 @@ class SavedCardsTest {
             assertThat(sent.url.queryParameter("merchantAccount")).isEqualTo("HarbourCoffeeCOM")
             assertThat(sent.url.queryParameter("shopperReference")).isEqualTo("CUST-001")
             assertThat(sent.headers["x-api-key"]).isEqualTo("secret-api-key")
-            reply("""{"shopperReference":"NEW"}""")
+            reply("""{"shopperReference":"NEW","storedPaymentMethods":[]}""")
             assertThat(api.list("NEW")).isEqualTo(StoredCardListing.Listed(emptyList()))
             reply("""{"status":403,"errorCode":"010","message":"Not allowed"}""", 403)
             assertThat(api.list("CUST-001")).isInstanceOf(StoredCardListing.Failed::class.java)
@@ -106,6 +111,99 @@ class SavedCardsTest {
             assertThat(card.supports("CardOnFile")).isTrue()
             assertThat(card.supports("Subscription")).isFalse()
             assertThat(StoredCard("T").supports("Subscription")).isTrue()
+        }
+
+    @Test
+    fun `deletion sends a scoped encoded DELETE and accepts only 204`() =
+        runBlocking {
+            reply("", 204)
+            assertThat(api.delete("CUST +/001", "TOKEN/+?1")).isEqualTo(StoredCardDeletion.Deleted)
+            val sent = server.takeRequest()
+            assertThat(sent.method).isEqualTo("DELETE")
+            assertThat(sent.url.pathSegments).containsExactly("v72", "storedPaymentMethods", "TOKEN/+?1").inOrder()
+            assertThat(sent.url.queryParameter("merchantAccount")).isEqualTo("HarbourCoffeeCOM")
+            assertThat(sent.url.queryParameter("shopperReference")).isEqualTo("CUST +/001")
+            assertThat(sent.headers["x-api-key"]).isEqualTo("secret-api-key")
+            assertThat(sent.headers["Idempotency-Key"]).isNull()
+            assertThat(sent.body!!.size).isEqualTo(0)
+            reply("{}", 200)
+            assertThat(api.delete("CUST-001", "TOKEN1")).isEqualTo(StoredCardDeletion.Failed(Fault.UnreadableReply()))
+            reply("{}", 403)
+            assertThat(api.delete("CUST-001", "TOKEN1"))
+                .isEqualTo(StoredCardDeletion.Failed(Fault.Permission(ApiKey.ADYEN, AdyenRole.TOKENISE.displayName)))
+            reply("{}", 404)
+            assertThat((api.delete("CUST-001", "TOKEN1") as StoredCardDeletion.Failed).fault.mayHaveTakenEffect).isFalse()
+            reply("{}", 503)
+            assertThat((api.delete("CUST-001", "TOKEN1") as StoredCardDeletion.Failed).fault.mayHaveTakenEffect).isTrue()
+            assertThat(server.requestCount).isEqualTo(5)
+            val unsupported =
+                object : SavedCardApi by api {
+                    override suspend fun delete(
+                        shopperReference: String,
+                        id: String,
+                    ) = super.delete(shopperReference, id)
+                }
+            assertThat(unsupported.delete("CUST-001", "TOKEN1")).isEqualTo(StoredCardDeletion.Failed(Fault.Unsupported))
+        }
+
+    @Test
+    fun `a lost DELETE response stays uncertain and is never retried by the transport`() =
+        runBlocking {
+            var calls = 0
+            val interrupted =
+                CheckoutSavedCards(
+                    credentials,
+                    baseUrl = server.url("/v72/"),
+                    baseClient =
+                        OkHttpClient
+                            .Builder()
+                            .addInterceptor {
+                                calls++
+                                throw SocketTimeoutException()
+                            }.build(),
+                )
+            assertThat(interrupted.delete("CUST-001", "TOKEN1")).isEqualTo(StoredCardDeletion.Failed(Fault.TimedOut))
+            assertThat(calls).isEqualTo(1)
+        }
+
+    @Test
+    fun `incomplete listings cannot falsely establish that a token was removed`() =
+        runBlocking {
+            listOf(
+                "{}",
+                "{\"storedPaymentMethods\":[{}]}",
+                "{\"storedPaymentMethods\":[null]}",
+                "{\"storedPaymentMethods\":[],\"shopperReference\":\"OTHER\"}",
+                "{\"storedPaymentMethods\":[],\"merchantAccount\":\"OtherMerchant\"}",
+            ).forEach { body ->
+                reply(body)
+                assertThat(api.list("CUST-001")).isEqualTo(StoredCardListing.Failed(Fault.UnreadableReply()))
+            }
+        }
+
+    @Test
+    fun `simulated deletion survives adapter replacement and preserves charges and refunds`() =
+        runBlocking {
+            var chosen = SimulatedOutcome.APPROVE
+            val simulator = TerminalSimulator({ SimulatorConfig(outcome = chosen, delayMillis = 0) })
+            val card = StoredCard("TOKEN1", "visa", "1111")
+            val cards = simulator.savedCards { listOf(card) }
+            val charged = cards.charge(request, "original") as CardChargeResult.Authorised
+            chosen = SimulatedOutcome.DECLINE
+            assertThat(cards.delete("CUST-001", "TOKEN1")).isInstanceOf(StoredCardDeletion.Failed::class.java)
+            assertThat(cards.list("CUST-001")).isEqualTo(StoredCardListing.Listed(listOf(card)))
+            chosen = SimulatedOutcome.TIMEOUT
+            assertThat(cards.delete("CUST-001", "TOKEN1")).isEqualTo(StoredCardDeletion.Failed(Fault.TimedOut))
+            val replacement = simulator.savedCards { listOf(card) }
+            assertThat(replacement.list("CUST-001")).isEqualTo(StoredCardListing.Listed(emptyList()))
+            assertThat(replacement.list("OTHER")).isEqualTo(StoredCardListing.Listed(listOf(card)))
+            assertThat(replacement.charge(request, "original")).isEqualTo(charged)
+            assertThat(replacement.charge(request, "new")).isInstanceOf(CardChargeResult.Refused::class.java)
+            assertThat(simulator.modifications.refund(charged.pspReference, amount, "R", "r"))
+                .isInstanceOf(ModificationResult.Received::class.java)
+            assertThat(cards.delete("CUST-001", "TOKEN1")).isEqualTo(StoredCardDeletion.Failed(Fault.AdyenRejected(404)))
+            chosen = SimulatedOutcome.APPROVE
+            assertThat(cards.delete("OTHER", "TOKEN1")).isEqualTo(StoredCardDeletion.Deleted)
         }
 
     @Test

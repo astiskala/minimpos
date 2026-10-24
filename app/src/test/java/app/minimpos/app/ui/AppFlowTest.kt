@@ -12,6 +12,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isOn
 import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -78,13 +79,6 @@ class AppFlowTest {
 
     private fun waitForText(text: String) = compose.waitUntilAtLeastOneExists(hasText(text), 15_000)
 
-    /**
-     * Waits until the product editor has saved and closed. Its own fields show the product's name and tax rate, so
-     * waiting for that text alone could press Back before the save finishes (and cancel it).
-     */
-    private fun awaitEditorClosed() =
-        compose.awaitCondition("the product editor closes") { compose.onAllNodesWithTag("productName").fetchSemanticsNodes().isEmpty() }
-
     /** There are no products in these tests, so a new sale opens the custom item keypad straight away. */
     private fun ringUpCustomAmount(vararg digits: Int) {
         compose.onNodeWithTag("newSale").performClick()
@@ -142,7 +136,7 @@ class AppFlowTest {
 
     @Test
     fun `terminal settings offer quick setup while using the simulator`() {
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         compose.waitForTag("quickSetupImport")
@@ -174,7 +168,7 @@ class AppFlowTest {
 
     @Test
     fun `adds a product and sells it`() {
-        compose.onNodeWithTag("products").performClick()
+        compose.openProducts()
         compose.waitForTag("addFab")
         compose.onNodeWithTag("addFab").performClick()
         compose.waitForTag("productName")
@@ -184,10 +178,9 @@ class AppFlowTest {
         compose.onNodeWithTag("saveProduct").assertIsNotEnabled()
         compose.onNodeWithTag("productPrice").performTextReplacement("4.50")
         compose.onNodeWithTag("saveProduct").performClick()
-        awaitEditorClosed()
+        compose.awaitEditorClosed()
         waitForText("Flat white")
-        compose.onNodeWithTag("back").performClick()
-
+        compose.productsToHome()
         compose.waitForTag("newSale")
         compose.onNodeWithTag("newSale").performClick()
         waitForText("Flat white")
@@ -254,7 +247,7 @@ class AppFlowTest {
                     .first()
                     .single { it.rateMilliPercent == 0 }
             }
-        compose.onNodeWithTag("products").performClick()
+        compose.openProducts()
         compose.waitForTag("addFab")
         compose.onNodeWithTag("addFab").performClick()
         compose.waitForTag("productName")
@@ -267,11 +260,10 @@ class AppFlowTest {
         compose.onNodeWithText("GST-free 0%").performClick()
         compose.onNodeWithTag("taxRatePicker").assertTextContains("GST-free 0%")
         compose.onNodeWithTag("saveProduct").performClick()
-        awaitEditorClosed()
+        compose.awaitEditorClosed()
         waitForText("GST-free 0%")
         assertThat(await { container.catalog.products.first { it.isNotEmpty() } }.single().taxRateId).isEqualTo(free.id)
-        compose.onNodeWithTag("back").performClick()
-
+        compose.productsToHome()
         compose.waitForTag("newSale")
         compose.onNodeWithTag("newSale").performClick()
         waitForText("Stamp")
@@ -292,7 +284,7 @@ class AppFlowTest {
 
         // With tax switched off, products and custom items no longer ask.
         compose.waitForTag("settings")
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitForTag("section_tax")
         compose.onNodeWithTag("section_tax").performScrollTo().performClick()
         compose.waitForTag("chargeTax")
@@ -302,8 +294,8 @@ class AppFlowTest {
         compose.onNodeWithTag("back").performClick()
         waitForText("Off")
         compose.onNodeWithTag("back").performClick()
-        compose.waitForTag("products")
-        compose.onNodeWithTag("products").performClick()
+        compose.waitForTag("settings")
+        compose.openProducts()
         compose.waitForTag("addFab")
         compose.onNodeWithText("GST-free 0%").assertDoesNotExist()
         compose.onNodeWithTag("addFab").performClick()
@@ -313,7 +305,7 @@ class AppFlowTest {
 
     @Test
     fun `an admin PIN locks settings`() {
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitForTag("section_security")
         compose.onNodeWithTag("section_security").performScrollTo().performClick()
         compose.waitForTag("setPin")
@@ -330,7 +322,7 @@ class AppFlowTest {
         compose.onNodeWithTag("back").performClick()
 
         compose.waitForTag("settings")
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitForTag("pin_1")
         listOf(9, 9, 9, 9).forEach { compose.onNodeWithTag("pin_$it").performClick() }
         compose.onNodeWithTag("pin_OK").performClick()
@@ -483,7 +475,7 @@ class AppFlowTest {
 
     @Test
     fun `takes a pre-authorisation of its own product and cancels it from the history`() {
-        compose.onNodeWithTag("products").performClick()
+        compose.openProducts()
         compose.waitForTag("addFab")
         compose.onNodeWithTag("addFab").performClick()
         compose.waitForTag("productName")
@@ -491,9 +483,9 @@ class AppFlowTest {
         compose.onNodeWithTag("productPrice").performTextInput("200")
         compose.onNodeWithTag("productPreAuth").performScrollTo().performClick()
         compose.onNodeWithTag("saveProduct").performClick()
-        awaitEditorClosed()
+        compose.awaitEditorClosed()
         waitForText("Pre-auth · GST 10%")
-        compose.onNodeWithTag("back").performClick()
+        compose.productsToHome()
 
         // A sale does not show the product (checked in the view model test); a pre-authorisation does.
         compose.waitForTag("preAuth")
@@ -642,7 +634,7 @@ class AppFlowTest {
 
     @Test
     fun `any Adyen currency can be chosen, or automatic`() {
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitForTag("section_payments")
         compose.onNodeWithTag("section_payments").performScrollTo().performClick()
         compose.waitForTag("currency")
@@ -683,7 +675,7 @@ class AppFlowTest {
     fun `home shows just the tiles, and About shows where payments go and the printer`() {
         compose.onNodeWithText("Settings are not protected", substring = true).assertDoesNotExist()
         compose.onNodeWithText("printer available", substring = true).assertDoesNotExist()
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitForTag("section_about")
         compose.onNodeWithTag("section_about").performScrollTo().performClick()
         waitForText("Payments go to")
@@ -694,7 +686,7 @@ class AppFlowTest {
 
     @Test
     fun `receipt business name can be edited`() {
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitForTag("section_receipts")
         compose.onNodeWithTag("section_receipts").performClick()
         compose.waitForTag("businessName")
@@ -705,3 +697,22 @@ class AppFlowTest {
         compose.waitForTag("section_terminal")
     }
 }
+
+@OptIn(ExperimentalTestApi::class)
+internal fun ComposeContentTestRule.openProducts() {
+    onNodeWithTag("settings").performClick()
+    waitUntilAtLeastOneExists(hasTestTag("products"), 15_000)
+    onNodeWithTag("products").performClick()
+}
+
+internal fun ComposeContentTestRule.productsToHome() {
+    onNodeWithTag("back").performClick()
+    onNodeWithTag("back").performClick()
+}
+
+/**
+ * Waits until the product editor has saved and closed. Its own fields show the product's name and tax rate, so
+ * waiting for that text alone could press Back before the save finishes (and cancel it).
+ */
+internal fun ComposeContentTestRule.awaitEditorClosed() =
+    awaitCondition("the product editor closes") { onAllNodesWithTag("productName").fetchSemanticsNodes().isEmpty() }

@@ -24,12 +24,23 @@ class SavedCardArchitectureTest {
                 .withImportOption { location -> !location.contains("UnitTest") }
                 .importPackages("app.minimpos.app")
         ownership.check(app)
+        deletionOwnership.check(app)
     }
 
     @Test
     fun `saved-card ownership rejects charges and refunds sent elsewhere`() {
         val imported = ClassFileImporter().importClasses(SavedCardViolation::class.java)
         assertTrue(ownership.description, ownership.evaluate(imported).hasViolation())
+    }
+
+    @Test
+    fun `token deletion ownership independently rejects deletion sent outside its owner`() {
+        val imported = ClassFileImporter().importClasses(TokenDeletionViolation::class.java)
+        assertTrue(deletionOwnership.description, deletionOwnership.evaluate(imported).hasViolation())
+    }
+
+    private class TokenDeletionViolation {
+        suspend fun delete(api: SavedCardApi) = api.delete("shopper", "token")
     }
 
     private class SavedCardViolation {
@@ -65,5 +76,13 @@ class SavedCardArchitectureTest {
                 .callMethodWhere(callTo(SavedCardApi::class.java, "charge"))
                 .orShould()
                 .callMethodWhere(callTo(PaymentModifications::class.java, "refund"))
+
+        // Deletion requires its own configured Manager approval, serialization and selection invalidation.
+        val deletionOwnership: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(Regex.escape(SavedCardCharges::class.java.name) + "(\\$.*)?")
+                .should()
+                .callMethodWhere(callTo(SavedCardApi::class.java, "delete"))
     }
 }

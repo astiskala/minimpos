@@ -2,7 +2,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
   <!-- App, onboarding, and common actions -->
   <string name="app_name">Mini mPOS</string>
-  <string name="locked">已锁定</string>
   <string name="banner_simulator">模拟器 — 不会进行真实支付</string>
   <string name="virtual_printer_title">模拟打印机</string>
   <string name="onboarding_title">欢迎使用 Mini mPOS</string>
@@ -54,7 +53,7 @@
   <string name="home_new_sale_hint">添加商品或自定义金额</string>
   <string name="home_pre_auth">新建预授权</string>
   <string name="home_pre_auth_hint">冻结卡内金额</string>
-  <string name="home_saved_card">令牌扣款</string>
+  <string name="home_saved_card">令牌</string>
   <string name="home_refund">退款</string>
   <string name="home_history">交易记录</string>
   <string name="home_reconciliation">对账</string>
@@ -155,12 +154,21 @@
   <string name="shopper_rating_prompt">请为本次体验评分（0–10）</string>
 
   <!-- Saved cards -->
-  <string name="saved_card_title">令牌扣款</string>
-  <string name="saved_card_intro">查找为购物者保存的令牌，选择一个，然后录入要扣款的商品。购物者无需在场；请先征得其同意。</string>
+  <string name="saved_card_title">令牌</string>
+  <string name="saved_card_intro">查找购物者保存的令牌。征得同意后扣款，或从Adyen删除令牌。</string>
   <string name="saved_card_find">查找令牌</string>
   <string name="saved_card_none">此购物者没有已保存的令牌。</string>
   <string name="saved_card_expires">有效期至 %1$s/%2$s</string>
   <string name="saved_card_unsupported">此令牌为其他付款类型保存，无法在此扣款。</string>
+  <string name="token_charge">扣款</string>
+  <string name="token_delete_title">删除令牌？</string>
+  <string name="token_delete_confirm">删除购物者 %3$s、商户 %4$s、%5$s 的 %1$s（令牌 %2$s）？该令牌将从Adyen删除，Mini mPOS以及使用此令牌的其他集成均无法再用它进行后续付款。现有付款和退款仍可使用。此操作无法撤销。</string>
+  <string name="token_delete_manager">要删除令牌，请在设置 › 安全中设置经理PIN。</string>
+  <string name="token_deleted">购物者 %2$s 的令牌 %1$s 已无法在Adyen使用。</string>
+  <string name="token_delete_failed">购物者 %2$s 的令牌 %1$s 未被删除。</string>
+  <string name="token_delete_unknown">购物者 %2$s 的令牌 %1$s 删除结果未确认。请重新获取Adyen列表。暂勿扣款或再次删除。</string>
+  <string name="token_deleting">正在检查购物者 %2$s 的令牌 %1$s 的删除结果…</string>
+  <string name="token_delete_recheck">检查删除结果</string>
   <string name="saved_card_card">卡</string>
   <string name="saved_card_charge">扣款 %1$s</string>
   <string name="saved_card_charging">正在使用令牌扣款…</string>
@@ -663,6 +671,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">设置</string>
+  <string name="settings_products_summary">商品和类别</string>
   <string name="settings_changes_saved">更改已保存。</string>
   <string name="settings_choose">选择一个部分以更改其设置。</string>
   <string name="settings_terminal">终端</string>
@@ -734,6 +743,7 @@
   <string name="settings_api_key">API 密钥</string>
   <string name="settings_adyen_key_hint">在商户后台打开“Developers › API credentials”。创建凭据并生成 API 密钥。</string>
   <string name="settings_adyen_roles_hint">除默认角色外，此 API 密钥还需添加以下角色：</string>
+  <string name="settings_adyen_role_tokens">API tokenise payment details</string>
   <string name="settings_adyen_role_cloud">Cloud Device API role</string>
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
@@ -959,7 +969,7 @@
   <string name="settings_ask_transaction_reference_hint">输入订单号或预订号，以便在 Adyen 中识别付款。留空则自动生成。</string>
   <string name="settings_tokenization">购物者与保存卡片</string>
   <string name="settings_offer_card_saving">提供保存卡片选项</string>
-  <string name="settings_offer_card_saving_hint">有购物者识别号时，结账会显示“保存卡片以供今后支付”。请先征得购物者同意。之后可在主页使用“令牌扣款”收款。</string>
+  <string name="settings_offer_card_saving_hint">有购物者识别号时，结账会显示“保存卡片以供今后支付”。请先征得购物者同意。之后可在主页的“令牌”中扣款。</string>
   <string name="settings_tokenize_default">默认保存卡片</string>
   <string name="settings_tokenize_default_hint">有购物者识别号时，销售默认开启“保存卡片以供今后支付”。</string>
   <string name="settings_pre_auth_tokenize_default">预授权也保存卡片</string>
@@ -1186,6 +1196,7 @@
   <string name="setup_charge_too_old">此操作时间过久，无法安全地再次发送。请在商户后台查看结果。</string>
   <string name="setup_shopper_reference">请在“设置 › 支付”中选择购物者识别号，以使用令牌。</string>
   <string name="setup_totals">当前收款目标无法提供终端汇总。Tap to Pay 不提供汇总。</string>
+  <string name="setup_token_deletion_pending">在扣款或删除其他令牌前，请先在令牌页面确认删除结果。</string>
   <string name="setup_operation_reconciliation">Adyen 不允许重试。请在商户后台查看此操作的结果。</string>
   <string name="payment_context_mismatch">当前设置与原支付的终端、商家账户或环境不一致。请恢复原设置后继续。</string>
   <string name="fault_unreachable_terminal">无法连接终端。请确认终端已开机、位于同一网络，且 IP 地址正确。</string>

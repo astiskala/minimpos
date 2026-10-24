@@ -180,7 +180,7 @@ class DestinationSettingsTest {
         readyTag: String,
     ) {
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.awaitCondition("settings list opens") {
             compose.onAllNodesWithTag("section_$section").fetchSemanticsNodes().isNotEmpty()
         }

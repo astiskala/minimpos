@@ -94,7 +94,7 @@ class AdaptiveLayoutTest {
     @Test
     fun `in an expanded window Settings stays beside the section it opened`() {
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_tax")
         compose.onNodeWithTag("section_tax").performScrollTo().performClick()
         waitForTag("chargeTax")

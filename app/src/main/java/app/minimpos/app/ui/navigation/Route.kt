@@ -134,7 +134,7 @@ sealed interface Route : NavKey {
         override val requiresManager get() = true
     }
 
-    /** Finding a shopper's saved cards by their shopper reference and choosing one to charge. */
+    /** Tokens: finding a shopper’s saved cards and choosing one to charge or delete. */
     @Serializable data object SavedCard : Route {
         override val requiresManager get() = true
     }

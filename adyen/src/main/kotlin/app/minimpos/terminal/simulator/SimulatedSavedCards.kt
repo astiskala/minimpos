@@ -4,9 +4,12 @@ import app.minimpos.terminal.checkout.CardChargeRequest
 import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
+import app.minimpos.terminal.checkout.StoredCardDeletion
 import app.minimpos.terminal.checkout.StoredCardListing
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.HTTP_NOT_FOUND
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 
@@ -23,16 +26,32 @@ class SimulatedSavedCards internal constructor(
     private val ledger: SimulatedLedger,
     private val cards: suspend (shopperReference: String) -> List<StoredCard>,
     private val answered: ConcurrentHashMap<String, CardChargeResult>,
+    private val deleted: MutableSet<Pair<String, String>>,
     private val outcome: () -> SimulatedOutcome,
 ) : SavedCardApi {
-    override suspend fun list(shopperReference: String): StoredCardListing = StoredCardListing.Listed(cards(shopperReference))
+    override suspend fun list(shopperReference: String): StoredCardListing = StoredCardListing.Listed(available(shopperReference))
+
+    private suspend fun available(reference: String): List<StoredCard> = cards(reference).filter { reference to it.id !in deleted }
+
+    override suspend fun delete(
+        shopperReference: String,
+        id: String,
+    ): StoredCardDeletion {
+        if (available(shopperReference).none { it.id == id }) return StoredCardDeletion.Failed(Fault.AdyenRejected(HTTP_NOT_FOUND))
+        val chosen = outcome()
+        if (chosen in setOf(SimulatedOutcome.DECLINE, SimulatedOutcome.CANCEL, SimulatedOutcome.BUSY)) {
+            return StoredCardDeletion.Failed(Fault.Permission(ApiKey.ADYEN))
+        }
+        deleted += shopperReference to id
+        return if (chosen == SimulatedOutcome.TIMEOUT) StoredCardDeletion.Failed(Fault.TimedOut) else StoredCardDeletion.Deleted
+    }
 
     override suspend fun charge(
         request: CardChargeRequest,
         idempotencyKey: String,
     ): CardChargeResult {
         answered[idempotencyKey]?.let { return it }
-        val card = cards(request.shopperReference).firstOrNull { it.id == request.storedPaymentMethodId }
+        val card = available(request.shopperReference).firstOrNull { it.id == request.storedPaymentMethodId }
         val chosen = outcome()
         val approve =
             card != null &&

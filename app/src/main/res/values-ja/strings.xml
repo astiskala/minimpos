@@ -2,7 +2,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
   <!-- App, onboarding, and common actions -->
   <string name="app_name">Mini mPOS</string>
-  <string name="locked">ロック中</string>
   <string name="banner_simulator">シミュレーター — 実際の決済は行われません</string>
   <string name="virtual_printer_title">シミュレータープリンター</string>
   <string name="onboarding_title">Mini mPOS へようこそ</string>
@@ -54,7 +53,7 @@
   <string name="home_new_sale_hint">商品または任意の金額を追加</string>
   <string name="home_pre_auth">新規プリオーソリ</string>
   <string name="home_pre_auth_hint">カードの利用枠を確保</string>
-  <string name="home_saved_card">トークンで請求</string>
+  <string name="home_saved_card">トークン</string>
   <string name="home_refund">返金</string>
   <string name="home_history">取引履歴</string>
   <string name="home_reconciliation">照合</string>
@@ -155,12 +154,21 @@
   <string name="shopper_rating_prompt">今回の体験を評価してください（0–10）</string>
 
   <!-- Saved cards -->
-  <string name="saved_card_title">トークンで請求</string>
-  <string name="saved_card_intro">購入者に保存されたトークンを検索して選択し、請求する商品を入力します。購入者が不在でも請求できます。事前に同意を得てください。</string>
+  <string name="saved_card_title">トークン</string>
+  <string name="saved_card_intro">購入者の保存済みトークンを検索します。同意を得て請求するか、Adyenからトークンを削除できます。</string>
   <string name="saved_card_find">トークンを検索</string>
   <string name="saved_card_none">この購入者に保存されたトークンはありません。</string>
   <string name="saved_card_expires">有効期限 %1$s/%2$s</string>
   <string name="saved_card_unsupported">別の種類の支払い用に保存されたトークンのため、ここでは請求できません。</string>
+  <string name="token_charge">請求</string>
+  <string name="token_delete_title">トークンを削除しますか？</string>
+  <string name="token_delete_confirm">購入者 %3$s、加盟店 %4$s、%5$s の %1$s（トークン %2$s）を削除しますか？Adyenから削除され、Mini mPOSやこのトークンを使う他の連携で今後の決済に使用できなくなります。既存の決済と返金は引き続き利用できます。元に戻せません。</string>
+  <string name="token_delete_manager">トークンを削除するには、設定 › セキュリティでマネージャーPINを設定してください。</string>
+  <string name="token_deleted">購入者 %2$s のトークン %1$s はAdyenで利用できなくなりました。</string>
+  <string name="token_delete_failed">購入者 %2$s のトークン %1$s は削除されませんでした。</string>
+  <string name="token_delete_unknown">購入者 %2$s のトークン %1$s の削除は未確認です。Adyenの一覧を再取得してください。請求や削除の再試行はまだ行わないでください。</string>
+  <string name="token_deleting">購入者 %2$s のトークン %1$s の削除を確認中…</string>
+  <string name="token_delete_recheck">削除を確認</string>
   <string name="saved_card_card">カード</string>
   <string name="saved_card_charge">%1$sを請求</string>
   <string name="saved_card_charging">トークンで請求しています…</string>
@@ -663,6 +671,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">設定</string>
+  <string name="settings_products_summary">商品とカテゴリ</string>
   <string name="settings_changes_saved">変更を保存しました。</string>
   <string name="settings_choose">変更する設定の項目を選んでください。</string>
   <string name="settings_terminal">端末</string>
@@ -734,6 +743,7 @@
   <string name="settings_api_key">APIキー</string>
   <string name="settings_adyen_key_hint">Customer Areaで「Developers › API credentials」を開いてください。認証情報を作成し、APIキーを生成してください。</string>
   <string name="settings_adyen_roles_hint">初期ロールに加え、このAPIキーには次の追加ロールが必要です：</string>
+  <string name="settings_adyen_role_tokens">API tokenise payment details</string>
   <string name="settings_adyen_role_cloud">Cloud Device API role</string>
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
@@ -959,7 +969,7 @@
   <string name="settings_ask_transaction_reference_hint">注文番号や予約番号を入力して、Adyenで決済を識別します。空欄なら自動生成します。</string>
   <string name="settings_tokenization">購入者とカードの保存</string>
   <string name="settings_offer_card_saving">カード保存の選択肢を表示</string>
-  <string name="settings_offer_card_saving_hint">購入者参照IDがある場合、会計時に「次回の決済用にカードを保存」を表示します。購入者の同意を得てください。トークンには後でホームの「トークンで請求」から請求できます。</string>
+  <string name="settings_offer_card_saving_hint">購入者参照IDがある場合、会計時に「次回の決済用にカードを保存」を表示します。購入者の同意を得てください。後でホームの「トークン」から請求できます。</string>
   <string name="settings_tokenize_default">カードを標準で保存</string>
   <string name="settings_tokenize_default_hint">購入者参照IDがあるとき、販売は「次回の決済用にカードを保存」がオンで始まります。</string>
   <string name="settings_pre_auth_tokenize_default">プリオーソリでもカードを保存</string>
@@ -1186,6 +1196,7 @@
   <string name="setup_charge_too_old">時間が経過しているため、安全に再送信できません。Customer Areaで結果を確認してください。</string>
   <string name="setup_shopper_reference">トークンを使うには、「設定 › 決済」で購入者参照IDを選択してください。</string>
   <string name="setup_totals">現在の決済先では端末の合計を取得できません。Tap to Payは合計を報告しません。</string>
+  <string name="setup_token_deletion_pending">別のトークンで請求・削除する前に、トークン画面で削除結果を確認してください。</string>
   <string name="setup_operation_reconciliation">Adyen は再試行を許可していません。Customer Area でこの操作の結果を確認してください。</string>
   <string name="payment_context_mismatch">現在の設定は元の決済の端末、マーチャントアカウント、または環境と一致しません。元の設定に戻してから続行してください。</string>
   <string name="fault_unreachable_terminal">端末に接続できませんでした。端末の電源、同じネットワークにあること、IPアドレスを確認してください。</string>

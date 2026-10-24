@@ -149,7 +149,7 @@ class TransferScreensTest {
     @Test
     fun `settings share the catalogue, settings and secrets, with a transfer code`() {
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_about")
         compose.onNodeWithTag("section_data").performScrollTo().performClick()
         waitForTag("shareToTerminal")

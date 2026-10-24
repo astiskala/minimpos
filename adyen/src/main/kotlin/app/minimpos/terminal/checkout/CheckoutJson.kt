@@ -19,8 +19,8 @@ internal fun parseError(text: String): ServiceError? = decodeAdyenModel(text, Se
 internal fun unexpectedStatus(text: String): Fault = Fault.UnreadableReply(ExternalText.of(adyenField(text, "status")))
 
 /** The fault of an unsuccessful Checkout answer, with Adyen's error message and code from its error model. */
-internal fun AdyenReply.Answered.checkoutFault(): Fault =
-    parseError(body).let { fault(ApiKey.ADYEN, role = null, error = AdyenError(ExternalText.of(it?.message), it?.errorCode)) }
+internal fun AdyenReply.Answered.checkoutFault(role: String? = null): Fault =
+    parseError(body).let { fault(ApiKey.ADYEN, role = role, error = AdyenError(ExternalText.of(it?.message), it?.errorCode)) }
 
 /** The fault of a call that got no usable answer from the Checkout API. */
 internal fun AdyenReply.failure(): Fault? =

@@ -180,6 +180,8 @@ and line-item validation; whether a shopper reference without `recurringProcessi
 the role name `GET /me` reports for `Merchant Recurring role`;
 `GET /storedPaymentMethods` listing terminal-saved tokens, shopper-not-present (`ContAuth`) token payments for each
 recurring processing model, and Checkout refunds (`/payments/{pspReference}/refunds`) of those payments;
+`API tokenise payment details` role reporting, scoped token DELETE HTTP 204/refusals, token visibility after deletion
+and timeout reconciliation through fresh listings;
 Management single-store/merchant receipt details, read permissions and missing-store answers; terminal discovery,
 reported network addresses and shared-key settings (including inherited settings, sensitive-field permissions,
 targeted POIID search, full-object PATCH preservation and propagation of newly created keys to terminals); POS-wallet
@@ -260,7 +262,7 @@ All Adyen integrations live in `:adyen` and use the pinned Adyen Java library's 
 
 | API | Model coverage |
 | --- | --- |
-| Checkout | Payment-method verification, captures, amount updates, refunds, payment links, stored-card listing and charges, plus errors. |
+| Checkout | Payment-method verification, captures, amount updates, refunds, payment links, stored-card listing and charges, plus errors; token deletion has no body and returns HTTP 204. |
 | Terminal | Payments, reversals, status, abort, diagnosis, printing, totals, reconciliation, admin, display and input; encrypted local and Payments app envelopes. |
 | Cloud device | Connected-device listing and errors; forwarded Terminal API messages use the same Terminal models. |
 | Management | Credential introspection, terminals, shared keys, capability settings, merchants, stores, payment methods and errors. |

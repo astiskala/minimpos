@@ -538,7 +538,7 @@ class AppContainer(
             targets = api.targets,
         )
 
-    /** Explicit Charge token lookup, retained across its reference, cart and review screens; never queries on its own. */
+    /** Explicit Tokens lookup, retained across its reference, cart and review screens; never queries on its own. */
     val savedCardLookup =
         savedCardCharges.lookup(
             appScope,

@@ -125,7 +125,7 @@ class PaymentLinkFlowTest {
 
     @Test
     fun `payment link settings offer expiry without a redundant API setup warning`() {
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_payments")
         compose.onNodeWithTag("section_payments").performScrollTo().performClick()
         compose.onNodeWithTag("paymentLinks").assertDoesNotExist()

@@ -135,6 +135,12 @@ internal class AdyenHttp(
         timeout: Duration,
     ): AdyenReply = call(Request.Builder().url(url).patch(json.toRequestBody(JSON)), timeout)
 
+    /** `DELETE [url]` without a body, waiting at most [timeout]; never retried automatically. */
+    suspend fun delete(
+        url: HttpUrl,
+        timeout: Duration,
+    ): AdyenReply = call(Request.Builder().url(url).delete(), timeout)
+
     private suspend fun call(
         request: Request.Builder,
         timeout: Duration,

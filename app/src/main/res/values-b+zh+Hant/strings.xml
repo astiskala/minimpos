@@ -2,7 +2,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
   <!-- App, onboarding, and common actions -->
   <string name="app_name">Mini mPOS</string>
-  <string name="locked">已鎖定</string>
   <string name="banner_simulator">模擬器 — 不會進行真實支付</string>
   <string name="virtual_printer_title">模擬打印機</string>
   <string name="onboarding_title">歡迎使用 Mini mPOS</string>
@@ -54,7 +53,7 @@
   <string name="home_new_sale_hint">新增商品或自訂金額</string>
   <string name="home_pre_auth">新建預授權</string>
   <string name="home_pre_auth_hint">凍結卡內金額</string>
-  <string name="home_saved_card">代碼扣款</string>
+  <string name="home_saved_card">代碼</string>
   <string name="home_refund">退款</string>
   <string name="home_history">交易紀錄</string>
   <string name="home_reconciliation">對帳</string>
@@ -155,12 +154,21 @@
   <string name="shopper_rating_prompt">請為本次體驗評分（0–10）</string>
 
   <!-- Saved cards -->
-  <string name="saved_card_title">代碼扣款</string>
-  <string name="saved_card_intro">尋找為顧客儲存的代碼，選擇一個，然後輸入要扣款的商品。顧客毋須在場；請先取得其同意。</string>
+  <string name="saved_card_title">代碼</string>
+  <string name="saved_card_intro">尋找顧客儲存的代碼。取得同意後扣款，或從Adyen刪除代碼。</string>
   <string name="saved_card_find">尋找代碼</string>
   <string name="saved_card_none">此顧客沒有已儲存的代碼。</string>
   <string name="saved_card_expires">有效期至 %1$s/%2$s</string>
   <string name="saved_card_unsupported">此代碼為其他付款類型儲存，無法在此扣款。</string>
+  <string name="token_charge">扣款</string>
+  <string name="token_delete_title">刪除代碼？</string>
+  <string name="token_delete_confirm">刪除顧客 %3$s、商戶 %4$s、%5$s 的 %1$s（代碼 %2$s）？此代碼將從Adyen刪除，Mini mPOS及使用此代碼的其他整合均無法再用它作日後付款。現有付款及退款仍可使用。此操作無法復原。</string>
+  <string name="token_delete_manager">如要刪除代碼，請在設定 › 安全中設定經理PIN。</string>
+  <string name="token_deleted">顧客 %2$s 的代碼 %1$s 已無法在Adyen使用。</string>
+  <string name="token_delete_failed">顧客 %2$s 的代碼 %1$s 未被刪除。</string>
+  <string name="token_delete_unknown">顧客 %2$s 的代碼 %1$s 刪除結果未確認。請重新取得Adyen清單。暫時不要扣款或再次刪除。</string>
+  <string name="token_deleting">正在檢查顧客 %2$s 的代碼 %1$s 的刪除結果…</string>
+  <string name="token_delete_recheck">檢查刪除結果</string>
   <string name="saved_card_card">卡</string>
   <string name="saved_card_charge">扣款 %1$s</string>
   <string name="saved_card_charging">正在使用代碼扣款…</string>
@@ -663,6 +671,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">設定</string>
+  <string name="settings_products_summary">商品及類別</string>
   <string name="settings_changes_saved">更改已儲存。</string>
   <string name="settings_choose">選擇一個部分以變更其設定。</string>
   <string name="settings_terminal">終端</string>
@@ -734,6 +743,7 @@
   <string name="settings_api_key">API 密鑰</string>
   <string name="settings_adyen_key_hint">在商戶後台打開“Developers › API credentials”。建立憑據並生成 API 密鑰。</string>
   <string name="settings_adyen_roles_hint">除預設角色外，此 API 密鑰還需新增以下角色：</string>
+  <string name="settings_adyen_role_tokens">API tokenise payment details</string>
   <string name="settings_adyen_role_cloud">Cloud Device API role</string>
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
@@ -959,7 +969,7 @@
   <string name="settings_ask_transaction_reference_hint">輸入訂單號或預訂號，以便在 Adyen 中識別付款。留空則自動生成。</string>
   <string name="settings_tokenization">顧客與儲存卡</string>
   <string name="settings_offer_card_saving">提供儲存卡選項</string>
-  <string name="settings_offer_card_saving_hint">有顧客參考編號時，結帳會顯示“儲存卡以供今後支付”。請先徵得顧客同意。之後可在主頁使用“代碼扣款”收款。</string>
+  <string name="settings_offer_card_saving_hint">有顧客參考編號時，結帳會顯示“儲存卡以供今後支付”。請先取得顧客同意。之後可在主頁的“代碼”中扣款。</string>
   <string name="settings_tokenize_default">預設儲存卡</string>
   <string name="settings_tokenize_default_hint">有顧客參考編號時，銷售預設開啟“儲存卡以供今後支付”。</string>
   <string name="settings_pre_auth_tokenize_default">預授權亦儲存卡</string>
@@ -1186,6 +1196,7 @@
   <string name="setup_charge_too_old">此操作時間過久，無法安全地再次發送。請在商戶後台查看結果。</string>
   <string name="setup_shopper_reference">請在“設定 › 支付”中選擇顧客參考編號，以使用代碼。</string>
   <string name="setup_totals">目前收款目標無法提供終端匯總。Tap to Pay 不提供匯總。</string>
+  <string name="setup_token_deletion_pending">在扣款或刪除其他代碼前，請先在代碼頁面確認刪除結果。</string>
   <string name="setup_operation_reconciliation">Adyen 不允許重試。請在商戶後台查看此操作的結果。</string>
   <string name="payment_context_mismatch">目前設定與原支付的終端、商戶帳戶或環境不一致。請恢復原設定後繼續。</string>
   <string name="fault_unreachable_terminal">無法連接終端。請確認終端已開機、位於同一網絡，且 IP 地址正確。</string>

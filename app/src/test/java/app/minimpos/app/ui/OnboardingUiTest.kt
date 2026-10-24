@@ -129,7 +129,7 @@ class OnboardingUiTest {
                     .first()
             }
         val settings = env.container.settingsState.value
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitFor("section_simulator")
         compose.onNodeWithTag("section_simulator").performScrollTo().performClick()
         waitFor("exitDemo")
@@ -177,7 +177,7 @@ class OnboardingUiTest {
             },
         ).hasSize(11)
 
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitFor("section_data")
         compose.onNodeWithTag("section_data").performScrollTo().performClick()
         waitFor("addSamples")

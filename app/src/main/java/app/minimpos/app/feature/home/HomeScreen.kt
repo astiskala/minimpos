@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,20 +26,16 @@ import androidx.compose.material.icons.filled.Balance
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockClock
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -94,7 +89,6 @@ fun HomeScreen(
     val container = LocalAppContainer.current
     val dimens = LocalDimens.current
     val settings by container.settingsState.collectAsStateWithLifecycle()
-    val pinSet by container.pinManager.pinConfigured.collectAsStateWithLifecycle(initialValue = false)
     val terminal by container.terminalStatus.state.collectAsStateWithLifecycle()
     val update by container.update.state.collectAsStateWithLifecycle()
     val gate = currentSetupGate()
@@ -107,6 +101,11 @@ fun HomeScreen(
         title = settings.receipt.businessName.ifBlank { stringResource(R.string.app_name) },
         onBack = null,
         modifier = modifier,
+        actions = {
+            IconButton(onClick = { open(Route.Settings) }, modifier = Modifier.testTag("settings")) {
+                Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.home_settings))
+            }
+        },
     ) { padding ->
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             // The tiles share the height, up to that of the largest terminals (the S1F4 Pro), and stop growing beyond.
@@ -129,7 +128,7 @@ fun HomeScreen(
                         UpdateCard(offered, container.update::dismiss)
                     }
                     PaymentTiles(onOpen = open)
-                    AreaTiles(locked = pinSet, onOpen = open)
+                    AreaTiles(onOpen = open)
                 }
             }
         }
@@ -301,14 +300,10 @@ private fun PaymentTile(
 }
 
 /**
- * Tiles for the everyday areas, then the admin ones as a slim row of plain buttons, which show a lock when [locked]
- * (a PIN is set).
+ * Tiles for the everyday areas, in row-major order among the implemented workflows.
  */
 @Composable
-private fun ColumnScope.AreaTiles(
-    locked: Boolean,
-    onOpen: (Route) -> Unit,
-) {
+private fun ColumnScope.AreaTiles(onOpen: (Route) -> Unit) {
     val savedCard = stringResource(R.string.home_saved_card)
     val refund = stringResource(R.string.home_refund)
     val history = stringResource(R.string.home_history)
@@ -350,48 +345,6 @@ private fun ColumnScope.AreaTiles(
             onClick = { onOpen(Route.Reconciliation) },
             modifier = Modifier.testTag("reconciliation"),
         )
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
-        AdminButton(
-            Icons.Default.Inventory2,
-            stringResource(R.string.home_products),
-            locked = locked,
-            onClick = { onOpen(Route.Products) },
-            modifier = Modifier.testTag("products"),
-        )
-        AdminButton(
-            Icons.Default.Settings,
-            stringResource(R.string.home_settings),
-            locked = locked,
-            onClick = { onOpen(Route.Settings) },
-            modifier = Modifier.testTag("settings"),
-        )
-    }
-}
-
-/** A low-key outlined button in grey for an admin area, with a small lock after the [label] when [locked]. */
-@Composable
-private fun RowScope.AdminButton(
-    icon: ImageVector,
-    label: String,
-    locked: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    OutlinedButton(
-        onClick = onClick,
-        shape = MaterialTheme.shapes.medium,
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
-        contentPadding = PaddingValues(horizontal = 8.dp),
-        modifier = modifier.weight(1f).heightIn(min = LocalDimens.current.secondaryButtonHeight),
-    ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (locked) {
-            Spacer(Modifier.width(6.dp))
-            Icon(Icons.Default.Lock, contentDescription = stringResource(R.string.locked), modifier = Modifier.size(14.dp))
-        }
     }
 }
 

@@ -91,7 +91,7 @@
   parciales</a></li><li><a href="#shopper-display">Pantalla del cliente</a></li><li><a href="#giving">Donaciones de
   caridad</a></li><li><a href="#keyed-entry">MOTO y MKE</a></li></ul></li><li><a href="#offline">Pagos fuera de línea
   </a></li><li><a href="#wallets">Escanear códigos de billetera</a></li><li><a href="#shoppers">Referencias y tarjetas
-  guardadas</a><ul><li><a href="#saved-card">Cargar una token</a></li></ul></li><li><a href="#payment-links">Enlaces de
+  guardadas</a><ul><li><a href="#saved-card">Administrar tokens</a></li></ul></li><li><a href="#payment-links">Enlaces de
   pago</a></li><li><a href="#preauth">Depósitos</a></li><li><a href="#terminal-tips">propinas sobre la terminal</a></li>
   <li><a href="#tips">propinas sobre el recibo</a></li><li><a href="#more">Más dispositivos y datos</a></li>
 </ol></div>
@@ -107,7 +107,7 @@
   parciales</a></li><li><a href="#shopper-display">Pantalla del cliente</a></li><li><a href="#giving">Donaciones de
   caridad</a></li><li><a href="#keyed-entry">MOTO y MKE</a></li></ul></li><li><a href="#offline">Pagos fuera de línea
   </a></li><li><a href="#wallets">Escanear códigos de billetera</a></li><li><a href="#shoppers">Referencias y tarjetas
-  guardadas</a><ul><li><a href="#saved-card">Cargar una token</a></li></ul></li><li><a href="#payment-links">Enlaces de
+  guardadas</a><ul><li><a href="#saved-card">Administrar tokens</a></li></ul></li><li><a href="#payment-links">Enlaces de
   pago</a></li><li><a href="#preauth">Depósitos</a></li><li><a href="#terminal-tips">propinas sobre la terminal</a></li>
   <li><a href="#tips">propinas sobre el recibo</a></li><li><a href="#more">Más dispositivos y datos</a></li>
 </ol></details>
@@ -133,9 +133,15 @@
             <p>Cambiar la moneda mantiene los números en tus precios; no los convierte a un tipo de cambio. Verifique
               los precios de sus productos después.</p>
           </div>
+          <p id="settings-navigation">
+            En Inicio, toque el icono <strong>Configuración</strong> de la esquina superior derecha para abrir la
+            configuración principal. Ingrese el PIN de administrador si se solicita. Abra <strong>Productos</strong>
+            allí; Atrás vuelve a Configuración y luego a Inicio. La configuración y la conexión están disponibles
+            antes de configurar los pagos.
+          </p>
           <h3 id="products">Agregar productos</h3>
           <ol>
-            <li>Abra <strong>Productos</strong> y toque <strong>+</strong>.</li>
+            <li>Abra <strong>Configuración › Productos</strong> y toque <strong>+</strong>.</li>
             <li>Introduzca un nombre, precio y tasa impositiva. Opcionalmente agregue una categoría y un código de
               barras, escrito o escaneado.</li>
             <li>Para un depósito, encienda <strong>Producto de preautorización</strong> para que aparezca sólo en las
@@ -561,24 +567,33 @@
             <dt>Tarjetas guardadas</dt><dd>Con un conjunto de referencias de comprador, active <strong>Ofrecer guardar
               tarjetas</strong> y elige el <strong>Modelo de procesamiento recurrente</strong> para su configuración de
               Adyen. Obtenga el consentimiento del cliente antes de seleccionar <strong>Guardar tarjeta para futuros
-              pagos</strong>. Para cargar uno más tarde, consulte <a href="#saved-card">cobrar una token</a>.</dd>
+              pagos</strong>. Para cargar uno más tarde, consulte <a href="#saved-card">Administrar tokens</a>.</dd>
           </dl>
-          <h3 id="saved-card">Cargar una token</h3>
+          <h3 id="saved-card">Administrar tokens</h3>
           <ol>
-            <li>En Inicio, toque <strong>Cobrar token</strong> e ingrese al Administrador PIN si se le solicita.</li>
+            <li>En Inicio, toque <strong>Tokens</strong> e ingrese al Administrador PIN si se le solicita.</li>
             <li>Ingrese la referencia del cliente, o el correo electrónico cuando sea la referencia del comprador, y
               toque <strong>Buscar tokens</strong>.</li>
-            <li>Elija un token, luego agregue productos o un <strong>Artículo personalizado</strong>. Este carro está
-              separado de <strong>Nueva venta</strong>.</li>
+            <li>Toque <strong>Cobrar</strong> junto a un token y agregue productos o un <strong>Artículo
+              personalizado</strong>. Este carrito es independiente de <strong>Nueva venta</strong>.</li>
             <li>Revise el cargo y toque <strong>Cobrar</strong>.</li>
           </ol>
           <p>El cliente no está presente, así que primero obtenga su consentimiento. Tokens guardados para un diferente
-            <strong>Modelo de procesamiento recurrente</strong> no se puede elegir. Reembolsar estos pagos de <strong>
+            <strong>Modelo de procesamiento recurrente</strong> no se pueden cobrar aquí. Reembolsar estos pagos de <strong>
             Historial</strong>; su código de reembolso QR solo funciona en el dispositivo que los cobró. Si se desconoce el resultado de un cargo,
             compruébelo en el Historial dentro de los siete días, luego en el Área de Clientes. En el proceso de pago de
             una nueva venta, una vez que la referencia del comprador ingresada tenga tokens guardados, <strong>Cobrar
             token</strong> aparece entre <strong>Escanear billetera</strong> y <strong>Crear enlace de pago</strong>:
             después de la aprobación del Gerente, elija un token para cargarle la venta.</p>
+          <p id="token-deletion">
+            Para eliminar un token de la lista, incluso uno que no se puede cobrar, toque <strong>Eliminar</strong>.
+            Revise el resumen de la tarjeta, el ID del token, el comprador, la cuenta de comercio y el entorno.
+            Confirme y apruebe con el PIN de gerente, que debe estar configurado. Se elimina de Adyen y ya no podrá
+            usarse para pagos futuros en Mini mPOS ni en otras integraciones que lo utilicen. No se puede deshacer.
+            Los pagos históricos y sus reembolsos referenciados siguen disponibles. Si falta la respuesta, Mini mPOS
+            invalida las selecciones y consulta una lista nueva. Si sigue sin confirmarse, toque <strong>Comprobar
+            eliminación</strong>; no cobre ni repita la eliminación hasta resolverla.
+          </p>
           <p class="back-to-contents"><a href="#contents">Volver al contenido</a></p>
         </section>
         <section id="payment-links">

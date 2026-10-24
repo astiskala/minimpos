@@ -2,7 +2,6 @@
 <resources>
   <!-- App, onboarding, and common actions -->
   <string name="app_name">Mini mPOS</string>
-  <string name="locked">Bloqueado</string>
   <string name="banner_simulator">SIMULADOR – sin pagos reales</string>
   <string name="virtual_printer_title">Impresora simulada</string>
   <string name="onboarding_title">Bienvenido a Mini mPOS</string>
@@ -54,7 +53,7 @@
   <string name="home_new_sale_hint">Agrega productos o un importe personalizado</string>
   <string name="home_pre_auth">Nueva preautorización</string>
   <string name="home_pre_auth_hint">Retener un importe en una tarjeta</string>
-  <string name="home_saved_card">Cobrar token</string>
+  <string name="home_saved_card">Tokens</string>
   <string name="home_refund">Reembolso</string>
   <string name="home_history">Historial</string>
   <string name="home_reconciliation">Conciliación</string>
@@ -157,12 +156,21 @@
   <string name="shopper_rating_prompt">Califica tu experiencia (0–10)</string>
 
   <!-- Saved cards -->
-  <string name="saved_card_title">Cobrar token</string>
-  <string name="saved_card_intro">Busque los tokens guardados de un comprador, elija uno y registre los artículos a cobrar. El comprador no necesita estar presente; obtenga primero su consentimiento.</string>
+  <string name="saved_card_title">Tokens</string>
+  <string name="saved_card_intro">Busque los tokens guardados de un comprador. Cobre con su consentimiento o elimine un token de Adyen.</string>
   <string name="saved_card_find">Buscar tokens</string>
   <string name="saved_card_none">No se guardan tokens para este comprador.</string>
   <string name="saved_card_expires">Vence %1$s/%2$s</string>
   <string name="saved_card_unsupported">Guardado para otro tipo de pago; no se puede cobrar aquí.</string>
+  <string name="token_charge">Cobrar</string>
+  <string name="token_delete_title">¿Eliminar token?</string>
+  <string name="token_delete_confirm">¿Eliminar %1$s (token %2$s) del comprador %3$s, comercio %4$s, %5$s? Se elimina de Adyen y ya no podrá usarse para pagos futuros en Mini mPOS ni en otras integraciones que lo utilicen. Los pagos y reembolsos existentes seguirán disponibles. No se puede deshacer.</string>
+  <string name="token_delete_manager">Configure un PIN de gerente en Configuración › Seguridad para eliminar tokens.</string>
+  <string name="token_deleted">El token %1$s del comprador %2$s ya no está disponible en Adyen.</string>
+  <string name="token_delete_failed">No se eliminó el token %1$s del comprador %2$s.</string>
+  <string name="token_delete_unknown">La eliminación del token %1$s del comprador %2$s no está confirmada. Vuelva a consultar la lista de Adyen. No cobre ni repita la eliminación todavía.</string>
+  <string name="token_deleting">Comprobando la eliminación del token %1$s del comprador %2$s…</string>
+  <string name="token_delete_recheck">Comprobar eliminación</string>
   <string name="saved_card_card">Tarjeta</string>
   <string name="saved_card_charge">Cobrar %1$s</string>
   <string name="saved_card_charging">Cobrando el token…</string>
@@ -667,6 +675,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">Configuración</string>
+  <string name="settings_products_summary">Productos y categorías</string>
   <string name="settings_changes_saved">Cambios guardados.</string>
   <string name="settings_choose">Elija una sección para cambiar su configuración.</string>
   <string name="settings_terminal">Terminal</string>
@@ -738,6 +747,7 @@
   <string name="settings_api_key">Clave API</string>
   <string name="settings_adyen_key_hint">En Área de Clientes, abre Developers › API credentials. Crea una credencial y genera su clave API.</string>
   <string name="settings_adyen_roles_hint">Además de las funciones predeterminadas, esta clave API necesita las siguientes funciones adicionales:</string>
+  <string name="settings_adyen_role_tokens">API tokenise payment details</string>
   <string name="settings_adyen_role_cloud">Cloud Device API role</string>
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
@@ -967,7 +977,7 @@
   <string name="settings_ask_transaction_reference_hint">Introduce un número de pedido o reserva para identificar el pago en Adyen. Déjelo en blanco para generar uno.</string>
   <string name="settings_tokenization">Compradores y tarjetas guardadas</string>
   <string name="settings_offer_card_saving">Ofrecer guardar tarjetas</string>
-  <string name="settings_offer_card_saving_hint">Cobro ofrece guardar la tarjeta cuando hay una referencia del comprador. Solicite su consentimiento. Después, use Cobrar token en Inicio para cobrar los tokens.</string>
+  <string name="settings_offer_card_saving_hint">Cobro ofrece guardar la tarjeta cuando hay una referencia del comprador. Solicite su consentimiento. Después, abra Tokens en Inicio para cobrar los tokens.</string>
   <string name="settings_tokenize_default">Guardar tarjetas por defecto</string>
   <string name="settings_tokenize_default_hint">Las ventas comienzan con Guardar tarjeta activado cuando hay una referencia del comprador.</string>
   <string name="settings_pre_auth_tokenize_default">Guardar tarjetas para preautorizaciones</string>
@@ -1198,6 +1208,7 @@
   <string name="setup_charge_too_old">Esto es demasiado antiguo para volver a enviarlo de forma segura. Comprueba su resultado en tu Área de Clientes.</string>
   <string name="setup_shopper_reference">Elija una referencia de comprador en Configuración › Pagos para usar tokens.</string>
   <string name="setup_totals">Los totales de terminal no están disponibles donde van los pagos ahora. Tap to Pay no los reporta.</string>
+  <string name="setup_token_deletion_pending">Resuelva la eliminación en Tokens antes de cobrar o eliminar otro token.</string>
   <string name="setup_operation_reconciliation">Adyen no permitió un nuevo intento. Comprueba el resultado de esta operación en tu Área de Clientes.</string>
   <string name="payment_context_mismatch">Esta configuración no coincide con la terminal de pago, la cuenta comercial o el entorno del pago original. Restaure la configuración original antes de continuar.</string>
   <string name="fault_unreachable_terminal">No se pudo llegar a la terminal. Comprueba que esté encendido, en la misma red y en esta dirección IP.</string>

@@ -91,7 +91,7 @@
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
-  <a href="#saved-card">Charge a token</a></li></ul></li><li><a href="#payment-links">Payment links</a></li><li>
+  <a href="#saved-card">Manage tokens</a></li></ul></li><li><a href="#payment-links">Payment links</a></li><li>
   <a href="#preauth">Deposits</a></li><li><a href="#terminal-tips">Tips on the terminal</a></li><li><a href="#tips">Tips
   on the receipt</a></li><li><a href="#more">More devices and data</a></li>
 </ol></div>
@@ -107,7 +107,7 @@
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
-  <a href="#saved-card">Charge a token</a></li></ul></li><li><a href="#payment-links">Payment links</a></li><li>
+  <a href="#saved-card">Manage tokens</a></li></ul></li><li><a href="#payment-links">Payment links</a></li><li>
   <a href="#preauth">Deposits</a></li><li><a href="#terminal-tips">Tips on the terminal</a></li><li><a href="#tips">Tips
   on the receipt</a></li><li><a href="#more">More devices and data</a></li>
 </ol></details>
@@ -132,9 +132,14 @@
             <p>Changing the currency keeps the numbers in your prices; it does not convert them at an exchange rate.
               Check your product prices afterward.</p>
           </div>
+          <p id="settings-navigation">
+            On Home, tap the top-right <strong>Settings</strong> icon to open main Settings. Enter the admin PIN if
+            asked. Open <strong>Products</strong> there; Back returns to Settings, then Home. Settings and setup
+            remain available before payments are configured.
+          </p>
           <h3 id="products">Add products</h3>
           <ol>
-            <li>Open <strong>Products</strong> and tap <strong>+</strong>.</li>
+            <li>Open <strong>Settings › Products</strong> and tap <strong>+</strong>.</li>
             <li>Enter a name, price and tax rate. Optionally add a category and a barcode, typed or scanned.</li>
             <li>For a deposit, switch on <strong>Pre-authorization product</strong> so that it appears only in
               pre-authorizations.</li>
@@ -529,23 +534,32 @@
             <dt>Saved cards</dt><dd>With a shopper reference set, turn on <strong>Offer to save cards</strong> and
               choose the <strong>Recurring processing model</strong> for your Adyen setup. Get the customer's consent
               before selecting <strong>Save card for future payments</strong>. To charge one later, see
-              <a href="#saved-card">charge a token</a>.</dd>
+              <a href="#saved-card">Manage tokens</a>.</dd>
           </dl>
-          <h3 id="saved-card">Charge a token</h3>
+          <h3 id="saved-card">Manage tokens</h3>
           <ol>
-            <li>On Home, tap <strong>Charge token</strong> and enter the Manager PIN if asked.</li>
+            <li>On Home, tap <strong>Tokens</strong> and enter the Manager PIN if asked.</li>
             <li>Enter the customer reference, or the email when that is the shopper reference, and tap <strong>Find
               tokens</strong>.</li>
-            <li>Choose a token, then add products or a <strong>Custom item</strong>. This cart is separate from <strong>
-              New sale</strong>.</li>
+            <li>Tap <strong>Charge</strong> beside a token, then add products or a <strong>Custom item</strong>.
+              This cart is separate from <strong>New sale</strong>.</li>
             <li>Review the charge and tap <strong>Charge</strong>.</li>
           </ol>
           <p>The customer is not present, so get their consent first. Tokens saved for a different <strong>Recurring
-            processing model</strong> cannot be chosen. Refund these payments from <strong>History</strong>; their
+            processing model</strong> cannot be charged here. Refund these payments from <strong>History</strong>; their
             refund QR code works only on the device that charged them. If a charge's result is unknown, check it from History within seven days,
             after that in the Customer Area. At a New sale’s checkout, once the entered shopper reference has tokens
             saved, <strong>Charge token</strong> appears between <strong>Scan wallet</strong> and <strong>Create payment
             link</strong>: after Manager approval, choose a token to charge the sale to it.</p>
+          <p id="token-deletion">
+            To delete a listed token, including one that cannot be charged, tap its <strong>Delete</strong> action.
+            Review the card summary, token ID, shopper, merchant account and environment, then confirm and approve
+            with the Manager PIN. A configured Manager PIN is required. Deletion removes the token from Adyen,
+            preventing future payments in Mini mPOS and other integrations using that token; it cannot be undone.
+            Historical payments and their referenced refunds stay available. If the answer is missing, Mini mPOS
+            invalidates selections and checks a fresh listing. If deletion remains unconfirmed, use <strong>Check
+            deletion</strong>; do not charge or retry deletion until resolved.
+          </p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="payment-links">

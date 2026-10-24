@@ -91,7 +91,7 @@
   partiels</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
-  </a><ul><li><a href="#saved-card">Charger un jeton</a></li></ul></li><li><a href="#payment-links">Liens de paiement
+  </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#payment-links">Liens de paiement
   </a></li><li><a href="#preauth">Dépôts</a></li><li><a href="#terminal-tips">pourboires sur le terminal</a></li><li>
   <a href="#tips">pourboires sur le reçu</a></li><li><a href="#more">Plus d&#x27;appareils et de données</a></li>
 </ol></div>
@@ -107,7 +107,7 @@
   partiels</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
-  </a><ul><li><a href="#saved-card">Charger un jeton</a></li></ul></li><li><a href="#payment-links">Liens de paiement
+  </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#payment-links">Liens de paiement
   </a></li><li><a href="#preauth">Dépôts</a></li><li><a href="#terminal-tips">pourboires sur le terminal</a></li><li>
   <a href="#tips">pourboires sur le reçu</a></li><li><a href="#more">Plus d&#x27;appareils et de données</a></li>
 </ol></details>
@@ -133,9 +133,15 @@
             <p>Changer la devise conserve les chiffres dans vos prix ; il ne les convertit pas à un taux de change.
               Vérifiez ensuite les prix de vos produits.</p>
           </div>
+          <p id="settings-navigation">
+            Sur Accueil, appuyez sur l’icône <strong>Paramètres</strong> en haut à droite pour ouvrir les paramètres
+            principaux. Saisissez le PIN administrateur si demandé. Ouvrez <strong>Produits</strong> à cet endroit ;
+            Retour revient aux Paramètres, puis à Accueil. Les paramètres et la connexion restent accessibles avant la
+            configuration des paiements.
+          </p>
           <h3 id="products">Ajouter des produits</h3>
           <ol>
-            <li>Ouvrez <strong>Produits</strong> et appuyez sur <strong>+</strong>.</li>
+            <li>Ouvrez <strong>Paramètres › Produits</strong> et appuyez sur <strong>+</strong>.</li>
             <li>Entrez un nom, un prix et un taux de taxe. Ajoutez éventuellement une catégorie et un code-barres,
               saisis ou numérisés.</li>
             <li>Pour un dépôt, activez <strong>Produit de préautorisation</strong> afin qu'il n'apparaisse que dans les
@@ -572,24 +578,33 @@
             <dt>Cartes enregistrées</dt><dd>Avec un ensemble de références d'acheteur, activez <strong>Proposer
               l’enregistrement des cartes</strong> et choisissez le <strong>Modèle de traitement récurrent</strong> pour
               votre configuration Adyen. Obtenez le consentement du client avant de sélectionner <strong>Enregistrer la
-              carte pour de futurs paiements</strong>. Pour en charger un plus tard, voir <a href="#saved-card">facturer
-              un jeton</a>.</dd>
+              carte pour de futurs paiements</strong>. Pour en charger un plus tard, voir <a href="#saved-card">Gérer les jetons</a>.</dd>
           </dl>
-          <h3 id="saved-card">Charger un jeton</h3>
+          <h3 id="saved-card">Gérer les jetons</h3>
           <ol>
-            <li>Sur Accueil, appuyez sur <strong>Débiter un jeton</strong> et entrez le PIN responsable si demandé.</li>
+            <li>Sur Accueil, appuyez sur <strong>Jetons</strong> et entrez le PIN responsable si demandé.</li>
             <li>Saisissez la référence client, ou l'e-mail lorsqu'il s'agit de la référence acheteur, et appuyez sur
               <strong>Rechercher des jetons</strong>.</li>
-            <li>Choisissez un jeton, puis ajoutez des produits ou un <strong>Article personnalisé</strong>. Ce panier
-              est distinct de <strong>Nouvelle vente</strong>.</li>
+            <li>Appuyez sur <strong>Débiter</strong> à côté d’un jeton, puis ajoutez des produits ou un
+              <strong>Article personnalisé</strong>. Ce panier est distinct de <strong>Nouvelle vente</strong>.</li>
             <li>Vérifiez le montant des frais et appuyez sur <strong>Débiter</strong>.</li>
           </ol>
           <p>Le client n’est pas présent, alors obtenez d’abord son consentement. Jetons enregistrés pour un autre
-            <strong>Modèle de traitement récurrent</strong> ne peut être choisi. Remboursez ces paiements de <strong>
+            <strong>Modèle de traitement récurrent</strong> ne peuvent pas être débités ici. Remboursez ces paiements de <strong>
             Historique</strong>; leur code de remboursement QR ne fonctionne que sur l’appareil qui les a débités. Si le résultat d'une charge est
             inconnu, vérifiez-le dans l'historique dans les sept jours, puis dans le Customer Area. Lors du paiement
             d'une nouvelle vente, une fois que la référence client saisie a enregistré des tokens, <strong>Débiter un
             jeton</strong> apparaît entre <strong>Scanner le portefeuille</strong> et <strong>Créer un lien de paiement</strong>: après approbation du Manager, choisissez un token pour lui imputer la vente.</p>
+          <p id="token-deletion">
+            Pour supprimer un jeton de la liste, même s’il ne peut pas être débité, appuyez sur
+            <strong>Supprimer</strong>. Vérifiez le résumé de la carte, l’ID du jeton, l’acheteur, le compte marchand
+            et l’environnement. Confirmez puis approuvez avec le PIN responsable, qui doit être configuré. Le jeton
+            sera supprimé d’Adyen et ne pourra plus servir aux futurs paiements dans Mini mPOS ou les autres
+            intégrations qui l’utilisent. Cette action est irréversible. Les paiements historiques et leurs
+            remboursements référencés restent disponibles. Sans réponse, Mini mPOS invalide les sélections et
+            actualise la liste. Si le résultat reste non confirmé, appuyez sur <strong>Vérifier la
+            suppression</strong> ; ne débitez pas et ne relancez pas la suppression avant sa résolution.
+          </p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="payment-links">

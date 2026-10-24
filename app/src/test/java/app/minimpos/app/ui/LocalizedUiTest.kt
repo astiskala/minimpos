@@ -5,6 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
@@ -246,7 +247,7 @@ class LocalizedUiTest {
         await { env.container.session(SaleKind.SALE).addCustom("Merchant item", 1_200, TaxRateEntity(1, "No tax", 0)) }
         val original = await { env.container.settings.current() }
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("appLanguage"), 15_000)
         compose.onNodeWithTag("appLanguage").performScrollTo().performClick()
         compose
@@ -259,7 +260,7 @@ class LocalizedUiTest {
             15_000,
         )
         compose.onNodeWithTag("back").performClick()
-        compose.onNodeWithTag("settings").assertTextContains("設定")
+        compose.onNodeWithTag("settings").assertContentDescriptionEquals("設定")
         assertThat(
             env.container
                 .session(SaleKind.SALE)
@@ -267,7 +268,7 @@ class LocalizedUiTest {
                 .single()
                 .name,
         ).isEqualTo("Merchant item")
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.onNodeWithTag("appLanguage").performScrollTo().performClick()
         compose.onNodeWithText("跟隨裝置").performClick()
         compose.waitUntilAtLeastOneExists(
@@ -275,7 +276,7 @@ class LocalizedUiTest {
             15_000,
         )
         compose.onNodeWithTag("back").performClick()
-        compose.onNodeWithTag("settings").assertTextContains("Settings")
+        compose.onNodeWithTag("settings").assertContentDescriptionEquals("Settings")
         assertThat(await { env.container.settings.current() }).isEqualTo(original)
     }
 
@@ -299,7 +300,7 @@ class LocalizedUiTest {
     private fun saleFits(audioGuidance: Boolean = false) {
         val context = env.context
         compose.setContent { MiniMposApp(env.container) }
-        listOf("newSale", "refund", "history", "products", "settings").forEach {
+        listOf("newSale", "refund", "history", "settings").forEach {
             compose.onNodeWithTag(it).assertIsDisplayed()
         }
         compose.onNodeWithTag("newSale").assertTextContains(context.getString(R.string.home_new_sale)).performClick()

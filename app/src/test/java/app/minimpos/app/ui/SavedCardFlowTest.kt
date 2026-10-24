@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -82,10 +83,10 @@ class SavedCardFlowTest {
         compose.onNodeWithTag("savedCard").performClick()
         waitForTag("savedCardReference")
         compose.onNodeWithTag("savedCardReference").performTextInput("CUST-001")
-        compose.onNodeWithTag("findCards").performClick()
+        compose.clickWhenEnabled("findCards")
         waitForTag("savedCard_TOKEN1")
-        compose.onNodeWithTag("savedCard_TOKEN1").assertTextContains("VISA •••• 1111", substring = true)
-        compose.onNodeWithTag("savedCard_TOKEN1").performClick()
+        compose.onNodeWithText("VISA •••• 1111").assertTextContains("VISA •••• 1111")
+        compose.onNodeWithTag("chargeToken_TOKEN1").performClick()
         waitForTag("addCustom")
         listOf(1, 2, 5, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
         compose.onNodeWithTag("addCustom").performClick()

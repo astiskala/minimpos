@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.createRecordingComposeRule
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.feature.StatusCheck
@@ -41,10 +42,13 @@ class CheckResultDialogTest {
     fun `receipt test print reports its result in a dismissible popup on AMS1`() {
         env.useSimulator()
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.onNodeWithTag("section_receipts").performScrollTo().performClick()
+        // The asynchronously measured preview changes the action's position once it appears.
+        compose.waitUntilAtLeastOneExists(hasTestTag("receiptImage"), 15_000)
         repeat(2) {
-            compose.onNodeWithTag("printTest").performScrollTo().performClick()
+            compose.onNodeWithTag("printTest").performScrollTo().assertIsDisplayed()
+            compose.clickWhenEnabled("printTest")
             compose.waitUntilAtLeastOneExists(hasTestTag("testPrintResult"), 15_000)
             compose.onNodeWithTag("testPrintResult").assertIsDisplayed().assertTextContains("Printed")
             compose.onNodeWithTag("testPrintResultOk").performClick()
@@ -56,7 +60,7 @@ class CheckResultDialogTest {
     fun `test email reports its recipient in a dismissible popup`() {
         env.useSimulator { it.copy(email = it.email.copy(host = "smtp.example.com", fromAddress = "shop@example.com")) }
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.onNodeWithTag("section_email").performScrollTo().performClick()
         compose.onNodeWithTag("sendTestEmail").performScrollTo().performClick()
         compose.onNodeWithTag("dialogInput").performTextInput("shopper@example.com")

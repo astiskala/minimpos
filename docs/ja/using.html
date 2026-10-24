@@ -83,7 +83,7 @@
   <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
-  <a href="#saved-card">トークンで請求</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
+  <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
   </a></li><li><a href="#terminal-tips">端末でのチップ</a></li><li><a href="#tips">領収書のチップ</a></li><li><a href="#more">
   追加デバイスとデータ</a></li>
 </ol></div>
@@ -97,7 +97,7 @@
   <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
-  <a href="#saved-card">トークンで請求</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
+  <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
   </a></li><li><a href="#terminal-tips">端末でのチップ</a></li><li><a href="#tips">領収書のチップ</a></li><li><a href="#more">
   追加デバイスとデータ</a></li>
 </ol></details>
@@ -118,9 +118,16 @@
             <p class="callout-title">重要</p>
             <p>通貨を変更しても価格の数値はそのままで、為替レートでは換算されません。変更後に商品価格を確認してください。</p>
           </div>
+          <p id="settings-navigation">
+            ホーム右上の<strong>設定</strong>アイコンでメイン設定を開きます。
+            求められた場合は管理者PINを入力します。
+            ここから<strong>商品</strong>を開けます。
+            戻ると設定、次にホームに戻ります。
+            決済設定の完了前でも設定と接続設定を利用できます。
+          </p>
           <h3 id="products">商品を追加する</h3>
           <ol>
-            <li><strong>商品</strong>を開き、<strong>+</strong> をタップします。</li>
+            <li><strong>設定 › 商品</strong>を開き、<strong>+</strong> をタップします。</li>
             <li>名前、価格、税率を入力します。必要ならカテゴリーとバーコード（入力またはスキャン）を追加します。</li>
             <li>予約金の商品は<strong>プリオーソリ商品</strong>をオンにし、プリオーソリだけに表示されるようにします。</li>
           </ol>
@@ -447,20 +454,30 @@
               を、会計で入力する購入者参照ID（初期設定）、購入者のメール、なしから選びます。すべての決済とともに Adyen
               に送信します。メールの参照IDは初期設定でハッシュ化されます。すべてのデバイスで同じソルトを使ってください。</dd>
             <dt>カード保存</dt><dd>購入者参照IDを設定したうえで<strong>カード保存の選択肢を表示</strong>をオンにし、Adyen の設定に合った<strong>継続課金モデル</strong>
-              を選びます。<strong>次回の決済用にカードを保存</strong>を選ぶ前に購入者の同意を得てください。後で請求するには<a href="#saved-card">トークンで請求</a>を参照してください。
+              を選びます。<strong>次回の決済用にカードを保存</strong>を選ぶ前に購入者の同意を得てください。後で請求するには<a href="#saved-card">トークンを管理する</a>を参照してください。
               </dd>
           </dl>
-          <h3 id="saved-card">トークンで請求</h3>
+          <h3 id="saved-card">トークンを管理する</h3>
           <ol>
-            <li>ホームで<strong>トークンで請求</strong>をタップし、求められた場合はマネージャーPINを入力します。</li>
+            <li>ホームで<strong>トークン</strong>をタップし、求められた場合はマネージャーPINを入力します。</li>
             <li>購入者参照ID（またはそれに使うメールアドレス）を入力し、<strong>トークンを検索</strong>をタップします。</li>
-            <li>トークンを選び、商品または<strong>任意の商品</strong>を追加します。このカートは<strong>新規販売</strong>のカートとは別です。</li>
+            <li>トークンの横の<strong>請求</strong>をタップし、商品または<strong>任意の商品</strong>を追加します。このカートは<strong>新規販売</strong>のカートとは別です。</li>
             <li>請求内容を確認し、<strong>請求</strong>をタップします。</li>
           </ol>
-          <p>購入者は不在のため、事前に同意を得てください。別の<strong>継続課金モデル</strong>用に保存されたトークンは選択できません。これらの決済は<strong>取引履歴</strong>
+          <p>購入者は不在のため、事前に同意を得てください。別の<strong>継続課金モデル</strong>用に保存されたトークンはここでは請求できません。これらの決済は<strong>取引履歴</strong>
             から返金します。返金用QRコードは請求したデバイスでのみ使えます。請求結果が不明な場合は7日以内に取引履歴から確認し、それ以降はCustomer
             Areaで確認してください。新規販売の会計画面で、入力した購入者参照IDにトークンが保存されている場合、<strong>ウォレットをスキャン</strong>と<strong>決済リンクを作成</strong>の間に
             <strong>トークンで請求</strong>が表示されます。マネージャーの承認後、トークンを選んで請求します。</p>
+          <p id="token-deletion">
+            請求できないトークンも含め、一覧の<strong>削除</strong>から削除できます。
+            カードの概要、トークンID、購入者、加盟店アカウント、環境を確認し、確定後にマネージャーPINで承認します。
+            設定済みのマネージャーPINが必要です。
+            Adyenから削除され、Mini mPOSやこのトークンを使う他の連携で今後の決済に使用できなくなります。
+            元に戻せません。
+            過去の決済とそれに紐づく返金は引き続き利用できます。
+            応答がない場合、選択を無効化して一覧を再取得します。
+            未確認のままなら<strong>削除を確認</strong>を使い、解決するまで請求や削除の再試行は行わないでください。
+          </p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="payment-links">

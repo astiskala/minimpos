@@ -2,7 +2,6 @@
 <resources>
   <!-- App, onboarding, and common actions -->
   <string name="app_name">Mini mPOS</string>
-  <string name="locked">Verrouillé</string>
   <string name="banner_simulator">SIMULATEUR – aucun paiement réel</string>
   <string name="virtual_printer_title">Imprimante simulée</string>
   <string name="onboarding_title">Bienvenue à Mini mPOS</string>
@@ -54,7 +53,7 @@
   <string name="home_new_sale_hint">Ajoutez des produits ou un montant personnalisé</string>
   <string name="home_pre_auth">Nouvelle pré-autorisation</string>
   <string name="home_pre_auth_hint">Réserver un montant sur une carte</string>
-  <string name="home_saved_card">Débiter un jeton</string>
+  <string name="home_saved_card">Jetons</string>
   <string name="home_refund">Remboursement</string>
   <string name="home_history">Historique</string>
   <string name="home_reconciliation">Rapprochement</string>
@@ -157,12 +156,21 @@
   <string name="shopper_rating_prompt">Évaluez votre expérience (0–10)</string>
 
   <!-- Saved cards -->
-  <string name="saved_card_title">Débiter un jeton</string>
-  <string name="saved_card_intro">Recherchez les jetons enregistrés pour un acheteur, choisissez-en un, puis saisissez les articles à facturer. L’acheteur n’a pas besoin d’être présent ; obtenez d’abord son consentement.</string>
+  <string name="saved_card_title">Jetons</string>
+  <string name="saved_card_intro">Recherchez les jetons d’un acheteur. Débitez avec son consentement ou supprimez un jeton d’Adyen.</string>
   <string name="saved_card_find">Rechercher des jetons</string>
   <string name="saved_card_none">Aucun jeton n’est enregistré pour cet acheteur.</string>
   <string name="saved_card_expires">Expire %1$s/%2$s</string>
   <string name="saved_card_unsupported">Enregistré pour un autre type de paiement ; il ne peut pas être débité ici.</string>
+  <string name="token_charge">Débiter</string>
+  <string name="token_delete_title">Supprimer le jeton ?</string>
+  <string name="token_delete_confirm">Supprimer %1$s (jeton %2$s) pour l’acheteur %3$s, le compte marchand %4$s, %5$s ? Le jeton sera supprimé d’Adyen et ne pourra plus servir aux futurs paiements dans Mini mPOS ou les autres intégrations qui l’utilisent. Les paiements et remboursements existants restent disponibles. Cette action est irréversible.</string>
+  <string name="token_delete_manager">Définissez un PIN responsable dans Paramètres › Sécurité pour supprimer des jetons.</string>
+  <string name="token_deleted">Le jeton %1$s de l’acheteur %2$s n’est plus disponible chez Adyen.</string>
+  <string name="token_delete_failed">Le jeton %1$s de l’acheteur %2$s n’a pas été supprimé.</string>
+  <string name="token_delete_unknown">La suppression du jeton %1$s de l’acheteur %2$s est non confirmée. Actualisez la liste Adyen. Ne débitez pas et ne relancez pas encore la suppression.</string>
+  <string name="token_deleting">Vérification de la suppression du jeton %1$s de l’acheteur %2$s…</string>
+  <string name="token_delete_recheck">Vérifier la suppression</string>
   <string name="saved_card_card">Carte</string>
   <string name="saved_card_charge">Débiter %1$s</string>
   <string name="saved_card_charging">Débit du jeton…</string>
@@ -667,6 +675,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">Paramètres</string>
+  <string name="settings_products_summary">Produits et catégories</string>
   <string name="settings_changes_saved">Modifications enregistrées.</string>
   <string name="settings_choose">Choisissez une section pour modifier ses paramètres.</string>
   <string name="settings_terminal">Terminal</string>
@@ -738,6 +747,7 @@
   <string name="settings_api_key">Clé API</string>
   <string name="settings_adyen_key_hint">Dans votre Customer Area, ouvrez Developers › API credentials. Créez un identifiant et générez sa clé API.</string>
   <string name="settings_adyen_roles_hint">En plus des rôles par défaut, cette clé API nécessite les rôles supplémentaires suivants :</string>
+  <string name="settings_adyen_role_tokens">API tokenise payment details</string>
   <string name="settings_adyen_role_cloud">Cloud Device API role</string>
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
@@ -967,7 +977,7 @@
   <string name="settings_ask_transaction_reference_hint">Saisissez un numéro de commande ou de réservation pour identifier le paiement dans Adyen. Laissez vide pour en générer un.</string>
   <string name="settings_tokenization">Acheteurs et cartes enregistrées</string>
   <string name="settings_offer_card_saving">Proposer l’enregistrement des cartes</string>
-  <string name="settings_offer_card_saving_hint">L’encaissement propose d’enregistrer la carte lorsqu’une référence acheteur est présente. Demandez le consentement du client. Utilisez ensuite Débiter un jeton sur l’Accueil pour débiter les jetons.</string>
+  <string name="settings_offer_card_saving_hint">L’encaissement propose d’enregistrer la carte lorsqu’une référence acheteur est présente. Demandez le consentement du client. Ouvrez ensuite Jetons sur l’Accueil pour débiter un jeton.</string>
   <string name="settings_tokenize_default">Enregistrer les cartes par défaut</string>
   <string name="settings_tokenize_default_hint">Les ventes commencent avec Enregistrer la carte activé lorsqu’une référence acheteur est présente.</string>
   <string name="settings_pre_auth_tokenize_default">Enregistrez les cartes pour les préautorisations</string>
@@ -1198,6 +1208,7 @@
   <string name="setup_charge_too_old">C’est trop vieux pour être renvoyé en toute sécurité. Vérifiez son résultat dans votre Customer Area.</string>
   <string name="setup_shopper_reference">Choisissez une référence d’acheteur dans Paramètres › Paiements pour utiliser des jetons.</string>
   <string name="setup_totals">Les totaux des terminaux ne sont pas disponibles là où vont les paiements actuellement. Tap to Pay ne les signale pas.</string>
+  <string name="setup_token_deletion_pending">Vérifiez la suppression dans Jetons avant de débiter ou de supprimer un autre jeton.</string>
   <string name="setup_operation_reconciliation">Adyen n’a pas autorisé une nouvelle tentative. Vérifiez le résultat de cette opération dans votre Customer Area.</string>
   <string name="payment_context_mismatch">Cette configuration ne correspond pas au terminal de paiement, au compte marchand ou à l’environnement d’origine. Restaurez la configuration d’origine avant de continuer.</string>
   <string name="fault_unreachable_terminal">Le terminal n’a pas pu être atteint. Vérifiez qu’il est allumé, sur le même réseau et à cette adresse IP.</string>

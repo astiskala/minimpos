@@ -71,7 +71,7 @@ class ShopperReferenceFlowTest {
     }
 
     private fun openPaymentSettings() {
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_payments")
         compose.onNodeWithTag("section_payments").performScrollTo().performClick()
     }

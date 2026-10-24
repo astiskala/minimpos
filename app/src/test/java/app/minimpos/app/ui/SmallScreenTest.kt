@@ -132,7 +132,7 @@ class SmallScreenTest {
     @Test
     fun `receipt tax display and item marks are configurable on the smallest terminal`() {
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_receipts")
         compose.onNodeWithTag("section_receipts").performScrollTo().performClick()
         waitForTag("showTaxAmounts")
@@ -190,7 +190,7 @@ class SmallScreenTest {
     fun `configured payments do not show quick setup`() {
         configureKey()
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("terminalMode")
@@ -201,11 +201,11 @@ class SmallScreenTest {
     fun `home guides terminal setup through the Adyen API test before the shared key`() {
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.TEST)) }
         compose.setContent { MiniMposApp(container) }
-        // Beside the setup card, the tiles keep their icons above their labels, so the admin buttons are a scroll away.
-        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation").forEach {
+        // Beside the setup card, the tiles keep their icons above their labels, and Settings remains in the top-right corner.
+        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "settings").forEach {
             compose.onNodeWithTag(it).assertIsDisplayed()
         }
-        listOf("products", "settings").forEach { compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed() }
+        compose.onNodeWithTag("settings").assertIsDisplayed()
         compose.onNodeWithTag("terminalSetup").assertIsDisplayed().performClick()
         waitForTag("apiKey")
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
@@ -260,7 +260,7 @@ class SmallScreenTest {
         configureKey()
         env.updateSettings { it.copy(payment = it.payment.copy(currencyCode = "")) }
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("testApi")
@@ -322,7 +322,7 @@ class SmallScreenTest {
         await { container.pinManager.setPin("1357") }
         RuntimeEnvironment.setFontScale(2f)
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("pin_1")
         listOf(1, 3, 5, 7).forEach {
             compose
@@ -421,7 +421,7 @@ class SmallScreenTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.TEST)) }
         await { container.terminalStatus.state.first { it.environment == TerminalEnvironment.TEST } }
         compose.setContent { MiniMposApp(container) }
-        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "products", "settings").forEach {
+        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "settings").forEach {
             compose.onNodeWithTag(it).assertIsDisplayed()
         }
         compose.onNodeWithTag("terminalSetup").assertDoesNotExist()
@@ -518,7 +518,7 @@ class SmallScreenTest {
         compose.setContent { MiniMposApp(container) }
         // Both payment tiles and every other tile fit.
         waitForTag("preAuth")
-        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "products", "settings").forEach {
+        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "settings").forEach {
             compose.onNodeWithTag(it).assertIsDisplayed()
         }
 
@@ -597,7 +597,7 @@ class SmallScreenTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "mini-key")) }
         await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("step_1")
@@ -645,7 +645,7 @@ class SmallScreenTest {
         configureKey()
         await { container.pinManager.setPin("1357") }
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("pin_OK")
         listOf("pin_1", "pin_0", "pin_<", "pin_OK", "pinMessage").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
         listOf(1, 3, 5, 7).forEach { compose.onNodeWithTag("pin_$it").performClick() }

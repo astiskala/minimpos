@@ -86,7 +86,7 @@ class SetupDiscoveryUiTest {
         val container = env.container
         env.useSimulator()
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("terminalMode")
@@ -219,7 +219,7 @@ class SetupDiscoveryUiTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = mode)) }
         container.start()
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitUntilAtLeastOneExists(
             hasTestTag("section_terminal") and hasText(env.context.getString(R.string.settings_status_not_set_up), substring = true),
             15_000,
@@ -275,6 +275,7 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("roleCredentials").assertDoesNotExist()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertExists()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertExists()
+        compose.onNodeWithText("API tokenise payment details", substring = true).assertExists()
     }
 
     @Test
@@ -286,13 +287,14 @@ class SetupDiscoveryUiTest {
         }
         container.start()
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("step_1")
         compose.onNodeWithTag("step_1").assertIsDisplayed().assertTextContains("Environment")
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertExists()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertExists()
+        compose.onNodeWithText("API tokenise payment details", substring = true).assertExists()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_terminals), substring = true).assertExists()
         compose.onNodeWithTag("environment").assertExists()
         compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
@@ -342,7 +344,7 @@ class SetupDiscoveryUiTest {
         val container = env.container
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST)) }
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("apiKey")
@@ -383,7 +385,7 @@ class SetupDiscoveryUiTest {
         env.useCheckoutApi()
         apiRelease = CompletableDeferred()
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("discoverSetup")
@@ -420,7 +422,7 @@ class SetupDiscoveryUiTest {
         env.useCheckoutApi()
         apiRelease = CompletableDeferred()
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("discoverSetup")
@@ -457,7 +459,7 @@ class SetupDiscoveryUiTest {
         phone.paymentsApps = TerminalEnvironment.entries.toSet()
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP)) }
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("step_1")

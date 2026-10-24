@@ -80,8 +80,10 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   declines a second link per checkout so screens never guard it. Terminal reconciliation (recheck unresolved, read or
   close totals, compare) is one operation in payment (`TerminalReconciliation`); screens follow its outcome.
 - \* Only `SavedCardLookup` lists and selects saved cards for a charge. It owns reference/model/target freshness and
-  model eligibility; Checkout still validates pure request facts. Charge token retains its explicit lookup across
-  reference/cart/review screens; checkout's automatic lookup stays screen-scoped.
+  model eligibility; Checkout still validates pure request facts. Tokens retains its explicit lookup across
+  reference/cart/review screens; checkout's automatic lookup stays screen-scoped. Only `SavedCardCharges` deletes tokens,
+  serializing with charges/rechecks and invalidating every lookup before sending. Confirmed deletion requires a
+  configured Manager PIN under the capabilities plan's provisional working default; admin unlock never authorizes it.
 - \* Only container wiring for committed history deletion releases process request/receipt registries and simulator
   identities. Retained unknown operations keep their recovery evidence; simulator period totals survive retention.
 - \* `TransactionLifecycle` alone releases a received late answer, only after durable resolved settlement.

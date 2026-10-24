@@ -2,6 +2,7 @@ package app.minimpos.app.scan
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Process
 import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -64,6 +65,7 @@ import com.google.zxing.MultiFormatReader
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.ReaderException
 import com.google.zxing.common.HybridBinarizer
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /** Full-screen single-scan dialog. */
@@ -143,7 +145,7 @@ fun ScannerView(
     var error by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner, mode, continuous) {
-        val executor = Executors.newSingleThreadExecutor()
+        val executor = analysisExecutor()
         val mainExecutor = ContextCompat.getMainExecutor(context)
         val providerFuture = ProcessCameraProvider.getInstance(context)
         val session = CameraSession(mainExecutor) { error = true }
@@ -263,6 +265,18 @@ private fun bindCamera(
         provider.unbind(preview, analysis)
     }
 }
+
+/**
+ * The one thread that decodes camera frames, at background priority: a thread of its own otherwise runs at the UI
+ * thread's priority, and decoding ten frames a second would compete with drawing the preview on a slow terminal.
+ */
+internal fun analysisExecutor(): ExecutorService =
+    Executors.newSingleThreadExecutor { task ->
+        Thread({
+            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+            task.run()
+        }, "minimpos-scanner")
+    }
 
 /**
  * Serial camera analyzer with reusable luminance buffers and at most ten analyzed frames per second.

@@ -6,7 +6,10 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.ContextThemeWrapper
+import android.view.View
+import android.view.ViewTreeObserver
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.ReportDrawnWhen
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
@@ -70,7 +73,29 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) { paymentsApp.launches.filterNotNull().collect(::open) }
         }
-        setContent { MiniMposApp(container) }
+        setContent {
+            MiniMposApp(container)
+            val storage by container.storage.state.collectAsStateWithLifecycle()
+            ReportDrawnWhen { storage != StorageState.LOADING }
+        }
+        holdFirstFrameWhileLoading(container)
+    }
+
+    /**
+     * Keeps the launch window (the system splash screen from Android 12) instead of drawing an empty first frame while
+     * the settings and secrets are still being read; Compose draws again once [StorageState.LOADING] ends.
+     */
+    private fun holdFirstFrameWhileLoading(container: AppContainer) {
+        val content = findViewById<View>(android.R.id.content)
+        content.viewTreeObserver.addOnPreDrawListener(
+            object : ViewTreeObserver.OnPreDrawListener {
+                override fun onPreDraw(): Boolean {
+                    if (container.storage.state.value == StorageState.LOADING) return false
+                    content.viewTreeObserver.removeOnPreDrawListener(this)
+                    return true
+                }
+            },
+        )
     }
 
     override fun onNewIntent(intent: Intent) {

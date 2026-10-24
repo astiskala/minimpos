@@ -92,6 +92,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
@@ -163,7 +165,12 @@ class FakeDevice(
     override var paymentsApps: Set<TerminalEnvironment> = emptySet(),
     override val hasCamera: Boolean = true,
     override val docsCapture: Boolean = false,
-) : DeviceInfo
+) : DeviceInfo {
+    /** Emit to report that a default network became available. */
+    val network = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    override val networkAvailable: Flow<Unit> get() = network
+}
 
 /** Simulated Checkout modifications that know no payments, so they accept every capture and adjustment. */
 fun simulatedModifications(): PaymentModifications = TerminalSimulator(config = { SimulatorConfig() }).modifications

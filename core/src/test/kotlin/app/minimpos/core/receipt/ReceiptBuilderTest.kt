@@ -394,7 +394,7 @@ class ReceiptBuilderTest {
     }
 
     @Test
-    fun `pre-authorisation receipts are titled, show the amount held and never get a refund QR`() {
+    fun `pre-authorisation receipts are titled, show the amount held and get a refund QR only once captured`() {
         val doc = builder().sale(sale().copy(preAuthorisation = true))
         assertThat(doc.elements)
             .containsAtLeast(
@@ -405,6 +405,9 @@ class ReceiptBuilderTest {
         assertThat(doc.elements).doesNotContain(Text("TAX INVOICE", Align.CENTER, TextStyle.BOLD))
         assertThat(doc.elements).doesNotContain(Row("TOTAL", "$12.00", TextStyle.BOLD))
         assertThat(doc.qrCodes).isEmpty()
+        val captured = builder().sale(sale().copy(preAuthorisation = true, captured = 1_200))
+        assertThat(captured.qrCodes).hasSize(1)
+        assertThat(builder().sale(sale().copy(preAuthorisation = true, captured = 1_200), ReceiptCopy.MERCHANT).qrCodes).isEmpty()
         val exclusive = builder().sale(sale(mode = TaxMode.EXCLUSIVE).copy(preAuthorisation = true))
         assertThat(exclusive.elements).contains(Row("AMOUNT HELD", "$12.00", TextStyle.BOLD))
     }

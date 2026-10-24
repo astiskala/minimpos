@@ -240,6 +240,7 @@ private fun RefundUnavailable(
                     RefundInvalidReason.FULLY_REFUNDED -> R.string.refund_fully_refunded
                     RefundInvalidReason.PRE_AUTHORISATION -> R.string.refund_pre_authorisation
                     RefundInvalidReason.AWAITING_TIP -> R.string.refund_awaiting_tip
+                    RefundInvalidReason.CHARGED_ELSEWHERE -> R.string.refund_charged_elsewhere
                 },
             ),
         modifier = modifier,

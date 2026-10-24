@@ -124,13 +124,14 @@ fun rememberMoneyFormatters(): MoneyFormatters {
 
 /**
  * Thin banner under the top bar when payments are simulated. There is none for the TEST environment: Adyen's test
- * terminals already say TEST in their own status bar.
+ * terminals already say TEST in their own status bar, and none while the website's screenshots are captured
+ * ([app.minimpos.app.terminal.DeviceInfo.docsCapture]).
  */
 @Composable
 fun ModeBanner(modifier: Modifier = Modifier) {
     val container = LocalAppContainer.current
     val terminal by container.terminalStatus.state.collectAsStateWithLifecycle()
-    if (terminal.mode != TerminalMode.SIMULATOR) return
+    if (terminal.mode != TerminalMode.SIMULATOR || container.device.docsCapture) return
     val colors = LocalStatusColors.current
     val compact = LocalDimens.current.compact
     Text(

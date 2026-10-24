@@ -336,6 +336,7 @@
   <string name="refund_unknown_outcome">端末から返金を確認できませんでした。再度返金する前に、Customer Areaで確認してください。</string>
   <string name="refund_async_note">Adyenは返金を非同期で処理します。最終結果はCustomer Areaに表示されます。</string>
   <string name="refund_pre_authorisation">このプリオーソリは未キャプチャのため、まだ返金できません。「取引履歴」からキャプチャまたはキャンセルしてください。</string>
+  <string name="refund_charged_elsewhere">この「トークンで請求」の決済はこのデバイスの「取引履歴」にありません。請求したデバイスまたは Customer Area で返金してください。</string>
   <string name="refund_awaiting_tip">この決済はチップを含むキャプチャ待ちです。「取引履歴」からチップを入力するか、決済をキャンセルしてください。</string>
   <string name="refund_review_title">元の決済を確認</string>
   <string name="refund_review_message">このデバイスには元の販売記録がありません。QRコードではキャプチャ、後のチップや返金、決済先を確認できません。Customer Areaで元の決済と返金可能な残額を確認してください。選択した端末と環境が正しいことも確認してください。この返金は確認した金額だけを送信し、金額無制限の全額取消は行いません。</string>

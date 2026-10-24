@@ -187,9 +187,12 @@ tasks.withType<Detekt>().configureEach {
 // Dokka checks that every KDoc [link] resolves (detekt only checks that KDoc exists). All visibilities are included so
 // links in private documentation are checked too. The pages are not published, so Dokka stays offline instead of
 // downloading the JDK, Kotlin and Android package lists (which warns whenever the network is slow or down).
+// Dokka documents the release variant by default; the debug one has the same sources (see `check` below), so the gate
+// never compiles release, not even its KSP sources.
 dokka {
     dokkaSourceSets.configureEach {
         documentedVisibilities.set(org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier.entries)
+        suppress.set(name != "debug")
     }
     dokkaPublications.configureEach {
         failOnWarning.set(true)
@@ -660,7 +663,11 @@ tasks.withType<Test>().configureEach {
 }
 
 // S1F2 terminals run the minimum SDK (Android 9), so every unit test also runs on Robolectric's Android of that version:
-// the same tests and classpath, with a robolectric.properties ahead of the usual one that changes only the SDK.
+// the same tests and classpath, with a robolectric.properties ahead of the usual one that changes only the SDK. Static
+// analyses never start Robolectric, so a second run could only repeat the first; SdkIndependentTestsTest keeps any
+// Robolectric test out of these simple-name patterns.
+val sdkIndependentTests = listOf("*ArchitectureTest", "DeadCodeTest", "AdyenModelR8Test", "AndroidApiLevelTest")
+tasks.withType<Test>().configureEach { systemProperty("minimpos.sdkIndependentTests", sdkIndependentTests.joinToString(",")) }
 val robolectricMinSdkConfig =
     tasks.register<WriteProperties>("robolectricMinSdkConfig") {
         destinationFile.set(layout.buildDirectory.file("robolectric-min-sdk/robolectric.properties"))
@@ -686,6 +693,7 @@ val minSdkUnitTests =
         jvmArgs(unitTests.jvmArgs.orEmpty())
         maxHeapSize = unitTests.maxHeapSize
         maxParallelForks = appTestWorkers
+        sdkIndependentTests.forEach { exclude("**/$it.class", "**/$it\$*.class") }
         // Two suites of Robolectric workers at once would compete for memory.
         mustRunAfter(unitTests)
     }

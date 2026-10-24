@@ -14,7 +14,8 @@ Adyen Payments app (Tap to Pay). There is no backend. The built-in simulator nee
 | `website-test/` | Website and setup-helper tests; no app code. | |
 | `tooling/` | Kotlin/JVM release CLI, signing-property extraction and shell-script regression tests. | |
 | `scripts/` | Gradle/dev runners, CI entry point, docs capture, release verification. | |
-| `.factory/`, `security-findings.json` | STRIDE threat model, security-review settings and the latest scan result. | |
+| `security/` | STRIDE threat model. | [minimpos-security-review](.agents/skills/minimpos-security-review/SKILL.md) |
+| `.agents/skills/` | Agent skills (`SKILL.md` with name/description front matter) for any coding agent. | |
 
 Nested `AGENTS.md` files add module rules to this file and never relax it. Their starred rules are enforced by ArchUnit.
 Read the module file before changing that module. Read the rest only when the task needs it:
@@ -23,9 +24,10 @@ Read the module file before changing that module. Read the rest only when the ta
   a module.
 - [CONTRIBUTING.md](CONTRIBUTING.md): command behavior, test setup, dependency, website and release procedures, and
   real-Adyen verification gaps. KDoc holds detailed code contracts.
-- [minimpos-iteration](.devin/skills/minimpos-iteration/SKILL.md) (change recipes) and
-  [minimpos-tests](.devin/skills/minimpos-tests/SKILL.md) (test starters). Use
-  [docs-screenshots](.devin/skills/docs-screenshots/SKILL.md) only when capturing screenshots or running the AMS1 emulator.
+- [minimpos-iteration](.agents/skills/minimpos-iteration/SKILL.md) (change recipes) and
+  [minimpos-tests](.agents/skills/minimpos-tests/SKILL.md) (test starters). Use
+  [minimpos-security-review](.agents/skills/minimpos-security-review/SKILL.md) for security reviews. Use
+  [docs-screenshots](.agents/skills/docs-screenshots/SKILL.md) only when capturing screenshots or running the AMS1 emulator.
 - `README.md` and `docs/`: merchant documentation. [SECURITY.md](SECURITY.md): reporting and data protection.
 
 ## Commands
@@ -83,7 +85,6 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
 - Exported Room schemas in `app/schemas/`: the build writes them. Never alter a released schema.
 - Released stored-format fixtures in `app/src/test/resources/stored/<version>/`; add a new version's directory instead.
 - Vendored `docs/js/qrcodegen.js`, generated `gradle/gradle-daemon-jvm.properties` and the Gradle wrapper files.
-- `security-findings.json`: the security review writes it.
 
 ## Code conventions
 

@@ -94,8 +94,12 @@ Keep the default unless repeated measurements justify a change. Inspect fixture 
 adding workers. For small filtered suites, try one worker: duplicated Robolectric/native startup can outweigh parallelism.
 Reuse the daemon and caches; do not routinely run `clean` or `--rerun-tasks`.
 
-Agent task recipes live in [minimpos-iteration](.devin/skills/minimpos-iteration/SKILL.md); concrete test starters in
-[minimpos-tests](.devin/skills/minimpos-tests/SKILL.md). These point to existing owners and tests, not a second rulebook.
+Agent skills live in `.agents/skills/`, the shared location coding agents discover. Task recipes are in
+[minimpos-iteration](.agents/skills/minimpos-iteration/SKILL.md), concrete test starters in
+[minimpos-tests](.agents/skills/minimpos-tests/SKILL.md) and change reviews against the
+[threat model](security/threat-model.md) in
+[minimpos-security-review](.agents/skills/minimpos-security-review/SKILL.md). These point to existing owners and tests,
+not a second rulebook.
 
 The gate checks:
 
@@ -144,6 +148,8 @@ standalone release builds retain release lint by default. R8, signing and packag
   at AMS1 size. `ScreenTextTest` finds text cut off without an ellipsis in all seven languages at AMS1 size, and text
   still in English in the debug-only en-XA pseudo-locale.
 - `testDebugUnitTestMinSdk` reruns every app test on Robolectric SDK 28 (S1F2's Android 9); it is part of `check`.
+  It skips only the static analyses named in `sdkIndependentTests`, which never start Robolectric;
+  `SdkIndependentTestsTest` fails if a Robolectric test matches those names.
   Filter it like `testDebugUnitTest`.
 - Financial actions are tapped twice in one input batch (`DoubleActivationTest`, `DoubleModificationTest`); add each
   new money-moving action there. `MalformedTerminalReplyTest` and `MalformedAdyenReplyTest` damage every field of
@@ -308,7 +314,7 @@ shared application ID and site-wide scope when editing them. `docs/llms.txt` ind
 languages; update it when routes or guide names change. The guides' print stylesheet reveals manual instructions;
 the setup helper excludes credentials and generated codes from printouts.
 
-Use [the screenshot skill](.devin/skills/docs-screenshots/SKILL.md) to capture simulator demos and social images in all
+Use [the screenshot skill](.agents/skills/docs-screenshots/SKILL.md) to capture simulator demos and social images in all
 seven supported languages, with its fictional local companies, prices and currencies. Each translated page uses its
 own language's captures. Screenshots must match their original terminal frames: S1F2 540×960, AMS1 480×800.
 Do not crop or stretch to fit,

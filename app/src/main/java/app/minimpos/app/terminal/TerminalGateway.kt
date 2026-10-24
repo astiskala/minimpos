@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.os.Build
 import android.provider.Settings
+import app.minimpos.app.BuildConfig
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.core.payment.PaymentContext
@@ -32,6 +33,7 @@ import app.minimpos.terminal.transport.TerminalTransport
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import java.io.File
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
 
@@ -66,6 +68,12 @@ interface DeviceInfo {
 
     /** Installed Payments app version from Android package metadata; null when unavailable or not visible. */
     fun paymentsAppVersion(environment: TerminalEnvironment): String? = null
+
+    /**
+     * Whether the website's screenshots are being captured, which leaves the simulator banner out of them (the site
+     * discloses them as simulator demos instead). Only debug builds can say so; read once at start.
+     */
+    val docsCapture: Boolean get() = false
 }
 
 /**
@@ -82,6 +90,7 @@ class AndroidDeviceInfo(
             ?.takeIf { POI_ID.matches(it) }
     override val model: String = Build.MODEL.orEmpty()
     override val osVersion: String = Build.VERSION.RELEASE.orEmpty()
+    override val docsCapture: Boolean = BuildConfig.DEBUG && File(context.filesDir, DOCS_CAPTURE_MARKER).exists()
     override val hasCamera: Boolean get() = context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
     override val country: String
         get() {
@@ -112,6 +121,9 @@ class AndroidDeviceInfo(
     companion object {
         /** `[device model]-[serial number]`, as in the terminal certificates Adyen's library validates. */
         val POI_ID = Regex("^[A-Za-z0-9]{3,}-[A-Za-z0-9]{9,15}$")
+
+        /** The file in the app's files directory that `scripts/docs-capture` creates to turn on [docsCapture]. */
+        const val DOCS_CAPTURE_MARKER = "docs-capture"
     }
 }
 

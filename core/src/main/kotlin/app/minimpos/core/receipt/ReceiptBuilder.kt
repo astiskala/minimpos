@@ -25,13 +25,13 @@ class ReceiptBuilder(
     /**
      * Builds the [copy] of a sale receipt: header, date and references, items, totals and tax, a warning if the
      * payment was not approved, Adyen's card receipt lines, the footer and, on approved customer copies, the refund QR
-     * code. A pre-authorisation is titled and totalled as an amount held instead, with no refund QR code, followed by
-     * what it holds after an adjustment and what was captured. [SaleReceipt.tip] adds the tip lines after the totals:
-     * blank ones to fill in (and on the merchant copy a line to sign), or the tip entered and the total with it. A sale
-     * still to be paid through its payment link ([SaleReceipt.unpaidLink]) is marked unpaid and totalled as the amount
-     * due, with the link's QR code, its address and how long it works; one paid through it says so. [SaleReceipt.notice]
-     * comes first. A note the receipt already carries is never printed again, so standings and notices that say the
-     * same thing appear once.
+     * code. A pre-authorisation is titled and totalled as an amount held instead, with the refund QR code only once it
+     * is captured, followed by what it holds after an adjustment and what was captured. [SaleReceipt.tip] adds the tip
+     * lines after the totals: blank ones to fill in (and on the merchant copy a line to sign), or the tip entered and the
+     * total with it. A sale still to be paid through its payment link ([SaleReceipt.unpaidLink]) is marked unpaid and
+     * totalled as the amount due, with the link's QR code, its address and how long it works; one paid through it says
+     * so. [SaleReceipt.notice] comes first. A note the receipt already carries is never printed again, so standings and
+     * notices that say the same thing appear once.
      */
     fun sale(
         receipt: SaleReceipt,
@@ -56,7 +56,8 @@ class ReceiptBuilder(
         if (receipt.cardSaved) note(out, labels.cardSaved, TextStyle.NORMAL)
         cardReceipt(out, receipt.cardReceipt)
         footer(out)
-        val showsRefundQr = copy == ReceiptCopy.CUSTOMER && receipt.approved && !receipt.preAuthorisation && options.showRefundQr
+        val refundable = !receipt.preAuthorisation || receipt.captured != null
+        val showsRefundQr = copy == ReceiptCopy.CUSTOMER && receipt.approved && refundable && options.showRefundQr
         receipt.refundQr?.takeIf { showsRefundQr }?.let { out += Qr(it, labels.refundQrCaption) }
         return ReceiptDocument(out)
     }

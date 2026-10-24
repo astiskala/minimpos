@@ -22,6 +22,7 @@ import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.items
+import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.payment.PaymentContext
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
@@ -108,7 +109,9 @@ class SavedCardFlowTest {
         assertThat(sale.chargedCardId).isEqualTo("TOKEN1")
         assertThat(sale.shopperReference).isEqualTo("CUST-001")
         assertThat(sale.totalMinor).isEqualTo(1_250)
-        assertThat(RefundablePayment.qrCode(checkNotNull(await { container.sales.get(sale.id) }))).isNull()
+        // Its receipt's refund QR code carries the Checkout transaction ID, so only this device's history refunds it.
+        val qr = checkNotNull(RefundablePayment.qrCode(checkNotNull(await { container.sales.get(sale.id) })))
+        assertThat(RefundablePayment.isCheckoutTransaction(checkNotNull(RefundQrPayload.decode(qr)).transactionId)).isTrue()
         // The saved-card cart is cleared once charged; New sale's cart was never touched.
         assertThat(container.savedCardSession.cart.value.lines).isEmpty()
     }

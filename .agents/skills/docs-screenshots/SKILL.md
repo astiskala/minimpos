@@ -20,6 +20,9 @@ description: Re-capture the screenshots and social image of the docs/ website, o
   the white screen `rect` of each SVG):
   - S1F2 (9:16): laid out at the S1F2's 720×1280 xhdpi, saved as 540×960. All screenshots except the hero's AMS1 one.
   - AMS1 (3:5): `sale-ams1.png`, laid out and saved at the AMS1's 480×800 hdpi (`wm density 240` on the S1F2 AVD).
+- No simulator banner: `scripts/docs-capture launch` creates the `files/docs-capture` marker, which only debug builds
+  read (`AndroidDeviceInfo.docsCapture`), and `finish` removes it. The site discloses the screenshots as simulator
+  demos instead; receipts' own demo notices stay.
 - PNGs with a 96-colour palette (median cut, no dither), made by `scripts/docs-capture process`; see Capture script.
 - Full screen, no system bars: Adyen terminals show no clock or gesture bar, so the app fills their whole screen. The
   emulator cannot hide its bars (SystemUI is persistent, and `policy_control` is gone since Android 11), so captures use

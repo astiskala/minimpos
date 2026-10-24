@@ -231,7 +231,7 @@ enum class ReceiptCopy {
  * @property refundQr the encoded `RefundQrPayload` to print on the customer copy, or null for none.
  * @property cardSaved whether the shopper's card was stored for future payments, which adds a note.
  * @property preAuthorisation whether the payment only held the amount (a pre-authorisation, captured later): the
- *   receipt is titled [ReceiptLabels.preAuthTitle], shows the [ReceiptLabels.amountHeld] and never a refund QR code.
+ *   receipt is titled [ReceiptLabels.preAuthTitle], shows the [ReceiptLabels.amountHeld] and a refund QR code only once [captured].
  * @property tip the tip lines of a sale taken for tipping on the receipt, or null for none.
  * @property heldNow what a pre-authorisation holds after an adjustment, in minor units; null when it was not adjusted.
  * @property captured what was captured of a pre-authorisation, in minor units; null until it is captured, after which

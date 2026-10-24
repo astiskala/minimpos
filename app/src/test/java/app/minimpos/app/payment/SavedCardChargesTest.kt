@@ -12,6 +12,7 @@ import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.RefundChoice
+import app.minimpos.app.history.RefundInvalidReason
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.StoredPayment
@@ -22,6 +23,7 @@ import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct
+import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.tax.TaxMode
@@ -171,7 +173,7 @@ class SavedCardChargesTest {
     }
 
     @Test
-    fun `an approved charge is stored before sending and refunded through the Checkout API without a QR code`() {
+    fun `an approved charge is stored before sending and refunded through the Checkout API, by QR code only on this device`() {
         answers += CardChargeResult.Authorised("PSP9", "visa", "1111", "123456")
         val id = charge()
         val sale = sale(id)
@@ -190,8 +192,13 @@ class SavedCardChargesTest {
         val next = checkNotNull(charges.start(start()))
         await { charges.state.first { it == TransactionState.Finished(next) } }
         val record = checkNotNull(await { container.sales.get(id) })
-        assertThat(RefundablePayment.qrCode(record)).isNull()
-        val payment = (RefundablePayment.check(record) as Refundability.Refundable).payment
+        val qr = checkNotNull(RefundQrPayload.decode(checkNotNull(RefundablePayment.qrCode(record))))
+        assertThat(qr.transactionId).isEqualTo(".PSP9")
+        assertThat(RefundablePayment.isCheckoutTransaction(qr.transactionId)).isTrue()
+        // Another device has no original payment context for it, so it is never sent as a terminal reversal.
+        assertThat((RefundablePayment.find(null, qr) as Refundability.NotRefundable).reason)
+            .isEqualTo(RefundInvalidReason.CHARGED_ELSEWHERE)
+        val payment = (RefundablePayment.find(record, qr) as Refundability.Refundable).payment
         val request = checkNotNull(payment.request(RefundChoice.Amount(200), "", now, ZoneOffset.UTC))
         assertThat(request.checkout).isTrue()
         val refundId = checkNotNull(refunds.start(request))

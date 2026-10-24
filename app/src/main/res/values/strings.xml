@@ -337,6 +337,7 @@
   <string name="refund_unknown_outcome">The terminal did not confirm the refund. Check it in your Customer Area before refunding again.</string>
   <string name="refund_async_note">Adyen processes refunds asynchronously; the final outcome appears in your Customer Area.</string>
   <string name="refund_pre_authorisation">This pre-authorization has not been captured, so there is nothing to refund yet. Capture or cancel it from History.</string>
+  <string name="refund_charged_elsewhere">This Charge token payment is not in this device’s History. Refund it on the device that charged it, or in the Customer Area.</string>
   <string name="refund_awaiting_tip">This payment is waiting for its tip to be captured. Enter the tip from History, or cancel the payment there.</string>
   <string name="refund_review_title">Review the original payment</string>
   <string name="refund_review_message">This device has no original sale record. The QR code cannot confirm capture, later tips or refunds, or the payment destination. In your Customer Area, check the original payment and remaining refundable amount. Confirm that the selected terminal and environment are correct. This refund sends only the amount you checked, not a full reversal without an amount limit.</string>

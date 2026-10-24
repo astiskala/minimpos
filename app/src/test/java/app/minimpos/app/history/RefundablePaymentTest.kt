@@ -265,8 +265,10 @@ class RefundablePaymentTest {
         val payment = refundable(captured)
         assertThat(payment.amountMinor).isEqualTo(1_400)
         assertThat(payment.itemsKnown).isFalse()
-        // Pre-authorisation receipts carry no refund QR code.
-        assertThat(RefundablePayment.qrCode(captured)).isNull()
+        // Its receipt's refund QR code carries what was captured, and scanning it finds the local sale.
+        val qr = RefundQrPayload.decode(RefundablePayment.qrCode(captured)!!)!!
+        assertThat(qr.amountMinor).isEqualTo(1_400)
+        assertThat((RefundablePayment.find(captured, qr) as Refundability.Refundable).payment.local).isEqualTo(captured)
     }
 
     @Test

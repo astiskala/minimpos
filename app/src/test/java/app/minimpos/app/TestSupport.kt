@@ -162,6 +162,7 @@ class FakeDevice(
     override val country: String = "AU",
     override var paymentsApps: Set<TerminalEnvironment> = emptySet(),
     override val hasCamera: Boolean = true,
+    override val docsCapture: Boolean = false,
 ) : DeviceInfo
 
 /** Simulated Checkout modifications that know no payments, so they accept every capture and adjustment. */

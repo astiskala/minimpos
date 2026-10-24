@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -98,9 +98,11 @@
       <div class="setup-main">
         <p>New to Mini mPOS? <a href="quick-start#choose">Choose your setup</a> and
           <a href="quick-start#credentials">prepare your credentials</a> before filling in this form.</p>
-        <p class="hint" id="customer-area-note">Customer Area links open in a new tab so you can keep this form open.</p>
-        <p class="note" id="setup-noscript">The setup helper needs JavaScript. Switch it on for this page, or enter the
-          details in the app as the <a href="quick-start#connect">quick start guide</a> describes.</p>
+        <p class="hint" id="customer-area-note">Customer Area links open in a new tab so you can keep this form open.
+          </p>
+        <noscript><p class="note">JavaScript is off. Enable it to use the helper, or enter the details in the app.
+          <a href="quick-start#connect">Connect</a>.</p></noscript>
+<p class="hint" id="setup-loading" role="status">Loading the setup form…</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
               data-msg-making="Making the codes…"
@@ -111,33 +113,47 @@
               data-msg-unsupported="This browser cannot make the codes. Use a current version of Chrome, Edge, Firefox or Safari.">
           <fieldset>
             <legend>Where does Mini mPOS run, and where do payments go?</legend>
-            <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>On an Adyen terminal</strong> that takes the payments itself</span></label>
-            <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>On a tablet or phone</strong>, with a terminal on the same network</span></label>
-            <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>On a tablet or phone</strong>, with a terminal over the internet (cloud)</span></label>
+            <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>On
+              an Adyen terminal</strong> that takes the payments itself</span></label>
+            <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>On a tablet or
+              phone</strong>, with a terminal on the same network</span></label>
+            <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>On a tablet or
+              phone</strong>, with a terminal over the internet (cloud)</span></label>
             <label class="choice"><input type="radio" name="destination" value="tapToPay"> <span><strong>On a phone</strong>, with Tap to Pay in the Adyen Payments app</span></label>
           </fieldset>
 
           <fieldset>
             <legend>Which Adyen environment?</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>: test terminals and test cards</span></label>
-            <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>: real payments</span></label>
-            <p class="hint">TEST or LIVE is included in every setup code for review. For a network/cloud terminal or Tap to Pay, it sets the app’s environment.
+            <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>: real
+              payments</span></label>
+            <p class="hint">TEST or LIVE is included in every setup code for review. For a network/cloud terminal or Tap
+              to Pay, it sets the app’s environment.
               An Adyen terminal still uses its device certificate for the connection.</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud">
             <legend>How do you want to set up?</legend>
-            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>Automatic (recommended)</strong>: look up terminal setup on the device</span></label>
-            <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>Manual</strong>: enter all connection details on this computer</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>
+              Automatic (recommended)</strong>: look up terminal setup on the device</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>Manual</strong>:
+              enter all connection details on this computer</span></label>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>Follow the <a href="quick-start#tap-to-pay">Tap to Pay prerequisites</a> and install the Payments app first. Mini mPOS uses your Adyen API key to create the phone’s registration credential automatically. Enter the shared key here; Mini mPOS does not look it up. Registration is an explicit action on the phone before import finishes.</p>
+          <p class="hint" data-only="tapToPay" hidden>Follow the <a href="quick-start#tap-to-pay">Tap to Pay
+            prerequisites</a> and install the Payments app first. Mini mPOS uses your Adyen API key to create the
+            phone’s registration credential automatically. Enter the shared key here; Mini mPOS does not look it up.
+            Registration is an explicit action on the phone before import finishes.</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API key</legend>
-            <p class="hint">Create a credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> and generate its API key.
-              <span data-only="tapToPay" hidden>This key handles Checkout and provisions the phone’s separate registration credential.</span>
-              Every setup requires the same main credential roles; see the <a href="quick-start#credentials">credential requirements</a>.</p>
+            <p class="hint">Create a credential in
+              <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Developers › API credentials</a> and generate its API key.
+              <span data-only="tapToPay" hidden>This key handles Checkout and provisions the phone’s separate
+                registration credential.</span>
+              Every setup requires the same main credential roles; see the <a href="quick-start#credentials">credential
+                requirements</a>.</p>
             <label for="apiKey">API key</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -161,12 +177,15 @@
             <legend>The terminal in the cloud</legend>
             <label for="cloudPoiId">Terminal ID (POIID)</label>
             <input id="cloudPoiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
-            <p class="hint">Find it on the terminal's Device info screen or in Devices › Terminals in the Customer Area.</p>
+            <p class="hint">Find it on the terminal's Device info screen or in Devices › Terminals in the Customer Area.
+              </p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
             <legend>Shared key</legend>
-            <p class="hint">In the Customer Area: <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Device settings › Terminal API</a>,
+            <p class="hint">In the Customer Area:
+              <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Devices › Device settings › Terminal API</a>,
               under Encryption key (select the pencil icon to see it).</p>
             <label for="keyIdentifier">Key identifier</label>
             <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
@@ -178,43 +197,56 @@
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
             <legend>Live URL prefix</legend>
-            <p class="hint">In <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API URLs</a>.</p>
+            <p class="hint">In
+              <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Developers › API URLs</a>.</p>
             <label for="liveUrlPrefix">Prefix</label>
             <input id="liveUrlPrefix" name="liveUrlPrefix" type="text" required spellcheck="false" placeholder="1797a841fbb37ca7-AdyenDemo">
           </fieldset>
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS automatically creates a separate credential with the Adyen Payments App role and a client key. No extra key to enter or transfer. See <a href="troubleshooting#tap-to-pay-check">Tap to Pay troubleshooting</a> and
-              the <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments app guide</a>.</p>
+            <p class="hint">Mini mPOS automatically creates a separate credential with the Adyen Payments App role and a
+              client key. No extra key to enter or transfer. See <a href="troubleshooting#tap-to-pay-check">Tap to Pay
+              troubleshooting</a> and
+              the <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments app
+                guide</a>.</p>
             <label for="storeId">Store ID, optional</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
-            <p class="hint">To set up the phone for one store: its ID (not its reference) from <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a>.</p>
+            <p class="hint">To set up the phone for one store: its ID (not its reference) from
+              <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Devices › Stores</a>.</p>
           </fieldset>
 
-          <fieldset>
+          <details class="setup-optional"><summary>Optional receipt and email settings</summary>
+<fieldset>
             <legend>Receipt details (optional)</legend>
-            <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>Leave receipt settings unchanged</span></label>
-            <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>Include receipt details</span></label>
+            <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>Leave receipt
+              settings unchanged</span></label>
+            <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>Include receipt details
+              </span></label>
             <p class="hint">When off, no receipt text or Adyen business details are imported.</p>
 
             <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
               <legend>Receipt details</legend>
               <p class="hint">Choose Adyen import or manual entry for each business field.</p>
               <label for="receiptNameSource">Business name</label>
-              <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
+              <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Import from Adyen</option>
+                <option value="manual">Enter manually</option></select>
               <div data-receipt="receiptNameSource" hidden>
                 <label for="receiptBusinessName">Receipt business name</label>
                 <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
               </div>
               <label for="receiptAddressSource">Address</label>
-              <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
+              <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Import from Adyen
+                </option><option value="manual">Enter manually</option></select>
               <div data-receipt="receiptAddressSource" hidden>
                 <label for="receiptAddressLines">Receipt address</label>
                 <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
               </div>
               <label for="receiptPhoneSource">Phone</label>
-              <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
+              <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Import from Adyen</option>
+                <option value="manual">Enter manually</option></select>
               <div data-receipt="receiptPhoneSource" hidden>
                 <label for="receiptPhone">Receipt phone</label>
                 <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
@@ -225,15 +257,20 @@
               <input id="receiptTitle" name="receiptTitle" type="text">
               <label for="receiptFooter">Footer, optional</label>
               <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
-              <p class="hint">Only supplied manual text changes saved values. Blank fields keep existing text. Tax ID, title and footer are entered manually, not imported from Adyen. See <a href="using#receipts">receipt setup</a>.</p>
+              <p class="hint">Only supplied manual text changes saved values. Blank fields keep existing text. Tax ID,
+                title and footer are entered manually, not imported from Adyen. See <a href="using#receipts">receipt
+                setup</a>.</p>
             </fieldset>
           </fieldset>
 
           <fieldset>
             <legend>Email receipts (optional)</legend>
-            <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>Leave email settings unchanged</span></label>
-            <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>Include SMTP settings</span></label>
-            <p class="hint">Check <a href="using#email">email setup and provider requirements</a> first; the helper cannot test the server.</p>
+            <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>Leave email settings
+              unchanged</span></label>
+            <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>Include SMTP settings</span>
+              </label>
+            <p class="hint">Check <a href="using#email">email setup and provider requirements</a> first; the helper
+              cannot test the server.</p>
 
             <fieldset id="smtp-fields" data-email="true" hidden disabled>
               <legend>SMTP server</legend>
@@ -241,9 +278,12 @@
               <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
               <label for="smtpPort">Port</label>
               <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS (usually port 587)</span></label>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS (usually port 465)</span></label>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>None (unencrypted, not recommended)</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS
+                (usually port 587)</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS (usually port
+                465)</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>None (unencrypted, not
+                recommended)</span></label>
               <label for="smtpUsername">Username, optional</label>
               <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
               <label for="smtpPassword">Password or app password, optional</label>
@@ -252,9 +292,11 @@
               <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
               <label for="smtpFromName">Sender name, optional</label>
               <input id="smtpFromName" name="smtpFromName" type="text">
-              <p class="hint">Only supplied fields change. Blank optional fields keep saved values; clear them in Settings › Email receipts if needed. The password is sealed with the other secrets.</p>
+              <p class="hint">Only supplied fields change. Blank optional fields keep saved values; clear them in
+                Settings › Email receipts if needed. The password is sealed with the other secrets.</p>
             </fieldset>
           </fieldset>
+</details>
 
           <div class="setup-actions">
             <button class="button" type="submit">Make QR codes</button>
@@ -265,7 +307,7 @@
       </div>
 
       <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
-        <h2 id="setup-codes-title">Scan these codes with the device</h2>
+        <h2 id="setup-codes-title" tabindex="-1">Scan these codes with the device</h2>
         <div class="setup-scan">
           <div class="setup-qr" id="setup-qr"></div>
           <div class="setup-controls">
@@ -276,10 +318,15 @@
           </div>
         </div>
         <div class="setup-next">
-          <div class="setup-code-card" id="setup-code-card">
+
+<div class="setup-code-card" id="setup-code-card">
             <p>Transfer code</p>
             <p class="setup-code" id="setup-code"></p>
           </div>
+<dl class="setup-summary"><div><dt>Payment destination</dt><dd id="setup-summary-destination"></dd></div><div>
+<dt>Environment</dt><dd id="setup-summary-environment"></dd></div><div><dt>Setup method</dt>
+<dd id="setup-summary-mode"></dd></div><div><dt>Receipt settings</dt><dd id="setup-summary-receipt"></dd>
+</div><div><dt>Email settings</dt><dd id="setup-summary-email"></dd></div></dl>
           <ol>
             <li>In Mini mPOS, open <strong>Settings › Terminal</strong> and tap <strong>Scan setup codes</strong>
               under Quick setup, or the QR scan icon at the top right.</li>
@@ -288,15 +335,16 @@
               and tap <strong>Verify and import</strong>.</li>
           </ol>
           <p>If you included SMTP settings, review <strong>Settings › Email receipts</strong> and send a test email.</p>
-          <p><a href="troubleshooting#access">Import problem?</a> · <a href="troubleshooting#connection">Connection problem?</a></p>
+          <p><a href="troubleshooting#access">Import problem?</a> · <a href="troubleshooting#connection">Connection
+            problem?</a></p>
         </div>
       </section>
 
       <aside class="setup-side"><div>
         <h2>Good to know</h2>
         <ul>
-          <li><strong>Nothing leaves this page.</strong> The codes are made in your browser; the page sends nothing
-            anywhere and stores nothing. Close it when you are done.</li>
+          <li id="setup-privacy"><strong>Credentials stay in your browser.</strong> The helper makes codes locally and does not send or
+            save entered credentials. The hosted site also loads Cloudflare security and performance services.</li>
           <li><strong>The keys are sealed.</strong> Passwords and keys in the codes are encrypted with the transfer
             code, which is shown only here, so a photo of the codes alone does not reveal them.</li>
           <li><strong>Keep the transfer code private.</strong> Anyone with both the codes and the transfer code can

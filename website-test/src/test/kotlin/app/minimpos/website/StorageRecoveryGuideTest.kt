@@ -23,7 +23,7 @@ class StorageRecoveryGuideTest {
             val page = Jsoup.parse(docs.resolve(language).resolve("troubleshooting.html").readText())
             val storage = checkNotNull(page.getElementById("storage"))
             terms.forEach { term -> assertWithMessage("$language storage recovery: $term").that(storage.text()).contains(term) }
-            assertThat(storage.select("ol.steps > li")).hasSize(4)
+            assertThat(storage.select("ol.recovery-steps > li")).hasSize(4)
             assertThat(storage.select(".callout-warning").text()).contains("PIN")
             assertThat(storage.select(".callout-warning").text()).contains("Adyen")
             assertThat(storage.text()).contains("Customer Area")

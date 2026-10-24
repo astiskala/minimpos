@@ -124,13 +124,15 @@ class SearchMetadataTest {
                     .attr("content")
                     .split(';')
                     .associate { it.trim().substringBefore(' ') to it.trim().substringAfter(' ') }
-            val setup = path.fileName.toString() == "setup.html"
             assertThat(policy["default-src"]).isEqualTo("'none'")
-            assertThat(policy["script-src"]).isEqualTo(if (setup) "'self'" else "'none'")
+            assertThat(policy["script-src"])
+                .isEqualTo("'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com")
+            assertThat(policy["script-src-attr"]).isEqualTo("'none'")
             assertThat(policy["style-src"]).isEqualTo("'self'")
             assertThat(policy["img-src"]).isEqualTo("'self'")
             assertThat(policy["manifest-src"]).isEqualTo("'self'")
-            assertThat(policy["connect-src"]).isEqualTo(if (setup) "'none'" else "'self'")
+            assertThat(policy["connect-src"])
+                .isEqualTo("https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum")
             listOf("form-action", "base-uri", "object-src", "frame-src", "worker-src").forEach {
                 assertThat(policy[it]).isEqualTo("'none'")
             }
@@ -140,7 +142,7 @@ class SearchMetadataTest {
     }
 
     @Test
-    fun `browsers block injected inline scripts on every published page`() {
+    fun `hosting bootstrap script elements execute but inline event handlers remain blocked`() {
         HelperBrowser().use { browser ->
             pages.keys.forEach { path ->
                 browser.openPage(path)
@@ -149,11 +151,20 @@ class SearchMetadataTest {
                         """
                         const done = arguments[arguments.length - 1];
                         document.addEventListener('securitypolicyviolation', event => {
-                          done(event.blockedURI === 'inline' && window.unexpectedInlineScript === undefined);
-                        }, {once: true});
+                          if (event.effectiveDirective === 'script-src-attr') {
+                            done(window.hostingBootstrap === true && window.unexpectedHandler === undefined &&
+                              window.evalBlocked === true && window.unexpectedEval === undefined);
+                          }
+                        });
                         const script = document.createElement('script');
-                        script.textContent = 'window.unexpectedInlineScript = true';
+                        script.textContent = `window.hostingBootstrap = true;
+                          try { eval('window.unexpectedEval = true'); }
+                          catch (error) { window.evalBlocked = error instanceof EvalError; }`;
                         document.head.append(script);
+                        const button = document.createElement('button');
+                        button.setAttribute('onclick', 'window.unexpectedHandler = true');
+                        document.body.append(button);
+                        button.click();
                         """.trimIndent(),
                     )
                 assertWithMessage(path.toString()).that(blocked).isEqualTo(true)
@@ -162,7 +173,7 @@ class SearchMetadataTest {
     }
 
     @Test
-    fun `helper network requests are rejected by CSP in every language`() {
+    fun `helper CSP rejects arbitrary Adyen and hosting lookalike requests in every language`() {
         HelperBrowser().use { browser ->
             pages.keys.filter { it.fileName.toString() == "setup.html" }.forEach { path ->
                 browser.open(path)
@@ -170,13 +181,25 @@ class SearchMetadataTest {
                     browser.executeAsyncScript(
                         """
                         const done = arguments[arguments.length - 1];
-                        const violation = new Promise(resolve => {
-                          document.addEventListener('securitypolicyviolation', event => {
-                            resolve(event.effectiveDirective === 'connect-src');
-                          }, {once: true});
-                        });
-                        const request = fetch('https://example.invalid/credential-test').then(() => false, () => true);
-                        Promise.all([violation, request]).then(results => done(results.every(Boolean)));
+                        const verify = async () => {
+                          for (const url of [
+                            'https://example.invalid/credential-test',
+                            'https://checkout-test.adyen.com/v71/payments',
+                            'https://minimpos.app/credentials',
+                            'https://minimpos.app/cdn-cgi-lookalike/credentials',
+                            'https://cloudflareinsights.com/not-rum'
+                          ]) {
+                            const violation = new Promise(resolve => {
+                              document.addEventListener('securitypolicyviolation', event => {
+                                resolve(event.effectiveDirective === 'connect-src');
+                              }, {once: true});
+                            });
+                            const request = fetch(url).then(() => false, () => true);
+                            if (!(await Promise.all([violation, request])).every(Boolean)) return false;
+                          }
+                          return true;
+                        };
+                        verify().then(done);
                         """.trimIndent(),
                     )
                 assertWithMessage(path.toString()).that(blocked).isEqualTo(true)

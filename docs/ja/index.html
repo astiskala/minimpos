@@ -2,7 +2,7 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
     <meta name="referrer" content="no-referrer">
     <meta name="robots" content="max-image-preview:large">
     <meta content="width=device-width, initial-scale=1" name="viewport">
@@ -82,10 +82,10 @@
           <div class="hero-copy">
             <p class="eyebrow">無料・オープンソース · Adyen Android 決済端末で直接動作</p>
             <h1>お会計のすべてを、決済端末そのもので。</h1>
-            <p class="lead">Mini mPOS は Adyen Android 決済端末の上で直接動作します。商品を選び、決済を受け付け、領収書を印刷またはメール送信し、返金は領収書をスキャンするだけ。すべてが 1 台で完結し、別のレジもタブレットも、アプリのサブスクリプションも不要です。タブレットやスマートフォンで使いたい場合も、お手持ちの端末や Tap to Pay と組み合わせて動作します。</p>
+            <p class="lead">Adyen Android 端末で販売、決済、領収書の発行、返金まで行えます。Android タブレットやスマートフォンと端末、または Tap to Pay でも利用できます。</p>
             <div class="actions">
               <a class="button" href="quick-start">Mini mPOS を設定する</a>
-              <a class="button button-ghost" href="setup">セットアップヘルパーを開く</a>
+              <a class="button button-ghost" href="quick-start#try">デモを試す</a>
             </div>
             <ul class="hero-points">
               <li>決済端末の上で直接動作</li>
@@ -94,15 +94,18 @@
               <li>内蔵シミュレーターでお試し</li>
               <li>英語・中国語（簡体字・繁体字）・日本語・ブラジルポルトガル語・スペイン語・フランス語に対応</li>
             </ul>
+
           </div>
           <div class="hero-visual">
             <div class="hero-shots">
-              <div class="terminal terminal-s1f2 terminal-back">
+              <a class="screenshot-link" href="../images/ja/receipt.png" aria-label="スクリーンショットを元のサイズで開く: S1F2 をイメージした決済端末の領収書デモ">
+                <div class="terminal terminal-s1f2 terminal-back">
                 <img alt="S1F2 をイメージした決済端末の領収書デモ" height="960" src="../images/ja/receipt.png" width="540" decoding="async">
-              </div>
-              <div class="terminal terminal-ams1 terminal-front">
+              </div></a>
+              <a class="screenshot-link" href="../images/ja/sale-ams1.png" aria-label="スクリーンショットを元のサイズで開く: AMS1 をイメージした決済端末の販売デモ">
+                <div class="terminal terminal-ams1 terminal-front">
                 <img alt="AMS1 をイメージした決済端末の販売デモ" height="800" src="../images/ja/sale-ams1.png" width="480" fetchpriority="high" decoding="async">
-              </div>
+              </div></a>
             </div>
           </div>
         </div>
@@ -111,9 +114,12 @@
         <div class="wrap">
           <h2 id="guides-title">必要なガイドを見つける</h2>
           <div class="guide-cards">
-            <article class="guide-card"><h3><a href="quick-start">クイックスタート</a></h3><p>前提条件を確認し、インストール、Adyen への接続、テストを進めます。</p></article>
-            <article class="guide-card"><h3><a href="using">Mini mPOS の使い方</a></h3><p>決済、返金、領収書、一日の精算を行います。</p></article>
-            <article class="guide-card"><h3><a href="troubleshooting">トラブルシューティング</a></h3><p>結果不明、拒否、端末ペアリング、ネットワーク、プリンターの問題を解決します。</p></article>
+            <article class="guide-card"><h3><a href="quick-start">クイックスタート</a></h3><p>前提条件を確認し、インストール、Adyen
+              への接続、テストを進めます。</p></article>
+            <article class="guide-card"><h3><a href="using">Mini mPOS の使い方</a></h3><p>決済、返金、領収書、一日の精算を行います。</p>
+              </article>
+            <article class="guide-card"><h3><a href="troubleshooting">トラブルシューティング</a></h3><p>
+              結果不明、拒否、端末ペアリング、ネットワーク、プリンターの問題を解決します。</p></article>
           </div>
           <p><a href="#features">機能を見る</a></p>
         </div>
@@ -121,8 +127,11 @@
       <section aria-labelledby="features-title" class="section" id="features">
         <div class="wrap">
           <h2 id="features-title">対面販売に必要なすべてを</h2>
-          <p class="section-lead">カウンター 1 か所から、店舗・イベント・配達・出張サービスにまたがる複数のデバイスまで。商品、決済、領収書、返金を、バックオフィスの運用なしで。</p>
-          <p>対応する端末では、<a href="using#terminal-checkout">一部承認、購入者向け入力、Giving、手入力決済</a>も使えます。利用する構成の<a href="using#capabilities">Adyen機能</a>を確認し、ローカル履歴と<a href="using#reconciliation">端末の合計</a>を照合してください。</p>
+          <p class="section-lead">店舗、イベント、配達、訪問サービスで、商品、決済、領収書、返金を管理できます。</p>
+<p class="hero-boundary">アプリは無料ですが、Adyen の決済手数料はかかります。商品、設定、履歴は各デバイスに保存されます。QR 転送は一度限りのコピーで、自動同期は行いません。
+  <a href="using#more">デバイスとデータ</a>.</p>
+          <p>対応する端末では、<a href="using#terminal-checkout">一部承認、購入者向け入力、Giving、手入力決済</a>も使えます。利用する構成の
+            <a href="using#capabilities">Adyen機能</a>を確認し、ローカル履歴と<a href="using#reconciliation">端末の合計</a>を照合してください。</p>
           <div class="features">
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"></path></svg>
@@ -164,7 +173,8 @@
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm1 4h-2v1.1A3 3 0 0 0 8.5 10c0 1.7 1.3 2.4 3 2.8 1.2.3 1.5.6 1.5 1.1s-.5.9-1.3.9c-.9 0-1.5-.4-1.6-1.1H8.2c.1 1.6 1.2 2.6 2.8 2.9V18h2v-1.4c1.6-.3 2.8-1.3 2.8-2.8 0-1.8-1.4-2.5-3.1-2.9-1.1-.3-1.4-.5-1.4-1 0-.4.4-.8 1.1-.8.8 0 1.2.4 1.3.9h1.9A2.9 2.9 0 0 0 13 7.1z"></path></svg>
               <h3>端末または領収書でチップを受付</h3>
               <p>対応する端末で決済前にチップを選ぶか、印刷した領収書に記入し、後でキャプチャできます。</p>
-              <p class="feature-link"><a href="using#terminal-tips">端末チップを受け取る</a> · <a href="using#tips">領収書にチップを記入</a></p>
+              <p class="feature-link"><a href="using#terminal-tips">端末チップを受け取る</a> · <a href="using#tips">領収書にチップを記入</a>
+                </p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M7 5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm10 10a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM18.4 4.2l1.4 1.4-14.2 14.2-1.4-1.4z"></path></svg>
@@ -186,30 +196,34 @@
           <h2 id="flow-title">販売から返金まで</h2>
           <ol class="flow">
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/ja/sale.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のデモ画面：カフェの商品一覧と3,050円の会計ボタン">
+                <div class="terminal terminal-s1f2">
                 <img alt="日本語のデモ画面：カフェの商品一覧と3,050円の会計ボタン" height="960" loading="lazy" src="../images/ja/sale.png" width="540" decoding="async">
-              </div>
+              </div></a>
               <h3><span>1</span> 商品を選ぶ</h3>
               <p>商品をタップするか金額を入力。</p>
             </li>
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/ja/checkout.png" aria-label="スクリーンショットを元のサイズで開く: 日本語シミュレーターの会計デモ：252円の税額、購入者参照ID、支払う、ウォレットをスキャン、決済リンクを作成するボタン">
+                <div class="terminal terminal-s1f2">
                 <img alt="日本語シミュレーターの会計デモ：252円の税額、購入者参照ID、支払う、ウォレットをスキャン、決済リンクを作成するボタン" height="960" loading="lazy" src="../images/ja/checkout.png" width="540" decoding="async">
-              </div>
+              </div></a>
               <h3><span>2</span> 会計する</h3>
-              <p>参照IDを追加し、同意を得てカードを保存。</p>
+              <p>合計を確認し、お客様に支払いを依頼して承認を待ちます。参照番号の入力とカードの保存は任意です。</p>
             </li>
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/ja/receipt.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：商品、税額、合計、購入者参照IDがあるカフェの印刷領収書">
+                <div class="terminal terminal-s1f2">
                 <img alt="日本語のシミュレーターデモ：商品、税額、合計、購入者参照IDがあるカフェの印刷領収書" height="960" loading="lazy" src="../images/ja/receipt.png" width="540" decoding="async">
-              </div>
-              <h3><span>3</span> 領収書を印刷</h3>
-              <p>必要な情報と QR コードを 1 枚に。</p>
+              </div></a>
+              <h3><span>3</span> 領収書を渡す</h3>
+              <p>設定に応じて、印刷、メール送信、共有で領収書を渡します。</p>
             </li>
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/ja/refund.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のデモ画面：フラットホワイトとバナナブレッドの1,000円の返金">
+                <div class="terminal terminal-s1f2">
                 <img alt="日本語のデモ画面：フラットホワイトとバナナブレッドの1,000円の返金" height="960" loading="lazy" src="../images/ja/refund.png" width="540" decoding="async">
-              </div>
+              </div></a>
               <h3><span>4</span> スキャンして返金</h3>
               <p>領収書をスキャンして返金内容を選択。</p>
             </li>
@@ -219,12 +233,14 @@
       <section aria-labelledby="history-title" class="section" id="history">
         <div class="wrap split">
           <div class="shot-pair">
-            <div class="terminal terminal-s1f2">
+            <a class="screenshot-link" href="../images/ja/history.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のデモ画面：日別の取引履歴、プリオーソリゼーション、チップ、返金、ウォレット決済">
+              <div class="terminal terminal-s1f2">
               <img alt="日本語のデモ画面：日別の取引履歴、プリオーソリゼーション、チップ、返金、ウォレット決済" height="960" loading="lazy" src="../images/ja/history.png" width="540" decoding="async">
-            </div>
-            <div class="terminal terminal-s1f2">
+            </div></a>
+            <a class="screenshot-link" href="../images/ja/history-search.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のデモ画面：購入者参照ID 1042 で検索した販売と返金">
+              <div class="terminal terminal-s1f2">
               <img alt="日本語のデモ画面：購入者参照ID 1042 で検索した販売と返金" height="960" loading="lazy" src="../images/ja/history-search.png" width="540" decoding="async">
-            </div>
+            </div></a>
           </div>
           <div>
             <h2 id="history-title">必要な取引をすぐに見つける</h2>
@@ -242,7 +258,8 @@
         <div class="wrap split">
           <div>
             <h2 id="how-title">Adyen 決済端末に組み込んで</h2>
-            <p class="section-lead">端末にインストールすれば、ほかのハードウェアも運用するバックエンドも不要です。タブレットやスマートフォンでは、お手持ちの端末や Tap to Pay と組み合わせて使えます。</p>
+            <p class="section-lead">端末にインストールすれば、ほかのハードウェアも運用するバックエンドも不要です。タブレットやスマートフォンでは、お手持ちの端末や Tap to Pay
+              と組み合わせて使えます。</p>
             <ul class="checks">
               <li><strong>カード情報は Adyen が管理。</strong>Mini mPOS が受け取るのは、マスクされたカード情報と決済の参照IDだけです。</li>
               <li><strong>店舗のデータはデバイスに。</strong>商品、設定、取引履歴をデバイス内で管理。クラウドアカウントは不要です。</li>
@@ -250,12 +267,14 @@
             </ul>
           </div>
           <div class="shot-pair">
-            <div class="terminal terminal-s1f2">
+            <a class="screenshot-link" href="../images/ja/tax.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のデモ画面：税金の設定と消費税10%、軽減税率8%">
+              <div class="terminal terminal-s1f2">
               <img alt="日本語のデモ画面：税金の設定と消費税10%、軽減税率8%" height="960" loading="lazy" src="../images/ja/tax.png" width="540" decoding="async">
-            </div>
-            <div class="terminal terminal-s1f2">
+            </div></a>
+            <a class="screenshot-link" href="../images/ja/approved.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のデモ画面：承認済みの3,050円の決済、カード情報、加盟店参照ID、PSP参照ID">
+              <div class="terminal terminal-s1f2">
               <img alt="日本語のデモ画面：承認済みの3,050円の決済、カード情報、加盟店参照ID、PSP参照ID" height="960" loading="lazy" src="../images/ja/approved.png" width="540" decoding="async">
-            </div>
+            </div></a>
           </div>
         </div>
       </section>
@@ -270,8 +289,10 @@
             </article>
             <article class="step">
               <h3>お店で使う準備はできましたか？</h3>
-              <p>アプリをダウンロードし、Adyen Customer Area から端末に配布（またはタブレットやスマートフォンにインストール）して、セットアップヘルパーでキーを読み取ります。ガイドで手順を確認できます。</p>
-              <p><a href="quick-start">クイックスタートを読む</a> · <a href="setup">セットアップヘルパーを開く</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">アプリをダウンロード</a></p>
+              <p>アプリをダウンロードし、Adyen Customer Area から端末に配布（またはタブレットやスマートフォンにインストール）して、セットアップヘルパーでキーを読み取ります。ガイドで手順を確認できます。
+                </p>
+              <p><a href="quick-start">クイックスタートを読む</a> · <a href="setup">セットアップヘルパーを開く</a> ·
+                <a href="https://github.com/astiskala/minimpos/releases/latest">アプリをダウンロード</a></p>
             </article>
           </div>
           <p><a href="using">Mini mPOS の使い方</a> · <a href="troubleshooting">トラブルシューティング</a></p>
@@ -283,7 +304,8 @@
           <div class="faq">
             <details>
               <summary>どの構成を選べばよいですか？</summary>
-              <p>Adyen Android 端末で会計を完結するか、タブレットやスマートフォンでネットワーク端末、クラウド端末、Tap to Pay を使えます。<a href="quick-start#choose">要件と構成の選択</a>を参照してください。印刷にはプリンター、スキャンにはカメラが必要です。</p>
+              <p>Adyen Android 端末で会計を完結するか、タブレットやスマートフォンでネットワーク端末、クラウド端末、Tap to Pay を使えます。<a href="quick-start#choose">
+                要件と構成の選択</a>を参照してください。印刷にはプリンター、スキャンにはカメラが必要です。</p>
             </details>
             <details>
               <summary>料金はいくらですか？</summary>
@@ -291,15 +313,18 @@
             </details>
             <details>
               <summary>Adyen の製品ですか？</summary>
-              <p>いいえ。Adyen が開発、推奨、サポートするものではありません。本番運用前に Adyen TEST 環境で確認してください。アプリと Adyen の質問の窓口は<a href="troubleshooting#help">問い合わせ</a>をご覧ください。</p>
+              <p>いいえ。Adyen が開発、推奨、サポートするものではありません。本番運用前に Adyen TEST 環境で確認してください。アプリと Adyen の質問の窓口は
+                <a href="troubleshooting#help">問い合わせ</a>をご覧ください。</p>
             </details>
             <details>
               <summary>デバイスでバックオフィスを共有しますか？</summary>
-              <p>しません。商品、設定、取引履歴は各デバイスに残ります。QR 転送は商品と設定のコピーで、履歴の転送や変更の継続同期ではありません。<a href="using#more">デバイスとデータ</a>を参照してください。</p>
+              <p>しません。商品、設定、取引履歴は各デバイスに残ります。QR 転送は商品と設定のコピーで、履歴の転送や変更の継続同期ではありません。<a href="using#more">デバイスとデータ</a>
+                を参照してください。</p>
             </details>
             <details>
               <summary>サーバーや APIキーは必要ですか？</summary>
-              <p>サーバーは不要ですが、すべての実決済構成に Checkout API の認証情報が必要です。他のキーは決済先によります。デバイスに暗号化して保存するため、Adyen のサーバー保管の推奨とのトレードオフがあります。<a href="quick-start#connect">接続設定</a>とそこでの安全上の案内に従ってください。</p>
+              <p>サーバーは不要ですが、すべての実決済構成に Checkout API の認証情報が必要です。他のキーは決済先によります。デバイスに暗号化して保存するため、Adyen
+                のサーバー保管の推奨とのトレードオフがあります。<a href="quick-start#connect">接続設定</a>とそこでの安全上の案内に従ってください。</p>
             </details>
           </div>
         </div>

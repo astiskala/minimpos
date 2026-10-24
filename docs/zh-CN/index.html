@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
     <meta name="referrer" content="no-referrer">
     <meta name="robots" content="max-image-preview:large">
     <meta content="width=device-width, initial-scale=1" name="viewport">
@@ -82,10 +82,10 @@
           <div class="hero-copy">
             <p class="eyebrow">免费开源 · 直接运行在 Adyen Android 支付终端上</p>
             <h1>完整收银流程，就在支付终端上。</h1>
-            <p class="lead">Mini mPOS 直接运行在 Adyen Android 支付终端上，一台设备即可选购商品、收款、打印或发送电子收据，并通过扫描收据完成退款。无需单独的收银机、平板或应用订阅。更喜欢用平板电脑或手机？Mini mPOS 同样可以在上面运行，配合您的终端或 Tap to Pay 收款。</p>
+            <p class="lead">在 Adyen Android 终端上完成销售、收款、出具收据和退款。也可使用 Android 平板或手机，连接终端或通过 Tap to Pay 收款。</p>
             <div class="actions">
               <a class="button" href="quick-start">设置 Mini mPOS</a>
-              <a class="button button-ghost" href="setup">打开设置助手</a>
+              <a class="button button-ghost" href="quick-start#try">试用演示</a>
             </div>
             <ul class="hero-points">
               <li>直接在终端上运行</li>
@@ -94,15 +94,18 @@
               <li>内置模拟器，方便试用</li>
               <li>支持英语、简体中文、繁体中文、日语、巴西葡萄牙语、西班牙语和法语</li>
             </ul>
+
           </div>
           <div class="hero-visual">
             <div class="hero-shots">
-              <div class="terminal terminal-s1f2 terminal-back">
+              <a class="screenshot-link" href="../images/zh-CN/receipt.png" aria-label="查看原尺寸截图: S1F2 风格支付终端上的收据演示">
+                <div class="terminal terminal-s1f2 terminal-back">
                 <img alt="S1F2 风格支付终端上的收据演示" height="960" src="../images/zh-CN/receipt.png" width="540" decoding="async">
-              </div>
-              <div class="terminal terminal-ams1 terminal-front">
+              </div></a>
+              <a class="screenshot-link" href="../images/zh-CN/sale-ams1.png" aria-label="查看原尺寸截图: AMS1 风格支付终端上的销售演示">
+                <div class="terminal terminal-ams1 terminal-front">
                 <img alt="AMS1 风格支付终端上的销售演示" height="800" src="../images/zh-CN/sale-ams1.png" width="480" fetchpriority="high" decoding="async">
-              </div>
+              </div></a>
             </div>
           </div>
         </div>
@@ -113,7 +116,8 @@
           <div class="guide-cards">
             <article class="guide-card"><h3><a href="quick-start">快速入门</a></h3><p>检查前提条件，安装、连接 Adyen 并测试。</p></article>
             <article class="guide-card"><h3><a href="using">使用 Mini mPOS</a></h3><p>收款、退款、发送收据和每日平账。</p></article>
-            <article class="guide-card"><h3><a href="troubleshooting">故障排查</a></h3><p>解决结果未知、付款被拒绝、终端绑定、网络和打印机问题。</p></article>
+            <article class="guide-card"><h3><a href="troubleshooting">故障排查</a></h3><p>解决结果未知、付款被拒绝、终端绑定、网络和打印机问题。</p>
+              </article>
           </div>
           <p><a href="#features">了解功能</a></p>
         </div>
@@ -121,8 +125,11 @@
       <section aria-labelledby="features-title" class="section" id="features">
         <div class="wrap">
           <h2 id="features-title">线下收款所需，一应俱全</h2>
-          <p class="section-lead">从一个柜台到分布在门店、活动、配送和上门服务中的多台设备：商品、支付、收据和退款，无需运营后台。</p>
-          <p>支持的终端还提供<a href="using#terminal-checkout">部分付款、购物者提示、Giving 和手动输入卡号</a>。请检查当前配置的 <a href="using#capabilities">Adyen 功能</a>，并将本地记录与<a href="using#reconciliation">终端总额</a>核对。</p>
+          <p class="section-lead">适用于柜台、活动、配送和上门服务的商品、支付、收据及退款管理。</p>
+<p class="hero-boundary">应用免费，Adyen 仍收取支付处理费用。商品、设置和历史记录保存在各设备上。二维码传输只进行一次性复制，不会自动同步。 <a href="using#more">设备与数据</a>.
+  </p>
+          <p>支持的终端还提供<a href="using#terminal-checkout">部分付款、购物者提示、Giving 和手动输入卡号</a>。请检查当前配置的
+            <a href="using#capabilities">Adyen 功能</a>，并将本地记录与<a href="using#reconciliation">终端总额</a>核对。</p>
           <div class="features">
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"></path></svg>
@@ -186,30 +193,34 @@
           <h2 id="flow-title">从销售到退款</h2>
           <ol class="flow">
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/zh-CN/sale.png" aria-label="查看原尺寸截图: 简体中文演示：咖啡店商品网格与 33.50 新元收款按钮">
+                <div class="terminal terminal-s1f2">
                 <img alt="简体中文演示：咖啡店商品网格与 33.50 新元收款按钮" height="960" loading="lazy" src="../images/zh-CN/sale.png" width="540" decoding="async">
-              </div>
+              </div></a>
               <h3><span>1</span> 选择商品</h3>
               <p>点击商品或输入金额。</p>
             </li>
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/zh-CN/checkout.png" aria-label="查看原尺寸截图: 简体中文模拟器结账演示：2.77 新元税费、购物者识别号、支付、扫描钱包和创建付款链接按钮">
+                <div class="terminal terminal-s1f2">
                 <img alt="简体中文模拟器结账演示：2.77 新元税费、购物者识别号、支付、扫描钱包和创建付款链接按钮" height="960" loading="lazy" src="../images/zh-CN/checkout.png" width="540" decoding="async">
-              </div>
+              </div></a>
               <h3><span>2</span> 结账</h3>
-              <p>添加识别号，并在征得同意后保存卡片。</p>
+              <p>核对总额，请顾客付款并等待批准。填写参考编号和保存卡片均为可选操作。</p>
             </li>
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/zh-CN/receipt.png" aria-label="查看原尺寸截图: 简体中文模拟器演示：咖啡店打印收据，显示商品、税额、合计和购物者识别号">
+                <div class="terminal terminal-s1f2">
                 <img alt="简体中文模拟器演示：咖啡店打印收据，显示商品、税额、合计和购物者识别号" height="960" loading="lazy" src="../images/zh-CN/receipt.png" width="540" decoding="async">
-              </div>
-              <h3><span>3</span> 打印收据</h3>
-              <p>一张收据包含全部信息和二维码。</p>
+              </div></a>
+              <h3><span>3</span> 提供收据</h3>
+              <p>根据配置打印、通过邮件发送或分享收据。</p>
             </li>
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/zh-CN/refund.png" aria-label="查看原尺寸截图: 简体中文演示：为一杯澳白咖啡和一份香蕉面包退款 10.00 新元">
+                <div class="terminal terminal-s1f2">
                 <img alt="简体中文演示：为一杯澳白咖啡和一份香蕉面包退款 10.00 新元" height="960" loading="lazy" src="../images/zh-CN/refund.png" width="540" decoding="async">
-              </div>
+              </div></a>
               <h3><span>4</span> 扫码退款</h3>
               <p>扫描收据，选择要退款的内容。</p>
             </li>
@@ -219,12 +230,14 @@
       <section aria-labelledby="history-title" class="section" id="history">
         <div class="wrap split">
           <div class="shot-pair">
-            <div class="terminal terminal-s1f2">
+            <a class="screenshot-link" href="../images/zh-CN/history.png" aria-label="查看原尺寸截图: 简体中文演示：按日分组的交易记录，含预授权、小费、退款和钱包支付">
+              <div class="terminal terminal-s1f2">
               <img alt="简体中文演示：按日分组的交易记录，含预授权、小费、退款和钱包支付" height="960" loading="lazy" src="../images/zh-CN/history.png" width="540" decoding="async">
-            </div>
-            <div class="terminal terminal-s1f2">
+            </div></a>
+            <a class="screenshot-link" href="../images/zh-CN/history-search.png" aria-label="查看原尺寸截图: 简体中文演示：搜索购物者识别号 1042，显示对应销售与退款">
+              <div class="terminal terminal-s1f2">
               <img alt="简体中文演示：搜索购物者识别号 1042，显示对应销售与退款" height="960" loading="lazy" src="../images/zh-CN/history-search.png" width="540" decoding="async">
-            </div>
+            </div></a>
           </div>
           <div>
             <h2 id="history-title">轻松找到每笔交易</h2>
@@ -250,12 +263,14 @@
             </ul>
           </div>
           <div class="shot-pair">
-            <div class="terminal terminal-s1f2">
+            <a class="screenshot-link" href="../images/zh-CN/tax.png" aria-label="查看原尺寸截图: 简体中文演示：税费设置中的收取税费开关、9% 消费税和零税率">
+              <div class="terminal terminal-s1f2">
               <img alt="简体中文演示：税费设置中的收取税费开关、9% 消费税和零税率" height="960" loading="lazy" src="../images/zh-CN/tax.png" width="540" decoding="async">
-            </div>
-            <div class="terminal terminal-s1f2">
+            </div></a>
+            <a class="screenshot-link" href="../images/zh-CN/approved.png" aria-label="查看原尺寸截图: 简体中文演示：已批准的 33.50 新元支付及卡片信息、商家识别号和 PSP 识别号">
+              <div class="terminal terminal-s1f2">
               <img alt="简体中文演示：已批准的 33.50 新元支付及卡片信息、商家识别号和 PSP 识别号" height="960" loading="lazy" src="../images/zh-CN/approved.png" width="540" decoding="async">
-            </div>
+            </div></a>
           </div>
         </div>
       </section>
@@ -271,7 +286,8 @@
             <article class="step">
               <h3>准备好开始营业了吗？</h3>
               <p>下载应用，通过 Adyen 商户后台部署到终端（或安装到平板电脑或手机上），再用设置助手扫码导入密钥。指南将带您完成每一步。</p>
-              <p><a href="quick-start">阅读快速入门</a> · <a href="setup">打开设置助手</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">下载应用</a></p>
+              <p><a href="quick-start">阅读快速入门</a> · <a href="setup">打开设置助手</a> ·
+                <a href="https://github.com/astiskala/minimpos/releases/latest">下载应用</a></p>
             </article>
           </div>
           <p><a href="using">使用 Mini mPOS</a> · <a href="troubleshooting">故障排查</a></p>
@@ -283,7 +299,8 @@
           <div class="faq">
             <details>
               <summary>哪种配置适合我？</summary>
-              <p>直接在 Adyen Android 终端完成整个收银流程，或用 Android 平板、手机搭配网络终端、云端终端或 Tap to Pay。参阅<a href="quick-start#choose">要求和配置选择</a>。打印需要打印机，扫描需要摄像头。</p>
+              <p>直接在 Adyen Android 终端完成整个收银流程，或用 Android 平板、手机搭配网络终端、云端终端或 Tap to Pay。参阅<a href="quick-start#choose">
+                要求和配置选择</a>。打印需要打印机，扫描需要摄像头。</p>
             </details>
             <details>
               <summary>费用是多少？</summary>
@@ -291,7 +308,8 @@
             </details>
             <details>
               <summary>这是 Adyen 的产品吗？</summary>
-              <p>不是。Mini mPOS 并非 Adyen 制作、背书或支持的产品。正式上线前请在 Adyen TEST 环境测试。应用和 Adyen 问题参见<a href="troubleshooting#help">获取帮助</a>。</p>
+              <p>不是。Mini mPOS 并非 Adyen 制作、背书或支持的产品。正式上线前请在 Adyen TEST 环境测试。应用和 Adyen 问题参见<a href="troubleshooting#help">
+                获取帮助</a>。</p>
             </details>
             <details>
               <summary>设备共享后台吗？</summary>
@@ -299,7 +317,8 @@
             </details>
             <details>
               <summary>需要服务器或 API 密钥吗？</summary>
-              <p>无需服务器，但所有真实付款配置都需要 Checkout API 凭据。其他密钥取决于支付目标。密钥加密保存在设备上，这与 Adyen 的服务器端建议存在取舍。请按<a href="quick-start#connect">连接设置</a>及其中的安全建议操作。</p>
+              <p>无需服务器，但所有真实付款配置都需要 Checkout API 凭据。其他密钥取决于支付目标。密钥加密保存在设备上，这与 Adyen 的服务器端建议存在取舍。请按
+                <a href="quick-start#connect">连接设置</a>及其中的安全建议操作。</p>
             </details>
           </div>
         </div>

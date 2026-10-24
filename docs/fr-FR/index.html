@@ -2,7 +2,7 @@
 <html lang="fr-FR">
   <head>
     <meta charset="utf-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
     <meta name="referrer" content="no-referrer">
     <meta name="robots" content="max-image-preview:large">
     <meta content="width=device-width, initial-scale=1" name="viewport">
@@ -88,10 +88,11 @@
           <div class="hero-copy">
             <p class="eyebrow">Gratuit et open source · fonctionne sur les terminaux Adyen Android</p>
             <h1>Tout l’encaissement.<br>Sur le terminal.</h1>
-            <p class="lead">Mini mPOS fonctionne directement sur les terminaux Android d’Adyen : sélectionnez les produits, encaissez, imprimez ou envoyez les reçus par e-mail et remboursez en scannant le reçu. Un seul appareil suffit, sans caisse séparée, tablette supplémentaire ni abonnement à l’application. Vous préférez une tablette ou un téléphone ? Mini mPOS fonctionne aussi avec votre terminal de paiement ou Tap to Pay.</p>
+            <p class="lead">Vendez, encaissez, remettez des reçus et remboursez sur un terminal Adyen Android. Vous
+              pouvez aussi utiliser une tablette ou un téléphone Android avec un terminal ou Tap to Pay.</p>
             <div class="actions">
               <a class="button" href="quick-start">Configurer Mini mPOS</a>
-              <a class="button button-ghost" href="setup">Ouvrez l'assistant de configuration</a>
+              <a class="button button-ghost" href="quick-start#try">Essayez la démo</a>
             </div>
             <ul class="hero-points">
               <li>Fonctionne sur le terminal lui-même</li>
@@ -100,15 +101,18 @@
               <li>Simulateur intégré pour l'essayer</li>
               <li>Anglais, chinois simplifié et traditionnel, japonais, portugais du Brésil, espagnol et français</li>
             </ul>
+
           </div>
           <div class="hero-visual">
             <div class="hero-shots">
-              <div class="terminal terminal-s1f2 terminal-back">
+              <a class="screenshot-link" href="../images/fr-FR/receipt.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Reçu du café fictif">
+                <div class="terminal terminal-s1f2 terminal-back">
                 <img alt="Démonstration du simulateur en français: Reçu du café fictif" height="960" src="../images/fr-FR/receipt.png" width="540" decoding="async">
-              </div>
-              <div class="terminal terminal-ams1 terminal-front">
+              </div></a>
+              <a class="screenshot-link" href="../images/fr-FR/sale-ams1.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Produits dans le panier">
+                <div class="terminal terminal-ams1 terminal-front">
                 <img alt="Démonstration du simulateur en français: Produits dans le panier" height="800" src="../images/fr-FR/sale-ams1.png" width="480" fetchpriority="high" decoding="async">
-              </div>
+              </div></a>
             </div>
           </div>
         </div>
@@ -117,9 +121,12 @@
         <div class="wrap">
           <h2 id="guides-title">Trouvez le guide dont vous avez besoin</h2>
           <div class="guide-cards">
-            <article class="guide-card"><h3><a href="quick-start">Démarrage rapide</a></h3><p>Vérifiez les prérequis, installez, connectez-vous à Adyen et testez.</p></article>
-            <article class="guide-card"><h3><a href="using">Utilisation de Mini mPOS</a></h3><p>Acceptez les paiements, remboursez, délivrez les reçus et clôturez la journée.</p></article>
-            <article class="guide-card"><h3><a href="troubleshooting">Dépannage</a></h3><p>Résolvez les résultats inconnus, les refus, les problèmes de couplage, de réseau et d'imprimante.</p></article>
+            <article class="guide-card"><h3><a href="quick-start">Démarrage rapide</a></h3><p>Vérifiez les prérequis,
+              installez, connectez-vous à Adyen et testez.</p></article>
+            <article class="guide-card"><h3><a href="using">Utilisation de Mini mPOS</a></h3><p>Acceptez les paiements,
+              remboursez, délivrez les reçus et clôturez la journée.</p></article>
+            <article class="guide-card"><h3><a href="troubleshooting">Dépannage</a></h3><p>Résolvez les résultats
+              inconnus, les refus, les problèmes de couplage, de réseau et d'imprimante.</p></article>
           </div>
           <p><a href="#features">Explorez les fonctionnalités</a></p>
         </div>
@@ -127,61 +134,78 @@
       <section aria-labelledby="features-title" class="section" id="features">
         <div class="wrap">
           <h2 id="features-title">Tout ce dont vous avez besoin pour vendre en personne</h2>
-          <p class="section-lead">D'un comptoir à plusieurs appareils dans les magasins, événements, livraisons et appels de service : produits, paiements, reçus et remboursements, sans back-office à gérer.</p>
-          <p>Les terminaux pris en charge offrent également <a href="using#terminal-checkout">paiements partiels, invites de l'acheteur, dons et saisie manuelle de la carte</a>. Vérifier <a href="using#capabilities">Capacités d'Adyen</a> pour votre configuration et comparez l'activité locale avec <a href="using#reconciliation">totaux terminaux</a>.</p>
+          <p class="section-lead">Produits, paiements, reçus et remboursements au comptoir, lors d’événements, en
+            livraison ou en déplacement.</p>
+<p class="hero-boundary">L’application est gratuite ; les frais de traitement d’Adyen s’appliquent. Chaque appareil
+  conserve ses produits, paramètres et historique. Le transfert QR crée une copie ponctuelle, sans synchronisation
+  automatique. <a href="using#more">Appareils et données</a>.</p>
+          <p>Les terminaux pris en charge offrent également <a href="using#terminal-checkout">paiements partiels,
+            invites de l'acheteur, dons et saisie manuelle de la carte</a>. Vérifier <a href="using#capabilities">
+            Capacités d'Adyen</a> pour votre configuration et comparez l'activité locale avec
+            <a href="using#reconciliation">totaux terminaux</a>.</p>
           <div class="features">
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"></path></svg>
               <h3>Des produits à portée de main</h3>
-              <p>Conservez une liste de produits avec les prix, les catégories, les codes-barres et les taxes. Recherchez, filtrez, scannez un code-barres ou saisissez un montant personnalisé.</p>
+              <p>Conservez une liste de produits avec les prix, les catégories, les codes-barres et les taxes.
+                Recherchez, filtrez, scannez un code-barres ou saisissez un montant personnalisé.</p>
               <p class="feature-link"><a href="using#products">Ajouter des produits</a></p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm2 2v2h14V8zm0 6v2h6v-2z"></path></svg>
               <h3>Des paiements simplifiés</h3>
-              <p>Effectuez des paiements par carte et portefeuille avec Adyen sur le terminal lui-même, ou depuis une tablette ou un téléphone équipé d'un terminal ou Tap to Pay.</p>
+              <p>Effectuez des paiements par carte et portefeuille avec Adyen sur le terminal lui-même, ou depuis une
+                tablette ou un téléphone équipé d'un terminal ou Tap to Pay.</p>
               <p class="feature-link"><a href="using#sell">Faire une vente</a></p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2zm3 5v2h6V7zm0 4v2h6v-2z"></path></svg>
               <h3>Des reçus à votre façon</h3>
-              <p>Imprimez un reçu complet avec les détails de votre entreprise et un code de remboursement QR, envoyez-le par e-mail ou partagez-le depuis une tablette ou un téléphone.</p>
+              <p>Imprimez un reçu complet avec les détails de votre entreprise et un code de remboursement QR,
+                envoyez-le par e-mail ou partagez-le depuis une tablette ou un téléphone.</p>
               <p class="feature-link"><a href="using#customize-receipts">Configurer les reçus</a></p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M10.6 13.4a1 1 0 0 1 0-1.4l3-3a1 1 0 1 1 1.4 1.4l-3 3a1 1 0 0 1-1.4 0zM8.5 19a4.5 4.5 0 0 1-3.2-7.7l2.1-2.1 1.4 1.4-2.1 2.1a2.5 2.5 0 0 0 3.5 3.5l2.1-2.1 1.4 1.4-2.1 2.1A4.5 4.5 0 0 1 8.5 19zm8.1-4.2-1.4-1.4 2.1-2.1a2.5 2.5 0 0 0-3.5-3.5l-2.1 2.1-1.4-1.4 2.1-2.1a4.5 4.5 0 0 1 6.4 6.4z"></path></svg>
               <h3>Liens de paiement</h3>
-              <p>Envoyez plutôt un lien de paiement : le client scanne son code QR ou l'ouvre depuis un e-mail, et paie sur la page de paiement d'Adyen.</p>
+              <p>Envoyez plutôt un lien de paiement : le client scanne son code QR ou l'ouvre depuis un e-mail, et paie
+                sur la page de paiement d'Adyen.</p>
               <p class="feature-link"><a href="using#payment-links">Créer un lien de paiement</a></p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm8-2h3v3h-3zm5 0h3v3h-3zm-5 5h3v3h-3zm5 0h3v3h-3z"></path></svg>
               <h3>Remboursers en quelques secondes</h3>
-              <p>Scannez le code QR présent sur le reçu, puis remboursez le tout, quelques articles ou un montant. Toujours lié au paiement initial.</p>
+              <p>Scannez le code QR présent sur le reçu, puis remboursez le tout, quelques articles ou un montant.
+                Toujours lié au paiement initial.</p>
               <p class="feature-link"><a href="using#refund">Rembourser un paiement</a></p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v1.5a6.5 6.5 0 0 0-8 8.5H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v2h6V7a3 3 0 0 0-3-3zm6 10a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm-.75 1.5v3.3l2.6 1.5.75-1.3-1.85-1.07V15.5z"></path></svg>
               <h3>Dépôts préautorisés</h3>
-              <p>Détenez un acompte pour une réservation ou une location. Encaissez le paiement plus tard, ajustez le montant ou libérez la retenue.</p>
+              <p>Détenez un acompte pour une réservation ou une location. Encaissez le paiement plus tard, ajustez le
+                montant ou libérez la retenue.</p>
               <p class="feature-link"><a href="using#preauth">Conserver et récupérer un dépôt</a></p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm1 4h-2v1.1A3 3 0 0 0 8.5 10c0 1.7 1.3 2.4 3 2.8 1.2.3 1.5.6 1.5 1.1s-.5.9-1.3.9c-.9 0-1.5-.4-1.6-1.1H8.2c.1 1.6 1.2 2.6 2.8 2.9V18h2v-1.4c1.6-.3 2.8-1.3 2.8-2.8 0-1.8-1.4-2.5-3.1-2.9-1.1-.3-1.4-.5-1.4-1 0-.4.4-.8 1.1-.8.8 0 1.2.4 1.3.9h1.9A2.9 2.9 0 0 0 13 7.1z"></path></svg>
               <h3>Pourboires sur le terminal ou le reçu</h3>
-              <p>Sur un terminal pris en charge, laissez les acheteurs choisir un pourboire avant de payer, ou écrivez-en un sur un reçu imprimé pour le capturer plus tard.</p>
-              <p class="feature-link"><a href="using#terminal-tips">Récupérez un pourboire du terminal</a> · <a href="using#tips">Récupérez un pourboire de reçu</a></p>
+              <p>Sur un terminal pris en charge, laissez les acheteurs choisir un pourboire avant de payer, ou
+                écrivez-en un sur un reçu imprimé pour le capturer plus tard.</p>
+              <p class="feature-link"><a href="using#terminal-tips">Récupérez un pourboire du terminal</a> ·
+                <a href="using#tips">Récupérez un pourboire de reçu</a></p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M7 5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm10 10a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM18.4 4.2l1.4 1.4-14.2 14.2-1.4-1.4z"></path></svg>
               <h3>Fiscalité et devise flexibles</h3>
-              <p>Définissez vos propres taux de taxe, incluez la taxe dans les prix ou ajoutez-la au moment du paiement. Choisissez n’importe quelle devise prise en charge par Adyen.</p>
+              <p>Définissez vos propres taux de taxe, incluez la taxe dans les prix ou ajoutez-la au moment du paiement.
+                Choisissez n’importe quelle devise prise en charge par Adyen.</p>
               <p class="feature-link"><a href="using#pricing">Définir la devise et les taxes</a></p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V7a3 3 0 0 0-3-3z"></path></svg>
               <h3>Verrouillé</h3>
-              <p>Protégez le paramétrage avec un PIN administrateur et les actions de suivi financier avec un PIN responsable distinct. Les mots de passe et les clés restent cryptés.</p>
+              <p>Protégez le paramétrage avec un PIN administrateur et les actions de suivi financier avec un PIN
+                responsable distinct. Les mots de passe et les clés restent cryptés.</p>
               <p class="feature-link"><a href="using#staff">Configurer les PIN du personnel</a></p>
             </article>
           </div>
@@ -192,30 +216,35 @@
           <h2 id="flow-title">De la vente au remboursement</h2>
           <ol class="flow">
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/fr-FR/sale.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Produits dans le panier">
+                <div class="terminal terminal-s1f2">
                 <img alt="Démonstration du simulateur en français: Produits dans le panier" height="960" loading="lazy" src="../images/fr-FR/sale.png" width="540" decoding="async">
-              </div>
+              </div></a>
               <h3><span>1</span> Appelez-le</h3>
               <p>Appuyez sur des produits ou saisissez un montant.</p>
             </li>
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/fr-FR/checkout.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Vérification du paiement">
+                <div class="terminal terminal-s1f2">
                 <img alt="Démonstration du simulateur en français: Vérification du paiement" height="960" loading="lazy" src="../images/fr-FR/checkout.png" width="540" decoding="async">
-              </div>
+              </div></a>
               <h3><span>2</span> Découvrez</h3>
-              <p>Ajoutez une référence et, avec votre consentement, enregistrez la carte.</p>
+              <p>Vérifiez le total, demandez au client de payer et attendez l’approbation. Les références et
+                l’enregistrement de carte sont facultatifs.</p>
             </li>
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/fr-FR/receipt.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Reçu du café fictif">
+                <div class="terminal terminal-s1f2">
                 <img alt="Démonstration du simulateur en français: Reçu du café fictif" height="960" loading="lazy" src="../images/fr-FR/receipt.png" width="540" decoding="async">
-              </div>
-              <h3><span>3</span> Imprimer le reçu</h3>
-              <p>Un seul bordereau avec tout, plus un code QR.</p>
+              </div></a>
+              <h3><span>3</span> Remettez le reçu</h3>
+              <p>Imprimez le reçu, envoyez-le par e-mail ou partagez-le selon votre configuration.</p>
             </li>
             <li>
-              <div class="terminal terminal-s1f2">
+              <a class="screenshot-link" href="../images/fr-FR/refund.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Remboursement par articles">
+                <div class="terminal terminal-s1f2">
                 <img alt="Démonstration du simulateur en français: Remboursement par articles" height="960" loading="lazy" src="../images/fr-FR/refund.png" width="540" decoding="async">
-              </div>
+              </div></a>
               <h3><span>4</span> Rembourser par scan</h3>
               <p>Scannez le reçu et choisissez ce que vous souhaitez rembourser.</p>
             </li>
@@ -225,20 +254,26 @@
       <section aria-labelledby="history-title" class="section" id="history">
         <div class="wrap split">
           <div class="shot-pair">
-            <div class="terminal terminal-s1f2">
+            <a class="screenshot-link" href="../images/fr-FR/history.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Historique des paiements">
+              <div class="terminal terminal-s1f2">
               <img alt="Démonstration du simulateur en français: Historique des paiements" height="960" loading="lazy" src="../images/fr-FR/history.png" width="540" decoding="async">
-            </div>
-            <div class="terminal terminal-s1f2">
+            </div></a>
+            <a class="screenshot-link" href="../images/fr-FR/history-search.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Recherche dans l’historique">
+              <div class="terminal terminal-s1f2">
               <img alt="Démonstration du simulateur en français: Recherche dans l’historique" height="960" loading="lazy" src="../images/fr-FR/history-search.png" width="540" decoding="async">
-            </div>
+            </div></a>
           </div>
           <div>
             <h2 id="history-title">Trouver n'importe quelle transaction</h2>
-            <p class="section-lead">Consultez les totaux quotidiens et trouvez les ventes, les remboursements et les dépôts en quelques clics.</p>
+            <p class="section-lead">Consultez les totaux quotidiens et trouvez les ventes, les remboursements et les
+              dépôts en quelques clics.</p>
             <ul class="checks">
-              <li><strong>Cherchez votre chemin.</strong> Recherchez une référence, un client, une carte ou un montant.</li>
-              <li><strong>Filtrer par mode de paiement.</strong> Choisissez une marque de carte ou un portefeuille, notamment Apple Pay, Google Pay et Samsung Pay.</li>
-              <li><strong>Gardez une trace de ce qui doit être fait.</strong> Consultez les pourboires pour participer, les dépôts à collecter et les paiements qui nécessitent une attention particulière.</li>
+              <li><strong>Cherchez votre chemin.</strong> Recherchez une référence, un client, une carte ou un montant.
+                </li>
+              <li><strong>Filtrer par mode de paiement.</strong> Choisissez une marque de carte ou un portefeuille,
+                notamment Apple Pay, Google Pay et Samsung Pay.</li>
+              <li><strong>Gardez une trace de ce qui doit être fait.</strong> Consultez les pourboires pour participer,
+                les dépôts à collecter et les paiements qui nécessitent une attention particulière.</li>
             </ul>
             <p><a href="using#history">Rechercher des paiements et consulter les totaux</a></p>
           </div>
@@ -248,20 +283,26 @@
         <div class="wrap split">
           <div>
             <h2 id="how-title">Intégré aux terminaux Adyen</h2>
-            <p class="section-lead">Installé sur le terminal, Mini mPOS n'a besoin d'aucun autre matériel ni d'aucun backend pour fonctionner. Sur tablette ou téléphone, il fonctionne avec vos terminaux ou Tap to Pay.</p>
+            <p class="section-lead">Installé sur le terminal, Mini mPOS n'a besoin d'aucun autre matériel ni d'aucun
+              backend pour fonctionner. Sur tablette ou téléphone, il fonctionne avec vos terminaux ou Tap to Pay.</p>
             <ul class="checks">
-              <li><strong>Les données de la carte restent chez Adyen.</strong> Mini mPOS ne reçoit que les détails de carte masqués et les références de paiement.</li>
-              <li><strong>Votre entreprise, sur votre appareil.</strong> Gérez les produits, les paramètres et l'historique sur l'appareil, sans compte cloud.</li>
-              <li><strong>Conçu pour le comptoir et au-delà.</strong> Convient aux terminaux compacts tels que le AMS1, aux modèles avec imprimante intégrée, ainsi qu'aux tablettes et téléphones.</li>
+              <li><strong>Les données de la carte restent chez Adyen.</strong> Mini mPOS ne reçoit que les détails de
+                carte masqués et les références de paiement.</li>
+              <li><strong>Votre entreprise, sur votre appareil.</strong> Gérez les produits, les paramètres et
+                l'historique sur l'appareil, sans compte cloud.</li>
+              <li><strong>Conçu pour le comptoir et au-delà.</strong> Convient aux terminaux compacts tels que le AMS1,
+                aux modèles avec imprimante intégrée, ainsi qu'aux tablettes et téléphones.</li>
             </ul>
           </div>
           <div class="shot-pair">
-            <div class="terminal terminal-s1f2">
+            <a class="screenshot-link" href="../images/fr-FR/tax.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Taxes">
+              <div class="terminal terminal-s1f2">
               <img alt="Démonstration du simulateur en français: Taxes" height="960" loading="lazy" src="../images/fr-FR/tax.png" width="540" decoding="async">
-            </div>
-            <div class="terminal terminal-s1f2">
+            </div></a>
+            <a class="screenshot-link" href="../images/fr-FR/approved.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Paiement approuvé">
+              <div class="terminal terminal-s1f2">
               <img alt="Démonstration du simulateur en français: Paiement approuvé" height="960" loading="lazy" src="../images/fr-FR/approved.png" width="540" decoding="async">
-            </div>
+            </div></a>
           </div>
         </div>
       </section>
@@ -276,8 +317,11 @@
             </article>
             <article class="step">
               <h3>Prêt pour votre entreprise ?</h3>
-              <p>Téléchargez l'application, placez-la sur vos terminaux via votre Adyen Customer Area (ou installez-la sur une tablette ou un téléphone) et numérisez vos clés à partir de l'aide à la configuration. Notre guide vous guide à travers tout cela.</p>
-              <p><a href="quick-start">Lire Démarrage rapide</a> · <a href="setup">Ouvrez l'assistant de configuration</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">Téléchargez l'application</a></p>
+              <p>Téléchargez l'application, placez-la sur vos terminaux via votre Adyen Customer Area (ou installez-la
+                sur une tablette ou un téléphone) et numérisez vos clés à partir de l'aide à la configuration. Notre
+                guide vous guide à travers tout cela.</p>
+              <p><a href="quick-start">Lire Démarrage rapide</a> · <a href="setup">Ouvrez l'assistant de configuration
+                </a> · <a href="https://github.com/astiskala/minimpos/releases/latest">Téléchargez l'application</a></p>
             </article>
           </div>
           <p><a href="using">Utilisation de Mini mPOS</a> · <a href="troubleshooting">Dépannage</a></p>
@@ -289,23 +333,35 @@
           <div class="faq">
             <details>
               <summary>Quelle configuration me convient ?</summary>
-              <p>Exécutez directement sur un terminal Adyen Android pour un paiement tout-en-un, ou utilisez une tablette ou un téléphone Android avec un terminal réseau, un terminal cloud ou un Tap to Pay. Voir <a href="quick-start#choose">exigences et choix de configuration</a>. L'impression nécessite une imprimante ; la numérisation nécessite un appareil photo.</p>
+              <p>Exécutez directement sur un terminal Adyen Android pour un paiement tout-en-un, ou utilisez une
+                tablette ou un téléphone Android avec un terminal réseau, un terminal cloud ou un Tap to Pay. Voir
+                <a href="quick-start#choose">exigences et choix de configuration</a>. L'impression nécessite une
+                imprimante ; la numérisation nécessite un appareil photo.</p>
             </details>
             <details>
               <summary>Qu'est-ce que ça coûte ?</summary>
-              <p>L'application est gratuite et open source sous la licence MIT. Les frais de traitement des paiements d'Adyen s'appliquent toujours.</p>
+              <p>L'application est gratuite et open source sous la licence MIT. Les frais de traitement des paiements
+                d'Adyen s'appliquent toujours.</p>
             </details>
             <details>
               <summary>Est-ce un produit Adyen ?</summary>
-              <p>Non. Mini mPOS n'est pas fabriqué, approuvé ou pris en charge par Adyen. Testez votre configuration dans l'environnement TEST d'Adyen avant de la mettre en ligne. Voir <a href="troubleshooting#help">où obtenir de l'aide</a> pour les questions sur l'application et Adyen.</p>
+              <p>Non. Mini mPOS n'est pas fabriqué, approuvé ou pris en charge par Adyen. Testez votre configuration
+                dans l'environnement TEST d'Adyen avant de la mettre en ligne. Voir <a href="troubleshooting#help">où
+                obtenir de l'aide</a> pour les questions sur l'application et Adyen.</p>
             </details>
             <details>
               <summary>Les appareils partagent-ils un back-office ?</summary>
-              <p>Non. Les produits, les paramètres et l'historique restent sur chaque appareil. QR transfère les produits de copie et la configuration, pas l'historique des paiements ou les modifications en cours. Voir <a href="using#more">appareils et données</a>.</p>
+              <p>Non. Les produits, les paramètres et l'historique restent sur chaque appareil. QR transfère les
+                produits de copie et la configuration, pas l'historique des paiements ou les modifications en cours.
+                Voir <a href="using#more">appareils et données</a>.</p>
             </details>
             <details>
               <summary>Ai-je besoin d'un serveur ou de clés API ?</summary>
-              <p>Pas de serveur, mais chaque configuration de paiement réel nécessite les informations d'identification Checkout API. Les autres clés dépendent de la destination des paiements. Ils sont cryptés sur l'appareil, un compromis par rapport à la recommandation côté serveur d'Adyen. Suivre <a href="quick-start#connect">configuration de la connexion</a> et les directives de sécurité là-bas.</p>
+              <p>Pas de serveur, mais chaque configuration de paiement réel nécessite les informations d'identification
+                Checkout API. Les autres clés dépendent de la destination des paiements. Ils sont cryptés sur
+                l'appareil, un compromis par rapport à la recommandation côté serveur d'Adyen. Suivre
+                <a href="quick-start#connect">configuration de la connexion</a> et les directives de sécurité là-bas.
+                </p>
             </details>
           </div>
         </div>

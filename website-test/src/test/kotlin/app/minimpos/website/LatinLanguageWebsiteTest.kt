@@ -57,7 +57,7 @@ class LatinLanguageWebsiteTest {
     }
 
     @Test
-    fun `translated helpers preserve executable attributes and the no-network policy`() {
+    fun `translated helpers preserve executable attributes and the hosting-only network policy`() {
         val english = Jsoup.parse(docs.resolve("setup.html").readText())
         val selector = "#setup-form, #setup-form *"
         val technical = setOf("id", "name", "type", "value", "required", "hidden", "disabled", "min", "max", "pattern")

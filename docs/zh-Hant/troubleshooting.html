@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -65,26 +65,28 @@
     <details class="language-menu"><summary aria-label="語言：繁體中文" title="語言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">繁體中文</span></summary><nav aria-label="語言"><ul><li><a href="../troubleshooting" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/troubleshooting" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/troubleshooting" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/troubleshooting" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/troubleshooting" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/troubleshooting" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="../zh-Hant/troubleshooting" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
   </div></header>
   <main id="main">
-    <section class="guide-hero"><div class="wrap"><p class="eyebrow">指南</p><h1>疑難排解</h1><p class="lead">找到您看到的現象，確認可能的原因，再按解決方法操作。如果有付款正在進行，請先確認其結果：修復連接並不能說明之前的付款是否成功。</p></div></section>
+    <section class="guide-hero"><div class="wrap"><p class="eyebrow">指南</p><h1>疑難排解</h1><p class="lead">
+      找到您看到的現象，確認可能的原因，再按解決方法操作。如果有付款正在進行，請先確認其結果：修復連接並不能說明之前的付款是否成功。</p>
+<nav class="task-links" aria-label="常見問題"><span>常見問題</span><a href="#unknown">結果未知</a><a href="#connection">終端綁定和設定</a>
+  <a href="#receipts">打印機和郵件</a><a href="#messages">錯誤訊息</a></nav></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="指南導航">
-        <p class="toc-title">指南</p><p><a href="quick-start">快速入門</a><br><a href="using">使用 Mini mPOS</a><br><a href="troubleshooting" aria-current="page">疑難排解</a></p>
+        <p class="guide-links toc-title">指南</p><p class="guide-links"><a href="quick-start">快速入門</a><br>
+          <a href="using">使用 Mini mPOS</a><br><a href="troubleshooting" aria-current="page">疑難排解</a></p>
         <div class="desktop-contents"><p class="toc-title">本頁目錄</p><ol>
-          <li><a href="#unknown">結果未知</a></li><li><a href="#declines">付款被拒絕</a></li>
-          <li><a href="#terminal-features">可選終端功能</a></li>
-          <li><a href="#wallets">錢包掃碼</a></li><li><a href="#connection">終端綁定和設定</a></li><li><a href="#network-dropouts">網絡中斷</a></li>
-          <li><a href="#modifications">扣款和調整</a></li><li><a href="#links">付款連結</a></li>
-          <li><a href="#receipts">打印機和郵件</a></li><li><a href="#access">PIN 和傳輸</a></li>
-          <li><a href="#storage">儲存空間復原</a></li><li><a href="#install">安裝</a></li><li><a href="#messages">錯誤訊息</a></li><li><a href="#help">取得幫助</a></li>
-        </ol></div>
+<li><a href="#unknown">結果未知</a></li><li><a href="#declines">付款被拒絕</a></li><li><a href="#terminal-features">可選終端功能</a>
+  </li><li><a href="#wallets">錢包掃碼</a></li><li><a href="#connection">終端綁定和設定</a></li><li><a href="#network-dropouts">
+  網絡中斷</a></li><li><a href="#modifications">扣款和調整</a></li><li><a href="#links">付款連結</a></li><li><a href="#receipts">
+  打印機和郵件</a></li><li><a href="#access">PIN 和傳輸</a></li><li><a href="#storage">儲存空間復原</a></li><li><a href="#install">安裝
+  </a></li><li><a href="#messages">錯誤訊息</a></li><li><a href="#help">取得幫助</a></li>
+</ol></div>
         <details class="mobile-contents"><summary class="toc-title">本頁目錄</summary><ol>
-          <li><a href="#unknown">結果未知</a></li><li><a href="#declines">付款被拒絕</a></li>
-          <li><a href="#terminal-features">可選終端功能</a></li>
-          <li><a href="#wallets">錢包掃碼</a></li><li><a href="#connection">終端綁定和設定</a></li><li><a href="#network-dropouts">網絡中斷</a></li>
-          <li><a href="#modifications">扣款和調整</a></li><li><a href="#links">付款連結</a></li>
-          <li><a href="#receipts">打印機和郵件</a></li><li><a href="#access">PIN 和傳輸</a></li>
-          <li><a href="#storage">儲存空間復原</a></li><li><a href="#install">安裝</a></li><li><a href="#messages">錯誤訊息</a></li><li><a href="#help">取得幫助</a></li>
-        </ol></details>
+<li><a href="#unknown">結果未知</a></li><li><a href="#declines">付款被拒絕</a></li><li><a href="#terminal-features">可選終端功能</a>
+  </li><li><a href="#wallets">錢包掃碼</a></li><li><a href="#connection">終端綁定和設定</a></li><li><a href="#network-dropouts">
+  網絡中斷</a></li><li><a href="#modifications">扣款和調整</a></li><li><a href="#links">付款連結</a></li><li><a href="#receipts">
+  打印機和郵件</a></li><li><a href="#access">PIN 和傳輸</a></li><li><a href="#storage">儲存空間復原</a></li><li><a href="#install">安裝
+  </a></li><li><a href="#messages">錯誤訊息</a></li><li><a href="#help">取得幫助</a></li>
+</ol></details>
       </nav>
       <div class="guide-body">
         <section id="unknown">
@@ -107,88 +109,133 @@
           <p>結果畫面會顯示狀態、Adyen 給出的原因和建議。請按建議操作：</p>
           <dl class="fixes">
             <div><dt>“請勿使用此卡重試。請顧客使用其他卡或付款方式。”</dt>
-              <dd><p><span class="fix-label">原因</span>發卡行因不會改變的原因拒絕了此卡（如卡被凍結、受限或疑似欺詐），或此卡不允許用於本次付款。</p>
-                <p><span class="fix-label">解決</span>請顧客改用其他卡或付款方式。顧客的銀行可以說明拒絕原因；<a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Adyen 拒絕原因</a>解釋了顯示的原因。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>請顧客改用其他卡或付款方式。顧客的銀行可以說明拒絕原因；
+  <a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Adyen 拒絕原因</a>解釋了顯示的原因。</p>
+  <details class="cause"><summary>原因</summary><p>發卡行因不會改變的原因拒絕了此卡（如卡被凍結、受限或疑似欺詐），或此卡不允許用於本次付款。</p></details></dd></div>
             <div><dt>“可以重試。”</dt>
-              <dd><p><span class="fix-label">原因</span>付款被取消、PIN 輸入錯誤，或卡因可能不會重復的原因被拒絕（如餘額不足）。</p>
-                <p><span class="fix-label">解決</span>點按<strong>重試</strong>，或請顧客換一張卡。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>點按<strong>重試</strong>，或請顧客換一張卡。</p><details class="cause"><summary>原因</summary><p>
+  付款被取消、PIN 輸入錯誤，或卡因可能不會重復的原因被拒絕（如餘額不足）。</p></details></dd></div>
             <div><dt>“終端正在處理其他交易或顯示管理選單。”</dt>
-              <dd><p><span class="fix-label">原因</span>終端正在處理另一筆付款或顯示管理選單。</p>
-                <p><span class="fix-label">解決</span>完成另一筆付款或退出選單後重試。如果畫面提供<strong>取消終端目前交易</strong>，僅在確實要停止該交易時使用，並在重試前查詢其結果。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>完成另一筆付款或退出選單後重試。如果畫面提供<strong>取消終端目前交易</strong>，僅在確實要停止該交易時使用，並在重試前查詢其結果。</p>
+  <details class="cause"><summary>原因</summary><p>終端正在處理另一筆付款或顯示管理選單。</p></details></dd></div>
             <div><dt>“終端暫時不可用。”</dt>
-              <dd><p><span class="fix-label">原因</span>終端或其讀卡器暫時不可用。</p>
-                <p><span class="fix-label">解決</span>稍候，確認終端已開機並已連接，然後重試。參見<a href="#network-dropouts">網絡中斷</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>稍候，確認終端已開機並已連接，然後重試。參見<a href="#network-dropouts">網絡中斷</a>。</p>
+  <details class="cause"><summary>原因</summary><p>終端或其讀卡器暫時不可用。</p></details></dd></div>
             <div><dt>“終端未接受請求。重試前，請檢查終端設定。”</dt>
-              <dd><p><span class="fix-label">原因</span>終端拒絕了所發送的請求，通常是設定問題。</p>
-                <p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中運行測試；參見<a href="#connection">終端綁定和設定</a>。如果測試通過，請聯繫 Adyen 檢查終端設定。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中運行測試；參見<a href="#connection">終端綁定和設定</a>。如果測試通過，請聯繫 Adyen
+  檢查終端設定。</p><details class="cause"><summary>原因</summary><p>終端拒絕了所發送的請求，通常是設定問題。</p></details></dd></div>
             <div><dt>“終端或您的 Adyen 帳戶不支援此請求。請聯絡 Adyen 支援團隊確認已開通，然後重試。”</dt>
-              <dd><p><span class="fix-label">原因</span>終端或 Adyen 不提供此付款所需的功能，通常是因為帳戶尚未開通。</p>
-                <p><span class="fix-label">解決</span>請聯絡 Adyen 支援團隊確認商戶帳戶已開通該功能。如使用 Tap to Pay，請確認除 Adyen Payments App role 外，亦已開通 Tap to Pay on Android。然後重試。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>請聯絡 Adyen 支援團隊確認商戶帳戶已開通該功能。如使用 Tap to Pay，請確認除 Adyen Payments App role 外，亦已開通 Tap to
+  Pay on Android。然後重試。</p><details class="cause"><summary>原因</summary><p>終端或 Adyen 不提供此付款所需的功能，通常是因為帳戶尚未開通。</p>
+  </details></dd></div>
             <div><dt>“請勿再次收款：此次支付已成功。”</dt>
-              <dd><p><span class="fix-label">原因</span>雖然終端報告了取消，但付款已獲批准。</p>
-                <p><span class="fix-label">解決</span>請勿再次收款。如果顧客不應付款，請為其退款。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>請勿再次收款。如果顧客不應付款，請為其退款。</p><details class="cause"><summary>原因</summary><p>
+  雖然終端報告了取消，但付款已獲批准。</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="terminal-features">
           <h2>可選終端功能不可用或總額存在差異</h2>
           <dl class="fixes">
-            <div><dt>終端功能未顯示或被拒絕</dt><dd><p>檢查收款目標和 <a href="using#capabilities">Adyen 功能</a>，重新整理終端設定，並確認 API 角色和 Adyen 帳戶設定。本地結帳開關不會在 Adyen 開通服務。Tap to Pay 不提供實體終端流程。小費請比較<a href="using#terminal-tips">終端小費</a>和<a href="using#tips">收據小費</a>。</p></dd></div>
-            <div><dt>只有部分金額獲批</dt><dd><p>從結果頁面按<a href="using#partial-payments">部分付款流程</a>操作。不要再次收取原合計金額。若後續付款結果未知，請先<a href="#unknown">查詢結果</a>再繼續收款。</p></dd></div>
-            <div><dt>終端總額與 Mini mPOS 不符</dt><dd><p>按<a href="using#reconciliation">終端對帳</a>說明檢查終端週期、使用同一終端的其他設備、本地保留紀錄和未解決交易。結束週期不會修復差異，也不代表結算完成。</p></dd></div>
-            <div><dt>離線銷售缺少 PSP 參考編號或仍有未確認批次</dt><dd><p>按<a href="using#offline">離線付款檢查步驟</a>操作。恢復終端與 Adyen 的連接，並在商戶後台核對上傳的付款。不要僅因缺少 PSP 參考編號就再次收取已批准的付款。</p></dd></div>
+            <div><dt>終端功能未顯示或被拒絕</dt><dd><p>檢查收款目標和 <a href="using#capabilities">Adyen 功能</a>，重新整理終端設定，並確認 API 角色和 Adyen
+              帳戶設定。本地結帳開關不會在 Adyen 開通服務。Tap to Pay 不提供實體終端流程。小費請比較<a href="using#terminal-tips">終端小費</a>和
+              <a href="using#tips">收據小費</a>。</p></dd></div>
+            <div><dt>只有部分金額獲批</dt><dd><p>從結果頁面按<a href="using#partial-payments">部分付款流程</a>操作。不要再次收取原合計金額。若後續付款結果未知，請先
+              <a href="#unknown">查詢結果</a>再繼續收款。</p></dd></div>
+            <div><dt>終端總額與 Mini mPOS 不符</dt><dd><p>按<a href="using#reconciliation">終端對帳</a>
+              說明檢查終端週期、使用同一終端的其他設備、本地保留紀錄和未解決交易。結束週期不會修復差異，也不代表結算完成。</p></dd></div>
+            <div><dt>離線銷售缺少 PSP 參考編號或仍有未確認批次</dt><dd><p>按<a href="using#offline">離線付款檢查步驟</a>操作。恢復終端與 Adyen
+              的連接，並在商戶後台核對上傳的付款。不要僅因缺少 PSP 參考編號就再次收取已批准的付款。</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="wallets">
           <h2>沒有掃描錢包按鈕或掃描失敗</h2>
           <dl class="fixes">
-            <div><dt>沒有掃描錢包按鈕</dt><dd><p>打開<strong>設定 › 終端</strong>，點按<strong>重新整理掃碼錢包</strong>。成功查詢後沒有符合條件的 POS 錢包時，按鈕會保持隱藏。核對終端店舖、目前貨幣和<a href="quick-start#credentials">API 密鑰角色</a>。Tap to Pay 和預授權不提供此功能。</p></dd></div>
-            <div><dt>錢包查詢報錯</dt><dd><p>錯誤僅顯示在設定中，不會阻止普通支付。請檢查憑據、環境和只讀存取權限。設定未變時，臨時重新整理錯誤會保留最近驗證的錢包列表；成功查詢到空列表或存取失敗會移除它。只在啟動、設定改變或手動重新整理時查詢，不會在每筆銷售前查詢。</p></dd></div>
-            <div><dt>付款碼無效或未收到付款碼</dt><dd><p>請使用顧客的付款碼，而非個人資料、設定轉移或收據二維碼，並選擇正確的錢包。終端掃描最多持續 30 秒，之後點按<strong>重新掃描</strong>或<strong>使用相機</strong>。相機提示時請授予權限。應用程式從後台返回後需重新開始掃描。</p></dd></div>
-            <div><dt>儲存被拒絕或未建立代碼</dt><dd><p>請以支付結果為準。沒有儲存代碼的已批准付款仍然有效。僅在明確被拒絕後，如需重試，返回結帳，關閉<strong>儲存卡</strong>並明確開始新掃描。應用程式不會自動重新付款。<strong>結果未知</strong>時應<a href="#unknown">查詢原交易</a>。</p></dd></div>
+            <div><dt>沒有掃描錢包按鈕</dt><dd><p>打開<strong>設定 › 終端</strong>，點按<strong>重新整理掃碼錢包</strong>。成功查詢後沒有符合條件的 POS
+              錢包時，按鈕會保持隱藏。核對終端店舖、目前貨幣和<a href="quick-start#credentials">API 密鑰角色</a>。Tap to Pay 和預授權不提供此功能。</p></dd>
+              </div>
+            <div><dt>錢包查詢報錯</dt><dd><p>
+              錯誤僅顯示在設定中，不會阻止普通支付。請檢查憑據、環境和只讀存取權限。設定未變時，臨時重新整理錯誤會保留最近驗證的錢包列表；成功查詢到空列表或存取失敗會移除它。只在啟動、設定改變或手動重新整理時查詢，不會在每筆銷售前查詢。
+              </p></dd></div>
+            <div><dt>付款碼無效或未收到付款碼</dt><dd><p>請使用顧客的付款碼，而非個人資料、設定轉移或收據二維碼，並選擇正確的錢包。終端掃描最多持續 30 秒，之後點按<strong>重新掃描
+              </strong>或<strong>使用相機</strong>。相機提示時請授予權限。應用程式從後台返回後需重新開始掃描。</p></dd></div>
+            <div><dt>儲存被拒絕或未建立代碼</dt><dd><p>請以支付結果為準。沒有儲存代碼的已批准付款仍然有效。僅在明確被拒絕後，如需重試，返回結帳，關閉<strong>儲存卡</strong>
+              並明確開始新掃描。應用程式不會自動重新付款。<strong>結果未知</strong>時應<a href="#unknown">查詢原交易</a>。</p></dd></div>
           </dl>
           <p>請參閱<a href="using#wallets">錢包支付步驟</a>。交易紀錄中的請求錢包僅表示支付意圖，不證明付款成功或 Adyen 使用了該方式。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="connection">
           <h2>終端綁定或設定失敗</h2>
-          <p>先查看首頁的提示，再開啟<strong>設定 › 終端</strong>，完成最後的<strong>測試連接</strong>步驟，驗證 API 存取和此整合支援的連接檢查。網絡和雲端設定使用<strong>尋找要設定的終端</strong>測試 API 存取並列出終端；裝置本機終端和 Tap to Pay 提供<strong>測試 API</strong>。完整步驟請參閱<a href="quick-start#connect">連接 Adyen</a>。</p>
-          <p>所有整合都可開啟<strong>設定 › 說明與疑難排解 › 疑難排解詳情</strong>。結果包括設定缺失項、API 存取、受支援的連接檢查、時間和裝置資料，並標明不支援的檢查。這些檢查不保證付款、退款或列印成功，也不會發起付款、註冊手機或更改密鑰。使用<strong>分享已隱去敏感資料的報告</strong>分享顯示的詳情：保留商戶、終端、安裝實例和憑據 ID；排除秘密值、非結構化訊息和顧客資料。</p>
+          <p>先查看首頁的提示，再開啟<strong>設定 › 終端</strong>，完成最後的<strong>測試連接</strong>步驟，驗證 API 存取和此整合支援的連接檢查。網絡和雲端設定使用<strong>
+            尋找要設定的終端</strong>測試 API 存取並列出終端；裝置本機終端和 Tap to Pay 提供<strong>測試 API</strong>。完整步驟請參閱
+            <a href="quick-start#connect">連接 Adyen</a>。</p>
+          <p>所有整合都可開啟<strong>設定 › 說明與疑難排解 › 疑難排解詳情</strong>。結果包括設定缺失項、API
+            存取、受支援的連接檢查、時間和裝置資料，並標明不支援的檢查。這些檢查不保證付款、退款或列印成功，也不會發起付款、註冊手機或更改密鑰。使用<strong>分享已隱去敏感資料的報告</strong>
+            分享顯示的詳情：保留商戶、終端、安裝實例和憑據 ID；排除秘密值、非結構化訊息和顧客資料。</p>
           <dl class="fixes">
             <div><dt>首頁提示“尚未完成收款設定”</dt>
-              <dd><p><span class="fix-label">原因</span>必填欄位為空、本設備無法讀取已儲存的密鑰，或設定更改後尚未通過連線測試。在此之前，支付、退款、列印和其他 Adyen 操作會顯示此說明，而不會執行。</p>
-                <p><span class="fix-label">解決</span>點按<strong>完成收款設定</strong>。在<strong>設定 › 終端</strong>中填寫缺少的資訊或重新輸入密鑰，然後點按<strong>測試連接</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>點按<strong>完成收款設定</strong>。在<strong>設定 › 終端</strong>中填寫缺少的資訊或重新輸入密鑰，然後點按<strong>測試連接</strong>。</p><details class="cause"><summary>原因</summary><p>必填欄位為空、本設備無法讀取已儲存的密鑰，或設定更改後尚未通過連線測試。在此之前，支付、退款、列印和其他
+  Adyen 操作會顯示此說明，而不會執行。</p></details></dd></div>
             <div><dt>API 測試失敗，或設定提示存取問題</dt>
-              <dd><p><span class="fix-label">原因</span>API 密鑰、商戶帳戶或 LIVE URL 前置字元有誤，缺少角色，或憑據屬於其他 Company 帳戶或環境。</p>
-                <p><span class="fix-label">解決</span>按照<a href="quick-start#credentials">憑據要求</a>檢查憑據的角色和存取範圍。LIVE 請檢查 <strong>LIVE URL 前置字元</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>按照<a href="quick-start#credentials">憑據要求</a>檢查憑據的角色和存取範圍。LIVE 請檢查 <strong>LIVE URL
+  前置字元</strong>。</p><details class="cause"><summary>原因</summary><p>API 密鑰、商戶帳戶或 LIVE URL 前置字元有誤，缺少角色，或憑據屬於其他 Company
+  帳戶或環境。</p></details></dd></div>
             <div><dt>“商戶帳戶與終端目前分配的帳戶不一致。”</dt>
-              <dd><p><span class="fix-label">原因</span>終端在 Adyen 中被分配到其他商戶帳戶。</p>
-                <p><span class="fix-label">解決</span>輸入終端所分配的商戶帳戶，或在商戶後台重新分配終端。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>輸入終端所分配的商戶帳戶，或在商戶後台重新分配終端。</p><details class="cause"><summary>原因</summary><p>終端在
+  Adyen 中被分配到其他商戶帳戶。</p></details></dd></div>
             <div><dt>Adyen 終端或網絡終端的連接測試失敗</dt>
-              <dd><p><span class="fix-label">原因</span>共享密鑰不一致，或 IP 地址、<strong>終端 ID（POIID）</strong>已過時。</p>
-                <p><span class="fix-label">解決</span>將共享密鑰的識別碼、口令和版本與商戶後台核對。網絡終端還需在終端的“Device info”畫面核對 IP 地址和 POIID。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>將共享密鑰的識別碼、口令和版本與商戶後台核對。網絡終端還需在終端的“Device info”畫面核對 IP 地址和 POIID。</p>
+  <details class="cause"><summary>原因</summary><p>共享密鑰不一致，或 IP 地址、<strong>終端 ID（POIID）</strong>已過時。</p></details></dd>
+  </div>
             <div><dt>連接因環境不一致被拒絕</dt>
-              <dd><p><span class="fix-label">原因</span>混用了 TEST 和 LIVE：終端、帳戶和 API 密鑰必須屬於同一環境。</p>
-                <p><span class="fix-label">解決</span>網絡或雲端終端及 Tap to Pay 請在<strong>設定 › 終端</strong>中檢查<strong>環境</strong>。在 Adyen 終端上運行時，請使用正確環境的設備。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>網絡或雲端終端及 Tap to Pay 請在<strong>設定 › 終端</strong>中檢查<strong>環境</strong>。在 Adyen
+  終端上運行時，請使用正確環境的設備。</p><details class="cause"><summary>原因</summary><p>混用了 TEST 和 LIVE：終端、帳戶和 API 密鑰必須屬於同一環境。</p>
+  </details></dd></div>
             <div><dt>無法連接雲端終端</dt>
-              <dd><p><span class="fix-label">原因</span>終端離線、POIID 有誤，或 API 密鑰缺少 Cloud Device API role。</p>
-                <p><span class="fix-label">解決</span>確認終端已開機並已連線，再檢查 POIID 和憑據的角色。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>確認終端已開機並已連線，再檢查 POIID 和憑據的角色。</p><details class="cause"><summary>原因</summary><p>
+  終端離線、POIID 有誤，或 API 密鑰缺少 Cloud Device API role。</p></details></dd></div>
             <div><dt>未安裝所選環境的 Payments 應用程式</dt>
-              <dd><p><span class="fix-label">原因</span>未安裝所選 TEST 或 LIVE 環境的 Payments 應用程式。</p>
-                <p><span class="fix-label">解決</span>檢查<strong>設定 › 終端 › 環境</strong>，從 Google Play 安裝對應應用程式。兩者可以同時安裝。完成註冊，輸入對應的共享密鑰，再完成一筆 TEST 付款。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>檢查<strong>設定 › 終端 › 環境</strong>，從 Google Play 安裝對應應用程式。兩者可以同時安裝。完成註冊，輸入對應的共享密鑰，再完成一筆
+  TEST 付款。</p><details class="cause"><summary>原因</summary><p>未安裝所選 TEST 或 LIVE 環境的 Payments 應用程式。</p></details></dd>
+  </div>
             <div id="tap-to-pay-check"><dt>Tap to Pay 在出示卡片前傳回 UnavailableService</dt>
               <dd><p>Payments 應用程式無法完成請求。此通用錯誤不能證明 Adyen 服務中斷或缺少客戶端密鑰。</p>
-                <p>在<strong>設定 › 終端</strong>中執行<strong>測試連接</strong>。如需查看簡潔的檢查結果表格或分享已隱去敏感資料的報告，請展開<strong>設定 › 說明與疑難排解 › 疑難排解詳情</strong>。</p>
-                <p><strong>設定 Tap to Pay</strong>會使用主 API 密鑰自動建立註冊憑據和客戶端密鑰。如遭拒絕，請檢查<a href="quick-start#credentials">所需角色</a>。新密鑰需要數分鐘生效，然後再次<strong>測試連接</strong>。如仍無法恢復，請稍後重試或請 Adyen 支援團隊檢查對應的 <a href="https://ca-test.adyen.com/">TEST Customer Area</a> 或 <a href="https://ca-live.adyen.com/">LIVE Customer Area</a>。參見 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式要求</a>。</p>
+                <p>在<strong>設定 › 終端</strong>中執行<strong>測試連接</strong>。如需查看簡潔的檢查結果表格或分享已隱去敏感資料的報告，請展開<strong>設定 › 說明與疑難排解
+                  › 疑難排解詳情</strong>。</p>
+                <p><strong>設定 Tap to Pay</strong>會使用主 API 密鑰自動建立註冊憑據和客戶端密鑰。如遭拒絕，請檢查<a href="quick-start#credentials">
+                  所需角色</a>。新密鑰需要數分鐘生效，然後再次<strong>測試連接</strong>。如仍無法恢復，請稍後重試或請 Adyen 支援團隊檢查對應的
+                  <a href="https://ca-test.adyen.com/">TEST Customer Area</a> 或 <a href="https://ca-live.adyen.com/">
+                  LIVE Customer Area</a>。參見
+                  <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式要求
+                  </a>。</p>
                 <p>客戶端密鑰必須屬於註冊所用的同一憑據。</p>
-                <p><strong>分享已隱去敏感資料的報告</strong>只分享顯示的各行：應用程式版本、API 存取和連接檢查結果及其 UTC 時間、整合方式和環境、帳戶/店舖/安裝實例/共享密鑰 ID、Android/裝置/Payments 應用程式版本；使用 Tap to Pay 時亦包括客戶端密鑰和註冊檢查結果及已驗證憑據身份。</p></dd></div>
+                <p><strong>分享已隱去敏感資料的報告</strong>只分享顯示的各行：應用程式版本、API 存取和連接檢查結果及其 UTC 時間、整合方式和環境、帳戶/店舖/安裝實例/共享密鑰
+                  ID、Android/裝置/Payments 應用程式版本；使用 Tap to Pay 時亦包括客戶端密鑰和註冊檢查結果及已驗證憑據身份。</p></dd></div>
             <div id="key-setup"><dt>“新密鑰已儲存。請更新此終端的設定”</dt>
-              <dd><p><span class="fix-label">原因</span>加密密鑰已在 Adyen 建立，但終端尚未載入。</p>
-                <p><span class="fix-label">解決</span>在終端上打開 <strong>Admin menu › Config › Update</strong>，然後返回 Mini mPOS 點按<strong>再次檢查</strong>。如果建立中斷，請點按<strong>繼續密鑰設定</strong>，不會建立第二個密鑰。參見<a href="quick-start#shared-key-creation">密鑰建立</a>及 <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Adyen 設定更新指南</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>在終端上打開 <strong>Admin menu › Config › Update</strong>，然後返回 Mini mPOS 點按<strong>再次檢查</strong>。如果建立中斷，請點按<strong>繼續密鑰設定</strong>，不會建立第二個密鑰。參見<a href="quick-start#shared-key-creation">密鑰建立</a>及
+  <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Adyen 設定更新指南</a>。</p>
+  <details class="cause"><summary>原因</summary><p>加密密鑰已在 Adyen 建立，但終端尚未載入。</p></details></dd></div>
             <div><dt>舊付款的操作被阻止</dt>
-              <dd><p><span class="fix-label">原因</span>該付款之後更換了商戶帳戶、環境或終端。</p>
-                <p><span class="fix-label">解決</span>恢復處理該付款時的設定，或在商戶後台處理。不要用另一個帳戶處理它。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>恢復處理該付款時的設定，或在商戶後台處理。不要用另一個帳戶處理它。</p><details class="cause"><summary>原因</summary><p>
+  該付款之後更換了商戶帳戶、環境或終端。</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
@@ -200,19 +247,21 @@
           </div>
           <dl class="fixes">
             <div><dt>“終端未回應”，或網絡終端時好時壞</dt>
-              <dd><p><span class="fix-label">原因</span>終端的 IP 地址已變化、設備換到了其他網絡，或網絡阻止了連接。</p>
-                <p><span class="fix-label">解決</span></p>
-                <ol>
-                  <li>在終端的“Device info”畫面查看 IP 地址，並在<strong>設定 › 終端</strong>中更新。</li>
-                  <li>將設備和終端連接到同一網絡。避免使用訪客 Wi-Fi，它通常會隔離設備。</li>
-                  <li>請網絡管理員放行兩者之間的 TCP 8443，並為終端保留 IP 地址；參見<a href="quick-start#network-requirements">網絡要求</a>。</li>
-                </ol></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span></p>
+<ol>
+<li>在終端的“Device info”畫面查看 IP 地址，並在<strong>設定 › 終端</strong>中更新。</li>
+<li>將設備和終端連接到同一網絡。避免使用訪客 Wi-Fi，它通常會隔離設備。</li>
+<li>請網絡管理員放行兩者之間的 TCP 8443，並為終端保留 IP 地址；參見<a href="quick-start#network-requirements">網絡要求</a>。</li>
+</ol><details class="cause"><summary>原因</summary><p>終端的 IP 地址已變化、設備換到了其他網絡，或網絡阻止了連接。</p></details></dd></div>
             <div><dt>所有設定的付款或 API 測試都失敗</dt>
-              <dd><p><span class="fix-label">原因</span>設備或終端無法存取互聯網，或防火牆阻止了 Adyen。</p>
-                <p><span class="fix-label">解決</span>檢查互聯網連接，並確認已放行到 Adyen 域名的 TCP 443 HTTPS 連接。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>檢查互聯網連接，並確認已放行到 Adyen 域名的 TCP 443 HTTPS 連接。</p><details class="cause"><summary>原因
+  </summary><p>設備或終端無法存取互聯網，或防火牆阻止了 Adyen。</p></details></dd></div>
             <div><dt>雲端付款逾時</dt>
-              <dd><p><span class="fix-label">原因</span>終端失去了互聯網連接。</p>
-                <p><span class="fix-label">解決</span>檢查終端的 Wi-Fi、以太網或移動資料，然後運行<strong>測試連接</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>檢查終端的 Wi-Fi、以太網或移動資料，然後運行<strong>測試連接</strong>。</p><details class="cause"><summary>
+  原因</summary><p>終端失去了互聯網連接。</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
@@ -225,11 +274,13 @@
             <div><dt>金額調整未解決</dt>
               <dd><p><span class="fix-label">解決</span>使用相同金額重試。不同金額是獨立請求，可能需先解決第一個請求。</p></dd></div>
             <div><dt>小費未儲存</dt>
-              <dd><p><span class="fix-label">原因</span>小費超過 20% 時，發卡行拒絕增加凍結金額。</p>
-                <p><span class="fix-label">解決</span>輸入較少的小費，或點按<strong>無小費</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>輸入較少的小費，或點按<strong>無小費</strong>。</p><details class="cause"><summary>原因</summary><p>
+  小費超過 20% 時，發卡行拒絕增加凍結金額。</p></details></dd></div>
             <div><dt><strong>已請求扣款</strong>或<strong>已請求退款</strong>一直不變</dt>
-              <dd><p><span class="fix-label">原因</span>這表示 Adyen 已接受請求。Mini mPOS 沒有伺服器，無法收到最終確認。</p>
-                <p><span class="fix-label">解決</span>請在商戶後台確認最終結果。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>請在商戶後台確認最終結果。</p><details class="cause"><summary>原因</summary><p>這表示 Adyen 已接受請求。Mini
+  mPOS 沒有伺服器，無法收到最終確認。</p></details></dd></div>
           </dl>
           <p>凍結金額會到期，請及時處理。正常步驟請參閱<a href="using#preauth">訂金</a>和<a href="using#tips">收據小費</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
@@ -238,13 +289,17 @@
           <h2>付款連結未顯示或不更新</h2>
           <dl class="fixes">
             <div><dt>結帳時沒有<strong>建立付款連結</strong></dt>
-              <dd><p><span class="fix-label">原因</span>Checkout API 設定未完成，或本次結帳是預授權或收據小費。</p>
-                <p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中完成 Checkout API 設定。連結僅用於銷售。離線演示請參閱<a href="using#payment-links">付款連結</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中完成 Checkout API 設定。連結僅用於銷售。離線演示請參閱
+  <a href="using#payment-links">付款連結</a>。</p><details class="cause"><summary>原因</summary><p>Checkout API
+  設定未完成，或本次結帳是預授權或收據小費。</p></details></dd></div>
             <div><dt>已支付的連結仍顯示<strong>待支付</strong></dt>
-              <dd><p><span class="fix-label">原因</span>應用程式僅在連結畫面打開時查詢。</p>
-                <p><span class="fix-label">解決</span>在交易紀錄中打開該紀錄，點按<strong>查詢支付狀態</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>在交易紀錄中打開該紀錄，點按<strong>查詢支付狀態</strong>。</p><details class="cause"><summary>原因
+  </summary><p>應用程式僅在連結畫面打開時查詢。</p></details></dd></div>
             <div><dt>建立連結時中斷</dt>
-              <dd><p><span class="fix-label">解決</span>打開原紀錄並點按<strong>查詢支付狀態</strong>，會使用原請求重試；不要僅為取得連結建立另一筆銷售。</p></dd></div>
+              <dd><p><span class="fix-label">解決</span>打開原紀錄並點按<strong>查詢支付狀態</strong>，會使用原請求重試；不要僅為取得連結建立另一筆銷售。</p></dd>
+                </div>
           </dl>
           <p>已支付的連結請在<strong>商戶後台 › Payments › Payment list</strong>中退款。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
@@ -253,18 +308,22 @@
           <h2>打印機或電子收據無法使用</h2>
           <dl class="fixes">
             <div><dt>無法列印，或沒有<strong>列印收據</strong></dt>
-              <dd><p><span class="fix-label">原因</span>終端沒有打印機、未檢測到打印機，或連接中斷。AMS1 終端和 Tap to Pay 手機沒有打印機。</p>
-                <p><span class="fix-label">解決</span></p>
-                <ol>
-                  <li>在<strong>設定 › 關於</strong>中確認<strong>打印機</strong>顯示<strong>可用</strong>。否則請在<strong>設定 › 終端</strong>中運行<strong>測試連接</strong>。</li>
-                  <li>在<strong>設定 › 收據</strong>中將<strong>打印機</strong>設為<strong>自動檢測</strong>，並檢查<strong>自動列印</strong>。</li>
-                  <li>點按<strong>列印測試收據</strong>。如果仍無法列印，請檢查終端的收據紙捲。</li>
-                </ol></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span></p>
+<ol>
+<li>在<strong>設定 › 關於</strong>中確認<strong>打印機</strong>顯示<strong>可用</strong>。否則請在<strong>設定 › 終端</strong>中運行<strong>測試連接</strong>。</li>
+<li>在<strong>設定 › 收據</strong>中將<strong>打印機</strong>設為<strong>自動檢測</strong>，並檢查<strong>自動列印</strong>。</li>
+<li>點按<strong>列印測試收據</strong>。如果仍無法列印，請檢查終端的收據紙捲。</li>
+</ol><details class="cause"><summary>原因</summary><p>終端沒有打印機、未檢測到打印機，或連接中斷。AMS1 終端和 Tap to Pay 手機沒有打印機。</p></details>
+  </dd></div>
             <div><dt>排版被截斷或換行異常</dt>
-              <dd><p><span class="fix-label">解決</span>在<strong>設定 › 收據</strong>中更改<strong>每行字元寬度</strong>，然後列印測試收據。</p></dd></div>
+              <dd><p><span class="fix-label">解決</span>在<strong>設定 › 收據</strong>中更改<strong>每行字元寬度</strong>，然後列印測試收據。</p>
+                </dd></div>
             <div><dt>測試郵件發送失敗</dt>
-              <dd><p><span class="fix-label">原因</span>伺服器、連接埠、安全方式或密碼有誤，或服務商禁止 SMTP 或密碼登入。</p>
-                <p><span class="fix-label">解決</span>在<strong>設定 › 電郵收據</strong>中檢查伺服器、連接埠、STARTTLS 或 SSL/TLS、用戶名稱和密碼。服務商可能要求開通 SMTP 或使用應用程式密碼；參見<a href="using#email">郵件設定</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>在<strong>設定 › 電郵收據</strong>中檢查伺服器、連接埠、STARTTLS 或 SSL/TLS、用戶名稱和密碼。服務商可能要求開通 SMTP
+  或使用應用程式密碼；參見<a href="using#email">郵件設定</a>。</p><details class="cause"><summary>原因</summary><p>伺服器、連接埠、安全方式或密碼有誤，或服務商禁止
+  SMTP 或密碼登入。</p></details></dd></div>
             <div><dt>測試郵件正常，但顧客收不到收據</dt>
               <dd><p><span class="fix-label">解決</span>在<strong>設定 › 電郵收據</strong>中檢查何時詢問電郵以及是否自動發送收據。</p></dd></div>
           </dl>
@@ -274,13 +333,16 @@
           <h2>PIN 和設定傳輸問題</h2>
           <dl class="fixes">
             <div><dt>員工忘記了經理 PIN</dt>
-              <dd><p><span class="fix-label">解決</span>管理員可在<strong>設定 › 安全</strong>中更換或移除。管理員 PIN 和經理 PIN 保護不同的操作，其中一個不會解鎖另一個。</p></dd></div>
+              <dd><p><span class="fix-label">解決</span>管理員可在<strong>設定 › 安全</strong>中更換或移除。管理員 PIN 和經理 PIN
+                保護不同的操作，其中一個不會解鎖另一個。</p></dd></div>
             <div><dt>忘記了管理員 PIN</dt>
               <dd><p><span class="fix-label">原因</span>沒有 PIN 恢復功能。</p>
                 <p>如需在沒有管理員 PIN 的情況下重新開始，請按照<a href="#storage">儲存空間復原</a>步驟操作。重設前請閱讀資料遺失警告。</p></dd></div>
             <div><dt>傳輸碼被拒絕，或匯入後缺少密鑰</dt>
-              <dd><p><span class="fix-label">原因</span>傳輸碼與這些二維碼不相符，或未填寫。</p>
-                <p><span class="fix-label">解決</span>使用與這些二維碼一起顯示的傳輸碼，而不是新生成的碼。每次傳輸都需要傳輸碼。錯誤的碼或留空都不會匯入任何內容。複製後，請檢查新設備的支付目標和憑據；參見<a href="using#more">更多設備</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>使用與這些二維碼一起顯示的傳輸碼，而不是新生成的碼。每次傳輸都需要傳輸碼。錯誤的碼或留空都不會匯入任何內容。複製後，請檢查新設備的支付目標和憑據；參見
+  <a href="using#more">更多設備</a>。</p><details class="cause"><summary>原因</summary><p>傳輸碼與這些二維碼不相符，或未填寫。</p></details></dd>
+  </div>
           </dl>
           <p>各 PIN 保護的操作請參閱<a href="using#staff">員工 PIN</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
@@ -288,16 +350,22 @@
         <section id="storage">
           <h2>無法讀取或儲存已儲存的設定或憑證</h2>
           <p>Mini mPOS 會停止運作，而不會取代無法讀取的設定或憑證，以保留檔案，包括未完成設定或付款的復原紀錄。</p>
-          <ol class="steps">
-            <li>重新啟動裝置並再次開啟 Mini mPOS。如裝置儲存空間已滿，請先清理 Mini mPOS 以外的空間。只清除應用程式快取不會重設已儲存的設定。</li>
-            <li>重設前，請保留所需紀錄，並處理未完成的付款、退款、請款和調整。如無法開啟應用程式，請在 Customer Area 確認結果；參見<a href="#unknown">結果未知</a>。如結果仍不確定，請保留應用程式資料，並先與 Adyen 核對。不要因為無法開啟應用程式就再次發送操作。</li>
-            <li>如問題持續，而您接受遺失全部本機資料，可重設 Mini mPOS。在手機或平板電腦上，開啟 Android <strong>設定 › 應用程式 › Mini mPOS › 儲存空間和快取 › 清除儲存空間</strong>（名稱因裝置而異），或解除安裝 Mini mPOS 並從<a href="https://github.com/astiskala/minimpos/releases/latest">最新版本</a>重新安裝。在 Adyen 終端上，請由終端應用程式管理員安排重設或移除後重新安裝；參見<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen 應用程式部署指南</a>。</li>
-            <li>重新設定 Mini mPOS，或匯入可信的設定傳輸，然後完成<strong>測試連接</strong>，再進行真實付款。參見<a href="quick-start#connect">連接 Adyen</a>。</li>
-          </ol>
           <div class="callout callout-warning" role="note">
-            <p class="callout-title">警告</p>
-            <p>清除儲存空間或解除安裝會刪除全部本機商品、設定、憑證、PIN、交易紀錄及未完成操作的復原紀錄。設定傳輸無法還原交易紀錄或這些復原紀錄。重設不會撤銷已發送至 Adyen 的付款、退款或請款。</p>
-          </div>
+<p class="callout-title">警告</p>
+<p>清除儲存空間或解除安裝會刪除全部本機商品、設定、憑證、PIN、交易紀錄及未完成操作的復原紀錄。設定傳輸無法還原交易紀錄或這些復原紀錄。重設不會撤銷已發送至 Adyen 的付款、退款或請款。</p>
+</div>
+<ol class="recovery-steps">
+            <li>重新啟動裝置並再次開啟 Mini mPOS。如裝置儲存空間已滿，請先清理 Mini mPOS 以外的空間。只清除應用程式快取不會重設已儲存的設定。</li>
+            <li>重設前，請保留所需紀錄，並處理未完成的付款、退款、請款和調整。如無法開啟應用程式，請在 Customer Area 確認結果；參見<a href="#unknown">結果未知</a>
+              。如結果仍不確定，請保留應用程式資料，並先與 Adyen 核對。不要因為無法開啟應用程式就再次發送操作。</li>
+            <li>如問題持續，而您接受遺失全部本機資料，可重設 Mini mPOS。在手機或平板電腦上，開啟 Android <strong>設定 › 應用程式 › Mini mPOS › 儲存空間和快取 › 清除儲存空間
+              </strong>（名稱因裝置而異），或解除安裝 Mini mPOS 並從<a href="https://github.com/astiskala/minimpos/releases/latest">最新版本
+              </a>重新安裝。在 Adyen 終端上，請由終端應用程式管理員安排重設或移除後重新安裝；參見
+              <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen 應用程式部署指南</a>。</li>
+            <li>重新設定 Mini mPOS，或匯入可信的設定傳輸，然後完成<strong>測試連接</strong>，再進行真實付款。參見<a href="quick-start#connect">連接 Adyen</a>
+              。</li>
+          </ol>
+
           <p>覆蓋安裝更新不會重設應用程式儲存空間。如錯誤再次出現，請<a href="#help">在 GitHub 報告應用程式問題</a>，不要附上已儲存的設定檔或憑證。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
@@ -305,69 +373,90 @@
           <h2>終端無法安裝應用程式</h2>
           <dl class="fixes">
             <div><dt><code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code></dt>
-              <dd><p><span class="fix-label">原因</span>APK 未簽名。</p>
-                <p><span class="fix-label">解決</span>上傳<a href="https://github.com/astiskala/minimpos/releases/latest">最新發佈版本</a>中已簽名的 <code>minimpos-&lt;version&gt;.apk</code>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>上傳<a href="https://github.com/astiskala/minimpos/releases/latest">最新發佈版本</a>中已簽名的
+  <code>minimpos-&lt;version&gt;.apk</code>。</p><details class="cause"><summary>原因</summary><p>APK 未簽名。</p></details>
+  </dd></div>
             <div><dt><code>INVALID_SIGNING_CERTIFICATE_MISMATCH</code></dt>
-              <dd><p><span class="fix-label">原因</span>APK 的簽名密鑰與之前上傳的不同。</p>
-                <p><span class="fix-label">解決</span>保持原簽名來源。確需更換時，請向 Adyen 支援團隊咨詢移除舊版本。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>保持原簽名來源。確需更換時，請向 Adyen 支援團隊咨詢移除舊版本。</p><details class="cause"><summary>原因</summary>
+  <p>APK 的簽名密鑰與之前上傳的不同。</p></details></dd></div>
             <div><dt>不支援的 Android 版本</dt>
-              <dd><p><span class="fix-label">原因</span>Mini mPOS 需要 Android 9 或更高版本；舊款 S1E 運行 Android 7.1。</p>
-                <p><span class="fix-label">解決</span>使用受支援的終端；參見<a href="quick-start#install">安裝</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>使用受支援的終端；參見<a href="quick-start#install">安裝</a>。</p><details class="cause"><summary>
+  原因</summary><p>Mini mPOS 需要 Android 9 或更高版本；舊款 S1E 運行 Android 7.1。</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="messages">
           <h2>出現錯誤訊息</h2>
-          <p>每條訊息都會說明問題及需要檢查的內容。括號中的詳細資料（如 IP 地址、HTTP 狀態或 Adyen 的原文）有助 Adyen 支援團隊排查，尋求協助時請一併提供。如果有付款正在進行，請先<a href="#unknown">查詢其結果</a>，再處理其他問題。</p>
-          <dl class="fixes">
+          <p>每條訊息都會說明問題及需要檢查的內容。括號中的詳細資料（如 IP 地址、HTTP 狀態或 Adyen 的原文）有助 Adyen 支援團隊排查，尋求協助時請一併提供。如果有付款正在進行，請先
+            <a href="#unknown">查詢其結果</a>，再處理其他問題。</p>
+          <details class="error-catalog"><summary>錯誤訊息</summary><dl class="fixes">
             <div><dt>“無法連接終端。請確認終端已開機、位於同一網絡，且 IP 地址正確。”</dt>
-              <dd><p><span class="fix-label">原因</span>Mini mPOS 無法連接到所儲存 IP 地址上的網絡終端。</p>
-                <p><span class="fix-label">解決</span>請參閱<a href="#network-dropouts">連接中斷</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>請參閱<a href="#network-dropouts">連接中斷</a>。</p><details class="cause"><summary>原因
+  </summary><p>Mini mPOS 無法連接到所儲存 IP 地址上的網絡終端。</p></details></dd></div>
             <div><dt>“此地址不是所選環境中的 Adyen 終端。請檢查 IP 地址以及 TEST 或 LIVE。”</dt>
-              <dd><p><span class="fix-label">原因</span>該地址有設備回應，但不是所選環境中的 Adyen 終端：該地址已分配給其他設備，或混用了 TEST 和 LIVE。</p>
-                <p><span class="fix-label">解決</span>在終端的“Device info”畫面上核對 IP 地址，並檢查<strong>設定 › 終端</strong>中的<strong>環境</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>在終端的“Device info”畫面上核對 IP 地址，並檢查<strong>設定 › 終端</strong>中的<strong>環境</strong>。</p>
+  <details class="cause"><summary>原因</summary><p>該地址有設備回應，但不是所選環境中的 Adyen 終端：該地址已分配給其他設備，或混用了 TEST 和 LIVE。</p></details>
+  </dd></div>
             <div><dt>“終端拒絕了共享密鑰。請在終端設定中檢查密鑰識別碼、版本及密碼短語。”</dt>
-              <dd><p><span class="fix-label">原因</span>共享密鑰的識別碼、版本或密碼短語與終端上的不一致。</p>
-                <p><span class="fix-label">解決</span>與商戶後台中的設定進行核對，或<a href="#key-setup">重新設定密鑰</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>與商戶後台中的設定進行核對，或<a href="#key-setup">重新設定密鑰</a>。</p><details class="cause"><summary>
+  原因</summary><p>共享密鑰的識別碼、版本或密碼短語與終端上的不一致。</p></details></dd></div>
             <div><dt>“無法驗證終端的回覆。請在終端設定中檢查共享密鑰。”</dt>
-              <dd><p><span class="fix-label">原因</span>終端使用了不同的共享密鑰回覆，因此請求可能已送達終端。</p>
-                <p><span class="fix-label">解決</span>再次收款前請先<a href="#unknown">查詢結果</a>，然後修正共享密鑰。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>再次收款前請先<a href="#unknown">查詢結果</a>，然後修正共享密鑰。</p><details class="cause"><summary>原因
+  </summary><p>終端使用了不同的共享密鑰回覆，因此請求可能已送達終端。</p></details></dd></div>
             <div><dt>“終端未連接到 Adyen。請確認終端已開機並已連線。”</dt>
-              <dd><p><span class="fix-label">原因</span>雲端終端已關機或沒有互聯網連接。</p>
-                <p><span class="fix-label">解決</span>檢查終端的 Wi-Fi、以太網或流動數據，然後執行<strong>測試連接</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>檢查終端的 Wi-Fi、以太網或流動數據，然後執行<strong>測試連接</strong>。</p><details class="cause"><summary>
+  原因</summary><p>雲端終端已關機或沒有互聯網連接。</p></details></dd></div>
             <div><dt>“Adyen 未接受 API 密鑰。請在終端設定中檢查。”</dt>
-              <dd><p><span class="fix-label">原因</span>API 密鑰有誤、已被撤銷，或屬於另一個環境。</p>
-                <p><span class="fix-label">解決</span>重新輸入密鑰，並對照<a href="quick-start#credentials">憑證要求</a>檢查。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>重新輸入密鑰，並對照<a href="quick-start#credentials">憑證要求</a>檢查。</p><details class="cause">
+  <summary>原因</summary><p>API 密鑰有誤、已被撤銷，或屬於另一個環境。</p></details></dd></div>
             <div><dt>“此 API 密鑰缺少所需角色或對此商戶帳戶的存取權限。請在商戶後台檢查 API 憑證。”</dt>
-              <dd><p><span class="fix-label">原因</span>憑證缺少某個角色或對此商戶帳戶的存取權限。已知缺少的角色時，括號中會註明。</p>
-                <p><span class="fix-label">解決</span>在商戶後台中新增該角色或帳戶存取權限；請參閱<a href="quick-start#credentials">憑證要求</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>在商戶後台中新增該角色或帳戶存取權限；請參閱<a href="quick-start#credentials">憑證要求</a>。</p>
+  <details class="cause"><summary>原因</summary><p>憑證缺少某個角色或對此商戶帳戶的存取權限。已知缺少的角色時，括號中會註明。</p></details></dd></div>
             <div><dt>“Adyen 繁忙或暫時無法使用。”</dt>
-              <dd><p><span class="fix-label">原因</span>Adyen 正在限制請求，或暫時無法使用。</p>
-                <p><span class="fix-label">解決</span>稍候片刻再重試。如果是付款、扣款或付款連結，請先<a href="#unknown">查詢其結果</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>稍候片刻再重試。如果是付款、扣款或付款連結，請先<a href="#unknown">查詢其結果</a>。</p><details class="cause">
+  <summary>原因</summary><p>Adyen 正在限制請求，或暫時無法使用。</p></details></dd></div>
             <div><dt>“未能在限定時間內收到回應。”</dt>
-              <dd><p><span class="fix-label">原因</span>請求已發出，但未收到回應，因此結果未知。</p>
-                <p><span class="fix-label">解決</span>請<a href="#unknown">查詢結果</a>。在確認結果前，請勿再次收款。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>請<a href="#unknown">查詢結果</a>。在確認結果前，請勿再次收款。</p><details class="cause"><summary>原因
+  </summary><p>請求已發出，但未收到回應，因此結果未知。</p></details></dd></div>
             <div><dt>“尚未收到 Payments 應用程式的回覆。無法向其查詢結果，請在商戶後台核實此次支付。”</dt>
-              <dd><p><span class="fix-label">原因</span>使用 Tap to Pay 時，無法向 Payments 應用程式查詢結果，且尚未收到延遲的回覆。</p>
-                <p><span class="fix-label">解決</span>再次收款前，請在商戶後台中查找此次付款。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>再次收款前，請在商戶後台中查找此次付款。</p><details class="cause"><summary>原因</summary><p>使用 Tap to Pay
+  時，無法向 Payments 應用程式查詢結果，且尚未收到延遲的回覆。</p></details></dd></div>
             <div><dt>“無法開啟 Adyen Payments 應用程式。請確認已安裝該應用程式。”</dt>
-              <dd><p><span class="fix-label">原因</span>Payments 應用程式未安裝或已被移除。</p>
-                <p><span class="fix-label">解決</span>安裝與您的環境對應的 Payments 應用程式，然後重試。請參閱<a href="quick-start#connect">連接 Adyen</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>安裝與您的環境對應的 Payments 應用程式，然後重試。請參閱<a href="quick-start#connect">連接 Adyen</a>。</p>
+  <details class="cause"><summary>原因</summary><p>Payments 應用程式未安裝或已被移除。</p></details></dd></div>
             <div><dt>“郵件伺服器未接受用戶名稱或密碼。請在“設定 › 電郵收據”中檢查。”</dt>
-              <dd><p><span class="fix-label">原因</span>SMTP 用戶名稱或密碼有誤，或郵件服務供應商要求使用應用程式專用密碼。</p>
-                <p><span class="fix-label">解決</span>更正後傳送一封測試郵件。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解決</span>更正後傳送一封測試郵件。</p><details class="cause"><summary>原因</summary><p>SMTP
+  用戶名稱或密碼有誤，或郵件服務供應商要求使用應用程式專用密碼。</p></details></dd></div>
             <div><dt>“此設備的安全儲存空間無法使用。請重試或重啟設備。”</dt>
-              <dd><p><span class="fix-label">原因</span>Android 金鑰庫無法加密或讀取已儲存的密鑰資料。</p>
-                <p><span class="fix-label">解決</span>如果重新啟動後問題仍然存在，請重新輸入密鑰及密碼。</p></dd></div>
-          </dl>
+              <dd>
+<p><span class="fix-label">解決</span>如果重新啟動後問題仍然存在，請重新輸入密鑰及密碼。</p><details class="cause"><summary>原因</summary><p>Android
+  金鑰庫無法加密或讀取已儲存的密鑰資料。</p></details></dd></div>
+          </dl></details>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="help">
           <h2>仍需幫助？</h2>
-          <p>Adyen 帳戶、終端部署、付款方式或最終付款結果請聯繫 Adyen。應用程式問題請<a href="https://github.com/astiskala/minimpos/issues">提交 GitHub issue</a>，並提供應用程式版本、設備型號、設定、TEST 或 LIVE 環境以及重現步驟。</p>
+          <p>Adyen 帳戶、終端部署、付款方式或最終付款結果請聯繫 Adyen。應用程式問題請<a href="https://github.com/astiskala/minimpos/issues">提交 GitHub
+            issue</a>，並提供應用程式版本、設備型號、設定、TEST 或 LIVE 環境以及重現步驟。</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
-            <p>切勿包含密鑰、密碼、PIN 或顧客資料。疑似漏洞請按<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>私下報告。</p>
+            <p>切勿包含密鑰、密碼、PIN 或顧客資料。疑似漏洞請按<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>
+              私下報告。</p>
           </div>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>

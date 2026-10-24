@@ -37,6 +37,18 @@ class SetupHelperTest {
                 requireNotNull(script.executeScript("return document.querySelector('#setup-qr svg path').getAttribute('d').length")) as Long
             assertThat(svgLength).isGreaterThan(0)
             val (connection, secrets) = readTransfer()
+            assertThat(script.executeScript("return document.activeElement.id")).isEqualTo("setup-codes-title")
+            assertThat(text("setup-summary-environment")).contains("TEST")
+            assertThat(text("setup-summary-destination"))
+                .isEqualTo(
+                    script.executeScript(
+                        "return document.querySelector('input[name=destination]:checked').closest('label')" +
+                            ".textContent.trim().replace(/\\s+/g, ' ')",
+                    ),
+                )
+            assertThat(script.executeScript("return document.getElementById('setup-summary-receipt').textContent.length > 0"))
+                .isEqualTo(true)
+            assertThat(script.executeScript("return document.querySelector('.setup-optional').open")).isEqualTo(false)
             assertThat(connection).isEqualTo(receiptUnchanged("""{"destination":"network","environment":"TEST"}"""))
             assertThat(secrets).isEqualTo(json("""{"ADYEN_API_KEY":"demo-key"}"""))
         }
@@ -79,6 +91,19 @@ class SetupHelperTest {
     }
 
     @Test
+    fun `editing a generated transfer clears its visible summary and never includes credentials`() {
+        submit()
+        ready()
+        assertThat(text("setup-summary-destination")).isNotEmpty()
+        assertThat(requireNotNull(script.executeScript("return document.querySelector('.setup-summary').textContent")) as String)
+            .doesNotContain("demo-key")
+        field("apiKey", "replacement-demo-key")
+        assertThat(text("setup-summary-destination")).isEmpty()
+        assertThat(text("setup-summary-environment")).isEmpty()
+        assertThat(script.executeScript("return document.getElementById('setup-codes').hidden")).isEqualTo(true)
+    }
+
+    @Test
     fun `input change and reset discard in-flight codes and their transfer code`() {
         for (event in listOf("input", "change", "reset")) {
             openPage()
@@ -90,6 +115,7 @@ class SetupHelperTest {
             assertThat(script.executeScript("return document.getElementById('setup-codes').hidden")).isEqualTo(true)
             assertThat(text("setup-code")).isEmpty()
             assertThat(text("setup-status")).isEmpty()
+            assertThat(text("setup-summary-destination")).isEmpty()
             assertThat(codes()).isEmpty()
         }
     }
@@ -279,6 +305,8 @@ class SetupHelperTest {
             ).forEach(::field)
             submit()
             ready()
+            assertThat(script.executeScript("return document.getElementById('setup-summary-mode').parentElement.hidden"))
+                .isEqualTo(true)
             assertThat(readTransfer())
                 .isEqualTo(
                     receiptUnchanged(

@@ -61,7 +61,7 @@ class QuickStartGuideTest {
                 },
             ).contains("Devices › Device settings › Integrations › Terminal API › Encryption key")
             assertThat(text).doesNotContain("API tokenise payment details")
-            assertThat(text).doesNotContain("Management API - API credentials read and write")
+            assertThat(text).contains("Management API - API credentials read and write")
             assertThat(steps.children().single { "Adyen Payments App role" in it.text() }.text())
                 .doesNotContain("Management API - API credentials read and write")
         }
@@ -288,7 +288,11 @@ class WebsiteTest {
         allPages.forEach { (key, page) ->
             val english = allPages.getValue("en" to key.second)
 
-            fun Page.destinations() = document.select("a[href]:not([hreflang])").map { it.attr("href") }
+            fun Page.destinations() =
+                document.select("a[href]:not([hreflang])").map {
+                    // Screenshot links follow each language's own asset directory; their subject/order still matches.
+                    if (it.hasClass("screenshot-link")) it.attr("href").substringAfterLast('/') else it.attr("href")
+                }
             assertWithMessage(page.name).that(page.destinations()).isEqualTo(english.destinations())
         }
     }
@@ -790,7 +794,7 @@ class WebsitePresentationTest {
     }
 
     @Test
-    fun `only the setup helper runs scripts, its own, under a policy that lets it send nothing`() {
+    fun `only helpers author scripts and hosting exceptions never permit form submission`() {
         allPages.forEach { (key, page) ->
             val scripts = page.matching("script")
             if (key.second != Kind.SETUP) {
@@ -807,7 +811,8 @@ class WebsitePresentationTest {
             scripts.forEach { assertWithMessage(page.name).that(it.hasAttr("defer") && it.data().isBlank()).isTrue() }
             val policy = page.single("meta", "http-equiv" to "Content-Security-Policy").attr("content")
             listOf(
-                "connect-src 'none'",
+                "connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum",
+                "script-src-attr 'none'",
                 "form-action 'none'",
                 "base-uri 'none'",
             ).forEach { assertWithMessage(page.name).that(policy).contains(it) }

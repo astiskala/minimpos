@@ -181,6 +181,8 @@ internal class HelperBrowser : AutoCloseable {
                     put("expression", expression)
                     put("returnByValue", true)
                     put("awaitPromise", true)
+                    // DevTools otherwise bypasses unsafe-eval restrictions, even in an injected page script.
+                    put("allowUnsafeEvalBlockedByCSP", false)
                 },
             )
         check(answer["exceptionDetails"] == null) { "Helper JavaScript failed: ${answer["exceptionDetails"]}" }

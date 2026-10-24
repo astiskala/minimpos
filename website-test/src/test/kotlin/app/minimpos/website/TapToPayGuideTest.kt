@@ -44,7 +44,8 @@ class TapToPayGuideTest {
             val discover = strings.select("string[name=settings_discover]").text()
             listOf("network", "cloud").forEach { id ->
                 val heading = checkNotNull(quickStart.getElementById(id))
-                val steps = heading.nextElementSibling()!!.nextElementSibling()!!.nextElementSibling()!!
+                val steps =
+                    heading.nextElementSiblings().takeWhile { it.tagName() != "h3" }.single { it.hasClass("manual-setup") }
                 assertThat(steps.tagName()).isEqualTo("details")
                 assertThat(steps.select("strong").eachText()).containsAtLeast(discover, connectionTest)
                 assertThat(steps.select("strong").eachText()).doesNotContain(apiTest)

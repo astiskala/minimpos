@@ -92,7 +92,8 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
 - Public/protected declarations need useful KDoc (tests exempt): units, null meaning, threading, formats, errors.
   Once constructor tags are used, cover every parameter in order (`@property` for public properties, otherwise `@param`).
 - QR contracts have one current format. Change the app, setup helper, format tests and helper test vectors together.
-  `docs/js/setup.js` mirrors `TransferCodec`, `QrChunks` and `TransferSeal`; retain its no-network CSP.
+  `docs/js/setup.js` mirrors `TransferCodec`, `QrChunks` and `TransferSeal`; credentials stay local. CSP network
+  exceptions are limited to the documented hosting security/performance endpoints.
 - The release's `update.json` asset has one current format. Change the app, the Release workflow and their tests
   together; it is read only on devices that are not Adyen terminals.
 
@@ -150,7 +151,8 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
 - Give each fact one authoritative home for its reader; link instead of copying. Merchant guides are Quick start,
   Using Mini mPOS and Troubleshooting. Setup guides branch by destination; operations describe tasks, not every field.
 - Preserve the site's visual design. Update all seven languages, reciprocal switches, canonical/hreflang metadata and
-  website tests together. Only setup helpers run scripts; all assets are local. HTML void elements have no trailing slash.
+  website tests together. Only setup helpers author scripts; hosting may inject its documented scripts. Authored assets
+  are local. HTML void elements have no trailing slash.
 - Explain Mini mPOS's requirements; link to Adyen for Adyen account/platform procedures. Avoid older-app warnings,
   country-specific tax compliance, invoice requirements and country-specific receipt defaults.
 - Screenshots are disclosed simulator demos in the page's supported language and original terminal frames.

@@ -2,7 +2,7 @@
 <html lang="fr-FR">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -65,130 +65,262 @@
     <details class="language-menu"><summary aria-label="Langue : Français (France)" title="Langue"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">Français (France)</span></summary><nav aria-label="Langue"><ul><li><a href="../troubleshooting" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/troubleshooting" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a aria-current="page" href="../fr-FR/troubleshooting" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/troubleshooting" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/troubleshooting" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/troubleshooting" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/troubleshooting" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
   </div></header>
   <main id="main">
-    <section class="guide-hero"><div class="wrap"><p class="eyebrow">Guider</p><h1>Dépannage</h1><p class="lead">Trouvez ce que vous voyez, vérifiez la cause probable et suivez le correctif. Si un paiement était en cours, vérifiez d'abord son résultat : l'établissement d'une connexion ne vous indique pas si un paiement antérieur a été effectué.</p></div></section>
+    <section class="guide-hero"><div class="wrap"><p class="eyebrow">Guide</p><h1>Dépannage</h1><p class="lead">Trouvez
+      ce que vous voyez, vérifiez la cause probable et suivez le correctif. Si un paiement était en cours, vérifiez
+      d'abord son résultat : l'établissement d'une connexion ne vous indique pas si un paiement antérieur a été
+      effectué.</p>
+<nav class="task-links" aria-label="Problèmes courants"><span>Problèmes courants</span><a href="#unknown">Résultat
+  inconnu</a><a href="#connection">Couplage et configuration</a><a href="#receipts">Imprimante et email</a>
+  <a href="#messages">Messages d&#x27;erreur</a></nav></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="Navigation des guides">
-        <p class="toc-title">Guides</p><p><a href="quick-start">Démarrage rapide</a><br><a href="using">Utilisation de Mini mPOS</a><br><a href="troubleshooting" aria-current="page">Dépannage</a></p>
+        <p class="guide-links toc-title">Guides</p><p class="guide-links"><a href="quick-start">Démarrage rapide
+          </a><br><a href="using">Utilisation de Mini mPOS</a><br><a href="troubleshooting" aria-current="page">
+          Dépannage</a></p>
         <div class="desktop-contents"><p class="toc-title">Sur cette page</p><ol>
-          <li><a href="#unknown">Résultat inconnu</a></li><li><a href="#declines">Paiements refusés</a></li>
-          <li><a href="#terminal-features">Fonctionnalités du terminal en option</a></li>
-          <li><a href="#wallets">Numérisation du portefeuille</a></li><li><a href="#connection">Couplage et configuration</a></li><li><a href="#network-dropouts">Coupures de réseau</a></li>
-          <li><a href="#modifications">Captures et ajustements</a></li><li><a href="#links">Liens de paiement</a></li>
-          <li><a href="#receipts">Imprimante et email</a></li><li><a href="#access">PIN et transferts</a></li>
-          <li><a href="#storage">Récupération de stockage</a></li><li><a href="#install">Mise en place</a></li><li><a href="#messages">Messages d'erreur</a></li><li><a href="#help">Obtenir de l'aide</a></li>
-        </ol></div>
+<li><a href="#unknown">Résultat inconnu</a></li><li><a href="#declines">Paiements refusés</a></li><li>
+  <a href="#terminal-features">Fonctionnalités du terminal en option</a></li><li><a href="#wallets">Numérisation du
+  portefeuille</a></li><li><a href="#connection">Couplage et configuration</a></li><li><a href="#network-dropouts">
+  Coupures de réseau</a></li><li><a href="#modifications">Captures et ajustements</a></li><li><a href="#links">Liens de
+  paiement</a></li><li><a href="#receipts">Imprimante et email</a></li><li><a href="#access">PIN et transferts</a></li>
+  <li><a href="#storage">Récupération de stockage</a></li><li><a href="#install">Mise en place</a></li><li>
+  <a href="#messages">Messages d&#x27;erreur</a></li><li><a href="#help">Obtenir de l&#x27;aide</a></li>
+</ol></div>
         <details class="mobile-contents"><summary class="toc-title">Sur cette page</summary><ol>
-          <li><a href="#unknown">Résultat inconnu</a></li><li><a href="#declines">Paiements refusés</a></li>
-          <li><a href="#terminal-features">Fonctionnalités du terminal en option</a></li>
-          <li><a href="#wallets">Numérisation du portefeuille</a></li><li><a href="#connection">Couplage et configuration</a></li><li><a href="#network-dropouts">Coupures de réseau</a></li>
-          <li><a href="#modifications">Captures et ajustements</a></li><li><a href="#links">Liens de paiement</a></li>
-          <li><a href="#receipts">Imprimante et email</a></li><li><a href="#access">PIN et transferts</a></li>
-          <li><a href="#storage">Récupération de stockage</a></li><li><a href="#install">Mise en place</a></li><li><a href="#messages">Messages d'erreur</a></li><li><a href="#help">Obtenir de l'aide</a></li>
-        </ol></details>
+<li><a href="#unknown">Résultat inconnu</a></li><li><a href="#declines">Paiements refusés</a></li><li>
+  <a href="#terminal-features">Fonctionnalités du terminal en option</a></li><li><a href="#wallets">Numérisation du
+  portefeuille</a></li><li><a href="#connection">Couplage et configuration</a></li><li><a href="#network-dropouts">
+  Coupures de réseau</a></li><li><a href="#modifications">Captures et ajustements</a></li><li><a href="#links">Liens de
+  paiement</a></li><li><a href="#receipts">Imprimante et email</a></li><li><a href="#access">PIN et transferts</a></li>
+  <li><a href="#storage">Récupération de stockage</a></li><li><a href="#install">Mise en place</a></li><li>
+  <a href="#messages">Messages d&#x27;erreur</a></li><li><a href="#help">Obtenir de l&#x27;aide</a></li>
+</ol></details>
       </nav>
       <div class="guide-body">
         <section id="unknown">
           <h2>Un paiement ou un remboursement indique un résultat inconnu</h2>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">Avertissement</p>
-            <p>Ne facturez pas et ne remboursez plus simplement parce que l'application n'a pas de réponse. La demande est peut-être parvenue à Adyen.</p>
+            <p>Ne facturez pas et ne remboursez plus simplement parce que l'application n'a pas de réponse. La demande
+              est peut-être parvenue à Adyen.</p>
           </div>
           <ol>
-            <li>Ouvrez <strong>Historique</strong>, filtrer par <strong>A besoin d’attention</strong> et ouvrez le paiement ou le remboursement original.</li>
-            <li>Appuyez sur <strong>Vérifiez à nouveau le résultat</strong>. Pour un terminal, l'application lui demande le résultat de cette transaction.</li>
-            <li>Si le résultat est encore inconnu, retrouvez le paiement dans <strong>Customer Area › Paiements › Liste de paiements</strong> par référence, heure et montant. Décidez quoi faire seulement après avoir vérifié.</li>
+            <li>Ouvrez <strong>Historique</strong>, filtrer par <strong>A besoin d’attention</strong> et ouvrez le
+              paiement ou le remboursement original.</li>
+            <li>Appuyez sur <strong>Vérifiez à nouveau le résultat</strong>. Pour un terminal, l'application lui demande
+              le résultat de cette transaction.</li>
+            <li>Si le résultat est encore inconnu, retrouvez le paiement dans <strong>Customer Area › Paiements › Liste
+              de paiements</strong> par référence, heure et montant. Décidez quoi faire seulement après avoir vérifié.
+              </li>
           </ol>
-          <p>Un crash ou un redémarrage laisse l'opération interrompue dans l'historique comme inconnue. N'effacez pas les données de l'application pour la supprimer.</p>
-          <p>Avec Tap to Pay, il n'est pas possible de demander un statut à l'application Adyen Payments. <strong>Vérifiez à nouveau le résultat</strong> utilise uniquement une réponse tardive déjà arrivée. S'il n'y en a pas, vérifiez le Customer Area avant de le débiter à nouveau.</p>
+          <p>Un crash ou un redémarrage laisse l'opération interrompue dans l'historique comme inconnue. N'effacez pas
+            les données de l'application pour la supprimer.</p>
+          <p>Avec Tap to Pay, il n'est pas possible de demander un statut à l'application Adyen Payments. <strong>
+            Vérifiez à nouveau le résultat</strong> utilise uniquement une réponse tardive déjà arrivée. S'il n'y en a
+            pas, vérifiez le Customer Area avant de le débiter à nouveau.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="declines">
           <h2>Un paiement est refusé ou n'est pas traité</h2>
           <p>L'écran de résultat affiche le statut, la raison d'Adyen et les conseils. Suivez les conseils :</p>
           <dl class="fixes">
-            <div><dt>"Ne réessayez pas avec cette carte. Demandez à l'acheteur une autre carte ou un autre mode de paiement. "</dt>
-              <dd><p><span class="fix-label">Parce que</span>L'émetteur de la carte a refusé cette carte pour une raison qui ne changera pas, comme une carte bloquée ou restreinte ou une suspicion de fraude, ou la carte n'est pas autorisée pour ce paiement.</p>
-                <p><span class="fix-label">Corriger</span>Demandez une autre carte ou un autre mode de paiement. La banque du client peut expliquer le refus ; le <a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Raisons du refus d'Adyen</a> expliquer la raison indiquée.</p></dd></div>
+            <div><dt>"Ne réessayez pas avec cette carte. Demandez à l'acheteur une autre carte ou un autre mode de
+              paiement. "</dt>
+              <dd>
+<p><span class="fix-label">Corriger</span>Demandez une autre carte ou un autre mode de paiement. La banque du client
+  peut expliquer le refus ; le <a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">
+  Raisons du refus d'Adyen</a> expliquer la raison indiquée.</p><details class="cause"><summary>Parce que</summary><p>
+  L'émetteur de la carte a refusé cette carte pour une raison qui ne changera pas, comme une carte bloquée ou restreinte
+  ou une suspicion de fraude, ou la carte n'est pas autorisée pour ce paiement.</p></details></dd></div>
             <div><dt>"Vous pouvez réessayer."</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le paiement a été annulé, le PIN était erroné ou la carte a été refusée pour une raison qui ne se répétera peut-être pas, comme une insuffisance de fonds.</p>
-                <p><span class="fix-label">Corriger</span>Appuyez sur <strong>Réessayez</strong>, ou demandez une autre carte.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Appuyez sur <strong>Réessayez</strong>, ou demandez une autre carte.</p>
+  <details class="cause"><summary>Parce que</summary><p>Le paiement a été annulé, le PIN était erroné ou la carte a été
+  refusée pour une raison qui ne se répétera peut-être pas, comme une insuffisance de fonds.</p></details></dd></div>
             <div><dt>"Le terminal est occupé avec une autre transaction ou son menu d'administration."</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le terminal gère un autre paiement ou affiche son menu d'administration.</p>
-                <p><span class="fix-label">Corriger</span>Terminez l'autre paiement ou quittez le menu, puis réessayez. Si l'écran propose <strong>Annuler la transaction en cours du terminal</strong>, utilisez-le uniquement pour arrêter cette transaction et vérifiez son résultat avant de réessayer.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Terminez l'autre paiement ou quittez le menu, puis réessayez. Si l'écran
+  propose <strong>Annuler la transaction en cours du terminal</strong>, utilisez-le uniquement pour arrêter cette
+  transaction et vérifiez son résultat avant de réessayer.</p><details class="cause"><summary>Parce que</summary><p>Le
+  terminal gère un autre paiement ou affiche son menu d'administration.</p></details></dd></div>
             <div><dt>"Le terminal n'est pas disponible pour le moment."</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le terminal ou son lecteur de carte est temporairement indisponible.</p>
-                <p><span class="fix-label">Corriger</span>Attendez un instant, vérifiez que le terminal est allumé et connecté, puis réessayez. Voir <a href="#network-dropouts">coupures de réseau</a>.</p></dd></div>
-            <div><dt>"Le terminal n'a pas accepté la demande. Vérifiez les paramètres du terminal avant de réessayer. "</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le terminal a rejeté la demande telle qu'elle a été envoyée, généralement en raison d'un problème de configuration.</p>
-                <p><span class="fix-label">Corriger</span>Exécutez les tests dans <strong>Paramètres › Terminal</strong>; voir <a href="#connection">appairage et configuration</a>. S'ils réussissent, demandez à Adyen de vérifier la configuration du terminal.</p></dd></div>
-            <div><dt>"Le terminal ou votre compte Adyen ne prend pas en charge cette demande. Demandez au support Adyen de vérifier qu'il est activé, puis réessayez."</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le terminal ou Adyen n'offre pas ce que le paiement demande, souvent parce qu'il n'est pas activé pour le compte.</p>
-                <p><span class="fix-label">Corriger</span>Demandez au support Adyen de vérifier qu'il est activé pour le compte marchand. Pour Tap to Pay, vérifiez que Tap to Pay sur Android est activé, et pas seulement sur Adyen Payments App role. Puis réessayez.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Attendez un instant, vérifiez que le terminal est allumé et connecté, puis
+  réessayez. Voir <a href="#network-dropouts">coupures de réseau</a>.</p><details class="cause"><summary>Parce que
+  </summary><p>Le terminal ou son lecteur de carte est temporairement indisponible.</p></details></dd></div>
+            <div><dt>"Le terminal n'a pas accepté la demande. Vérifiez les paramètres du terminal avant de réessayer. "
+              </dt>
+              <dd>
+<p><span class="fix-label">Corriger</span>Exécutez les tests dans <strong>Paramètres › Terminal</strong>; voir
+  <a href="#connection">appairage et configuration</a>. S'ils réussissent, demandez à Adyen de vérifier la configuration
+  du terminal.</p><details class="cause"><summary>Parce que</summary><p>Le terminal a rejeté la demande telle qu'elle a
+  été envoyée, généralement en raison d'un problème de configuration.</p></details></dd></div>
+            <div><dt>"Le terminal ou votre compte Adyen ne prend pas en charge cette demande. Demandez au support Adyen
+              de vérifier qu'il est activé, puis réessayez."</dt>
+              <dd>
+<p><span class="fix-label">Corriger</span>Demandez au support Adyen de vérifier qu'il est activé pour le compte
+  marchand. Pour Tap to Pay, vérifiez que Tap to Pay sur Android est activé, et pas seulement sur Adyen Payments App
+  role. Puis réessayez.</p><details class="cause"><summary>Parce que</summary><p>Le terminal ou Adyen n'offre pas ce que
+  le paiement demande, souvent parce qu'il n'est pas activé pour le compte.</p></details></dd></div>
             <div><dt>"Ne facturez plus : ce paiement a été effectué."</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le paiement a été approuvé même si le terminal a signalé une annulation.</p>
-                <p><span class="fix-label">Corriger</span>Ne chargez plus. Remboursez-le si le client ne paie pas.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Ne chargez plus. Remboursez-le si le client ne paie pas.</p>
+  <details class="cause"><summary>Parce que</summary><p>Le paiement a été approuvé même si le terminal a signalé une
+  annulation.</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="terminal-features">
           <h2>Une fonctionnalité de terminal facultative est manquante ou les totaux diffèrent</h2>
           <dl class="fixes">
-            <div><dt>Une fonctionnalité du terminal est manquante ou rejetée</dt><dd><p>Vérifiez la destination sélectionnée et <a href="using#capabilities">Capacités d'Adyen</a>, actualisez ses paramètres et confirmez les rôles API et la configuration du compte Adyen. Les commutateurs de paiement locaux ne permettent pas à eux seuls d’offrir un service chez Adyen. Tap to Pay n'offre pas les flux de travail du terminal physique. Pour obtenir des pourboires, comparez <a href="using#terminal-tips">pourboires sur le terminal</a> avec <a href="using#tips">pourboires sur reçu</a>.</p></dd></div>
-            <div><dt>Seule une partie du montant a été approuvée</dt><dd><p>Suivez le <a href="using#partial-payments">workflow de paiement partiel</a> à partir de l’écran de résultats. Ne facturez pas à nouveau le total initial complet. Si le résultat d'une tentative ultérieure est inconnu, <a href="#unknown">le résoudre</a> avant d’en collecter davantage.</p></dd></div>
-            <div><dt>Les totaux des terminaux ne correspondent pas à Mini mPOS</dt><dd><p>Consultez la période du terminal, les autres appareils utilisant ce terminal, l'historique local conservé et les transactions non résolues dans <a href="using#reconciliation">rapprochement des terminaux</a>. La clôture de la période ne corrige pas les différences ni ne confirme le règlement.</p></dd></div>
-            <div><dt>Une vente hors ligne n'a pas de référence PSP ou des lots non confirmés subsistent</dt><dd><p>Suivre <a href="using#offline">chèques de paiement hors ligne</a>. Restaurez la connexion du terminal à Adyen et vérifiez ses paiements téléchargés dans le Customer Area. Ne collectez pas à nouveau un paiement approuvé simplement parce que sa référence PSP est manquante.</p></dd></div>
+            <div><dt>Une fonctionnalité du terminal est manquante ou rejetée</dt><dd><p>Vérifiez la destination
+              sélectionnée et <a href="using#capabilities">Capacités d'Adyen</a>, actualisez ses paramètres et confirmez
+              les rôles API et la configuration du compte Adyen. Les commutateurs de paiement locaux ne permettent pas à
+              eux seuls d’offrir un service chez Adyen. Tap to Pay n'offre pas les flux de travail du terminal physique.
+              Pour obtenir des pourboires, comparez <a href="using#terminal-tips">pourboires sur le terminal</a> avec
+              <a href="using#tips">pourboires sur reçu</a>.</p></dd></div>
+            <div><dt>Seule une partie du montant a été approuvée</dt><dd><p>Suivez le <a href="using#partial-payments">
+              workflow de paiement partiel</a> à partir de l’écran de résultats. Ne facturez pas à nouveau le total
+              initial complet. Si le résultat d'une tentative ultérieure est inconnu, <a href="#unknown">le résoudre</a>
+              avant d’en collecter davantage.</p></dd></div>
+            <div><dt>Les totaux des terminaux ne correspondent pas à Mini mPOS</dt><dd><p>Consultez la période du
+              terminal, les autres appareils utilisant ce terminal, l'historique local conservé et les transactions non
+              résolues dans <a href="using#reconciliation">rapprochement des terminaux</a>. La clôture de la période ne
+              corrige pas les différences ni ne confirme le règlement.</p></dd></div>
+            <div><dt>Une vente hors ligne n'a pas de référence PSP ou des lots non confirmés subsistent</dt><dd><p>
+              Suivre <a href="using#offline">chèques de paiement hors ligne</a>. Restaurez la connexion du terminal à
+              Adyen et vérifiez ses paiements téléchargés dans le Customer Area. Ne collectez pas à nouveau un paiement
+              approuvé simplement parce que sa référence PSP est manquante.</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="wallets">
           <h2>Le portefeuille de numérisation est manquant ou la numérisation échoue</h2>
           <dl class="fixes">
-            <div><dt>Aucun bouton de numérisation du portefeuille</dt><dd><p>Ouvrez <strong>Paramètres › Terminal</strong> et appuyez sur <strong>Actualiser les portefeuilles scannés</strong>. Une vérification réussie sans portefeuille POS éligible laisse le bouton masqué. Vérifiez le magasin attribué, la devise actuelle et <a href="quick-start#credentials">Rôles de la clé API</a>. Tap to Pay et les préautorisations ne proposent pas cette action.</p></dd></div>
-            <div><dt>La découverte de portefeuille signale une erreur</dt><dd><p>L'erreur apparaît uniquement dans les paramètres et ne bloque pas les paiements ordinaires. Corrigez les informations d'identification/l'environnement ou les problèmes d'accès en lecture. Un échec d'actualisation temporaire conserve la dernière liste vérifiée pour une configuration inchangée ; une vérification vide réussie ou un échec d'accès le supprime. La configuration est vérifiée lors des modifications de démarrage/configuration et de l'actualisation manuelle, pas avant chaque vente.</p></dd></div>
-            <div><dt>Le code n'est pas valide ou aucun code n'arrive</dt><dd><p>Utilisez le code de paiement de l'acheteur, pas un profil, un virement ou un reçu QR. Choisissez le bon portefeuille. L'analyse native se termine après 30 secondes : appuyez sur <strong>Scannez à nouveau</strong> ou <strong>Utiliser l’appareil photo</strong>. Autorisez l’autorisation de la caméra lorsque cela est demandé. Le retour de l'arrière-plan nécessite une nouvelle analyse.</p></dd></div>
-            <div><dt>L'enregistrement est rejeté ou aucun jeton n'est créé</dt><dd><p>Suivez le résultat du paiement. Un paiement approuvé reste approuvé sans jeton enregistré. Seulement après un refus concluant, revenez à la caisse, éteignez <strong>Enregistrer la carte</strong> et démarrez explicitement une autre analyse si nécessaire. Il n’y a pas de paiement de remplacement automatique. Pour <strong>Résultat inconnu</strong>, <a href="#unknown">vérifier la transaction originale</a> à la place.</p></dd></div>
+            <div><dt>Aucun bouton de numérisation du portefeuille</dt><dd><p>Ouvrez <strong>Paramètres › Terminal
+              </strong> et appuyez sur <strong>Actualiser les portefeuilles scannés</strong>. Une vérification réussie
+              sans portefeuille POS éligible laisse le bouton masqué. Vérifiez le magasin attribué, la devise actuelle
+              et <a href="quick-start#credentials">Rôles de la clé API</a>. Tap to Pay et les préautorisations ne
+              proposent pas cette action.</p></dd></div>
+            <div><dt>La découverte de portefeuille signale une erreur</dt><dd><p>L'erreur apparaît uniquement dans les
+              paramètres et ne bloque pas les paiements ordinaires. Corrigez les informations
+              d'identification/l'environnement ou les problèmes d'accès en lecture. Un échec d'actualisation temporaire
+              conserve la dernière liste vérifiée pour une configuration inchangée ; une vérification vide réussie ou un
+              échec d'accès le supprime. La configuration est vérifiée lors des modifications de démarrage/configuration
+              et de l'actualisation manuelle, pas avant chaque vente.</p></dd></div>
+            <div><dt>Le code n'est pas valide ou aucun code n'arrive</dt><dd><p>Utilisez le code de paiement de
+              l'acheteur, pas un profil, un virement ou un reçu QR. Choisissez le bon portefeuille. L'analyse native se
+              termine après 30 secondes : appuyez sur <strong>Scannez à nouveau</strong> ou <strong>Utiliser l’appareil
+              photo</strong>. Autorisez l’autorisation de la caméra lorsque cela est demandé. Le retour de
+              l'arrière-plan nécessite une nouvelle analyse.</p></dd></div>
+            <div><dt>L'enregistrement est rejeté ou aucun jeton n'est créé</dt><dd><p>Suivez le résultat du paiement. Un
+              paiement approuvé reste approuvé sans jeton enregistré. Seulement après un refus concluant, revenez à la
+              caisse, éteignez <strong>Enregistrer la carte</strong> et démarrez explicitement une autre analyse si
+              nécessaire. Il n’y a pas de paiement de remplacement automatique. Pour <strong>Résultat inconnu</strong>,
+              <a href="#unknown">vérifier la transaction originale</a> à la place.</p></dd></div>
           </dl>
-          <p>Voir <a href="using#wallets">la procédure de paiement du portefeuille</a>. Le portefeuille demandé par History est une intention, et non une preuve que le paiement a réussi ou qu’Adyen a utilisé cette méthode.</p>
+          <p>Voir <a href="using#wallets">la procédure de paiement du portefeuille</a>. Le portefeuille demandé par
+            History est une intention, et non une preuve que le paiement a réussi ou qu’Adyen a utilisé cette méthode.
+            </p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="connection">
           <h2>Le couplage ou la configuration échoue</h2>
-          <p>Commencez par le message sur Accueil, puis ouvrez <strong>Paramètres › Terminal</strong> et terminer la finale <strong>Tester la connexion</strong> étape. Cela vérifie l'accès à API et les contrôles de connexion pris en charge par votre intégration. Utilisation de la configuration réseau et cloud <strong>Rechercher un terminal à configurer</strong> pour tester les terminaux d'accès et de liste API ; <strong>Test API</strong> est proposé pour les terminaux intégrés et Tap to Pay. Pour les étapes complètes, voir <a href="quick-start#connect">Connectez-vous à Adyen</a>.</p>
-          <p>Pour toute intégration, ouvrez <strong>Paramètres › Aide et dépannage › Détails de dépannage</strong>. Les résultats incluent les lacunes de configuration, l'accès API, les vérifications de connexion prises en charge, les horodatages et les détails de l'appareil ; les chèques non justifiés sont identifiés. Ces contrôles ne prouvent pas que les paiements, les remboursements ou l'impression réussiront et n'acceptent pas les paiements, n'enregistrent pas les téléphones ni ne changent les clés. Utilisez <strong>Partager le rapport expurgé</strong> pour partager les détails affichés : les identifiants du commerçant, du terminal, de l'installation et des identifiants restent ; les secrets, les messages non structurés et les données des acheteurs sont exclus.</p>
+          <p>Commencez par le message sur Accueil, puis ouvrez <strong>Paramètres › Terminal</strong> et terminer la
+            finale <strong>Tester la connexion</strong> étape. Cela vérifie l'accès à API et les contrôles de connexion
+            pris en charge par votre intégration. Utilisation de la configuration réseau et cloud <strong>Rechercher un
+            terminal à configurer</strong> pour tester les terminaux d'accès et de liste API ; <strong>Test API</strong>
+            est proposé pour les terminaux intégrés et Tap to Pay. Pour les étapes complètes, voir
+            <a href="quick-start#connect">Connectez-vous à Adyen</a>.</p>
+          <p>Pour toute intégration, ouvrez <strong>Paramètres › Aide et dépannage › Détails de dépannage</strong>. Les
+            résultats incluent les lacunes de configuration, l'accès API, les vérifications de connexion prises en
+            charge, les horodatages et les détails de l'appareil ; les chèques non justifiés sont identifiés. Ces
+            contrôles ne prouvent pas que les paiements, les remboursements ou l'impression réussiront et n'acceptent
+            pas les paiements, n'enregistrent pas les téléphones ni ne changent les clés. Utilisez <strong>Partager le
+            rapport expurgé</strong> pour partager les détails affichés : les identifiants du commerçant, du terminal,
+            de l'installation et des identifiants restent ; les secrets, les messages non structurés et les données des
+            acheteurs sont exclus.</p>
           <dl class="fixes">
             <div><dt>La page d'accueil indique "Les paiements ne sont pas encore configurés"</dt>
-              <dd><p><span class="fix-label">Parce que</span>Un champ obligatoire est vide, une clé enregistrée n'a pas pu être lue sur cet appareil ou aucun test de connexion n'a réussi depuis la modification de la configuration. En attendant, les paiements, remboursements, impressions et autres actions Adyen expliquent cela au lieu de fonctionner.</p>
-                <p><span class="fix-label">Corriger</span>Appuyez sur <strong>Terminer la configuration des paiements</strong>. Dans <strong>Paramètres › Terminal</strong>, saisissez ce qui manque ou saisissez à nouveau la clé, puis appuyez sur <strong>Tester la connexion</strong>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Appuyez sur <strong>Terminer la configuration des paiements</strong>. Dans
+  <strong>Paramètres › Terminal</strong>, saisissez ce qui manque ou saisissez à nouveau la clé, puis appuyez sur
+  <strong>Tester la connexion</strong>.</p><details class="cause"><summary>Parce que</summary><p>Un champ obligatoire
+  est vide, une clé enregistrée n'a pas pu être lue sur cet appareil ou aucun test de connexion n'a réussi depuis la
+  modification de la configuration. En attendant, les paiements, remboursements, impressions et autres actions Adyen
+  expliquent cela au lieu de fonctionner.</p></details></dd></div>
             <div><dt>Le test API échoue ou le programme d'installation signale un problème d'accès</dt>
-              <dd><p><span class="fix-label">Parce que</span>La clé API, le compte marchand ou le préfixe d’URL LIVE est incorrect, un rôle est manquant ou les informations d'identification proviennent d'un autre compte ou environnement d'entreprise.</p>
-                <p><span class="fix-label">Corriger</span>Vérifiez les rôles et l'accès des informations d'identification par rapport aux <a href="quick-start#credentials">exigences en matière de identifiants</a>. Pour LIVE, vérifiez le <strong>Préfixe d’URL LIVE</strong>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Vérifiez les rôles et l'accès des informations d'identification par rapport
+  aux <a href="quick-start#credentials">rôles et accès requis</a>. Pour LIVE, vérifiez le <strong>Préfixe
+  d’URL LIVE</strong>.</p><details class="cause"><summary>Parce que</summary><p>La clé API, le compte marchand ou le
+  préfixe d’URL LIVE est incorrect, un rôle est manquant ou les informations d'identification proviennent d'un autre
+  compte ou environnement d'entreprise.</p></details></dd></div>
             <div><dt>"Le compte marchand ne correspond pas à l'affectation actuelle de ce terminal."</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le terminal est attribué à un autre compte marchand chez Adyen.</p>
-                <p><span class="fix-label">Corriger</span>Saisissez le compte marchand auquel le terminal est attribué ou réattribuez le terminal dans le Customer Area.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Saisissez le compte marchand auquel le terminal est attribué ou réattribuez le
+  terminal dans le Customer Area.</p><details class="cause"><summary>Parce que</summary><p>Le terminal est attribué à un
+  autre compte marchand chez Adyen.</p></details></dd></div>
             <div><dt>Le test de connexion échoue sur un terminal Adyen ou un terminal réseau</dt>
-              <dd><p><span class="fix-label">Parce que</span>La clé partagée ne correspond pas, ou l'adresse IP ou <strong>ID du terminal (POIID)</strong> est obsolète.</p>
-                <p><span class="fix-label">Corriger</span>Comparez l'identifiant, la phrase secrète et la version de la clé partagée avec le Customer Area. Pour un terminal réseau, vérifiez l'adresse IP et POIID sur l'écran Informations sur l'appareil du terminal.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Comparez l'identifiant, la phrase secrète et la version de la clé partagée
+  avec le Customer Area. Pour un terminal réseau, vérifiez l'adresse IP et POIID sur l'écran Informations sur l'appareil
+  du terminal.</p><details class="cause"><summary>Parce que</summary><p>La clé partagée ne correspond pas, ou l'adresse
+  IP ou <strong>ID du terminal (POIID)</strong> est obsolète.</p></details></dd></div>
             <div><dt>La connexion est rejetée à cause de l'environnement</dt>
-              <dd><p><span class="fix-label">Parce que</span>TEST et LIVE sont mixtes : le terminal, le compte et la clé API doivent tous provenir du même environnement.</p>
-                <p><span class="fix-label">Corriger</span>Pour un terminal réseau/cloud ou Tap to Pay, cochez <strong>Environnement</strong> dans <strong>Paramètres › Terminal</strong>. Sur un terminal Adyen, utilisez un appareil du bon environnement.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Pour un terminal réseau/cloud ou Tap to Pay, cochez <strong>Environnement
+  </strong> dans <strong>Paramètres › Terminal</strong>. Sur un terminal Adyen, utilisez un appareil du bon
+  environnement.</p><details class="cause"><summary>Parce que</summary><p>TEST et LIVE sont mixtes : le terminal, le
+  compte et la clé API doivent tous provenir du même environnement.</p></details></dd></div>
             <div><dt>Un terminal cloud n'est pas accessible</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le terminal est hors ligne, le POIID est erroné ou la clé API n'a pas le Cloud Device API role.</p>
-                <p><span class="fix-label">Corriger</span>Vérifiez que le terminal est allumé et en ligne, puis vérifiez le POIID et les rôles des informations d'identification.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Vérifiez que le terminal est allumé et en ligne, puis vérifiez le POIID et les
+  rôles des informations d'identification.</p><details class="cause"><summary>Parce que</summary><p>Le terminal est hors
+  ligne, le POIID est erroné ou la clé API n'a pas le Cloud Device API role.</p></details></dd></div>
             <div><dt>L'application Adyen Payments sélectionnée est manquante</dt>
-              <dd><p><span class="fix-label">Parce que</span>L'application Adyen Payments pour l'environnement TEST ou LIVE sélectionné n'est pas installée.</p>
-                <p><span class="fix-label">Corriger</span>Vérifier <strong>Paramètres › Terminal › Environnement</strong> et installez l'application correspondante depuis Google Play. Les deux applications peuvent rester installées. Terminez l'enregistrement et entrez la clé partagée correspondante ; confirmer avec un paiement TEST.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Vérifier <strong>Paramètres › Terminal › Environnement</strong> et installez
+  l'application correspondante depuis Google Play. Les deux applications peuvent rester installées. Terminez
+  l'enregistrement et entrez la clé partagée correspondante ; confirmer avec un paiement TEST.</p>
+  <details class="cause"><summary>Parce que</summary><p>L'application Adyen Payments pour l'environnement TEST ou LIVE
+  sélectionné n'est pas installée.</p></details></dd></div>
             <div id="tap-to-pay-check"><dt>Tap to Pay renvoie UnavailableService avant la présentation de la carte</dt>
-              <dd><p>L'application Adyen Payments n'a pas pu traiter la demande. Cette erreur générique ne prouve pas une panne d'Adyen ou une clé client manquante.</p>
-                <p>Courir <strong>Tester la connexion</strong> dans <strong>Paramètres › Terminal</strong>. Pour un tableau compact des contrôles et un rapport rédigé, développez <strong>Paramètres › Aide et dépannage › Détails de dépannage</strong>.</p>
-                <p><strong>Configurer Tap to Pay</strong> provisionne automatiquement les informations d’identification d’enregistrement et la clé client à l’aide de votre clé API primaire. Vérifiez son <a href="quick-start#credentials">rôles requis</a> si le provisionnement est refusé. Attendez quelques minutes pour que les nouvelles clés se propagent, puis exécutez <strong>Tester la connexion</strong> encore une fois. Si la récupération échoue toujours, réessayez plus tard ou demandez au support Adyen d'inspecter la correspondance. <a href="https://ca-test.adyen.com/">TEST Customer Area</a> ou <a href="https://ca-live.adyen.com/">LIVE Customer Area</a>. Voir le <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Exigences de l'application Adyen Payments</a>.</p>
+              <dd><p>L'application Adyen Payments n'a pas pu traiter la demande. Cette erreur générique ne prouve pas
+                une panne d'Adyen ou une clé client manquante.</p>
+                <p>Courir <strong>Tester la connexion</strong> dans <strong>Paramètres › Terminal</strong>. Pour un
+                  tableau compact des contrôles et un rapport rédigé, développez <strong>Paramètres › Aide et dépannage
+                  › Détails de dépannage</strong>.</p>
+                <p><strong>Configurer Tap to Pay</strong> provisionne automatiquement les informations d’identification
+                  d’enregistrement et la clé client à l’aide de votre clé API primaire. Vérifiez son
+                  <a href="quick-start#credentials">rôles requis</a> si le provisionnement est refusé. Attendez quelques
+                  minutes pour que les nouvelles clés se propagent, puis exécutez <strong>Tester la connexion</strong>
+                  encore une fois. Si la récupération échoue toujours, réessayez plus tard ou demandez au support Adyen
+                  d'inspecter la correspondance. <a href="https://ca-test.adyen.com/">TEST Customer Area</a> ou
+                  <a href="https://ca-live.adyen.com/">LIVE Customer Area</a>. Voir le
+                  <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Exigences de
+                  l'application Adyen Payments</a>.</p>
                 <p>La clé client doit appartenir au même identifiant utilisé pour l'enregistrement.</p>
-                <p>Utilisez <strong>Partager le rapport expurgé</strong> pour partager exactement les lignes affichées : version de l'application, résultats d'accès et de connexion API avec leur heure de contrôle UTC, intégration et environnement, identifiants de compte, de magasin, d'installation et de clé partagée, Android, versions de l'appareil et de l'application Adyen Payments, et pour Tap to Pay, la clé client et les contrôles d'enregistrement avec l'identité des informations d'identification vérifiées.</p></dd></div>
-            <div id="key-setup"><dt>"La nouvelle clé est enregistrée. Mettez à jour la configuration de ce terminal"</dt>
-              <dd><p><span class="fix-label">Parce que</span>La clé de cryptage a été créée chez Adyen, mais le terminal ne l'a pas encore chargée.</p>
-                <p><span class="fix-label">Corriger</span>Sur le terminal, ouvrez <strong>Menu Admin › Configuration › Mettre à jour</strong>, puis revenez à Mini mPOS et appuyez sur <strong>Vérifiez à nouveau</strong>. Si la création a été interrompue, appuyez sur <strong>Reprendre la configuration de la clé</strong>; cela ne crée pas de deuxième clé. Voir <a href="quick-start#shared-key-creation">création de clé</a> et le <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Guide de mise à jour de la configuration Adyen</a>.</p></dd></div>
+                <p>Utilisez <strong>Partager le rapport expurgé</strong> pour partager exactement les lignes affichées :
+                  version de l'application, résultats d'accès et de connexion API avec leur heure de contrôle UTC,
+                  intégration et environnement, identifiants de compte, de magasin, d'installation et de clé partagée,
+                  Android, versions de l'appareil et de l'application Adyen Payments, et pour Tap to Pay, la clé client
+                  et les contrôles d'enregistrement avec l'identité des informations d'identification vérifiées.</p>
+                  </dd></div>
+            <div id="key-setup"><dt>"La nouvelle clé est enregistrée. Mettez à jour la configuration de ce terminal"
+              </dt>
+              <dd>
+<p><span class="fix-label">Corriger</span>Sur le terminal, ouvrez <strong>Menu Admin › Configuration › Mettre à jour</strong>, puis revenez à Mini mPOS et appuyez sur <strong>Vérifiez à nouveau</strong>. Si la création a été
+  interrompue, appuyez sur <strong>Reprendre la configuration de la clé</strong>; cela ne crée pas de deuxième clé. Voir
+  <a href="quick-start#shared-key-creation">création de clé</a> et le
+  <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Guide de mise à jour de la
+  configuration Adyen</a>.</p><details class="cause"><summary>Parce que</summary><p>La clé de cryptage a été créée chez
+  Adyen, mais le terminal ne l'a pas encore chargée.</p></details></dd></div>
             <div><dt>Les actions sur un paiement plus ancien sont bloquées</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le compte marchand, l'environnement ou le terminal ont changé après ce paiement.</p>
-                <p><span class="fix-label">Corriger</span>Restaurez la configuration qui a pris le paiement ou gérez-le dans le Customer Area. Ne le traitez pas sous un autre compte.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Restaurez la configuration qui a pris le paiement ou gérez-le dans le Customer
+  Area. Ne le traitez pas sous un autre compte.</p><details class="cause"><summary>Parce que</summary><p>Le compte
+  marchand, l'environnement ou le terminal ont changé après ce paiement.</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
@@ -196,55 +328,78 @@
           <h2>La connexion est interrompue ou le terminal ne répond pas</h2>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Important</p>
-            <p>Si un paiement était en cours au moment de la coupure de connexion, <a href="#unknown">vérifie son résultat</a> avant de débiter à nouveau.</p>
+            <p>Si un paiement était en cours au moment de la coupure de connexion, <a href="#unknown">vérifie son
+              résultat</a> avant de débiter à nouveau.</p>
           </div>
           <dl class="fixes">
             <div><dt>"Le terminal n'a pas répondu", ou un terminal réseau ne fonctionne que parfois</dt>
-              <dd><p><span class="fix-label">Parce que</span>L'adresse IP du terminal a changé, l'appareil a été déplacé vers un autre réseau ou le réseau bloque la connexion.</p>
-                <p><span class="fix-label">Corriger</span></p>
-                <ol>
-                  <li>Vérifiez l'adresse IP du terminal sur son écran d'informations sur l'appareil et mettez-la à jour dans <strong>Paramètres › Terminal</strong>.</li>
-                  <li>Connectez l'appareil et le terminal au même réseau. Évitez l'invité Wi-Fi, qui isole souvent les appareils.</li>
-                  <li>Demander à l'administrateur réseau d'autoriser TCP 8443 entre eux et de réserver l'adresse IP du terminal ; voir <a href="quick-start#network-requirements">exigences du réseau</a>.</li>
-                </ol></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span></p>
+<ol>
+<li>Vérifiez l'adresse IP du terminal sur son écran d'informations sur l'appareil et mettez-la à jour dans <strong>
+  Paramètres › Terminal</strong>.</li>
+<li>Connectez l'appareil et le terminal au même réseau. Évitez l'invité Wi-Fi, qui isole souvent les appareils.</li>
+<li>Demander à l'administrateur réseau d'autoriser TCP 8443 entre eux et de réserver l'adresse IP du terminal ; voir
+  <a href="quick-start#network-requirements">exigences du réseau</a>.</li>
+</ol><details class="cause"><summary>Parce que</summary><p>L'adresse IP du terminal a changé, l'appareil a été déplacé
+  vers un autre réseau ou le réseau bloque la connexion.</p></details></dd></div>
             <div><dt>Les paiements ou les tests API échouent à chaque configuration</dt>
-              <dd><p><span class="fix-label">Parce que</span>L'appareil ou le terminal n'a pas d'accès à Internet ou un pare-feu bloque Adyen.</p>
-                <p><span class="fix-label">Corriger</span>Vérifiez la connexion Internet, puis assurez-vous que HTTPS sur TCP 443 vers les domaines d'Adyen est autorisé.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Vérifiez la connexion Internet, puis assurez-vous que HTTPS sur TCP 443 vers
+  les domaines d'Adyen est autorisé.</p><details class="cause"><summary>Parce que</summary><p>L'appareil ou le terminal
+  n'a pas d'accès à Internet ou un pare-feu bloque Adyen.</p></details></dd></div>
             <div><dt>Expiration du délai de paiement dans le cloud</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le terminal a perdu sa connexion Internet.</p>
-                <p><span class="fix-label">Corriger</span>Vérifiez les données Wi-Fi, Ethernet ou mobiles du terminal, puis exécutez <strong>Tester la connexion</strong>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Vérifiez les données Wi-Fi, Ethernet ou mobiles du terminal, puis exécutez
+  <strong>Tester la connexion</strong>.</p><details class="cause"><summary>Parce que</summary><p>Le terminal a perdu sa
+  connexion Internet.</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="modifications">
           <h2>Une capture ou un ajustement a échoué ou est inconnu</h2>
-          <p>Ouvrez l'entrée originale dans <strong>Historique</strong> et lisez sa raison. Si la configuration de Checkout API est manquante, complétez-la ; si le compte ou l'environnement a changé, restaurez celui d'origine.</p>
+          <p>Ouvrez l'entrée originale dans <strong>Historique</strong> et lisez sa raison. Si la configuration de
+            Checkout API est manquante, complétez-la ; si le compte ou l'environnement a changé, restaurez celui
+            d'origine.</p>
           <dl class="fixes">
             <div><dt><strong>Échec de la capture</strong> ou <strong>Résultat de capture inconnu</strong></dt>
-              <dd><p><span class="fix-label">Corriger</span>Appuyez sur <strong>Réessayer la capture</strong>. Il renvoie la même capture en toute sécurité ; ne créez pas de nouveau paiement.</p></dd></div>
+              <dd><p><span class="fix-label">Corriger</span>Appuyez sur <strong>Réessayer la capture</strong>. Il
+                renvoie la même capture en toute sécurité ; ne créez pas de nouveau paiement.</p></dd></div>
             <div><dt>Un ajustement de montant n’est pas résolu</dt>
-              <dd><p><span class="fix-label">Corriger</span>Réessayez avec le même montant. Un montant différent constitue une demande distincte et peut être bloquée jusqu'à ce que le premier soit résolu.</p></dd></div>
+              <dd><p><span class="fix-label">Corriger</span>Réessayez avec le même montant. Un montant différent
+                constitue une demande distincte et peut être bloquée jusqu'à ce que le premier soit résolu.</p></dd>
+                </div>
             <div><dt>Un pourboire n'a pas été enregistré</dt>
-              <dd><p><span class="fix-label">Parce que</span>L'émetteur de la carte a refusé d'augmenter la retenue pour un pourboire supérieur à 20 %.</p>
-                <p><span class="fix-label">Corriger</span>Saisissez un pourboire plus petit ou appuyez sur <strong>Pas de pourboire</strong>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Saisissez un pourboire plus petit ou appuyez sur <strong>Pas de pourboire</strong>.</p><details class="cause"><summary>Parce que</summary><p>L'émetteur de la carte a refusé d'augmenter la
+  retenue pour un pourboire supérieur à 20 %.</p></details></dd></div>
             <div><dt><strong>Capture demandée</strong> ou <strong>Remboursement demandé</strong> ne change pas</dt>
-              <dd><p><span class="fix-label">Parce que</span>Cela signifie qu'Adyen a accepté la demande. Mini mPOS n'a pas de serveur, il ne reçoit donc jamais la confirmation finale.</p>
-                <p><span class="fix-label">Corriger</span>Vérifiez le résultat final dans le Customer Area.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Vérifiez le résultat final dans le Customer Area.</p><details class="cause">
+  <summary>Parce que</summary><p>Cela signifie qu'Adyen a accepté la demande. Mini mPOS n'a pas de serveur, il ne reçoit
+  donc jamais la confirmation finale.</p></details></dd></div>
           </dl>
-          <p>Les retenues expirent, alors résolvez-les rapidement. Pour les étapes normales, voir <a href="using#preauth">dépôts</a> et <a href="using#tips">pourboires sur le reçu</a>.</p>
+          <p>Les retenues expirent, alors résolvez-les rapidement. Pour les étapes normales, voir
+            <a href="using#preauth">dépôts</a> et <a href="using#tips">pourboires sur le reçu</a>.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="links">
           <h2>Les liens de paiement sont manquants ou ne sont pas mis à jour</h2>
           <dl class="fixes">
             <div><dt>Le paiement n'a pas <strong>Créer un lien de paiement</strong></dt>
-              <dd><p><span class="fix-label">Parce que</span>La configuration du paiement API est incomplète ou le paiement concerne une pré-autorisation ou un pourboire sur le reçu.</p>
-                <p><span class="fix-label">Corriger</span>Terminez la configuration de Checkout API dans <strong>Paramètres › Terminal</strong>. Les liens sont proposés uniquement à la vente. Pour des démos hors ligne, voir <a href="using#payment-links">liens de paiement</a>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Terminez la configuration de Checkout API dans <strong>Paramètres › Terminal</strong>. Les liens sont proposés uniquement à la vente. Pour des démos hors ligne, voir
+  <a href="using#payment-links">liens de paiement</a>.</p><details class="cause"><summary>Parce que</summary><p>La
+  configuration du paiement API est incomplète ou le paiement concerne une pré-autorisation ou un pourboire sur le reçu.
+  </p></details></dd></div>
             <div><dt>Un lien payant s'affiche toujours <strong>En attente de paiement</strong></dt>
-              <dd><p><span class="fix-label">Parce que</span>L'application vérifie uniquement lorsque l'écran de lien est ouvert.</p>
-                <p><span class="fix-label">Corriger</span>Ouvrez l'entrée dans l'historique et appuyez sur <strong>Vérifier le paiement</strong>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Ouvrez l'entrée dans l'historique et appuyez sur <strong>Vérifier le paiement</strong>.</p><details class="cause"><summary>Parce que</summary><p>L'application vérifie uniquement lorsque l'écran
+  de lien est ouvert.</p></details></dd></div>
             <div><dt>La création d'un lien a été interrompue</dt>
-              <dd><p><span class="fix-label">Corriger</span>Ouvrez l'entrée d'origine et appuyez sur <strong>Vérifier le paiement</strong>. Il réessaye avec la demande d'origine ; ne créez pas une autre vente juste pour obtenir un lien.</p></dd></div>
+              <dd><p><span class="fix-label">Corriger</span>Ouvrez l'entrée d'origine et appuyez sur <strong>Vérifier le
+                paiement</strong>. Il réessaye avec la demande d'origine ; ne créez pas une autre vente juste pour
+                obtenir un lien.</p></dd></div>
           </dl>
           <p>Rembourser les liens payants dans <strong>Customer Area › Paiements › Liste de paiements</strong>.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
@@ -253,20 +408,30 @@
           <h2>L'imprimante ou les reçus par courrier électronique ne fonctionnent pas</h2>
           <dl class="fixes">
             <div><dt>Rien ne s'imprime, ou <strong>Imprimer le reçu</strong> manque</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le terminal n'a pas d'imprimante, l'imprimante n'a pas été détectée ou la connexion est interrompue. Les terminaux AMS1 et les téléphones Tap to Pay n'ont pas d'imprimante.</p>
-                <p><span class="fix-label">Corriger</span></p>
-                <ol>
-                  <li>Dans <strong>Paramètres › À propos</strong>, vérifie ça <strong>Imprimante</strong> montre <strong>Disponible</strong>. Sinon, cours <strong>Tester la connexion</strong> dans <strong>Paramètres › Terminal</strong>.</li>
-                  <li>Dans <strong>Paramètres › Reçus</strong>, définir <strong>Imprimante</strong> à <strong>Détecter automatiquement</strong> et vérifie <strong>Imprimer automatiquement</strong>.</li>
-                  <li>Appuyez sur <strong>Imprimer le reçu du test</strong>. Si rien ne s'imprime, vérifiez le rouleau de papier du terminal.</li>
-                </ol></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span></p>
+<ol>
+<li>Dans <strong>Paramètres › À propos</strong>, vérifie ça <strong>Imprimante</strong> montre <strong>Disponible</strong>. Sinon, cours <strong>Tester la connexion</strong> dans <strong>Paramètres › Terminal</strong>.</li>
+<li>Dans <strong>Paramètres › Reçus</strong>, définir <strong>Imprimante</strong> à <strong>Détecter automatiquement
+  </strong> et vérifie <strong>Imprimer automatiquement</strong>.</li>
+<li>Appuyez sur <strong>Imprimer le reçu du test</strong>. Si rien ne s'imprime, vérifiez le rouleau de papier du
+  terminal.</li>
+</ol><details class="cause"><summary>Parce que</summary><p>Le terminal n'a pas d'imprimante, l'imprimante n'a pas été
+  détectée ou la connexion est interrompue. Les terminaux AMS1 et les téléphones Tap to Pay n'ont pas d'imprimante.</p>
+  </details></dd></div>
             <div><dt>La mise en page est coupée ou mal enroulée</dt>
-              <dd><p><span class="fix-label">Corriger</span>Changement <strong>Caractères par ligne</strong> dans <strong>Paramètres › Reçus</strong> et imprimez un reçu de test.</p></dd></div>
+              <dd><p><span class="fix-label">Corriger</span>Changement <strong>Caractères par ligne</strong> dans
+                <strong>Paramètres › Reçus</strong> et imprimez un reçu de test.</p></dd></div>
             <div><dt>L'e-mail de test échoue</dt>
-              <dd><p><span class="fix-label">Parce que</span>Mauvais serveur, port, sécurité ou mot de passe, ou le fournisseur bloque SMTP ou la connexion par mot de passe.</p>
-                <p><span class="fix-label">Corriger</span>Dans <strong>Paramètres › Reçus par e-mail</strong>, vérifiez le serveur, le port, STARTTLS ou SSL/TLS, le nom d'utilisateur et le mot de passe. Votre fournisseur peut exiger que l'accès à SMTP soit activé ou un mot de passe d'application ; voir <a href="using#email">configuration de la messagerie</a>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Dans <strong>Paramètres › Reçus par e-mail</strong>, vérifiez le serveur, le
+  port, STARTTLS ou SSL/TLS, le nom d'utilisateur et le mot de passe. Votre fournisseur peut exiger que l'accès à SMTP
+  soit activé ou un mot de passe d'application ; voir <a href="using#email">configuration de la messagerie</a>.</p>
+  <details class="cause"><summary>Parce que</summary><p>Mauvais serveur, port, sécurité ou mot de passe, ou le
+  fournisseur bloque SMTP ou la connexion par mot de passe.</p></details></dd></div>
             <div><dt>Les e-mails de test fonctionnent, mais les clients ne reçoivent aucun reçu</dt>
-              <dd><p><span class="fix-label">Corriger</span>Dans <strong>Paramètres › Reçus par e-mail</strong>, vérifiez quand l'e-mail est demandé et si les reçus sont envoyés automatiquement.</p></dd></div>
+              <dd><p><span class="fix-label">Corriger</span>Dans <strong>Paramètres › Reçus par e-mail</strong>,
+                vérifiez quand l'e-mail est demandé et si les reçus sont envoyés automatiquement.</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
@@ -274,100 +439,181 @@
           <h2>PIN et problèmes de transfert de configuration</h2>
           <dl class="fixes">
             <div><dt>Le personnel a oublié le PIN responsable</dt>
-              <dd><p><span class="fix-label">Corriger</span>Un administrateur peut le remplacer ou le supprimer dans <strong>Paramètres › Sécurité</strong>. L'PIN administrateur et le PIN responsable protègent différentes actions ; l'un ne débloque pas l'autre.</p></dd></div>
+              <dd><p><span class="fix-label">Corriger</span>Un administrateur peut le remplacer ou le supprimer dans
+                <strong>Paramètres › Sécurité</strong>. L'PIN administrateur et le PIN responsable protègent différentes
+                actions ; l'un ne débloque pas l'autre.</p></dd></div>
             <div><dt>L'PIN administrateur est oublié</dt>
               <dd><p><span class="fix-label">Parce que</span>Il n'y a pas de récupération PIN.</p>
-                <p>Pour recommencer sans l'admin PIN, suivez <a href="#storage">récupération de stockage</a>. Lisez l'avertissement de perte de données avant de réinitialiser.</p></dd></div>
+                <p>Pour recommencer sans l'admin PIN, suivez <a href="#storage">récupération de stockage</a>. Lisez
+                  l'avertissement de perte de données avant de réinitialiser.</p></dd></div>
             <div><dt>Le code de transfert est rejeté ou les clés sont manquantes après l'importation</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le code n'appartient pas à ces codes QR, ou il est resté vide.</p>
-                <p><span class="fix-label">Corriger</span>Utilisez le code affiché avec ces codes QR, pas un code nouvellement généré. Chaque transfert a besoin de son code. Un code erroné ou vide n’importe rien. Après la copie, vérifiez la destination et les informations d'identification sur le nouvel appareil ; voir <a href="using#more">plus d'appareils</a>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Utilisez le code affiché avec ces codes QR, pas un code nouvellement généré.
+  Chaque transfert a besoin de son code. Un code erroné ou vide n’importe rien. Après la copie, vérifiez la destination
+  et les informations d'identification sur le nouvel appareil ; voir <a href="using#more">plus d'appareils</a>.</p>
+  <details class="cause"><summary>Parce que</summary><p>Le code n'appartient pas à ces codes QR, ou il est resté vide.
+  </p></details></dd></div>
           </dl>
-          <p>Pour connaître les actions protégées par chaque PIN, voir <a href="using#staff">personnel PINs</a>.</p>
+          <p>Pour connaître les actions protégées par chaque PIN, voir <a href="using#staff">codes PIN du personnel</a>.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="storage">
           <h2>Les paramètres ou informations d'identification enregistrés ne peuvent pas être lus ou écrits</h2>
-          <p>Mini mPOS s'arrête plutôt que de remplacer les paramètres ou les informations d'identification illisibles. Cela préserve les fichiers, y compris toute configuration inachevée ou tout enregistrement de récupération de paiement.</p>
-          <ol class="steps">
-            <li>Redémarrez l'appareil et ouvrez à nouveau Mini mPOS. Si le stockage de l'appareil est plein, libérez d'abord de l'espace en dehors de Mini mPOS. Effacer uniquement le cache de l'application ne réinitialise pas ses paramètres enregistrés.</li>
-            <li>Avant de réinitialiser, conservez les enregistrements dont vous avez besoin et résolvez les paiements, remboursements, captures et ajustements inachevés. Si l'application ne peut pas s'ouvrir, vérifiez leurs résultats dans le Customer Area ; voir <a href="#unknown">résultats inconnus</a>. Si le résultat est encore incertain, conservez les données de l'application et rapprochez-les d'abord avec Adyen. Ne renvoyez pas l’opération simplement parce que l’application ne peut pas s’ouvrir.</li>
-            <li>Si l'erreur persiste et que vous acceptez de perdre toutes les données locales, réinitialisez Mini mPOS. Sur un téléphone ou une tablette, ouvrez Android <strong>Paramètres › Applications › Mini mPOS › Stockage et cache › Effacer le stockage</strong> (les étiquettes varient selon l'appareil), ou désinstallez Mini mPOS et réinstallez-le à partir du <a href="https://github.com/astiskala/minimpos/releases/latest">dernière version</a>. Sur un terminal Adyen, demandez à la personne qui gère vos applications de terminal d'organiser la réinitialisation ou la suppression et la réinstallation ; voir le <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Guide de déploiement de l'application Adyen</a>.</li>
-            <li>Configurez à nouveau Mini mPOS ou importez un transfert de configuration fiable, puis terminez <strong>Tester la connexion</strong> avant d'accepter des paiements réels. Voir <a href="quick-start#connect">Connectez-vous à Adyen</a>.</li>
-          </ol>
+          <p>Mini mPOS s'arrête plutôt que de remplacer les paramètres ou les informations d'identification illisibles.
+            Cela préserve les fichiers, y compris toute configuration inachevée ou tout enregistrement de récupération
+            de paiement.</p>
           <div class="callout callout-warning" role="note">
-            <p class="callout-title">Avertissement</p>
-            <p>L'effacement du stockage ou la désinstallation supprime tous les produits locaux, paramètres, informations d'identification, PIN, historique et enregistrements de récupération des opérations inachevées. Un transfert de configuration ne peut pas restaurer l'historique ou ces enregistrements de récupération. La réinitialisation n'annule pas les paiements, remboursements ou captures déjà envoyés à Adyen.</p>
-          </div>
-          <p>L'installation d'une mise à jour sur l'application existante ne réinitialise pas son stockage. Si l'erreur revient, <a href="#help">signaler un problème d'application sur GitHub</a>; ne joignez pas de fichiers de configuration ou d'informations d'identification enregistrés.</p>
+<p class="callout-title">Avertissement</p>
+<p>L'effacement du stockage ou la désinstallation supprime tous les produits locaux, paramètres, informations
+  d'identification, PIN, historique et enregistrements de récupération des opérations inachevées. Un transfert de
+  configuration ne peut pas restaurer l'historique ou ces enregistrements de récupération. La réinitialisation n'annule
+  pas les paiements, remboursements ou captures déjà envoyés à Adyen.</p>
+</div>
+<ol class="recovery-steps">
+            <li>Redémarrez l'appareil et ouvrez à nouveau Mini mPOS. Si le stockage de l'appareil est plein, libérez
+              d'abord de l'espace en dehors de Mini mPOS. Effacer uniquement le cache de l'application ne réinitialise
+              pas ses paramètres enregistrés.</li>
+            <li>Avant de réinitialiser, conservez les enregistrements dont vous avez besoin et résolvez les paiements,
+              remboursements, captures et ajustements inachevés. Si l'application ne peut pas s'ouvrir, vérifiez leurs
+              résultats dans le Customer Area ; voir <a href="#unknown">résultats inconnus</a>. Si le résultat est
+              encore incertain, conservez les données de l'application et rapprochez-les d'abord avec Adyen. Ne renvoyez
+              pas l’opération simplement parce que l’application ne peut pas s’ouvrir.</li>
+            <li>Si l'erreur persiste et que vous acceptez de perdre toutes les données locales, réinitialisez Mini mPOS.
+              Sur un téléphone ou une tablette, ouvrez Android <strong>Paramètres › Applications › Mini mPOS › Stockage
+              et cache › Effacer le stockage</strong> (les étiquettes varient selon l'appareil), ou désinstallez Mini
+              mPOS et réinstallez-le à partir du <a href="https://github.com/astiskala/minimpos/releases/latest">
+              dernière version</a>. Sur un terminal Adyen, demandez à la personne qui gère vos applications de terminal
+              d'organiser la réinitialisation ou la suppression et la réinstallation ; voir le
+              <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Guide de déploiement de
+              l'application Adyen</a>.</li>
+            <li>Configurez à nouveau Mini mPOS ou importez un transfert de configuration fiable, puis terminez <strong>
+              Tester la connexion</strong> avant d'accepter des paiements réels. Voir <a href="quick-start#connect">
+              Connectez-vous à Adyen</a>.</li>
+          </ol>
+
+          <p>L'installation d'une mise à jour sur l'application existante ne réinitialise pas son stockage. Si l'erreur
+            revient, <a href="#help">signaler un problème d'application sur GitHub</a>; ne joignez pas de fichiers de
+            configuration ou d'informations d'identification enregistrés.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="install">
           <h2>L'application ne s'installe pas sur un terminal</h2>
           <dl class="fixes">
             <div><dt><code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code></dt>
-              <dd><p><span class="fix-label">Parce que</span>Le APK n’est pas signé.</p>
-                <p><span class="fix-label">Corriger</span>Téléchargez le signé <code>minimpos-&lt;version&gt;.apk</code> de la <a href="https://github.com/astiskala/minimpos/releases/latest">dernière version</a>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Téléchargez le signé <code>minimpos-&lt;version&gt;.apk</code> de la
+  <a href="https://github.com/astiskala/minimpos/releases/latest">dernière version</a>.</p><details class="cause">
+  <summary>Parce que</summary><p>Le APK n’est pas signé.</p></details></dd></div>
             <div><dt><code>INVALID_SIGNING_CERTIFICATE_MISMATCH</code></dt>
-              <dd><p><span class="fix-label">Parce que</span>Le APK est signé avec une clé différente des téléchargements précédents.</p>
-                <p><span class="fix-label">Corriger</span>Conservez la source de signature originale. Si vous devez le modifier, demandez à l'assistance Adyen de supprimer les versions antérieures.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Conservez la source de signature originale. Si vous devez le modifier,
+  demandez à l'assistance Adyen de supprimer les versions antérieures.</p><details class="cause"><summary>Parce que
+  </summary><p>Le APK est signé avec une clé différente des téléchargements précédents.</p></details></dd></div>
             <div><dt>La version Android n'est pas prise en charge</dt>
-              <dd><p><span class="fix-label">Parce que</span>Mini mPOS nécessite Android 9 ou version ultérieure ; l'ancien S1E exécute Android 7.1.</p>
-                <p><span class="fix-label">Corriger</span>Utilisez un terminal pris en charge ; voir <a href="quick-start#install">mise en place</a>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Utilisez un terminal pris en charge ; voir <a href="quick-start#install">mise
+  en place</a>.</p><details class="cause"><summary>Parce que</summary><p>Mini mPOS nécessite Android 9 ou version
+  ultérieure ; l'ancien S1E exécute Android 7.1.</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="messages">
           <h2>Un message d'erreur nomme un problème</h2>
-          <p>Chaque message nomme le problème et ce qu'il faut vérifier. Les détails entre parenthèses, comme une adresse IP, un statut HTTP ou les propres mots d'Adyen, aident l'assistance Adyen : incluez-les lorsque vous demandez de l'aide. Si un paiement était en cours, <a href="#unknown">vérifie son résultat</a> avant de réparer autre chose.</p>
-          <dl class="fixes">
-            <div><dt>"Le terminal n'est pas joignable. Vérifiez qu'il est allumé, sur le même réseau et à cette adresse IP."</dt>
-              <dd><p><span class="fix-label">Parce que</span>Mini mPOS n'a pas pu ouvrir une connexion au terminal réseau à l'adresse IP enregistrée.</p>
-                <p><span class="fix-label">Corriger</span>Suivre <a href="#network-dropouts">coupures de réseau</a>.</p></dd></div>
-            <div><dt>"Cette adresse n'est pas un terminal Adyen de l'environnement sélectionné. Vérifiez l'adresse IP et TEST ou LIVE."</dt>
-              <dd><p><span class="fix-label">Parce que</span>Quelque chose a répondu à cette adresse, mais pas un terminal Adyen de l'environnement sélectionné : l'adresse appartient désormais à un autre appareil, ou TEST et LIVE sont mélangés.</p>
-                <p><span class="fix-label">Corriger</span>Vérifiez l’adresse IP sur l’écran Informations sur l’appareil du terminal, et <strong>Environnement</strong> dans <strong>Paramètres › Terminal</strong>.</p></dd></div>
-            <div><dt>"Le terminal a rejeté la clé partagée. Vérifiez l'identifiant de la clé, la version et la phrase secrète dans les paramètres du terminal. "</dt>
-              <dd><p><span class="fix-label">Parce que</span>L’identifiant, la version ou la phrase secrète de la clé partagée diffère de celui du terminal.</p>
-                <p><span class="fix-label">Corriger</span>Comparez-les avec le Customer Area, ou <a href="#key-setup">configurer à nouveau la clé</a>.</p></dd></div>
-            <div><dt>"La réponse du terminal n'a pas pu être vérifiée. Vérifiez la clé partagée dans les paramètres du terminal. "</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le terminal a répondu avec une clé partagée différente, la demande peut donc lui être parvenue.</p>
-                <p><span class="fix-label">Corriger</span><a href="#unknown">Vérifiez le résultat</a> avant de charger à nouveau, puis réparez la clé partagée.</p></dd></div>
+          <p>Chaque message nomme le problème et ce qu'il faut vérifier. Les détails entre parenthèses, comme une
+            adresse IP, un statut HTTP ou les propres mots d'Adyen, aident l'assistance Adyen : incluez-les lorsque vous
+            demandez de l'aide. Si un paiement était en cours, <a href="#unknown">vérifie son résultat</a> avant de
+            réparer autre chose.</p>
+          <details class="error-catalog"><summary>Messages d&#x27;erreur</summary><dl class="fixes">
+            <div><dt>"Le terminal n'est pas joignable. Vérifiez qu'il est allumé, sur le même réseau et à cette adresse
+              IP."</dt>
+              <dd>
+<p><span class="fix-label">Corriger</span>Suivre <a href="#network-dropouts">coupures de réseau</a>.</p>
+  <details class="cause"><summary>Parce que</summary><p>Mini mPOS n'a pas pu ouvrir une connexion au terminal réseau à
+  l'adresse IP enregistrée.</p></details></dd></div>
+            <div><dt>"Cette adresse n'est pas un terminal Adyen de l'environnement sélectionné. Vérifiez l'adresse IP et
+              TEST ou LIVE."</dt>
+              <dd>
+<p><span class="fix-label">Corriger</span>Vérifiez l’adresse IP sur l’écran Informations sur l’appareil du terminal, et
+  <strong>Environnement</strong> dans <strong>Paramètres › Terminal</strong>.</p><details class="cause"><summary>Parce
+  que</summary><p>Quelque chose a répondu à cette adresse, mais pas un terminal Adyen de l'environnement sélectionné :
+  l'adresse appartient désormais à un autre appareil, ou TEST et LIVE sont mélangés.</p></details></dd></div>
+            <div><dt>"Le terminal a rejeté la clé partagée. Vérifiez l'identifiant de la clé, la version et la phrase
+              secrète dans les paramètres du terminal. "</dt>
+              <dd>
+<p><span class="fix-label">Corriger</span>Comparez-les avec le Customer Area, ou <a href="#key-setup">configurer à
+  nouveau la clé</a>.</p><details class="cause"><summary>Parce que</summary><p>L’identifiant, la version ou la phrase
+  secrète de la clé partagée diffère de celui du terminal.</p></details></dd></div>
+            <div><dt>"La réponse du terminal n'a pas pu être vérifiée. Vérifiez la clé partagée dans les paramètres du
+              terminal. "</dt>
+              <dd>
+<p><span class="fix-label">Corriger</span><a href="#unknown">Vérifiez le résultat</a> avant de charger à nouveau, puis
+  réparez la clé partagée.</p><details class="cause"><summary>Parce que</summary><p>Le terminal a répondu avec une clé
+  partagée différente, la demande peut donc lui être parvenue.</p></details></dd></div>
             <div><dt>"Le terminal n'est pas connecté à Adyen. Vérifiez qu'il est allumé et en ligne."</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le terminal cloud est éteint ou n'a pas de connexion Internet.</p>
-                <p><span class="fix-label">Corriger</span>Vérifiez les données Wi-Fi, Ethernet ou mobiles du terminal, puis exécutez <strong>Tester la connexion</strong>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Vérifiez les données Wi-Fi, Ethernet ou mobiles du terminal, puis exécutez
+  <strong>Tester la connexion</strong>.</p><details class="cause"><summary>Parce que</summary><p>Le terminal cloud est
+  éteint ou n'a pas de connexion Internet.</p></details></dd></div>
             <div><dt>"Adyen n'a pas accepté la clé API. Vérifiez-la dans les paramètres du terminal."</dt>
-              <dd><p><span class="fix-label">Parce que</span>La clé API est erronée, révoquée ou provient d'un autre environnement.</p>
-                <p><span class="fix-label">Corriger</span>Saisissez à nouveau la clé et vérifiez-la par rapport au <a href="quick-start#credentials">exigences en matière de identifiants</a>.</p></dd></div>
-            <div><dt>"La clé API n'a pas de rôle ni d'accès à ce compte marchand. Vérifiez les informations d'identification API dans votre Customer Area."</dt>
-              <dd><p><span class="fix-label">Parce que</span>Les informations d'identification ne disposent pas d'un rôle ou d'un accès à ce compte marchand. Les parenthèses nomment le rôle manquant lorsqu'il est connu.</p>
-                <p><span class="fix-label">Corriger</span>Ajoutez l'accès au rôle ou au compte dans le Customer Area ; voir le <a href="quick-start#credentials">exigences en matière de identifiants</a>.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Saisissez à nouveau la clé et vérifiez-la par rapport au
+  <a href="quick-start#credentials">rôles et accès requis</a>.</p><details class="cause"><summary>Parce
+  que</summary><p>La clé API est erronée, révoquée ou provient d'un autre environnement.</p></details></dd></div>
+            <div><dt>"La clé API n'a pas de rôle ni d'accès à ce compte marchand. Vérifiez les informations
+              d'identification API dans votre Customer Area."</dt>
+              <dd>
+<p><span class="fix-label">Corriger</span>Ajoutez l'accès au rôle ou au compte dans le Customer Area ; voir le
+  <a href="quick-start#credentials">rôles et accès requis</a>.</p><details class="cause"><summary>Parce
+  que</summary><p>Les informations d'identification ne disposent pas d'un rôle ou d'un accès à ce compte marchand. Les
+  parenthèses nomment le rôle manquant lorsqu'il est connu.</p></details></dd></div>
             <div><dt>"Adyen est occupé ou temporairement indisponible."</dt>
-              <dd><p><span class="fix-label">Parce que</span>Adyen limite les demandes ou est temporairement indisponible.</p>
-                <p><span class="fix-label">Corriger</span>Attendez un instant, puis réessayez. Pour un paiement, une capture ou un lien de paiement, <a href="#unknown">vérifie son résultat</a> d'abord.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span>Attendez un instant, puis réessayez. Pour un paiement, une capture ou un lien
+  de paiement, <a href="#unknown">vérifie son résultat</a> d'abord.</p><details class="cause"><summary>Parce que
+  </summary><p>Adyen limite les demandes ou est temporairement indisponible.</p></details></dd></div>
             <div><dt>"Aucune réponse n'est revenue à temps."</dt>
-              <dd><p><span class="fix-label">Parce que</span>La demande a été envoyée, mais aucune réponse n’est arrivée, son résultat est donc inconnu.</p>
-                <p><span class="fix-label">Corriger</span><a href="#unknown">Vérifiez le résultat</a>. Ne rechargez pas jusqu'à ce que vous le sachiez.</p></dd></div>
-            <div><dt>"Aucune réponse de l'application Adyen Payments n'est encore arrivée. On ne peut pas lui demander le résultat, alors vérifiez le paiement dans votre Customer Area. "</dt>
-              <dd><p><span class="fix-label">Parce que</span>Avec Tap to Pay, il n'est pas possible de demander un résultat à l'application Adyen Payments et aucune réponse tardive n'est arrivée.</p>
-                <p><span class="fix-label">Corriger</span>Recherchez le paiement dans le Customer Area avant de facturer à nouveau.</p></dd></div>
+              <dd>
+<p><span class="fix-label">Corriger</span><a href="#unknown">Vérifiez le résultat</a>. Ne rechargez pas jusqu'à ce que
+  vous le sachiez.</p><details class="cause"><summary>Parce que</summary><p>La demande a été envoyée, mais aucune
+  réponse n’est arrivée, son résultat est donc inconnu.</p></details></dd></div>
+            <div><dt>"Aucune réponse de l'application Adyen Payments n'est encore arrivée. On ne peut pas lui demander
+              le résultat, alors vérifiez le paiement dans votre Customer Area. "</dt>
+              <dd>
+<p><span class="fix-label">Corriger</span>Recherchez le paiement dans le Customer Area avant de facturer à nouveau.</p>
+  <details class="cause"><summary>Parce que</summary><p>Avec Tap to Pay, il n'est pas possible de demander un résultat à
+  l'application Adyen Payments et aucune réponse tardive n'est arrivée.</p></details></dd></div>
             <div><dt>"L'application Adyen Payments n'a pas pu être ouverte. Vérifiez qu'elle est installée. "</dt>
-              <dd><p><span class="fix-label">Parce que</span>L'application Adyen Payments n'est pas installée ou a été supprimée.</p>
-                <p><span class="fix-label">Corriger</span>Installez l'application Adyen Payments pour votre environnement, puis réessayez. Voir <a href="quick-start#connect">Connectez-vous à Adyen</a>.</p></dd></div>
-            <div><dt>"Le serveur de messagerie n'a pas accepté le nom d'utilisateur ou le mot de passe. Vérifiez-les dans Paramètres › Reçus par e-mail. "</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le nom d'utilisateur ou le mot de passe SMTP est erroné, ou le fournisseur exige un mot de passe pour l'application.</p>
-                <p><span class="fix-label">Corriger</span>Corrigez-les, puis envoyez un email de test.</p></dd></div>
-            <div><dt>"Le stockage sécurisé de cet appareil n'a pas fonctionné. Réessayez ou redémarrez l'appareil. "</dt>
-              <dd><p><span class="fix-label">Parce que</span>Le magasin de clés de Android n'a pas pu chiffrer ou lire un secret enregistré.</p>
-                <p><span class="fix-label">Corriger</span>Si cela continue après un redémarrage, saisissez à nouveau les clés et les mots de passe.</p></dd></div>
-          </dl>
+              <dd>
+<p><span class="fix-label">Corriger</span>Installez l'application Adyen Payments pour votre environnement, puis
+  réessayez. Voir <a href="quick-start#connect">Connectez-vous à Adyen</a>.</p><details class="cause"><summary>Parce que
+  </summary><p>L'application Adyen Payments n'est pas installée ou a été supprimée.</p></details></dd></div>
+            <div><dt>"Le serveur de messagerie n'a pas accepté le nom d'utilisateur ou le mot de passe. Vérifiez-les
+              dans Paramètres › Reçus par e-mail. "</dt>
+              <dd>
+<p><span class="fix-label">Corriger</span>Corrigez-les, puis envoyez un email de test.</p><details class="cause">
+  <summary>Parce que</summary><p>Le nom d'utilisateur ou le mot de passe SMTP est erroné, ou le fournisseur exige un mot
+  de passe pour l'application.</p></details></dd></div>
+            <div><dt>"Le stockage sécurisé de cet appareil n'a pas fonctionné. Réessayez ou redémarrez l'appareil. "
+              </dt>
+              <dd>
+<p><span class="fix-label">Corriger</span>Si cela continue après un redémarrage, saisissez à nouveau les clés et les
+  mots de passe.</p><details class="cause"><summary>Parce que</summary><p>Le magasin de clés de Android n'a pas pu
+  chiffrer ou lire un secret enregistré.</p></details></dd></div>
+          </dl></details>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="help">
           <h2>Vous avez encore besoin d'aide ?</h2>
-          <p>Pour les comptes Adyen, le déploiement du terminal, les méthodes de paiement ou les résultats du paiement final, contactez Adyen. Pour un problème d'application, <a href="https://github.com/astiskala/minimpos/issues">ouvrir un problème GitHub</a> avec la version de l'application, le modèle de l'appareil, la configuration, l'environnement TEST ou LIVE et les étapes de reproduction.</p>
+          <p>Pour les comptes Adyen, le déploiement du terminal, les méthodes de paiement ou les résultats du paiement
+            final, contactez Adyen. Pour un problème d'application,
+            <a href="https://github.com/astiskala/minimpos/issues">ouvrir un problème GitHub</a> avec la version de
+            l'application, le modèle de l'appareil, la configuration, l'environnement TEST ou LIVE et les étapes de
+            reproduction.</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Important</p>
-            <p>N'incluez jamais de clés, de mots de passe, de PIN ou de données client. Signalez les vulnérabilités suspectées en privé sous le <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">politique de sécurité</a>.</p>
+            <p>N'incluez jamais de clés, de mots de passe, de PIN ou de données client. Signalez les vulnérabilités
+              suspectées en privé sous le <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">
+              politique de sécurité</a>.</p>
           </div>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>

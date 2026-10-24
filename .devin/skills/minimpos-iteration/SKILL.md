@@ -37,7 +37,7 @@ then wait for completion. Pass multiple tasks in one invocation when collecting 
 ### QR formats
 
 - Trace `TransferCodec`, `QrChunks`, `TransferSeal`, `docs/js/setup.js` and their existing vectors.
-- Change both producers/consumers and vectors together; retain the helper's no-network policy.
+- Change both producers/consumers and vectors together; retain local credential processing and the hosting-only CSP exceptions.
 - Run `scripts/dev check qr`; use negative vectors for malformed chunks, bad seals and stale async generation.
 - No earlier-build aliases or compatibility branches. Root constraints own the format policy.
 

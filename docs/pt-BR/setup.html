@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -87,7 +87,8 @@
       <div class="wrap">
         <p class="eyebrow">Auxiliar de configuração</p>
         <h1>Configure um dispositivo a partir do seu computador</h1>
-        <p class="lead">É difícil digitar chaves API longas no terminal. Insira os dados aqui, ao lado da Customer Area, e escaneie os códigos QR no Mini mPOS.</p>
+        <p class="lead">É difícil digitar chaves API longas no terminal. Insira os dados aqui, ao lado da Customer Area,
+          e escaneie os códigos QR no Mini mPOS.</p>
       </div>
     </section>
 
@@ -95,9 +96,11 @@
       <div class="setup-main">
         <p>Novo em Mini mPOS? <a href="quick-start#choose">Escolha sua configuração</a> e
           <a href="quick-start#credentials">prepare suas credenciais</a> antes de preencher este formulário.</p>
-        <p class="hint" id="customer-area-note">Os links Customer Area abrem em uma nova aba para que você possa manter este formulário aberto.</p>
-        <p class="note" id="setup-noscript">O auxiliar de configuração precisa de JavaScript. Ative-o nesta página ou digite o
-          detalhes no aplicativo como o <a href="quick-start#connect">guia de início rápido</a> descreve.</p>
+        <p class="hint" id="customer-area-note">Os links Customer Area abrem em uma nova aba para que você possa manter
+          este formulário aberto.</p>
+        <noscript><p class="note">O JavaScript está desativado. Ative-o para usar o assistente ou digite os dados no
+          app. <a href="quick-start#connect">Conecte</a>.</p></noscript>
+<p class="hint" id="setup-loading" role="status">Carregando o formulário…</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
               data-msg-making="Fazendo os códigos…"
@@ -108,33 +111,47 @@
               data-msg-unsupported="Este navegador não pode fazer os códigos. Use uma versão atual do Chrome, Edge, Firefox ou Safari.">
           <fieldset>
             <legend>Onde o Mini mPOS é executado e para onde vão os pagamentos?</legend>
-            <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>Em um terminal Adyen</strong> que recebe ele próprio os pagamentos</span></label>
-            <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>Em um tablet ou telefone</strong>, com um terminal na mesma rede</span></label>
-            <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>Em um tablet ou telefone</strong>, com terminal pela internet (nuvem)</span></label>
+            <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>Em
+              um terminal Adyen</strong> que recebe ele próprio os pagamentos</span></label>
+            <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>Em um tablet ou
+              telefone</strong>, com um terminal na mesma rede</span></label>
+            <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>Em um tablet ou
+              telefone</strong>, com terminal pela internet (nuvem)</span></label>
             <label class="choice"><input type="radio" name="destination" value="tapToPay"> <span><strong>Em um telefone</strong>, com Tap to Pay no aplicativo Adyen Payments</span></label>
           </fieldset>
 
           <fieldset>
             <legend>Qual ambiente Adyen?</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>: terminais de teste e cartões de teste</span></label>
-            <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>: pagamentos reais</span></label>
-            <p class="hint">TEST ou LIVE está incluído em cada código de configuração para revisão. Para um terminal de rede/nuvem ou Tap to Pay, ele define o ambiente do aplicativo.
+            <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>:
+              pagamentos reais</span></label>
+            <p class="hint">TEST ou LIVE está incluído em cada código de configuração para revisão. Para um terminal de
+              rede/nuvem ou Tap to Pay, ele define o ambiente do aplicativo.
               Um terminal Adyen ainda usa o certificado do dispositivo para a conexão.</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud">
             <legend>Como você deseja configurar?</legend>
-            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>Automático (recomendado)</strong>: procure a configuração do terminal no dispositivo</span></label>
-            <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>Manual</strong>: insira todos os detalhes da conexão neste computador</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>
+              Automático (recomendado)</strong>: procure a configuração do terminal no dispositivo</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>Manual</strong>:
+              insira todos os detalhes da conexão neste computador</span></label>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>Siga o <a href="quick-start#tap-to-pay">Pré-requisitos Tap to Pay</a> e instale primeiro o aplicativo Adyen Payments. Mini mPOS usa sua chave API da Adyen para criar automaticamente a credencial de registro do telefone. Insira a chave compartilhada aqui; Mini mPOS não procura. O registro é uma ação explícita no telefone antes do término da importação.</p>
+          <p class="hint" data-only="tapToPay" hidden>Siga o <a href="quick-start#tap-to-pay">Pré-requisitos Tap to Pay
+            </a> e instale primeiro o aplicativo Adyen Payments. Mini mPOS usa sua chave API da Adyen para criar
+            automaticamente a credencial de registro do telefone. Insira a chave compartilhada aqui; Mini mPOS não
+            procura. O registro é uma ação explícita no telefone antes do término da importação.</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Chave Adyen API</legend>
-            <p class="hint">Crie uma credencial em <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> e gerar sua chave API.
-              <span data-only="tapToPay" hidden>Essa chave trata do Checkout e provisiona a credencial de registro separada do telefone.</span>
-              Cada configuração requer as mesmas funções de credenciais principais; veja o <a href="quick-start#credentials">requisitos de credenciais</a>.</p>
+            <p class="hint">Crie uma credencial em
+              <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Developers › API credentials</a> e gerar sua chave API.
+              <span data-only="tapToPay" hidden>Essa chave trata do Checkout e provisiona a credencial de registro
+                separada do telefone.</span>
+              Cada configuração requer as mesmas funções de credenciais principais; veja o
+                <a href="quick-start#credentials">requisitos de credenciais</a>.</p>
             <label for="apiKey">Chave API</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -158,12 +175,15 @@
             <legend>O terminal na nuvem</legend>
             <label for="cloudPoiId">ID do Terminal (POIID)</label>
             <input id="cloudPoiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
-            <p class="hint">Encontre-o na tela de informações do dispositivo do terminal ou em Dispositivos › Terminais na Customer Area.</p>
+            <p class="hint">Encontre-o na tela de informações do dispositivo do terminal ou em Dispositivos › Terminais
+              na Customer Area.</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
             <legend>Chave compartilhada</legend>
-            <p class="hint">No Customer Area: <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Device settings › Terminal API</a>,
+            <p class="hint">No Customer Area:
+              <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Devices › Device settings › Terminal API</a>,
               em Chave de criptografia (selecione o ícone de lápis para vê-lo).</p>
             <label for="keyIdentifier">Identificador de chave</label>
             <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
@@ -175,43 +195,57 @@
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
             <legend>Prefixo de URL LIVE</legend>
-            <p class="hint">Em <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API URLs</a>.</p>
+            <p class="hint">Em
+              <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Developers › API URLs</a>.</p>
             <label for="liveUrlPrefix">Prefixo</label>
             <input id="liveUrlPrefix" name="liveUrlPrefix" type="text" required spellcheck="false" placeholder="1797a841fbb37ca7-AdyenDemo">
           </fieldset>
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS cria automaticamente uma credencial separada com o Adyen Payments App role e uma chave de cliente. Nenhuma chave extra para entrar ou transferir. Veja <a href="troubleshooting#tap-to-pay-check">Solução de problemas Tap to Pay</a> e
-              o <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Guia do aplicativo Adyen Payments</a>.</p>
+            <p class="hint">Mini mPOS cria automaticamente uma credencial separada com o Adyen Payments App role e uma
+              chave de cliente. Nenhuma chave extra para entrar ou transferir. Veja
+              <a href="troubleshooting#tap-to-pay-check">Solução de problemas Tap to Pay</a> e
+              o <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Guia do aplicativo
+                Adyen Payments</a>.</p>
             <label for="storeId">ID da loja, opcional</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
-            <p class="hint">Para configurar o telefone para uma loja: seu ID (não sua referência) de <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a>.</p>
+            <p class="hint">Para configurar o telefone para uma loja: seu ID (não sua referência) de
+              <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Devices › Stores</a>.</p>
           </fieldset>
 
-          <fieldset>
+          <details class="setup-optional"><summary>Configurações opcionais de recibos e e-mail</summary>
+<fieldset>
             <legend>Detalhes do recibo (opcional)</legend>
-            <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>Deixar as configurações de recibo inalteradas</span></label>
-            <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>Incluir detalhes do recibo</span></label>
-            <p class="hint">Quando desativado, nenhum texto de recibo ou detalhes comerciais da Adyen são importados.</p>
+            <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>Deixar as
+              configurações de recibo inalteradas</span></label>
+            <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>Incluir detalhes do
+              recibo</span></label>
+            <p class="hint">Quando desativado, nenhum texto de recibo ou detalhes comerciais da Adyen são importados.
+              </p>
 
             <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
               <legend>Detalhes do recebimento</legend>
               <p class="hint">Escolha importação Adyen ou entrada manual para cada área de negócio.</p>
               <label for="receiptNameSource">Nome comercial</label>
-              <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Importar da Adyen</option><option value="manual">Insira manualmente</option></select>
+              <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Importar da Adyen</option>
+                <option value="manual">Insira manualmente</option></select>
               <div data-receipt="receiptNameSource" hidden>
                 <label for="receiptBusinessName">Nome comercial do recibo</label>
                 <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
               </div>
               <label for="receiptAddressSource">Endereço</label>
-              <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Importar da Adyen</option><option value="manual">Insira manualmente</option></select>
+              <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Importar da Adyen
+                </option><option value="manual">Insira manualmente</option></select>
               <div data-receipt="receiptAddressSource" hidden>
                 <label for="receiptAddressLines">Endereço de recebimento</label>
                 <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
               </div>
               <label for="receiptPhoneSource">Telefone</label>
-              <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Importar da Adyen</option><option value="manual">Insira manualmente</option></select>
+              <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Importar da Adyen</option>
+                <option value="manual">Insira manualmente</option></select>
               <div data-receipt="receiptPhoneSource" hidden>
                 <label for="receiptPhone">Telefone de recebimento</label>
                 <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
@@ -222,15 +256,20 @@
               <input id="receiptTitle" name="receiptTitle" type="text">
               <label for="receiptFooter">Rodapé, opcional</label>
               <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
-              <p class="hint">Somente o texto manual fornecido altera os valores salvos. Os campos em branco mantêm o texto existente. A identificação fiscal, o título e o rodapé são inseridos manualmente, não importados da Adyen. Veja <a href="using#receipts">configuração de recibo</a>.</p>
+              <p class="hint">Somente o texto manual fornecido altera os valores salvos. Os campos em branco mantêm o
+                texto existente. A identificação fiscal, o título e o rodapé são inseridos manualmente, não importados
+                da Adyen. Veja <a href="using#receipts">configuração de recibo</a>.</p>
             </fieldset>
           </fieldset>
 
           <fieldset>
             <legend>Recibos de e-mail (opcional)</legend>
-            <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>Deixe as configurações de e-mail inalteradas</span></label>
-            <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>Incluir configurações SMTP</span></label>
-            <p class="hint">Verificar <a href="using#email">configuração de e-mail e requisitos do provedor</a> primeiro; o auxiliar não pode testar o servidor.</p>
+            <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>Deixe as
+              configurações de e-mail inalteradas</span></label>
+            <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>Incluir configurações SMTP
+              </span></label>
+            <p class="hint">Verificar <a href="using#email">configuração de e-mail e requisitos do provedor</a>
+              primeiro; o auxiliar não pode testar o servidor.</p>
 
             <fieldset id="smtp-fields" data-email="true" hidden disabled>
               <legend>Servidor SMTP</legend>
@@ -238,9 +277,12 @@
               <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.exemplo.com">
               <label for="smtpPort">Porta</label>
               <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS (normalmente porta 587)</span></label>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS (geralmente porta 465)</span></label>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>Nenhum (não criptografado, não recomendado)</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS
+                (normalmente porta 587)</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS (geralmente porta
+                465)</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>Nenhum (não
+                criptografado, não recomendado)</span></label>
               <label for="smtpUsername">Nome de usuário, opcional</label>
               <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
               <label for="smtpPassword">Senha ou senha de aplicativo, opcional</label>
@@ -249,9 +291,12 @@
               <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
               <label for="smtpFromName">Nome do remetente, opcional</label>
               <input id="smtpFromName" name="smtpFromName" type="text">
-              <p class="hint">Apenas os campos fornecidos mudam. Os campos opcionais em branco mantêm os valores salvos; limpe-os em Configurações › Recibos de e-mail, se necessário. A senha é selada com os demais segredos.</p>
+              <p class="hint">Apenas os campos fornecidos mudam. Os campos opcionais em branco mantêm os valores salvos;
+                limpe-os em Configurações › Recibos de e-mail, se necessário. A senha é selada com os demais segredos.
+                </p>
             </fieldset>
           </fieldset>
+</details>
 
           <div class="setup-actions">
             <button class="button" type="submit">Fazer códigos QR</button>
@@ -262,7 +307,7 @@
       </div>
 
       <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
-        <h2 id="setup-codes-title">Digitalize esses códigos com o dispositivo</h2>
+        <h2 id="setup-codes-title" tabindex="-1">Digitalize esses códigos com o dispositivo</h2>
         <div class="setup-scan">
           <div class="setup-qr" id="setup-qr"></div>
           <div class="setup-controls">
@@ -273,30 +318,41 @@
           </div>
         </div>
         <div class="setup-next">
-          <div class="setup-code-card" id="setup-code-card">
+
+<div class="setup-code-card" id="setup-code-card">
             <p>Código de transferência</p>
             <p class="setup-code" id="setup-code"></p>
           </div>
+<dl class="setup-summary"><div><dt>Destino dos pagamentos</dt><dd id="setup-summary-destination"></dd></div>
+<div><dt>Ambiente</dt><dd id="setup-summary-environment"></dd></div><div><dt>Método de configuração</dt>
+<dd id="setup-summary-mode"></dd></div><div><dt>Configurações de recibos</dt><dd id="setup-summary-receipt">
+</dd></div><div><dt>Configurações de e-mail</dt><dd id="setup-summary-email"></dd></div></dl>
           <ol>
-            <li>Em Mini mPOS, abrir <strong>Configurações › Terminal</strong> e toque em <strong>Digitalizar códigos de configuração</strong>
+            <li>No Mini mPOS, abra <strong>Configurações › Terminal</strong> e toque em <strong>Digitalizar códigos de
+              configuração</strong>
               em Configuração rápida ou no ícone de digitalização QR no canto superior direito.</li>
             <li>Aponte sua câmera para os códigos. Com mais de um, eles mudam sozinhos.</li>
             <li>Revise o destino e o ambiente. Digite o necessário <strong>Código de transferência</strong>
               e toque em <strong>Verificar e importar</strong>.</li>
           </ol>
-          <p>Se você incluiu configurações SMTP, revise <strong>Configurações › Recibos por e-mail</strong> e enviar um e-mail de teste.</p>
-          <p><a href="troubleshooting#access">Problema de importação?</a> · <a href="troubleshooting#connection">Problema de conexão?</a></p>
+          <p>Se você incluiu configurações SMTP, revise <strong>Configurações › Recibos por e-mail</strong> e enviar um
+            e-mail de teste.</p>
+          <p><a href="troubleshooting#access">Problema de importação?</a> · <a href="troubleshooting#connection">
+            Problema de conexão?</a></p>
         </div>
       </section>
 
       <aside class="setup-side"><div>
         <h2>É bom saber</h2>
         <ul>
-          <li><strong>Nada sai desta página.</strong> Os códigos são feitos em seu navegador; a página não envia nada
-            em qualquer lugar e não armazena nada. Feche-o quando terminar.</li>
-          <li><strong>As chaves são seladas.</strong> As senhas e chaves nos códigos são criptografadas com a transferência
+          <li id="setup-privacy"><strong>As credenciais ficam no navegador.</strong> O assistente gera os códigos localmente e não envia
+            nem salva as credenciais digitadas. O site também carrega serviços de segurança e desempenho da Cloudflare.
+            </li>
+          <li><strong>As chaves são seladas.</strong> As senhas e chaves nos códigos são criptografadas com a
+            transferência
             código, que é mostrado apenas aqui, portanto, uma foto dos códigos por si só não os revela.</li>
-          <li><strong>Mantenha o código de transferência privado.</strong> Qualquer pessoa com os códigos e o código de transferência pode
+          <li><strong>Mantenha o código de transferência privado.</strong> Qualquer pessoa com os códigos e o código de
+            transferência pode
             abra as chaves. Gere uma nova transferência quando necessário; feche esta página quando terminar.</li>
           <li><strong>Precisa das instruções completas?</strong> Seguir <a href="quick-start">Início rápido</a>;
             para um problema de importação ou conexão, consulte <a href="troubleshooting">Solução de problemas</a>.</li>

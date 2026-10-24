@@ -47,6 +47,14 @@
   const codeCard = document.getElementById("setup-code-card");
   const codeText = document.getElementById("setup-code");
   const pauseButton = document.getElementById("setup-pause");
+  const resultTitle = document.getElementById("setup-codes-title");
+  const summary = {
+    destination: document.getElementById("setup-summary-destination"),
+    environment: document.getElementById("setup-summary-environment"),
+    setupMode: document.getElementById("setup-summary-mode"),
+    includeReceipt: document.getElementById("setup-summary-receipt"),
+    includeSmtp: document.getElementById("setup-summary-email"),
+  };
   const encoder = new TextEncoder();
   let codes = [];
   let shown = 0;
@@ -234,6 +242,7 @@
     codes = [];
     qrBox.replaceChildren();
     codeText.textContent = "";
+    for (const value of Object.values(summary)) value.textContent = "";
     status.textContent = "";
     results.hidden = true;
   };
@@ -306,13 +315,18 @@
     position.hidden = codes.length < 2;
     for (const control of results.querySelectorAll(".setup-controls button")) control.hidden = codes.length < 2;
     results.hidden = false;
+    for (const [name, value] of Object.entries(summary)) {
+      value.textContent = form.querySelector(`input[name="${name}"]:checked`).closest("label").textContent.trim().replace(/\s+/g, " ");
+    }
+    summary.setupMode.parentElement.hidden = destination() === "tapToPay";
     status.textContent = message("msgReady", { total: codes.length });
     show(0);
     play(true);
+    resultTitle.focus({ preventScroll: true });
     results.scrollIntoView({ block: "start" });
   });
 
   form.hidden = false;
-  document.getElementById("setup-noscript")?.remove();
+  document.getElementById("setup-loading")?.remove();
   refresh();
 })();

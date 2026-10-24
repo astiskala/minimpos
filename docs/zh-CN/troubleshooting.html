@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -65,26 +65,28 @@
     <details class="language-menu"><summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary><nav aria-label="语言"><ul><li><a href="../troubleshooting" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/troubleshooting" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/troubleshooting" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/troubleshooting" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/troubleshooting" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a aria-current="page" href="../zh-CN/troubleshooting" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/troubleshooting" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
   </div></header>
   <main id="main">
-    <section class="guide-hero"><div class="wrap"><p class="eyebrow">指南</p><h1>故障排查</h1><p class="lead">找到您看到的现象，确认可能的原因，再按解决方法操作。如果有付款正在进行，请先确认其结果：修复连接并不能说明之前的付款是否成功。</p></div></section>
+    <section class="guide-hero"><div class="wrap"><p class="eyebrow">指南</p><h1>故障排查</h1><p class="lead">
+      找到您看到的现象，确认可能的原因，再按解决方法操作。如果有付款正在进行，请先确认其结果：修复连接并不能说明之前的付款是否成功。</p>
+<nav class="task-links" aria-label="常见问题"><span>常见问题</span><a href="#unknown">结果未知</a><a href="#connection">终端绑定和设置</a>
+  <a href="#receipts">打印机和邮件</a><a href="#messages">错误消息</a></nav></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="指南导航">
-        <p class="toc-title">指南</p><p><a href="quick-start">快速入门</a><br><a href="using">使用 Mini mPOS</a><br><a href="troubleshooting" aria-current="page">故障排查</a></p>
+        <p class="guide-links toc-title">指南</p><p class="guide-links"><a href="quick-start">快速入门</a><br>
+          <a href="using">使用 Mini mPOS</a><br><a href="troubleshooting" aria-current="page">故障排查</a></p>
         <div class="desktop-contents"><p class="toc-title">本页目录</p><ol>
-          <li><a href="#unknown">结果未知</a></li><li><a href="#declines">付款被拒绝</a></li>
-          <li><a href="#terminal-features">可选终端功能</a></li>
-          <li><a href="#wallets">钱包扫码</a></li><li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">网络中断</a></li>
-          <li><a href="#modifications">扣款和调整</a></li><li><a href="#links">付款链接</a></li>
-          <li><a href="#receipts">打印机和邮件</a></li><li><a href="#access">PIN 和传输</a></li>
-          <li><a href="#storage">存储恢复</a></li><li><a href="#install">安装</a></li><li><a href="#messages">错误消息</a></li><li><a href="#help">获取帮助</a></li>
-        </ol></div>
+<li><a href="#unknown">结果未知</a></li><li><a href="#declines">付款被拒绝</a></li><li><a href="#terminal-features">可选终端功能</a>
+  </li><li><a href="#wallets">钱包扫码</a></li><li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">
+  网络中断</a></li><li><a href="#modifications">扣款和调整</a></li><li><a href="#links">付款链接</a></li><li><a href="#receipts">
+  打印机和邮件</a></li><li><a href="#access">PIN 和传输</a></li><li><a href="#storage">存储恢复</a></li><li><a href="#install">安装</a>
+  </li><li><a href="#messages">错误消息</a></li><li><a href="#help">获取帮助</a></li>
+</ol></div>
         <details class="mobile-contents"><summary class="toc-title">本页目录</summary><ol>
-          <li><a href="#unknown">结果未知</a></li><li><a href="#declines">付款被拒绝</a></li>
-          <li><a href="#terminal-features">可选终端功能</a></li>
-          <li><a href="#wallets">钱包扫码</a></li><li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">网络中断</a></li>
-          <li><a href="#modifications">扣款和调整</a></li><li><a href="#links">付款链接</a></li>
-          <li><a href="#receipts">打印机和邮件</a></li><li><a href="#access">PIN 和传输</a></li>
-          <li><a href="#storage">存储恢复</a></li><li><a href="#install">安装</a></li><li><a href="#messages">错误消息</a></li><li><a href="#help">获取帮助</a></li>
-        </ol></details>
+<li><a href="#unknown">结果未知</a></li><li><a href="#declines">付款被拒绝</a></li><li><a href="#terminal-features">可选终端功能</a>
+  </li><li><a href="#wallets">钱包扫码</a></li><li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">
+  网络中断</a></li><li><a href="#modifications">扣款和调整</a></li><li><a href="#links">付款链接</a></li><li><a href="#receipts">
+  打印机和邮件</a></li><li><a href="#access">PIN 和传输</a></li><li><a href="#storage">存储恢复</a></li><li><a href="#install">安装</a>
+  </li><li><a href="#messages">错误消息</a></li><li><a href="#help">获取帮助</a></li>
+</ol></details>
       </nav>
       <div class="guide-body">
         <section id="unknown">
@@ -107,88 +109,132 @@
           <p>结果界面会显示状态、Adyen 给出的原因和建议。请按建议操作：</p>
           <dl class="fixes">
             <div><dt>“请勿使用此卡重试。请购物者使用其他卡片或付款方式。”</dt>
-              <dd><p><span class="fix-label">原因</span>发卡行因不会改变的原因拒绝了此卡（如卡片被冻结、受限或疑似欺诈），或此卡不允许用于本次付款。</p>
-                <p><span class="fix-label">解决</span>请购物者改用其他卡片或付款方式。购物者的银行可以说明拒绝原因；<a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Adyen 拒绝原因</a>解释了显示的原因。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>请购物者改用其他卡片或付款方式。购物者的银行可以说明拒绝原因；
+  <a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Adyen 拒绝原因</a>解释了显示的原因。</p>
+  <details class="cause"><summary>原因</summary><p>发卡行因不会改变的原因拒绝了此卡（如卡片被冻结、受限或疑似欺诈），或此卡不允许用于本次付款。</p></details></dd></div>
             <div><dt>“可以重试。”</dt>
-              <dd><p><span class="fix-label">原因</span>付款被取消、PIN 输入错误，或卡片因可能不会重复的原因被拒绝（如余额不足）。</p>
-                <p><span class="fix-label">解决</span>点按<strong>重试</strong>，或请购物者换一张卡。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>点按<strong>重试</strong>，或请购物者换一张卡。</p><details class="cause"><summary>原因</summary><p>
+  付款被取消、PIN 输入错误，或卡片因可能不会重复的原因被拒绝（如余额不足）。</p></details></dd></div>
             <div><dt>“终端正在处理其他交易或显示管理菜单。”</dt>
-              <dd><p><span class="fix-label">原因</span>终端正在处理另一笔付款或显示管理菜单。</p>
-                <p><span class="fix-label">解决</span>完成另一笔付款或退出菜单后重试。如果界面提供<strong>取消终端当前交易</strong>，仅在确实要停止该交易时使用，并在重试前查询其结果。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>完成另一笔付款或退出菜单后重试。如果界面提供<strong>取消终端当前交易</strong>，仅在确实要停止该交易时使用，并在重试前查询其结果。</p>
+  <details class="cause"><summary>原因</summary><p>终端正在处理另一笔付款或显示管理菜单。</p></details></dd></div>
             <div><dt>“终端暂时不可用。”</dt>
-              <dd><p><span class="fix-label">原因</span>终端或其读卡器暂时不可用。</p>
-                <p><span class="fix-label">解决</span>稍候，确认终端已开机并已连接，然后重试。参见<a href="#network-dropouts">网络中断</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>稍候，确认终端已开机并已连接，然后重试。参见<a href="#network-dropouts">网络中断</a>。</p>
+  <details class="cause"><summary>原因</summary><p>终端或其读卡器暂时不可用。</p></details></dd></div>
             <div><dt>“终端未接受请求。重试前，请检查终端设置。”</dt>
-              <dd><p><span class="fix-label">原因</span>终端拒绝了所发送的请求，通常是设置问题。</p>
-                <p><span class="fix-label">解决</span>在<strong>设置 › 终端</strong>中运行测试；参见<a href="#connection">终端绑定和设置</a>。如果测试通过，请联系 Adyen 检查终端配置。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>在<strong>设置 › 终端</strong>中运行测试；参见<a href="#connection">终端绑定和设置</a>。如果测试通过，请联系 Adyen
+  检查终端配置。</p><details class="cause"><summary>原因</summary><p>终端拒绝了所发送的请求，通常是设置问题。</p></details></dd></div>
             <div><dt>“终端或您的 Adyen 账户不支持此请求。请联系 Adyen 支持团队确认已开通，然后重试。”</dt>
-              <dd><p><span class="fix-label">原因</span>终端或 Adyen 不提供此付款所需的功能，通常是因为账户尚未开通。</p>
-                <p><span class="fix-label">解决</span>请联系 Adyen 支持团队确认商家账户已开通该功能。对于 Tap to Pay，请确认除 Adyen Payments App role 外，也已开通 Tap to Pay on Android。然后重试。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>请联系 Adyen 支持团队确认商家账户已开通该功能。对于 Tap to Pay，请确认除 Adyen Payments App role 外，也已开通 Tap to
+  Pay on Android。然后重试。</p><details class="cause"><summary>原因</summary><p>终端或 Adyen 不提供此付款所需的功能，通常是因为账户尚未开通。</p>
+  </details></dd></div>
             <div><dt>“请勿再次收款：此次支付已成功。”</dt>
-              <dd><p><span class="fix-label">原因</span>虽然终端报告了取消，但付款已获批准。</p>
-                <p><span class="fix-label">解决</span>请勿再次收款。如果购物者不应付款，请为其退款。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>请勿再次收款。如果购物者不应付款，请为其退款。</p><details class="cause"><summary>原因</summary><p>
+  虽然终端报告了取消，但付款已获批准。</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="terminal-features">
           <h2>可选终端功能不可用或总额存在差异</h2>
           <dl class="fixes">
-            <div><dt>终端功能未显示或被拒绝</dt><dd><p>检查收款目标和 <a href="using#capabilities">Adyen 功能</a>，刷新终端设置，并确认 API 角色和 Adyen 账户配置。本地结账开关不会在 Adyen 开通服务。Tap to Pay 不提供实体终端流程。小费请比较<a href="using#terminal-tips">终端小费</a>和<a href="using#tips">收据小费</a>。</p></dd></div>
-            <div><dt>只有部分金额获批</dt><dd><p>从结果页面按<a href="using#partial-payments">部分付款流程</a>操作。不要再次收取原合计金额。若后续付款结果未知，请先<a href="#unknown">查询结果</a>再继续收款。</p></dd></div>
-            <div><dt>终端总额与 Mini mPOS 不符</dt><dd><p>按<a href="using#reconciliation">终端对账</a>说明检查终端周期、使用同一终端的其他设备、本地保留记录和未解决交易。结束周期不会修复差异，也不代表结算完成。</p></dd></div>
-            <div><dt>离线销售缺少 PSP 识别号或仍有未确认批次</dt><dd><p>按<a href="using#offline">离线付款检查步骤</a>操作。恢复终端与 Adyen 的连接，并在商户后台核对上传的付款。不要仅因缺少 PSP 识别号就再次收取已批准的付款。</p></dd></div>
+            <div><dt>终端功能未显示或被拒绝</dt><dd><p>检查收款目标和 <a href="using#capabilities">Adyen 功能</a>，刷新终端设置，并确认 API 角色和 Adyen
+              账户配置。本地结账开关不会在 Adyen 开通服务。Tap to Pay 不提供实体终端流程。小费请比较<a href="using#terminal-tips">终端小费</a>和
+              <a href="using#tips">收据小费</a>。</p></dd></div>
+            <div><dt>只有部分金额获批</dt><dd><p>从结果页面按<a href="using#partial-payments">部分付款流程</a>操作。不要再次收取原合计金额。若后续付款结果未知，请先
+              <a href="#unknown">查询结果</a>再继续收款。</p></dd></div>
+            <div><dt>终端总额与 Mini mPOS 不符</dt><dd><p>按<a href="using#reconciliation">终端对账</a>
+              说明检查终端周期、使用同一终端的其他设备、本地保留记录和未解决交易。结束周期不会修复差异，也不代表结算完成。</p></dd></div>
+            <div><dt>离线销售缺少 PSP 识别号或仍有未确认批次</dt><dd><p>按<a href="using#offline">离线付款检查步骤</a>操作。恢复终端与 Adyen
+              的连接，并在商户后台核对上传的付款。不要仅因缺少 PSP 识别号就再次收取已批准的付款。</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="wallets">
           <h2>没有扫描钱包按钮或扫描失败</h2>
           <dl class="fixes">
-            <div><dt>没有扫描钱包按钮</dt><dd><p>打开<strong>设置 › 终端</strong>，点按<strong>刷新扫码钱包</strong>。成功查询后没有符合条件的 POS 钱包时，按钮会保持隐藏。核对终端门店、当前币种和<a href="quick-start#credentials">API 密钥角色</a>。Tap to Pay 和预授权不提供此功能。</p></dd></div>
-            <div><dt>钱包查询报错</dt><dd><p>错误仅显示在设置中，不会阻止普通支付。请检查凭据、环境和只读访问权限。设置未变时，临时刷新错误会保留最近验证的钱包列表；成功查询到空列表或访问失败会移除它。只在启动、设置改变或手动刷新时查询，不会在每笔销售前查询。</p></dd></div>
-            <div><dt>付款码无效或未收到付款码</dt><dd><p>请使用购物者的付款码，而非个人资料、设置转移或收据二维码，并选择正确的钱包。终端扫描最多持续 30 秒，之后点按<strong>重新扫描</strong>或<strong>使用摄像头</strong>。摄像头提示时请授予权限。应用从后台返回后需重新开始扫描。</p></dd></div>
-            <div><dt>保存被拒绝或未创建令牌</dt><dd><p>请以支付结果为准。没有保存令牌的已批准付款仍然有效。仅在明确被拒绝后，如需重试，返回结账，关闭<strong>保存卡片</strong>并明确开始新扫描。应用不会自动重新付款。<strong>结果未知</strong>时应<a href="#unknown">查询原交易</a>。</p></dd></div>
+            <div><dt>没有扫描钱包按钮</dt><dd><p>打开<strong>设置 › 终端</strong>，点按<strong>刷新扫码钱包</strong>。成功查询后没有符合条件的 POS
+              钱包时，按钮会保持隐藏。核对终端门店、当前币种和<a href="quick-start#credentials">API 密钥角色</a>。Tap to Pay 和预授权不提供此功能。</p></dd>
+              </div>
+            <div><dt>钱包查询报错</dt><dd><p>
+              错误仅显示在设置中，不会阻止普通支付。请检查凭据、环境和只读访问权限。设置未变时，临时刷新错误会保留最近验证的钱包列表；成功查询到空列表或访问失败会移除它。只在启动、设置改变或手动刷新时查询，不会在每笔销售前查询。
+              </p></dd></div>
+            <div><dt>付款码无效或未收到付款码</dt><dd><p>请使用购物者的付款码，而非个人资料、设置转移或收据二维码，并选择正确的钱包。终端扫描最多持续 30 秒，之后点按<strong>重新扫描
+              </strong>或<strong>使用摄像头</strong>。摄像头提示时请授予权限。应用从后台返回后需重新开始扫描。</p></dd></div>
+            <div><dt>保存被拒绝或未创建令牌</dt><dd><p>请以支付结果为准。没有保存令牌的已批准付款仍然有效。仅在明确被拒绝后，如需重试，返回结账，关闭<strong>保存卡片</strong>
+              并明确开始新扫描。应用不会自动重新付款。<strong>结果未知</strong>时应<a href="#unknown">查询原交易</a>。</p></dd></div>
           </dl>
           <p>请参阅<a href="using#wallets">钱包支付步骤</a>。交易记录中的请求钱包仅表示支付意图，不证明付款成功或 Adyen 使用了该方式。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="connection">
           <h2>终端绑定或设置失败</h2>
-          <p>先查看首页的提示，再打开<strong>设置 › 终端</strong>，完成最后的<strong>测试连接</strong>步骤，验证 API 访问和此集成支持的连接检查。网络和云端设置使用<strong>查找要设置的终端</strong>测试 API 访问并列出终端；设备本机终端和 Tap to Pay 提供<strong>测试 API</strong>。完整步骤请参阅<a href="quick-start#connect">连接 Adyen</a>。</p>
-          <p>所有集成都可打开<strong>设置 › 帮助与故障排除 › 故障排查详情</strong>。结果包括设置缺失项、API 访问、受支持的连接检查、时间和设备信息，并标明不支持的检查。这些检查不保证付款、退款或打印成功，也不会发起付款、注册手机或更改密钥。使用<strong>分享已脱敏的报告</strong>分享显示的详情：保留商户、终端、安装实例和凭据 ID；排除秘密值、非结构化消息和顾客数据。</p>
+          <p>先查看首页的提示，再打开<strong>设置 › 终端</strong>，完成最后的<strong>测试连接</strong>步骤，验证 API 访问和此集成支持的连接检查。网络和云端设置使用<strong>
+            查找要设置的终端</strong>测试 API 访问并列出终端；设备本机终端和 Tap to Pay 提供<strong>测试 API</strong>。完整步骤请参阅
+            <a href="quick-start#connect">连接 Adyen</a>。</p>
+          <p>所有集成都可打开<strong>设置 › 帮助与故障排除 › 故障排查详情</strong>。结果包括设置缺失项、API
+            访问、受支持的连接检查、时间和设备信息，并标明不支持的检查。这些检查不保证付款、退款或打印成功，也不会发起付款、注册手机或更改密钥。使用<strong>分享已脱敏的报告</strong>
+            分享显示的详情：保留商户、终端、安装实例和凭据 ID；排除秘密值、非结构化消息和顾客数据。</p>
           <dl class="fixes">
             <div><dt>首页提示“尚未完成收款设置”</dt>
-              <dd><p><span class="fix-label">原因</span>必填字段为空、本设备无法读取已保存的密钥，或设置更改后尚未通过连接测试。在此之前，支付、退款、打印和其他 Adyen 操作会显示此说明，而不会执行。</p>
-                <p><span class="fix-label">解决</span>点按<strong>完成收款设置</strong>。在<strong>设置 › 终端</strong>中填写缺少的信息或重新输入密钥，然后点按<strong>测试连接</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>点按<strong>完成收款设置</strong>。在<strong>设置 › 终端</strong>中填写缺少的信息或重新输入密钥，然后点按<strong>测试连接</strong>。</p><details class="cause"><summary>原因</summary><p>必填字段为空、本设备无法读取已保存的密钥，或设置更改后尚未通过连接测试。在此之前，支付、退款、打印和其他
+  Adyen 操作会显示此说明，而不会执行。</p></details></dd></div>
             <div><dt>API 测试失败，或设置提示访问问题</dt>
-              <dd><p><span class="fix-label">原因</span>API 密钥、商家账户或 LIVE URL 前缀有误，缺少角色，或凭据属于其他 Company 账户或环境。</p>
-                <p><span class="fix-label">解决</span>按照<a href="quick-start#credentials">凭据要求</a>检查凭据的角色和访问范围。LIVE 请检查 <strong>LIVE URL 前缀</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>按照<a href="quick-start#credentials">凭据要求</a>检查凭据的角色和访问范围。LIVE 请检查 <strong>LIVE URL
+  前缀</strong>。</p><details class="cause"><summary>原因</summary><p>API 密钥、商家账户或 LIVE URL 前缀有误，缺少角色，或凭据属于其他 Company 账户或环境。
+  </p></details></dd></div>
             <div><dt>“商家账户与终端当前分配的账户不一致。”</dt>
-              <dd><p><span class="fix-label">原因</span>终端在 Adyen 中被分配到其他商家账户。</p>
-                <p><span class="fix-label">解决</span>输入终端所分配的商家账户，或在商户后台重新分配终端。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>输入终端所分配的商家账户，或在商户后台重新分配终端。</p><details class="cause"><summary>原因</summary><p>终端在
+  Adyen 中被分配到其他商家账户。</p></details></dd></div>
             <div><dt>Adyen 终端或网络终端的连接测试失败</dt>
-              <dd><p><span class="fix-label">原因</span>共享密钥不一致，或 IP 地址、<strong>终端 ID（POIID）</strong>已过时。</p>
-                <p><span class="fix-label">解决</span>将共享密钥的标识符、口令和版本与商户后台核对。网络终端还需在终端的“Device info”界面核对 IP 地址和 POIID。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>将共享密钥的标识符、口令和版本与商户后台核对。网络终端还需在终端的“Device info”界面核对 IP 地址和 POIID。</p>
+  <details class="cause"><summary>原因</summary><p>共享密钥不一致，或 IP 地址、<strong>终端 ID（POIID）</strong>已过时。</p></details></dd>
+  </div>
             <div><dt>连接因环境不一致被拒绝</dt>
-              <dd><p><span class="fix-label">原因</span>混用了 TEST 和 LIVE：终端、账户和 API 密钥必须属于同一环境。</p>
-                <p><span class="fix-label">解决</span>网络或云端终端及 Tap to Pay 请在<strong>设置 › 终端</strong>中检查<strong>环境</strong>。在 Adyen 终端上运行时，请使用正确环境的设备。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>网络或云端终端及 Tap to Pay 请在<strong>设置 › 终端</strong>中检查<strong>环境</strong>。在 Adyen
+  终端上运行时，请使用正确环境的设备。</p><details class="cause"><summary>原因</summary><p>混用了 TEST 和 LIVE：终端、账户和 API 密钥必须属于同一环境。</p>
+  </details></dd></div>
             <div><dt>无法连接云端终端</dt>
-              <dd><p><span class="fix-label">原因</span>终端离线、POIID 有误，或 API 密钥缺少 Cloud Device API role。</p>
-                <p><span class="fix-label">解决</span>确认终端已开机并在线，再检查 POIID 和凭据的角色。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>确认终端已开机并在线，再检查 POIID 和凭据的角色。</p><details class="cause"><summary>原因</summary><p>
+  终端离线、POIID 有误，或 API 密钥缺少 Cloud Device API role。</p></details></dd></div>
             <div><dt>未安装所选环境的 Payments 应用</dt>
-              <dd><p><span class="fix-label">原因</span>未安装所选 TEST 或 LIVE 环境的 Payments 应用。</p>
-                <p><span class="fix-label">解决</span>检查<strong>设置 › 终端 › 环境</strong>，从 Google Play 安装对应应用。两者可以同时安装。完成注册，输入对应的共享密钥，再完成一笔 TEST 付款。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>检查<strong>设置 › 终端 › 环境</strong>，从 Google Play 安装对应应用。两者可以同时安装。完成注册，输入对应的共享密钥，再完成一笔
+  TEST 付款。</p><details class="cause"><summary>原因</summary><p>未安装所选 TEST 或 LIVE 环境的 Payments 应用。</p></details></dd></div>
             <div id="tap-to-pay-check"><dt>Tap to Pay 在出示卡片前返回 UnavailableService</dt>
               <dd><p>Payments 应用无法完成请求。此通用错误不能证明 Adyen 服务中断或缺少客户端密钥。</p>
-                <p>在<strong>设置 › 终端</strong>中运行<strong>测试连接</strong>。要查看简洁的检查结果表格或分享脱敏报告，请展开<strong>设置 › 帮助与故障排除 › 故障排查详情</strong>。</p>
-                <p><strong>设置 Tap to Pay</strong>会使用主 API 密钥自动创建注册凭据和客户端密钥。如被拒绝，请检查<a href="quick-start#credentials">所需角色</a>。新密钥需要几分钟生效，然后再次<strong>测试连接</strong>。如仍无法恢复，请稍后重试或请 Adyen 支持团队检查对应的 <a href="https://ca-test.adyen.com/">TEST Customer Area</a> 或 <a href="https://ca-live.adyen.com/">LIVE Customer Area</a>。参见 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 应用要求</a>。</p>
+                <p>在<strong>设置 › 终端</strong>中运行<strong>测试连接</strong>。要查看简洁的检查结果表格或分享脱敏报告，请展开<strong>设置 › 帮助与故障排除 ›
+                  故障排查详情</strong>。</p>
+                <p><strong>设置 Tap to Pay</strong>会使用主 API 密钥自动创建注册凭据和客户端密钥。如被拒绝，请检查<a href="quick-start#credentials">
+                  所需角色</a>。新密钥需要几分钟生效，然后再次<strong>测试连接</strong>。如仍无法恢复，请稍后重试或请 Adyen 支持团队检查对应的
+                  <a href="https://ca-test.adyen.com/">TEST Customer Area</a> 或 <a href="https://ca-live.adyen.com/">
+                  LIVE Customer Area</a>。参见
+                  <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 应用要求
+                  </a>。</p>
                 <p>客户端密钥必须属于注册所用的同一凭据。</p>
-                <p><strong>分享已脱敏的报告</strong>仅分享所显示的各行：应用版本、API 访问和连接检查结果及其 UTC 时间、集成方式和环境、账户/门店/安装实例/共享密钥 ID、Android/设备/Payments 应用版本；使用 Tap to Pay 时还包括客户端密钥和注册检查结果及已验证凭据身份。</p></dd></div>
+                <p><strong>分享已脱敏的报告</strong>仅分享所显示的各行：应用版本、API 访问和连接检查结果及其 UTC 时间、集成方式和环境、账户/门店/安装实例/共享密钥
+                  ID、Android/设备/Payments 应用版本；使用 Tap to Pay 时还包括客户端密钥和注册检查结果及已验证凭据身份。</p></dd></div>
             <div id="key-setup"><dt>“新密钥已保存。请更新此终端的配置”</dt>
-              <dd><p><span class="fix-label">原因</span>加密密钥已在 Adyen 创建，但终端尚未加载。</p>
-                <p><span class="fix-label">解决</span>在终端上打开 <strong>Admin menu › Config › Update</strong>，然后返回 Mini mPOS 点按<strong>再次检查</strong>。如果创建中断，请点按<strong>继续密钥设置</strong>，不会创建第二个密钥。参见<a href="quick-start#shared-key-creation">密钥创建</a>及 <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Adyen 配置更新指南</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>在终端上打开 <strong>Admin menu › Config › Update</strong>，然后返回 Mini mPOS 点按<strong>再次检查</strong>。如果创建中断，请点按<strong>继续密钥设置</strong>，不会创建第二个密钥。参见<a href="quick-start#shared-key-creation">密钥创建</a>及
+  <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Adyen 配置更新指南</a>。</p>
+  <details class="cause"><summary>原因</summary><p>加密密钥已在 Adyen 创建，但终端尚未加载。</p></details></dd></div>
             <div><dt>旧付款的操作被阻止</dt>
-              <dd><p><span class="fix-label">原因</span>该付款之后更换了商家账户、环境或终端。</p>
-                <p><span class="fix-label">解决</span>恢复处理该付款时的配置，或在商户后台处理。不要用另一个账户处理它。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>恢复处理该付款时的配置，或在商户后台处理。不要用另一个账户处理它。</p><details class="cause"><summary>原因</summary><p>
+  该付款之后更换了商家账户、环境或终端。</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -200,19 +246,21 @@
           </div>
           <dl class="fixes">
             <div><dt>“终端未响应”，或网络终端时好时坏</dt>
-              <dd><p><span class="fix-label">原因</span>终端的 IP 地址已变化、设备换到了其他网络，或网络阻止了连接。</p>
-                <p><span class="fix-label">解决</span></p>
-                <ol>
-                  <li>在终端的“Device info”界面查看 IP 地址，并在<strong>设置 › 终端</strong>中更新。</li>
-                  <li>将设备和终端连接到同一网络。避免使用访客 Wi-Fi，它通常会隔离设备。</li>
-                  <li>请网络管理员放行两者之间的 TCP 8443，并为终端保留 IP 地址；参见<a href="quick-start#network-requirements">网络要求</a>。</li>
-                </ol></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span></p>
+<ol>
+<li>在终端的“Device info”界面查看 IP 地址，并在<strong>设置 › 终端</strong>中更新。</li>
+<li>将设备和终端连接到同一网络。避免使用访客 Wi-Fi，它通常会隔离设备。</li>
+<li>请网络管理员放行两者之间的 TCP 8443，并为终端保留 IP 地址；参见<a href="quick-start#network-requirements">网络要求</a>。</li>
+</ol><details class="cause"><summary>原因</summary><p>终端的 IP 地址已变化、设备换到了其他网络，或网络阻止了连接。</p></details></dd></div>
             <div><dt>所有配置的付款或 API 测试都失败</dt>
-              <dd><p><span class="fix-label">原因</span>设备或终端无法访问互联网，或防火墙阻止了 Adyen。</p>
-                <p><span class="fix-label">解决</span>检查互联网连接，并确认已放行到 Adyen 域名的 TCP 443 HTTPS 连接。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>检查互联网连接，并确认已放行到 Adyen 域名的 TCP 443 HTTPS 连接。</p><details class="cause"><summary>原因
+  </summary><p>设备或终端无法访问互联网，或防火墙阻止了 Adyen。</p></details></dd></div>
             <div><dt>云端付款超时</dt>
-              <dd><p><span class="fix-label">原因</span>终端失去了互联网连接。</p>
-                <p><span class="fix-label">解决</span>检查终端的 Wi-Fi、以太网或移动数据，然后运行<strong>测试连接</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>检查终端的 Wi-Fi、以太网或移动数据，然后运行<strong>测试连接</strong>。</p><details class="cause"><summary>
+  原因</summary><p>终端失去了互联网连接。</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -225,11 +273,13 @@
             <div><dt>金额调整未解决</dt>
               <dd><p><span class="fix-label">解决</span>使用相同金额重试。不同金额是独立请求，可能需先解决第一个请求。</p></dd></div>
             <div><dt>小费未保存</dt>
-              <dd><p><span class="fix-label">原因</span>小费超过 20% 时，发卡行拒绝增加冻结金额。</p>
-                <p><span class="fix-label">解决</span>输入较少的小费，或点按<strong>无小费</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>输入较少的小费，或点按<strong>无小费</strong>。</p><details class="cause"><summary>原因</summary><p>
+  小费超过 20% 时，发卡行拒绝增加冻结金额。</p></details></dd></div>
             <div><dt><strong>已请求扣款</strong>或<strong>已请求退款</strong>一直不变</dt>
-              <dd><p><span class="fix-label">原因</span>这表示 Adyen 已接受请求。Mini mPOS 没有服务器，无法收到最终确认。</p>
-                <p><span class="fix-label">解决</span>请在商户后台确认最终结果。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>请在商户后台确认最终结果。</p><details class="cause"><summary>原因</summary><p>这表示 Adyen 已接受请求。Mini
+  mPOS 没有服务器，无法收到最终确认。</p></details></dd></div>
           </dl>
           <p>冻结金额会到期，请及时处理。正常步骤请参阅<a href="using#preauth">订金</a>和<a href="using#tips">收据小费</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
@@ -238,13 +288,17 @@
           <h2>付款链接未显示或不更新</h2>
           <dl class="fixes">
             <div><dt>结账时没有<strong>创建付款链接</strong></dt>
-              <dd><p><span class="fix-label">原因</span>Checkout API 设置未完成，或本次结账是预授权或收据小费。</p>
-                <p><span class="fix-label">解决</span>在<strong>设置 › 终端</strong>中完成 Checkout API 设置。链接仅用于销售。离线演示请参阅<a href="using#payment-links">付款链接</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>在<strong>设置 › 终端</strong>中完成 Checkout API 设置。链接仅用于销售。离线演示请参阅
+  <a href="using#payment-links">付款链接</a>。</p><details class="cause"><summary>原因</summary><p>Checkout API
+  设置未完成，或本次结账是预授权或收据小费。</p></details></dd></div>
             <div><dt>已支付的链接仍显示<strong>待支付</strong></dt>
-              <dd><p><span class="fix-label">原因</span>应用仅在链接界面打开时查询。</p>
-                <p><span class="fix-label">解决</span>在交易记录中打开该记录，点按<strong>查询支付状态</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>在交易记录中打开该记录，点按<strong>查询支付状态</strong>。</p><details class="cause"><summary>原因
+  </summary><p>应用仅在链接界面打开时查询。</p></details></dd></div>
             <div><dt>创建链接时中断</dt>
-              <dd><p><span class="fix-label">解决</span>打开原记录并点按<strong>查询支付状态</strong>，会使用原请求重试；不要仅为获取链接创建另一笔销售。</p></dd></div>
+              <dd><p><span class="fix-label">解决</span>打开原记录并点按<strong>查询支付状态</strong>，会使用原请求重试；不要仅为获取链接创建另一笔销售。</p></dd>
+                </div>
           </dl>
           <p>已支付的链接请在<strong>商户后台 › Payments › Payment list</strong>中退款。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
@@ -253,18 +307,22 @@
           <h2>打印机或电子收据无法使用</h2>
           <dl class="fixes">
             <div><dt>无法打印，或没有<strong>打印收据</strong></dt>
-              <dd><p><span class="fix-label">原因</span>终端没有打印机、未检测到打印机，或连接中断。AMS1 终端和 Tap to Pay 手机没有打印机。</p>
-                <p><span class="fix-label">解决</span></p>
-                <ol>
-                  <li>在<strong>设置 › 关于</strong>中确认<strong>打印机</strong>显示<strong>可用</strong>。否则请在<strong>设置 › 终端</strong>中运行<strong>测试连接</strong>。</li>
-                  <li>在<strong>设置 › 收据</strong>中将<strong>打印机</strong>设为<strong>自动检测</strong>，并检查<strong>自动打印</strong>。</li>
-                  <li>点按<strong>打印测试收据</strong>。如果仍无法打印，请检查终端的收据纸卷。</li>
-                </ol></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span></p>
+<ol>
+<li>在<strong>设置 › 关于</strong>中确认<strong>打印机</strong>显示<strong>可用</strong>。否则请在<strong>设置 › 终端</strong>中运行<strong>测试连接</strong>。</li>
+<li>在<strong>设置 › 收据</strong>中将<strong>打印机</strong>设为<strong>自动检测</strong>，并检查<strong>自动打印</strong>。</li>
+<li>点按<strong>打印测试收据</strong>。如果仍无法打印，请检查终端的收据纸卷。</li>
+</ol><details class="cause"><summary>原因</summary><p>终端没有打印机、未检测到打印机，或连接中断。AMS1 终端和 Tap to Pay 手机没有打印机。</p></details>
+  </dd></div>
             <div><dt>排版被截断或换行异常</dt>
-              <dd><p><span class="fix-label">解决</span>在<strong>设置 › 收据</strong>中更改<strong>每行字符宽度</strong>，然后打印测试收据。</p></dd></div>
+              <dd><p><span class="fix-label">解决</span>在<strong>设置 › 收据</strong>中更改<strong>每行字符宽度</strong>，然后打印测试收据。</p>
+                </dd></div>
             <div><dt>测试邮件发送失败</dt>
-              <dd><p><span class="fix-label">原因</span>服务器、端口、安全方式或密码有误，或服务商禁止 SMTP 或密码登录。</p>
-                <p><span class="fix-label">解决</span>在<strong>设置 › 电子收据</strong>中检查服务器、端口、STARTTLS 或 SSL/TLS、用户名和密码。服务商可能要求开通 SMTP 或使用应用密码；参见<a href="using#email">邮件设置</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>在<strong>设置 › 电子收据</strong>中检查服务器、端口、STARTTLS 或 SSL/TLS、用户名和密码。服务商可能要求开通 SMTP
+  或使用应用密码；参见<a href="using#email">邮件设置</a>。</p><details class="cause"><summary>原因</summary><p>服务器、端口、安全方式或密码有误，或服务商禁止
+  SMTP 或密码登录。</p></details></dd></div>
             <div><dt>测试邮件正常，但购物者收不到收据</dt>
               <dd><p><span class="fix-label">解决</span>在<strong>设置 › 电子收据</strong>中检查何时询问电子邮件以及是否自动发送收据。</p></dd></div>
           </dl>
@@ -274,13 +332,16 @@
           <h2>PIN 和设置传输问题</h2>
           <dl class="fixes">
             <div><dt>员工忘记了经理 PIN</dt>
-              <dd><p><span class="fix-label">解决</span>管理员可在<strong>设置 › 安全</strong>中更换或移除。管理员 PIN 和经理 PIN 保护不同的操作，其中一个不会解锁另一个。</p></dd></div>
+              <dd><p><span class="fix-label">解决</span>管理员可在<strong>设置 › 安全</strong>中更换或移除。管理员 PIN 和经理 PIN
+                保护不同的操作，其中一个不会解锁另一个。</p></dd></div>
             <div><dt>忘记了管理员 PIN</dt>
               <dd><p><span class="fix-label">原因</span>没有 PIN 恢复功能。</p>
                 <p>如需在没有管理员 PIN 的情况下重新开始，请按照<a href="#storage">存储恢复</a>步骤操作。重置前请阅读数据丢失警告。</p></dd></div>
             <div><dt>传输码被拒绝，或导入后缺少密钥</dt>
-              <dd><p><span class="fix-label">原因</span>传输码与这些二维码不匹配，或未填写。</p>
-                <p><span class="fix-label">解决</span>使用与这些二维码一起显示的传输码，而不是新生成的码。每次传输都需要传输码。错误的码或留空都不会导入任何内容。复制后，请检查新设备的支付目标和凭据；参见<a href="using#more">更多设备</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>使用与这些二维码一起显示的传输码，而不是新生成的码。每次传输都需要传输码。错误的码或留空都不会导入任何内容。复制后，请检查新设备的支付目标和凭据；参见
+  <a href="using#more">更多设备</a>。</p><details class="cause"><summary>原因</summary><p>传输码与这些二维码不匹配，或未填写。</p></details></dd>
+  </div>
           </dl>
           <p>各 PIN 保护的操作请参阅<a href="using#staff">员工 PIN</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
@@ -288,16 +349,22 @@
         <section id="storage">
           <h2>无法读取或保存已存储的设置或凭据</h2>
           <p>Mini mPOS 会停止运行，而不是替换无法读取的设置或凭据，以保留文件，包括未完成设置或付款的恢复记录。</p>
-          <ol class="steps">
-            <li>重启设备并重新打开 Mini mPOS。如果设备存储空间已满，请先清理 Mini mPOS 以外的空间。仅清除应用缓存不会重置已保存的设置。</li>
-            <li>重置前，请保留所需记录，并处理未完成的付款、退款、捕获和调整。如果无法打开应用，请在 Customer Area 确认结果；参见<a href="#unknown">结果未知</a>。如果结果仍不确定，请保留应用数据并先与 Adyen 核对。不要因为无法打开应用就再次发送操作。</li>
-            <li>如果问题持续，且您接受丢失全部本地数据，可重置 Mini mPOS。在手机或平板电脑上，打开 Android <strong>设置 › 应用 › Mini mPOS › 存储和缓存 › 清除存储空间</strong>（名称因设备而异），或卸载 Mini mPOS 并从<a href="https://github.com/astiskala/minimpos/releases/latest">最新版本</a>重新安装。在 Adyen 终端上，请由终端应用管理员安排重置或卸载后重新安装；参见<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen 应用部署指南</a>。</li>
-            <li>重新设置 Mini mPOS，或导入可信的设置传输，然后完成<strong>测试连接</strong>，再进行真实付款。参见<a href="quick-start#connect">连接 Adyen</a>。</li>
-          </ol>
           <div class="callout callout-warning" role="note">
-            <p class="callout-title">警告</p>
-            <p>清除存储空间或卸载会删除全部本地商品、设置、凭据、PIN、交易记录和未完成操作的恢复记录。设置传输无法恢复交易记录或这些恢复记录。重置不会撤销已发送到 Adyen 的付款、退款或捕获。</p>
-          </div>
+<p class="callout-title">警告</p>
+<p>清除存储空间或卸载会删除全部本地商品、设置、凭据、PIN、交易记录和未完成操作的恢复记录。设置传输无法恢复交易记录或这些恢复记录。重置不会撤销已发送到 Adyen 的付款、退款或捕获。</p>
+</div>
+<ol class="recovery-steps">
+            <li>重启设备并重新打开 Mini mPOS。如果设备存储空间已满，请先清理 Mini mPOS 以外的空间。仅清除应用缓存不会重置已保存的设置。</li>
+            <li>重置前，请保留所需记录，并处理未完成的付款、退款、捕获和调整。如果无法打开应用，请在 Customer Area 确认结果；参见<a href="#unknown">结果未知</a>
+              。如果结果仍不确定，请保留应用数据并先与 Adyen 核对。不要因为无法打开应用就再次发送操作。</li>
+            <li>如果问题持续，且您接受丢失全部本地数据，可重置 Mini mPOS。在手机或平板电脑上，打开 Android <strong>设置 › 应用 › Mini mPOS › 存储和缓存 › 清除存储空间
+              </strong>（名称因设备而异），或卸载 Mini mPOS 并从<a href="https://github.com/astiskala/minimpos/releases/latest">最新版本
+              </a>重新安装。在 Adyen 终端上，请由终端应用管理员安排重置或卸载后重新安装；参见
+              <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen 应用部署指南</a>。</li>
+            <li>重新设置 Mini mPOS，或导入可信的设置传输，然后完成<strong>测试连接</strong>，再进行真实付款。参见<a href="quick-start#connect">连接 Adyen</a>
+              。</li>
+          </ol>
+
           <p>覆盖安装更新不会重置应用存储。如果错误再次出现，请<a href="#help">在 GitHub 报告应用问题</a>，不要附上已保存的配置文件或凭据。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -305,69 +372,90 @@
           <h2>终端无法安装应用</h2>
           <dl class="fixes">
             <div><dt><code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code></dt>
-              <dd><p><span class="fix-label">原因</span>APK 未签名。</p>
-                <p><span class="fix-label">解决</span>上传<a href="https://github.com/astiskala/minimpos/releases/latest">最新发布版本</a>中已签名的 <code>minimpos-&lt;version&gt;.apk</code>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>上传<a href="https://github.com/astiskala/minimpos/releases/latest">最新发布版本</a>中已签名的
+  <code>minimpos-&lt;version&gt;.apk</code>。</p><details class="cause"><summary>原因</summary><p>APK 未签名。</p></details>
+  </dd></div>
             <div><dt><code>INVALID_SIGNING_CERTIFICATE_MISMATCH</code></dt>
-              <dd><p><span class="fix-label">原因</span>APK 的签名密钥与之前上传的不同。</p>
-                <p><span class="fix-label">解决</span>保持原签名来源。确需更换时，请向 Adyen 支持团队咨询移除旧版本。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>保持原签名来源。确需更换时，请向 Adyen 支持团队咨询移除旧版本。</p><details class="cause"><summary>原因</summary>
+  <p>APK 的签名密钥与之前上传的不同。</p></details></dd></div>
             <div><dt>不支持的 Android 版本</dt>
-              <dd><p><span class="fix-label">原因</span>Mini mPOS 需要 Android 9 或更高版本；旧款 S1E 运行 Android 7.1。</p>
-                <p><span class="fix-label">解决</span>使用受支持的终端；参见<a href="quick-start#install">安装</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>使用受支持的终端；参见<a href="quick-start#install">安装</a>。</p><details class="cause"><summary>
+  原因</summary><p>Mini mPOS 需要 Android 9 或更高版本；旧款 S1E 运行 Android 7.1。</p></details></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="messages">
           <h2>出现错误消息</h2>
-          <p>每条消息都会说明问题及需要检查的内容。括号中的详细信息（如 IP 地址、HTTP 状态或 Adyen 的原文）有助于 Adyen 支持团队排查，寻求帮助时请一并提供。如果有付款正在进行，请先<a href="#unknown">查询其结果</a>，再处理其他问题。</p>
-          <dl class="fixes">
+          <p>每条消息都会说明问题及需要检查的内容。括号中的详细信息（如 IP 地址、HTTP 状态或 Adyen 的原文）有助于 Adyen 支持团队排查，寻求帮助时请一并提供。如果有付款正在进行，请先
+            <a href="#unknown">查询其结果</a>，再处理其他问题。</p>
+          <details class="error-catalog"><summary>错误消息</summary><dl class="fixes">
             <div><dt>“无法连接终端。请确认终端已开机、位于同一网络，且 IP 地址正确。”</dt>
-              <dd><p><span class="fix-label">原因</span>Mini mPOS 无法连接到所保存 IP 地址上的网络终端。</p>
-                <p><span class="fix-label">解决</span>请参阅<a href="#network-dropouts">连接中断</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>请参阅<a href="#network-dropouts">连接中断</a>。</p><details class="cause"><summary>原因
+  </summary><p>Mini mPOS 无法连接到所保存 IP 地址上的网络终端。</p></details></dd></div>
             <div><dt>“此地址不是所选环境中的 Adyen 终端。请检查 IP 地址以及 TEST 或 LIVE。”</dt>
-              <dd><p><span class="fix-label">原因</span>该地址有设备响应，但不是所选环境中的 Adyen 终端：该地址已分配给其他设备，或混用了 TEST 和 LIVE。</p>
-                <p><span class="fix-label">解决</span>在终端的“Device info”屏幕上核对 IP 地址，并检查<strong>设置 › 终端</strong>中的<strong>环境</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>在终端的“Device info”屏幕上核对 IP 地址，并检查<strong>设置 › 终端</strong>中的<strong>环境</strong>。</p>
+  <details class="cause"><summary>原因</summary><p>该地址有设备响应，但不是所选环境中的 Adyen 终端：该地址已分配给其他设备，或混用了 TEST 和 LIVE。</p></details>
+  </dd></div>
             <div><dt>“终端拒绝了共享密钥。请在终端设置中检查密钥标识、版本和密码短语。”</dt>
-              <dd><p><span class="fix-label">原因</span>共享密钥的标识、版本或密码短语与终端上的不一致。</p>
-                <p><span class="fix-label">解决</span>与商户后台中的设置进行核对，或<a href="#key-setup">重新设置密钥</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>与商户后台中的设置进行核对，或<a href="#key-setup">重新设置密钥</a>。</p><details class="cause"><summary>
+  原因</summary><p>共享密钥的标识、版本或密码短语与终端上的不一致。</p></details></dd></div>
             <div><dt>“无法验证终端的回复。请在终端设置中检查共享密钥。”</dt>
-              <dd><p><span class="fix-label">原因</span>终端使用了不同的共享密钥回复，因此请求可能已送达终端。</p>
-                <p><span class="fix-label">解决</span>再次收款前请先<a href="#unknown">查询结果</a>，然后修正共享密钥。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>再次收款前请先<a href="#unknown">查询结果</a>，然后修正共享密钥。</p><details class="cause"><summary>原因
+  </summary><p>终端使用了不同的共享密钥回复，因此请求可能已送达终端。</p></details></dd></div>
             <div><dt>“终端未连接到 Adyen。请确认终端已开机并已联网。”</dt>
-              <dd><p><span class="fix-label">原因</span>云终端已关机或没有互联网连接。</p>
-                <p><span class="fix-label">解决</span>检查终端的 Wi-Fi、以太网或移动数据，然后运行<strong>测试连接</strong>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>检查终端的 Wi-Fi、以太网或移动数据，然后运行<strong>测试连接</strong>。</p><details class="cause"><summary>
+  原因</summary><p>云终端已关机或没有互联网连接。</p></details></dd></div>
             <div><dt>“Adyen 未接受 API 密钥。请在终端设置中检查。”</dt>
-              <dd><p><span class="fix-label">原因</span>API 密钥有误、已被撤销，或属于另一个环境。</p>
-                <p><span class="fix-label">解决</span>重新输入密钥，并对照<a href="quick-start#credentials">凭据要求</a>检查。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>重新输入密钥，并对照<a href="quick-start#credentials">凭据要求</a>检查。</p><details class="cause">
+  <summary>原因</summary><p>API 密钥有误、已被撤销，或属于另一个环境。</p></details></dd></div>
             <div><dt>“此 API 密钥缺少所需角色或对此商户账户的访问权限。请在商户后台检查 API 凭据。”</dt>
-              <dd><p><span class="fix-label">原因</span>凭据缺少某个角色或对此商户账户的访问权限。已知缺少的角色时，括号中会注明。</p>
-                <p><span class="fix-label">解决</span>在商户后台中添加该角色或账户访问权限；请参阅<a href="quick-start#credentials">凭据要求</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>在商户后台中添加该角色或账户访问权限；请参阅<a href="quick-start#credentials">凭据要求</a>。</p>
+  <details class="cause"><summary>原因</summary><p>凭据缺少某个角色或对此商户账户的访问权限。已知缺少的角色时，括号中会注明。</p></details></dd></div>
             <div><dt>“Adyen 繁忙或暂时不可用。”</dt>
-              <dd><p><span class="fix-label">原因</span>Adyen 正在限制请求，或暂时不可用。</p>
-                <p><span class="fix-label">解决</span>稍候片刻再重试。如果是付款、扣款或付款链接，请先<a href="#unknown">查询其结果</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>稍候片刻再重试。如果是付款、扣款或付款链接，请先<a href="#unknown">查询其结果</a>。</p><details class="cause">
+  <summary>原因</summary><p>Adyen 正在限制请求，或暂时不可用。</p></details></dd></div>
             <div><dt>“未在规定时间内收到响应。”</dt>
-              <dd><p><span class="fix-label">原因</span>请求已发出，但未收到响应，因此结果未知。</p>
-                <p><span class="fix-label">解决</span>请<a href="#unknown">查询结果</a>。在确认结果前，请勿再次收款。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>请<a href="#unknown">查询结果</a>。在确认结果前，请勿再次收款。</p><details class="cause"><summary>原因
+  </summary><p>请求已发出，但未收到响应，因此结果未知。</p></details></dd></div>
             <div><dt>“尚未收到 Payments 应用的回复。无法向其查询结果，请在商户后台核实此次支付。”</dt>
-              <dd><p><span class="fix-label">原因</span>使用 Tap to Pay 时，无法向 Payments 应用查询结果，且尚未收到迟到的回复。</p>
-                <p><span class="fix-label">解决</span>再次收款前，请在商户后台中查找此次付款。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>再次收款前，请在商户后台中查找此次付款。</p><details class="cause"><summary>原因</summary><p>使用 Tap to Pay
+  时，无法向 Payments 应用查询结果，且尚未收到迟到的回复。</p></details></dd></div>
             <div><dt>“无法打开 Adyen Payments 应用。请确认已安装该应用。”</dt>
-              <dd><p><span class="fix-label">原因</span>Payments 应用未安装或已被移除。</p>
-                <p><span class="fix-label">解决</span>安装与您的环境对应的 Payments 应用，然后重试。请参阅<a href="quick-start#connect">连接 Adyen</a>。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>安装与您的环境对应的 Payments 应用，然后重试。请参阅<a href="quick-start#connect">连接 Adyen</a>。</p>
+  <details class="cause"><summary>原因</summary><p>Payments 应用未安装或已被移除。</p></details></dd></div>
             <div><dt>“邮件服务器未接受用户名或密码。请在“设置 › 电子收据”中检查。”</dt>
-              <dd><p><span class="fix-label">原因</span>SMTP 用户名或密码有误，或邮件服务商要求使用应用专用密码。</p>
-                <p><span class="fix-label">解决</span>更正后发送一封测试邮件。</p></dd></div>
+              <dd>
+<p><span class="fix-label">解决</span>更正后发送一封测试邮件。</p><details class="cause"><summary>原因</summary><p>SMTP
+  用户名或密码有误，或邮件服务商要求使用应用专用密码。</p></details></dd></div>
             <div><dt>“此设备的安全存储无法使用。请重试或重启设备。”</dt>
-              <dd><p><span class="fix-label">原因</span>Android 密钥库无法加密或读取已保存的密钥信息。</p>
-                <p><span class="fix-label">解决</span>如果重启后问题仍然存在，请重新输入密钥和密码。</p></dd></div>
-          </dl>
+              <dd>
+<p><span class="fix-label">解决</span>如果重启后问题仍然存在，请重新输入密钥和密码。</p><details class="cause"><summary>原因</summary><p>Android
+  密钥库无法加密或读取已保存的密钥信息。</p></details></dd></div>
+          </dl></details>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="help">
           <h2>仍需帮助？</h2>
-          <p>Adyen 账户、终端部署、付款方式或最终付款结果请联系 Adyen。应用问题请<a href="https://github.com/astiskala/minimpos/issues">提交 GitHub issue</a>，并提供应用版本、设备型号、配置、TEST 或 LIVE 环境以及复现步骤。</p>
+          <p>Adyen 账户、终端部署、付款方式或最终付款结果请联系 Adyen。应用问题请<a href="https://github.com/astiskala/minimpos/issues">提交 GitHub
+            issue</a>，并提供应用版本、设备型号、配置、TEST 或 LIVE 环境以及复现步骤。</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
-            <p>切勿包含密钥、密码、PIN 或购物者数据。疑似漏洞请按<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>私下报告。</p>
+            <p>切勿包含密钥、密码、PIN 或购物者数据。疑似漏洞请按<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>
+              私下报告。</p>
           </div>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>

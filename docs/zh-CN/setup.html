@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -97,7 +97,9 @@
       <div class="setup-main">
         <p>初次使用 Mini mPOS？填写前请先<a href="quick-start#choose">选择配置方式</a>并<a href="quick-start#credentials">准备凭据</a>。</p>
         <p class="hint" id="customer-area-note">商户后台链接会在新标签页中打开，方便保留此表单。</p>
-        <p class="note" id="setup-noscript">设置助手需要 JavaScript。请为此页面启用 JavaScript，或按照<a href="quick-start#connect">快速入门指南</a>在应用中输入。</p>
+        <noscript><p class="note">JavaScript 已关闭。请启用后使用设置助手，或直接在应用中输入。 <a href="quick-start#connect">连接</a>.</p>
+          </noscript>
+<p class="hint" id="setup-loading" role="status">正在加载设置表单…</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
               data-msg-making="正在生成二维码…"
@@ -108,30 +110,38 @@
               data-msg-unsupported="此浏览器无法生成二维码。请使用最新版本的 Chrome、Edge、Firefox 或 Safari。">
           <fieldset>
             <legend>Mini mPOS 在哪里运行，支付发往哪里？</legend>
-            <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>在 Adyen 终端上运行</strong>，由该终端直接收款</span></label>
+            <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>在
+              Adyen 终端上运行</strong>，由该终端直接收款</span></label>
             <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>在平板电脑或手机上运行</strong>，配合同一网络中的终端</span></label>
             <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>在平板电脑或手机上运行</strong>，配合通过互联网连接的终端（云端）</span></label>
-            <label class="choice"><input type="radio" name="destination" value="tapToPay"> <span><strong>在手机上运行</strong>，通过 Adyen Payments 应用使用 Tap to Pay</span></label>
+            <label class="choice"><input type="radio" name="destination" value="tapToPay"> <span><strong>在手机上运行</strong>
+              ，通过 Adyen Payments 应用使用 Tap to Pay</span></label>
           </fieldset>
 
           <fieldset>
             <legend>使用哪个 Adyen 环境？</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：测试终端和测试卡</span></label>
-            <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：真实支付</span></label>
+            <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：真实支付
+              </span></label>
             <p class="hint">每个设置二维码都包含 TEST 或 LIVE，供导入前确认。网络或云端终端及 Tap to Pay 会使用所选环境；Adyen 终端连接仍使用设备证书中的环境。</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud">
             <legend>如何设置？</legend>
             <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自动（推荐）</strong>：在设备上查询终端设置</span></label>
-            <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手动</strong>：在电脑上输入全部连接信息</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手动</strong>
+              ：在电脑上输入全部连接信息</span></label>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>请先遵循<a href="quick-start#tap-to-pay">Tap to Pay 准备步骤</a>并安装 Payments 应用。Mini mPOS 使用 Adyen API 密钥自动创建注册凭据。请在此输入共享密钥；Mini mPOS 不会查询共享密钥。导入完成前，手机会要求明确执行注册操作。</p>
+          <p class="hint" data-only="tapToPay" hidden>请先遵循<a href="quick-start#tap-to-pay">Tap to Pay 准备步骤</a>并安装
+            Payments 应用。Mini mPOS 使用 Adyen API 密钥自动创建注册凭据。请在此输入共享密钥；Mini mPOS 不会查询共享密钥。导入完成前，手机会要求明确执行注册操作。</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API 密钥</legend>
-            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="tapToPay" hidden>此密钥用于 Checkout 和自动创建注册凭据。</span>所有配置都需要相同的主凭据角色；参见<a href="quick-start#credentials">凭据要求</a>。</p>
+            <p class="hint">在
+              <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="tapToPay" hidden>此密钥用于 Checkout
+              和自动创建注册凭据。</span>所有配置都需要相同的主凭据角色；参见<a href="quick-start#credentials">凭据要求</a>。</p>
             <label for="apiKey">API 密钥</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -160,7 +170,9 @@
 
           <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
             <legend>共享密钥</legend>
-            <p class="hint">在商户后台的 <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Device settings › Terminal API</a> 中的 Encryption key 下（点击铅笔图标查看）。</p>
+            <p class="hint">在商户后台的
+              <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Devices › Device settings › Terminal API</a> 中的 Encryption key 下（点击铅笔图标查看）。</p>
             <label for="keyIdentifier">密钥标识符</label>
             <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
             <label for="passphrase">密钥口令</label>
@@ -171,22 +183,31 @@
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
             <legend>LIVE URL 前缀</legend>
-            <p class="hint">见 <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API URLs</a>。</p>
+            <p class="hint">见
+              <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Developers › API URLs</a>。</p>
             <label for="liveUrlPrefix">前缀</label>
             <input id="liveUrlPrefix" name="liveUrlPrefix" type="text" required spellcheck="false" placeholder="1797a841fbb37ca7-AdyenDemo">
           </fieldset>
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS 自动创建具有 Adyen Payments App role 和客户端密钥的独立凭据。无需输入或传输额外密钥。参见<a href="troubleshooting#tap-to-pay-check">Tap to Pay 故障排除</a>和 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 应用指南</a>。</p>
+            <p class="hint">Mini mPOS 自动创建具有 Adyen Payments App role 和客户端密钥的独立凭据。无需输入或传输额外密钥。参见
+              <a href="troubleshooting#tap-to-pay-check">Tap to Pay 故障排除</a>和
+              <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 应用指南</a>。
+              </p>
             <label for="storeId">门店 ID（可选）</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
-            <p class="hint">如只为一家门店设置本手机：填写 <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> 中该门店的 ID（不是其 reference）。</p>
+            <p class="hint">如只为一家门店设置本手机：填写
+              <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+              Devices › Stores</a> 中该门店的 ID（不是其 reference）。</p>
           </fieldset>
 
-          <fieldset>
+          <details class="setup-optional"><summary>可选收据和邮件设置</summary>
+<fieldset>
             <legend>收据信息（可选）</legend>
-            <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>保留现有收据设置</span></label>
+            <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>保留现有收据设置</span>
+              </label>
             <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>包含收据信息</span></label>
             <p class="hint">关闭时，不导入收据文本或 Adyen 商家信息。</p>
 
@@ -194,19 +215,22 @@
               <legend>收据信息</legend>
               <p class="hint">每项商家信息均可选择从 Adyen 导入或手动输入。</p>
               <label for="receiptNameSource">商家名称</label>
-              <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
+              <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">从 Adyen 导入</option>
+                <option value="manual">手动输入</option></select>
               <div data-receipt="receiptNameSource" hidden>
                 <label for="receiptBusinessName">收据商家名称</label>
                 <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
               </div>
               <label for="receiptAddressSource">地址</label>
-              <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
+              <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">从 Adyen 导入</option>
+                <option value="manual">手动输入</option></select>
               <div data-receipt="receiptAddressSource" hidden>
                 <label for="receiptAddressLines">收据地址</label>
                 <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
               </div>
               <label for="receiptPhoneSource">电话</label>
-              <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
+              <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">从 Adyen 导入</option>
+                <option value="manual">手动输入</option></select>
               <div data-receipt="receiptPhoneSource" hidden>
                 <label for="receiptPhone">收据电话</label>
                 <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
@@ -217,13 +241,15 @@
               <input id="receiptTitle" name="receiptTitle" type="text">
               <label for="receiptFooter">页脚（可选）</label>
               <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
-              <p class="hint">只有已填写的手动文本会更改已保存值，留空会保留原文本。税号、标题和页脚需手动输入，不从 Adyen 导入。参见<a href="using#receipts">收据设置</a>。</p>
+              <p class="hint">只有已填写的手动文本会更改已保存值，留空会保留原文本。税号、标题和页脚需手动输入，不从 Adyen 导入。参见<a href="using#receipts">收据设置</a>。
+                </p>
             </fieldset>
           </fieldset>
 
           <fieldset>
             <legend>电子收据（可选）</legend>
-            <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>保留现有邮件设置</span></label>
+            <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>保留现有邮件设置</span>
+              </label>
             <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>包含 SMTP 设置</span></label>
             <p class="hint">请先检查<a href="using#email">邮件设置及服务商要求</a>；设置助手无法测试服务器。</p>
 
@@ -233,9 +259,12 @@
               <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
               <label for="smtpPort">端口</label>
               <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS（通常为端口 587）</span></label>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS（通常为端口 465）</span></label>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>无（不加密，不推荐）</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>
+                STARTTLS（通常为端口 587）</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS（通常为端口 465）</span>
+                </label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>无（不加密，不推荐）</span>
+                </label>
               <label for="smtpUsername">用户名（可选）</label>
               <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
               <label for="smtpPassword">密码或应用密码（可选）</label>
@@ -247,6 +276,7 @@
               <p class="hint">只更改已填写字段。可选项留空会保留已保存值；如需清除，请在“设置 › 电子收据”中操作。密码与其他秘密信息一同加密。</p>
             </fieldset>
           </fieldset>
+</details>
 
           <div class="setup-actions">
             <button class="button" type="submit">生成二维码</button>
@@ -257,7 +287,7 @@
       </div>
 
       <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
-        <h2 id="setup-codes-title">用设备扫描这些二维码</h2>
+        <h2 id="setup-codes-title" tabindex="-1">用设备扫描这些二维码</h2>
         <div class="setup-scan">
           <div class="setup-qr" id="setup-qr"></div>
           <div class="setup-controls">
@@ -268,10 +298,15 @@
           </div>
         </div>
         <div class="setup-next">
-          <div class="setup-code-card" id="setup-code-card">
+
+<div class="setup-code-card" id="setup-code-card">
             <p>传输码</p>
             <p class="setup-code" id="setup-code"></p>
           </div>
+<dl class="setup-summary"><div><dt>支付目标</dt><dd id="setup-summary-destination"></dd></div><div><dt>环境</dt>
+<dd id="setup-summary-environment"></dd></div><div><dt>设置方式</dt><dd id="setup-summary-mode"></dd></div><div>
+<dt>收据设置</dt><dd id="setup-summary-receipt"></dd></div><div><dt>邮件设置</dt><dd id="setup-summary-email"></dd>
+</div></dl>
           <ol>
             <li>在 Mini mPOS 中打开<strong>设置 › 终端</strong>，点按快速设置下的<strong>扫描设置二维码</strong>，或右上角的二维码扫描图标。</li>
             <li>用摄像头扫描二维码。有多个二维码时会自动轮换。</li>
@@ -285,7 +320,7 @@
       <aside class="setup-side"><div>
         <h2>须知</h2>
         <ul>
-          <li><strong>数据不会离开此页面。</strong>二维码在您的浏览器中生成；页面不会发送或保存任何内容。完成后请关闭页面。</li>
+          <li id="setup-privacy"><strong>凭据在浏览器内处理。</strong> 助手在本地生成二维码，不会发送或保存输入的凭据。网站也会加载 Cloudflare 安全和性能服务。</li>
           <li><strong>密钥经过加密。</strong>二维码中的密码和密钥使用传输码加密，传输码只在这里显示，因此仅拍摄二维码不会泄露它们。</li>
           <li><strong>请保密传输码。</strong>同时持有二维码和传输码的人可解密密钥。按需生成新传输，完成后关闭页面。</li>
           <li><strong>需要完整说明？</strong>参阅<a href="quick-start">快速入门</a>；导入或连接问题参见<a href="troubleshooting">故障排查</a>。</li>

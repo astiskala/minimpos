@@ -288,10 +288,20 @@ website-test and relevant build changes, or manually; app-only and version-only 
 The public site is <https://minimpos.app/>.
 
 [Documentation changes](AGENTS.md#documentation-changes) lists the content and translation rules. Only the setup
-helper runs scripts (`docs/js/setup.js` and the vendored `qrcodegen.js`); its format changes alongside
+helper has authored scripts (`docs/js/setup.js` and the vendored `qrcodegen.js`); its format changes alongside
 `TransferCodec`, `QrChunks`, `TransferSeal` and the helper vectors in `SetupTransferTest`. Website tests protect
 workflow coverage and translation parity, not a fixed count of pages or headings. For a quick check, run
 `scripts/dev check website`; the full gate remains required.
+
+The live host injects Cloudflare security, Rocket Loader and performance scripts. Every page's CSP permits local
+scripts, Cloudflare's analytics script and Rocket Loader origin, and inline script elements for its dynamic security
+bootstrap. Static meta policies cannot attach a per-response nonce to that bootstrap. Event-handler attributes,
+string evaluation, frames and workers remain blocked. Fetch/beacon exceptions are restricted to the hosting paths in
+[the security policy](SECURITY.md#transfers-and-the-setup-helper), not general application network access.
+The local helper scripts opt out of Rocket Loader scheduling so the form appears promptly. Test policy behavior with
+`SearchMetadataTest` and offline generation with `SetupHelperTest`; recheck hosted console/network behavior after deployment.
+Cloudflare documents the [service CSP requirements](https://developers.cloudflare.com/fundamentals/reference/policies-compliances/content-security-policies/)
+and [dynamic security bootstrap](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/javascript-detections/).
 
 Each language has a `site.webmanifest` with localized guide shortcuts and its home page as the launch URL. Keep the
 shared application ID and site-wide scope when editing them. `docs/llms.txt` indexes the canonical pages in all seven

@@ -61,10 +61,14 @@ reveal the secrets. Anyone with both can decrypt them,
 so keep the code private and generate a fresh transfer when needed. Transfers are protected by admin access when an
 admin PIN is configured; they are not a remote revocation mechanism.
 
-The [setup helper](https://minimpos.app/setup) generates connection codes locally in a trusted browser. It loads no third-party
-resources, sends no form data, and stores no entered credentials. Its Content Security Policy blocks network requests
-and form submission. Close the page when finished. Device-to-device copying and browser setup have different import
-scopes; see [devices and data](https://minimpos.app/using#more).
+The [setup helper](https://minimpos.app/setup) generates connection codes locally in a trusted browser. Its own scripts
+send no form data and store no entered credentials. The hosted website also permits Cloudflare's injected security,
+script-loading and performance services. The browser and hosting scripts are part of the trusted environment.
+The policy blocks form submission and limits fetch/beacon requests to `https://minimpos.app/cdn-cgi/` and
+`https://cloudflareinsights.com/cdn-cgi/rum`; it does not allow Adyen or arbitrary network destinations. Inline script
+elements are permitted for Cloudflare's dynamic bootstrap; inline event handlers and string evaluation remain blocked.
+Close the page when finished. Device-to-device copying and browser setup have different import scopes;
+see [devices and data](https://minimpos.app/using#more).
 
 Receipts shared through Android are written as a single cached image. The selected app receives read access to that
 file, not the app's private database. Email sends receipt/customer information through the configured SMTP service.
@@ -78,8 +82,9 @@ payment terminals; prefer a network terminal where practical.
 - Use dedicated, least-privilege API credentials with the
   [roles and account access required for your destination](https://minimpos.app/quick-start#credentials).
   Boarding uses a separate Adyen Payments app credential, created automatically with the primary key. For Tap to Pay
-  only, the primary key needs credential-management write access: compromise can permit creating or modifying API
-  credentials within its account scope. Generated boarding credentials and creation-recovery records stay encrypted on
+  registration, the primary key uses credential-management write access, required for every setup: compromise can
+  permit creating or modifying API credentials within its account scope. Generated boarding credentials and
+  creation-recovery records stay encrypted on
   this device and are never transferred by QR.
 - Set an admin PIN; optionally require a Manager PIN for financial follow-up actions. Keep phone/tablet screen locks
   and Android security updates enabled. Review [staff access](https://minimpos.app/using#business).

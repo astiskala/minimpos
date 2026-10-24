@@ -20,6 +20,18 @@ class TerminalFeaturesGuideTest {
         )
 
     @Test
+    fun `every guide links configuration based surcharge requirements and restrictions`() {
+        val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
+        resources.keys.forEach { language ->
+            val directory = docs.resolve(if (language == "en") "" else language)
+            val using = Jsoup.parse(directory.resolve("using.html").readText())
+            assertThat(using.select("a[href='https://docs.adyen.com/point-of-sale/surcharge/configuration']")).isNotEmpty()
+            assertThat(using.select("a[href='https://docs.adyen.com/point-of-sale/surcharge']")).isNotEmpty()
+            assertThat(using.text()).contains("DCC")
+        }
+    }
+
+    @Test
     fun `terminal workflows use localized app labels and are reachable from setup`() {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         val labels =

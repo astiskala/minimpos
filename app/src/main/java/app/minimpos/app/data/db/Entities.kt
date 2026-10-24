@@ -288,6 +288,14 @@ data class SaleEntity(
     @ColumnInfo(defaultValue = "0") val audioGuidance: Boolean = false,
     /** The tip written on the receipt; null while it is awaited (or for other sales), 0 for no tip. Added in version 6. */
     val tipMinor: Long? = null,
+    /** Reported surcharge included in the terminal total; null if any tender is unreported. Added in version 18. */
+    val surchargeMinor: Long? = null,
+    /** Total authorized across terminal tenders, including tips, surcharge and cashback; null for historical data. */
+    val terminalPaidMinor: Long? = null,
+    /** Frozen amount of the active terminal attempt, excluding terminal-added components; null for old history. */
+    val tenderRequestedMinor: Long? = null,
+    /** Cashback included in the terminal total; null when unreported. Added in version 18. */
+    val cashBackMinor: Long? = null,
     /**
      * What the payment holds after authorisation adjustments; null while it was never adjusted, when [totalMinor] is
      * held. Added in database version 6.
@@ -401,8 +409,8 @@ data class SaleEntity(
     /** Whether it has not been answered yet, so it may still be waiting to be sent or settled. */
     val pending: Boolean get() = status == SaleStatus.PENDING
 
-    /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
-    val heldMinor: Long get() = authorisedMinor ?: totalMinor
+    /** Held amount after adjustment, else the inclusive terminal authorization, else the historical bill amount. */
+    val heldMinor: Long get() = authorisedMinor ?: terminalPaidMinor ?: totalMinor
 
     /**
      * Whether the payment was taken with manual capture, so it only held its amount until captured: a
@@ -417,6 +425,14 @@ data class SaleEntity(
     /** Remaining unpaid balance in minor units when [isPartiallyPaid], else 0. */
     val remainingMinor: Long get() = if (isPartiallyPaid) (totalMinor - paidMinor).coerceAtLeast(0) else 0
 
+    /** Surcharge within the current amount; changed captures cannot infer positive fees, while reported zero stays zero. */
+    val amountSurchargeMinor: Long? get() =
+        when {
+            surchargeMinor == 0L -> 0L
+            captureStatus?.captured == true && capturedMinor != terminalPaidMinor -> null
+            else -> surchargeMinor
+        }
+
     /**
      * The payment's amount as it stands: the capture's once captured ([CaptureStatus.captured]), else the partially
      * paid amount when [isPartiallyPaid], else the bill plus any tip entered, else what a pre-authorisation holds, else [totalMinor].
@@ -425,9 +441,10 @@ data class SaleEntity(
         get() =
             when {
                 captureStatus?.captured == true -> capturedMinor ?: totalMinor
-                isPartiallyPaid -> paidMinor + (tipMinor ?: 0)
-                tipMinor != null -> totalMinor + tipMinor
                 kind == SaleKind.PRE_AUTHORISATION -> heldMinor
+                terminalPaidMinor != null -> terminalPaidMinor
+                isPartiallyPaid -> Math.addExact(paidMinor, tipMinor ?: 0)
+                tipMinor != null -> Math.addExact(totalMinor, tipMinor)
                 else -> totalMinor
             }
 }
@@ -614,6 +631,12 @@ data class RefundEntity(
      * [id]) because its payment was a saved-card charge, rather than as a terminal reversal. Added in database version 12.
      */
     @ColumnInfo(defaultValue = "0") val checkoutRefund: Boolean = false,
+    /** Original local tender, frozen before sending; null for historical or foreign payments. */
+    val tenderId: String? = null,
+    /** Surcharge returned within [amountMinor]; null if original or prior refund components are unknown. */
+    val surchargeMinor: Long? = null,
+    /** Tip returned within [amountMinor]; null if original or prior refund components are unknown. */
+    val tipMinor: Long? = null,
 )
 
 /**
@@ -632,6 +655,14 @@ data class RefundEntity(
  * @property paymentBrand Card scheme or wallet brand for this tender.
  * @property maskedPan Masked PAN for this tender.
  * @property createdAt Epoch milliseconds when this tender was recorded.
+ * @property tipMinor Reported tip included in the authorized total; null when unreported.
+ * @property surchargeMinor Reported fee included in the authorized total; null when unreported.
+ * @property cashBackMinor Cash returned within the authorized total; null when unreported.
+ * @property serviceId Original request identity; null for historical rows.
+ * @property context Original destination/account; null for historical rows.
+ * @property poiReconciliationId Original terminal reconciliation period; null when unavailable.
+ * @property customerReceiptJson Original customer receipt fields; null for historical rows.
+ * @property cashierReceiptJson Original merchant receipt fields; null for historical rows.
  */
 @Entity(
     tableName = "sale_tenders",
@@ -643,7 +674,7 @@ data class RefundEntity(
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("saleId"), Index("poiTransactionId")],
+    indices = [Index("saleId"), Index("poiTransactionId"), Index(value = ["createdAt", "saleId"])],
 )
 data class SaleTenderEntity(
     @PrimaryKey val id: String,
@@ -658,6 +689,22 @@ data class SaleTenderEntity(
     val paymentBrand: String? = null,
     val maskedPan: String? = null,
     val createdAt: Long = 0,
+    /** Reported tip included in [authorisedMinor]; null when absent or historical. */
+    val tipMinor: Long? = null,
+    /** Reported surcharge included in [authorisedMinor]; null means unknown, not zero. */
+    val surchargeMinor: Long? = null,
+    /** Reported cashback included in [authorisedMinor]; never refundable merchandise. */
+    val cashBackMinor: Long? = null,
+    /** Original payment request ServiceID; null for historical tenders. */
+    val serviceId: String? = null,
+    /** Original destination/account for this tender; null for historical rows. */
+    val context: PaymentContext? = null,
+    /** Terminal reconciliation period for this tender; null when unavailable or historical. */
+    val poiReconciliationId: String? = null,
+    /** Original customer receipt fields, preserved verbatim; null for historical tenders. */
+    val customerReceiptJson: String? = null,
+    /** Original merchant receipt fields, preserved verbatim; null for historical tenders. */
+    val cashierReceiptJson: String? = null,
 )
 
 /**
@@ -665,10 +712,16 @@ data class SaleTenderEntity(
  *
  * @property sale The sale row.
  * @property lines Its lines in no particular order; use [sortedLines] for receipt order.
+ * @property tenders Original card tenders with their independent amount components.
+ * @property refunds Return attempts, including reservations for pending and unknown outcomes.
  */
 data class SaleWithLines(
     @Embedded val sale: SaleEntity,
     @Relation(parentColumn = "id", entityColumn = "saleId") val lines: List<SaleLineEntity>,
+    /** Original card tenders, including their independent charged amounts and fee disclosure. */
+    @Relation(parentColumn = "id", entityColumn = "saleId") val tenders: List<SaleTenderEntity> = emptyList(),
+    /** Refund attempts, including pending/unknown reservations against each original tender. */
+    @Relation(parentColumn = "id", entityColumn = "saleId") val refunds: List<RefundEntity> = emptyList(),
 ) {
     /** [lines] in cart order (by [SaleLineEntity.position]). */
     val sortedLines: List<SaleLineEntity> by lazy { lines.sortedBy { it.position } }

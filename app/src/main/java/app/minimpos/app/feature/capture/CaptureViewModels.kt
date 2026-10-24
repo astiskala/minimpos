@@ -50,7 +50,7 @@ data class TipUiState(
     val actions: Set<PaymentAction> get() = payment?.actions.orEmpty()
 
     /** The bill: what was pre-authorised, in minor units. */
-    val billMinor: Long get() = sale?.totalMinor ?: 0
+    val billMinor: Long get() = sale?.let { Math.addExact(it.totalMinor, it.surchargeMinor ?: 0) } ?: 0
 
     /** The tip the entry makes; null for a total below the bill. */
     val tipMinor: Long? get() = if (input == TipInput.TIP) entry.minor else (entry.minor - billMinor).takeIf { it >= 0 }
@@ -69,7 +69,10 @@ data class TipUiState(
     val canSubmit: Boolean get() = PaymentAction.ENTER_TIP in actions && !submission.running
 
     /** Whether "Add tip" is enabled: [canSubmit] with a tip above zero ("No tip" is its own button). */
-    val canAddTip: Boolean get() = canSubmit && (tipMinor ?: 0) > 0
+    val canAddTip: Boolean get() =
+        canSubmit && (tipMinor ?: 0) > 0 && sale?.let {
+            PaymentStanding.captureAmountAllowed(it, Math.addExact(billMinor, tipMinor ?: 0))
+        } == true
 }
 
 /**
@@ -141,7 +144,10 @@ data class CaptureUiState(
      * set and nothing is being sent.
      */
     val canSubmit: Boolean
-        get() = (if (adjustOnly) PaymentAction.ADJUST else PaymentAction.CAPTURE) in actions && amountMinor > 0 && !submission.running
+        get() =
+            (if (adjustOnly) PaymentAction.ADJUST else PaymentAction.CAPTURE) in actions &&
+                sale?.let { PaymentStanding.captureAmountAllowed(it, amountMinor) } == true &&
+                !submission.running
 }
 
 /**

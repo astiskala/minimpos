@@ -29,8 +29,23 @@ enum class ReportText {
     /** Tips already included in sales. */
     TIPS,
 
+    /** Reported surcharges already included in sales. */
+    SURCHARGES,
+
+    /** Purchase components known from reported surcharges. */
+    PURCHASE,
+
+    /** Count of sales with unreported surcharge components. */
+    UNKNOWN_SURCHARGES,
+
     /** Accepted refund requests. */
     REFUNDS,
+
+    /** Surcharge already included in accepted refunds. */
+    REFUND_SURCHARGES,
+
+    /** Refunds whose fee component is unknown. */
+    UNKNOWN_REFUND_SURCHARGES,
 
     /** Sales minus refunds. */
     NET,
@@ -134,8 +149,13 @@ internal object DailyReport {
             add(ReceiptElement.Text(code, style = TextStyle.BOLD))
             add(ReceiptElement.Row("${text(ReportText.SALES)} (${total.saleCount})", money.format(total.salesMinor)))
             add(ReceiptElement.Row(text(ReportText.TIPS), money.format(total.tipsMinor)))
+            add(ReceiptElement.Row(text(ReportText.PURCHASE), money.format(total.purchaseMinor)))
+            add(ReceiptElement.Row(text(ReportText.SURCHARGES), money.format(total.surchargesMinor)))
+            add(ReceiptElement.Row(text(ReportText.UNKNOWN_SURCHARGES), total.unknownSurchargeCount.toString()))
             if (dated) {
                 add(ReceiptElement.Row("${text(ReportText.REFUNDS)} (${total.refundCount})", money.format(total.refundsMinor)))
+                add(ReceiptElement.Row(text(ReportText.REFUND_SURCHARGES), money.format(total.refundedSurchargesMinor)))
+                add(ReceiptElement.Row(text(ReportText.UNKNOWN_REFUND_SURCHARGES), total.unknownRefundSurchargeCount.toString()))
                 add(ReceiptElement.Row(text(ReportText.NET), money.format(total.netMinor), TextStyle.BOLD))
                 add(ReceiptElement.Row("${text(ReportText.HOLDS)} (${total.holdCount})", money.format(total.heldMinor)))
                 add(ReceiptElement.Row(text(ReportText.UNRESOLVED), total.unresolvedCount.toString()))

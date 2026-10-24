@@ -27,9 +27,7 @@ class RefundBook(
         request: RefundStart,
         serviceId: String,
         createdAt: Long,
-    ) {
-        refunds.create(request.pendingRefund(id, createdAt, serviceId = serviceId))
-    }
+    ): Boolean = refunds.create(request.pendingRefund(id, createdAt, serviceId = serviceId), request.reviewedRefunds)
 
     override suspend fun recordContext(
         id: String,
@@ -87,4 +85,7 @@ internal fun RefundStart.pendingRefund(
         cancellation = cancellation,
         context = expectedContext.takeIf { checkout },
         checkoutRefund = checkout,
+        tenderId = tenderId,
+        surchargeMinor = surchargeMinor,
+        tipMinor = tipMinor,
     )

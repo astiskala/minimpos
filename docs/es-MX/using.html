@@ -404,6 +404,21 @@
             Si Adyen configuró tiempos mayores o falta la respuesta, <a href="troubleshooting#unknown">consulta el
             resultado desconocido</a> antes de otro pago. La elección se restablece al iniciar este intento. Las
             demostraciones no reproducen audio ni verifican terminales reales.</p>
+          <p>Adyen calcula los recargos según su configuración. Mini mPOS registra el recargo informado por separado de
+            la compra y la propina; el total cobrado ya lo incluye. Los recargos no informados, incluso en el historial
+            anterior, siguen siendo desconocidos. Los recibos conservan los datos originales de Adyen. Los informes
+            diarios separan los importes conocidos de compra y recargo e indican las ventas con recargos no informados.</p>
+          <p>Si una autorización parcial no informa el recargo, Mini mPOS no puede calcular el importe de compra restante.
+            Revisa el Área de Clientes o reembolsa la tarjeta original antes de empezar de nuevo.</p>
+          <p>Antes de reembolsar, revisa la tarjeta original y su saldo restante. Reembolsa cada tarjeta por separado.
+            Los reembolsos pendientes o desconocidos reservan el saldo hasta resolverse. Los artículos devuelven el importe
+            de compra; los importes devuelven primero la compra, luego la propina y el recargo. Un reembolso completo
+            incluye el recargo restante informado. Confirma el resultado en el Área de Clientes.</p>
+          <p>Informa al cliente del recargo antes de pagar, especialmente con Tap to Pay, que no muestra una pantalla de
+            confirmación del recargo. No combines recargos con DCC ni los aumentes mediante ajustes o sobrecapturas.
+            Mini mPOS bloquea los ajustes y las capturas superiores a la retención original cuando se informó un recargo.
+            Consulta los <a href="https://docs.adyen.com/point-of-sale/surcharge">requisitos de recargos de Adyen</a> y su
+            <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">configuración de recargos</a>.</p>
           <h3 id="partial-payments">Cobrar un pago parcialmente autorizado</h3>
           <p>encender <strong>Permitir autorizaciones parciales</strong> para aceptar la aprobación de una tarjeta por
             menos del monto solicitado. Cuando el resultado muestra <strong>Parcialmente pagado</strong>, verifique los

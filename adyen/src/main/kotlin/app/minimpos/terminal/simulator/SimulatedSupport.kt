@@ -68,6 +68,7 @@ internal data class SimulatedPayment(
     val preAuthorisation: Boolean,
     val wallet: Boolean = false,
     val tipAmount: BigDecimal? = null,
+    val surchargeAmount: BigDecimal = BigDecimal.ZERO,
     val partial: Boolean = false,
     val givingServiceId: String? = null,
     val entryOverride: CardEntryOverride = CardEntryOverride.NORMAL,

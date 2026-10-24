@@ -51,6 +51,18 @@ sealed interface SaleEvent {
     }
 
     /**
+     * Opens the remaining-balance attempt before it can be sent; stale snapshots fail without replacing the identity.
+     * @property serviceId Original ServiceID for this attempt and all its status checks.
+     * @property amountMinor Frozen requested purchase amount in minor units.
+     */
+    data class TenderOpened(
+        val serviceId: String,
+        val amountMinor: Long,
+    ) : SaleEvent {
+        override fun stamped(now: Long) = this
+    }
+
+    /**
      * The terminal's transaction ended (or the app gave up on it), as its lifecycle classified it.
      *
      * @property status How it ended.
@@ -61,6 +73,7 @@ sealed interface SaleEvent {
      * @property processedAt Approval time in epoch milliseconds; null without a known approval date.
      * @property busyServiceId The ServiceID of the transaction a `Busy` refusal named, which can be aborted once; null
      *   otherwise. Only the sale's own event writes it, and [BusyAborted] clears it.
+     * @property repeated Whether the same request already has a durable approved tender.
      */
     data class Settled(
         val status: SaleStatus,
@@ -71,6 +84,8 @@ sealed interface SaleEvent {
         val processedAt: Long? = null,
         /** The ServiceID a `Busy` refusal named; see [busyServiceId]. */
         val busyServiceId: String? = null,
+        /** This request already has a durable tender; refresh its answer without adding its amounts again. */
+        val repeated: Boolean = false,
     ) : SaleEvent {
         override fun stamped(now: Long): SaleEvent =
             copy(
@@ -300,6 +315,10 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
             copy(poiId = event.poiId)
         }
 
+        is SaleEvent.TenderOpened -> {
+            openedTender(event)
+        }
+
         is SaleEvent.Settled -> {
             settled(event)
         }
@@ -340,6 +359,13 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
             cardAnswered(event)
         }
     }
+
+/** Freezes the next attempt only while the reviewed purchase balance is still known and current. */
+private fun SaleEntity.openedTender(event: SaleEvent.TenderOpened): SaleEntity {
+    require(surchargeMinor != null || terminalPaidMinor == null) { "Purchase balance unavailable" }
+    require(isPartiallyPaid && remainingMinor == event.amountMinor) { "Payment balance changed" }
+    return copy(status = SaleStatus.PENDING, serviceId = event.serviceId, tenderRequestedMinor = event.amountMinor, busyServiceId = null)
+}
 
 /** How a capture or adjustment happening moves the sale on: what was sent, what Adyen answered, or what was missing. */
 private fun SaleEntity.modified(event: SaleEvent.ModificationEvent): SaleEntity =
@@ -426,59 +452,85 @@ private fun SaleEntity.settled(event: SaleEvent.Settled): SaleEntity {
             processedAt = processedAt ?: event.processedAt.takeIf { effectiveStatus == SaleStatus.APPROVED && !paymentLink },
             busyServiceId = event.busyServiceId ?: busyServiceId,
         )
-    return event.details?.let { answered(event.status, ended, it) } ?: ended
+    return event.details?.let { answered(event, ended, it) } ?: ended
 }
 
 /** [ended] with the transaction, card, receipt and tipping facts of the terminal's [details] answer. */
 private fun SaleEntity.answered(
-    eventStatus: SaleStatus,
+    event: SaleEvent.Settled,
     ended: SaleEntity,
     details: TransactionDetails,
 ): SaleEntity {
-    val (terminalTipMinor, updatedPaidMinor) = settledAmounts(eventStatus, details)
-    val donatedMinor = details.donationMinor?.takeIf { eventStatus == SaleStatus.APPROVED && it > 0 }
-    return ended.copy(
-        poiTransactionId = details.poiTransactionId,
-        poiTimestamp = details.poiTimestamp,
-        poiReconciliationId = details.poiReconciliationId ?: poiReconciliationId,
-        shopperEmail = details.collectedEmail ?: shopperEmail,
-        shopperRating = details.shopperRating ?: shopperRating,
-        paidMinor = updatedPaidMinor,
-        donationMinor = donatedMinor ?: donationMinor,
-        offlineMode = details.offlineMode.name.takeIf { details.offlineMode != OfflineProcessingMode.ONLINE } ?: offlineMode,
-        unconfirmedBatchCount = details.unconfirmedBatchCount ?: unconfirmedBatchCount,
-        pspReference = details.pspReference,
-        paymentBrand = details.paymentBrand,
-        paymentMethodVariant = details.paymentMethodVariant,
-        maskedPan = details.maskedPan,
-        entryMode = details.entryMode,
-        authCode = details.approvalCode,
-        errorCondition = details.errorCondition,
-        refusalReason = details.refusalReason,
-        storedPaymentMethodId = details.tokenization?.storedPaymentMethodId,
-        customerReceiptJson = ReceiptLinesJson.encodeFields(details.customerReceipt),
-        cashierReceiptJson = ReceiptLinesJson.encodeFields(details.cashierReceipt),
-        signatureRequired = details.signatureRequired,
-        adjustAuthorisationData = details.adjustAuthorisationData,
-        tipMinor = terminalTipMinor ?: tipMinor,
+    val (terminalTipMinor, updatedPaidMinor) = settledAmounts(event, details)
+    val donatedMinor = details.donationMinor?.takeIf { event.status == SaleStatus.APPROVED && it > 0 }
+    return ended
+        .copy(
+            poiTransactionId = details.poiTransactionId,
+            poiTimestamp = details.poiTimestamp,
+            poiReconciliationId = details.poiReconciliationId ?: poiReconciliationId,
+            shopperEmail = details.collectedEmail ?: shopperEmail,
+            shopperRating = details.shopperRating ?: shopperRating,
+            paidMinor = updatedPaidMinor,
+            donationMinor = donatedMinor ?: donationMinor,
+            offlineMode = details.offlineMode.name.takeIf { details.offlineMode != OfflineProcessingMode.ONLINE } ?: offlineMode,
+            unconfirmedBatchCount = details.unconfirmedBatchCount ?: unconfirmedBatchCount,
+            pspReference = details.pspReference,
+            paymentBrand = details.paymentBrand,
+            paymentMethodVariant = details.paymentMethodVariant,
+            maskedPan = details.maskedPan,
+            entryMode = details.entryMode,
+            authCode = details.approvalCode,
+            errorCondition = details.errorCondition,
+            refusalReason = details.refusalReason,
+            storedPaymentMethodId = details.tokenization?.storedPaymentMethodId,
+            customerReceiptJson = ReceiptLinesJson.encodeFields(details.customerReceipt),
+            cashierReceiptJson = ReceiptLinesJson.encodeFields(details.cashierReceipt),
+            signatureRequired = details.signatureRequired,
+            adjustAuthorisationData = details.adjustAuthorisationData,
+            tipMinor = terminalTipMinor?.let { Math.addExact(tipMinor ?: 0, it) } ?: tipMinor,
+        ).withTerminalComponents(this, event, details)
+}
+
+/** Terminal totals include the reported components; they are never added to AuthorizedAmount again. */
+private fun SaleEntity.withTerminalComponents(
+    previous: SaleEntity,
+    event: SaleEvent.Settled,
+    details: TransactionDetails,
+): SaleEntity {
+    if (event.status != SaleStatus.APPROVED || event.repeated) return this
+    val collected = previous.terminalPaidMinor ?: if (previous.paidMinor > 0) previous.amountMinor else 0
+    return copy(
+        terminalPaidMinor = details.amountMinor?.let { Math.addExact(collected, it) },
+        surchargeMinor = previous.accumulatedComponent(previous.surchargeMinor, details.surchargeMinor),
+        cashBackMinor = previous.accumulatedComponent(previous.cashBackMinor, details.cashBackMinor),
     )
 }
 
+/** A missing component in any tender keeps the aggregate unknown, including after later reported zeroes. */
+private fun SaleEntity.accumulatedComponent(
+    previous: Long?,
+    reported: Long?,
+): Long? {
+    val previousUnknown = (terminalPaidMinor != null || paidMinor > 0) && previous == null
+    return if (reported == null || previousUnknown) null else Math.addExact(previous ?: 0, reported)
+}
+
 private fun SaleEntity.settledAmounts(
-    eventStatus: SaleStatus,
+    event: SaleEvent.Settled,
     details: TransactionDetails,
 ): Pair<Long?, Long> {
-    if (eventStatus != SaleStatus.APPROVED || manualCapture) return null to paidMinor
+    if (event.status != SaleStatus.APPROVED || manualCapture || event.repeated) return null to paidMinor
     val terminalTipMinor = details.tipMinor?.takeIf { it > 0 }
     val reportedMinor = details.amountMinor
     val remaining = totalMinor - paidMinor
     val baseTenderMinor =
         if (reportedMinor != null && isPartialOrSplitTender(details.partial, reportedMinor, remaining, paidMinor)) {
-            (reportedMinor - (terminalTipMinor ?: 0L)).coerceAtLeast(0L)
+            (reportedMinor - (terminalTipMinor ?: 0L) - (details.surchargeMinor ?: 0L) - (details.cashBackMinor ?: 0L))
+                .coerceIn(0L, remaining)
         } else {
             remaining
         }
-    return terminalTipMinor to (paidMinor + baseTenderMinor).coerceAtMost(totalMinor)
+    return terminalTipMinor to Math.addExact(paidMinor, baseTenderMinor).coerceAtMost(totalMinor)
 }
 
 private fun isPartialOrSplitTender(
@@ -608,8 +660,17 @@ internal fun SaleWithLines.refundedBy(refund: RefundEntity): SaleWithLines {
     val refundedLines =
         lines.map { line ->
             val quantity = added[line.id].orEmpty().sumOf { it.quantity }
-            line.copy(refundedQuantity = if (refund.full) line.quantity else (line.refundedQuantity + quantity).coerceAtMost(line.quantity))
+            line.copy(
+                refundedQuantity =
+                    if (refund.full &&
+                        refund.tenderId == null
+                    ) {
+                        line.quantity
+                    } else {
+                        (line.refundedQuantity + quantity).coerceAtMost(line.quantity)
+                    },
+            )
         }
-    val total = if (refund.full) sale.amountMinor else sale.refundedMinor + refund.amountMinor
+    val total = if (refund.full && refund.tenderId == null) sale.amountMinor else Math.addExact(sale.refundedMinor, refund.amountMinor)
     return copy(sale = sale.copy(refundedMinor = total.coerceAtMost(sale.amountMinor)), lines = refundedLines)
 }

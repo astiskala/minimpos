@@ -22,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RefundEntity::class,
         HistorySwitchEntity::class,
     ],
-    version = 17,
+    version = 18,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -129,6 +129,26 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /** Preserves every existing amount and recovery identity; historical fee components remain unknown. */
+        val MIGRATION_17_18: Migration =
+            object : Migration(17, 18) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    listOf("surchargeMinor", "terminalPaidMinor", "cashBackMinor", "tenderRequestedMinor").forEach {
+                        db.execSQL("ALTER TABLE `sales` ADD COLUMN `$it` INTEGER")
+                    }
+                    listOf("tipMinor", "surchargeMinor", "cashBackMinor").forEach {
+                        db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `$it` INTEGER")
+                    }
+                    listOf("serviceId", "context", "poiReconciliationId", "customerReceiptJson", "cashierReceiptJson").forEach {
+                        db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `$it` TEXT")
+                    }
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_sale_tenders_createdAt_saleId` ON `sale_tenders` (`createdAt`, `saleId`)")
+                    db.execSQL("ALTER TABLE `refunds` ADD COLUMN `tenderId` TEXT")
+                    db.execSQL("ALTER TABLE `refunds` ADD COLUMN `surchargeMinor` INTEGER")
+                    db.execSQL("ALTER TABLE `refunds` ADD COLUMN `tipMinor` INTEGER")
+                }
+            }
+
         /** Opens lazily on first query with versioned migrations; no destructive fallback is configured. */
         fun create(context: Context): AppDatabase =
             Room
@@ -141,6 +161,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_14_15,
                     MIGRATION_15_16,
                     MIGRATION_16_17,
+                    MIGRATION_17_18,
                 ).build()
     }
 }

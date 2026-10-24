@@ -122,9 +122,9 @@
   <string name="checkout_link_without_tip_or_donation">Links de pagamento não aceitam gorjetas ou doações de caridade. Criar este link sem eles?</string>
   <string name="checkout_pre_auth_note">Este valor fica apenas retido no cartão. Capture ou cancele a pré-autorização mais tarde no Histórico.</string>
   <string name="checkout_tip_on_receipt">Gorjeta no recibo</string>
-  <string name="checkout_tip_on_receipt_hint">O cliente escreve uma gorjeta no recibo impresso e o assina. Digite a gorjeta depois para capturar o total.</string>
+  <string name="checkout_tip_on_receipt_hint">Digite a gorjeta do recibo para capturar.</string>
   <string name="checkout_audio_guidance">Orientação por áudio</string>
-  <string name="checkout_audio_hint">Somente para este comprador. O terminal lê as instruções de pagamento em voz alta. Aguarde mais tempo para o pagamento e o PIN.</string>
+  <string name="checkout_audio_hint">Lê as etapas do pagamento em voz alta.</string>
   <string name="checkout_audio_confirm">Confirmar configuração acessível</string>
   <string name="checkout_audio_requirements">Confirme o software %1$s ou posterior e a ativação pelo Suporte da Adyen para este terminal. Use um cartão que não exija assinatura. O idioma do terminal não pode ser estoniano, letão, islandês ou lituano. Pule as autorizações parciais e as solicitações da tela do comprador neste pagamento.</string>
   <string name="checkout_audio_conflicts">Desative gorjetas, Giving e a entrada especial de cartão para continuar. Desative a orientação por áudio para usar um link, uma carteira escaneada ou um token.</string>
@@ -1240,4 +1240,21 @@
   <string name="action_unconfirmed">Adyen não confirmou o resultado. Verifique novamente antes de tentar qualquer outra coisa.</string>
   <string name="still_unconfirmed">Ainda não confirmado: %1$s</string>
   <string name="storage_unavailable">As configurações ou credenciais salvas não puderam ser lidas ou gravadas. Reinicie o dispositivo. Se isso continuar, siga as etapas de solução de problemas para redefinir ou relate um problema no aplicativo. Seus arquivos salvos não foram redefinidos.</string>
+
+    <!-- Surcharge accounting -->
+    <string name="surcharge_label">Sobretaxa</string>
+    <string name="surcharge_unknown">Não informado</string>
+    <string name="surcharge_charged">Cobrado</string>
+    <string name="surcharge_purchase">Compra</string>
+    <string name="surcharge_purchase_known">Compra (conhecida)</string>
+    <string name="surcharge_unknown_count">Vendas com sobretaxa não informada</string>
+    <string name="surcharge_reserved">Reembolsos pendentes</string>
+    <string name="surcharge_refund_tender">Escolha o cartão original. Reembolse cada cartão separadamente, dentro do saldo restante.</string>
+    <string name="surcharge_refund_order">Os reembolsos cobrem primeiro a compra, depois a gorjeta e a sobretaxa. Valores desconhecidos permanecem desconhecidos.</string>
+    <string name="surcharge_balance_changed">O saldo do reembolso mudou. Confira novamente o cartão original e o valor restante.</string>
+    <string name="surcharge_return_fee">Sobretaxa a reembolsar</string>
+    <string name="surcharge_return_tip">Gorjeta a reembolsar</string>
+    <string name="surcharge_hold_limit">Retenções com sobretaxa não podem ser ajustadas nem aumentadas. Para mudar o valor, cancele e faça um novo pagamento.</string>
+    <string name="surcharge_unknown_refund_count">Reembolsos com sobretaxa não informada</string>
+    <string name="surcharge_remaining_unknown">A sobretaxa não foi informada. O valor restante da compra é desconhecido. Confira na Customer Area ou reembolse este cartão antes de recomeçar.</string>
 </resources>

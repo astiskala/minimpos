@@ -346,6 +346,7 @@ private val SetupProblem.textRes: Int
             SetupProblem.PAYMENTS_APP_API_KEY -> R.string.setup_payments_app_api_key
             SetupProblem.UNREADABLE_PAYMENTS_APP_KEY -> R.string.setup_unreadable_payments_app_key
             SetupProblem.MANAGER_APPROVAL -> R.string.manager_pin_enter
+            SetupProblem.REFUND_BALANCE -> R.string.surcharge_balance_changed
             SetupProblem.PAYMENT_CONTEXT -> R.string.payment_context_mismatch
             SetupProblem.SETUP_NOT_VERIFIED -> R.string.setup_not_verified
             SetupProblem.TRANSFER_PENDING -> R.string.setup_transfer_pending

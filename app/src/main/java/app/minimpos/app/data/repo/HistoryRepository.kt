@@ -33,9 +33,11 @@ sealed interface HistoryItem {
      * A card payment.
      *
      * @property sale The stored sale, without its lines.
+     * @property tenders Lightweight original tenders without receipt bodies.
      */
     data class Sale(
         val sale: SaleEntity,
+        val tenders: List<SaleTenderEntity> = emptyList(),
     ) : HistoryItem {
         override val id: String get() = sale.id
         override val createdAt: Long get() = sale.createdAt
@@ -221,7 +223,8 @@ class HistoryRepository(
                 val keys = saleDao.historyKeys(before?.at ?: Long.MAX_VALUE, before?.id ?: "\uffff", afterAt, BATCH_SIZE).distinct()
                 val refunds = refundDao.historyRecords(keys.filter { it.refund }.map { it.id })
                 val sales = saleDao.historyParents(keys.filterNot { it.refund }.map { it.id } + refunds.mapNotNull { it.saleId })
-                HistoryBatch(keys, sales.associateBy { it.id }, refunds.associateBy { it.id })
+                val tenders = saleDao.historyTenders(sales.map { it.id }).groupBy { it.saleId }
+                HistoryBatch(keys, sales.associateBy { it.id }, refunds.associateBy { it.id }, tenders)
             }
 
         /**
@@ -239,7 +242,8 @@ class HistoryRepository(
                     keysetBatches<SaleEntity> { last ->
                         currentCoroutineContext().ensureActive()
                         saleDao.historyBatch(last?.id.orEmpty(), BATCH_SIZE).also { batch ->
-                            result = reduce(result, batch.map { HistoryItem.Sale(it) })
+                            val tenders = saleDao.historyTenders(batch.map { it.id }).groupBy { it.saleId }
+                            result = reduce(result, batch.map { HistoryItem.Sale(it, tenders[it.id].orEmpty()) })
                         }
                     }
                     keysetBatches<RefundEntity> { last ->
@@ -304,13 +308,15 @@ internal inline fun <E> keysetBatches(next: (last: E?) -> List<E>) {
  * @property keys Candidates in descending timestamp and ID order.
  * @property sales Lightweight sales, including refund parents.
  * @property refunds Lightweight refunds.
+ * @property tenders Lightweight original tenders keyed by sale ID.
  */
 data class HistoryBatch(
     val keys: List<HistoryKey>,
     val sales: Map<String, SaleEntity>,
     val refunds: Map<String, RefundEntity>,
+    val tenders: Map<String, List<SaleTenderEntity>> = emptyMap(),
 ) {
     /** Candidate's original record; null if a concurrent deletion removed it. */
     fun item(key: HistoryKey): HistoryItem? =
-        if (key.refund) refunds[key.id]?.let(HistoryItem::Refund) else sales[key.id]?.let(HistoryItem::Sale)
+        if (key.refund) refunds[key.id]?.let(HistoryItem::Refund) else sales[key.id]?.let { HistoryItem.Sale(it, tenders[it.id].orEmpty()) }
 }

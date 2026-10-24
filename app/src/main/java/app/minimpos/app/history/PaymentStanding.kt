@@ -87,6 +87,12 @@ enum class PaymentStanding(
                 else -> captureStanding(sale)
             }
 
+        /** A reported surcharge may not be increased through an adjustment or overcapture. */
+        fun captureAmountAllowed(
+            sale: SaleEntity,
+            amountMinor: Long,
+        ): Boolean = amountMinor > 0 && ((sale.surchargeMinor ?: 0) == 0L || amountMinor <= sale.heldMinor)
+
         /** Whether a tip of [tipMinor] on a bill of [billMinor] is more than [TIP_ADJUSTMENT_PERCENT] of it. */
         fun tipNeedsAdjustment(
             billMinor: Long,
@@ -128,6 +134,9 @@ enum class SaleResultNext {
     NONE,
 }
 
+/** New partial responses with an unreported surcharge cannot establish the remaining purchase amount. */
+val SaleEntity.remainingAmountKnown: Boolean get() = terminalPaidMinor == null || surchargeMinor != null
+
 /**
  * What the result of [sale] offers beside Home, the one reading of its outcome: collecting its remaining balance, the
  * next payment once it was approved, or a retry after a refusal the terminal's advice allows. A payment link takes its
@@ -136,6 +145,10 @@ enum class SaleResultNext {
  */
 fun saleResultNext(sale: SaleEntity): SaleResultNext =
     when {
+        sale.isPartiallyPaid && !sale.remainingAmountKnown -> {
+            SaleResultNext.NONE
+        }
+
         sale.isPartiallyPaid -> {
             SaleResultNext.PAY_REMAINING
         }
@@ -215,7 +228,7 @@ data class ReceiptStanding(
                 preAuthorisation = preAuthorisation,
                 tipMinor = sale.tipMinor?.takeIf { sale.tipOnReceipt || it > 0 },
                 awaitingTip = standing == PaymentStanding.AWAITING_TIP,
-                heldNowMinor = sale.authorisedMinor?.takeIf { preAuthorisation && it != sale.totalMinor },
+                heldNowMinor = sale.heldMinor.takeIf { sale.manualCapture && it != sale.totalMinor },
                 capturedMinor = sale.capturedMinor?.takeIf { preAuthorisation && standing.captured },
                 unpaidLink = unpaidLink,
                 linkExpiresAt = sale.paymentLinkExpiresAt?.takeIf { unpaidLink != null },
@@ -344,7 +357,10 @@ private fun captureActions(sale: SaleEntity): Set<PaymentAction> {
     val retry = standing == PaymentStanding.CAPTURE_UNKNOWN || (standing == PaymentStanding.CAPTURE_FAILED && sale.tipOnReceipt)
     return buildSet {
         if (standing == PaymentStanding.AWAITING_TIP) add(PaymentAction.ENTER_TIP)
-        if (capture) addAll(listOf(PaymentAction.CAPTURE, PaymentAction.ADJUST))
+        if (capture) {
+            add(PaymentAction.CAPTURE)
+            if ((sale.surchargeMinor ?: 0) == 0L) add(PaymentAction.ADJUST)
+        }
         if (retry && sale.capturedMinor != null) add(PaymentAction.RETRY_CAPTURE)
     }
 }

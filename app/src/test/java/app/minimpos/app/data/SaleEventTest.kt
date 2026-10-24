@@ -22,8 +22,11 @@ import app.minimpos.app.data.repo.after
 import app.minimpos.app.data.repo.refundedBy
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.SaleResultNext
 import app.minimpos.app.history.actions
+import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.history.standing
+import app.minimpos.app.payment.Checkout
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkStatus
@@ -78,6 +81,79 @@ class SaleEventTest {
     private fun SaleEntity.actions() = SaleWithLines(this, emptyList()).actions
 
     private fun SaleEntity.afterAll(vararg events: SaleEvent): SaleEntity = events.fold(this) { sale, event -> sale.after(event) }
+
+    @Test
+    fun `partial card approvals keep purchases tips and fees separate across tenders`() {
+        val first =
+            pending.after(
+                SaleEvent.Settled(
+                    SaleStatus.APPROVED,
+                    null,
+                    approved.copy(amountMinor = 1150, tipMinor = 100, surchargeMinor = 50, partial = true),
+                ),
+            )
+        assertThat(first.paidMinor).isEqualTo(1000)
+        assertThat(first.remainingMinor).isEqualTo(1000)
+        assertThat(first.amountMinor).isEqualTo(1150)
+        val complete =
+            first.after(
+                SaleEvent.Settled(
+                    SaleStatus.APPROVED,
+                    null,
+                    approved.copy(amountMinor = 1060, tipMinor = 20, surchargeMinor = 40),
+                ),
+            )
+        assertThat(complete.paidMinor).isEqualTo(2000)
+        assertThat(complete.tipMinor).isEqualTo(120)
+        assertThat(complete.surchargeMinor).isEqualTo(90)
+        assertThat(complete.amountMinor).isEqualTo(2210)
+        val absent = first.after(SaleEvent.Settled(SaleStatus.APPROVED, null, approved.copy(amountMinor = 1000)))
+        assertThat(absent.surchargeMinor).isNull()
+        assertThat(absent.amountMinor).isEqualTo(2150)
+        val unknownPurchase =
+            pending.after(
+                SaleEvent.Settled(
+                    SaleStatus.APPROVED,
+                    null,
+                    approved.copy(amountMinor = 500, partial = true),
+                ),
+            )
+        assertThat(Checkout.remainingPayment(unknownPurchase)).isNull()
+        assertThat(saleResultNext(unknownPurchase)).isEqualTo(SaleResultNext.NONE)
+    }
+
+    @Test
+    fun `historic totals stay unchanged and cashback never pays for merchandise`() {
+        val historic = pending.copy(status = SaleStatus.APPROVED, tipMinor = 100)
+        assertThat(historic.surchargeMinor).isNull()
+        assertThat(historic.amountMinor).isEqualTo(2100)
+        val cashback =
+            pending.after(
+                SaleEvent.Settled(
+                    SaleStatus.APPROVED,
+                    null,
+                    approved.copy(amountMinor = 1600, cashBackMinor = 500, surchargeMinor = 100, partial = true),
+                ),
+            )
+        assertThat(cashback.paidMinor).isEqualTo(1000)
+        assertThat(cashback.amountMinor).isEqualTo(1600)
+        val hold =
+            pending.copy(kind = SaleKind.PRE_AUTHORISATION).after(
+                SaleEvent.Settled(
+                    SaleStatus.APPROVED,
+                    null,
+                    approved.copy(amountMinor = 2050, surchargeMinor = 50),
+                ),
+            )
+        assertThat(hold.heldMinor).isEqualTo(2050)
+        assertThat(PaymentStanding.captureAmountAllowed(hold, 2050)).isTrue()
+        assertThat(PaymentStanding.captureAmountAllowed(hold, 2051)).isFalse()
+        assertThat(hold.copy(authorisedMinor = 2100, surchargeMinor = 0).amountMinor).isEqualTo(2100)
+        assertThat(hold.actions()).doesNotContain(PaymentAction.ADJUST)
+        assertThat(hold.copy(capturedMinor = 2000, captureStatus = CaptureStatus.REQUESTED).amountSurchargeMinor).isNull()
+        assertThat(hold.copy(surchargeMinor = 0, capturedMinor = 2100, captureStatus = CaptureStatus.REQUESTED).amountSurchargeMinor)
+            .isEqualTo(0)
+    }
 
     @Test
     fun `a payment is sent and settled with what the terminal answered`() {

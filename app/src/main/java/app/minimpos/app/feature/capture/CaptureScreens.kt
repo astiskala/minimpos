@@ -247,6 +247,7 @@ private fun CaptureEntry(
         AmountText(state.amountMinor, money, "captureAmount")
         val amount = state.amountMinor
         when {
+            (sale.surchargeMinor ?: 0) > 0 -> Note(stringResource(R.string.surcharge_hold_limit))
             state.adjustOnly -> Note(stringResource(R.string.adjust_note))
             amount > state.heldMinor -> Note(stringResource(R.string.capture_more_note, money.format(amount)))
             amount in 1..<state.heldMinor -> Note(stringResource(R.string.capture_less_note))

@@ -418,6 +418,22 @@
             <a href="troubleshooting#unknown">vérifiez le résultat inconnu</a> avant un autre paiement. Le choix est
             réinitialisé au démarrage de la tentative. Les démonstrations ne diffusent aucun son et ne vérifient pas
             les terminaux réels.</p>
+          <p>Adyen calcule les suppléments selon sa configuration. Mini mPOS distingue le supplément indiqué de l’achat
+            et du pourboire ; le total débité l’inclut déjà. Un supplément non indiqué, y compris dans l’ancien historique,
+            reste inconnu. Les reçus conservent les données d’origine d’Adyen. Les rapports quotidiens séparent les montants
+            connus des achats et suppléments et comptent les ventes dont le supplément n’est pas indiqué.</p>
+          <p>Si une autorisation partielle n’indique pas le supplément, Mini mPOS ne peut pas établir le montant restant.
+            Vérifiez dans le Customer Area ou remboursez la carte d’origine avant de recommencer.</p>
+          <p>Avant un remboursement, vérifiez la carte d’origine et son solde restant. Remboursez chaque carte séparément.
+            Les remboursements en attente ou inconnus réservent leur solde jusqu’à leur résolution. Les articles remboursent
+            l’achat ; les montants couvrent l’achat, puis le pourboire et le supplément. Un remboursement complet inclut
+            le supplément restant indiqué. Confirmez le résultat dans le Customer Area.</p>
+          <p>Informez le client du supplément avant le paiement, surtout avec Tap to Pay, qui n’affiche pas d’écran de
+            confirmation du supplément. Ne combinez pas supplément et DCC et ne l’augmentez pas par ajustement ou
+            surcapture. Mini mPOS bloque les ajustements et les captures dépassant la retenue d’origine lorsqu’un
+            supplément a été indiqué. Consultez les <a href="https://docs.adyen.com/point-of-sale/surcharge">conditions
+            d’Adyen sur les suppléments</a> et leur
+            <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">configuration chez Adyen</a>.</p>
           <h3 id="partial-payments">Encaisser un paiement partiellement autorisé</h3>
           <p>Activez <strong>Autoriser les autorisations partielles</strong> pour accepter une approbation de carte pour
             un montant inférieur au montant demandé. Quand le résultat apparaît <strong>Partiellement payé</strong>,

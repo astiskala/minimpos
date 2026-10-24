@@ -83,6 +83,10 @@ class ReceiptBuilder(
         }
         out += Divider
         out += Row(if (cancellation) labels.released else labels.refundTotal, money.format(receipt.amount), TextStyle.BOLD)
+        if (!cancellation) {
+            out += Row(labels.surcharge, receipt.surchargeMinor?.let(money::format) ?: labels.unreported)
+            receipt.tipMinor?.let { out += Row(labels.tip, money.format(it)) }
+        }
         receipt.standingNote?.let { note(out, it) }
         cardReceipt(out, receipt.cardReceipt)
         footer(out)
@@ -186,6 +190,10 @@ class ReceiptBuilder(
         receipt: SaleReceipt,
         copy: ReceiptCopy,
     ) {
+        if (receipt.discloseSurcharge) {
+            receipt.purchaseMinor?.let { out += Row(labels.purchase, money.format(it)) }
+            out += Row(labels.surcharge, receipt.surchargeMinor?.let(money::format) ?: labels.unreported)
+        }
         receipt.heldNow?.let { out += Row(labels.heldNow, money.format(it)) }
         receipt.captured?.let { out += Row(labels.captured, money.format(it), TextStyle.BOLD) }
         when (val tip = receipt.tip) {
@@ -206,9 +214,12 @@ class ReceiptBuilder(
 
             is TipLines.Entered -> {
                 out += Row(labels.tip, money.format(tip.tip))
-                out += Row(labels.tipTotal, money.format(receipt.amounts.gross + tip.tip), TextStyle.BOLD)
+                if (receipt.chargedAmount == null) {
+                    out += Row(labels.tipTotal, money.format(Math.addExact(receipt.amounts.gross, tip.tip)), TextStyle.BOLD)
+                }
             }
         }
+        receipt.chargedAmount?.let { out += Row(labels.charged, money.format(it), TextStyle.BOLD) }
     }
 
     /**

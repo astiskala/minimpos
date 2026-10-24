@@ -1,10 +1,13 @@
 package app.minimpos.app.history
 
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleLineEntity
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.repo.RefundedLine
 import app.minimpos.core.codec.RefundQrPayload
@@ -43,6 +46,66 @@ class RefundablePaymentTest {
     private fun refundable(record: SaleWithLines = this.record) = (RefundablePayment.check(record) as Refundability.Refundable).payment
 
     private fun reason(record: SaleWithLines) = (RefundablePayment.check(record) as Refundability.NotRefundable).reason
+
+    @Test
+    fun `each original card caps its own return and unknown attempts reserve its balance`() {
+        val first =
+            SaleTenderEntity(
+                "s1-1",
+                "s1",
+                1,
+                1000,
+                550,
+                poiTransactionId = "FIRST.PSP1",
+                poiTimestamp = sale.poiTimestamp,
+                surchargeMinor = 50,
+                tipMinor = 0,
+            )
+        val second = first.copy(id = "s1-2", sequence = 2, authorisedMinor = 600, poiTransactionId = "SECOND.PSP2", tipMinor = 50)
+        val split =
+            record.copy(
+                sale = sale.copy(terminalPaidMinor = 1150, surchargeMinor = 100, tipMinor = 50),
+                tenders = listOf(first, second),
+            )
+        val payment = refundable(split)
+        assertThat(payment.amountMinor).isEqualTo(550)
+        assertThat(payment.itemsKnown).isFalse()
+        assertThat(payment.isValid(RefundChoice.Amount(551))).isFalse()
+        val request = checkNotNull(payment.request(RefundChoice.Everything, "", now, ZoneOffset.UTC))
+        assertThat(request.originalTransactionId).isEqualTo("FIRST.PSP1")
+        assertThat(request.tenderId).isEqualTo("s1-1")
+        assertThat(request.surchargeMinor).isEqualTo(50)
+        assertThat(request.tipMinor).isEqualTo(0)
+        assertThat(request.full).isTrue()
+        val pending =
+            RefundEntity(
+                "r",
+                "s1",
+                0,
+                "R",
+                "FIRST.PSP1",
+                sale.poiTimestamp!!,
+                originalReference = null,
+                currency = "AUD",
+                amountMinor = 550,
+                full = true,
+                status = RefundStatus.UNKNOWN,
+                tenderId = first.id,
+                surchargeMinor = 50,
+                tipMinor = 0,
+            )
+        val reserved = refundable(split.copy(refunds = listOf(pending)))
+        assertThat(reserved.transactionId).isEqualTo("SECOND.PSP2")
+        assertThat(reserved.remainingMinor).isEqualTo(600)
+        assertThat(reserved.forTender(first.id)!!.remainingMinor).isEqualTo(0)
+        val partial = checkNotNull(reserved.request(RefundChoice.Amount(510), "", now, ZoneOffset.UTC))
+        assertThat(partial.full).isFalse()
+        assertThat(partial.tipMinor).isEqualTo(10)
+        assertThat(partial.surchargeMinor).isEqualTo(0)
+        val cash = refundable(split.copy(tenders = listOf(first.copy(cashBackMinor = 100))))
+        assertThat(cash.amountMinor).isEqualTo(450)
+        assertThat(cash.request(RefundChoice.Everything, "", now, ZoneOffset.UTC)!!.full).isFalse()
+    }
 
     @Test
     fun `refund indexes are reused and a fresh record rebuilds remaining quantities`() {

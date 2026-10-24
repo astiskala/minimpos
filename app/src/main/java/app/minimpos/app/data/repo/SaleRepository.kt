@@ -6,6 +6,7 @@ import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleLineEntity
+import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
 import kotlinx.coroutines.flow.Flow
@@ -58,10 +59,16 @@ class SaleRepository(
     ): Boolean =
         db.withTransaction {
             val sale = dao.header(id) ?: return@withTransaction false
-            val stamped = event.stamped(now())
+            var stamped = event.stamped(now())
+            if (stamped is SaleEvent.Settled && stamped.status == SaleStatus.APPROVED &&
+                dao.tenderRecorded(id, sale.serviceId, stamped.details?.poiTransactionId)
+            ) {
+                if (!dao.tenderRecorded(id, sale.serviceId, null) && sale.tenderRequestedMinor != null) return@withTransaction true
+                stamped = stamped.copy(repeated = true)
+            }
             val updated = sale.after(stamped)
             if (updated != sale) dao.update(updated)
-            if (stamped is SaleEvent.Settled) recordApprovedTender(sale, stamped)
+            if (stamped is SaleEvent.Settled && !stamped.repeated) recordApprovedTender(sale, stamped)
             true
         }
 
@@ -86,6 +93,14 @@ class SaleRepository(
                 paymentBrand = details.paymentBrand,
                 maskedPan = details.maskedPan,
                 createdAt = settled.processedAt ?: now(),
+                serviceId = sale.serviceId,
+                context = sale.context,
+                poiReconciliationId = details.poiReconciliationId,
+                tipMinor = details.tipMinor,
+                surchargeMinor = details.surchargeMinor,
+                cashBackMinor = details.cashBackMinor,
+                customerReceiptJson = ReceiptLinesJson.encodeFields(details.customerReceipt),
+                cashierReceiptJson = ReceiptLinesJson.encodeFields(details.cashierReceipt),
             ),
         )
     }

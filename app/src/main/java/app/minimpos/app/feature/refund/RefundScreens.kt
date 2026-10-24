@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -54,6 +55,7 @@ import app.minimpos.app.feature.ResultAction
 import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.outcomeNote
+import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.RefundInvalidReason
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
@@ -165,6 +167,7 @@ fun RefundScreen(
                     original = load.payment,
                     formatDateTime = container::formatDateTime,
                     onSelectOption = vm::selectOption,
+                    onTender = vm::selectTender,
                     onQuantity = vm::setQuantity,
                     onAmount = vm::updateAmount,
                     modifier = Modifier.padding(padding),
@@ -255,6 +258,7 @@ private fun RefundChoice(
     original: RefundablePayment,
     formatDateTime: (Long) -> String,
     onSelectOption: (RefundOption) -> Unit,
+    onTender: (String) -> Unit,
     onQuantity: (lineId: Long, quantity: Int) -> Unit,
     onAmount: ((AmountEntry) -> AmountEntry) -> Unit,
     modifier: Modifier = Modifier,
@@ -281,14 +285,16 @@ private fun RefundChoice(
                 Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(dimens.spacing),
             ) {
+                TenderChoices(original, money, onTender)
                 OriginalPaymentCard(original, money, formatDateTime)
-                RefundOriginNote(original.itemsKnown)
+                RefundOriginNote(original.local != null)
                 RefundOptions(
                     options = listOfNotNull(RefundOption.FULL, RefundOption.ITEMS.takeIf { original.itemsKnown }, RefundOption.AMOUNT),
                     selected = state.option,
                     onSelect = onSelectOption,
                 )
                 RefundAmount(state.refundMinor, original.remainingMinor, money)
+                ReturnComponents(original, state.choice, money)
             }
         }
         when (state.option) {
@@ -317,6 +323,43 @@ private fun RefundChoice(
     }
 }
 
+/** Components included in this return, rather than an extra amount added to it. */
+@Composable
+private fun ReturnComponents(
+    original: RefundablePayment,
+    choice: RefundChoice,
+    money: MoneyFormatter,
+) {
+    LabeledValue(
+        stringResource(R.string.surcharge_return_fee),
+        original.surchargeFor(choice)?.let(money::format) ?: stringResource(R.string.surcharge_unknown),
+    )
+    LabeledValue(
+        stringResource(R.string.surcharge_return_tip),
+        original.tipFor(choice)?.let(money::format) ?: stringResource(R.string.surcharge_unknown),
+    )
+}
+
+/** Selects one original card; each button shows its remaining refundable balance. */
+@Composable
+private fun TenderChoices(
+    original: RefundablePayment,
+    money: MoneyFormatter,
+    onTender: (String) -> Unit,
+) {
+    if (original.tenderOptions.size <= 1) return
+    Text(stringResource(R.string.surcharge_refund_tender))
+    original.tenderOptions.forEach { option ->
+        val tender = option.tender ?: return@forEach
+        FilterChip(
+            selected = tender.id == original.tender?.id,
+            modifier = Modifier.testTag("refundTender_${tender.id}"),
+            onClick = { onTender(tender.id) },
+            label = { Text("${tender.sequence} · ${tender.maskedPan.orEmpty()} · ${money.format(option.remainingMinor)}") },
+        )
+    }
+}
+
 @Composable
 private fun RefundOriginNote(itemsKnown: Boolean) {
     if (!itemsKnown) {
@@ -338,13 +381,28 @@ private fun OriginalPaymentCard(
         LabeledValue(stringResource(R.string.detail_reference), original.reference)
         LabeledValue(stringResource(R.string.detail_date), formatDateTime(original.createdAt.toEpochMilli()))
         LabeledValue(stringResource(R.string.refund_original_amount), money.format(original.amountMinor))
+        LabeledValue(
+            stringResource(R.string.surcharge_purchase),
+            original.purchaseMinor?.let(money::format) ?: stringResource(R.string.surcharge_unknown),
+        )
+        LabeledValue(
+            stringResource(R.string.surcharge_label),
+            original.surchargeMinor?.let(money::format) ?: stringResource(R.string.surcharge_unknown),
+        )
+        if (original.reservedMinor > 0) {
+            LabeledValue(stringResource(R.string.surcharge_reserved), money.format(original.reservedMinor))
+        }
+        Text(stringResource(R.string.surcharge_refund_order), Modifier.padding(LocalDimens.current.spacing))
         if (original.refundedMinor > 0) {
             LabeledValue(stringResource(R.string.refund_already_refunded), money.format(original.refundedMinor))
         }
         original.local?.sale?.let { sale ->
             LabeledValue(
                 stringResource(R.string.detail_card),
-                listOfNotNull(sale.paymentBrand?.uppercase(), sale.maskedPan).joinToString(" "),
+                listOfNotNull(
+                    (if (original.tender == null) sale.paymentBrand else original.tender.paymentBrand)?.uppercase(),
+                    if (original.tender == null) sale.maskedPan else original.tender.maskedPan,
+                ).joinToString(" ").ifBlank { stringResource(R.string.surcharge_unknown) },
             )
         }
         LabeledValue(stringResource(R.string.detail_psp), original.transactionId.substringAfter('.'))

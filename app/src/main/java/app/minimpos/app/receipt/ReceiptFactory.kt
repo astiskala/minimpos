@@ -149,13 +149,13 @@ class ReceiptFactory(
                 breakdown = breakdown,
                 approved = standing.approved,
                 cardReceipt =
-                    ReceiptLinesJson.decode(
-                        if (copy == ReceiptCopy.CUSTOMER) {
-                            sale.customerReceiptJson
-                        } else {
-                            sale.cashierReceiptJson
+                    record.tenders
+                        .sortedBy { it.sequence }
+                        .flatMap {
+                            ReceiptLinesJson.decode(if (copy == ReceiptCopy.CUSTOMER) it.customerReceiptJson else it.cashierReceiptJson)
+                        }.ifEmpty {
+                            ReceiptLinesJson.decode(if (copy == ReceiptCopy.CUSTOMER) sale.customerReceiptJson else sale.cashierReceiptJson)
                         },
-                    ),
                 refundQr = RefundablePayment.qrCode(record),
                 cardSaved = sale.storedPaymentMethodId != null,
                 preAuthorisation = standing.preAuthorisation,
@@ -172,6 +172,13 @@ class ReceiptFactory(
                 standingNote = resolved.standing(standing.standing),
                 holdCancelled = standing.standing == PaymentStanding.HOLD_CANCELLED,
                 notice = resolved.simulationNote.takeIf { simulated },
+                surchargeMinor = sale.amountSurchargeMinor,
+                chargedAmount = sale.amountMinor.takeIf { sale.terminalPaidMinor != null && standing.standing.charged },
+                purchaseMinor =
+                    sale.amountSurchargeMinor?.let {
+                        (sale.amountMinor - it - (sale.tipMinor ?: 0) - (sale.cashBackMinor ?: 0)).coerceAtLeast(0)
+                    },
+                discloseSurcharge = standing.approved && !sale.paymentLink && !sale.savedCard,
             )
         return builder(settings, currency, resolved, simulated).sale(receipt, copy)
     }
@@ -199,6 +206,8 @@ class ReceiptFactory(
                 cancellation = refund.cancellation,
                 full = refund.full,
                 standingNote = resolved.refund(refund.status),
+                surchargeMinor = refund.surchargeMinor,
+                tipMinor = refund.tipMinor,
             )
         return builder(settings, CurrencySpec.of(refund.currency), resolved).refund(receipt)
     }

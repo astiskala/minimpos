@@ -120,9 +120,9 @@
   <string name="checkout_link_without_tip_or_donation">付款連結不支援小費或慈善捐款。是否不含這些選項建立連結？</string>
   <string name="checkout_pre_auth_note">僅凍結卡內金額。稍後可在“交易紀錄”中扣款或取消。</string>
   <string name="checkout_tip_on_receipt">在收據上填寫小費</string>
-  <string name="checkout_tip_on_receipt_hint">顧客在列印的收據上填寫小費並簽名。隨後輸入小費，即可扣取總額。</string>
+  <string name="checkout_tip_on_receipt_hint">輸入收據上的小費後扣款。</string>
   <string name="checkout_audio_guidance">語音引導</string>
-  <string name="checkout_audio_hint">僅用於本次顧客付款。終端會朗讀付款指示。付款及輸入PIN碼需要更多時間。</string>
+  <string name="checkout_audio_hint">為今次顧客讀出付款指引。</string>
   <string name="checkout_audio_confirm">確認無障礙設定</string>
   <string name="checkout_audio_requirements">請確認此終端的軟件為%1$s或更新版本，且已由Adyen支援團隊啟用。請使用毋須簽名的卡。終端語言不能為愛沙尼亞語、拉脫維亞語、冰島語或立陶宛語。此次付款將略過部分授權及顧客螢幕提示。</string>
   <string name="checkout_audio_conflicts">請關閉小費、Giving及特殊卡輸入方式後繼續。如需使用付款連結、掃碼錢包或代碼，請關閉語音引導。</string>
@@ -1228,4 +1228,21 @@
   <string name="action_unconfirmed">Adyen 未確認結果。請先再次查詢，再進行其他操作。</string>
   <string name="still_unconfirmed">仍未確認：%1$s</string>
   <string name="storage_unavailable">無法讀取或儲存已儲存的設定或憑證。請重新啟動裝置。如問題持續，請參閱疑難排解指南的重設步驟，或報告應用程式問題。已儲存的檔案未有重設。</string>
+
+    <!-- Surcharge accounting -->
+    <string name="surcharge_label">附加費</string>
+    <string name="surcharge_unknown">未報告</string>
+    <string name="surcharge_charged">已扣款</string>
+    <string name="surcharge_purchase">購買金額</string>
+    <string name="surcharge_purchase_known">購買金額（已知）</string>
+    <string name="surcharge_unknown_count">附加費未報告的銷售筆數</string>
+    <string name="surcharge_reserved">待處理退款</string>
+    <string name="surcharge_refund_tender">選擇原付款卡。按每張卡的剩餘可退金額分別退款。</string>
+    <string name="surcharge_refund_order">先退購買金額，再退小費，最後退附加費。未知的費用明細會保留為未知。</string>
+    <string name="surcharge_balance_changed">可退金額已變更。請重新核對原付款卡和剩餘金額。</string>
+    <string name="surcharge_return_fee">退還附加費</string>
+    <string name="surcharge_return_tip">退還小費</string>
+    <string name="surcharge_hold_limit">含附加費的預授權不能調整或增加。如需更改金額，請取消後重新收款。</string>
+    <string name="surcharge_unknown_refund_count">附加費未報告的退款筆數</string>
+    <string name="surcharge_remaining_unknown">附加費未報告，剩餘購買金額不明。請在 Customer Area 核實，或先向此卡退款再重新收款。</string>
 </resources>

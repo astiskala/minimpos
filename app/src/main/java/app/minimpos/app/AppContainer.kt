@@ -780,7 +780,12 @@ class AppContainer(
                         ReportText.GENERATED -> R.string.report_generated
                         ReportText.SALES -> R.string.report_sales
                         ReportText.TIPS -> R.string.report_tips
+                        ReportText.SURCHARGES -> R.string.surcharge_label
+                        ReportText.PURCHASE -> R.string.surcharge_purchase_known
+                        ReportText.UNKNOWN_SURCHARGES -> R.string.surcharge_unknown_count
                         ReportText.REFUNDS -> R.string.report_refunds
+                        ReportText.REFUND_SURCHARGES -> R.string.surcharge_return_fee
+                        ReportText.UNKNOWN_REFUND_SURCHARGES -> R.string.surcharge_unknown_refund_count
                         ReportText.NET -> R.string.report_net
                         ReportText.HOLDS -> R.string.report_holds
                         ReportText.UNRESOLVED -> R.string.report_unresolved
@@ -833,6 +838,10 @@ class AppContainer(
             released = localizedContext.getString(R.string.receipt_released),
             amount = localizedContext.getString(R.string.receipt_amount),
             tip = localizedContext.getString(R.string.receipt_tip),
+            surcharge = localizedContext.getString(R.string.surcharge_label),
+            unreported = localizedContext.getString(R.string.surcharge_unknown),
+            charged = localizedContext.getString(R.string.surcharge_charged),
+            purchase = localizedContext.getString(R.string.surcharge_purchase),
             tipTotal = localizedContext.getString(R.string.receipt_tip_total),
             signature = localizedContext.getString(R.string.receipt_signature),
             heldNow = localizedContext.getString(R.string.receipt_held_now),

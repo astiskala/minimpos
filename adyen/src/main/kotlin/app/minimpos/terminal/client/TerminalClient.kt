@@ -856,6 +856,8 @@ class TerminalClient(
                 merchantReference = response.saleData?.saleTransactionID?.transactionID,
                 amountMinor = minor(response.paymentResult?.amountsResp?.authorizedAmount, response.paymentResult?.amountsResp?.currency),
                 tipMinor = minor(response.paymentResult?.amountsResp?.tipAmount, response.paymentResult?.amountsResp?.currency),
+                surchargeMinor = minor(response.paymentResult?.amountsResp?.totalFeesAmount, response.paymentResult?.amountsResp?.currency),
+                cashBackMinor = minor(response.paymentResult?.amountsResp?.cashBackAmount, response.paymentResult?.amountsResp?.currency),
                 currency = response.paymentResult?.amountsResp?.currency,
                 paymentBrand = card?.paymentBrand ?: additional[NexoVocabulary.PAYMENT_METHOD],
                 paymentMethodVariant = additional[NexoVocabulary.PAYMENT_METHOD_VARIANT],

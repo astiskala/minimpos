@@ -133,7 +133,7 @@ class TransactionLifecycleTest {
                     request: PaymentStart,
                     serviceId: String,
                     createdAt: Long,
-                ) {
+                ): Boolean {
                     error("failed before persistence")
                 }
             }

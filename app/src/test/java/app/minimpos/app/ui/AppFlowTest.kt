@@ -5,7 +5,6 @@ import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
-import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
@@ -108,7 +107,7 @@ class AppFlowTest {
         compose.clickWhenEnabled("pay")
 
         waitForText("Approved")
-        compose.onNodeWithText("$12.50").assertIsDisplayed()
+        compose.onNodeWithTag("resultStatusAmount").assertTextEquals("$12.50").assertIsDisplayed()
         compose.onNodeWithTag("print").performClick()
         compose.waitForTag("virtualPrinter")
         waitForText("Scan this code for returns")
@@ -521,8 +520,8 @@ class AppFlowTest {
         ).containsExactly("Catering deposit")
         compose.onNodeWithTag("preAuthNote").assertIsDisplayed()
         compose.onNodeWithTag("customerReference").performTextInput("CUST-7")
-        // Cards are saved by default for pre-authorisations, for charging late costs.
-        compose.onNodeWithTag("tokenize").assertIsOn()
+        // The shopper reference updates asynchronously before saving a card can be offered.
+        compose.waitUntilAtLeastOneExists(hasTestTag("tokenize") and isOn(), 15_000)
         compose.onNodeWithTag("pay").assertTextEquals("Pre-authorize $200.00").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Pre-authorized"), 15_000)
         compose.onNodeWithTag("newSaleAfter").assertTextEquals("New pre-auth")

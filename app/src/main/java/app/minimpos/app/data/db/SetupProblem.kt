@@ -114,4 +114,7 @@ enum class SetupProblem {
 
     /** The destination cannot report terminal totals or close a reconciliation period (Tap to Pay). */
     TOTALS,
+
+    /** Original sale/card balance changed after refund review; the request was not sent. */
+    REFUND_BALANCE,
 }

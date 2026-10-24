@@ -90,7 +90,9 @@ class CheckoutRefunds(
             request: RefundStart,
             createdAt: Long,
             current: PaymentContext?,
-        ) = refunds.create(request.pendingRefund(id, createdAt, checkout = true))
+        ) {
+            refunds.create(request.pendingRefund(id, createdAt, checkout = true), request.reviewedRefunds)
+        }
 
         override suspend fun unsent(id: String): CheckoutRecord? {
             val refund =

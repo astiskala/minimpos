@@ -168,15 +168,15 @@ Commit: `feat: track surcharges throughout payment accounting`
 Read first: `adyen/.../client/TerminalClient.kt`, `ClientModels.kt`, `app/.../data/db/Entities.kt`,
 `data/repo/SaleEvent.kt`, `history/HistoryAccounting.kt`, `history/RefundablePayment.kt`, and receipt owners.
 
-- [ ] Map TotalFeesAmount and establish documented amount semantics: which response totals include fees and tips.
+- [x] Map TotalFeesAmount and establish documented amount semantics: which response totals include fees and tips.
   Persist surcharge per tender and expose sale aggregates without counting it twice.
-- [ ] Preserve historical unknown values as unknown rather than inventing zero fees or rewriting prior totals.
-- [ ] Update receipts, detail screens, daily accounting, terminal comparison, and full/partial refund review. Show
+- [x] Preserve historical unknown values as unknown rather than inventing zero fees or rewriting prior totals.
+- [x] Update receipts, detail screens, daily accounting, terminal comparison, and full/partial refund review. Show
   purchase and fee components and cap returns by original tender balances; do not treat cashback as refundable
   merchandise later.
-- [ ] Continue using Adyen configuration-based calculation. A dynamic surcharge engine or general surcharge editor is
+- [x] Continue using Adyen configuration-based calculation. A dynamic surcharge engine or general surcharge editor is
   outside this milestone. Preserve receipt disclosure and documented restrictions involving DCC and adjustments.
-- [ ] Test zero/absent fees, tips plus fees, partial approvals, multiple tenders, refunds, currency precision, and
+- [x] Test zero/absent fees, tips plus fees, partial approvals, multiple tenders, refunds, currency precision, and
   migration.
 
 Start with TerminalClient, SaleEvent/repository, HistoryAccounting, RefundablePayment, and receipt tests. Run payment
@@ -416,8 +416,8 @@ independently, with the provider/destination and evidence location.
 | ID | Feature | Status | Implementation commit | Automated evidence | Real-Adyen evidence/gaps |
 | --- | --- | --- | --- | --- | --- |
 | 01 | Payments app recovery | implemented | `100b1a3` | `scripts/dev finish`; 100% Adyen line coverage | Beta access and physical-phone checks unconfirmed |
-| 02 | Accessible payments | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; 100% Adyen line coverage | Physical terminal/software/enablement unconfirmed |
-| 03 | Surcharge accounting | not started | - | - | Configured TEST surcharges needed |
+| 02 | Accessible payments | implemented | `c8752cc` | `scripts/dev finish`; SDK 33 + 28; 100% Adyen line coverage | Physical terminal/software/enablement unconfirmed |
+| 03 | Surcharge accounting | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 18 | Configured TEST surcharge/refund checks unconfirmed |
 | 04 | Tokens and Settings navigation | not started | - | - | Token permissions/setup unconfirmed |
 | 05 | Split payments and cash | not started | - | - | Partial-approval scenarios needed |
 | 06 | Gift-card lifecycle | not started | - | - | Provider onboarding/TEST cards unconfirmed |
@@ -426,11 +426,14 @@ independently, with the provider/destination and evidence location.
 | 09 | Cashback/Cashout | not started | - | - | With-purchase/standalone enablement unconfirmed |
 | 10 | Unreferenced card refunds | not started | - | - | Eligible country/account enablement unconfirmed |
 
-Resume note: milestones 01 (`100b1a3`) and 02 (this commit) are implemented on `codex/adyen-capabilities`.
-Begin milestone 03 next; milestones 03–10 remain unstarted. Milestone 02 adds database version 17 with a
-preserving 16→17 migration and generated schema. There are no settings, transfer, stored-JSON or dependency changes.
-The full gate passed. Physical terminal/phone verification, accessibility enablement and Payments app beta access
-remain unconfirmed; real calls still require separate authorization.
+Resume note: milestones 01 (`100b1a3`), 02 (`c8752cc`) and 03 (this commit) are implemented on
+`codex/adyen-capabilities`. Stopped after milestone 03 as requested; milestones 04–10 remain unstarted.
+Database version 18 has a preserving 17→18 migration and a Room-generated schema. Historical fee components and
+request facts remain null, and prior totals are unchanged. No settings, transfer, stored-JSON or dependency format
+changes were needed. `scripts/dev finish` passed on October 25, 2026, including SDK 33 and SDK 28; full log
+`build/gradle-logs/run-WKC6Sd/output.log`. Physical terminal/phone verification, accessibility enablement, Payments app
+beta access and configured TEST surcharge/refund checks remain unconfirmed. Real calls, pushes and releases remain
+unauthorized without a separate request.
 
 Milestone 01 evidence:
 
@@ -485,6 +488,56 @@ Milestone 02 evidence:
 - Physical TEST completion/refusal/cancellation, long PIN interactions, Support enablement, actual software/language
   behavior, missing-answer recovery and receipt/history checks remain unverified on all listed models, including AMS1.
   Milestone 01's physical-phone and Payments app beta gaps remain open. No real Adyen calls, pushes or releases made.
+
+Milestone 03 evidence:
+
+- Revalidated Adyen’s [configuration-based surcharge](https://docs.adyen.com/point-of-sale/surcharge/configuration),
+  [surcharge response](https://docs.adyen.com/point-of-sale/surcharge/dynamic) and
+  [terminal tipping](https://docs.adyen.com/point-of-sale/tipping/tipping-from-terminal) contracts on October 24, 2026.
+  `TotalFeesAmount` is the surcharge component of `AuthorizedAmount`; tips are also included in the authorized
+  total. Configuration may charge on purchase plus tip or exclude gratuity. Amounts use Adyen currency precision.
+- Each new terminal tender retains its authorized total, reported fee/tip/cashback, request ServiceID, original
+  context, processing time, reconciliation period and verbatim card receipts. Sale aggregates never add fees or tips
+  to the already-inclusive authorized total. Missing fee components stay unknown, including through migration and
+  mixed old/new history. Changed captures keep reported zero fees; positive fee breakdowns are not inferred.
+  Cashback is excluded from return balances.
+- Full and partial returns review one original card at a time, bounded by that card and the sale. Pending/unknown
+  returns reserve their balances. An atomic pre-send balance and prior-return snapshot check records stale requests
+  as known not sent. Request components remain frozen for recovery. Amount returns cover purchase, then tip, then fee;
+  item returns cover purchase. Multi-card automatic allocation remains milestone 05, as planned.
+- Remaining-balance attempts now durably store their own ServiceID and requested amount before sending, retain the
+  original context, and recover without a second payment. Repeated answers refresh the known outcome without adding
+  amounts or tender rows twice. New partial responses with unreported fees cannot establish a safe purchase remainder;
+  collection stops with Customer Area/refund guidance rather than treating the missing fee as zero.
+- New tender activity is attributed to its own processing day and reconciliation period through bounded history
+  queries without receipt bodies. Legacy tender rows retain prior sale accounting. Daily reports disclose known
+  purchase and fee components, returned fees, and unreported fee counts. Receipts retain all original card disclosures.
+- Seven-language result/detail/refund text and merchant guides cover the workflow, unknown components, disclosure,
+  DCC and adjustment restrictions. Reported surcharged holds cannot be adjusted or increased; configuration-based
+  Adyen calculation remains the only real surcharge mechanism. No dynamic engine or surcharge editor was added.
+- Simulator and fake tests cover absent/zero fees, tips plus fees, partial approvals, multiple cards, independent
+  days/periods, missing answers, recreated recovery, duplicate settlement, stale and partial returns, fee-only
+  remainders, cashback exclusions and Adyen currency precision. Upgrade tests preserve version-17 unfinished payments,
+  returns, tender identities, audio requests and original amounts. AMS1 English/Japanese/Traditional Chinese review
+  tests passed, alongside the existing localized and small-screen checks.
+- Preflight passed. Focused history/accounting, schema upgrades, sale events, simulator workflow, architecture and
+  type-resolved main/test detekt passed in `build/gradle-logs/run-LUZibu/output.log`. Core coverage and both SDK app-flow
+  suites passed focused checks. Shortened hints, localization/CJK, small-screen tests, main/test detekt and Android
+  Lint passed on October 25, 2026: `build/gradle-logs/run-Ld964u/output.log`.
+- Full gate passed: `scripts/dev finish`, log `build/gradle-logs/run-WKC6Sd/output.log`, on October 25, 2026.
+  This includes SDK 33 and 28, migration/repository and payment recovery tests, architecture/dead-code checks, lint,
+  detekt, Dokka, localization, website checks and coverage. Core and Adyen line coverage remain 100%.
+- The gate exposed existing checkout test races. The pre-authorization test now waits for selected card saving after
+  entering the shopper reference; the P630 receipt-tip test waits for its selected option before paying. Result
+  assertions identify the header amount independently of the new purchase component. Captured surcharge/receipt-tip
+  totals have a dedicated delivery regression test.
+- A focused lint run stalled in Kotlin comment traversal. Its thread dump is retained privately at
+  `build/gradle-logs/run-k6EGOU/threads.txt`. Restarting the owned daemon resolved it; no checks were suppressed.
+- Per the follow-up request, the audio-guidance and receipt-tip switch descriptions are shorter in all seven
+  languages and limited to two lines. Full accessibility requirements remain in the confirmation and merchant guide.
+- Physical TEST surcharges with tips, partial approvals, full/partial returns, DCC configuration, actual receipt
+  disclosure and Customer Area completion remain unverified. Milestones 01–02’s hardware/enablement gaps remain open.
+  No real Adyen calls, pushes, publications or releases were made.
 
 ## Adyen source map
 

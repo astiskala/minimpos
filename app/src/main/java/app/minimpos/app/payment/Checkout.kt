@@ -5,6 +5,7 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.history.remainingAmountKnown
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.ids.Ids
@@ -426,7 +427,7 @@ data class Checkout(
          */
         fun remainingPayment(sale: SaleEntity): PaymentStart? {
             val remaining = sale.remainingMinor
-            if (remaining <= 0) return null
+            if (remaining <= 0 || !sale.remainingAmountKnown) return null
             return PaymentStart(
                 totals = Cart().totals(TaxMode.INCLUSIVE),
                 currency = CurrencySpec.of(sale.currency),
@@ -440,6 +441,7 @@ data class Checkout(
                 allowPartialAuthorisation = true,
                 requestedAmountMinor = remaining,
                 existingSaleId = sale.id,
+                walletContext = sale.context,
             )
         }
 

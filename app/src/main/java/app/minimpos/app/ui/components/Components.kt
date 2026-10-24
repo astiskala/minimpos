@@ -266,7 +266,10 @@ fun EmptyState(
     }
 }
 
-/** A labeled switch with one accessible toggle target for the whole row; [enabled] false prevents changes. */
+/**
+ * One accessible toggle target for the row; [enabled] false prevents changes.
+ * Subtitles use at most [subtitleMaxLines] lines, with ellipsis when limited.
+ */
 @Composable
 fun SwitchRow(
     title: String,
@@ -275,6 +278,7 @@ fun SwitchRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     enabled: Boolean = true,
+    subtitleMaxLines: Int = Int.MAX_VALUE,
 ) {
     Row(
         modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onChange),
@@ -286,7 +290,15 @@ fun SwitchRow(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.38f),
             )
-            subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            subtitle?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = subtitleMaxLines,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         Spacer(Modifier.width(12.dp))
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)

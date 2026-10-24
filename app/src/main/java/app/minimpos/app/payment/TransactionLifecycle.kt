@@ -168,13 +168,16 @@ interface TransactionBook<R> {
     /** Existing record ID when [request] adds a tender to an already stored sale; null for a new record. */
     fun existingId(request: R): String? = null
 
-    /** Stores [request] as a new PENDING record [id], sent with [serviceId] and started at [createdAt] (epoch ms). */
+    /**
+     * Stores [request] as [id] at [createdAt] (epoch milliseconds) with its original [serviceId] before sending.
+     * False retains a known-not-sent refusal after a stale balance review.
+     */
     suspend fun open(
         id: String,
         request: R,
         serviceId: String,
         createdAt: Long,
-    )
+    ): Boolean
 
     /** The request to send for [request]: pure, so it also says what the waiting screen shows and whether it needs approval. */
     fun operation(request: R): TerminalOperation
@@ -345,7 +348,10 @@ class TransactionLifecycle<R>(
         grant: ManagerApproval.Grant,
     ) {
         val serviceId = newServiceId()
-        book.open(id, request, serviceId, clock.millis())
+        if (!book.open(id, request, serviceId, clock.millis())) {
+            runner.resolved(id)
+            return
+        }
         val onSending: suspend (String) -> Unit = { poiId ->
             synchronized(serviceIds) { serviceIds[id] = serviceId }
             book.sending(id, poiId)

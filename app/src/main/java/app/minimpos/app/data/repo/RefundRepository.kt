@@ -2,8 +2,12 @@ package app.minimpos.app.data.repo
 
 import androidx.room.withTransaction
 import app.minimpos.app.data.db.AppDatabase
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
+import app.minimpos.app.data.db.SaleTenderEntity
+import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.TransactionDetails
@@ -55,8 +59,63 @@ class RefundRepository(
     private val dao = db.refundDao()
     private val observations = RecordObservations(source = dao::observeRefund)
 
-    /** Inserts a new [refund], normally PENDING. */
-    suspend fun create(refund: RefundEntity) = dao.insert(refund)
+    /**
+     * Inserts a pending [refund] within current balances. A changed [reviewedRefunds] snapshot records a known-not-sent
+     * refusal; null is for legacy/foreign callers, which still receive balance checks. Returns whether it may be sent.
+     */
+    suspend fun create(
+        refund: RefundEntity,
+        reviewedRefunds: Map<String, RefundStatus>? = null,
+    ) = db.withTransaction {
+        val valid = refund.saleId?.let { sales.get(it)?.allows(refund, reviewedRefunds) } ?: (refund.saleId == null)
+        val stored =
+            if (valid) {
+                refund
+            } else {
+                refund.copy(
+                    status = RefundStatus.FAILED,
+                    reason = StoredReason.NotDone(Failure.NotSetUp(SetupProblem.REFUND_BALANCE)),
+                )
+            }
+        dao.insert(stored)
+        stored.status == RefundStatus.PENDING
+    }
+
+    private fun SaleWithLines.allows(
+        refund: RefundEntity,
+        reviewedRefunds: Map<String, RefundStatus>?,
+    ): Boolean {
+        if (reviewedRefunds != null &&
+            refunds.filter { it.status != RefundStatus.FAILED }.associate { it.id to it.status } != reviewedRefunds
+        ) {
+            return false
+        }
+        if (refund.cancellation) return true
+        val prior = refunds.filter { it.status != RefundStatus.FAILED && !it.cancellation }
+        val pending =
+            prior.filter { it.status != RefundStatus.REQUESTED }.fold(
+                0L,
+            ) { sum, priorRefund -> Math.addExact(sum, priorRefund.amountMinor) }
+        val remaining = sale.amountMinor - (sale.cashBackMinor ?: 0) - sale.refundedMinor - pending
+        if (refund.amountMinor !in 1..remaining || (tenders.size > 1 && refund.tenderId == null)) return false
+        val id = refund.tenderId ?: return true
+        val tender = tenders.firstOrNull { it.id == id } ?: return false
+        return tender.allows(refund, prior)
+    }
+
+    private fun SaleTenderEntity.allows(
+        refund: RefundEntity,
+        prior: List<RefundEntity>,
+    ): Boolean {
+        if (refund.originalTransactionId != poiTransactionId) return false
+        val reserved =
+            prior
+                .filter {
+                    it.originalTransactionId == poiTransactionId
+                }.fold(0L) { sum, priorRefund -> Math.addExact(sum, priorRefund.amountMinor) }
+        val balance = (authorisedMinor ?: 0) - (cashBackMinor ?: 0) - reserved
+        return refund.amountMinor in 1..balance && (!refund.full || (reserved == 0L && refund.amountMinor == authorisedMinor))
+    }
 
     /** Returns the refund with ID [id], or null if there is none. */
     suspend fun get(id: String): RefundEntity? = dao.refund(id)

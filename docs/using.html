@@ -387,6 +387,21 @@
             transaction. If Adyen configured longer screen timeouts or an answer is missing, <a
             href="troubleshooting#unknown">check the unknown result</a> before another payment. The choice resets
             after starting this attempt. Simulator demos do not play audio or verify real terminal support.</p>
+          <p>Adyen calculates configuration-based surcharges. Mini mPOS records the reported surcharge separately from
+            purchases and tips; the charged total already includes it. A fee that was not reported, including older
+            history, stays unknown. Receipts keep Adyen’s original card receipt data. Daily reports list known purchase
+            and surcharge components separately and count sales whose fee is unreported.</p>
+          <p>If a partial approval does not report the surcharge, Mini mPOS cannot establish the remaining purchase amount.
+            Check the Customer Area or refund the original card before starting again.</p>
+          <p>For a refund, review the original card and its remaining balance. Return each card separately for a
+            multi-card sale. Pending or unknown returns reserve their balance until resolved. Item returns cover purchase
+            amounts; amount returns cover purchase first, then tip, then surcharge. A full return includes the remaining
+            reported fee. Confirm refund completion in the Customer Area.</p>
+          <p>Keep surcharge disclosure available before payment, especially with Tap to Pay, which has no surcharge
+            confirmation screen. Do not combine surcharges with DCC or increase them through authorization adjustments
+            or overcaptures. Mini mPOS blocks adjustments and captures above the original hold when a surcharge was
+            reported. See <a href="https://docs.adyen.com/point-of-sale/surcharge">Adyen’s surcharge requirements</a> and
+            <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">Adyen’s surcharge configuration</a>.</p>
           <h3 id="partial-payments">Collect a partially authorized payment</h3>
           <p>Turn on <strong>Allow partial authorizations</strong> to accept a card approval for less than the requested
             amount. When the result shows <strong>Partially paid</strong>, check the paid and remaining amounts, then

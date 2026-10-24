@@ -361,6 +361,8 @@ private fun DaySummary(
         buildList {
             if (day.saleCount > 0) add(stringResource(R.string.history_day_sales, totals(day.salesMinor), day.saleCount))
             if (day.tipsMinor.isNotEmpty()) add(stringResource(R.string.history_day_tips, totals(day.tipsMinor)))
+            if (day.surchargesMinor.isNotEmpty()) add(stringResource(R.string.surcharge_label) + ": " + totals(day.surchargesMinor))
+            if (day.unknownSurchargeCount.isNotEmpty()) add(stringResource(R.string.surcharge_unknown))
             if (day.refundCount > 0) add(stringResource(R.string.history_day_refunds, totals(day.refundsMinor), day.refundCount))
             if (day.preAuthCount > 0) add(stringResource(R.string.history_day_pre_auths, totals(day.preAuthsMinor), day.preAuthCount))
         }

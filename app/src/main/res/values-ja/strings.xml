@@ -120,9 +120,9 @@
   <string name="checkout_link_without_tip_or_donation">決済リンクはチップとチャリティ寄付に対応していません。これらなしでリンクを作成しますか？</string>
   <string name="checkout_pre_auth_note">カードの利用枠を確保するだけです。後で「取引履歴」からキャプチャまたはキャンセルしてください。</string>
   <string name="checkout_tip_on_receipt">領収書にチップを記入</string>
-  <string name="checkout_tip_on_receipt_hint">購入者が印刷した領収書にチップを記入して署名します。その後チップを入力して合計額をキャプチャします。</string>
+  <string name="checkout_tip_on_receipt_hint">領収書のチップを入力して確定します。</string>
   <string name="checkout_audio_guidance">音声ガイド</string>
-  <string name="checkout_audio_hint">このお客様のお支払いにのみ適用します。端末が支払い手順を読み上げます。支払いとPIN入力には通常より時間がかかります。</string>
+  <string name="checkout_audio_hint">このお客様に支払い手順を読み上げます。</string>
   <string name="checkout_audio_confirm">音声ガイドの設定を確認</string>
   <string name="checkout_audio_requirements">この端末のソフトウェアが%1$s以降で、Adyenサポートによる有効化が済んでいることを確認してください。署名不要のカードを使用してください。端末の言語にはエストニア語、ラトビア語、アイスランド語、リトアニア語は使えません。この支払いでは一部承認とお客様用画面の案内を使いません。</string>
   <string name="checkout_audio_conflicts">続行するには、チップ、Giving、特殊なカード入力をオフにしてください。リンク、スキャン式ウォレット、トークンを使うには音声ガイドをオフにしてください。</string>
@@ -1228,4 +1228,21 @@
   <string name="action_unconfirmed">Adyenが結果を確認できませんでした。他の操作をする前に、もう一度確認してください。</string>
   <string name="still_unconfirmed">まだ確認できません：%1$s</string>
   <string name="storage_unavailable">保存済みの設定または認証情報を読み書きできませんでした。デバイスを再起動してください。問題が続く場合はトラブルシューティングのリセット手順を確認するか、アプリの問題を報告してください。保存済みファイルはリセットされていません。</string>
+
+    <!-- Surcharge accounting -->
+    <string name="surcharge_label">サーチャージ</string>
+    <string name="surcharge_unknown">未報告</string>
+    <string name="surcharge_charged">請求額</string>
+    <string name="surcharge_purchase">購入額</string>
+    <string name="surcharge_purchase_known">購入額（判明分）</string>
+    <string name="surcharge_unknown_count">サーチャージ未報告の売上</string>
+    <string name="surcharge_reserved">処理中の返金</string>
+    <string name="surcharge_refund_tender">元のカードを選択してください。各カードの残額を上限に、カードごとに返金します。</string>
+    <string name="surcharge_refund_order">購入額、チップ、サーチャージの順に返金します。不明な内訳は不明のまま保持されます。</string>
+    <string name="surcharge_balance_changed">返金可能額が変わりました。元のカードと残額を再確認してください。</string>
+    <string name="surcharge_return_fee">返金するサーチャージ</string>
+    <string name="surcharge_return_tip">返金するチップ</string>
+    <string name="surcharge_hold_limit">サーチャージ付きの確保額は調整・増額できません。金額を変更するにはキャンセルして新たに決済してください。</string>
+    <string name="surcharge_unknown_refund_count">サーチャージ未報告の返金</string>
+    <string name="surcharge_remaining_unknown">サーチャージが未報告のため、購入額の残額は不明です。Customer Areaで確認するか、このカードに返金してからやり直してください。</string>
 </resources>

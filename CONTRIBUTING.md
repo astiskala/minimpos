@@ -190,6 +190,8 @@ not establish support. Also needing real-terminal verification: scoped Managemen
 gratuities, DCC, MOTO and offline limits; `AskGratuity` with `SaleToPOIData` `TipOptions`/`AmountToTipOn`;
 audio-guided `EnableAccessibilityMode` payments on AMS1/S1F2/S1F2L/S1E2L/S1U2 (1.117+) and M450/P630/SFO1 (1.124+),
 Support enablement, terminal language/card eligibility, signature refusals, long PIN entry, cancellation and status recovery;
+configuration-based surcharge `TotalFeesAmount`/`AuthorizedAmount` with tips, partial approvals and referenced refunds,
+receipt disclosure and DCC/adjustment restrictions;
 `GetTotalsRequest` and `ReconciliationRequest` (`SaleReconciliation`); chained `AdminRequest` waiting-screen sessions with
 `DisplayRequest` and `InputRequest`; `AllowPartialAuthorisation` (`Result=Partial`); `AskGiving` two-step
 `TransactionStatus` (`SaleID=AdyenGiving`) lookups; `MOTO` and `ForceEntryMode=Keyed` (MKE); and offline EMV /

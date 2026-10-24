@@ -1,7 +1,9 @@
 package app.minimpos.app.history
 
+import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.repo.RefundedLine
 import app.minimpos.core.codec.RefundQrPayload
@@ -112,6 +114,10 @@ sealed interface Refundability {
  * @property expectedContext Original locally recorded destination; null for a reviewed foreign receipt.
  * @property checkout Whether the refund goes through Adyen's Checkout API rather than a terminal (a saved-card charge).
  * @throws IllegalArgumentException if [amountMinor] is not positive.
+ * @property tenderId Original local tender identity; null for legacy, Checkout or foreign payments.
+ * @property surchargeMinor Surcharge included in the returned amount; null for unknown allocations.
+ * @property tipMinor Tip included in the returned amount; null for unknown allocations.
+ * @property reviewedRefunds Prior return identities/statuses used for review; null for legacy or foreign callers.
  */
 data class RefundStart(
     val saleId: String?,
@@ -128,6 +134,14 @@ data class RefundStart(
     val expectedContext: PaymentContext? = null,
     /** True for a saved-card charge ([app.minimpos.app.data.db.SaleEntity.savedCard]), which has no terminal reversal. */
     val checkout: Boolean = false,
+    /** Original tender identity; null for legacy single-tender, Checkout or foreign payments. */
+    val tenderId: String? = null,
+    /** Surcharge included in the refund amount; null for an unknown component. */
+    val surchargeMinor: Long? = null,
+    /** Tip included in the refund amount; null for an unknown component. */
+    val tipMinor: Long? = null,
+    /** Prior returns at review, rechecked atomically before storing this request; never needed to replay a refund. */
+    val reviewedRefunds: Map<String, RefundStatus>? = null,
 ) {
     init {
         require(amountMinor > 0) { "Refund amount must be positive" }
@@ -164,6 +178,7 @@ data class RefundStart(
  * @property reference Its merchant reference, if known.
  * @property local The sale on this terminal, or null for a payment known only from its QR code (its items and earlier
  *   refunds are then unknown, so it cannot be refunded by item).
+ * @property tender Selected original card; null for legacy or manual-capture payments.
  */
 class RefundablePayment private constructor(
     val transactionId: String,
@@ -173,12 +188,68 @@ class RefundablePayment private constructor(
     val currency: String,
     val reference: String?,
     val local: SaleWithLines?,
+    /** Original tender selected for this return; null for a legacy single payment or a manual capture. */
+    val tender: SaleTenderEntity? = null,
 ) {
+    private val matchingRefunds get() =
+        local?.refunds.orEmpty().filter {
+            !it.cancellation && (tender == null || it.originalTransactionId == transactionId) && it.status != RefundStatus.FAILED
+        }
+
     /** Already refunded from this terminal; 0 when the sale is not [local]. */
-    val refundedMinor: Long get() = local?.sale?.refundedMinor ?: 0
+    val refundedMinor: Long get() =
+        if (tender == null) {
+            local?.sale?.refundedMinor ?: 0
+        } else {
+            matchingRefunds.filter { it.status == RefundStatus.REQUESTED }.fold(
+                0L,
+            ) { sum, refund -> Math.addExact(sum, refund.amountMinor) }
+        }
+
+    /** Possibly sent returns reserve their original balance until resolved. */
+    val reservedMinor: Long get() =
+        matchingRefunds
+            .filter {
+                it.status != RefundStatus.REQUESTED
+            }.fold(0L) { sum, refund -> Math.addExact(sum, refund.amountMinor) }
+
+    /** Original surcharge component; null when unreported or historical. */
+    val surchargeMinor: Long? get() = tender?.surchargeMinor ?: local?.sale?.amountSurchargeMinor.takeIf { tender == null }
+
+    /** Original tip component; null when unknown. */
+    val tipMinor: Long? get() = tender?.tipMinor ?: local?.sale?.tipMinor.takeIf { tender == null }
+
+    /** Original purchase component, excluding reported tip, fee and cashback; null if fee is unknown. */
+    val purchaseMinor: Long? get() = surchargeMinor?.let { (amountMinor - it - (tipMinor ?: 0)).coerceAtLeast(0) }
+
+    /** Each original card can be reviewed separately; no return may use another card's balance. */
+    val tenderOptions: List<RefundablePayment> get() =
+        local
+            ?.tenders
+            .orEmpty()
+            .sortedBy { it.sequence }
+            .mapNotNull { forTender(it.id) }
+
+    /** Selects a retained original card, preserving its own identity and refund reservations. */
+    fun forTender(id: String): RefundablePayment? {
+        val record = local ?: return null
+        if (record.sale.manualCapture) return null
+        val selected = record.tenders.firstOrNull { it.id == id } ?: return null
+        return fromTender(record, selected)
+    }
 
     /** What can still be refunded, never negative. */
-    val remainingMinor: Long get() = (amountMinor - refundedMinor).coerceAtLeast(0)
+    val remainingMinor: Long get() {
+        val own = (amountMinor - refundedMinor - reservedMinor).coerceAtLeast(0)
+        val sale = local?.sale ?: return own
+        val pending =
+            local.refunds
+                .filter {
+                    it.status.unresolved && !it.cancellation
+                }.fold(0L) { sum, refund -> Math.addExact(sum, refund.amountMinor) }
+        val total = (sale.amountMinor - (sale.cashBackMinor ?: 0) - sale.refundedMinor - pending).coerceAtLeast(0)
+        return minOf(own, total)
+    }
 
     /** The sale's lines with what is left of each, in cart order; empty when the sale is not [local]. */
     val lines: List<RefundableLine> =
@@ -190,7 +261,7 @@ class RefundablePayment private constructor(
      * Whether items can be chosen, which needs the [local] sale; not for a captured pre-authorisation, whose capture can
      * differ from its item.
      */
-    val itemsKnown: Boolean get() = local?.sale?.kind == SaleKind.SALE
+    val itemsKnown: Boolean get() = local?.sale?.kind == SaleKind.SALE && local.tenders.size <= 1
 
     /** How much [choice] refunds, in minor units; items are apportioned by [RefundCalculator.amountFor]. */
     fun amountFor(choice: RefundChoice): Long =
@@ -222,6 +293,8 @@ class RefundablePayment private constructor(
     ): RefundStart? {
         if (!isValid(choice)) return null
         val prefix = referencePrefix.trim().let { if (it.isEmpty()) "R" else "$it-R" }
+        val amount = amountFor(choice)
+        val components = componentsFor(amount)
         return RefundStart(
             saleId = local?.sale?.id,
             originalTransactionId = transactionId,
@@ -229,13 +302,43 @@ class RefundablePayment private constructor(
             originalReference = reference,
             currency = currency,
             amountMinor = amountFor(choice),
-            full = choice == RefundChoice.Everything && refundedMinor == 0L && local != null,
+            full =
+                choice == RefundChoice.Everything && refundedMinor == 0L && reservedMinor == 0L && local != null &&
+                    (tender?.cashBackMinor ?: local.sale.cashBackMinor ?: 0) == 0L && amount == amountMinor,
             merchantReference = Ids.transactionReference(prefix, now, zone),
             lines = (choice as? RefundChoice.Items)?.let(::refundedLines).orEmpty(),
-            expectedContext = local?.sale?.context,
+            expectedContext = tender?.context ?: local?.sale?.context,
             checkout = local?.sale?.savedCard == true,
+            tenderId = tender?.id,
+            surchargeMinor = components?.first,
+            tipMinor = components?.second,
+            reviewedRefunds = local?.refunds?.filter { it.status != RefundStatus.FAILED }?.associate { it.id to it.status },
         )
     }
+
+    /** Return purchase first, then tip, then surcharge; unknown prior allocations keep the breakdown unknown. */
+    private fun componentsFor(amount: Long): Pair<Long, Long>? {
+        val fee = surchargeMinor ?: return null
+        if (matchingRefunds.any { it.surchargeMinor == null || it.tipMinor == null }) return null
+        val feeLeft = (fee - matchingRefunds.fold(0L) { sum, refund -> Math.addExact(sum, refund.surchargeMinor ?: 0) }).coerceAtLeast(0)
+        val tipLeft =
+            (
+                (tipMinor ?: 0) -
+                    matchingRefunds.fold(
+                        0L,
+                    ) { sum, refund -> Math.addExact(sum, refund.tipMinor ?: 0) }
+            ).coerceAtLeast(0)
+        val purchaseLeft = (amountMinor - refundedMinor - reservedMinor - feeLeft - tipLeft).coerceAtLeast(0)
+        val afterPurchase = (amount - purchaseLeft).coerceAtLeast(0)
+        val tip = minOf(afterPurchase, tipLeft)
+        return minOf(afterPurchase - tip, feeLeft) to tip
+    }
+
+    /** Surcharge included in the selected return, or null when its allocation is unknown. */
+    fun surchargeFor(choice: RefundChoice): Long? = componentsFor(amountFor(choice))?.first
+
+    /** Tip included in the selected return, or null when its allocation is unknown. */
+    fun tipFor(choice: RefundChoice): Long? = componentsFor(amountFor(choice))?.second
 
     private fun refundedLines(choice: RefundChoice.Items): List<RefundedLine> =
         local?.sortedLines.orEmpty().mapNotNull { line ->
@@ -367,9 +470,34 @@ class RefundablePayment private constructor(
          */
         fun isCheckoutTransaction(transactionId: String): Boolean = transactionId.startsWith(".")
 
+        /** Reads one original approved card with a valid timestamp; null when it cannot safely be referenced. */
+        internal fun fromTender(
+            record: SaleWithLines,
+            tender: SaleTenderEntity,
+        ): RefundablePayment? {
+            if (tender.status != SaleStatus.APPROVED) return null
+            val transaction = tender.poiTransactionId ?: return null
+            val timestamp = tender.poiTimestamp?.takeIf { TerminalClient.instantOf(it) != null } ?: return null
+            val amount = tender.authorisedMinor ?: return null
+            return RefundablePayment(
+                transaction,
+                timestamp,
+                Instant.ofEpochMilli(tender.createdAt),
+                (amount - (tender.cashBackMinor ?: 0)).coerceAtLeast(0),
+                record.sale.currency,
+                record.sale.merchantReference,
+                record,
+                tender,
+            )
+        }
+
         private fun eligible(record: SaleWithLines): RefundablePayment? {
             val sale = record.sale
             if (sale.sample) return null
+            if (sale.status == SaleStatus.APPROVED && !sale.manualCapture && record.tenders.isNotEmpty()) {
+                val options = record.tenders.sortedBy { it.sequence }.mapNotNull { fromTender(record, it) }
+                return options.firstOrNull { it.remainingMinor > 0 } ?: options.firstOrNull()
+            }
             val transactionId = sale.poiTransactionId
             val timestamp = sale.poiTimestamp?.takeIf { TerminalClient.instantOf(it) != null }
             if (sale.status != SaleStatus.APPROVED || transactionId == null || timestamp == null) return null
@@ -377,7 +505,7 @@ class RefundablePayment private constructor(
                 transactionId,
                 timestamp,
                 Instant.ofEpochMilli(sale.createdAt),
-                sale.amountMinor,
+                sale.amountMinor - (sale.cashBackMinor ?: 0),
                 sale.currency,
                 sale.merchantReference,
                 record,

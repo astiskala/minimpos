@@ -163,7 +163,10 @@ class CheckoutOperations<R, C>(
         val grant = approval.grant()
         return runner.start(request, newId, ::interrupted) { id ->
             book.open(id, request, clock.millis(), target().context)
-            mutex.withLock { book.unsent(id)?.takeIf { it.pending }?.let { send(id, it, grant) } }
+            mutex.withLock {
+                val pending = book.unsent(id)?.takeIf { it.pending }
+                if (pending == null) runner.resolved(id) else send(id, pending, grant)
+            }
         }
     }
 

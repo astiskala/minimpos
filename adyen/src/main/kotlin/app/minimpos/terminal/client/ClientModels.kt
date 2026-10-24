@@ -400,7 +400,7 @@ data class Tokenization(
 
 /**
  * The terminal's answer to a payment or reversal, flattened for the app. Fields the terminal did not send are null (or
- * empty); the card fields and [tokenization] are only filled for payments. Amounts are in major units, as in nexo.
+ * empty); the card fields and [tokenization] are only filled for payments. Amounts are in minor units, using Adyen currency precision.
  */
 data class TransactionDetails(
     /** True when `Response.Result` is `Success` or `Partial`: the payment was approved or the refund accepted. */
@@ -433,12 +433,16 @@ data class TransactionDetails(
     /** The merchant reference the terminal reports: the payment's `SaleTransactionID`, or a refund's `merchantReference`. */
     val merchantReference: String?,
     /**
-     * The authorised amount of a payment, or the reversed amount of a refund, in minor units of [currency]; null if the
-     * terminal omitted it or named a currency without Adyen decimals.
+     * Authorized total, including tip, surcharge and cashback, or the reversed refund amount, in minor units of
+     * [currency]; null when omitted or the currency has no Adyen decimals. Components are never added to this again.
      */
     val amountMinor: Long?,
     /** The tip added on the terminal (`PaymentResult.AmountsResp.TipAmount`), in minor units; null when none was added. */
     val tipMinor: Long? = null,
+    /** Surcharge included in [amountMinor] (`TotalFeesAmount`), in minor units; null when unreported, including old history. */
+    val surchargeMinor: Long? = null,
+    /** Cash returned to the shopper, included in [amountMinor]; null when unreported. Never merchandise. */
+    val cashBackMinor: Long? = null,
     /** The ISO 4217 currency code of a payment's [amountMinor]. */
     val currency: String?,
     /** The card scheme, e.g. `mc` or `visa`. */

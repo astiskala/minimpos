@@ -102,6 +102,18 @@ class RefundViewModel(
     /** Records explicit staff review of a receipt without local payment context. */
     fun reviewRemote(reviewed: Boolean) = state.update { it.copy(remoteReviewed = reviewed) }
 
+    /** Reviews one original card's refundable balance; never transfers another card's balance onto it. */
+    fun selectTender(id: String) =
+        state.update { current ->
+            val payment = current.original?.forTender(id) ?: return@update current
+            current.copy(
+                load = Refundability.Refundable(payment),
+                option = RefundOption.FULL,
+                selection = emptyMap(),
+                amount = AmountEntry(),
+            )
+        }
+
     /** Chooses what to refund. */
     fun selectOption(option: RefundOption) = state.update { it.copy(option = option) }
 

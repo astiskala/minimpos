@@ -122,9 +122,9 @@
   <string name="checkout_link_without_tip_or_donation">Les liens de paiement ne prennent pas en charge les pourboires ou les dons caritatifs. Créer ce lien sans eux ?</string>
   <string name="checkout_pre_auth_note">Ce montant est uniquement réservé sur la carte. Capturez ou annulez la pré-autorisation plus tard depuis l’Historique.</string>
   <string name="checkout_tip_on_receipt">Pourboire sur le reçu</string>
-  <string name="checkout_tip_on_receipt_hint">Le client écrit un pourboire sur le reçu imprimé et le signe. Saisissez ensuite le pourboire pour capturer le total.</string>
+  <string name="checkout_tip_on_receipt_hint">Saisissez le pourboire du reçu pour capturer.</string>
   <string name="checkout_audio_guidance">Guidage audio</string>
-  <string name="checkout_audio_hint">Pour ce client uniquement. Le terminal lit les instructions de paiement à voix haute. Prévoyez plus de temps pour le paiement et le code PIN.</string>
+  <string name="checkout_audio_hint">Lit les étapes du paiement à voix haute.</string>
   <string name="checkout_audio_confirm">Confirmer la configuration accessible</string>
   <string name="checkout_audio_requirements">Confirmez le logiciel %1$s ou ultérieur et l’activation par le support Adyen pour ce terminal. Utilisez une carte sans signature. La langue du terminal ne peut pas être l’estonien, le letton, l’islandais ou le lituanien. Ignorez les autorisations partielles et les invites de l’écran client pour ce paiement.</string>
   <string name="checkout_audio_conflicts">Désactivez les pourboires, Giving et la saisie spéciale des cartes pour continuer. Désactivez le guidage audio pour utiliser un lien, un portefeuille scanné ou un token.</string>
@@ -1240,4 +1240,21 @@
   <string name="action_unconfirmed">Adyen n’a pas confirmé le résultat. Vérifiez à nouveau avant d’essayer autre chose.</string>
   <string name="still_unconfirmed">Toujours pas confirmé : %1$s</string>
   <string name="storage_unavailable">Les paramètres ou informations d’identification enregistrés n’ont pas pu être lus ou écrits. Redémarrez l’appareil. Si cela continue, suivez le dépannage pour connaître les étapes de réinitialisation ou signalez un problème d’application. Vos fichiers enregistrés n’ont pas été réinitialisés.</string>
+
+    <!-- Surcharge accounting -->
+    <string name="surcharge_label">Supplément</string>
+    <string name="surcharge_unknown">Non indiqué</string>
+    <string name="surcharge_charged">Débité</string>
+    <string name="surcharge_purchase">Achat</string>
+    <string name="surcharge_purchase_known">Achat (connu)</string>
+    <string name="surcharge_unknown_count">Ventes avec supplément non indiqué</string>
+    <string name="surcharge_reserved">Remboursements en attente</string>
+    <string name="surcharge_refund_tender">Choisissez la carte d’origine. Remboursez chaque carte séparément, dans la limite de son solde restant.</string>
+    <string name="surcharge_refund_order">Les remboursements couvrent l’achat, puis le pourboire, puis le supplément. Les montants inconnus restent inconnus.</string>
+    <string name="surcharge_balance_changed">Le solde à rembourser a changé. Vérifiez à nouveau la carte d’origine et le montant restant.</string>
+    <string name="surcharge_return_fee">Supplément remboursé</string>
+    <string name="surcharge_return_tip">Pourboire remboursé</string>
+    <string name="surcharge_hold_limit">Les retenues avec supplément ne peuvent être ajustées ni augmentées. Pour changer le montant, annulez et recommencez le paiement.</string>
+    <string name="surcharge_unknown_refund_count">Remboursements avec supplément non indiqué</string>
+    <string name="surcharge_remaining_unknown">Le supplément n’a pas été indiqué. Le montant d’achat restant est inconnu. Vérifiez dans le Customer Area ou remboursez cette carte avant de recommencer.</string>
 </resources>

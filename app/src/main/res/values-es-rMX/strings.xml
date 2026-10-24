@@ -122,9 +122,9 @@
   <string name="checkout_link_without_tip_or_donation">Los enlaces de pago no admiten propinas ni donaciones benéficas. ¿Crear este enlace sin ellos?</string>
   <string name="checkout_pre_auth_note">Este importe solo se retiene en la tarjeta. Capture o cancele la preautorización más tarde desde Historial.</string>
   <string name="checkout_tip_on_receipt">Propina sobre el recibo</string>
-  <string name="checkout_tip_on_receipt_hint">El cliente escribe una propina en el recibo impreso y lo firma. Ingrese la propina luego para capturar el total.</string>
+  <string name="checkout_tip_on_receipt_hint">Ingresa la propina del recibo para capturar.</string>
   <string name="checkout_audio_guidance">Guía por audio</string>
-  <string name="checkout_audio_hint">Solo para este comprador. La terminal lee las instrucciones de pago en voz alta. Permite más tiempo para el pago y el PIN.</string>
+  <string name="checkout_audio_hint">Lee los pasos del pago en voz alta.</string>
   <string name="checkout_audio_confirm">Confirmar configuración accesible</string>
   <string name="checkout_audio_requirements">Confirma software %1$s o posterior y la activación por Soporte de Adyen para esta terminal. Usa una tarjeta que no requiera firma. El idioma de la terminal no puede ser estonio, letón, islandés ni lituano. Omite las autorizaciones parciales y las indicaciones de la pantalla para el comprador en este pago.</string>
   <string name="checkout_audio_conflicts">Desactiva propinas, Giving y la captura especial de tarjetas para continuar. Desactiva la guía por audio para usar un enlace, una billetera escaneada o un token.</string>
@@ -1240,4 +1240,21 @@
   <string name="action_unconfirmed">Adyen no confirmó el resultado. Compruébalo de nuevo antes de intentar cualquier otra cosa.</string>
   <string name="still_unconfirmed">Aún no confirmado: %1$s</string>
   <string name="storage_unavailable">No se pudieron leer ni escribir las configuraciones o credenciales guardadas. Reinicie el dispositivo. Si esto continúa, siga la Solución de problemas para conocer los pasos para restablecer o informar un problema con la aplicación. Sus archivos guardados no se han restablecido.</string>
+
+    <!-- Surcharge accounting -->
+    <string name="surcharge_label">Recargo</string>
+    <string name="surcharge_unknown">No informado</string>
+    <string name="surcharge_charged">Cobrado</string>
+    <string name="surcharge_purchase">Compra</string>
+    <string name="surcharge_purchase_known">Compra (conocida)</string>
+    <string name="surcharge_unknown_count">Ventas con recargos no informados</string>
+    <string name="surcharge_reserved">Reembolsos pendientes</string>
+    <string name="surcharge_refund_tender">Elige la tarjeta original. Reembolsa cada tarjeta por separado, sin superar su saldo restante.</string>
+    <string name="surcharge_refund_order">Los reembolsos cubren primero la compra, luego la propina y después el recargo. Los importes desconocidos siguen sin conocerse.</string>
+    <string name="surcharge_balance_changed">El saldo del reembolso cambió. Revisa de nuevo la tarjeta original y el importe restante.</string>
+    <string name="surcharge_return_fee">Recargo a reembolsar</string>
+    <string name="surcharge_return_tip">Propina a reembolsar</string>
+    <string name="surcharge_hold_limit">No se pueden ajustar ni aumentar las retenciones con recargo. Cancela y cobra de nuevo para cambiar el importe.</string>
+    <string name="surcharge_unknown_refund_count">Reembolsos con recargos no informados</string>
+    <string name="surcharge_remaining_unknown">No se informó el recargo. El importe de compra restante es desconocido. Revisa el Área de Clientes o reembolsa esta tarjeta antes de empezar de nuevo.</string>
 </resources>

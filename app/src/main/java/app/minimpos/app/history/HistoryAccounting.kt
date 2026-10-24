@@ -3,6 +3,7 @@ package app.minimpos.app.history
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.terminal.client.TerminalTotalsOutcome
 import java.time.Instant
@@ -21,6 +22,10 @@ data class HistoryActivity(
     val amountMinor: Long = 0,
     /** Tip included in [amountMinor], never added to it again. */
     val tipMinor: Long = 0,
+    /** Surcharge already included in [amountMinor]; null means unreported. */
+    val surchargeMinor: Long? = null,
+    /** Cash returned, already included in [amountMinor], distinct from purchase. */
+    val cashBackMinor: Long = 0,
 ) {
     /** ISO 4217 currency code, unchanged from the original operation. */
     val currency: String get() =
@@ -86,7 +91,7 @@ enum class HistoryScope {
 
 /** Totals in one currency, counting retained activity only. */
 data class CurrencyHistoryTotals(
-    /** Approved sales and accepted captures, including tips, in minor units. */
+    /** Approved sales and accepted captures, including tips and surcharges, in minor units. */
     val salesMinor: Long = 0,
     /** Number of sales and captures. */
     val saleCount: Int = 0,
@@ -102,6 +107,16 @@ data class CurrencyHistoryTotals(
     val holdCount: Int = 0,
     /** Number of unresolved operations requiring follow-up. */
     val unresolvedCount: Int = 0,
+    /** Reported surcharges already included in [salesMinor]. */
+    val surchargesMinor: Long = 0,
+    /** Sales whose surcharge component is unavailable; reported zeroes never increment this. */
+    val unknownSurchargeCount: Int = 0,
+    /** Purchase component of sales with a reported surcharge; excludes tip, surcharge and cashback. */
+    val purchaseMinor: Long = 0,
+    /** Reported surcharge components already included in accepted refund requests. */
+    val refundedSurchargesMinor: Long = 0,
+    /** Accepted returns whose fee component is unreported. */
+    val unknownRefundSurchargeCount: Int = 0,
 ) {
     /** Local sales minus accepted refund requests, in minor units. */
     val netMinor: Long get() = salesMinor - refundsMinor
@@ -187,6 +202,8 @@ data class TerminalReconciliationReport(
  *   unchanged by later capture or cancellation.
  * @property preAuthCount Number of newly authorized holds.
  * @property tipsMinor The tips included in [salesMinor], by currency code, in minor units; only currencies with tips.
+ * @property surchargesMinor Reported surcharges already included in sales, by currency.
+ * @property unknownSurchargeCount Sales with unreported surcharge components, by currency.
  */
 data class DayTotals(
     val salesMinor: Map<String, Long>,
@@ -196,6 +213,10 @@ data class DayTotals(
     val preAuthsMinor: Map<String, Long> = emptyMap(),
     val preAuthCount: Int = 0,
     val tipsMinor: Map<String, Long> = emptyMap(),
+    /** Known surcharges included in sales by currency. */
+    val surchargesMinor: Map<String, Long> = emptyMap(),
+    /** Number of sales with unreported fees, by currency. */
+    val unknownSurchargeCount: Map<String, Int> = emptyMap(),
 )
 
 /**
@@ -227,7 +248,7 @@ object HistoryAccounting {
         fun sum(
             a: Map<String, Long>,
             b: Map<String, Long>,
-        ) = (a.keys + b.keys).associateWith { (a[it] ?: 0) + (b[it] ?: 0) }
+        ) = (a.keys + b.keys).associateWith { Math.addExact(a[it] ?: 0, b[it] ?: 0) }
         return DayTotals(
             sum(left.salesMinor, right.salesMinor),
             left.saleCount + right.saleCount,
@@ -236,6 +257,10 @@ object HistoryAccounting {
             sum(left.preAuthsMinor, right.preAuthsMinor),
             left.preAuthCount + right.preAuthCount,
             sum(left.tipsMinor, right.tipsMinor),
+            sum(left.surchargesMinor, right.surchargesMinor),
+            (left.unknownSurchargeCount.keys + right.unknownSurchargeCount.keys).associateWith {
+                (left.unknownSurchargeCount[it] ?: 0) + (right.unknownSurchargeCount[it] ?: 0)
+            },
         )
     }
 
@@ -288,6 +313,11 @@ object HistoryAccounting {
                 a.heldMinor + b.heldMinor,
                 a.holdCount + b.holdCount,
                 a.unresolvedCount + b.unresolvedCount,
+                Math.addExact(a.surchargesMinor, b.surchargesMinor),
+                a.unknownSurchargeCount + b.unknownSurchargeCount,
+                Math.addExact(a.purchaseMinor, b.purchaseMinor),
+                Math.addExact(a.refundedSurchargesMinor, b.refundedSurchargesMinor),
+                a.unknownRefundSurchargeCount + b.unknownRefundSurchargeCount,
             )
         }
     }
@@ -312,12 +342,13 @@ object HistoryAccounting {
 
         /** Adds independent records exactly once without retaining their bodies. */
         fun add(items: List<HistoryItem>) {
-            val relevant = items.filter { matchesTerminal(it, poiId) }
-            hasPeriods = hasPeriods || (outcome.poiReconciliationId != null && relevant.any { periodId(it) != null })
-            unresolved += relevant.count(::isUnresolvedTerminalItem)
+            val originals = items.filter { matchesTerminal(it, poiId) }
+            val relevant = originals.flatMap(::terminalEntries)
+            hasPeriods = hasPeriods || (outcome.poiReconciliationId != null && relevant.any { it.period != null })
+            unresolved += originals.count(::isUnresolvedTerminalItem)
             relevant.forEach { item ->
-                if (periodId(item) == outcome.poiReconciliationId) period.add(item)
-                if (Instant.ofEpochMilli(processedAt(item)).atZone(zone).toLocalDate() == date) day.add(item)
+                if (item.period == outcome.poiReconciliationId) period.add(item)
+                if (Instant.ofEpochMilli(item.at).atZone(zone).toLocalDate() == date) day.add(item)
             }
         }
 
@@ -346,18 +377,6 @@ object HistoryAccounting {
             )
         }
 
-        private fun periodId(item: HistoryItem): String? =
-            when (item) {
-                is HistoryItem.Sale -> item.sale.poiReconciliationId
-                is HistoryItem.Refund -> item.refund.poiReconciliationId
-            }
-
-        private fun processedAt(item: HistoryItem): Long =
-            when (item) {
-                is HistoryItem.Sale -> item.sale.processedAt ?: item.sale.createdAt
-                is HistoryItem.Refund -> item.refund.processedAt ?: item.refund.createdAt
-            }
-
         /** Local amounts by currency and counts for one candidate scope (the period, or the fallback date). */
         private class ScopeTotals {
             val sales = mutableMapOf<String, Long>()
@@ -365,11 +384,13 @@ object HistoryAccounting {
             var offlineSales = 0
             var unconfirmedBatches = 0
 
-            fun add(item: HistoryItem) {
-                when (item) {
+            fun add(entry: TerminalActivity) {
+                when (val item = entry.item) {
                     is HistoryItem.Sale -> {
                         val s = item.sale
-                        if (s.status == SaleStatus.APPROVED && !s.manualCapture) sales.merge(s.currency, s.amountMinor, Long::plus)
+                        if ((entry.amountMinor != null || s.status == SaleStatus.APPROVED) && !s.manualCapture) {
+                            sales.merge(s.currency, entry.amountMinor ?: s.amountMinor, Math::addExact)
+                        }
                         if (s.status == SaleStatus.APPROVED && s.offlineMode != null) offlineSales++
                         s.unconfirmedBatchCount?.let { unconfirmedBatches = maxOf(unconfirmedBatches, it) }
                     }
@@ -418,6 +439,12 @@ object HistoryAccounting {
                             preAuthsMinor = totals.filterValues { it.holdCount > 0 }.mapValues { it.value.heldMinor },
                             preAuthCount = totals.values.sumOf { it.holdCount },
                             tipsMinor = totals.filterValues { it.tipsMinor > 0 }.mapValues { it.value.tipsMinor },
+                            surchargesMinor = totals.filterValues { it.saleCount > 0 }.mapValues { it.value.surchargesMinor },
+                            unknownSurchargeCount =
+                                totals
+                                    .filterValues {
+                                        it.unknownSurchargeCount > 0
+                                    }.mapValues { it.value.unknownSurchargeCount },
                         ),
                     items = sorted.map { it.item }.distinctBy { it.id },
                     captures = activities.filter { it.kind == HistoryActivityKind.CAPTURE }.map { it.item.id }.toSet(),
@@ -444,6 +471,8 @@ object HistoryAccounting {
                                     at = refund.processedAt ?: refund.createdAt,
                                     kind = HistoryActivityKind.REFUND,
                                     amountMinor = refund.amountMinor,
+                                    tipMinor = refund.tipMinor ?: 0,
+                                    surchargeMinor = refund.surchargeMinor,
                                 ),
                             )
                         }
@@ -455,42 +484,54 @@ object HistoryAccounting {
             }
         }
 
+    /** Older tender rows never override legacy sale totals or fabricate missing components. */
+    private fun reportedTenders(item: HistoryItem.Sale): List<SaleTenderEntity> =
+        item.tenders.takeIf { rows -> rows.all { it.serviceId != null && it.authorisedMinor != null } }.orEmpty()
+
+    /** One terminal processing event; amounts override only complete, newly recorded tender facts. */
+    private data class TerminalActivity(
+        val item: HistoryItem,
+        val at: Long,
+        val period: String?,
+        val amountMinor: Long? = null,
+    )
+
+    private fun terminalEntries(item: HistoryItem): List<TerminalActivity> =
+        when (item) {
+            is HistoryItem.Refund -> {
+                listOf(TerminalActivity(item, item.refund.processedAt ?: item.refund.createdAt, item.refund.poiReconciliationId))
+            }
+
+            is HistoryItem.Sale -> {
+                val tenders = reportedTenders(item).takeUnless { item.sale.manualCapture }.orEmpty()
+                if (tenders.isEmpty()) {
+                    listOf(TerminalActivity(item, item.sale.processedAt ?: item.createdAt, item.sale.poiReconciliationId))
+                } else {
+                    tenders.map { TerminalActivity(item, it.createdAt, it.poiReconciliationId, it.authorisedMinor) }
+                }
+            }
+        }
+
     private fun saleActivities(item: HistoryItem.Sale): List<HistoryActivity> {
         val sale = item.sale
+        val tenders = reportedTenders(item).takeUnless { sale.manualCapture }.orEmpty()
         return buildList {
-            if (sale.status == SaleStatus.APPROVED) {
-                when {
-                    sale.paymentLink -> {
-                        add(HistoryActivity(item, null, HistoryActivityKind.ONLINE, sale.amountMinor))
-                    }
-
-                    sale.manualCapture -> {
-                        add(HistoryActivity(item, sale.processedAt ?: sale.createdAt, HistoryActivityKind.HELD, sale.totalMinor))
-                        if (sale.standing.charged) {
-                            add(
-                                HistoryActivity(
-                                    item,
-                                    sale.captureProcessedAt,
-                                    HistoryActivityKind.CAPTURE,
-                                    sale.amountMinor,
-                                    sale.tipMinor ?: 0,
-                                ),
-                            )
-                        }
-                    }
-
-                    else -> {
-                        add(
-                            HistoryActivity(
-                                item,
-                                sale.processedAt ?: sale.createdAt,
-                                HistoryActivityKind.SALE,
-                                sale.amountMinor,
-                                sale.tipMinor ?: 0,
-                            ),
-                        )
-                    }
+            if (tenders.isNotEmpty()) {
+                tenders.forEach { tender ->
+                    add(
+                        HistoryActivity(
+                            item,
+                            tender.createdAt,
+                            HistoryActivityKind.SALE,
+                            tender.authorisedMinor ?: 0,
+                            tender.tipMinor ?: 0,
+                            tender.surchargeMinor,
+                            tender.cashBackMinor ?: 0,
+                        ),
+                    )
                 }
+            } else {
+                addAll(approvedActivities(item))
             }
             val issues = sale.issues
             if (PaymentIssue.OUTCOME in issues || PaymentIssue.ADJUSTMENT in issues) {
@@ -501,6 +542,56 @@ object HistoryAccounting {
             }
         }
     }
+
+    private fun approvedActivities(item: HistoryItem.Sale): List<HistoryActivity> {
+        val sale = item.sale
+        return buildList {
+            if (sale.status == SaleStatus.APPROVED) {
+                when {
+                    sale.paymentLink -> {
+                        add(HistoryActivity(item, null, HistoryActivityKind.ONLINE, sale.amountMinor))
+                    }
+
+                    sale.manualCapture -> {
+                        add(
+                            HistoryActivity(
+                                item,
+                                sale.processedAt ?: sale.createdAt,
+                                HistoryActivityKind.HELD,
+                                sale.terminalPaidMinor ?: sale.totalMinor,
+                            ),
+                        )
+                        if (sale.standing.charged) {
+                            add(
+                                chargedActivity(item, sale.captureProcessedAt, HistoryActivityKind.CAPTURE),
+                            )
+                        }
+                    }
+
+                    else -> {
+                        add(
+                            chargedActivity(item, sale.processedAt ?: sale.createdAt, HistoryActivityKind.SALE),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun chargedActivity(
+        item: HistoryItem.Sale,
+        at: Long?,
+        kind: HistoryActivityKind,
+    ): HistoryActivity =
+        HistoryActivity(
+            item,
+            at,
+            kind,
+            item.sale.amountMinor,
+            item.sale.tipMinor ?: 0,
+            item.sale.amountSurchargeMinor,
+            item.sale.cashBackMinor ?: 0,
+        )
 
     /** Totals by currency; opened entries contribute nothing, online amounts are used only in the undated section. */
     fun totals(activities: List<HistoryActivity>): Map<String, CurrencyHistoryTotals> =
@@ -513,13 +604,26 @@ object HistoryAccounting {
             val holds = entries.filter { it.kind == HistoryActivityKind.HELD }
             CurrencyHistoryTotals(
                 salesMinor = sales.sumOf { it.amountMinor },
-                saleCount = sales.size,
+                saleCount = sales.map { it.item.id }.distinct().size,
                 tipsMinor = sales.sumOf { it.tipMinor },
                 refundsMinor = refunds.sumOf { it.amountMinor },
                 refundCount = refunds.size,
                 heldMinor = holds.sumOf { it.amountMinor },
                 holdCount = holds.size,
                 unresolvedCount = entries.count { it.kind == HistoryActivityKind.ISSUE },
+                surchargesMinor = sales.fold(0L) { sum, sale -> Math.addExact(sum, sale.surchargeMinor ?: 0) },
+                unknownSurchargeCount =
+                    sales
+                        .filter { it.surchargeMinor == null }
+                        .map { it.item.id }
+                        .distinct()
+                        .size,
+                refundedSurchargesMinor = refunds.fold(0L) { sum, refund -> Math.addExact(sum, refund.surchargeMinor ?: 0) },
+                unknownRefundSurchargeCount = refunds.count { it.surchargeMinor == null },
+                purchaseMinor =
+                    sales.filter { it.surchargeMinor != null }.sumOf {
+                        (it.amountMinor - it.tipMinor - (it.surchargeMinor ?: 0) - it.cashBackMinor).coerceAtLeast(0)
+                    },
             )
         }
 

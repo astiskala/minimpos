@@ -625,6 +625,7 @@ private fun ColumnScope.CheckoutSwitches(
         LabeledSwitch(
             title = stringResource(R.string.checkout_tip_on_receipt),
             hint = stringResource(R.string.checkout_tip_on_receipt_hint),
+            hintMaxLines = 2,
             checked = state.tipOnReceipt,
             onChange = { checked ->
                 onUpdate { it.copy(tipOnReceipt = checked, askGratuity = if (checked) false else it.askGratuity) }
@@ -657,6 +658,7 @@ private fun ColumnScope.AudioGuidanceSwitches(
     LabeledSwitch(
         title = stringResource(R.string.checkout_audio_guidance),
         hint = stringResource(R.string.checkout_audio_hint),
+        hintMaxLines = 2,
         checked = state.form.audioGuidance,
         onChange = { checked -> onUpdate { it.copy(audioGuidance = checked, audioGuidanceConfirmedFor = null) } },
         tag = "audioGuidance",
@@ -742,8 +744,9 @@ private fun LabeledSwitch(
     checked: Boolean,
     onChange: (Boolean) -> Unit,
     tag: String,
+    hintMaxLines: Int = Int.MAX_VALUE,
 ) {
-    SwitchRow(title, checked, onChange, subtitle = hint, modifier = Modifier.testTag(tag))
+    SwitchRow(title, checked, onChange, subtitle = hint, subtitleMaxLines = hintMaxLines, modifier = Modifier.testTag(tag))
 }
 
 @Composable

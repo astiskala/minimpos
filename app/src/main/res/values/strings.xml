@@ -121,9 +121,9 @@
   <string name="checkout_link_without_tip_or_donation">Payment links do not support tips or charity donations. Create this link without them?</string>
   <string name="checkout_pre_auth_note">This only holds the amount on the card. Capture or cancel it later from History.</string>
   <string name="checkout_tip_on_receipt">Tip on the receipt</string>
-  <string name="checkout_tip_on_receipt_hint">The customer writes a tip on the printed receipt and signs it. Enter the tip afterwards to capture the total.</string>
+  <string name="checkout_tip_on_receipt_hint">Print tip lines. Enter the tip later to capture.</string>
   <string name="checkout_audio_guidance">Audio guidance</string>
-  <string name="checkout_audio_hint">For this shopper only. The terminal reads payment instructions aloud. Allow extra time for payment and PIN entry.</string>
+  <string name="checkout_audio_hint">Read payment steps aloud for this shopper.</string>
   <string name="checkout_audio_confirm">Confirm accessible setup</string>
   <string name="checkout_audio_requirements">Confirm software %1$s or later and Adyen Support enablement for this terminal. Use a card that needs no signature. Terminal language cannot be Estonian, Latvian, Icelandic or Lithuanian. Skip partial authorizations and shopper-display prompts for this payment.</string>
   <string name="checkout_audio_conflicts">Turn off tipping, Giving and special card entry to continue. Turn off audio guidance to use a link, scanned wallet or token.</string>
@@ -1234,4 +1234,21 @@
   <string name="action_unconfirmed">Adyen did not confirm the result. Check again before you try anything else.</string>
   <string name="still_unconfirmed">Still not confirmed: %1$s</string>
   <string name="storage_unavailable">Saved settings or credentials could not be read or written. Restart the device. If this continues, follow Troubleshooting for reset steps or report an app issue. Your saved files have not been reset.</string>
+
+    <!-- Surcharge accounting -->
+    <string name="surcharge_label">Surcharge</string>
+    <string name="surcharge_unknown">Unreported</string>
+    <string name="surcharge_charged">Charged</string>
+    <string name="surcharge_purchase">Purchase</string>
+    <string name="surcharge_purchase_known">Purchase (known)</string>
+    <string name="surcharge_unknown_count">Sales with unreported surcharges</string>
+    <string name="surcharge_reserved">Pending returns</string>
+    <string name="surcharge_refund_tender">Choose the original card. Return each card separately, within its remaining balance.</string>
+    <string name="surcharge_refund_order">Returns cover purchase first, then tip, then surcharge. Unknown fee components stay unknown.</string>
+    <string name="surcharge_balance_changed">The refund balance changed. Review the original card and remaining amount again.</string>
+    <string name="surcharge_return_fee">Refund surcharge</string>
+    <string name="surcharge_return_tip">Refund tip</string>
+    <string name="surcharge_hold_limit">Surcharged holds cannot be adjusted or increased. To change the amount, cancel and take a new payment.</string>
+    <string name="surcharge_unknown_refund_count">Refunds with unreported surcharges</string>
+    <string name="surcharge_remaining_unknown">The surcharge was not reported. The remaining purchase amount is unknown. Check the Customer Area or refund this card before starting again.</string>
 </resources>

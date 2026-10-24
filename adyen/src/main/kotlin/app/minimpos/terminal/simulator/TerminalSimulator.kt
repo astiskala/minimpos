@@ -58,6 +58,7 @@ import com.adyen.model.terminal.TerminalAPIResponse
 import kotlinx.coroutines.delay
 import java.io.IOException
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.net.SocketTimeoutException
 import java.net.URLEncoder
 import java.time.Clock
@@ -111,6 +112,7 @@ enum class SimulatedOutcome {
  * @property givingDonationAmount Simulated charity donation amount in major units when `AskGiving` is present; zero skips donation.
  * @property offlineMode Whether payments are approved online or simulated offline (`OFFLINE_EMV` or `STORE_AND_FORWARD`).
  * @property unconfirmedBatchCount Simulated `unconfirmedBatchCount` returned when [offlineMode] is not `ONLINE`.
+ * @property surchargeAmount Fixed surcharge in major units, rounded to the requested precision; simulation only.
  */
 data class SimulatorConfig(
     val outcome: SimulatedOutcome = SimulatedOutcome.APPROVE,
@@ -124,6 +126,8 @@ data class SimulatorConfig(
     val givingDonationAmount: BigDecimal = BigDecimal.ONE,
     val offlineMode: OfflineProcessingMode = OfflineProcessingMode.ONLINE,
     val unconfirmedBatchCount: Int = 1,
+    /** Fixed surcharge in major units, rounded to the request precision; simulation only, never a pricing engine. */
+    val surchargeAmount: BigDecimal = BigDecimal.ZERO,
 ) {
     private companion object {
         const val DEFAULT_SIMULATED_RATING = 9
@@ -384,7 +388,8 @@ class TerminalSimulator(
         val partialBase = if (approved) simulatedPartialAmount(request.saleData, amount.requestedAmount, settings) else null
         val baseApproved = partialBase ?: amount.requestedAmount
         val tipAmount = if (approved && partialBase == null) simulatedTipAmount(request.saleData, baseApproved) else null
-        val authorizedAmount = if (approved) baseApproved + (tipAmount ?: BigDecimal.ZERO) else BigDecimal.ZERO
+        val surcharge = settings.surchargeAmount.max(BigDecimal.ZERO).setScale(amount.requestedAmount.scale(), RoundingMode.HALF_UP)
+        val authorizedAmount = if (approved) baseApproved + (tipAmount ?: BigDecimal.ZERO) + surcharge else BigDecimal.ZERO
         val payment =
             SimulatedPayment(
                 card = if (wallet) SimulatedCard(brand, brand, brand.uppercase(), "", "", "") else CARDS[random.nextInt(CARDS.size)],
@@ -401,6 +406,7 @@ class TerminalSimulator(
                 approved = approved,
                 preAuthorisation = request.saleData?.saleToAcquirerData?.authorisationType == TerminalClient.PRE_AUTH,
                 tipAmount = tipAmount,
+                surchargeAmount = surcharge,
                 partial = partialBase != null,
                 givingServiceId = simulatedGivingServiceId(request.saleData, approved, partialBase != null, settings),
                 entryOverride = simulatedCardEntryOverride(request),
@@ -456,6 +462,7 @@ class TerminalSimulator(
                 currency = requestedCurrency
                 authorizedAmount = authorized
                 tipAmount = payment.tipAmount
+                totalFeesAmount = payment.surchargeAmount
             }
         setOnlineFlag(!payment.isOffline)
         paymentAcquirerData =
@@ -656,6 +663,7 @@ class TerminalSimulator(
                 add(line("txtime", "Time", DateTimeFormatter.ofPattern("HH:mm:ss").format(now)))
                 add(line("filler"))
                 add(line("txtype", if (payment.preAuthorisation) "Pre-authorization" else "Payment", bold = true))
+                add(line("surcharge", "Surcharge", payment.surchargeAmount.toPlainString()))
                 add(line("totalAmount", "TOTAL", payment.amountText, bold = true))
                 add(line("filler"))
                 add(line("cardholderHeader", copyLabel))

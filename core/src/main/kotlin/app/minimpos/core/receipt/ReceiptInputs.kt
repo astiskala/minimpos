@@ -115,6 +115,10 @@ data class ReceiptOptions(
  * @property linkValidFormat the line under the payment link; `%s` is when it stops working, already formatted.
  * @property paidOnline the note on the receipt of a sale paid through a payment link.
  * @property markedTaxRateNote Explanation of marked items, printed after them; blank omits the explanation.
+ * @property surcharge Label of the fee component.
+ * @property unreported Unavailable component, distinct from zero.
+ * @property charged Total charged across original tenders.
+ * @property purchase Purchase component excluding tips, surcharge and cash movement.
  */
 data class ReceiptLabels(
     val date: String = "Date",
@@ -157,6 +161,14 @@ data class ReceiptLabels(
     val linkValidFormat: String = "Link valid until %s",
     val paidOnline: String = "Paid online",
     val markedTaxRateNote: String = "※ Items at the marked tax rate",
+    /** Fee component already included in the charged amount. */
+    val surcharge: String = "Surcharge",
+    /** A fee that was not recorded or reported, distinct from zero. */
+    val unreported: String = "Unreported",
+    /** Total charged across the original tenders. */
+    val charged: String = "CHARGED",
+    /** Purchase component excluding tip, fee and cash movement. */
+    val purchase: String = "Purchase",
 )
 
 /**
@@ -243,6 +255,10 @@ enum class ReceiptCopy {
  * @property standingNote Current localized payment standing; null for a normal charged sale.
  * @property holdCancelled The original amount is no longer held.
  * @property notice A warning printed first, in bold, such as a demo receipt's note that no money moved; null for none.
+ * @property surchargeMinor Reported fee in minor units; null when unreported.
+ * @property chargedAmount Total authorized across tenders; null for old or non-terminal receipts.
+ * @property purchaseMinor Known purchase component in minor units; null when unreported.
+ * @property discloseSurcharge Whether the original fee component, including unknown, must be shown.
  */
 data class SaleReceipt(
     val reference: String,
@@ -267,6 +283,14 @@ data class SaleReceipt(
     /** The hold was canceled, so its original amount is no longer shown as held. */
     val holdCancelled: Boolean = false,
     val notice: String? = null,
+    /** Reported fee component, in minor units; null is unknown when [chargedAmount] is present. */
+    val surchargeMinor: Long? = null,
+    /** Authorized total including all components; null when not supplied, preserving historical totals. */
+    val chargedAmount: Long? = null,
+    /** Known purchase component of the charged amount; null when fee breakdown is unavailable. */
+    val purchaseMinor: Long? = null,
+    /** Show an explicit unknown fee for historical terminal payments. */
+    val discloseSurcharge: Boolean = false,
 )
 
 /**
@@ -283,6 +307,8 @@ data class SaleReceipt(
  *   (instead of items) say.
  * @property full Whether the whole local remaining amount was reversed.
  * @property standingNote Current localized request outcome; null for none.
+ * @property surchargeMinor Fee included in the returned amount; null when unknown.
+ * @property tipMinor Tip included in the returned amount; null when unknown.
  */
 data class RefundReceipt(
     val reference: String,
@@ -296,6 +322,10 @@ data class RefundReceipt(
     val full: Boolean = false,
     /** Current localized request outcome; null for no additional note. */
     val standingNote: String? = null,
+    /** Surcharge included in [amount]; null for unknown historical allocations. */
+    val surchargeMinor: Long? = null,
+    /** Tip included in [amount]; null for unknown historical allocations. */
+    val tipMinor: Long? = null,
 )
 
 /** "GST 10%" - or the name as-is when the merchant already put the rate in it. */

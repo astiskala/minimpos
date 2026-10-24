@@ -66,7 +66,12 @@ fun OutcomeHeader(
             textAlign = TextAlign.Center,
             modifier = (if (titleTag != null) Modifier.testTag(titleTag) else Modifier).semantics { heading() },
         )
-        Text(amount, style = dimens.amountStyle, textAlign = TextAlign.Center)
+        Text(
+            amount,
+            style = dimens.amountStyle,
+            textAlign = TextAlign.Center,
+            modifier = if (titleTag != null) Modifier.testTag("${titleTag}Amount") else Modifier,
+        )
         content()
     }
 }

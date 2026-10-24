@@ -405,6 +405,21 @@
             href="troubleshooting#unknown">verifique o resultado desconhecido</a> antes de outro pagamento. A
             escolha é redefinida ao iniciar esta tentativa. As demonstrações não reproduzem áudio nem verificam
             terminais reais.</p>
+          <p>A Adyen calcula as sobretaxas conforme a configuração. O Mini mPOS registra a sobretaxa informada separada
+            da compra e da gorjeta; o total cobrado já a inclui. Uma taxa não informada, inclusive no histórico antigo,
+            permanece desconhecida. Os recibos preservam os dados originais da Adyen. Os relatórios diários separam os
+            valores conhecidos de compra e sobretaxa e contam as vendas com taxa não informada.</p>
+          <p>Se uma autorização parcial não informar a sobretaxa, o Mini mPOS não poderá determinar o valor restante.
+            Confira na Customer Area ou reembolse o cartão original antes de recomeçar.</p>
+          <p>Antes do reembolso, confira o cartão original e seu saldo restante. Reembolse cada cartão separadamente.
+            Reembolsos pendentes ou desconhecidos reservam o saldo até serem resolvidos. Itens devolvem o valor da compra;
+            valores cobrem a compra, depois a gorjeta e a sobretaxa. Um reembolso total inclui a sobretaxa restante
+            informada. Confirme a conclusão na Customer Area.</p>
+          <p>Informe a sobretaxa antes do pagamento, especialmente com Tap to Pay, que não mostra a tela de confirmação
+            da sobretaxa. Não combine sobretaxas com DCC nem as aumente por ajustes ou sobrecapturas. O Mini mPOS bloqueia
+            ajustes e capturas acima da retenção original quando uma sobretaxa foi informada. Consulte os
+            <a href="https://docs.adyen.com/point-of-sale/surcharge">requisitos de sobretaxa da Adyen</a> e a
+            <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">configuração de sobretaxas da Adyen</a>.</p>
           <h3 id="partial-payments">Receber um pagamento parcialmente autorizado</h3>
           <p>Ligar <strong>Permitir autorizações parciais</strong> aceitar uma aprovação de cartão por valor inferior ao
             solicitado. Quando o resultado aparecer <strong>Parcialmente pago</strong>, verifique os valores pagos e

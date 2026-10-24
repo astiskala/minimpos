@@ -157,10 +157,13 @@ class SaleBook(
         request: PaymentStart,
         serviceId: String,
         createdAt: Long,
-    ) {
+    ): Boolean {
         if (request.existingSaleId == null) {
             sales.createPending(pendingSale(id, request, createdAt).copy(serviceId = serviceId), lines(id, request.totals))
+        } else {
+            check(sales.record(id, SaleEvent.TenderOpened(serviceId, request.requestedAmountMinor)))
         }
+        return true
     }
 
     override suspend fun recordContext(
@@ -284,6 +287,7 @@ class SaleBook(
                 kind = request.kind,
                 tipOnReceipt = request.tipOnReceipt,
                 audioGuidance = request.audioGuidance,
+                tenderRequestedMinor = request.requestedAmountMinor,
             )
         }
 

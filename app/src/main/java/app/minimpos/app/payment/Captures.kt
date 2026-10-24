@@ -107,7 +107,8 @@ class Captures(
             val target = target()
             val sale =
                 allowing(saleId, PaymentAction.ENTER_TIP)?.takeIf { tipMinor >= 0 } ?: return@withLock CaptureResult.NotAllowed
-            val total = sale.totalMinor + tipMinor
+            val total = Math.addExact(Math.addExact(sale.totalMinor, sale.surchargeMinor ?: 0), tipMinor)
+            if (!PaymentStanding.captureAmountAllowed(sale, total)) return@withLock CaptureResult.NotAllowed
             if (sale.adjustmentPending || (PaymentStanding.tipNeedsAdjustment(sale.totalMinor, tipMinor) && total > sale.heldMinor)) {
                 // The tip is only saved once the higher amount is authorised.
                 withApi(target, sale) { modifications ->
@@ -130,6 +131,7 @@ class Captures(
             val target = target()
             val sale =
                 allowing(saleId, PaymentAction.CAPTURE)?.takeIf { amountMinor > 0 } ?: return@withLock CaptureResult.NotAllowed
+            if (!PaymentStanding.captureAmountAllowed(sale, amountMinor)) return@withLock CaptureResult.NotAllowed
             if (sale.adjustmentPending || amountMinor > sale.heldMinor) {
                 withApi(target, sale) { modifications ->
                     adjusted(sale, amountMinor, modifications) { capture(it, amountMinor, modifications) }

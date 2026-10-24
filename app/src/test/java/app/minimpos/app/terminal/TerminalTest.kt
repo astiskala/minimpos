@@ -17,6 +17,7 @@ import app.minimpos.terminal.client.PrintOutcome
 import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
+import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -26,6 +27,7 @@ import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** The terminal as the app sees it: where payments go, operations without complete setup, and the published status. */
 @RunWith(RobolectricTestRunner::class)
@@ -213,6 +215,33 @@ class TerminalTest {
             await { container.terminalStatus.check() }
             await { container.settingsState.first { it.terminal.environment == TerminalEnvironment.LIVE } }
             assertThat(await { container.terminalStatus.state.first { it.environment == TerminalEnvironment.LIVE } }.onTerminal).isTrue()
+        }
+    }
+
+    @Test
+    fun `a connection check that failed while offline is retried when the network returns, only while checked`() {
+        val offline = AtomicBoolean(true)
+        val device = FakeDevice(detectedPoiId = "S1F2-000158213605014")
+        val fake = FakeTerminal(reply = { if (offline.get()) Delivery.Failed(Fault.Unreachable("localhost", terminal = true)) else null })
+        val terminal = TestEnvironment(device, fake, terminalEnvironment = { TerminalEnvironment.TEST })
+        try {
+            val container = terminal.container
+            // Set up before starting, so the one background check fails and no other check is still pending.
+            terminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key")) }
+            await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
+            container.start()
+            await { container.terminalStatus.state.first { it.connection is TerminalConnection.Failed } }
+
+            offline.set(false)
+            await { device.network.subscriptionCount.first { it == 1 } }
+            await { device.network.emit(Unit) }
+            await { container.terminalStatus.state.first { it.connection is TerminalConnection.Connected } }
+
+            // The simulator checks no connection, so the network is no longer followed.
+            terminal.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.SIMULATOR)) }
+            await { device.network.subscriptionCount.first { it == 0 } }
+        } finally {
+            terminal.close()
         }
     }
 }

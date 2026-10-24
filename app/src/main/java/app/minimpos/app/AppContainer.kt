@@ -152,7 +152,8 @@ internal val Context.locale: Locale get() = resources.configuration.locales[0] ?
  * @param storageDir The DataStore file for a name.
  * @property appScope Where work that outlives any screen runs (payments, refunds, connection checks).
  * @param http The one OkHttp client every default Adyen API client and terminal connection derives from, so they share
- *   its connection pool and dispatcher.
+ *   its connection pool and dispatcher. Built in [appScope] after construction rather than on the main thread, as
+ *   building it sets up TLS.
  * @param terminalTransport Connects to a real terminal at a host with a shared key.
  * @param ioDispatcher Runs file and Keystore work.
  * @param cloudDevices Reaches terminals in the cloud with an API key.
@@ -177,27 +178,27 @@ class AppContainer(
     mailTransport: MailTransport? = null,
     private val storageDir: (String) -> File = { context.dataStoreFile(it) },
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
-    http: OkHttpClient = OkHttpClient(),
+    http: Lazy<OkHttpClient> = lazy { OkHttpClient() },
     terminalTransport: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport = { host, key, tls ->
-        AdyenLocalTransport(host, key, tls, http)
+        AdyenLocalTransport(host, key, tls, http.value)
     },
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    cloudDevices: (CloudCredentials) -> CloudDevices = { AdyenCloudDevices(it, baseClient = http) },
+    cloudDevices: (CloudCredentials) -> CloudDevices = { AdyenCloudDevices(it, baseClient = http.value) },
     paymentsAppExchange: AppLinkExchange? = null,
     paymentsAppManagement: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement = { key, environment ->
-        AdyenPaymentsAppManagement(key, environment, baseClient = http)
+        AdyenPaymentsAppManagement(key, environment, baseClient = http.value)
     },
     paymentsAppCredentials: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppCredentials = { key, environment ->
-        AdyenPaymentsAppCredentials(key, environment, baseClient = http)
+        AdyenPaymentsAppCredentials(key, environment, baseClient = http.value)
     },
     checkout: ((CheckoutCredentials) -> CheckoutApi)? = null,
     storeDetails: (String, TerminalEnvironment) -> StoreDetailsApi = { key, environment ->
-        AdyenStoreDetails(key, environment, baseClient = http)
+        AdyenStoreDetails(key, environment, baseClient = http.value)
     },
-    terminalDetails: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it, baseClient = http) },
+    terminalDetails: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it, baseClient = http.value) },
     terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalTls().readEnvironment("localhost") },
     walletMethods: (String, TerminalEnvironment) -> WalletMethodsApi = { key, environment ->
-        AdyenWalletMethods(key, environment, baseClient = http)
+        AdyenWalletMethods(key, environment, baseClient = http.value)
     },
     updateCheck: suspend () -> UpdateCheck = { GitHubReleases().latest(BuildConfig.VERSION_CODE.toLong()) },
     onboardingCompleted: Boolean = false,
@@ -213,6 +214,9 @@ class AppContainer(
 
     init {
         appScope.launch { storage.check(settingsStore, secretsStore) }
+        // Builds the client and its TLS setup in the background, so a screen's first request never builds it on the main
+        // thread.
+        appScope.launch { http.value }
     }
 
     /** Non-secret settings (`settings.json`). */
@@ -343,7 +347,7 @@ class AppContainer(
                             .toList()
                     },
                 ),
-            connect = checkout ?: { AdyenCheckout(it, application.toApplicationInfo(), http) },
+            connect = checkout ?: { AdyenCheckout(it, application.toApplicationInfo(), http.value) },
             verifyAccess = SetupAccess(terminalDetails)::verify,
             readEnvironment = gateway::refreshEnvironment,
         )

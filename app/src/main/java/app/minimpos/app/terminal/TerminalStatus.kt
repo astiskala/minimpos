@@ -155,8 +155,10 @@ class TerminalStatus(
 
     /**
      * Starts the background work, once per process: a connection check at startup and whenever the terminal settings or
-     * the saved passphrase change (typing is debounced into one check), while [DestinationCapabilities.checksConnection]; and saving the
-     * environment each connection reports into the settings.
+     * the saved passphrase change (typing is debounced into one check), while [DestinationCapabilities.checksConnection]; a
+     * failed check again when the network returns ([DeviceInfo.networkAvailable], followed only while connections are
+     * checked); and saving the environment each
+     * connection reports into the settings.
      */
     @OptIn(FlowPreview::class)
     fun start() {
@@ -174,6 +176,21 @@ class TerminalStatus(
         }
         scope.launch {
             gateway.detectedEnvironment.filterNotNull().collect(setups::remember)
+        }
+        // A check that failed while the device was offline is retried once the network is back (flaps coalesce). The
+        // network is followed only while the destination checks its connection, so no callback stays registered for
+        // the simulator or the Payments app. It follows the shared [state] rather than collecting the setup once more.
+        scope.launch {
+            state
+                .map { it.capabilities.checksConnection }
+                .distinctUntilChanged()
+                .collectLatest { checked ->
+                    if (checked) {
+                        setups.device.networkAvailable
+                            .debounce(CHECK_DELAY_MILLIS)
+                            .collect { recheckIfFailed() }
+                    }
+                }
         }
     }
 

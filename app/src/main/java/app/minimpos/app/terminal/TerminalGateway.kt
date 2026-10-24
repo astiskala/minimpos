@@ -4,7 +4,10 @@ import android.app.LocaleManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Resources
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.Build
+import android.os.StrictMode
 import android.provider.Settings
 import app.minimpos.app.BuildConfig
 import app.minimpos.app.data.db.Failure
@@ -30,8 +33,12 @@ import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalKey
 import app.minimpos.terminal.transport.TerminalTls
 import app.minimpos.terminal.transport.TerminalTransport
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
 import java.io.File
 import java.util.Locale
@@ -70,8 +77,14 @@ interface DeviceInfo {
     fun paymentsAppVersion(environment: TerminalEnvironment): String? = null
 
     /**
+     * Emits whenever a default network becomes available, including once on collection when one already is, so a
+     * connection check that failed while offline can be retried. It never completes; the default never emits.
+     */
+    val networkAvailable: Flow<Unit> get() = emptyFlow()
+
+    /**
      * Whether the website's screenshots are being captured, which leaves the simulator banner out of them (the site
-     * discloses them as simulator demos instead). Only debug builds can say so; read once at start.
+     * discloses them as simulator demos instead). Only debug builds can say so; read once, on first use.
      */
     val docsCapture: Boolean get() = false
 }
@@ -90,8 +103,34 @@ class AndroidDeviceInfo(
             ?.takeIf { POI_ID.matches(it) }
     override val model: String = Build.MODEL.orEmpty()
     override val osVersion: String = Build.VERSION.RELEASE.orEmpty()
-    override val docsCapture: Boolean = BuildConfig.DEBUG && File(context.filesDir, DOCS_CAPTURE_MARKER).exists()
+    override val docsCapture: Boolean by lazy {
+        // First read while composing the simulator banner; this one-off debug-only check is allowed on the main thread
+        // so StrictMode keeps reporting real violations.
+        BuildConfig.DEBUG &&
+            StrictMode.allowThreadDiskReads().let { policy ->
+                try {
+                    File(context.filesDir, DOCS_CAPTURE_MARKER).exists()
+                } finally {
+                    StrictMode.setThreadPolicy(policy)
+                }
+            }
+    }
     override val hasCamera: Boolean get() = context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
+
+    override val networkAvailable: Flow<Unit>
+        get() =
+            callbackFlow {
+                val connectivity = context.getSystemService(ConnectivityManager::class.java)
+                val callback =
+                    object : ConnectivityManager.NetworkCallback() {
+                        override fun onAvailable(network: Network) {
+                            trySend(Unit)
+                        }
+                    }
+                connectivity.registerDefaultNetworkCallback(callback)
+                awaitClose { connectivity.unregisterNetworkCallback(callback) }
+            }
+
     override val country: String
         get() {
             val locales =

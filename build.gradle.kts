@@ -25,7 +25,7 @@ spotless {
         ktlint(ktlintVersion).setEditorConfigPath(editorConfig)
     }
     kotlinGradle {
-        target("*.gradle.kts", "*/*.gradle.kts")
+        target("*.gradle.kts", "*/*.gradle.kts", "build-logic/src/**/*.gradle.kts")
         ktlint(ktlintVersion).setEditorConfigPath(editorConfig)
     }
     // The text files that neither ktlint nor rumdl (Markdown) formats. Room writes the schemas.

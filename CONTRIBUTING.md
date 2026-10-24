@@ -117,6 +117,10 @@ The gate checks:
 | Kover | Line/branch bounds in each module's `build.gradle.kts`; the app's apply to non-UI debug code via `koverVerifyDebug`. |
 | Manifest | Debug and release satisfy Adyen's constraints, including a PNG-only application icon and allowed permissions. |
 
+The Kotlin/JVM modules take their compiler, detekt, Android Lint, Dokka and PIT setup from the convention plugins in
+`build-logic/`: `minimpos.kotlin-jvm` for any of them, `minimpos.kotlin-jvm-verified` for production code. Change
+shared setup there; module scripts keep only their own bounds and targets, which `BuildConventionTest` enforces.
+
 Kotlin warnings are errors. Fix findings instead of adding suppressions, exclusions, ignores or baselines; existing
 exceptions have reasons. [Code conventions](AGENTS.md#code-conventions) cover new architectural rules and detekt
 coverage; don't add the overlapping plain `detekt` task. Aggregate app coverage has no bounds.
@@ -384,7 +388,8 @@ dimensions do not prove the correct screen or transaction. Website checks also r
 - Receipt address formatting uses bundled Google metadata, not runtime lookups. Its
   [attribution and refresh instructions](adyen/src/main/resources/google-address-formats.NOTICE.txt) pin the source;
   retain the accompanying license and run `StoreAddressTest` when refreshing it.
-- For transitive advisories, pin a patched version in `settings.gradle.kts`'s `patched` table, check
+- For transitive advisories, pin a patched version in the `patched` table of
+  `gradle/dependency-floors.settings.gradle.kts` (the main build and `build-logic` both apply it), check
   `./gradlew <module>:dependencies buildEnvironment`, then run the gate and signed release build. Remove overrides
   when upstream catches up. Dependency submission sends the resolved graph to GitHub.
 - Dependabot leaves the Adyen Java library ungrouped so each upgrade is reviewed alone: check its model changes
@@ -433,11 +438,11 @@ workflow syntax, so no reusable-workflow call or linter exception is needed.
   [GitHub's custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
   for the apex records and optional `www` redirect, then enable **Enforce HTTPS**. The Actions-based deployment selects
   the domain from repository settings, not a `CNAME` file.
-- Dependency submission runs when Gradle scripts, properties, wrapper/catalog or its workflow change, weekly, and
-  manually. After a successful explicit submission, verify its resolved transitive snapshot, including the security
-  floors in `settings.gradle.kts`, then disable Settings › Advanced Security › Automatic dependency submission.
-  Keep the dependency graph, Dependabot alerts and security updates enabled. Do not disable automatic submission
-  before confirming the explicit workflow's graph.
+- Dependency submission runs when Gradle scripts, properties, wrapper/catalog, `build-logic` or its workflow change,
+  weekly, and manually. After a successful explicit submission, verify its resolved transitive snapshot, including the
+  security floors in `gradle/dependency-floors.settings.gradle.kts`, then disable Settings › Advanced Security ›
+  Automatic dependency submission. Keep the dependency graph, Dependabot alerts and security updates enabled. Do not
+  disable automatic submission before confirming the explicit workflow's graph.
 
 Repository settings are not part of a Git commit. Deploy the workflows before changing these settings; disabling the
 existing scanners or publication before their replacements exist creates a verification or deployment gap.

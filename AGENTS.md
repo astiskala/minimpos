@@ -13,6 +13,7 @@ Adyen Payments app (Tap to Pay). There is no backend. The built-in simulator nee
 | `docs/` | Static merchant website in seven languages and the offline setup helper. | [Documentation changes](#documentation-changes) |
 | `website-test/` | Website and setup-helper tests; no app code. | |
 | `tooling/` | Kotlin/JVM release CLI, signing-property extraction and shell-script regression tests. | |
+| `build-logic/` | Convention plugins with the Kotlin/JVM modules' shared build setup. | |
 | `scripts/` | Gradle/dev runners, CI entry point, docs capture, release verification. | |
 | `security/` | STRIDE threat model. | [minimpos-security-review](.agents/skills/minimpos-security-review/SKILL.md) |
 | `.agents/skills/` | Agent skills (`SKILL.md` with name/description front matter) for any coding agent. | |

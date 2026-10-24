@@ -20,6 +20,7 @@ import com.tngtech.archunit.thirdparty.org.objectweb.asm.Opcodes
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class PerformanceArchitectureTest {
     @get:Rule val temporary = TemporaryFolder()
@@ -73,6 +74,39 @@ class PerformanceArchitectureTest {
     fun `lifecycle guard rejects a playback owner without lifecycle suspension`() {
         val prefix = "app.minimpos.app.feature.transfer.TransferScreensKt"
         assertThat(calls(fixture(prefix), prefix, "androidx.lifecycle.RepeatOnLifecycleKt", "repeatOnLifecycle")).isFalse()
+    }
+
+    @Test
+    fun `lazy list items have stable keys`() {
+        val app =
+            checkNotNull(System.getProperty("minimpos.productionSources")) { "minimpos.productionSources is set by Gradle" }
+                .split(File.pathSeparator)
+                .map(::File)
+                .single { it.invariantSeparatorsPath.endsWith("/app/src/main") }
+        val unkeyed =
+            app
+                .walk()
+                .filter { it.extension == "kt" }
+                .flatMap { file -> unkeyedItems(file.readText()).map { "${file.relativeTo(app)}:$it" } }
+                .toList()
+        assertWithMessage("Give these lazy layout items a stable, unique key").that(unkeyed).isEmpty()
+    }
+
+    @Test
+    fun `lazy key guard rejects items without a key`() {
+        val source =
+            """
+            import androidx.compose.foundation.lazy.items
+
+            fun LazyListScope.rows(names: List<String>) {
+                items(names, key = { it }) { Text(it) }
+                itemsIndexed(
+                    names,
+                    contentType = { _, _ -> "name" },
+                ) { _, name -> Text(name) }
+            }
+            """.trimIndent()
+        assertThat(unkeyedItems(source)).containsExactly(5)
     }
 
     private fun fixture(
@@ -151,6 +185,26 @@ class PerformanceArchitectureTest {
                         }
                     },
                 )
+
+        // Without keys, lazy layouts tie item state to positions: a row inserted or removed above recomposes every row
+        // after it and hands remembered state to the wrong item. Returns the lines of items/itemsIndexed calls without a
+        // key in a file using lazy layouts.
+        fun unkeyedItems(source: String): List<Int> {
+            if ("import androidx.compose.foundation.lazy." !in source) return emptyList()
+            return Regex("""(?<!fun )\b(items|itemsIndexed)\(""")
+                .findAll(source)
+                .filterNot { call ->
+                    val start = call.range.last + 1
+                    var depth = 1
+                    val end =
+                        (start..<source.length).first { index ->
+                            depth += mapOf('(' to 1, ')' to -1)[source[index]] ?: 0
+                            depth == 0
+                        }
+                    Regex("""\bkey\s*=""").containsMatchIn(source.substring(start, end))
+                }.map { call -> source.substring(0, call.range.first).count { it == '\n' } + 1 }
+                .toList()
+        }
 
         // SaleEvent owns transitions; recording one must not hydrate unrelated line/tender relations.
         val eventReads: ArchRule =

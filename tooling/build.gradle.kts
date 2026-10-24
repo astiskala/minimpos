@@ -1,46 +1,5 @@
 plugins {
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.kover)
-    alias(libs.plugins.android.lint)
-    alias(libs.plugins.detekt)
-    alias(libs.plugins.dokka)
-    alias(libs.plugins.pitest)
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        jvmDefault.set(org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode.NO_COMPATIBILITY)
-        allWarningsAsErrors.set(true)
-        extraWarnings.set(true)
-    }
-}
-
-detekt {
-    buildUponDefaultConfig = true
-    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
-}
-
-dokka {
-    dokkaSourceSets.configureEach {
-        documentedVisibilities.set(org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier.entries)
-    }
-    dokkaPublications.configureEach {
-        failOnWarning.set(true)
-        offlineMode.set(true)
-    }
-}
-
-lint {
-    abortOnError = true
-    warningsAsErrors = true
-    checkAllWarnings = true
-    checkTestSources = true
+    id("minimpos.kotlin-jvm-verified")
 }
 
 dependencies {
@@ -71,6 +30,11 @@ tasks.test {
         repository.file(".agents/skills/docs-screenshots/social-copy.json"),
     )
     inputs.dir(repository.dir(".github/workflows")).withPathSensitivity(PathSensitivity.RELATIVE)
+    // BuildConventionTest reads each module's build script.
+    inputs
+        .files(fileTree(repository) { include("*/build.gradle.kts") })
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+        .withPropertyName("buildScripts")
     systemProperty("minimpos.repository", repository.asFile.absolutePath)
     systemProperty(
         "minimpos.tooling.jar",
@@ -95,8 +59,7 @@ kover {
 }
 
 tasks.named("check") {
-    setDependsOn(dependsOn - tasks.named("detekt"))
-    dependsOn("koverVerify", "detektMain", "detektTest", "dokkaGeneratePublicationHtml", cliJar)
+    dependsOn(cliJar)
 }
 
 pitest {
@@ -104,6 +67,7 @@ pitest {
     excludedTestClasses.set(
         listOf(
             "app.minimpos.tooling.ArchitectureTest",
+            "app.minimpos.tooling.BuildConventionTest",
             "app.minimpos.tooling.CiScriptTest",
             "app.minimpos.tooling.DevRunnerTest",
             "app.minimpos.tooling.GradleRunnerTest",
@@ -111,9 +75,6 @@ pitest {
             "app.minimpos.tooling.WorkflowTest",
         ),
     )
-    threads.set(4)
-    outputFormats.set(listOf("HTML", "XML"))
-    timestampedReports.set(false)
-    avoidCallsTo.set(listOf("kotlin.jvm.internal", "kotlin.ResultKt", "kotlin.io.CloseableKt", "kotlin.jdk7.AutoCloseableKt"))
+    avoidCallsTo.add("kotlin.jdk7.AutoCloseableKt")
     mutationThreshold.set(100)
 }

@@ -16,11 +16,13 @@ import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct
 import app.minimpos.core.money.CurrencySpec
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.EmailReferenceMode
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
+import app.minimpos.terminal.client.MexicanPayment
 import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TerminalTipSuggestions
@@ -53,6 +55,43 @@ class CheckoutTest {
         kind: SaleKind = SaleKind.SALE,
         printer: Boolean = true,
     ) = Checkout(form, payment, totals, aud, kind, printer)
+
+    @Test
+    fun `Mexican routing needs configured verified facts and never drops selected options for other tenders`() {
+        val context = PaymentContext("TERMINAL", "AMS1-123", "POS", "Merchant", "TEST")
+        val ready =
+            checkout(form = CheckoutForm(mexicanPayment = MexicanPayment.MONTHS_6, tokenize = false)).copy(
+                currency = CurrencySpec.of("MXN"),
+                payment = PaymentSettings(mexicanInstallments = true, allowPartialAuthorisation = false),
+                mexicanRoutingAvailable = true,
+                mexicanContext = context,
+                mexicanIdentity = "verified",
+            )
+        assertThat(ready.canPay).isTrue()
+        val start = checkNotNull(ready.paymentStart(now, ZoneOffset.UTC))
+        assertThat(start.mexicanPayment).isEqualTo(MexicanPayment.MONTHS_6)
+        assertThat(start.walletContext).isEqualTo(context)
+        assertThat(start.walletSetupIdentity).isEqualTo("verified")
+        assertThat(ready.canSplit).isFalse()
+        assertThat(ready.copy(linksAvailable = true).canSendLink).isFalse()
+        assertThat(ready.copy(wallets = listOf(ScanWallet.WECHAT_PAY)).canScanWallet).isFalse()
+        listOf(
+            ready.copy(mexicanRoutingAvailable = false),
+            ready.copy(mexicanContext = null),
+            ready.copy(mexicanIdentity = null),
+            ready.copy(currency = aud),
+            ready.copy(payment = ready.payment.copy(mexicanInstallments = false)),
+            ready.copy(payment = ready.payment.copy(allowPartialAuthorisation = true)),
+            ready.copy(kind = SaleKind.PRE_AUTHORISATION),
+            ready.copy(form = ready.form.copy(audioGuidance = true)),
+            ready.copy(form = ready.form.copy(tipOnReceipt = true)),
+            ready.copy(form = ready.form.copy(askGratuity = true)),
+            ready.copy(form = ready.form.copy(askGiving = true)),
+            ready.copy(payment = ready.payment.copy(allowMke = true), form = ready.form.copy(cardEntryOverride = CardEntryOverride.MKE)),
+        ).forEach { assertThat(it.paymentStart(now, ZoneOffset.UTC)).isNull() }
+        assertThrows(IllegalArgumentException::class.java) { start.copy(requestedAmountMinor = 100) }
+        assertThrows(IllegalArgumentException::class.java) { start.copy(allowPartialAuthorisation = true) }
+    }
 
     @Test
     fun `busy payment runner restores audio choice without restoring stale checkout access`() =

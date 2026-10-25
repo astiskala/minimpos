@@ -1416,4 +1416,20 @@
     <string name="split_pay_gift_card">Tarjeta de regalo</string>
     <string name="split_pay_gift_card_amount">Tarjeta de regalo %1$s</string>
     <string name="split_tender_gift_card">Tarjeta de regalo</string>
+    <string name="mexican_title">Tarjetas a meses en México</string>
+    <string name="mexican_configuration">Activa solo tras confirmar con Adyen los programas de emisores, acuerdos y comisiones. También se requiere una tienda mexicana verificada.</string>
+    <string name="mexican_hint">Pregunta al cliente: débito, crédito en un pago o mensualidades. Requiere aprobación del emisor. Recibes el importe total y pagas las comisiones.</string>
+    <string name="mexican_automatic">La terminal decide</string>
+    <string name="mexican_debit">Débito</string>
+    <string name="mexican_credit">Crédito · un pago</string>
+    <string name="mexican_3">3 mensualidades</string>
+    <string name="mexican_6">6 mensualidades</string>
+    <string name="mexican_9">9 mensualidades</string>
+    <string name="mexican_12">12 mensualidades</string>
+    <string name="mexican_18">18 mensualidades</string>
+    <string name="mexican_unavailable">Requiere una tienda mexicana verificada, MXN y una terminal compatible. Tap to Pay no está disponible. Actualiza las funciones de Adyen tras configurar.</string>
+    <string name="mexican_conflicts">Desactiva autorización parcial, propinas, Giving, guía de audio, captura especial y guardar tarjeta. Usa una tarjeta para toda la venta; enlaces, tokens, billeteras y tarjetas de regalo no admiten esta opción.</string>
+    <string name="mexican_requested">Plan de tarjeta solicitado: %1$s</string>
+    <string name="mexican_returned">Plan de tarjeta devuelto: %1$s</string>
+    <string name="mexican_unreported">No informado</string>
 </resources>

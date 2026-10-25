@@ -1404,4 +1404,20 @@
     <string name="split_pay_gift_card">ギフトカード</string>
     <string name="split_pay_gift_card_amount">ギフトカード %1$s</string>
     <string name="split_tender_gift_card">ギフトカード</string>
+    <string name="mexican_title">メキシコのカード分割払い</string>
+    <string name="mexican_configuration">Adyenに発行会社のプログラム、契約、手数料を確認してから有効にしてください。確認済みのメキシコ店舗も必要です。</string>
+    <string name="mexican_hint">デビット、一括クレジット、毎月の分割払いから選んでもらいます。発行会社の承認が必要です。加盟店は全額を受け取り、手数料を負担します。</string>
+    <string name="mexican_automatic">端末に任せる</string>
+    <string name="mexican_debit">デビット</string>
+    <string name="mexican_credit">クレジット・一括払い</string>
+    <string name="mexican_3">毎月3回払い</string>
+    <string name="mexican_6">毎月6回払い</string>
+    <string name="mexican_9">毎月9回払い</string>
+    <string name="mexican_12">毎月12回払い</string>
+    <string name="mexican_18">毎月18回払い</string>
+    <string name="mexican_unavailable">確認済みのメキシコ店舗、MXN、対応する決済端末が必要です。Tap to Payは利用できません。設定後にAdyenの機能を更新してください。</string>
+    <string name="mexican_conflicts">一部承認、チップ、Giving、音声ガイド、特殊入力、カード保存をオフにしてください。売上全額を1枚のカードで支払います。リンク、トークン、ウォレット、ギフトカードでは利用できません。</string>
+    <string name="mexican_requested">要求したカードプラン：%1$s</string>
+    <string name="mexican_returned">返されたカードプラン：%1$s</string>
+    <string name="mexican_unreported">報告なし</string>
 </resources>

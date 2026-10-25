@@ -191,7 +191,12 @@ class SaleRepository(
                     sale.context,
                 )
             } else {
-                open.copy(status = settled.status)
+                open.copy(
+                    status = settled.status,
+                    returnedPaymentType = details?.returnedPaymentType ?: open.returnedPaymentType,
+                    returnedInstallments = details?.returnedInstallments ?: open.returnedInstallments,
+                    returnedPlanId = details?.returnedPlanId ?: open.returnedPlanId,
+                )
             },
         )
     }
@@ -307,6 +312,9 @@ class SaleRepository(
                 cashBackMinor = details.cashBackMinor,
                 customerReceiptJson = ReceiptLinesJson.encodeFields(details.customerReceipt),
                 cashierReceiptJson = ReceiptLinesJson.encodeFields(details.cashierReceipt),
+                returnedPaymentType = details.returnedPaymentType,
+                returnedInstallments = details.returnedInstallments,
+                returnedPlanId = details.returnedPlanId,
             )
     }
 }

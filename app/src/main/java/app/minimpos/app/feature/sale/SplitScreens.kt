@@ -41,6 +41,7 @@ import app.minimpos.app.data.db.TenderKind
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.feature.giftcard.CardChoice
 import app.minimpos.app.feature.giftcard.GiftCardPicker
+import app.minimpos.app.feature.mexicanPlan
 import app.minimpos.app.history.SaleResultNext
 import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.payment.Checkout
@@ -405,6 +406,8 @@ internal fun ColumnScope.SplitProgress(
             modifier = Modifier.testTag("splitBalance"),
         )
     }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    record.tenders.forEach { tender -> context.mexicanPlan(tender).forEach { Text(it) } }
     SaleTenders(record, money)
 }
 

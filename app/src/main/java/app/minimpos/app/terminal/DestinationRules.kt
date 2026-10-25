@@ -45,6 +45,9 @@ sealed interface DestinationRules {
      */
     val giftCards: Boolean get() = supportsTerminalFeatures
 
+    /** Mexican POS routing is documented for payment terminals; the Payments app has no documented support. */
+    val mexicanInstallments: Boolean get() = supportsTerminalFeatures
+
     /** Whether receipt print requests are supported, independently of printer hardware and local preferences. */
     val supportsPrinting: Boolean get() = true
 

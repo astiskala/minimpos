@@ -98,6 +98,7 @@ data class TerminalSetup(
                 diagnoses = destination.diagnoses,
                 remoteStatus = remoteStatus,
                 giftCards = destination.giftCards,
+                mexicanInstallments = destination.mexicanInstallments,
             )
 
     internal val needsSharedKey: Boolean get() = Secret.TERMINAL_PASSPHRASE in destination.secrets
@@ -338,6 +339,7 @@ data class TerminalSetup(
  * @property diagnoses Whether terminal diagnosis requests are supported.
  * @property remoteStatus Whether status recovery is available, needs verification/enablement, or is unsupported.
  * @property giftCards Whether gift-card requests can be sent; provider onboarding is configured separately.
+ * @property mexicanInstallments Whether Mexican POS routing can be sent; store and program eligibility are separate.
  */
 data class DestinationCapabilities(
     val discoversTerminals: Boolean = false,
@@ -352,6 +354,7 @@ data class DestinationCapabilities(
     val diagnoses: Boolean = true,
     val remoteStatus: CapabilityStanding = CapabilityStanding.AVAILABLE,
     val giftCards: Boolean = true,
+    val mexicanInstallments: Boolean = true,
 )
 
 /**

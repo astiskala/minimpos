@@ -368,7 +368,13 @@ class TerminalSimulator(
                 }
             saleData = SaleData().apply { saleTransactionID = request.saleData?.saleTransactionID }
             poiData = poiData(payment.tender, payment.psp.takeUnless { payment.isOffline })
-            paymentResult = paymentResult(payment, amount.currency, authorizedAmount)
+            paymentResult =
+                paymentResult(payment, amount.currency, authorizedAmount).apply {
+                    request.paymentData?.instalment?.let {
+                        paymentType = PaymentType.INSTALMENT
+                        instalment = it
+                    }
+                }
             paymentReceipt +=
                 listOf(
                     receipt(DocumentQualifierType.CUSTOMER_RECEIPT, "CARDHOLDER COPY", payment, signature = false),

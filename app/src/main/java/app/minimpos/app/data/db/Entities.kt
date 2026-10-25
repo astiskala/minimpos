@@ -689,6 +689,10 @@ enum class TenderKind {
  *   whose [context] says it, or while unestablished.
  * @property giftCard For a gift-card redemption (a [TenderKind.CARD] terminal tender paid from a gift card), the
  *   [app.minimpos.core.giftcard.GiftCardProvider] name; null for other tenders.
+ * @property mexicanPayment Frozen MexicanPayment name; null for ordinary/historical requests.
+ * @property returnedPaymentType Explicit returned installment type; null for missing/default Normal.
+ * @property returnedInstallments Returned monthly count; null when unreported.
+ * @property returnedPlanId Returned issuer PlanID; null when unreported.
  */
 @Entity(
     tableName = "sale_tenders",
@@ -737,6 +741,14 @@ data class SaleTenderEntity(
     val changeMinor: Long? = null,
     val environment: String? = null,
     val giftCard: String? = null,
+    /** Frozen MexicanPayment enum name selected before sending; null for historical/ordinary tenders. */
+    val mexicanPayment: String? = null,
+    /** Returned PaymentResult.PaymentType, never inferred from the request; null when absent. */
+    val returnedPaymentType: String? = null,
+    /** Returned Instalment.TotalNbOfPayments; null means unreported. */
+    val returnedInstallments: String? = null,
+    /** Returned Instalment.PlanID, verbatim; null means unreported. */
+    val returnedPlanId: String? = null,
 ) {
     /** Whether this tender collected money: an approved card or recorded cash. */
     val approved: Boolean get() = status == SaleStatus.APPROVED

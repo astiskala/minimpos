@@ -1410,4 +1410,20 @@
     <string name="split_pay_gift_card">Gift card</string>
     <string name="split_pay_gift_card_amount">Gift card %1$s</string>
     <string name="split_tender_gift_card">Gift card</string>
+    <string name="mexican_title">Mexican card installments</string>
+    <string name="mexican_configuration">Enable only after confirming issuer programs, agreements and installment fees with Adyen. A verified Mexican store is also required.</string>
+    <string name="mexican_hint">Ask the shopper: debit, one-off credit, or monthly installments. Issuer approval is required. You receive the full amount and pay issuer fees.</string>
+    <string name="mexican_automatic">Terminal decides</string>
+    <string name="mexican_debit">Debit</string>
+    <string name="mexican_credit">Credit · one payment</string>
+    <string name="mexican_3">3 monthly payments</string>
+    <string name="mexican_6">6 monthly payments</string>
+    <string name="mexican_9">9 monthly payments</string>
+    <string name="mexican_12">12 monthly payments</string>
+    <string name="mexican_18">18 monthly payments</string>
+    <string name="mexican_unavailable">Requires a verified Mexican store, MXN and a supported payment terminal. Tap to Pay is unavailable. Refresh Adyen capabilities after setup.</string>
+    <string name="mexican_conflicts">Turn off partial authorization, tips, Giving, audio guidance, special card entry and card saving. Use one card for the whole sale; links, tokens, wallets and gift cards cannot carry this choice.</string>
+    <string name="mexican_requested">Requested card plan: %1$s</string>
+    <string name="mexican_returned">Returned card plan: %1$s</string>
+    <string name="mexican_unreported">Not reported</string>
 </resources>

@@ -11,6 +11,7 @@ import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.ids.Ids
 import app.minimpos.core.money.CurrencySpec
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.core.tax.TaxMode
@@ -69,6 +70,9 @@ data class ShopperPromptTexts(
  * @property audioGuidanceMinimumSoftware Minimum supported software for the resolved model; null when unsupported or unknown.
  * @property audioGuidanceSimulated Whether the choice demonstrates the flow without physical terminal requirements.
  * @property audioGuidanceTarget Resolved terminal POIID; binds the per-shopper confirmation to that terminal.
+ * @property mexicanRoutingAvailable Verified Mexican store assignment on a supported destination, or explicit offline demo.
+ * @property mexicanContext Original context of the verified assignment; null before discovery.
+ * @property mexicanIdentity Setup fingerprint for that assignment; null before discovery.
  */
 data class Checkout(
     val form: CheckoutForm = CheckoutForm(),
@@ -87,6 +91,9 @@ data class Checkout(
     val audioGuidanceMinimumSoftware: String? = null,
     val audioGuidanceSimulated: Boolean = false,
     val audioGuidanceTarget: String? = null,
+    val mexicanRoutingAvailable: Boolean = false,
+    val mexicanContext: PaymentContext? = null,
+    val mexicanIdentity: String? = null,
 ) {
     /** Whether the amount is only held (a pre-authorisation) rather than charged. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
@@ -304,10 +311,22 @@ data class Checkout(
                     !askGratuity && !tipOnReceipt && !askGiving && effectiveCardEntry == CardEntryOverride.NORMAL
             )
 
+    /** Whether explicit configuration and verified store facts permit asking for Mexican card routing. */
+    val offersMexicanRouting: Boolean get() = payment.mexicanInstallments && mexicanRoutingAvailable && currency.code == "MXN"
+
+    /** Selected routing stays visible and blocks payment when setup or a conflicting choice changes. */
+    val mexicanRoutingReady: Boolean get() =
+        form.mexicanPayment == null || (
+            offersMexicanRouting && mexicanContext != null && mexicanIdentity != null && !preAuthorisation &&
+                !tipOnReceipt && !askGratuity && !askGiving && !form.audioGuidance &&
+                form.cardEntryOverride == CardEntryOverride.NORMAL && !payment.allowPartialAuthorisation && !tokenize &&
+                listOf(form.tipOnReceipt, form.askGratuity, form.askGiving, form.tokenize).none { it == true }
+        )
+
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */
     val canPay: Boolean get() =
         !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid &&
-            audioGuidanceReady
+            audioGuidanceReady && mexicanRoutingReady
 
     /**
      * The payment to start, or null unless [canPay]. A blank merchant reference is generated from [now] in [zone] with
@@ -336,6 +355,9 @@ data class Checkout(
             allowPartialAuthorisation = allowPartial,
             askGiving = askGiving,
             cardEntryOverride = effectiveCardEntry,
+            mexicanPayment = form.mexicanPayment,
+            walletContext = mexicanContext.takeIf { form.mexicanPayment != null },
+            walletSetupIdentity = mexicanIdentity.takeIf { form.mexicanPayment != null },
             audioGuidance = form.audioGuidance,
             audioGuidancePoiId = audioGuidanceTarget.takeIf { form.audioGuidance },
         )
@@ -352,7 +374,8 @@ data class Checkout(
     val splitBlocked: Boolean get() = blocksSplit()
 
     private fun blocksSplit(): Boolean =
-        tipOnReceipt || askGratuity || askGiving || form.audioGuidance || effectiveCardEntry != CardEntryOverride.NORMAL
+        tipOnReceipt || askGratuity || askGiving || form.audioGuidance || form.mexicanPayment != null ||
+            effectiveCardEntry != CardEntryOverride.NORMAL
 
     /**
      * The first tender of a split of this sale at [now] in [zone]: [amountMinor] of its total chosen as [allocation]
@@ -384,7 +407,7 @@ data class Checkout(
      * Whether a payment link is offered instead of the terminal: for a sale (a pre-authorisation always goes to the
      * terminal) that [canPay], while links are [linksAvailable].
      */
-    val canSendLink: Boolean get() = !form.audioGuidance && !preAuthorisation && linksAvailable && canPay
+    val canSendLink: Boolean get() = form.mexicanPayment == null && !form.audioGuidance && !preAuthorisation && linksAvailable && canPay
 
     /**
      * The payment link to create, or null unless [canSendLink]: the [paymentStart] at [now] in [zone] without tipping on
@@ -421,14 +444,14 @@ data class Checkout(
         fromCheckout: Boolean = false,
     ): SavedCardStart? {
         val model = payment.recurringModel().value
-        if (form.audioGuidance) return null
+        if (form.audioGuidance || form.mexicanPayment != null) return null
         if (preAuthorisation || shopperReference == null || !card.supports(model)) return null
         val start = paymentStart(now, zone)?.forSavedCard() ?: return null
         return SavedCardStart(start, card, model, fromCheckout = fromCheckout)
     }
 
     /** Whether scanned wallets are offered, independently of entered-field validation. */
-    val offersScanWallet: Boolean get() = !form.audioGuidance && !preAuthorisation && wallets.isNotEmpty()
+    val offersScanWallet: Boolean get() = form.mexicanPayment == null && !form.audioGuidance && !preAuthorisation && wallets.isNotEmpty()
 
     /** Whether a configured scanned wallet can pay this checkout now. */
     val canScanWallet: Boolean get() = offersScanWallet && canPay

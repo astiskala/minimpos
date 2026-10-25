@@ -24,6 +24,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * @property identity Fingerprint of the checked connection and encrypted payment secrets; never a credential.
  * @param offers Eligible wallet configurations, filtered for the terminal's store and country.
  * @property nativeScanner Whether the checked terminal is a confirmed scanner model.
+ * @property mexicanStore Whether Management verified an assigned Mexican store for this context.
+ * @property mexicanDestination Whether the destination supports Mexican Terminal API card routing.
  * @property simulated Whether the resolved destination supplies offline demos, not a reading of stored payment meaning.
  * @property checking Whether a refresh is running.
  * @property checked Whether a complete discovery answer has been obtained.
@@ -36,6 +38,8 @@ data class WalletAvailability(
     val identity: String? = null,
     private val offers: List<WalletOffer> = emptyList(),
     val nativeScanner: Boolean = false,
+    val mexicanStore: Boolean = false,
+    val mexicanDestination: Boolean = false,
     val simulated: Boolean = false,
     val checking: Boolean = false,
     val checked: Boolean = false,
@@ -43,6 +47,11 @@ data class WalletAvailability(
     val problem: SetupProblem? = null,
     val failure: Failure? = null,
 ) {
+    /** Current verified Mexican assignment or an explicitly configured offline demo; never inferred from currency or locale. */
+    val mexicanRouting: Boolean get() =
+        mexicanDestination && checked && problem == null && (mexicanStore || simulated) &&
+            context != null && identity != null
+
     /** Why a refresh cannot run now: the setup [problem] it would only report again; null when it can. */
     val refreshBlocked: Failure? get() = problem?.let(Failure::NotSetUp)
 
@@ -105,6 +114,7 @@ class WalletDiscovery(
                     context = context,
                     identity = identity,
                     supported = setup.capabilities.scannedWallets,
+                    mexicanDestination = setup.capabilities.mexicanInstallments,
                     simulated = setup.apiSetup == ApiSetup.Simulated,
                     checking = true,
                 )
@@ -174,6 +184,7 @@ class WalletDiscovery(
                             origin,
                             initial.copy(
                                 offers = WalletOffers.configured(methods.methods, terminal.storeId, terminal.countryCode),
+                                mexicanStore = terminal.storeId.isNotBlank() && terminal.countryCode.equals("MX", ignoreCase = true),
                                 nativeScanner = WalletOffers.nativeScanner(terminal.model, terminal.id),
                                 checking = false,
                                 checked = true,

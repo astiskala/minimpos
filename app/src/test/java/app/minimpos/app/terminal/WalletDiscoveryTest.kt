@@ -9,6 +9,10 @@ import app.minimpos.app.data.security.Secret
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.TerminalDetails
+import app.minimpos.terminal.transport.TerminalEnvironment
+import app.minimpos.terminal.transport.TerminalListing
+import app.minimpos.terminal.transport.TerminalListingApi
 import app.minimpos.terminal.transport.WalletMethod
 import app.minimpos.terminal.transport.WalletMethodListing
 import app.minimpos.terminal.transport.WalletMethodsApi
@@ -37,6 +41,62 @@ class WalletDiscoveryTest {
                     result
                 },
         )
+
+    @Test
+    fun `Mexican checkout readiness follows the verified assigned store and discards lost permission`() =
+        await {
+            env.useCheckoutApi()
+            env.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "mini-key")) }
+            env.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple")
+            env.container.terminalStatus.check()
+            var country = "MX"
+            var store = "ST1"
+            val terminals =
+                object : TerminalListingApi {
+                    override suspend fun terminals(
+                        environment: TerminalEnvironment,
+                        id: String?,
+                    ): TerminalListing =
+                        TerminalListing.Listed(
+                            listOf(
+                                TerminalDetails(
+                                    "AMS1-000168223606144",
+                                    "HarbourCoffeeCOM",
+                                    "192.0.2.1",
+                                    storeId = store,
+                                    countryCode = country,
+                                ),
+                            ),
+                            environment,
+                        )
+                }
+            val discovery =
+                WalletDiscovery(
+                    env.container.terminalSetup,
+                    env.scope,
+                    { terminals },
+                    { _, _ -> WalletMethodsApi { _, _ -> result } },
+                )
+            discovery.refresh()
+            assertThat(discovery.state.value.mexicanRouting).isTrue()
+            assertThat(
+                discovery.state.value.context
+                    ?.merchantAccount,
+            ).isEqualTo("HarbourCoffeeCOM")
+            country = "AU"
+            discovery.refresh()
+            assertThat(discovery.state.value.mexicanRouting).isFalse()
+            country = "MX"
+            store = ""
+            discovery.refresh()
+            assertThat(discovery.state.value.mexicanRouting).isFalse()
+            store = "ST1"
+            discovery.refresh()
+            assertThat(discovery.state.value.mexicanRouting).isTrue()
+            result = WalletMethodListing.Failed(Fault.Permission(ApiKey.ADYEN))
+            discovery.refresh()
+            assertThat(discovery.state.value.mexicanRouting).isFalse()
+        }
 
     @Test
     fun `refresh retains verified wallets only for transient errors without blocking ordinary API access`() =

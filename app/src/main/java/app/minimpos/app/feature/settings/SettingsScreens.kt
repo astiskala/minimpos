@@ -147,7 +147,7 @@ private fun terminalSetupViewModel(settings: SettingsViewModel): TerminalSetupVi
 private fun capabilitiesViewModel(): CapabilitiesViewModel {
     val container = LocalAppContainer.current
     return viewModel {
-        CapabilitiesViewModel(container.capabilityDiscovery)
+        CapabilitiesViewModel(container.capabilityDiscovery, container.walletDiscovery::refresh)
     }
 }
 

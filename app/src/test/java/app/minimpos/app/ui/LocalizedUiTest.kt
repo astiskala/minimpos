@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
@@ -52,6 +53,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
@@ -78,6 +80,24 @@ class LocalizedUiTest {
         env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = currency)) }
         await { env.container.catalog.seedDefaults(env.container.starterTaxRates()) }
     }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w320dp-h460dp-hdpi")
+    fun `English Mexican installments fit an AMS1 with large text`() {
+        RuntimeEnvironment.setFontScale(1.5f)
+        saleFits(mexican = true)
+    }
+
+    @Test
+    fun `Japanese Mexican installments fit an AMS1`() = saleFits(mexican = true)
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese Mexican installments fit an AMS1`() = saleFits(mexican = true)
+
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese Mexican installments fit an AMS1`() = saleFits(mexican = true)
 
     @Test
     fun `Japanese audio guidance confirmation fits an AMS1`() = saleFits(audioGuidance = true)
@@ -346,7 +366,23 @@ class LocalizedUiTest {
         compose.onNodeWithText(env.context.getString(R.string.wallet_demo_note)).assertIsDisplayed()
     }
 
-    private fun saleFits(audioGuidance: Boolean = false) {
+    private fun saleFits(
+        audioGuidance: Boolean = false,
+        mexican: Boolean = false,
+    ) {
+        if (mexican) {
+            env.updateSettings {
+                it.copy(
+                    payment =
+                        it.payment.copy(
+                            currencyCode = "MXN",
+                            mexicanInstallments = true,
+                            allowPartialAuthorisation = false,
+                        ),
+                )
+            }
+            await { env.container.walletDiscovery.refresh() }
+        }
         val context = env.context
         compose.setContent { MiniMposApp(env.container) }
         listOf("newSale", "refund", "history", "settings").forEach {
@@ -369,6 +405,14 @@ class LocalizedUiTest {
         compose.onNodeWithTag("charge").assertIsDisplayed()
         compose.clickWhenEnabled("charge")
         compose.waitUntilAtLeastOneExists(hasTestTag("pay"), 15_000)
+        if (mexican) {
+            compose.onNodeWithTag("checkoutDetails").performScrollToNode(hasTestTag("mexican_MONTHS_6"))
+            compose
+                .onNodeWithTag("mexican_MONTHS_6")
+                .performScrollTo()
+                .assertIsDisplayed()
+                .performClick()
+        }
         if (audioGuidance) {
             compose.onNodeWithTag("audioGuidance").performScrollTo().performClick()
             compose.waitUntilAtLeastOneExists(hasTestTag("audioGuidanceConfirm"), 15_000)

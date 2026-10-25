@@ -31,7 +31,7 @@ import kotlin.uuid.Uuid
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun exportedSchema(version: Int = 20): JSONObject =
+    private fun exportedSchema(version: Int = 21): JSONObject =
         listOf("schemas", "app/schemas")
             .map { File(it, "app.minimpos.app.data.db.AppDatabase/$version.json") }
             .first { it.exists() }
@@ -39,7 +39,7 @@ class DatabaseSchemaTest {
 
     private fun createExportedDatabase(
         name: String,
-        version: Int = 20,
+        version: Int = 21,
     ) {
         val schema = exportedSchema(version)
         val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
@@ -79,12 +79,48 @@ class DatabaseSchemaTest {
                     AppDatabase.MIGRATION_17_18,
                     AppDatabase.MIGRATION_18_19,
                     AppDatabase.MIGRATION_19_20,
+                    AppDatabase.MIGRATION_20_21,
                 ).allowMainThreadQueries()
                 .build()
         try {
             return block(db)
         } finally {
             db.close()
+        }
+    }
+
+    @Test
+    fun `version 20 preserves unknown card and gift tenders without inventing installment facts`() {
+        val name = "schema-v20-${Uuid.random()}"
+        createExportedDatabase(name, 20)
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
+            raw.execSQL(
+                "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
+                    "tokenizationRequested, signatureRequired, refundedMinor, adjustmentPending) VALUES " +
+                    "('s20', 100, 'MXN', 'INCLUSIVE', 1000, 0, 1000, 'UNKNOWN', 'MP-20', 0, 0, 0, 0)",
+            )
+            raw.execSQL(
+                "INSERT INTO sale_tenders (id, saleId, sequence, requestedMinor, status, createdAt, kind, serviceId, giftCard) VALUES " +
+                    "('t20', 's20', 1, 1000, 'UNKNOWN', 100, 'CARD', 'PAY20', 'SVS')",
+            )
+        }
+        try {
+            withDatabase(name) { db ->
+                runBlocking {
+                    val record = checkNotNull(db.saleDao().sale("s20"))
+                    val tender = record.tenders.single()
+                    assertThat(record.sale.status).isEqualTo(SaleStatus.UNKNOWN)
+                    assertThat(tender.serviceId).isEqualTo("PAY20")
+                    assertThat(tender.giftCard).isEqualTo("SVS")
+                    assertThat(tender.mexicanPayment).isNull()
+                    assertThat(tender.returnedPaymentType).isNull()
+                    assertThat(tender.returnedInstallments).isNull()
+                    assertThat(tender.returnedPlanId).isNull()
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(21)
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
         }
     }
 
@@ -467,7 +503,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.merchantReference).isEqualTo("MP-10")
                     assertThat(sale.poiReconciliationId).isNull()
                     assertThat(sale.savedCard).isFalse()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(20)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(21)
                 }
             }
         } finally {
@@ -514,7 +550,7 @@ class DatabaseSchemaTest {
                             .single()
                             .name,
                     ).isEqualTo("GST")
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(20)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(21)
                 }
             }
         } finally {
@@ -545,7 +581,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.status).isEqualTo(SaleStatus.DECLINED)
                     assertThat(sale.errorCondition).isEqualTo("Busy")
                     assertThat(sale.busyServiceId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(20)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(21)
                 }
             }
         } finally {
@@ -578,7 +614,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.captureStartedAt).isEqualTo(200)
                     assertThat(sale.captureStatus?.name).isEqualTo("UNKNOWN")
                     assertThat(sale.totalMinor).isEqualTo(1000)
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(20)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(21)
                 }
             }
         } finally {

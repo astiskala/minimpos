@@ -39,6 +39,7 @@ class TerminalFeaturesGuideTest {
                 "capabilities" to listOf("settings_capabilities", "capability_status_needs_config", "capability_status_unsupported"),
                 "audio-guidance" to listOf("checkout_audio_guidance", "checkout_audio_confirm"),
                 "terminal-tips" to listOf("checkout_tip_on_terminal", "settings_dynamic_tip_override", "settings_tip_on_pre_tax"),
+                "mexican-installments" to listOf("mexican_title"),
                 "partial-payments" to listOf("settings_allow_partial_auth", "status_partially_paid"),
                 "shopper-display" to listOf("settings_shopper_display"),
                 "giving" to listOf("checkout_ask_giving"),

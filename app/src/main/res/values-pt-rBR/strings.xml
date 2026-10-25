@@ -1416,4 +1416,20 @@
     <string name="split_pay_gift_card">Cartão-presente</string>
     <string name="split_pay_gift_card_amount">Cartão-presente %1$s</string>
     <string name="split_tender_gift_card">Cartão-presente</string>
+    <string name="mexican_title">Parcelamento de cartões no México</string>
+    <string name="mexican_configuration">Ative após confirmar programas dos emissores, acordos e tarifas com a Adyen. Também exige uma loja mexicana verificada.</string>
+    <string name="mexican_hint">Pergunte ao cliente: débito, crédito à vista ou parcelas mensais. Exige aprovação do emissor. Você recebe o valor total e paga as tarifas.</string>
+    <string name="mexican_automatic">O terminal decide</string>
+    <string name="mexican_debit">Débito</string>
+    <string name="mexican_credit">Crédito · à vista</string>
+    <string name="mexican_3">3 parcelas mensais</string>
+    <string name="mexican_6">6 parcelas mensais</string>
+    <string name="mexican_9">9 parcelas mensais</string>
+    <string name="mexican_12">12 parcelas mensais</string>
+    <string name="mexican_18">18 parcelas mensais</string>
+    <string name="mexican_unavailable">Exige loja mexicana verificada, MXN e terminal compatível. Tap to Pay indisponível. Atualize os recursos da Adyen após configurar.</string>
+    <string name="mexican_conflicts">Desative autorização parcial, gorjetas, Giving, guia de áudio, entrada especial e salvar cartão. Use um cartão para toda a venda; links, tokens, carteiras e cartões-presente não aceitam esta opção.</string>
+    <string name="mexican_requested">Plano de cartão solicitado: %1$s</string>
+    <string name="mexican_returned">Plano de cartão retornado: %1$s</string>
+    <string name="mexican_unreported">Não informado</string>
 </resources>

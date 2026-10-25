@@ -80,7 +80,7 @@
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Adyen機能を確認</a></li><li><a href="#terminal-checkout">任意の会計フロー</a>
-  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
+  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#mexican-installments">メキシコのカード分割払い</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
   <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#gift-cards">ギフトカード</a></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
@@ -94,7 +94,7 @@
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Adyen機能を確認</a></li><li><a href="#terminal-checkout">任意の会計フロー</a>
-  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
+  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#mexican-installments">メキシコのカード分割払い</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
   <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#gift-cards">ギフトカード</a></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
@@ -356,6 +356,13 @@
             Mini mPOSは調整と元の確保額を超えるキャプチャをブロックします。
             <a href="https://docs.adyen.com/point-of-sale/surcharge">Adyenのサーチャージ要件</a>と
             <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">Adyenの設定方法</a>をご確認ください。</p>
+          <h3 id="mexican-installments">メキシコのカード分割払い</h3>
+          <p>設定 › 決済で、Adyenに発行会社のプログラムと手数料を確認してから有効にします。Adyenの機能を更新し、メキシコ店舗の割り当てを確認します。ローカル端末とクラウド端末に対応し、Tap to Payでは利
+            用できません。デビット、一括クレジット、毎月3・6・9・12・18回払いから選び、対応する発行会社のカード1枚で全額を支払います。分割決済、一部承認、チップ、Giving、音声ガイド、MOTO/MKE、カード保存
+            は併用できないため、明示的にオフにします。リンク、保存済みカード、スキャンウォレット、ギフトカードには適用されません。詳細、履歴、レシートは要求と返されたプランを区別し、不足する情報は報告なしと表示します。非対応
+            の発行会社は拒否する場合があります。不明な決済は再試行前に確認してください。元の決済を金額指定または全額で返金します。発行会社が支払日程を管理し、Customer Areaで完了を確認します。Mini
+            mPOSが定期請求を予約することはありません。</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/installments/mexico-installments/">Adyen: メキシコのカード分割払い</a></p>
           <h3 id="partial-payments">一部承認された決済の残額を受け取る</h3>
           <p><strong>一部承認を許可</strong>をオンにすると、要求額より少ないカード承認を受け付けられます。結果が<strong>一部支払済み</strong>の場合は支払額と残額を確認し、その結果画面で
             <strong>残額を支払う</strong>ボタンをタップして別のカードで残額を受け取ります。各決済の試行は同じ販売に保存されます。全額が承認されるまでは支払い完了としないでください。</p>

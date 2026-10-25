@@ -101,9 +101,19 @@ class HistorySearch(
         val texts =
             sale?.let(::saleTexts).orEmpty() +
                 when (item) {
-                    is HistoryItem.Refund -> refundTexts(item)
-                    is HistoryItem.GiftCard -> giftCardTexts(item)
-                    is HistoryItem.Sale -> emptyList()
+                    is HistoryItem.Refund -> {
+                        refundTexts(item)
+                    }
+
+                    is HistoryItem.GiftCard -> {
+                        giftCardTexts(item)
+                    }
+
+                    is HistoryItem.Sale -> {
+                        item.tenders.flatMap {
+                            listOfNotNull(it.mexicanPayment, it.returnedPaymentType, it.returnedInstallments, it.returnedPlanId)
+                        }
+                    }
                 }
         val (currency, amounts) =
             when (item) {

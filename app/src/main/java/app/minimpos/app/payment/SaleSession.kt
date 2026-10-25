@@ -17,6 +17,7 @@ import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
+import app.minimpos.terminal.client.MexicanPayment
 import app.minimpos.terminal.client.ScannedPayment
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +45,7 @@ import kotlin.uuid.Uuid
  * @property audioGuidance Whether this shopper requests audio instructions on the terminal.
  * @property audioGuidanceConfirmedFor POIID whose software, Support enablement and non-signature card flow the operator confirmed.
  * @property cardEntryOverride Selected card entry mode (`NORMAL`, `MOTO` or `MKE`).
+ * @property mexicanPayment Shopper-selected Mexican debit/credit routing; null uses ordinary terminal routing.
  */
 data class CheckoutForm(
     val transactionReference: String = "",
@@ -56,6 +58,7 @@ data class CheckoutForm(
     val audioGuidance: Boolean = false,
     val audioGuidanceConfirmedFor: String? = null,
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
+    val mexicanPayment: MexicanPayment? = null,
 )
 
 /**
@@ -147,6 +150,9 @@ class SaleSession(
                         audioGuidanceMinimumSoftware = status.audioGuidanceMinimumSoftware,
                         audioGuidanceSimulated = status.apiSetup == ApiSetup.Simulated,
                         audioGuidanceTarget = status.poiId,
+                        mexicanRoutingAvailable = availableWallets.mexicanRouting,
+                        mexicanContext = availableWallets.context,
+                        mexicanIdentity = availableWallets.identity,
                     )
                 },
             )

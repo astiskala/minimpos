@@ -1416,4 +1416,20 @@
     <string name="split_pay_gift_card">Carte cadeau</string>
     <string name="split_pay_gift_card_amount">Carte cadeau %1$s</string>
     <string name="split_tender_gift_card">Carte cadeau</string>
+    <string name="mexican_title">Paiements échelonnés au Mexique</string>
+    <string name="mexican_configuration">Activez après confirmation des programmes des émetteurs, accords et frais avec Adyen. Un magasin mexicain vérifié est aussi requis.</string>
+    <string name="mexican_hint">Demandez au client : débit, crédit unique ou mensualités. Accord de l’émetteur requis. Vous recevez le montant total et payez les frais.</string>
+    <string name="mexican_automatic">Choix du terminal</string>
+    <string name="mexican_debit">Débit</string>
+    <string name="mexican_credit">Crédit · un paiement</string>
+    <string name="mexican_3">3 mensualités</string>
+    <string name="mexican_6">6 mensualités</string>
+    <string name="mexican_9">9 mensualités</string>
+    <string name="mexican_12">12 mensualités</string>
+    <string name="mexican_18">18 mensualités</string>
+    <string name="mexican_unavailable">Nécessite un magasin mexicain vérifié, MXN et un terminal compatible. Tap to Pay indisponible. Actualisez les fonctions Adyen après configuration.</string>
+    <string name="mexican_conflicts">Désactivez autorisation partielle, pourboires, Giving, guidage audio, saisie spéciale et enregistrement de carte. Une carte pour toute la vente ; liens, jetons, portefeuilles et cartes-cadeaux exclus.</string>
+    <string name="mexican_requested">Plan de carte demandé : %1$s</string>
+    <string name="mexican_returned">Plan de carte reçu : %1$s</string>
+    <string name="mexican_unreported">Non communiqué</string>
 </resources>

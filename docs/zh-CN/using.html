@@ -79,7 +79,7 @@
   <a href="#receipts">收据</a><ul><li><a href="#customize-receipts">自定义收据</a></li><li><a href="#language-receipts">收据语言
   </a></li><li><a href="#email">电子收据</a></li></ul></li><li><a href="#history">交易记录</a><ul><li><a href="#close-day">每日平账
   </a></li><li><a href="#reconciliation">与终端对账</a></li></ul></li><li class="advanced-start"><a href="#capabilities">检查
-  Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#audio-guidance">使用语音引导付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分与现金</a></li><li>
+  Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#audio-guidance">使用语音引导付款</a></li><li><a href="#mexican-installments">墨西哥信用卡分期付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分与现金</a></li><li>
   <a href="#shopper-display">购物者端屏幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">离线支付</a></li><li><a href="#wallets">扫描钱包付款码</a></li><li><a href="#shoppers">
   识别号和保存卡片</a><ul><li><a href="#saved-card">管理令牌</a></li></ul></li><li><a href="#gift-cards">礼品卡</a></li><li><a href="#payment-links">付款链接</a></li><li>
@@ -92,7 +92,7 @@
   <a href="#receipts">收据</a><ul><li><a href="#customize-receipts">自定义收据</a></li><li><a href="#language-receipts">收据语言
   </a></li><li><a href="#email">电子收据</a></li></ul></li><li><a href="#history">交易记录</a><ul><li><a href="#close-day">每日平账
   </a></li><li><a href="#reconciliation">与终端对账</a></li></ul></li><li class="advanced-start"><a href="#capabilities">检查
-  Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#audio-guidance">使用语音引导付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分与现金</a></li><li>
+  Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#audio-guidance">使用语音引导付款</a></li><li><a href="#mexican-installments">墨西哥信用卡分期付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分与现金</a></li><li>
   <a href="#shopper-display">购物者端屏幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">离线支付</a></li><li><a href="#wallets">扫描钱包付款码</a></li><li><a href="#shoppers">
   识别号和保存卡片</a><ul><li><a href="#saved-card">管理令牌</a></li></ul></li><li><a href="#gift-cards">礼品卡</a></li><li><a href="#payment-links">付款链接</a></li><li>
@@ -332,6 +332,11 @@
             已报告附加费时，Mini mPOS 会阻止授权调整及超过原预授权金额的捕获。请参阅
             <a href="https://docs.adyen.com/point-of-sale/surcharge">Adyen 附加费要求</a>和
             <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">Adyen 附加费配置</a>。</p>
+          <h3 id="mexican-installments">墨西哥信用卡分期付款</h3>
+          <p>在设置 › 支付中，与Adyen确认发卡行计划及费用后启用。刷新Adyen功能以验证墨西哥门店分配。支持本地和云终端，不支持Tap to Pay。选择借记卡、信用卡一次付款或分3、6、9、12、18个月付款，使
+            用兼容发卡行的一张卡支付全额。请明确关闭冲突选项：拆分付款、部分授权、小费、Giving、语音引导、MOTO/MKE及保存卡片。链接、保存卡片扣款、扫描钱包及礼品卡不支持此计划。详情、历史和收据区分请求与返回的计
+            划；缺失信息保持未报告状态。不支持的发卡行可能拒绝。重试前请先核实未知付款。按金额或全额退还原始付款；发卡行管理分期安排，Customer Area确认最终结果。Mini mPOS不会安排定期扣款。</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/installments/mexico-installments/">Adyen: 墨西哥信用卡分期付款</a></p>
           <h3 id="partial-payments">收取部分授权后的剩余金额</h3>
           <p>开启<strong>允许部分授权</strong>，即可接受银行卡批准低于请求金额的付款。结果显示<strong>部分已付</strong>时，核对已付和剩余金额，然后在该结果页面点按<strong>支付剩余</strong>，用另一张卡收取差额。应用将各次付款保留在同一笔销售中。全部金额获批前，不要将销售视为全额付清。</p>
           <p>未收到答复不等于部分批准。继续收款前请<a href="troubleshooting#unknown">解决未知结果</a>。不要按原合计金额另开一笔销售：已批准的部分已经付款。</p>

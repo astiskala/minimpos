@@ -280,13 +280,13 @@ Commit: `feat: support Mexican credit card installments`
 Read first: `adyen/.../client/ClientModels.kt`, `TerminalClient.kt`, `app/.../payment/Checkout.kt`, checkout
 screens/settings, tender records, capability discovery, and receipt/history owners.
 
-- [ ] Verify supported Mexican credit/debit routing, issuer requirements, installment choices, and valid combinations.
+- [x] Verify supported Mexican credit/debit routing, issuer requirements, installment choices, and valid combinations.
   Derive readiness from verified merchant/store facts and configuration, not Spanish UI language or currency alone.
-- [ ] Add the documented credit/debit and installment request fields using SDK models. Preserve choices with each tender
+- [x] Add the documented credit/debit and installment request fields using SDK models. Preserve choices with each tender
   so recovery sends the same facts; show returned installment information in details and receipts.
-- [ ] Validate combinations with splitting and other checkout features centrally. Explain unavailable choices before
+- [x] Validate combinations with splitting and other checkout features centrally. Explain unavailable choices before
   payment. These are issuer-managed installments; do not create device-scheduled recurring token charges.
-- [ ] Test normal debit/credit, allowed/disallowed counts, unsupported issuer outcomes, partial/missing responses,
+- [x] Test normal debit/credit, allowed/disallowed counts, unsupported issuer outcomes, partial/missing responses,
   original-context recovery, refunds, migrations, and localized checkout.
 
 Start with TerminalClient and Checkout tests and add focused installment cases, then payment/database lanes as
@@ -420,22 +420,21 @@ independently, with the provider/destination and evidence location.
 | 03 | Surcharge accounting | implemented | `c62d133` | `scripts/dev finish`; SDK 33 + 28; schema 18 | Configured TEST surcharge/refund checks unconfirmed |
 | 04 | Tokens and Settings navigation | implemented | `3f1c712` | `scripts/dev finish`; SDK 33 + 28; schema 18 unchanged | TEST roles, deletion and propagation unconfirmed |
 | 05 | Split payments and cash | implemented | `d208036` | `scripts/dev finish`; SDK 33 + 28; schema 19 | Partial-approval, linking and multi-leg refund checks unconfirmed |
-| 06 | Gift-card lifecycle | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 20 | Provider onboarding/TEST cards, StoredValue recovery unconfirmed |
-| 07 | Mexican installments | not started | - | - | Eligible Mexican TEST setup unconfirmed |
+| 06 | Gift-card lifecycle | implemented | `807c62e` | `scripts/dev finish`; SDK 33 + 28; schema 20 | Provider onboarding/TEST cards, StoredValue recovery unconfirmed |
+| 07 | Mexican installments | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 21 | Mexican issuer/local/cloud/receipt/refund TEST checks unconfirmed |
 | 08 | Meal vouchers | not started | - | - | Country/provider TEST setups unconfirmed |
 | 09 | Cashback/Cashout | not started | - | - | With-purchase/standalone enablement unconfirmed |
 | 10 | Unreferenced card refunds | not started | - | - | Eligible country/account enablement unconfirmed |
 
-Resume note: milestones 01 (`100b1a3`), 02 (`c8752cc`), 03 (`c62d133`), 04 (`3f1c712`), 05 (`d208036`) and 06 (this
-commit) are implemented on `codex/adyen-capabilities`. Stopped after milestone 06 as requested; milestones 07–10 remain
-unstarted. Database version is 20 (preserving `MIGRATION_19_20`, build-generated schema, upgrade test); no dependency
-changed. The configured Manager PIN requirement for token deletion, cash refunds and gift-card value changes, repairs
-and cash handovers follows the plan’s provisional working default, not a separately confirmed preference.
-`scripts/dev finish` passed on October 26, 2026, including SDK 33 and SDK 28; see milestone 06 evidence for the log.
-Physical terminal/phone checks, accessibility enablement, Payments app beta access, configured TEST surcharge/refund
-checks, TEST token-role/deletion/propagation checks, real split/partial-approval/multi-leg refund checks and every
-gift-card provider check remain unconfirmed. Real calls, pushes, publications and releases require separate
-authorization.
+Resume note: milestones 01 (`100b1a3`), 02 (`c8752cc`), 03 (`c62d133`), 04 (`3f1c712`), 05 (`d208036`),
+06 (`807c62e`) and 07 (this commit) are implemented on `codex/adyen-capabilities`. Stopped after milestone 07 as
+requested; milestones 08–10 remain unstarted. Database version is 21 with nullable tender request/result facts,
+`MIGRATION_20_21`, build-generated schema and upgrade tests; no dependency changed. `scripts/dev finish` passed on
+October 26, 2026, including SDK 33 and SDK 28; log `build/gradle-logs/run-FsJURY/output.log`.
+All earlier real-Adyen verification gaps remain unconfirmed, as do Mexican merchant/store eligibility, issuer programs,
+local/cloud routing, receipt disclosure, status recovery and referenced refunds. No real calls, pushes, publications
+or releases were made or authorized. The configured Manager PIN requirement for token deletion, cash refunds and
+gift-card value changes, repairs and cash handovers remains the plan's provisional working default.
 
 Milestone 01 evidence:
 
@@ -703,6 +702,60 @@ Milestone 06 evidence:
   StoredValue answers and status recovery, partial redemption fee reporting (a partial approval without
   `TotalFeesAmount` still stops remainder collection conservatively), cash-out, undo and refund behavior, and whether
   terminal totals include stored-value management remain unverified. No real Adyen calls, pushes or releases were made.
+
+Milestone 07 evidence:
+
+- Rechecked Adyen's [Mexican POS installments](https://docs.adyen.com/point-of-sale/installments/mexico-installments/),
+  [card installment guide](https://docs.adyen.com/payment-methods/cards/credit-card-installments/),
+  [mobile support matrix](https://docs.adyen.com/point-of-sale/ipp-mobile/) and
+  [referenced refunds](https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/referenced/)
+  on October 26, 2026. POS routing sets `PaymentTransaction.TransactionConditions.DebitPreferredFlag` true for debit,
+  false for credit. One-off credit/debit needs no installment data; monthly credit sets `PaymentData.PaymentType` to
+  `Instalment` and `PaymentData.Instalment.TotalNbOfPayments`. These fields do not go in `SaleToAcquirerData`.
+  The POS page gives a 3–18 range; the card guide names 3, 6, 9, 12 and 18, so the app offers that common subset.
+  No undocumented `InstalmentType`, request `PlanID` or Checkout installment plan is sent.
+- The POS page identifies Prosa, Mastercard, Nubank, Citibanamex and Bancoppel issuer programs; other issuers require
+  a direct agreement. The POS issuer list differs from the generic card guide, so the app does not infer issuer
+  acceptance or maintain a guessed BIN list. The merchant confirms program agreements and fees in explicit Payments
+  configuration. The issuer decides acceptance; no refusal becomes an ordinary payment automatically. Merchants receive
+  the full purchase and pay issuer fees. The existing referenced reversal handles full/amount refunds with original
+  context and identity; it does not schedule or cancel monthly token charges. Customer Area confirms completion.
+- The feature is offered on local/network and cloud payment terminals. The mobile matrix supports Mexico generally
+  but does not document Mexican installments; Payments app/Tap to Pay remains unavailable for this choice. This is a
+  conservative app restriction, not a claim that all Adyen mobile integrations lack installments. Other undocumented
+  combinations are blocked explicitly: splitting/cash, partial authorization, both tip flows, Giving, audio guidance,
+  MOTO/MKE and card saving; links, saved-card charges, scanned wallets and gift cards cannot carry a selected plan.
+  Checkout retains a selected option through configuration changes and blocks sending rather than dropping it.
+- Readiness uses the existing Management assignment discovery, its assigned store ID, Mexican terminal country,
+  original payment context and secret/setup fingerprint, plus explicit merchant configuration and MXN. Language,
+  device locale and currency alone establish nothing. The simulator permits only an explicitly configured offline
+  demonstration, without claiming verified Mexican account eligibility. The existing setup fence checks freshness
+  again at send; new destination support belongs to `DestinationRules`.
+- Confirmed pinned SDK 43.1.0 bytecode/models offline: `TransactionConditions.setDebitPreferredFlag(Boolean)`,
+  `PaymentData.paymentType/instalment`, `Instalment.totalNbOfPayments` (`BigInteger`) and
+  `PaymentResult.paymentType/instalment`/`Instalment.planID`. The SDK getter defaults omitted `PaymentType` to Normal,
+  so the app records only explicit installment types; missing count/plan facts remain unreported. No handwritten wire
+  models or dependency changes were needed. Returned type/count/issuer PlanID stay separate from the frozen request
+  choice on each tender. Schema 21 adds only nullable fields; existing and unfinished rows retain all data.
+- Details, History and receipts show requested versus returned facts, using the current receipt language. Original
+  Adyen fields, including `productType`, remain verbatim. Seven-language checkout/configuration strings and Using
+  Mini mPOS guidance link the official requirements; website tests require each localized section and navigation.
+- Tests cover debit/one-off credit and all allowed counts, excluded counts, issuer refusal, partial and omitted plans,
+  missing replies with one payment and original status identity, referenced refunds, durable PENDING request facts,
+  unknown recovery across a recreated runner and mismatched setup, stale discovery, verified Mexican/non-Mexican and
+  unassigned stores, permission loss, conflicting checkout features, historical and unfinished schema upgrades,
+  stored-format compatibility and request/answer receipt separation. AMS1 checkout passes in English at 1.5× text,
+  Japanese, Simplified Chinese and Traditional Chinese; localization parity and receipt tests cover all seven languages.
+  A refused tender retains its returned plan without adding any paid money. Receipt plan notes also survive unresolved
+  or refused payments; original Adyen receipt assembly was extracted unchanged to keep the method within its limit.
+- Preflight passed (JDK, SDK 37, build tools, Chrome and cached linters). Focused protocol, Checkout, lifecycle,
+  discovery, architecture, database, receipt, UI, detekt and website checks completed. Full gate passed on October 26,
+  2026: `scripts/dev finish`, log `build/gradle-logs/run-FsJURY/output.log`, including SDK 33 and SDK 28, lint, detekt,
+  coverage (core and Adyen 100%), Markdown and website checks. No findings were suppressed.
+- Real-Adyen gaps: Mexican TEST merchant/store assignment, issuer-program agreements and eligible cards, supported
+  counts per issuer, local/cloud routing, unsupported-issuer declines, unexpected partial/missing answers, receipt
+  `productType` disclosure, status recovery and full/partial referenced-refund outcomes remain unverified. Earlier
+  milestone gaps remain open. No real Adyen calls, pushes, publications or releases were made.
 
 ## Adyen source map
 

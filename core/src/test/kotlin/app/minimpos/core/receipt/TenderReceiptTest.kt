@@ -34,6 +34,23 @@ class TenderReceiptTest {
     private fun rows(receipt: SaleReceipt) = builder.sale(receipt).elements.filterIsInstance<ReceiptElement.Row>()
 
     @Test
+    fun `a single card prints requested and returned plan facts separately from verbatim Adyen fields`() {
+        val notes = listOf("Requested: 6 monthly payments", "Returned: Instalment · 6 · Issuer plan")
+        val receipt =
+            sale.copy(
+                tenders = listOf(ReceiptTender(ReceiptTenderKind.CARD, "VISA", 3000)),
+                cardReceipt = listOf(CardReceiptLine(name = "productType", value = "CREDIT 6 MESES")),
+                cardPlans = notes,
+            )
+        val elements = builder.sale(receipt).elements
+        assertThat(elements.filterIsInstance<ReceiptElement.Text>().map { it.text }).containsAtLeastElementsIn(notes).inOrder()
+        assertThat(elements).contains(ReceiptElement.Row("productType", "CREDIT 6 MESES"))
+        assertThat(elements.count { it == ReceiptElement.Text(notes.first()) }).isEqualTo(1)
+        assertThat(builder.sale(receipt.copy(approved = false, tenders = emptyList())).elements)
+            .containsAtLeastElementsIn(notes.map { ReceiptElement.Text(it) })
+    }
+
+    @Test
     fun `split receipt lists each tender with cash received and change`() {
         val receipt =
             sale.copy(

@@ -87,7 +87,7 @@
   </li><li><a href="#email">Reçus par e-mail</a></li></ul></li><li><a href="#history">Historique</a><ul><li>
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
   </ul></li><li class="advanced-start"><a href="#capabilities">Vérifier les capacités d&#x27;Adyen</a></li><li>
-  <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#partial-payments">Paiements
+  <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#mexican-installments">Paiements échelonnés au Mexique</a></li><li><a href="#partial-payments">Paiements
   partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
@@ -103,7 +103,7 @@
   </li><li><a href="#email">Reçus par e-mail</a></li></ul></li><li><a href="#history">Historique</a><ul><li>
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
   </ul></li><li class="advanced-start"><a href="#capabilities">Vérifier les capacités d&#x27;Adyen</a></li><li>
-  <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#partial-payments">Paiements
+  <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#mexican-installments">Paiements échelonnés au Mexique</a></li><li><a href="#partial-payments">Paiements
   partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
@@ -445,6 +445,18 @@
             supplément a été indiqué. Consultez les <a href="https://docs.adyen.com/point-of-sale/surcharge">conditions
             d’Adyen sur les suppléments</a> et leur
             <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">configuration chez Adyen</a>.</p>
+          <h3 id="mexican-installments">Paiements échelonnés au Mexique</h3>
+          <p>Activez cette option dans Paramètres › Paiements après confirmation des programmes et frais avec Adyen.
+            Actualisez les fonctions Adyen pour vérifier le magasin mexicain. Terminaux locaux et cloud pris en charge
+            ; Tap to Pay indisponible. Choisissez débit, crédit unique ou 3, 6, 9, 12 ou 18 mensualités. Utilisez une
+            carte éligible pour toute la vente. Désactivez les options incompatibles : partage, autorisation
+            partielle, pourboires, Giving, guidage audio, MOTO/MKE et enregistrement de carte. Liens, cartes
+            enregistrées, portefeuilles scannés et cartes-cadeaux exclus. Détails, Historique et reçus distinguent le
+            plan demandé du plan reçu ; les données absentes restent non communiquées. Un émetteur non compatible peut
+            refuser. Vérifiez les paiements inconnus avant de réessayer. Remboursez le paiement original partiellement
+            ou intégralement ; l’émetteur gère les mensualités et le Customer Area confirme le résultat. Mini mPOS ne
+            programme aucun débit récurrent.</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/installments/mexico-installments/">Adyen: Paiements échelonnés au Mexique</a></p>
           <h3 id="partial-payments">Encaisser un paiement partiellement autorisé</h3>
           <p>Activez <strong>Autoriser les autorisations partielles</strong> pour accepter une approbation de carte pour
             un montant inférieur au montant demandé. Quand le résultat apparaît <strong>Partiellement payé</strong>,

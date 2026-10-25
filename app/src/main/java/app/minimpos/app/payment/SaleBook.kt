@@ -16,6 +16,7 @@ import app.minimpos.core.split.AllocatableLine
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.GiftCardPayment
 import app.minimpos.terminal.client.GiftCardUse
+import app.minimpos.terminal.client.MexicanPayment
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.ScannedPayment
@@ -40,8 +41,8 @@ import app.minimpos.terminal.client.TransactionKind
  *   for none.
  * @property sessionRevision Originating in-memory session revision; null when not started through a session.
  * @property scannedPayment Single-use, transient scanned instrument; null for ordinary terminal payments.
- * @property walletContext Original scan destination; required with a scanned instrument and persisted before sending.
- * @property walletSetupIdentity Fingerprint of checked connection/secrets; required for scans and never persisted as a credential.
+ * @property walletContext Verified scan or Mexican-store destination; persisted before sending.
+ * @property walletSetupIdentity Fingerprint of checked connection/secrets for a scan or Mexican store; never a credential.
  * @property terminalTip Native terminal tipping options (`AskGratuity` and optional `SaleToPOIData`); null when disabled.
  * @property shopperFlow Chained customer-display and input prompts run before and after payment; null when disabled.
  * @property allowPartialAuthorisation Whether `AllowPartialAuthorisation` is sent on this tender.
@@ -49,6 +50,7 @@ import app.minimpos.terminal.client.TransactionKind
  * @property existingSaleId Existing partially paid sale ID when collecting the remaining balance; null for a new sale.
  * @property askGiving Whether `AskGiving` is sent on this payment.
  * @property audioGuidance Whether audio guidance was selected and explicitly confirmed for this shopper.
+ * @property mexicanPayment Frozen Mexican card routing and monthly count; null for ordinary routing.
  * @property audioGuidancePoiId Confirmed terminal POIID; checked again immediately before sending.
  * @property cardEntryOverride Card entry override (`NORMAL`, `MOTO` or `MKE`).
  * @property allocation Equal-share or item allocation this tender pays; null for an amount or the whole balance.
@@ -79,6 +81,7 @@ data class PaymentStart(
     val existingSaleId: String? = null,
     val askGiving: Boolean = false,
     val audioGuidance: Boolean = false,
+    val mexicanPayment: MexicanPayment? = null,
     val audioGuidancePoiId: String? = null,
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
     val allocation: TenderAllocation? = null,
@@ -86,6 +89,15 @@ data class PaymentStart(
     val giftCard: PresentedGiftCard? = null,
 ) {
     init {
+        require(
+            mexicanPayment == null || (
+                currency.code == "MXN" && kind == SaleKind.SALE && !tipOnReceipt && terminalTip == null && !askGiving &&
+                    !audioGuidance && !allowPartialAuthorisation && tokenization == null && scannedPayment == null &&
+                    giftCard == null && cardEntryOverride == CardEntryOverride.NORMAL && walletContext != null &&
+                    walletSetupIdentity != null && existingSaleId == null &&
+                    requestedAmountMinor == totals.amounts.gross && allocation == null
+            ),
+        ) { "Mexican routing requires a verified whole card sale without other card features" }
         require(
             giftCard == null || (
                 kind == SaleKind.SALE && !tipOnReceipt && tokenization == null && terminalTip == null && shopperFlow == null &&
@@ -216,6 +228,7 @@ class SaleBook(
             lines(id, request.totals),
             tender.copy(
                 serviceId = serviceId,
+                mexicanPayment = request.mexicanPayment?.name,
                 giftCard =
                     request.giftCard
                         ?.setting
@@ -260,6 +273,7 @@ class SaleBook(
                 saleReferenceId = request.merchantReference.takeIf { isSplit || request.allowPartialAuthorisation },
                 askGiving = request.askGiving,
                 cardEntryOverride = request.cardEntryOverride,
+                mexicanPayment = request.mexicanPayment,
                 giftCard = request.giftCard?.let { GiftCardPayment(it.account, GiftCardUse.REDEEM) },
             ),
             audioGuidancePoiId = request.audioGuidancePoiId,

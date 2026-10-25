@@ -286,6 +286,7 @@ enum class ReceiptCopy {
  * @property chargedAmount Total authorized across tenders; null for old or non-terminal receipts.
  * @property purchaseMinor Known purchase component in minor units; null when unreported.
  * @property discloseSurcharge Whether the original fee component, including unknown, must be shown.
+ * @property cardPlans Localized requested/returned plan facts, including unresolved tenders; never proof of approval.
  * @property tenders Approved tenders in payment order, printed as a breakdown when there are several or any is cash.
  * @property balanceDueMinor Purchase balance still due in minor units, printed as [ReceiptLabels.balanceDue]; null
  *   when nothing is due.
@@ -321,6 +322,7 @@ data class SaleReceipt(
     val purchaseMinor: Long? = null,
     /** Show an explicit unknown fee for historical terminal payments. */
     val discloseSurcharge: Boolean = false,
+    val cardPlans: List<String> = emptyList(),
     val tenders: List<ReceiptTender> = emptyList(),
     val balanceDueMinor: Long? = null,
 )

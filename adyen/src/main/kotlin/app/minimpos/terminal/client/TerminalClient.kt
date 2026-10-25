@@ -18,6 +18,7 @@ import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.ForceEntryModeType
 import com.adyen.model.nexo.GetTotalsRequest
 import com.adyen.model.nexo.IdentificationType
+import com.adyen.model.nexo.Instalment
 import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.MessageClassType
 import com.adyen.model.nexo.MessageReference
@@ -30,6 +31,7 @@ import com.adyen.model.nexo.PaymentReceipt
 import com.adyen.model.nexo.PaymentRequest
 import com.adyen.model.nexo.PaymentResponse
 import com.adyen.model.nexo.PaymentTransaction
+import com.adyen.model.nexo.PaymentType
 import com.adyen.model.nexo.PrintRequest
 import com.adyen.model.nexo.ReconciliationRequest
 import com.adyen.model.nexo.ReconciliationType
@@ -161,8 +163,7 @@ class TerminalClient(
                                     if (effectiveParams.requestCardAlias) tokenRequestedType = TokenRequestedType.CUSTOMER
                                 }
                             paymentData =
-                                effectiveParams.scannedPayment?.let(::scannedInstrument)
-                                    ?: effectiveParams.giftCard?.paymentData()
+                                paymentInstrumentChoice(effectiveParams)
                             paymentTransaction = paymentAmounts(effectiveParams)
                         }
                 }
@@ -222,12 +223,25 @@ class TerminalClient(
             }.let { TerminalAPIRequest().apply { saleToPOIRequest = it } }
     }
 
+    private fun paymentInstrumentChoice(params: PaymentParams): PaymentData? =
+        params.scannedPayment?.let(::scannedInstrument) ?: params.giftCard?.paymentData()
+            ?: params.mexicanPayment?.count?.let { count ->
+                PaymentData().apply {
+                    paymentType = PaymentType.INSTALMENT
+                    instalment = Instalment().apply { totalNbOfPayments = count.toBigInteger() }
+                }
+            }
+
     private fun paymentAmounts(params: PaymentParams): PaymentTransaction =
         PaymentTransaction().apply {
             transactionConditions =
                 when {
                     params.scannedPayment != null -> {
                         walletConditions(params.scannedPayment)
+                    }
+
+                    params.mexicanPayment != null -> {
+                        TransactionConditions().apply { isDebitPreferredFlag = params.mexicanPayment.debit }
                     }
 
                     params.cardEntryOverride == CardEntryOverride.MKE -> {
@@ -734,6 +748,19 @@ class TerminalClient(
                 receipts = response.paymentReceipt,
             ).copy(
                 merchantReference = response.saleData?.saleTransactionID?.transactionID,
+                // SDK getPaymentType defaults missing fields to Normal. Only explicit installment types are evidence.
+                returnedPaymentType =
+                    response.paymentResult
+                        ?.paymentType
+                        ?.takeIf {
+                            it == PaymentType.INSTALMENT || it == PaymentType.ISSUER_INSTALMENT
+                        }?.value(),
+                returnedInstallments =
+                    response.paymentResult
+                        ?.instalment
+                        ?.totalNbOfPayments
+                        ?.toString(),
+                returnedPlanId = response.paymentResult?.instalment?.planID,
                 amountMinor = minor(response.paymentResult?.amountsResp?.authorizedAmount, response.paymentResult?.amountsResp?.currency),
                 tipMinor = minor(response.paymentResult?.amountsResp?.tipAmount, response.paymentResult?.amountsResp?.currency),
                 surchargeMinor = minor(response.paymentResult?.amountsResp?.totalFeesAmount, response.paymentResult?.amountsResp?.currency),

@@ -251,7 +251,8 @@ interface SaleDao {
         """SELECT id, saleId, sequence, requestedMinor, authorisedMinor, status, poiTransactionId, poiTimestamp,
         pspReference, paymentBrand, maskedPan, createdAt, tipMinor, surchargeMinor, cashBackMinor, serviceId, context,
         poiReconciliationId, NULL AS customerReceiptJson, NULL AS cashierReceiptJson, kind, allocationJson,
-        cashReceivedMinor, changeMinor, environment, giftCard FROM sale_tenders WHERE saleId IN (:ids)""",
+        cashReceivedMinor, changeMinor, environment, giftCard, mexicanPayment, returnedPaymentType, returnedInstallments, returnedPlanId
+        FROM sale_tenders WHERE saleId IN (:ids)""",
     )
     suspend fun historyTenders(ids: List<String>): List<SaleTenderEntity>
 

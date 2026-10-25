@@ -31,6 +31,7 @@ internal fun localizedReceiptTexts(
         giftCardStage = { localized.getString(giftCardStageLabel(it)) },
         giftCardTitle = localized.getString(R.string.receipt_gift_card_title),
         giftCardAttention = localized.getString(R.string.gift_card_needs_attention),
+        mexicanPlan = { localized.mexicanPlan(it) },
     )
 
 private fun receiptLabels(localizedContext: Context) =

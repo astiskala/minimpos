@@ -128,7 +128,7 @@ fun CheckoutScreen(
         navigator = navigator,
         kind = kind,
         actions = CheckoutCallbacks(vm::pay, vm::scanWallet, vm::sendLink, vm::update),
-        tokens = tokens.isNotEmpty() && !state.form.audioGuidance,
+        tokens = tokens.isNotEmpty() && !state.form.audioGuidance && state.form.mexicanPayment == null,
         onChooseToken = { choosingToken = true },
         modifier = modifier,
     )
@@ -328,7 +328,7 @@ private fun CheckoutDetails(
 ) {
     val dimens = LocalDimens.current
     LazyColumn(
-        modifier,
+        modifier.testTag("checkoutDetails"),
         contentPadding = PaddingValues(dimens.screenPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -604,6 +604,7 @@ private fun ColumnScope.CheckoutSwitches(
     state: Checkout,
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
 ) {
+    MexicanPaymentChoices(state, onUpdate)
     AudioGuidanceSwitches(state, onUpdate)
     if (state.canTokenize) {
         SaveCardSwitch(

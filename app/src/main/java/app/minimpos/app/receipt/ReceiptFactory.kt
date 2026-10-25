@@ -4,6 +4,7 @@ import app.minimpos.app.data.db.GiftCardStage
 import app.minimpos.app.data.db.GiftCardStatus
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TenderKind
 import app.minimpos.app.data.repo.GiftCardActivity
@@ -18,6 +19,7 @@ import app.minimpos.core.cart.TaxBreakdown
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
+import app.minimpos.core.receipt.CardReceiptLine
 import app.minimpos.core.receipt.GiftCardReceipt
 import app.minimpos.core.receipt.GiftCardReceiptLine
 import app.minimpos.core.receipt.ReceiptBranding
@@ -72,6 +74,7 @@ data class ReceiptSampleTexts(
  * @property giftCardStage Localised name of a stored-value stage, such as "Load".
  * @property giftCardTitle Localised stored-value receipt title.
  * @property giftCardAttention Localised note on an activity that still needs a check, confirmation or repair.
+ * @property mexicanPlan Localized requested and returned plan text for a tender, empty for ordinary history.
  */
 data class ReceiptTexts(
     val labels: ReceiptLabels = ReceiptLabels(),
@@ -85,6 +88,7 @@ data class ReceiptTexts(
     val giftCardStage: (GiftCardStage) -> String = { it.name },
     val giftCardTitle: String = "GIFT CARD",
     val giftCardAttention: String = "Needs attention",
+    val mexicanPlan: (SaleTenderEntity) -> List<String> = { emptyList() },
 )
 
 /**
@@ -162,15 +166,7 @@ class ReceiptFactory(
                 amounts = TaxAmounts(sale.netMinor, sale.taxMinor, sale.totalMinor),
                 breakdown = breakdown,
                 approved = standing.approved,
-                cardReceipt =
-                    record.tenders
-                        .filter { it.approved && it.kind == TenderKind.CARD }
-                        .sortedBy { it.sequence }
-                        .flatMap {
-                            ReceiptLinesJson.decode(if (copy == ReceiptCopy.CUSTOMER) it.customerReceiptJson else it.cashierReceiptJson)
-                        }.ifEmpty {
-                            ReceiptLinesJson.decode(if (copy == ReceiptCopy.CUSTOMER) sale.customerReceiptJson else sale.cashierReceiptJson)
-                        },
+                cardReceipt = cardReceipt(record, copy),
                 refundQr = RefundablePayment.qrCode(record),
                 cardSaved = sale.storedPaymentMethodId != null,
                 preAuthorisation = standing.preAuthorisation,
@@ -194,11 +190,27 @@ class ReceiptFactory(
                         (sale.amountMinor - it - (sale.tipMinor ?: 0) - (sale.cashBackMinor ?: 0)).coerceAtLeast(0)
                     },
                 discloseSurcharge = standing.approved && !sale.paymentLink && !sale.savedCard,
+                cardPlans = record.tenders.flatMap(resolved.mexicanPlan),
                 tenders = receiptTenders(record),
                 balanceDueMinor = sale.remainingMinor.takeIf { sale.isPartiallyPaid },
             )
         return builder(settings, currency, resolved, simulated).sale(receipt, copy)
     }
+
+    // Every approved card's original fields, falling back to the sale body for historical or refused payments.
+    private fun cardReceipt(
+        record: SaleWithLines,
+        copy: ReceiptCopy,
+    ): List<CardReceiptLine> =
+        record.tenders
+            .filter { it.approved && it.kind == TenderKind.CARD }
+            .sortedBy { it.sequence }
+            .flatMap {
+                ReceiptLinesJson.decode(if (copy == ReceiptCopy.CUSTOMER) it.customerReceiptJson else it.cashierReceiptJson)
+            }.ifEmpty {
+                val sale = record.sale
+                ReceiptLinesJson.decode(if (copy == ReceiptCopy.CUSTOMER) sale.customerReceiptJson else sale.cashierReceiptJson)
+            }
 
     /**
      * The receipt of [refund], referring to the original sale by its merchant reference (or, for a payment known only

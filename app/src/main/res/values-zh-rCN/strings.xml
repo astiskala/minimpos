@@ -1404,4 +1404,20 @@
     <string name="split_pay_gift_card">礼品卡</string>
     <string name="split_pay_gift_card_amount">礼品卡 %1$s</string>
     <string name="split_tender_gift_card">礼品卡</string>
+    <string name="mexican_title">墨西哥信用卡分期付款</string>
+    <string name="mexican_configuration">仅在与Adyen确认发卡行计划、协议和分期费用后启用。还需要已验证的墨西哥门店。</string>
+    <string name="mexican_hint">询问顾客选择借记卡、信用卡一次付款或按月分期。需要发卡行批准。商户收取全额并承担发卡行费用。</string>
+    <string name="mexican_automatic">由终端决定</string>
+    <string name="mexican_debit">借记卡</string>
+    <string name="mexican_credit">信用卡 · 一次付款</string>
+    <string name="mexican_3">分3个月付款</string>
+    <string name="mexican_6">分6个月付款</string>
+    <string name="mexican_9">分9个月付款</string>
+    <string name="mexican_12">分12个月付款</string>
+    <string name="mexican_18">分18个月付款</string>
+    <string name="mexican_unavailable">需要已验证的墨西哥门店、MXN和兼容的支付终端。不支持Tap to Pay。设置后请刷新Adyen功能。</string>
+    <string name="mexican_conflicts">请关闭部分授权、小费、Giving、语音引导、特殊输入和保存卡片。整笔销售使用一张卡付款；付款链接、令牌、钱包和礼品卡均不支持此选项。</string>
+    <string name="mexican_requested">请求的卡片计划：%1$s</string>
+    <string name="mexican_returned">返回的卡片计划：%1$s</string>
+    <string name="mexican_unreported">未报告</string>
 </resources>

@@ -242,6 +242,7 @@ class ReceiptBuilder(
                 tender.changeMinor?.let { out += Row(labels.change, money.format(it)) }
             }
         }
+        receipt.cardPlans.forEach { out += Text(it) }
         receipt.balanceDueMinor?.takeIf { it > 0 }?.let { out += Row(labels.balanceDue, money.format(it), TextStyle.BOLD) }
     }
 

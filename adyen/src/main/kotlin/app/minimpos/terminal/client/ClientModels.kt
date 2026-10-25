@@ -247,8 +247,17 @@ data class PaymentParams(
      * Only redemption may allow partial approval; no terminal card features apply.
      */
     val giftCard: GiftCardPayment? = null,
+    /** Explicit Mexican card routing and monthly count; null leaves routing to the terminal. */
+    val mexicanPayment: MexicanPayment? = null,
 ) {
     init {
+        require(
+            mexicanPayment == null || (
+                currency == "MXN" && !preAuthorisation && scannedPayment == null && giftCard == null &&
+                    terminalTip == null && !askGiving && !audioGuidance && !allowPartialAuthorisation &&
+                    cardEntryOverride == CardEntryOverride.NORMAL && recurringProcessingModel == null && !requestCardAlias
+            ),
+        ) { "Mexican routing requires an immediate MXN card sale without other card features" }
         require(
             giftCard == null || (
                 !preAuthorisation && scannedPayment == null && terminalTip == null && shopperFlow == null && !askGiving &&
@@ -495,6 +504,12 @@ data class TransactionDetails(
     val tokenization: Tokenization?,
     /** Email collected from the shopper on the terminal before payment (`InputRequest` `GetText`), if any. */
     val collectedEmail: String? = null,
+    /** Explicit returned installment PaymentType; null for missing/default Normal. Never inferred from the request. */
+    val returnedPaymentType: String? = null,
+    /** Returned Instalment.TotalNbOfPayments as a decimal integer; null when omitted. */
+    val returnedInstallments: String? = null,
+    /** Returned Instalment.PlanID, verbatim; null when omitted. */
+    val returnedPlanId: String? = null,
     /** 0–10 rating collected from the shopper on the terminal after payment (`InputRequest` `GetRating`), if any. */
     val shopperRating: Int? = null,
     /** ServiceID of the two-step Adyen Giving donation (`adyen_giving_service_id`), when the shopper donated. */

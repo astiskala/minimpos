@@ -203,6 +203,8 @@ answers and balances, `BalanceInquiry`, redemption partial approvals (and whethe
 `redemptionType=cashback` cash-out, `PaymentType=Refund` gift-card refunds, referenced refunds of redemptions,
 `TransactionStatus` recovery with message category `StoredValue`, the most-recent-load/24-hour undo rule, and whether
 terminal totals include stored-value management;
+Mexican debit/credit routing and installment issuer agreements, counts, refusal/partial answers, receipt `productType`,
+status recovery and referenced full/partial refunds on local and cloud terminals;
 `GetTotalsRequest` and `ReconciliationRequest` (`SaleReconciliation`); chained `AdminRequest` waiting-screen sessions with
 `DisplayRequest` and `InputRequest`; `AllowPartialAuthorisation` (`Result=Partial`); `AskGiving` two-step
 `TransactionStatus` (`SaleID=AdyenGiving`) lookups; `MOTO` and `ForceEntryMode=Keyed` (MKE); and offline EMV /

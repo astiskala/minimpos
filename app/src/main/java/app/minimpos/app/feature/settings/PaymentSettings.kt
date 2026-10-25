@@ -72,6 +72,13 @@ internal fun ColumnScope.PaymentsSection(
         tag = "allowMke",
         blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
     )
+    SettingSwitch(
+        stringResource(R.string.mexican_title),
+        payment.mexicanInstallments,
+        { value -> update { it.copy(mexicanInstallments = value) } },
+        subtitle = stringResource(R.string.mexican_configuration),
+        tag = "mexicanInstallments",
+    )
     SectionHeader(stringResource(R.string.settings_tokenization))
     ShopperReferenceSettings(payment, update)
     SectionHeader(stringResource(R.string.settings_payment_links))

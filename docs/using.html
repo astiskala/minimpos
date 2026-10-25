@@ -87,7 +87,7 @@
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Check Adyen capabilities</a></li><li><a href="#terminal-checkout">
-  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li>
+  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#mexican-installments">Mexican card installments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li>
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
@@ -103,7 +103,7 @@
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Check Adyen capabilities</a></li><li><a href="#terminal-checkout">
-  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li>
+  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#mexican-installments">Mexican card installments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li>
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
@@ -411,6 +411,18 @@
             or overcaptures. Mini mPOS blocks adjustments and captures above the original hold when a surcharge was
             reported. See <a href="https://docs.adyen.com/point-of-sale/surcharge">Adyen’s surcharge requirements</a> and
             <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">Adyen’s surcharge configuration</a>.</p>
+          <h3 id="mexican-installments">Mexican card installments</h3>
+          <p>Enable this in Settings › Payments after confirming your issuer programs and fees with Adyen. Refresh
+            Adyen capabilities to verify the Mexican store assignment. Local and cloud payment terminals are
+            supported; Tap to Pay is unavailable. Choose debit, one-off credit, or 3, 6, 9, 12 or 18 monthly payments
+            at checkout. Use an eligible issuer card for the whole sale. Disable conflicting choices explicitly;
+            splitting, partial authorization, tips, Giving, audio guidance, MOTO/MKE and card saving cannot be
+            combined. Links, saved-card charges, scanned wallets and gift cards do not carry the plan. Details,
+            History and receipts distinguish the requested plan from the returned plan; missing information stays
+            unreported. An unsupported issuer may decline. Check unknown payments before trying again. Refund the
+            original payment by amount or in full; the issuer manages the schedule and the Customer Area confirms
+            completion. Mini mPOS never schedules recurring charges.</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/installments/mexico-installments/">Adyen: Mexican card installments</a></p>
           <h3 id="partial-payments">Collect a partially authorized payment</h3>
           <p>Turn on <strong>Allow partial authorizations</strong> to accept a card approval for less than the requested
             amount. When the result shows <strong>Partially paid</strong>, check the paid and remaining amounts, then

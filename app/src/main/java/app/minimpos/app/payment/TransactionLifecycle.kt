@@ -129,8 +129,8 @@ sealed interface TerminalOperation {
      *
      * @property params What to charge.
      * @property audioGuidancePoiId Confirmed audio-guidance terminal; null for ordinary payments.
-     * @property expected Original destination for a scanned payment; null for ordinary terminal collection.
-     * @property setupIdentity Exact checked scan setup fingerprint; null for ordinary terminal collection.
+     * @property expected Checked destination for scanned or Mexican-routed payments; null for ordinary collection.
+     * @property setupIdentity Exact checked store/scan setup fingerprint; null for ordinary collection.
      */
     data class Pay(
         val params: PaymentParams,

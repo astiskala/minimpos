@@ -65,6 +65,7 @@ import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.giftcard.giftCardStageLabel
 import app.minimpos.app.feature.giftcard.statusLabel
 import app.minimpos.app.feature.lock.ManagerApproval
+import app.minimpos.app.feature.mexicanPlan
 import app.minimpos.app.feature.modificationNote
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.refund.RefundResultScreen
@@ -423,6 +424,12 @@ private fun historyRowText(
                     stringResource(R.string.history_offline_label).takeIf { sale.offlineMode != null },
                     paymentMethodText(sale),
                     sale.customerReference,
+                    item.tenders
+                        .flatMap {
+                            androidx.compose.ui.platform.LocalContext.current
+                                .mexicanPlan(it)
+                        }.joinToString(" · ")
+                        .ifBlank { null },
                 ).joinToString(" · "),
                 money[sale.currency].format(sale.amountMinor),
                 statusTitle(sale),

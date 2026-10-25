@@ -355,7 +355,9 @@ class TerminalGateway(
         send(paying = true, serviceId, onSending, onContext, expected, expectedIdentity) {
             val supportsModel = it.destination.simulatesApi || TerminalClient.audioGuidanceMinimumSoftware(it.client.identity.poiId) != null
             val compatible = it.destination.supportsTerminalFeatures && supportsModel && audioGuidancePoiId == it.client.identity.poiId
-            val unsupported = (params.audioGuidance && !compatible) || (params.giftCard != null && !it.destination.giftCards)
+            val unsupported =
+                (params.audioGuidance && !compatible) || (params.giftCard != null && !it.destination.giftCards) ||
+                    (params.mexicanPayment != null && (!it.destination.mexicanInstallments || expected == null || expectedIdentity == null))
             if (unsupported) {
                 TransactionOutcome.NotProcessed(Fault.Unsupported)
             } else {

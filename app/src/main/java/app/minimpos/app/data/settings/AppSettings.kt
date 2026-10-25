@@ -395,6 +395,7 @@ enum class ReceiptTipping {
  * @property giftCards Gift-card providers the merchant completed onboarding with, each with its entry methods; empty
  *   offers no gift-card actions, and only [GiftCardSetting.complete] ones are offered. Shared by the merchant account's
  *   terminals.
+ * @property mexicanInstallments Merchant confirms Mexican issuer-program agreements and installment fees with Adyen.
  */
 @Serializable
 data class PaymentSettings(
@@ -432,6 +433,7 @@ data class PaymentSettings(
     val allowMoto: Boolean = false,
     val allowMke: Boolean = false,
     val giftCards: List<GiftCardSetting> = emptyList(),
+    val mexicanInstallments: Boolean = false,
 ) {
     /**
      * These settings with [linkExpiryHours] and terminal tipping numbers within their valid ranges, and one entry per

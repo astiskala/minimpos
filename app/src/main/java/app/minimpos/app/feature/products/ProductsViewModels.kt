@@ -106,6 +106,7 @@ class ProductsViewModel(
  * @property sortOrder The product's position, kept unchanged by the form.
  * @property preAuthorisation Whether the product is taken as a pre-authorisation (under Pre-authorise) rather than
  *   sold in a sale.
+ * @property mealVoucherEligible Whether a meal voucher may pay for the product where the market requires eligibility.
  */
 data class ProductForm(
     val id: Long = 0,
@@ -116,6 +117,7 @@ data class ProductForm(
     val sku: String = "",
     val sortOrder: Int = 0,
     val preAuthorisation: Boolean = false,
+    val mealVoucherEligible: Boolean = false,
 )
 
 /**
@@ -131,6 +133,7 @@ data class ProductForm(
  * @property saving Whether a save or delete is under way; another one is ignored until it has finished.
  * @property skuChecking Whether the current SKU still needs validation; saving is blocked until it completes.
  * @property failure The latest catalog read/write failure, or null; exception text is never retained.
+ * @property mealVouchers Whether meal vouchers are configured, which offers the product's voucher eligibility.
  */
 data class ProductEditUiState(
     val loaded: Boolean = false,
@@ -143,6 +146,7 @@ data class ProductEditUiState(
     val saving: Boolean = false,
     val skuChecking: Boolean = false,
     val failure: Failure? = null,
+    val mealVouchers: Boolean = false,
 ) {
     /** The typed price in minor units; null on overflow, nonpositive values or too many decimals for the currency. */
     val priceMinor: Long?
@@ -202,10 +206,20 @@ class ProductEditViewModel(
                         sku = it.sku.orEmpty(),
                         sortOrder = it.sortOrder,
                         preAuthorisation = it.kind == SaleKind.PRE_AUTHORISATION,
+                        mealVoucherEligible = it.mealVoucherEligible,
                     )
                 } ?: ProductForm(taxRateId = defaultTaxRateId, sku = initialSku.orEmpty())
             state.value =
-                ProductEditUiState(true, form, taxRates, categories, spec, chargeTax = appSettings.payment.chargeTax, skuChecking = true)
+                ProductEditUiState(
+                    true,
+                    form,
+                    taxRates,
+                    categories,
+                    spec,
+                    chargeTax = appSettings.payment.chargeTax,
+                    skuChecking = true,
+                    mealVouchers = appSettings.payment.mealVouchers,
+                )
             validateSku(form.sku)
         }
     }
@@ -268,6 +282,7 @@ class ProductEditViewModel(
                         .ifEmpty { null },
                 sortOrder = current.form.sortOrder,
                 kind = if (current.form.preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE,
+                mealVoucherEligible = current.form.mealVoucherEligible,
             )
         write({ catalog.saveProduct(product) }, onSaved)
     }

@@ -55,6 +55,9 @@ internal object NexoVocabulary {
     /** The payment method variant, e.g. `visa`. */
     const val PAYMENT_METHOD_VARIANT = "paymentMethodVariant"
 
+    /** The funding source of the card, e.g. `PREPAID` for a Brazilian meal voucher. */
+    const val FUNDING_SOURCE = "fundingSource"
+
     /** How the card was entered, e.g. `CLESS_CHIP` or `Scanned`. */
     const val POS_ENTRY_MODE = "posEntryMode"
 
@@ -99,6 +102,12 @@ internal object NexoVocabulary {
 
     /** Payment-operation blob: the list of operations the payment request carries. */
     const val OPERATION = "Operation"
+
+    /** Sale-to-POI blob: the shopper's account (`CREDIT`, `CHEQUE` or `MEAL_VOUCHER`) in Brazil. */
+    const val SELECTED_ACCOUNT_TYPE = "selectedAccountType"
+
+    /** The [SELECTED_ACCOUNT_TYPE] of a Brazilian meal or food voucher. */
+    const val MEAL_VOUCHER = "MEAL_VOUCHER"
 
     /** Payment operation variant key. */
     const val VARIANT = "Variant"

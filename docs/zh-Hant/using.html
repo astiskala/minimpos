@@ -79,7 +79,7 @@
   <a href="#receipts">收據</a><ul><li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a>
   </li><li><a href="#email">電子收據</a></li></ul></li><li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a>
   </li><li><a href="#reconciliation">與終端對帳</a></li></ul></li><li class="advanced-start"><a href="#capabilities">檢查 Adyen
-  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#mexican-installments">墨西哥信用卡分期付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li>
+  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#mexican-installments">墨西哥信用卡分期付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li><a href="#meal-vouchers">接受餐券</a></li><li>
   <a href="#shopper-display">顧客端螢幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">離線支付</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#shoppers">
   參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#gift-cards">禮品卡</a></li><li><a href="#payment-links">付款連結</a></li><li>
@@ -92,7 +92,7 @@
   <a href="#receipts">收據</a><ul><li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a>
   </li><li><a href="#email">電子收據</a></li></ul></li><li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a>
   </li><li><a href="#reconciliation">與終端對帳</a></li></ul></li><li class="advanced-start"><a href="#capabilities">檢查 Adyen
-  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#mexican-installments">墨西哥信用卡分期付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li>
+  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#mexican-installments">墨西哥信用卡分期付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li><a href="#meal-vouchers">接受餐券</a></li><li>
   <a href="#shopper-display">顧客端螢幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">離線支付</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#shoppers">
   參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#gift-cards">禮品卡</a></li><li><a href="#payment-links">付款連結</a></li><li>
@@ -352,6 +352,19 @@
           <p>銷售在付清前保持<strong>部分已付</strong>。在結果頁或<strong>交易紀錄</strong>中點按<strong>收取餘額</strong>即可繼續，重新啟動後也可以。拆分前請關閉小費、捐款、語音指引及 MOTO 或手動輸入。按商品付款時全額收取；其他刷卡金額仍可能由發卡機構部分授權。刷卡結果未知時，請先確認再繼續收款。收據會列出每筆付款，每日報告會另列現金；終端合計從不包含現金。</p>
           <p>設定禮品卡後，點按<strong>禮品卡</strong>即可用禮品卡支付所選金額。餘額不足時會部分獲批，
             餘下款項可繼續收取。禮品卡付款的退款會退回卡內；本地禮品卡除外，需在 Mini mPOS 以外退款。</p>
+          <h3 id="meal-vouchers">接受餐券</h3>
+          <p>請在簽署發卡機構合約、登記店舖並由 Adyen 啟用餐券後，才在「設定」›「支付」中開啟<strong>餐券</strong>。適用的餐券由終端
+            已驗證的店舖國家/地區決定：巴西 PAT 餐券；比利時、芬蘭、德國、盧森堡和西班牙的 Mastercard 或 Visa 餐券；或法國的
+            Titres-restaurant。設定後請重新整理 Adyen 功能。支援付款終端；Tap to Pay 無法使用。不提供 Monizze、比利時 Pluxee 和
+            Lunch Check。</p>
+          <p>當餐券要求合資格商品時，請在「設定」›「商品」中開啟每個商品並開啟<strong>可用餐券支付</strong>。自訂商品不能以餐券支付。
+            結帳時輕觸<strong>拆分或以現金付款</strong>，然後輕觸<strong>餐券</strong>。Mini mPOS 會提供餐券可支付的最高金額，並說明無法
+            使用的原因；其餘款項以卡或現金收取。Mastercard 或 Visa 餐券可能只批准部分金額。Titres-restaurant 每日最多 EUR 25，
+            週日和公眾假期不可使用，且無法退款：請改為提供店內積分。巴西餐券餘額不足會被拒絕，請輸入較低金額。</p>
+          <p>在巴西，開啟<strong>在 App 中選擇巴西餐券</strong>後，由 Mini mPOS 要求餐券付款。如 Adyen 支援團隊已啟用終端本身的信用卡、
+            扣帳卡或餐券選擇畫面，請保持關閉；此時以卡付款，由顧客在終端上選擇。詳情、交易紀錄和收據會顯示所要求的餐券及終端
+            回報的內容。退款只會退回原餐券，絕不以現金退還。結果不明的付款請先檢查再重試。</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers">Adyen：巴西餐券</a> · <a href="https://docs.adyen.com/industries/markets/europe-meal-vouchers">Adyen：歐洲餐券</a></p>
           <h3 id="shopper-display">使用顧客端終端螢幕</h3>
           <p>使用獨立的網絡或雲端終端時，開啟<strong>設定 › 顧客端終端螢幕</strong>。可選擇在付款前顯示商品明細、請顧客確認訂單，或在結帳未填寫電郵時收集電郵。收集電郵需要先設定
             <a href="#receipts">電郵收據</a>；開啟<strong>自動發送電子收據</strong>後，收據會自動發送。批准後可顯示二維碼並邀請顧客進行 0–10 評分；終端回傳的評分顯示在交易詳情中。

@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.isOn
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -150,6 +151,27 @@ class DoubleActivationTest {
         val record = await { container.sales.get(sale.id)!! }
         assertThat(await { container.database.saleDao().historyTenders(listOf(record.sale.id)) }).hasSize(2)
         assertThat(record.sale.isPartiallyPaid).isFalse()
+    }
+
+    @Test
+    fun `a double tap on the meal-voucher payment collects one voucher tender`() {
+        env.updateSettings {
+            it.copy(payment = it.payment.copy(currencyCode = "BRL", mealVouchers = true, mealVoucherAccountSelection = true))
+        }
+        await { container.walletDiscovery.refresh() }
+        checkout(1, 2, 5, 0)
+        compose.onNodeWithTag("splitPayment").performScrollTo().performClick()
+        waitForTag("splitMealVoucher")
+        compose.onNodeWithTag("splitMealVoucher").performClick()
+        waitForTag("payMealVoucher")
+        compose.awaitCondition("voucher amount offered") {
+            compose.onAllNodes(hasTestTag("payMealVoucher") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        doubleTap("payMealVoucher")
+        waitForText("Approved")
+        val record = await { container.sales.get(sales().single().id)!! }
+        assertThat(record.tenders.single().mealVoucher).isEqualTo("BRAZIL_PAT")
+        assertThat(record.sale.status).isEqualTo(SaleStatus.APPROVED)
     }
 
     @Test

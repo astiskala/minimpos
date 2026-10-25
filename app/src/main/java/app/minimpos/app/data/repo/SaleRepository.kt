@@ -11,6 +11,7 @@ import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TenderKind
 import app.minimpos.core.payment.PaymentContext
+import app.minimpos.core.voucher.MealVoucherScheme
 import app.minimpos.terminal.client.TransactionDetails
 import kotlinx.coroutines.flow.Flow
 
@@ -50,9 +51,10 @@ class SaleRepository(
 
     /**
      * Opens the next card attempt [event] of partially paid sale [id] with its [allocation] (redeeming [giftCard], a
-     * provider name, when not null), storing the sale's new identity and a PENDING tender row in one transaction.
-     * Returns false, storing nothing, when the sale is missing, its balance changed since the review, a tender is
-     * unresolved, or the amount or allocation is not acceptable.
+     * provider name, or paying from a [mealVoucher] of that market, when not null), storing the sale's new identity and
+     * a PENDING tender row in one transaction. Returns false, storing nothing, when the sale is missing, its balance
+     * changed since the review, a tender is unresolved, or the amount or allocation is not acceptable, including a
+     * voucher amount beyond what its market may pay ([TenderBalance.acceptsVoucher]).
      */
     suspend fun openTender(
         id: String,
@@ -60,18 +62,27 @@ class SaleRepository(
         allocation: TenderAllocation?,
         createdAt: Long,
         giftCard: String? = null,
+        mealVoucher: MealVoucherScheme? = null,
     ): Boolean =
         db.withTransaction {
             val record = dao.sale(id) ?: return@withTransaction false
             val sale = record.sale
             val balance = TenderBalance.of(sale, record.lines, record.tenders)
-            if (!sale.acceptsTender(event.amountMinor, event.paidMinor) || !balance.accepts(event.amountMinor, allocation)) {
+            val acceptable =
+                if (mealVoucher ==
+                    null
+                ) {
+                    balance.accepts(event.amountMinor, allocation)
+                } else {
+                    balance.acceptsVoucher(event.amountMinor, mealVoucher)
+                }
+            if (!sale.acceptsTender(event.amountMinor, event.paidMinor) || !acceptable) {
                 return@withTransaction false
             }
             dao.update(sale.after(event))
             dao.upsertTender(
                 openedTender(sale.id, record.tenders.size + 1, event.amountMinor, allocation, createdAt)
-                    .copy(serviceId = event.serviceId, context = sale.context, giftCard = giftCard),
+                    .copy(serviceId = event.serviceId, context = sale.context, giftCard = giftCard, mealVoucher = mealVoucher?.name),
             )
             true
         }
@@ -196,6 +207,8 @@ class SaleRepository(
                     returnedPaymentType = details?.returnedPaymentType ?: open.returnedPaymentType,
                     returnedInstallments = details?.returnedInstallments ?: open.returnedInstallments,
                     returnedPlanId = details?.returnedPlanId ?: open.returnedPlanId,
+                    fundingSource = details?.fundingSource ?: open.fundingSource,
+                    paymentMethodVariant = details?.paymentMethodVariant ?: open.paymentMethodVariant,
                 )
             },
         )
@@ -315,6 +328,8 @@ class SaleRepository(
                 returnedPaymentType = details.returnedPaymentType,
                 returnedInstallments = details.returnedInstallments,
                 returnedPlanId = details.returnedPlanId,
+                fundingSource = details.fundingSource,
+                paymentMethodVariant = details.paymentMethodVariant,
             )
     }
 }

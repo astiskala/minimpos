@@ -92,6 +92,10 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   category; `GiftCardActivity` alone decides what an activity still needs (check, continue, repair, handover, undo).
   Gift-card value changes, repairs and handovers require a configured Manager PIN under the capabilities plan's
   provisional default; balance inquiries and redemption do not. Never store gift-card numbers or PINs.
+- Meal-voucher markets come only from `WalletAvailability.mealVoucherSchemes` (verified store country; currency only
+  labels an offline demo). `Checkout.mealVoucher` decides what a voucher tender may do and explains blocks before
+  payment; `TenderBalance.acceptsVoucher` checks the eligible amount again where the tender is stored. Voucher value is
+  never returned as cash; Titres-restaurant are never refunded through the app.
 - \* Only container wiring for committed history deletion releases process request/receipt registries and simulator
   identities. Retained unknown operations keep their recovery evidence; simulator period totals survive retention.
 - \* `TransactionLifecycle` alone releases a received late answer, only after durable resolved settlement.

@@ -13,6 +13,8 @@ import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.split.AllocatableLine
+import app.minimpos.core.voucher.MealVoucherScheme
+import app.minimpos.core.voucher.VoucherSelection
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.GiftCardPayment
 import app.minimpos.terminal.client.GiftCardUse
@@ -57,6 +59,8 @@ import app.minimpos.terminal.client.TransactionKind
  * @property reviewedPaidMinor Purchase already paid when an [existingSaleId] tender was reviewed; a changed stored
  *   amount refuses the start as stale.
  * @property giftCard Transient gift card this tender redeems (a split tender of an immediate sale); null for cards.
+ * @property mealVoucher Meal-voucher market this tender pays from, frozen with its eligible amount and the verified
+ *   store's [walletContext]; null for other tenders.
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
  */
@@ -87,8 +91,18 @@ data class PaymentStart(
     val allocation: TenderAllocation? = null,
     val reviewedPaidMinor: Long = 0,
     val giftCard: PresentedGiftCard? = null,
+    val mealVoucher: MealVoucherScheme? = null,
 ) {
     init {
+        require(
+            mealVoucher == null || (
+                currency.code == mealVoucher.currency && kind == SaleKind.SALE && !tipOnReceipt && terminalTip == null &&
+                    shopperFlow == null && !askGiving && !audioGuidance && tokenization == null && scannedPayment == null &&
+                    giftCard == null && mexicanPayment == null && cardEntryOverride == CardEntryOverride.NORMAL &&
+                    allocation == null && allowPartialAuthorisation == mealVoucher.partialAuthorisation &&
+                    walletContext != null && walletSetupIdentity != null
+            ),
+        ) { "A meal voucher pays an amount of an immediate sale in its market's currency, without card features" }
         require(
             mexicanPayment == null || (
                 currency.code == "MXN" && kind == SaleKind.SALE && !tipOnReceipt && terminalTip == null && !askGiving &&
@@ -168,6 +182,27 @@ data class PaymentStart(
             allowPartialAuthorisation = allocation !is TenderAllocation.Items,
         )
 
+    /**
+     * This amount tender paid from a [scheme] meal voucher on the verified store [context] with exact [setupIdentity]:
+     * no card saving, prompts or special entry, and a short balance approved only where the market documents it.
+     */
+    internal fun withMealVoucher(
+        scheme: MealVoucherScheme,
+        context: PaymentContext,
+        setupIdentity: String,
+    ): PaymentStart =
+        copy(
+            mealVoucher = scheme,
+            tokenization = null,
+            terminalTip = null,
+            shopperFlow = null,
+            askGiving = false,
+            cardEntryOverride = CardEntryOverride.NORMAL,
+            allowPartialAuthorisation = scheme.partialAuthorisation,
+            walletContext = context,
+            walletSetupIdentity = setupIdentity,
+        )
+
     /** Attaches a transient [instrument] only to this validated sale, bound to [context] and exact [setupIdentity]. */
     internal fun withScanned(
         instrument: ScannedPayment,
@@ -218,9 +253,12 @@ class SaleBook(
                     ?.setting
                     ?.provider
                     ?.name,
+                request.mealVoucher,
             )
         }
         val split = request.requestedAmountMinor != request.totals.amounts.gross || request.allocation != null
+        val voucher = request.mealVoucher
+        if (voucher != null && !splitBalance(request).acceptsVoucher(request.requestedAmountMinor, voucher)) return false
         if (split && !splitBalance(request).accepts(request.requestedAmountMinor, request.allocation)) return false
         val tender = SaleRepository.openedTender(id, 1, request.requestedAmountMinor, request.allocation, createdAt)
         sales.createPending(
@@ -229,6 +267,7 @@ class SaleBook(
             tender.copy(
                 serviceId = serviceId,
                 mexicanPayment = request.mexicanPayment?.name,
+                mealVoucher = request.mealVoucher?.name,
                 giftCard =
                     request.giftCard
                         ?.setting
@@ -275,6 +314,7 @@ class SaleBook(
                 cardEntryOverride = request.cardEntryOverride,
                 mexicanPayment = request.mexicanPayment,
                 giftCard = request.giftCard?.let { GiftCardPayment(it.account, GiftCardUse.REDEEM) },
+                mealVoucherAccount = request.mealVoucher?.selection == VoucherSelection.ACCOUNT_TYPE,
             ),
             audioGuidancePoiId = request.audioGuidancePoiId,
             expected = request.walletContext,
@@ -351,6 +391,10 @@ class SaleBook(
                 totals.lines.mapIndexed { index, priced -> AllocatableLine(index.toLong(), priced.line.quantity, 0, priced.amounts.gross) },
                 emptyList(),
                 itemsAllowed = !manualCapture,
+                eligibleMinor =
+                    totals.lines.filter { it.line.mealVoucherEligible }.fold(
+                        0L,
+                    ) { sum, priced -> Math.addExact(sum, priced.amounts.gross) },
             )
 
         /** [request] as the new PENDING sale [id], started at [createdAt] (epoch ms), before anything is sent. */
@@ -422,6 +466,7 @@ class SaleBook(
                     netMinor = priced.amounts.net,
                     taxMinor = priced.amounts.tax,
                     grossMinor = priced.amounts.gross,
+                    mealVoucherEligible = line.mealVoucherEligible,
                 )
             }
     }

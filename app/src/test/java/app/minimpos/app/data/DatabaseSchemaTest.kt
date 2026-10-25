@@ -2,7 +2,6 @@ package app.minimpos.app.data
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.minimpos.app.data.db.AppDatabase
 import app.minimpos.app.data.db.Failure
@@ -24,70 +23,23 @@ import org.json.JSONObject
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.File
 import kotlin.uuid.Uuid
 
 @RunWith(RobolectricTestRunner::class)
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun exportedSchema(version: Int = 21): JSONObject =
-        listOf("schemas", "app/schemas")
-            .map { File(it, "app.minimpos.app.data.db.AppDatabase/$version.json") }
-            .first { it.exists() }
-            .let { JSONObject(it.readText()).getJSONObject("database") }
+    private fun exportedSchema(version: Int = 22): JSONObject = schemaJson(version)
 
     private fun createExportedDatabase(
         name: String,
-        version: Int = 21,
-    ) {
-        val schema = exportedSchema(version)
-        val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
-        SQLiteDatabase.openOrCreateDatabase(file, null).use { db ->
-            val entities = schema.getJSONArray("entities")
-            for (index in 0..<entities.length()) {
-                val entity = entities.getJSONObject(index)
-                db.execSQL(entity.getString("createSql").replace("\${TABLE_NAME}", entity.getString("tableName")))
-                val indices = entity.optJSONArray("indices") ?: continue
-                for (position in 0..<indices.length()) {
-                    db.execSQL(
-                        indices.getJSONObject(position).getString("createSql").replace("\${TABLE_NAME}", entity.getString("tableName")),
-                    )
-                }
-            }
-            val queries = schema.getJSONArray("setupQueries")
-            for (index in 0..<queries.length()) db.execSQL(queries.getString(index))
-            db.version = schema.getInt("version")
-        }
-    }
+        version: Int = 22,
+    ) = createSchemaDatabase(context, name, version)
 
     private fun <T> withDatabase(
         name: String,
         block: (AppDatabase) -> T,
-    ): T {
-        val db =
-            Room
-                .databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(
-                    AppDatabase.MIGRATION_10_11,
-                    AppDatabase.MIGRATION_11_12,
-                    AppDatabase.MIGRATION_12_13,
-                    AppDatabase.MIGRATION_13_14,
-                    AppDatabase.MIGRATION_14_15,
-                    AppDatabase.MIGRATION_15_16,
-                    AppDatabase.MIGRATION_16_17,
-                    AppDatabase.MIGRATION_17_18,
-                    AppDatabase.MIGRATION_18_19,
-                    AppDatabase.MIGRATION_19_20,
-                    AppDatabase.MIGRATION_20_21,
-                ).allowMainThreadQueries()
-                .build()
-        try {
-            return block(db)
-        } finally {
-            db.close()
-        }
-    }
+    ): T = withMigratedDatabase(context, name, block)
 
     @Test
     fun `version 20 preserves unknown card and gift tenders without inventing installment facts`() {
@@ -116,7 +68,7 @@ class DatabaseSchemaTest {
                     assertThat(tender.returnedPaymentType).isNull()
                     assertThat(tender.returnedInstallments).isNull()
                     assertThat(tender.returnedPlanId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(21)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(22)
                 }
             }
         } finally {
@@ -503,7 +455,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.merchantReference).isEqualTo("MP-10")
                     assertThat(sale.poiReconciliationId).isNull()
                     assertThat(sale.savedCard).isFalse()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(21)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(22)
                 }
             }
         } finally {
@@ -550,7 +502,7 @@ class DatabaseSchemaTest {
                             .single()
                             .name,
                     ).isEqualTo("GST")
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(21)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(22)
                 }
             }
         } finally {
@@ -581,7 +533,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.status).isEqualTo(SaleStatus.DECLINED)
                     assertThat(sale.errorCondition).isEqualTo("Busy")
                     assertThat(sale.busyServiceId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(21)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(22)
                 }
             }
         } finally {
@@ -614,7 +566,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.captureStartedAt).isEqualTo(200)
                     assertThat(sale.captureStatus?.name).isEqualTo("UNKNOWN")
                     assertThat(sale.totalMinor).isEqualTo(1000)
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(21)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(22)
                 }
             }
         } finally {

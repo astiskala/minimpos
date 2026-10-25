@@ -51,6 +51,7 @@ import com.adyen.model.nexo.TransactionStatusRequest
 import com.adyen.model.nexo.TransactionStatusResponse
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
+import com.google.gson.JsonParser
 import kotlinx.coroutines.delay
 import java.io.IOException
 import java.math.BigDecimal
@@ -61,6 +62,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.time.Duration
 
@@ -390,6 +392,18 @@ class TerminalSimulator(
         }
     }
 
+    // A scanned wallet's brand, Adyen's Elo voucher test card for an app-selected Brazilian voucher, else a random card.
+    private fun presentedCard(
+        request: PaymentRequest,
+        wallet: Boolean,
+        brand: String,
+    ): SimulatedCard =
+        when {
+            wallet -> SimulatedCard(brand, brand, brand.uppercase(), "", "", "")
+            mealVoucherRequested(request.saleData) -> MEAL_VOUCHER
+            else -> CARDS[random.nextInt(CARDS.size)]
+        }
+
     private fun buildSimulatedPayment(
         request: PaymentRequest,
         outcome: SimulatedOutcome?,
@@ -410,7 +424,7 @@ class TerminalSimulator(
         val authorizedAmount = if (approved) baseApproved + (tipAmount ?: BigDecimal.ZERO) + surcharge else BigDecimal.ZERO
         val payment =
             SimulatedPayment(
-                card = if (wallet) SimulatedCard(brand, brand, brand.uppercase(), "", "", "") else CARDS[random.nextInt(CARDS.size)],
+                card = presentedCard(request, wallet, brand),
                 wallet = wallet,
                 psp = SimulatedModifications.pspReference(random),
                 tender = randomString(TENDER_PREFIX_LENGTH, ALNUM) + randomString(TENDER_DIGITS, DIGITS),
@@ -790,5 +804,20 @@ class TerminalSimulator(
                 SimulatedCard("visa", "visa_applepay", "Visa", "476173 **** 0119", "A0000000031010", "K421000000000002"),
                 SimulatedCard("mc", "mc_googlepay", "MasterCard", "555555 **** 4444", "A0000000041010", "M469509594859803"),
             )
+
+        // Adyen's Elo voucher test card: an app-selected Brazilian voucher answers with its documented PAT facts.
+        private val MEAL_VOUCHER = SimulatedCard("elo", "elo_voucher_br", "Elo", "506723 **** 0002", "A0000004941010", "E469509594859804")
     }
 }
+
+/** Reads the actual wire account: an app-selected Brazilian meal or food voucher. */
+internal fun mealVoucherRequested(saleData: SaleData?): Boolean =
+    saleData?.saleToPOIData?.let { encoded ->
+        runCatching {
+            JsonParser
+                .parseString(String(Base64.decode(encoded), Charsets.UTF_8))
+                .asJsonObject
+                .get(NexoVocabulary.SELECTED_ACCOUNT_TYPE)
+                ?.asString == NexoVocabulary.MEAL_VOUCHER
+        }.getOrDefault(false)
+    } == true

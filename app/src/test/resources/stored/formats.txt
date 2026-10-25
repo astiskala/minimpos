@@ -54,6 +54,8 @@ settings.json: app.minimpos.app.data.settings.AppSettings
         entries: list of
           - enum app.minimpos.core.giftcard.GiftCardEntry [SCANNED, SWIPED, KEYED]
     mexicanInstallments: boolean
+    mealVouchers: boolean
+    mealVoucherAccountSelection: boolean
   receipt: app.minimpos.app.data.settings.ReceiptSettings
     businessName: string
     addressLines: string
@@ -231,6 +233,8 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
           entries: list of
             - enum app.minimpos.core.giftcard.GiftCardEntry [SCANNED, SWIPED, KEYED]
       mexicanInstallments: boolean
+      mealVouchers: boolean
+      mealVoucherAccountSelection: boolean
     receipt: app.minimpos.app.data.settings.ReceiptSettings
       businessName: string
       addressLines: string

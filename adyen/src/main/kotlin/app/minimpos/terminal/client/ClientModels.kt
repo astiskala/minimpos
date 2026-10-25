@@ -249,8 +249,20 @@ data class PaymentParams(
     val giftCard: GiftCardPayment? = null,
     /** Explicit Mexican card routing and monthly count; null leaves routing to the terminal. */
     val mexicanPayment: MexicanPayment? = null,
+    /**
+     * Sends `selectedAccountType` `MEAL_VOUCHER` in Base64 `SaleData.SaleToPOIData`, so the terminal takes a Brazilian
+     * meal or food voucher (app-controlled selection); false leaves the account to the card or the terminal's own screen.
+     */
+    val mealVoucherAccount: Boolean = false,
 ) {
     init {
+        require(
+            !mealVoucherAccount || (
+                currency == "BRL" && !preAuthorisation && scannedPayment == null && giftCard == null && terminalTip == null &&
+                    !askGiving && !audioGuidance && !allowPartialAuthorisation && mexicanPayment == null &&
+                    cardEntryOverride == CardEntryOverride.NORMAL && recurringProcessingModel == null && !requestCardAlias
+            ),
+        ) { "A Brazilian meal voucher is an immediate BRL payment without other card features" }
         require(
             mexicanPayment == null || (
                 currency == "MXN" && !preAuthorisation && scannedPayment == null && giftCard == null &&
@@ -483,6 +495,11 @@ data class TransactionDetails(
      * wallet, `visa_applepay`, `mc_googlepay` or `amex_samsungpay`; null when the terminal did not send it.
      */
     val paymentMethodVariant: String? = null,
+    /**
+     * Adyen's `fundingSource` from the `AdditionalResponse`, verbatim, e.g. `PREPAID` for a Brazilian meal voucher; null
+     * when the terminal did not send it.
+     */
+    val fundingSource: String? = null,
     /** The card number with most digits hidden, e.g. `541333 **** 9999`. */
     val maskedPan: String?,
     /** How the card was read: the nexo entry mode (e.g. `Contactless`) or Adyen's `posEntryMode` (e.g. `CLESS_CHIP`). */

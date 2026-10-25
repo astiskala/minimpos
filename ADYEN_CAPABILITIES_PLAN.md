@@ -300,17 +300,17 @@ Commit: `feat: support meal voucher payment workflows`
 Read first: `adyen/.../transport/WalletMethods.kt`, `client/TerminalClient.kt`, `app/.../terminal/WalletOffers.kt`,
 `CapabilityDiscovery.kt`, catalog/pricing and transfer owners, Checkout, tenders, refunds, and receipt/history owners.
 
-- [ ] Build a documented per-market/provider behavior table: discovery, onboarding, terminal-managed choices, required
+- [x] Build a documented per-market/provider behavior table: discovery, onboarding, terminal-managed choices, required
   request fields, product eligibility, amount limits, partial payments, and refund support. Share a protocol path where
   schemes actually share behavior; do not assume every European scheme uses the same one.
-- [ ] Reuse Adyen's terminal-managed flow where sufficient. Add explicit voucher intent/selection only where needed for
+- [x] Reuse Adyen's terminal-managed flow where sufficient. Add explicit voucher intent/selection only where needed for
   the operator workflow, including the documented Brazilian account-type selection when using app-controlled selection.
-- [ ] Where required, add product eligibility and calculate the eligible subtotal without changing saved product text or
+- [x] Where required, add product eligibility and calculate the eligible subtotal without changing saved product text or
   tax. Handle custom items explicitly rather than assuming they qualify. Update catalog import/export, setup transfers,
   helper codecs, and vectors together for any new transferable fields.
-- [ ] Collect only the eligible amount from the voucher and use split tenders for the remainder. Enforce scheme-specific
+- [x] Collect only the eligible amount from the voucher and use split tenders for the remainder. Enforce scheme-specific
   change/refund restrictions; do not convert nonrefundable voucher value into cash or promise unsupported returns.
-- [ ] Test eligible/ineligible/mixed baskets, limits, partial approvals, remaining balance, provider rejection,
+- [x] Test eligible/ineligible/mixed baskets, limits, partial approvals, remaining balance, provider rejection,
   uncertain results, correct refund routes, transfer round-trips, and data-preserving migrations.
 
 Start with wallet/capability, Checkout/pricing, catalog/transfer, and history/refund tests. Run payment, database, QR,
@@ -421,20 +421,20 @@ independently, with the provider/destination and evidence location.
 | 04 | Tokens and Settings navigation | implemented | `3f1c712` | `scripts/dev finish`; SDK 33 + 28; schema 18 unchanged | TEST roles, deletion and propagation unconfirmed |
 | 05 | Split payments and cash | implemented | `d208036` | `scripts/dev finish`; SDK 33 + 28; schema 19 | Partial-approval, linking and multi-leg refund checks unconfirmed |
 | 06 | Gift-card lifecycle | implemented | `807c62e` | `scripts/dev finish`; SDK 33 + 28; schema 20 | Provider onboarding/TEST cards, StoredValue recovery unconfirmed |
-| 07 | Mexican installments | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 21 | Mexican issuer/local/cloud/receipt/refund TEST checks unconfirmed |
-| 08 | Meal vouchers | not started | - | - | Country/provider TEST setups unconfirmed |
+| 07 | Mexican installments | implemented | `d18a349` | `scripts/dev finish`; SDK 33 + 28; schema 21 | Mexican issuer/local/cloud/receipt/refund TEST checks unconfirmed |
+| 08 | Meal vouchers | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 22 | Market/issuer onboarding, voucher TEST cards, refunds and recovery unconfirmed |
 | 09 | Cashback/Cashout | not started | - | - | With-purchase/standalone enablement unconfirmed |
 | 10 | Unreferenced card refunds | not started | - | - | Eligible country/account enablement unconfirmed |
 
 Resume note: milestones 01 (`100b1a3`), 02 (`c8752cc`), 03 (`c62d133`), 04 (`3f1c712`), 05 (`d208036`),
-06 (`807c62e`) and 07 (this commit) are implemented on `codex/adyen-capabilities`. Stopped after milestone 07 as
-requested; milestones 08–10 remain unstarted. Database version is 21 with nullable tender request/result facts,
-`MIGRATION_20_21`, build-generated schema and upgrade tests; no dependency changed. `scripts/dev finish` passed on
-October 26, 2026, including SDK 33 and SDK 28; log `build/gradle-logs/run-FsJURY/output.log`.
-All earlier real-Adyen verification gaps remain unconfirmed, as do Mexican merchant/store eligibility, issuer programs,
-local/cloud routing, receipt disclosure, status recovery and referenced refunds. No real calls, pushes, publications
-or releases were made or authorized. The configured Manager PIN requirement for token deletion, cash refunds and
-gift-card value changes, repairs and cash handovers remains the plan's provisional working default.
+06 (`807c62e`), 07 (`d18a349`) and 08 (this commit) are implemented on `codex/adyen-capabilities`. Stopped after
+milestone 08 as requested; milestones 09–10 remain unstarted. Database version is 22 with product and sold-line
+voucher eligibility and nullable tender voucher request/answer facts, `MIGRATION_21_22`, build-generated schema and
+upgrade tests; no dependency changed. `scripts/dev finish` passed on October 26, 2026, including SDK 33 and SDK 28; log
+`build/gradle-logs/run-9pGoz8/output.log`. All earlier real-Adyen verification gaps remain unconfirmed, as do every meal-voucher
+market, issuer onboarding, terminal selection screen, partial approval, refund and recovery behavior. No real calls,
+pushes, publications or releases were made or authorized. The configured Manager PIN requirement for token deletion,
+cash refunds and gift-card value changes, repairs and cash handovers remains the plan's provisional working default.
 
 Milestone 01 evidence:
 
@@ -756,6 +756,68 @@ Milestone 07 evidence:
   counts per issuer, local/cloud routing, unsupported-issuer declines, unexpected partial/missing answers, receipt
   `productType` disclosure, status recovery and full/partial referenced-refund outcomes remain unverified. Earlier
   milestone gaps remain open. No real Adyen calls, pushes, publications or releases were made.
+
+Milestone 08 evidence:
+
+- Rechecked Adyen's [Brazilian meal vouchers](https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers),
+  [Meal vouchers in Europe](https://docs.adyen.com/industries/markets/europe-meal-vouchers), its
+  [best practices](https://docs.adyen.com/industries/markets/europe-meal-vouchers/best-practices),
+  [Titres-restaurant](https://docs.adyen.com/payment-methods/titres-restaurant),
+  [Brazilian installments](https://docs.adyen.com/point-of-sale/installments/brazil-installments),
+  [partial authorizations](https://docs.adyen.com/point-of-sale/partial-authorizations) and the
+  [mobile support matrix](https://docs.adyen.com/point-of-sale/ipp-mobile) on October 26, 2026. The Titres-restaurant
+  in-person link points to a gift-card Terminal API page that no longer exists, and Adyen documents no Terminal API
+  payment request for Intersolve vouchers; the mobile matrix lists no meal vouchers.
+- Behavior table (`core/voucher/MealVoucherScheme`). The verified Adyen store country picks the market; the merchant
+  confirms onboarding in Settings › Payments. Language, locale and currency never establish a real market:
+
+  | Market (store country) | Onboarding | Selection and request | Products | Limits | Short balance | Refunds | Reported |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Brazil PAT (BR) | Support enables vouchers (and optionally the terminal screen); CNAE/MCC rules | App: `SaleData.SaleToPOIData` Base64 `{"selectedAccountType":"MEAL_VOUCHER"}`; or terminal screen with an ordinary request | Issuer checks MCC/CNAE; no product flag | None documented | Refused; enter less | Not documented; referenced reversal to the original voucher only | `fundingSource=PREPAID`, `paymentMethodVariant` |
+  | Mastercard/Visa vouchers (BE, FI, DE, LU, ES) | Issuer contracts, MID registration per store/voucher type | Terminal recognizes the card; ordinary request plus `AllowPartialAuthorisation` tender option | Eligible products only; never mix in one voucher tender | None documented | Partial approval; rest by split tender | Standard card refund to the original voucher | Ordinary card fields |
+  | Titres-restaurant (FR) | CNTR authorization, Conecs MID, issuer contracts, Adyen enables Conecs | Terminal routes Conecs/Mastercard; ordinary request, no partial flag documented at POS | Eligible products only | EUR 25 a day (app caps EUR 25 per sale; issuer enforces daily), no Sundays/public holidays | Refused; enter less | Not supported (Conecs); never refunded through the app or as cash | Ordinary card fields |
+  | Intersolve (Monizze/Pluxee BE, Lunch Check CH) | Intersolve enablement | No documented Terminal API payment request | — | — | — | — | Not offered |
+
+- No new SDK model was needed: `SaleToPOIData` is an SDK string field composed by the existing single Base64 owner,
+  together with any payment operation; `fundingSource` and `paymentMethodVariant` are flattened `AdditionalResponse`
+  keys read by the existing parser. Brazilian `selectedAccountType` is sent only with app-controlled selection; when the
+  terminal's own credit/debit/voucher screen is used, the app sends an ordinary payment and recognizes the voucher only
+  from the reported documented variants. `selectedAccountType` and Mexican/other card features are mutually exclusive.
+- Voucher tenders are split tenders of an immediate sale (amount only, no tip, Giving, audio, MOTO/MKE, saving or
+  installments). `Checkout.mealVoucher` explains, in order, unconfigured, no verified market (including Tap to Pay),
+  terminal-selected Brazil, closed day, changed setup, unresolved tender and nothing eligible before payment.
+  `TenderBalance.acceptsVoucher` checks the eligible gross (custom items never count), the market limit and earlier
+  approved/pending/unknown voucher tenders inside the storing transaction; unreported fees count as voucher purchase.
+  The tender freezes its market, amount, ServiceID and verified store context before sending; recovery rechecks the
+  original Payment category without resending. The simulator offers an explicitly labelled demo per currency.
+- Schema 22 adds `products.mealVoucherEligible`, `sale_lines.mealVoucherEligible` (false for existing rows, so nothing
+  becomes voucher-payable by migration) and nullable `sale_tenders.mealVoucher`, `fundingSource` and
+  `paymentMethodVariant`. Transfers keep version 5 and add product flag bit 1; unknown flag bits are now rejected.
+  The setup helper creates no catalogs, so its code and vectors are unchanged; catalog export/import round-trips the
+  flag. Shared payment settings gain `mealVouchers` and `mealVoucherAccountSelection` (stored-format snapshot updated).
+- Refunds: Titres-restaurant tenders are excluded from refundable legs, a sale they paid alone reports
+  `VOUCHER_NOT_REFUNDABLE`, and the review states the kept amount; other voucher legs return only by referenced reversal
+  to the original voucher. Cash legs are capped by what cash paid, so voucher value never becomes cash.
+- Details, History rows/search, split progress and receipts show the requested market and reported variant/funding
+  source separately; Adyen receipt fields stay verbatim. Products offer **Meal-voucher eligible** once vouchers are
+  configured. Seven-language strings and Using Mini mPOS sections link the official requirements; website tests check
+  labels, navigation and links.
+- Tests: Adyen wire shape, conflicting features, simulator answers, missing-answer status recovery, refusals and
+  blank facts; core market table, limits, closed days, cart snapshots, transfer flag round-trip and rejection, receipt
+  rows; app Brazilian app selection, mixed European basket with partial approval and cash remainder, stored-limit
+  refusal, Titres-restaurant cap/Sunday/refund exclusion, explained blocks, verified-country markets, unknown-result
+  recovery, decline and stale setup, catalog merge/export, 21→22 upgrade with unfinished tenders, double activation, and
+  AMS1 voucher stages in English at 1.5× text, Japanese, Simplified and Traditional Chinese.
+- Preflight passed. Full gate passed on October 26, 2026: `scripts/dev finish`, log
+  `build/gradle-logs/run-9pGoz8/output.log`, including SDK 33 and SDK 28, lint, detekt, Dokka, coverage (core and Adyen
+  100% lines), Markdown and website checks. Earlier gate runs found Android Lint's Spanish typo check on the French
+  brand (the Spanish UI now says "vales de comida franceses"), synthetic accessors (helpers made internal) and app branch
+  coverage 0.05% under its bound (pure voucher rule tests added). Nothing was suppressed.
+- Real-Adyen gaps: every market's merchant/store onboarding, Brazilian `selectedAccountType` and terminal-screen
+  behavior on 1.120.11/1.126.5/1.129+ software, returned voucher facts, European voucher recognition and partial
+  approvals, Titres-restaurant routing, limits and holiday declines, issuer MID/MCC declines, status recovery and voucher
+  refunds remain unverified. Earlier milestone gaps remain open. No real Adyen calls, pushes, publications or releases
+  were made.
 
 ## Adyen source map
 

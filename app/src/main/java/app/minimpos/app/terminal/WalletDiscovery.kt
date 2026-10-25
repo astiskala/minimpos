@@ -4,6 +4,7 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.payment.ScanWallet
+import app.minimpos.core.voucher.MealVoucherScheme
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalListingApi
@@ -26,6 +27,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * @property nativeScanner Whether the checked terminal is a confirmed scanner model.
  * @property mexicanStore Whether Management verified an assigned Mexican store for this context.
  * @property mexicanDestination Whether the destination supports Mexican Terminal API card routing.
+ * @property storeCountry Country of the store Management verified as assigned for this context; null when unassigned.
+ * @property mealVoucherDestination Whether the destination supports meal-voucher tenders.
  * @property simulated Whether the resolved destination supplies offline demos, not a reading of stored payment meaning.
  * @property checking Whether a refresh is running.
  * @property checked Whether a complete discovery answer has been obtained.
@@ -40,6 +43,8 @@ data class WalletAvailability(
     val nativeScanner: Boolean = false,
     val mexicanStore: Boolean = false,
     val mexicanDestination: Boolean = false,
+    val storeCountry: String? = null,
+    val mealVoucherDestination: Boolean = false,
     val simulated: Boolean = false,
     val checking: Boolean = false,
     val checked: Boolean = false,
@@ -51,6 +56,18 @@ data class WalletAvailability(
     val mexicanRouting: Boolean get() =
         mexicanDestination && checked && problem == null && (mexicanStore || simulated) &&
             context != null && identity != null
+
+    /**
+     * Meal-voucher markets a voucher tender may use now: the verified store country's market on a supporting
+     * destination, or, for an explicitly configured offline demo, those in [currency] for the operator to pick. Never
+     * inferred from currency, language or locale for a real setup.
+     */
+    fun mealVoucherSchemes(currency: String): List<MealVoucherScheme> =
+        when {
+            !mealVoucherDestination || !checked || problem != null || context == null || identity == null -> emptyList()
+            simulated -> MealVoucherScheme.demonstrable(currency)
+            else -> listOfNotNull(MealVoucherScheme.forCountry(storeCountry)?.takeIf { it.currency == currency })
+        }
 
     /** Why a refresh cannot run now: the setup [problem] it would only report again; null when it can. */
     val refreshBlocked: Failure? get() = problem?.let(Failure::NotSetUp)
@@ -115,6 +132,7 @@ class WalletDiscovery(
                     identity = identity,
                     supported = setup.capabilities.scannedWallets,
                     mexicanDestination = setup.capabilities.mexicanInstallments,
+                    mealVoucherDestination = setup.capabilities.mealVouchers,
                     simulated = setup.apiSetup == ApiSetup.Simulated,
                     checking = true,
                 )
@@ -185,6 +203,7 @@ class WalletDiscovery(
                             initial.copy(
                                 offers = WalletOffers.configured(methods.methods, terminal.storeId, terminal.countryCode),
                                 mexicanStore = terminal.storeId.isNotBlank() && terminal.countryCode.equals("MX", ignoreCase = true),
+                                storeCountry = terminal.countryCode.uppercase().takeIf { terminal.storeId.isNotBlank() && it.isNotBlank() },
                                 nativeScanner = WalletOffers.nativeScanner(terminal.model, terminal.id),
                                 checking = false,
                                 checked = true,

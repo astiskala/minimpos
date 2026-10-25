@@ -277,11 +277,32 @@ private fun RefundUnavailable(
                     RefundInvalidReason.PRE_AUTHORISATION -> R.string.refund_pre_authorisation
                     RefundInvalidReason.AWAITING_TIP -> R.string.refund_awaiting_tip
                     RefundInvalidReason.CHARGED_ELSEWHERE -> R.string.refund_charged_elsewhere
+                    RefundInvalidReason.VOUCHER_NOT_REFUNDABLE -> R.string.refund_voucher_not_refundable
                 },
             ),
         modifier = modifier,
         content = { SecondaryButton(stringResource(R.string.action_back), onBack) },
     )
+}
+
+/** What Titres-restaurant paid of [original], which is never returned through the app, as cash or otherwise. */
+@Composable
+private fun VoucherKept(
+    original: RefundablePayment,
+    money: MoneyFormatter,
+) {
+    val kept =
+        original.local
+            ?.tenders
+            ?.filter(RefundablePayment.Companion::keepsVoucherValue)
+            ?.sumOf { it.authorisedMinor ?: it.requestedMinor } ?: 0
+    if (kept > 0) {
+        Text(
+            stringResource(R.string.refund_voucher_kept, money.format(kept)),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.testTag("refundVoucherKept"),
+        )
+    }
 }
 
 /** The payment being refunded and the choice of what to refund: everything, items or an amount. */
@@ -322,6 +343,7 @@ private fun RefundChoice(
             ) {
                 OriginalPaymentCard(original, money, formatDateTime)
                 RefundOriginNote(original.local != null)
+                VoucherKept(original, money)
                 RefundOptions(
                     options = listOfNotNull(RefundOption.FULL, RefundOption.ITEMS.takeIf { original.itemsKnown }, RefundOption.AMOUNT),
                     selected = state.option,

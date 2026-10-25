@@ -29,6 +29,8 @@ data class AppliedTax(
  * @property sku the product's barcode or SKU, if it has one.
  * @property unitPrice the price of one unit in the currency's minor units.
  * @property tax the tax rate snapshot applied to the line.
+ * @property mealVoucherEligible whether the merchant marked the product as payable with a meal voucher where the market
+ *   requires product eligibility; a snapshot like [tax].
  */
 data class CartProduct(
     val id: Long,
@@ -36,6 +38,7 @@ data class CartProduct(
     val sku: String?,
     val unitPrice: Long,
     val tax: AppliedTax,
+    val mealVoucherEligible: Boolean = false,
 )
 
 /**
@@ -49,6 +52,8 @@ data class CartProduct(
  * @property unitPrice the price of one unit in the currency's minor units; net or gross depending on the [TaxMode].
  * @property quantity the number of units, kept between 1 and [Cart.MAX_QUANTITY] by [Cart].
  * @property tax the tax rate snapshot for the line.
+ * @property mealVoucherEligible whether a meal voucher may pay for the line where the market requires product
+ *   eligibility; always false for custom items, which are never assumed to qualify.
  */
 data class CartLine(
     val key: String,
@@ -58,6 +63,7 @@ data class CartLine(
     val unitPrice: Long,
     val quantity: Int,
     val tax: AppliedTax,
+    val mealVoucherEligible: Boolean = false,
 ) {
     /** [unitPrice] times [quantity], before [TaxRates.apply] splits it into net, tax and gross. */
     val amount: Long get() = unitPrice * quantity
@@ -113,17 +119,21 @@ data class Cart(
     val lines: List<CartLine> = emptyList(),
 ) {
     /**
-     * Adds one unit of [product]. It joins an existing line for the same product at the same price and tax; otherwise
-     * it starts a new line, and only then is [key] called for the line's key.
+     * Adds one unit of [product]. It joins an existing line for the same product at the same price, tax and voucher
+     * eligibility; otherwise it starts a new line, and only then is [key] called for the line's key.
      */
     fun addProduct(
         product: CartProduct,
         key: () -> String,
     ): Cart {
         val existing =
-            lines.indexOfFirst { it.productId == product.id && it.unitPrice == product.unitPrice && it.tax == product.tax }
+            lines.indexOfFirst {
+                it.productId == product.id && it.unitPrice == product.unitPrice && it.tax == product.tax &&
+                    it.mealVoucherEligible == product.mealVoucherEligible
+            }
         if (existing >= 0) return setQuantity(lines[existing].key, lines[existing].quantity + 1)
-        return copy(lines = lines + CartLine(key(), product.id, product.name, product.sku, product.unitPrice, 1, product.tax))
+        val line = CartLine(key(), product.id, product.name, product.sku, product.unitPrice, 1, product.tax, product.mealVoucherEligible)
+        return copy(lines = lines + line)
     }
 
     /**

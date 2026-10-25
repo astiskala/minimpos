@@ -88,7 +88,7 @@
   <li><a href="#close-day">cerrar el dia</a></li><li><a href="#reconciliation">Conciliar con la terminal</a></li></ul>
   </li><li class="advanced-start"><a href="#capabilities">Comprueba las capacidades de Adyen</a></li><li>
   <a href="#terminal-checkout">Flujos de trabajo de pago opcionales</a><ul><li><a href="#audio-guidance">Aceptar pagos con guía por audio</a></li><li><a href="#mexican-installments">Tarjetas a meses en México</a></li><li><a href="#partial-payments">Pagos
-  parciales</a></li><li><a href="#split-payments">Dividir y efectivo</a></li><li><a href="#shopper-display">Pantalla del cliente</a></li><li><a href="#giving">Donaciones de
+  parciales</a></li><li><a href="#split-payments">Dividir y efectivo</a></li><li><a href="#meal-vouchers">Aceptar vales de comida</a></li><li><a href="#shopper-display">Pantalla del cliente</a></li><li><a href="#giving">Donaciones de
   caridad</a></li><li><a href="#keyed-entry">MOTO y MKE</a></li></ul></li><li><a href="#offline">Pagos fuera de línea
   </a></li><li><a href="#wallets">Escanear códigos de billetera</a></li><li><a href="#shoppers">Referencias y tarjetas
   guardadas</a><ul><li><a href="#saved-card">Administrar tokens</a></li></ul></li><li><a href="#gift-cards">Tarjetas de regalo</a></li><li><a href="#payment-links">Enlaces de
@@ -104,7 +104,7 @@
   <li><a href="#close-day">cerrar el dia</a></li><li><a href="#reconciliation">Conciliar con la terminal</a></li></ul>
   </li><li class="advanced-start"><a href="#capabilities">Comprueba las capacidades de Adyen</a></li><li>
   <a href="#terminal-checkout">Flujos de trabajo de pago opcionales</a><ul><li><a href="#audio-guidance">Aceptar pagos con guía por audio</a></li><li><a href="#mexican-installments">Tarjetas a meses en México</a></li><li><a href="#partial-payments">Pagos
-  parciales</a></li><li><a href="#split-payments">Dividir y efectivo</a></li><li><a href="#shopper-display">Pantalla del cliente</a></li><li><a href="#giving">Donaciones de
+  parciales</a></li><li><a href="#split-payments">Dividir y efectivo</a></li><li><a href="#meal-vouchers">Aceptar vales de comida</a></li><li><a href="#shopper-display">Pantalla del cliente</a></li><li><a href="#giving">Donaciones de
   caridad</a></li><li><a href="#keyed-entry">MOTO y MKE</a></li></ul></li><li><a href="#offline">Pagos fuera de línea
   </a></li><li><a href="#wallets">Escanear códigos de billetera</a></li><li><a href="#shoppers">Referencias y tarjetas
   guardadas</a><ul><li><a href="#saved-card">Administrar tokens</a></li></ul></li><li><a href="#gift-cards">Tarjetas de regalo</a></li><li><a href="#payment-links">Enlaces de
@@ -472,6 +472,26 @@
           <p>Con tarjetas de regalo configuradas, toca <strong>Tarjeta de regalo</strong> para pagar el monto elegido con
             una. Un saldo insuficiente se aprueba en parte y el resto queda por cobrar. La devolución de un pago con
             tarjeta de regalo regresa a la tarjeta, salvo las tarjetas locales, que se reembolsan fuera de Mini mPOS.</p>
+          <h3 id="meal-vouchers">Aceptar vales de comida</h3>
+          <p>Activa <strong>Vales de comida</strong> en Configuración › Pagos solo después de firmar los contratos con los
+            emisores, registrar tu tienda y que Adyen active los vales. El país verificado de la tienda del terminal
+            decide qué vales aplican: vales PAT de Brasil; vales Mastercard o Visa en Bélgica, Finlandia, Alemania,
+            Luxemburgo y España; o vales de comida franceses (Titres-restaurant). Actualiza las capacidades de
+            Adyen tras configurar. Se admiten terminales de pago; Tap to Pay no está disponible. No se ofrecen Monizze,
+            Pluxee Bélgica ni Lunch Check.</p>
+          <p>Cuando los vales exigen productos elegibles, abre cada producto en Configuración › Productos y activa
+            <strong>Elegible para vales de comida</strong>. Los artículos personalizados nunca se pagan con vale. En el
+            cobro, toca <strong>Dividir o pagar en efectivo</strong> y luego <strong>Vale de comida</strong>. Mini mPOS ofrece
+            lo máximo que el vale puede pagar y explica lo que lo impide; cobra el resto con tarjeta o efectivo. Los
+            vales Mastercard o Visa pueden aprobarse en parte. Los vales franceses admiten EUR 25 al día como máximo,
+            nunca en domingos ni festivos, y no se pueden reembolsar: ofrece crédito en tienda. Un vale brasileño con
+            saldo insuficiente se rechaza; ingresa un monto menor.</p>
+          <p>En Brasil, activa <strong>Elegir vales brasileños en la app</strong> para pedir un pago con vale desde Mini mPOS.
+            Déjalo desactivado si Adyen Support activó la pantalla de crédito, débito o vale del terminal; entonces paga
+            con tarjeta y el comprador elige en el terminal. Los detalles, el Historial y los recibos muestran el vale
+            solicitado y lo que informó el terminal. Los reembolsos solo vuelven al vale original, nunca en efectivo.
+            Verifica un pago desconocido antes de volver a intentarlo.</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers">Adyen: vales de comida en Brasil</a> · <a href="https://docs.adyen.com/industries/markets/europe-meal-vouchers">Adyen: vales de comida en Europa</a></p>
           <h3 id="shopper-display">Utilice la pantalla del terminal orientada al comprador</h3>
           <p>Con un terminal de red/nube independiente, abra <strong>Configuración › Pantalla del terminal para el
             cliente</strong>. Elija si desea mostrar los detalles del artículo antes del pago, pedirle al comprador que

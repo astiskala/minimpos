@@ -3,6 +3,7 @@ package app.minimpos.app.payment
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.repo.TenderAllocation
+import app.minimpos.app.data.repo.TenderBalance
 import app.minimpos.app.data.repo.acceptsTender
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
@@ -15,6 +16,8 @@ import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.core.tax.TaxMode
+import app.minimpos.core.voucher.MealVoucherScheme
+import app.minimpos.core.voucher.VoucherSelection
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.ShopperSessionFlow
@@ -24,6 +27,7 @@ import app.minimpos.terminal.client.VirtualReceipt
 import app.minimpos.terminal.client.VirtualReceiptLine
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
 /**
@@ -515,6 +519,53 @@ data class Checkout(
             )
         }
 
+        /**
+         * What a meal-voucher tender may do now for a sale whose undivided purchase is [balance], on the store's local
+         * [date]: the market ([chosen] among an offline demo's), the most it may collect and, when it cannot be used,
+         * why — checked in order so the first fix is explained before payment and nothing is dropped silently. A stored
+         * sale's [saleContext] must be the verified store's context the voucher is sent on.
+         */
+        fun mealVoucher(
+            availability: MealVoucherAvailability,
+            chosen: MealVoucherScheme?,
+            balance: TenderBalance,
+            date: LocalDate,
+            saleContext: PaymentContext?,
+        ): MealVoucherReading {
+            val schemes = availability.schemes
+            val scheme = chosen?.takeIf { it in schemes } ?: schemes.firstOrNull()
+            val blocked =
+                when {
+                    !availability.configured -> MealVoucherBlock.NOT_CONFIGURED
+                    scheme == null || availability.context == null || availability.identity == null -> MealVoucherBlock.NO_MARKET
+                    scheme.selection == VoucherSelection.ACCOUNT_TYPE && !availability.accountSelection -> MealVoucherBlock.TERMINAL_SELECTS
+                    !scheme.openOn(date) -> MealVoucherBlock.CLOSED_TODAY
+                    saleContext != null && saleContext != availability.context -> MealVoucherBlock.CHANGED_SETUP
+                    balance.unresolved -> MealVoucherBlock.UNRESOLVED
+                    balance.voucherLimitMinor(scheme) == 0L -> MealVoucherBlock.NOTHING_ELIGIBLE
+                    else -> null
+                }
+            return MealVoucherReading(scheme, schemes, scheme?.let(balance::voucherLimitMinor) ?: 0, blocked)
+        }
+
+        /**
+         * [base] (a split or remaining-balance tender of [amountMinor]) paid from the [reading]'s voucher on the verified
+         * store of [availability]; null unless the voucher can be used and the amount is within its limit.
+         */
+        fun mealVoucherStart(
+            base: PaymentStart?,
+            reading: MealVoucherReading,
+            availability: MealVoucherAvailability,
+            amountMinor: Long,
+        ): PaymentStart? {
+            val scheme = reading.scheme ?: return null
+            val context = availability.context ?: return null
+            val identity = availability.identity ?: return null
+            if (base == null || reading.blocked != null || amountMinor !in 1..reading.limitMinor) return null
+            if (base.requestedAmountMinor != amountMinor || base.allocation != null || base.currency.code != scheme.currency) return null
+            return base.withMealVoucher(scheme, context, identity)
+        }
+
         /** Longest merchant reference accepted, in characters (Adyen's limit for `merchantReference`). */
         const val MAX_REFERENCE_LENGTH = 80
 
@@ -525,6 +576,66 @@ data class Checkout(
         val MAX_LINK_LIFETIME: Duration = Duration.ofDays(70).minusMinutes(5)
     }
 }
+
+/**
+ * Whether meal-voucher tenders can be offered, from settings and verified discovery
+ * ([app.minimpos.app.terminal.WalletAvailability.mealVoucherSchemes]).
+ *
+ * @property configured Whether the merchant confirmed voucher onboarding ([PaymentSettings.mealVouchers]).
+ * @property schemes The verified store's market for the sale currency, or an offline demo's choices; empty when none.
+ * @property context The verified destination/account the voucher is sent on; null before discovery.
+ * @property identity Fingerprint of that checked setup; null before discovery.
+ * @property simulated Whether this is an offline simulator demonstration, which establishes no eligibility.
+ * @property accountSelection Whether the app selects the Brazilian voucher account
+ *   ([PaymentSettings.mealVoucherAccountSelection]).
+ */
+data class MealVoucherAvailability(
+    val configured: Boolean = false,
+    val schemes: List<MealVoucherScheme> = emptyList(),
+    val context: PaymentContext? = null,
+    val identity: String? = null,
+    val simulated: Boolean = false,
+    val accountSelection: Boolean = false,
+)
+
+/** Why a meal-voucher tender cannot be used now, in the order [Checkout.mealVoucher] checks. */
+enum class MealVoucherBlock {
+    /** The merchant has not confirmed voucher onboarding. */
+    NOT_CONFIGURED,
+
+    /** No verified store market on a supporting destination for this currency. */
+    NO_MARKET,
+
+    /** Brazilian vouchers are chosen on the terminal's own screen: pay by card and let the shopper choose there. */
+    TERMINAL_SELECTS,
+
+    /** The market's vouchers cannot be used today (Titres-restaurant on Sundays). */
+    CLOSED_TODAY,
+
+    /** The sale was paid on another setup than the verified store's. */
+    CHANGED_SETUP,
+
+    /** An earlier tender is unresolved; check it first. */
+    UNRESOLVED,
+
+    /** Nothing a voucher may pay is left: no eligible items, or the market's limit was reached. */
+    NOTHING_ELIGIBLE,
+}
+
+/**
+ * What a meal-voucher tender may do now ([Checkout.mealVoucher]).
+ *
+ * @property scheme The market used; null when none is available.
+ * @property schemes Markets the operator may choose between (several only for an offline demo).
+ * @property limitMinor Most the voucher may collect, in minor units; 0 when it cannot be used.
+ * @property blocked Why it cannot be used; null when it can.
+ */
+data class MealVoucherReading(
+    val scheme: MealVoucherScheme?,
+    val schemes: List<MealVoucherScheme>,
+    val limitMinor: Long,
+    val blocked: MealVoucherBlock?,
+)
 
 /** A way to pay a checkout: on the terminal, by payment link, with a scanned wallet code, or with a saved card (Charge token). */
 enum class Tender {

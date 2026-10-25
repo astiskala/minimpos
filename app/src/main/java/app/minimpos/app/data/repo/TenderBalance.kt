@@ -6,6 +6,7 @@ import app.minimpos.app.data.db.SaleLineEntity
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.core.split.AllocatableLine
 import app.minimpos.core.split.TenderSplit
+import app.minimpos.core.voucher.MealVoucherScheme
 
 /**
  * The one reading of how a sale's frozen purchase total is divided among its tenders: what is unpaid, which sold units
@@ -18,6 +19,8 @@ import app.minimpos.core.split.TenderSplit
  * @param lines The sale's lines as sold; empty before a new sale is stored (positions then follow the cart).
  * @param tenders The sale's tender rows.
  * @param itemsAllowed Whether the sale is an immediate-charge sale whose items can be allocated.
+ * @property eligibleMinor Gross of the lines a meal voucher may pay for where its market requires product eligibility,
+ *   in minor units; custom items never count.
  */
 class TenderBalance(
     val totalMinor: Long,
@@ -25,8 +28,26 @@ class TenderBalance(
     lines: List<AllocatableLine>,
     tenders: List<SaleTenderEntity>,
     itemsAllowed: Boolean = true,
+    val eligibleMinor: Long = 0,
 ) {
     private val active = tenders.filter { it.approved || it.unresolved }
+
+    /**
+     * Purchase value meal-voucher tenders took or may still take, in minor units: what approved ones paid towards the
+     * purchase (an unreported fee counts as purchase, which only lowers what vouchers may take next), and the whole
+     * request of pending and unknown ones.
+     */
+    val voucherMinor: Long =
+        active.filter { it.mealVoucher != null }.fold(0L) { sum, tender ->
+            val taken =
+                if (tender.approved) {
+                    ((tender.authorisedMinor ?: 0) - (tender.surchargeMinor ?: 0) - (tender.tipMinor ?: 0))
+                        .coerceIn(0, tender.requestedMinor)
+                } else {
+                    tender.requestedMinor
+                }
+            Math.addExact(sum, taken)
+        }
     private val allocations = active.map { TenderAllocationJson.decode(it.allocationJson) }
     private val shares = allocations.filterIsInstance<TenderAllocation.Share>()
 
@@ -114,6 +135,19 @@ class TenderBalance(
         }
     }
 
+    /** Most a [scheme] voucher tender may collect now, in minor units ([MealVoucherScheme.limitMinor]); 0 while unresolved. */
+    fun voucherLimitMinor(scheme: MealVoucherScheme): Long =
+        if (unresolved) 0 else scheme.limitMinor(unpaidMinor, eligibleMinor, voucherMinor)
+
+    /**
+     * Whether a [scheme] voucher tender of [amountMinor] may be stored now: an acceptable amount (never a share or items)
+     * within [voucherLimitMinor], so it never pays for ineligible items or beyond the market's limit.
+     */
+    fun acceptsVoucher(
+        amountMinor: Long,
+        scheme: MealVoucherScheme,
+    ): Boolean = accepts(amountMinor, null) && amountMinor <= voucherLimitMinor(scheme)
+
     /** Building the reading of a stored sale. */
     companion object {
         /** [sale] with its [lines] and [tenders] as stored. */
@@ -128,6 +162,7 @@ class TenderBalance(
                 lines.sortedBy { it.position }.map { AllocatableLine(it.position.toLong(), it.quantity, 0, it.grossMinor) },
                 tenders,
                 itemsAllowed = sale.kind == SaleKind.SALE && !sale.manualCapture,
+                eligibleMinor = lines.filter { it.mealVoucherEligible }.fold(0L) { sum, line -> Math.addExact(sum, line.grossMinor) },
             )
     }
 }

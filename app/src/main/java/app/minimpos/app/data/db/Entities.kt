@@ -97,6 +97,8 @@ enum class SaleKind {
  * @property kind Whether the product is sold in a sale or taken as a pre-authorisation; each kind is only offered on its
  * own screen (New sale or Pre-authorise).
  * @property sample Whether this product was added as removable sample data, including after edits.
+ * @property mealVoucherEligible Whether a meal voucher may pay for it where the market requires product eligibility;
+ * its text and tax are unchanged.
  */
 @Entity(
     tableName = "products",
@@ -116,6 +118,7 @@ data class ProductEntity(
     val sortOrder: Int = 0,
     @ColumnInfo(defaultValue = "SALE") val kind: SaleKind = SaleKind.SALE,
     @ColumnInfo(defaultValue = "0") val sample: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val mealVoucherEligible: Boolean = false,
 )
 
 /** Latest catalog import receipt, written in the same transaction as the imported rows.
@@ -502,6 +505,8 @@ enum class CaptureStatus {
  * @property taxMinor Tax on the line.
  * @property grossMinor Line total including tax.
  * @property refundedQuantity Units already refunded from this terminal, never more than [quantity].
+ * @property mealVoucherEligible Whether a meal voucher could pay for the line as sold; false for custom items and for
+ *   sales stored before eligibility existed.
  */
 @Entity(
     tableName = "sale_lines",
@@ -530,6 +535,7 @@ data class SaleLineEntity(
     val taxMinor: Long,
     val grossMinor: Long,
     val refundedQuantity: Int = 0,
+    @ColumnInfo(defaultValue = "0") val mealVoucherEligible: Boolean = false,
 )
 
 /** Where a refund is in its lifecycle; stored by name in `refunds.status`. */
@@ -693,6 +699,10 @@ enum class TenderKind {
  * @property returnedPaymentType Explicit returned installment type; null for missing/default Normal.
  * @property returnedInstallments Returned monthly count; null when unreported.
  * @property returnedPlanId Returned issuer PlanID; null when unreported.
+ * @property mealVoucher Frozen [app.minimpos.core.voucher.MealVoucherScheme] name of a meal-voucher tender, stored
+ *   before sending; null for other and historical tenders.
+ * @property fundingSource Returned `fundingSource`, verbatim; null when unreported.
+ * @property paymentMethodVariant Returned `paymentMethodVariant`, verbatim; null when unreported.
  */
 @Entity(
     tableName = "sale_tenders",
@@ -749,6 +759,12 @@ data class SaleTenderEntity(
     val returnedInstallments: String? = null,
     /** Returned Instalment.PlanID, verbatim; null means unreported. */
     val returnedPlanId: String? = null,
+    /** Frozen meal-voucher market of this tender's request; null for other and historical tenders. */
+    val mealVoucher: String? = null,
+    /** Returned `fundingSource`, never inferred from the request; null when unreported. */
+    val fundingSource: String? = null,
+    /** Returned `paymentMethodVariant`, such as `elo_voucher_br`; null when unreported. */
+    val paymentMethodVariant: String? = null,
 ) {
     /** Whether this tender collected money: an approved card or recorded cash. */
     val approved: Boolean get() = status == SaleStatus.APPROVED

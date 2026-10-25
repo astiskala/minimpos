@@ -126,6 +126,7 @@ data class ReceiptOptions(
  * @property balanceDue Label of the purchase balance still due on a partially paid sale.
  * @property cashReturned Note on the receipt of cash handed back for a cash tender, instead of a request outcome.
  * @property tenderGiftCard Label of a gift-card tender in the breakdown, followed by its provider and last digits.
+ * @property tenderMealVoucher Label of a meal-voucher tender in the breakdown, followed by its brand and masked number.
  * @property giftCard Label of the gift card a stored-value receipt is for.
  * @property balance Label of a gift card's balance as last reported.
  */
@@ -192,6 +193,8 @@ data class ReceiptLabels(
     val cashReturned: String = "Cash returned",
     /** A gift-card tender in the breakdown. */
     val tenderGiftCard: String = "Gift card",
+    /** A meal-voucher tender in the breakdown. */
+    val tenderMealVoucher: String = "Meal voucher",
     /** The gift card a stored-value receipt is for. */
     val giftCard: String = "Gift card",
     /** A gift card's balance as last reported. */
@@ -286,7 +289,8 @@ enum class ReceiptCopy {
  * @property chargedAmount Total authorized across tenders; null for old or non-terminal receipts.
  * @property purchaseMinor Known purchase component in minor units; null when unreported.
  * @property discloseSurcharge Whether the original fee component, including unknown, must be shown.
- * @property cardPlans Localized requested/returned plan facts, including unresolved tenders; never proof of approval.
+ * @property cardPlans Localized requested/returned plan and meal-voucher facts, including unresolved tenders; never proof
+ *   of approval.
  * @property tenders Approved tenders in payment order, printed as a breakdown when there are several or any is cash.
  * @property balanceDueMinor Purchase balance still due in minor units, printed as [ReceiptLabels.balanceDue]; null
  *   when nothing is due.
@@ -337,6 +341,9 @@ enum class ReceiptTenderKind {
 
     /** A gift card redeemed on the terminal, whose own Adyen receipt lines follow verbatim. */
     GIFT_CARD,
+
+    /** A meal voucher paid on the terminal, whose own Adyen receipt lines follow verbatim. */
+    MEAL_VOUCHER,
 }
 
 /**

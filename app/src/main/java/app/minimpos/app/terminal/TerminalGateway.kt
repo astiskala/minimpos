@@ -353,17 +353,35 @@ class TerminalGateway(
         onSending: suspend (poiId: String) -> Unit = {},
     ): Attempt<TransactionOutcome> =
         send(paying = true, serviceId, onSending, onContext, expected, expectedIdentity) {
-            val supportsModel = it.destination.simulatesApi || TerminalClient.audioGuidanceMinimumSoftware(it.client.identity.poiId) != null
-            val compatible = it.destination.supportsTerminalFeatures && supportsModel && audioGuidancePoiId == it.client.identity.poiId
-            val unsupported =
-                (params.audioGuidance && !compatible) || (params.giftCard != null && !it.destination.giftCards) ||
-                    (params.mexicanPayment != null && (!it.destination.mexicanInstallments || expected == null || expectedIdentity == null))
-            if (unsupported) {
+            if (unsupported(
+                    params,
+                    it.destination,
+                    it.client.identity.poiId,
+                    audioGuidancePoiId,
+                    expected != null && expectedIdentity != null,
+                )
+            ) {
                 TransactionOutcome.NotProcessed(Fault.Unsupported)
             } else {
                 it.client.pay(params, serviceId)
             }
         }
+
+    // Whether [destination] cannot carry what [params] select: audio guidance for another or unsupported terminal, gift
+    // cards, or Mexican routing and Brazilian voucher accounts without a [verified] store context and identity.
+    private fun unsupported(
+        params: PaymentParams,
+        destination: DestinationRules,
+        poiId: String,
+        audioGuidancePoiId: String?,
+        verified: Boolean,
+    ): Boolean {
+        val supportsModel = destination.simulatesApi || TerminalClient.audioGuidanceMinimumSoftware(poiId) != null
+        val compatible = destination.supportsTerminalFeatures && supportsModel && audioGuidancePoiId == poiId
+        return (params.audioGuidance && !compatible) || (params.giftCard != null && !destination.giftCards) ||
+            (params.mexicanPayment != null && (!destination.mexicanInstallments || !verified)) ||
+            (params.mealVoucherAccount && (!destination.mealVouchers || !verified))
+    }
 
     /** Opens native scanning only for the unchanged [expected] destination and [identity] fingerprint; null when blocked. */
     internal suspend fun nativeScanner(

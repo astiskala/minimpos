@@ -236,6 +236,7 @@ class ReceiptBuilder(
                         ReceiptTenderKind.CARD -> listOfNotNull(labels.tenderCard, tender.detail).joinToString(" ")
                         ReceiptTenderKind.CASH -> labels.tenderCash
                         ReceiptTenderKind.GIFT_CARD -> listOfNotNull(labels.tenderGiftCard, tender.detail).joinToString(" ")
+                        ReceiptTenderKind.MEAL_VOUCHER -> listOfNotNull(labels.tenderMealVoucher, tender.detail).joinToString(" ")
                     }
                 out += Row(label, money.format(tender.amountMinor))
                 tender.receivedMinor?.let { out += Row(labels.cashReceived, money.format(it)) }

@@ -88,7 +88,7 @@
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
   </ul></li><li class="advanced-start"><a href="#capabilities">Vérifier les capacités d&#x27;Adyen</a></li><li>
   <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#mexican-installments">Paiements échelonnés au Mexique</a></li><li><a href="#partial-payments">Paiements
-  partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
+  partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#meal-vouchers">Accepter les titres-restaurant</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
   </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#gift-cards">Cartes cadeaux</a></li><li><a href="#payment-links">Liens de paiement
@@ -104,7 +104,7 @@
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
   </ul></li><li class="advanced-start"><a href="#capabilities">Vérifier les capacités d&#x27;Adyen</a></li><li>
   <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#mexican-installments">Paiements échelonnés au Mexique</a></li><li><a href="#partial-payments">Paiements
-  partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
+  partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#meal-vouchers">Accepter les titres-restaurant</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
   </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#gift-cards">Cartes cadeaux</a></li><li><a href="#payment-links">Liens de paiement
@@ -490,6 +490,26 @@
             l’une d’elles. Un solde insuffisant est accepté en partie et le reste reste à encaisser. Le remboursement
             d’un paiement par carte cadeau revient sur la carte, sauf pour les cartes locales, remboursées hors de Mini
             mPOS.</p>
+          <h3 id="meal-vouchers">Accepter les titres-restaurant</h3>
+          <p>Activez <strong>Titres-restaurant</strong> dans Paramètres › Paiements seulement après avoir signé les contrats
+            émetteurs, enregistré votre magasin et obtenu l’activation par Adyen. Le pays vérifié du magasin du terminal
+            détermine les titres acceptés : titres PAT au Brésil ; titres Mastercard ou Visa en Belgique, Finlande,
+            Allemagne, Luxembourg et Espagne ; ou titres-restaurant en France. Actualisez les capacités Adyen après la
+            configuration. Les terminaux de paiement sont pris en charge ; Tap to Pay est indisponible. Monizze, Pluxee
+            Belgique et Lunch Check ne sont pas proposés.</p>
+          <p>Lorsque les titres exigent des produits éligibles, ouvrez chaque produit dans Paramètres › Produits et activez
+            <strong>Éligible aux titres-restaurant</strong>. Les articles libres ne sont jamais payés par titre. Au paiement,
+            touchez <strong>Partager ou payer en espèces</strong>, puis <strong>Titre-restaurant</strong>. Mini mPOS propose le
+            maximum payable par le titre et explique ce qui l’empêche ; encaissez le reste par carte ou en espèces. Les
+            titres Mastercard ou Visa peuvent être approuvés en partie. Les titres-restaurant sont limités à 25 EUR par
+            jour, jamais le dimanche ni les jours fériés, et ne sont pas remboursables : proposez plutôt un avoir. Un titre
+            brésilien au solde insuffisant est refusé ; saisissez un montant inférieur.</p>
+          <p>Au Brésil, activez <strong>Choisir les titres brésiliens dans l’app</strong> pour demander un paiement par titre
+            depuis Mini mPOS. Laissez-le désactivé si le support Adyen a activé l’écran crédit, débit ou titre du
+            terminal ; payez alors par carte et l’acheteur choisit sur le terminal. Les détails, l’Historique et les reçus
+            indiquent le titre demandé et ce que le terminal a signalé. Les remboursements ne vont que sur le titre
+            d’origine, jamais en espèces. Vérifiez un paiement inconnu avant de réessayer.</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers">Adyen : titres-restaurant au Brésil</a> · <a href="https://docs.adyen.com/industries/markets/europe-meal-vouchers">Adyen : titres-restaurant en Europe</a></p>
           <h3 id="shopper-display">Utilisez l'écran du terminal destiné aux acheteurs</h3>
           <p>Avec un terminal réseau/cloud séparé, ouvrez <strong>Paramètres › Affichage du terminal pour le client</strong>. Choisissez d’afficher les articles avant le paiement, de demander au client de confirmer la commande ou de saisir son adresse e-mail si elle manque au paiement. Configurez d’abord les <a href="#receipts">reçus par e-mail</a>. Le reçu est envoyé automatiquement si <strong>Envoyez automatiquement le reçu par e-mail
             </strong> est activé. Après approbation, vous pouvez afficher un code QR et demander une note de 0 à 10 ; la note reçue apparaît dans les détails de la transaction.</p>

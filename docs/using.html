@@ -87,7 +87,7 @@
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Check Adyen capabilities</a></li><li><a href="#terminal-checkout">
-  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#mexican-installments">Mexican card installments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li>
+  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#mexican-installments">Mexican card installments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li><a href="#meal-vouchers">Take meal vouchers</a></li><li>
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
@@ -103,7 +103,7 @@
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Check Adyen capabilities</a></li><li><a href="#terminal-checkout">
-  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#mexican-installments">Mexican card installments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li>
+  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#mexican-installments">Mexican card installments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li><a href="#meal-vouchers">Take meal vouchers</a></li><li>
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
@@ -452,6 +452,25 @@
           <p>With gift cards set up, tap <strong>Gift card</strong> to pay the chosen amount with one. A short balance is
             approved in part and the rest stays to collect. A return of a gift-card payment goes back to the card,
             except for local gift cards, which are refunded outside Mini mPOS.</p>
+          <h3 id="meal-vouchers">Take meal vouchers</h3>
+          <p>Turn on <strong>Meal vouchers</strong> in Settings › Payments only after you signed the issuer contracts, registered
+            your store and Adyen enabled the vouchers. The verified store country of the terminal decides which vouchers
+            apply: Brazilian PAT vouchers; Mastercard or Visa meal vouchers in Belgium, Finland, Germany, Luxembourg and
+            Spain; or Titres-restaurant in France. Refresh Adyen capabilities after setup. Payment terminals are
+            supported; Tap to Pay is unavailable. Monizze, Pluxee Belgium and Lunch Check are not offered.</p>
+          <p>Where vouchers need eligible products, open each product in Settings › Products and turn on
+            <strong>Meal-voucher eligible</strong>. Custom items are never paid by voucher. At checkout, tap
+            <strong>Split or pay cash</strong>, then <strong>Meal voucher</strong>. Mini mPOS offers the most the voucher can
+            pay and explains anything that prevents it; collect the rest by card or cash. Mastercard or Visa vouchers may be
+            approved in part. Titres-restaurant take at most EUR 25 a day, never on Sundays or public holidays, and
+            cannot be refunded: offer store credit instead. A Brazilian voucher with a short balance is declined; enter a
+            lower amount.</p>
+          <p>In Brazil, turn on <strong>Choose Brazilian vouchers in the app</strong> to request a voucher payment from Mini
+            mPOS. Leave it off when Adyen Support enabled the terminal’s own credit, debit or voucher screen; then pay by
+            card and the shopper chooses on the terminal. Details, History and receipts show the voucher requested and
+            what the terminal reported. Returns go back to the original voucher only, never as cash. Check an unknown
+            payment before trying again.</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers">Adyen: Brazilian meal vouchers</a> · <a href="https://docs.adyen.com/industries/markets/europe-meal-vouchers">Adyen: Meal vouchers in Europe</a></p>
           <h3 id="shopper-display">Use the shopper-facing terminal screen</h3>
           <p>With a separate network/cloud terminal, open <strong>Settings › Shopper terminal display</strong>. Choose
             whether to show item details before payment, ask the shopper to confirm the order, or collect an email when

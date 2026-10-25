@@ -65,6 +65,7 @@ import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.giftcard.giftCardStageLabel
 import app.minimpos.app.feature.giftcard.statusLabel
 import app.minimpos.app.feature.lock.ManagerApproval
+import app.minimpos.app.feature.mealVoucherFacts
 import app.minimpos.app.feature.mexicanPlan
 import app.minimpos.app.feature.modificationNote
 import app.minimpos.app.feature.outcomeNote
@@ -425,9 +426,10 @@ private fun historyRowText(
                     paymentMethodText(sale),
                     sale.customerReference,
                     item.tenders
+                        .sortedBy { it.sequence }
                         .flatMap {
-                            androidx.compose.ui.platform.LocalContext.current
-                                .mexicanPlan(it)
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            context.mexicanPlan(it) + context.mealVoucherFacts(it)
                         }.joinToString(" · ")
                         .ifBlank { null },
                 ).joinToString(" · "),

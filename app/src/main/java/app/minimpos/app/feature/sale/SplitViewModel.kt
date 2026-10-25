@@ -12,6 +12,8 @@ import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.payment.CashTenders
 import app.minimpos.app.payment.Checkout
+import app.minimpos.app.payment.MealVoucherAvailability
+import app.minimpos.app.payment.MealVoucherReading
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SaleSession
@@ -19,6 +21,7 @@ import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.payment.splitStart
 import app.minimpos.core.money.AmountEntry
 import app.minimpos.core.split.TenderSplit
+import app.minimpos.core.voucher.MealVoucherScheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,6 +32,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import java.time.Clock
+import java.time.LocalDate
 import java.time.ZoneId
 
 /** How the operator chooses what the next tender of a split pays. */
@@ -77,6 +81,10 @@ data class SplitItem(
  * @property giftCards Configured gift-card providers that take payments; empty offers no gift-card tender.
  * @property giftCardStage Whether the gift card for this tender is being presented.
  * @property card The gift card being presented.
+ * @property voucher What a meal-voucher tender may do now; null when vouchers are not configured.
+ * @property voucherAvailability Settings and verified discovery behind [voucher].
+ * @property voucherStage Whether the next tender is being paid from a meal voucher.
+ * @property voucherChoice The market chosen for an offline demo; null uses the only one.
  */
 data class SplitUiState(
     val loaded: Boolean = false,
@@ -95,6 +103,10 @@ data class SplitUiState(
     val giftCards: List<GiftCardSetting> = emptyList(),
     val giftCardStage: Boolean = false,
     val card: CardChoice = CardChoice(),
+    val voucher: MealVoucherReading? = null,
+    val voucherAvailability: MealVoucherAvailability = MealVoucherAvailability(),
+    val voucherStage: Boolean = false,
+    val voucherChoice: MealVoucherScheme? = null,
 ) {
     /** Whether shares of a split already begun are fixed, so their count can no longer change. */
     val sharesFixed: Boolean get() = balance?.nextShare != null
@@ -129,6 +141,10 @@ data class SplitUiState(
     /** Whether the gift card presented can pay this tender now. */
     val giftCardReady: Boolean get() = giftCardStage && valid && card.present(giftCards) != null
 
+    /** Whether the meal voucher can pay the typed amount now: usable, and within what it may pay. */
+    val voucherReady: Boolean get() =
+        voucherStage && valid && mode == SplitMode.AMOUNT && voucher?.blocked == null && amountMinor in 1..(voucher?.limitMinor ?: 0)
+
     /** Change to hand back for the cash received; null while too little was entered. */
     val changeMinor: Long? get() = (received.minor - amountMinor).takeIf { received.minor >= amountMinor && amountMinor > 0 }
 
@@ -149,7 +165,8 @@ data class SplitUiState(
  * @param lifecycle Runs card tenders on the terminal.
  * @param cash Records cash tenders.
  * @param giftCards Configured gift-card providers that take payments.
- * @param clock Stamps references and cash tenders.
+ * @param vouchers Meal-voucher availability for a currency, from settings and verified store discovery.
+ * @param clock Stamps references and cash tenders, and dates voucher use in [zone].
  * @param zone The time zone of generated references.
  */
 class SplitViewModel(
@@ -160,6 +177,7 @@ class SplitViewModel(
     private val lifecycle: TransactionLifecycle<PaymentStart>,
     private val cash: CashTenders,
     giftCards: Flow<List<GiftCardSetting>> = flowOf(emptyList()),
+    vouchers: Flow<(String) -> MealVoucherAvailability> = flowOf { MealVoucherAvailability() },
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) : ViewModel() {
@@ -208,12 +226,23 @@ class SplitViewModel(
 
     /** The screen state, updated whenever the sale or checkout and the operator's choices change. */
     val state: StateFlow<SplitUiState> =
-        combine(source, local, giftCards) { loaded, choices, settings ->
+        combine(source, local, giftCards, vouchers) { loaded, choices, settings, voucherFor ->
             val provider =
                 choices.card.provider?.takeIf { chosen -> settings.any { it.provider == chosen } } ?: settings.firstOrNull()?.provider
             val setting = settings.firstOrNull { it.provider == provider }
             val entry =
                 choices.card.entry.takeIf { setting?.entries?.contains(it) == true } ?: setting?.entries?.minOrNull() ?: choices.card.entry
+            val availability = voucherFor(loaded.currency)
+            val voucher =
+                loaded.balance?.takeIf { availability.configured }?.let { balance ->
+                    Checkout.mealVoucher(
+                        availability,
+                        choices.voucherChoice,
+                        balance,
+                        LocalDate.now(clock.withZone(zone())),
+                        latestSale?.context,
+                    )
+                }
             choices.copy(
                 giftCards = settings,
                 card = choices.card.copy(provider = provider, entry = entry),
@@ -222,6 +251,9 @@ class SplitViewModel(
                 saleId = loaded.saleId,
                 balance = loaded.balance,
                 items = loaded.items,
+                voucher = voucher,
+                voucherAvailability = availability,
+                voucherStage = choices.voucherStage && voucher != null,
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SplitUiState())
 
@@ -253,9 +285,20 @@ class SplitViewModel(
         local.update { it.copy(selection = it.selection + (position to capped), rejected = false) }
     }
 
-    /** Starts the chosen tender on the terminal; false when it is not valid now or a payment is running. */
+    /**
+     * Starts the chosen tender on the terminal: a card, or, while the voucher stage is open, the typed amount from the
+     * meal voucher ([Checkout.mealVoucherStart]); false when it is not ready now or a payment is running.
+     */
     fun payByCard(): Boolean {
         val current = state.value
+        if (current.voucherStage) {
+            val reading = current.voucher ?: return false
+            if (!current.voucherReady) return false
+            val start =
+                Checkout.mealVoucherStart(start(current), reading, current.voucherAvailability, current.amountMinor) ?: return reject()
+            local.update { it.copy(voucherStage = false) }
+            return lifecycle.start(start) != null
+        }
         if (!current.valid) return false
         val start = start(current) ?: return reject()
         return lifecycle.start(start) != null
@@ -282,6 +325,33 @@ class SplitViewModel(
                 card.discard()
                 false
             }
+    }
+
+    /**
+     * Opens or closes paying the next tender from a meal voucher of market [choice] (an offline demo's pick; the only
+     * market otherwise), as an amount starting at the most that market's voucher may pay; the operator may lower it,
+     * for example to a short balance.
+     */
+    fun enterVoucher(
+        open: Boolean,
+        choice: MealVoucherScheme? = state.value.voucherChoice,
+    ) {
+        val current = state.value
+        val limit =
+            current.balance
+                ?.takeIf { open && current.voucher != null }
+                ?.let { Checkout.mealVoucher(current.voucherAvailability, choice, it, today(), latestSale?.context).limitMinor } ?: 0
+        local.update {
+            it.copy(
+                voucherStage = open && current.voucher != null,
+                voucherChoice = choice,
+                mode = if (open) SplitMode.AMOUNT else it.mode,
+                amount = if (limit > 0) AmountEntry(limit) else it.amount,
+                cashStage = false,
+                giftCardStage = false,
+                rejected = false,
+            )
+        }
     }
 
     /** Opens or closes cash entry for the chosen tender, starting with the exact amount received. */
@@ -322,8 +392,14 @@ class SplitViewModel(
         }
     }
 
-    private fun reject(): Boolean {
-        local.update { it.copy(rejected = true) }
-        return false
-    }
+    private fun reject(): Boolean = local.rejected()
+
+    // Voucher closed days follow the store's local date.
+    private fun today(): LocalDate = LocalDate.now(clock.withZone(zone()))
+}
+
+/** Marks the last start refused because the sale changed; returns false for the refused start. */
+internal fun MutableStateFlow<SplitUiState>.rejected(): Boolean {
+    update { it.copy(rejected = true) }
+    return false
 }

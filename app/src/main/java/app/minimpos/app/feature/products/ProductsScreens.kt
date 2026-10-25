@@ -198,6 +198,7 @@ private fun ProductList(
         return
     }
     val preAuth = stringResource(R.string.products_kind_pre_auth)
+    val voucher = stringResource(R.string.products_kind_meal_voucher)
     // The bottom padding keeps the last row clear of the add button.
     LazyColumn(Modifier.fillMaxSize().testTag("productList"), contentPadding = PaddingValues(bottom = LocalDimens.current.fabClearance)) {
         items(state.products, key = { it.id }) { product ->
@@ -208,6 +209,7 @@ private fun ProductList(
                 subtitle =
                     listOfNotNull(
                         preAuth.takeIf { product.kind == SaleKind.PRE_AUTHORISATION },
+                        voucher.takeIf { product.mealVoucherEligible },
                         tax?.takeIf { state.chargeTax }?.let { AppliedTax(it.name, it.rateMilliPercent).label() },
                         category?.name,
                         product.sku,
@@ -449,6 +451,15 @@ private fun ColumnScope.ProductFields(
         modifier = Modifier.fillMaxWidth().testTag("productSku"),
     )
     PreAuthorisationSwitch(form.preAuthorisation) { checked -> onUpdate { it.copy(preAuthorisation = checked) } }
+    if (state.mealVouchers || form.mealVoucherEligible) {
+        SwitchRow(
+            title = stringResource(R.string.products_meal_voucher),
+            checked = form.mealVoucherEligible,
+            onChange = { checked -> onUpdate { it.copy(mealVoucherEligible = checked) } },
+            subtitle = stringResource(R.string.products_meal_voucher_hint),
+            modifier = Modifier.testTag("productMealVoucher"),
+        )
+    }
 }
 
 /** Whether the product is taken as a pre-authorisation ([checked]) rather than sold, with what that means. */

@@ -563,7 +563,7 @@ class TerminalClient(
         configure: SaleToPOIRequest.() -> Unit,
     ): Delivery = transport.send(exchange.wrap(exchange.message(messageClass, category, newServiceId()).apply(configure)), shortTimeout)
 
-    // One owner composes every Payment operation, so adding a variant cannot overwrite tip overrides.
+    // One owner composes the whole SaleToPOIData blob, so adding a variant or account cannot overwrite tip overrides.
     private fun paymentOperations(params: PaymentParams): String? {
         val operation =
             buildMap<String, Any> {
@@ -578,7 +578,12 @@ class TerminalClient(
                     }
                 }
             }
-        return if (operation.size == 1) null else base64Json(mapOf(NexoVocabulary.OPERATION to listOf(operation)))
+        val data =
+            buildMap<String, Any> {
+                if (operation.size > 1) put(NexoVocabulary.OPERATION, listOf(operation))
+                if (params.mealVoucherAccount) put(NexoVocabulary.SELECTED_ACCOUNT_TYPE, NexoVocabulary.MEAL_VOUCHER)
+            }
+        return if (data.isEmpty()) null else base64Json(data)
     }
 
     private fun tipOptions(
@@ -768,6 +773,7 @@ class TerminalClient(
                 currency = response.paymentResult?.amountsResp?.currency,
                 paymentBrand = card?.paymentBrand ?: additional[NexoVocabulary.PAYMENT_METHOD],
                 paymentMethodVariant = additional[NexoVocabulary.PAYMENT_METHOD_VARIANT],
+                fundingSource = additional[NexoVocabulary.FUNDING_SOURCE]?.trim()?.ifEmpty { null },
                 maskedPan = card?.maskedPAN,
                 entryMode = card?.entryMode?.firstOrNull()?.value() ?: additional[NexoVocabulary.POS_ENTRY_MODE],
                 approvalCode =

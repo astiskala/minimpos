@@ -80,7 +80,7 @@
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Adyen機能を確認</a></li><li><a href="#terminal-checkout">任意の会計フロー</a>
-  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#mexican-installments">メキシコのカード分割払い</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
+  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#mexican-installments">メキシコのカード分割払い</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#meal-vouchers">食事券を受け付ける</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
   <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#gift-cards">ギフトカード</a></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
@@ -94,7 +94,7 @@
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Adyen機能を確認</a></li><li><a href="#terminal-checkout">任意の会計フロー</a>
-  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#mexican-installments">メキシコのカード分割払い</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
+  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#mexican-installments">メキシコのカード分割払い</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#meal-vouchers">食事券を受け付ける</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
   <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#gift-cards">ギフトカード</a></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
@@ -381,6 +381,21 @@
           <p>ギフトカードを設定している場合は、<strong>ギフトカード</strong>をタップして選んだ金額をギフトカードで支払えます。
             残高が足りない場合は一部が承認され、残りは引き続き受け取れます。ギフトカード決済の返金はカードに戻ります。
             ただしローカルギフトカードはMini mPOSの外で返金します。</p>
+          <h3 id="meal-vouchers">食事券を受け付ける</h3>
+          <p>発行会社との契約、店舗登録、Adyenでの有効化が済んでから、「設定」›「決済」で<strong>食事券</strong>をオンにしてください。
+            対象の食事券は端末の確認済みの店舗の国で決まります。ブラジルのPAT食事券、ベルギー・フィンランド・ドイツ・ルクセンブルク・
+            スペインのMastercard/Visa食事券、フランスのTitres-restaurantです。設定後にAdyen機能を更新してください。決済端末に対応し、
+            Tap to Payは使えません。Monizze、ベルギーのPluxee、Lunch Checkは対象外です。</p>
+          <p>対象商品が必要な食事券では、「設定」›「商品」で各商品を開き<strong>食事券の対象</strong>をオンにします。カスタム商品は
+            食事券で支払えません。会計で<strong>分割または現金で支払う</strong>、次に<strong>食事券</strong>をタップします。Mini mPOSは
+            食事券で支払える最大額を示し、使えない理由を説明します。残りはカードか現金で受け取ります。Mastercard/Visa食事券は一部
+            だけ承認されることがあります。Titres-restaurantは1日EUR 25まで、日曜・祝日は使えず、返金できません。代わりにストア
+            クレジットを提供してください。ブラジルの食事券は残高不足だと拒否されるため、少ない金額を入力します。</p>
+          <p>ブラジルでは<strong>ブラジルの食事券をアプリで選択</strong>をオンにすると、Mini mPOSから食事券での支払いを指定します。
+            Adyenサポートが端末のクレジット・デビット・食事券の選択画面を有効にしている場合はオフのままにし、カードで支払って
+            買い物客が端末で選びます。詳細、取引履歴、レシートには指定した食事券と端末の報告内容が表示されます。返金は元の食事券にのみ
+            戻り、現金にはなりません。結果が不明な支払いは、再試行の前に確認してください。</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers">Adyen：ブラジルの食事券</a> · <a href="https://docs.adyen.com/industries/markets/europe-meal-vouchers">Adyen：ヨーロッパの食事券</a></p>
           <h3 id="shopper-display">購入者向け端末画面を使う</h3>
           <p>別のネットワーク端末またはクラウド端末を使う場合、<strong>設定 › 購入者向け端末画面</strong>を開きます。決済前の明細表示、注文確認、会計のメール欄が空の場合のメール入力を選べます。メール入力には
             <a href="#receipts">領収書のメール送信</a>の設定が必要です。<strong>領収書を自動でメール送信</strong>

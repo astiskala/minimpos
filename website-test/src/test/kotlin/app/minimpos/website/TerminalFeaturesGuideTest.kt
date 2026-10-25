@@ -19,6 +19,22 @@ class TerminalFeaturesGuideTest {
             "fr-FR" to "values-fr-rFR",
         )
 
+    private val workflowLabels =
+        mapOf(
+            "capabilities" to listOf("settings_capabilities", "capability_status_needs_config", "capability_status_unsupported"),
+            "audio-guidance" to listOf("checkout_audio_guidance", "checkout_audio_confirm"),
+            "terminal-tips" to listOf("checkout_tip_on_terminal", "settings_dynamic_tip_override", "settings_tip_on_pre_tax"),
+            "mexican-installments" to listOf("mexican_title"),
+            "meal-vouchers" to
+                listOf("voucher_title", "split_open", "split_pay_meal_voucher", "products_meal_voucher", "voucher_account_title"),
+            "partial-payments" to listOf("settings_allow_partial_auth", "status_partially_paid"),
+            "shopper-display" to listOf("settings_shopper_display"),
+            "giving" to listOf("checkout_ask_giving"),
+            "keyed-entry" to listOf("checkout_moto", "checkout_mke"),
+            "reconciliation" to listOf("reconciliation_check", "reconciliation_close_period"),
+            "offline" to listOf("detail_offline_mode", "detail_unconfirmed_batches"),
+        )
+
     @Test
     fun `every guide links configuration based surcharge requirements and restrictions`() {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
@@ -32,21 +48,22 @@ class TerminalFeaturesGuideTest {
     }
 
     @Test
+    fun `every guide links the official meal-voucher requirements`() {
+        val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
+        resources.keys.forEach { language ->
+            val directory = docs.resolve(if (language == "en") "" else language)
+            val using = Jsoup.parse(directory.resolve("using.html").readText())
+            listOf(
+                "https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers",
+                "https://docs.adyen.com/industries/markets/europe-meal-vouchers",
+            ).forEach { url -> assertWithMessage("$language $url").that(using.select("a[href='$url']")).isNotEmpty() }
+            assertThat(using.text()).contains("EUR 25".takeUnless { language == "fr-FR" } ?: "25 EUR")
+        }
+    }
+
+    @Test
     fun `terminal workflows use localized app labels and are reachable from setup`() {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
-        val labels =
-            mapOf(
-                "capabilities" to listOf("settings_capabilities", "capability_status_needs_config", "capability_status_unsupported"),
-                "audio-guidance" to listOf("checkout_audio_guidance", "checkout_audio_confirm"),
-                "terminal-tips" to listOf("checkout_tip_on_terminal", "settings_dynamic_tip_override", "settings_tip_on_pre_tax"),
-                "mexican-installments" to listOf("mexican_title"),
-                "partial-payments" to listOf("settings_allow_partial_auth", "status_partially_paid"),
-                "shopper-display" to listOf("settings_shopper_display"),
-                "giving" to listOf("checkout_ask_giving"),
-                "keyed-entry" to listOf("checkout_moto", "checkout_mke"),
-                "reconciliation" to listOf("reconciliation_check", "reconciliation_close_period"),
-                "offline" to listOf("detail_offline_mode", "detail_unconfirmed_batches"),
-            )
         resources.forEach { (language, folder) ->
             val directory = docs.resolve(if (language == "en") "" else language)
             val using = Jsoup.parse(directory.resolve("using.html").readText())
@@ -61,7 +78,7 @@ class TerminalFeaturesGuideTest {
                     .that(terminalSetup.text())
                     .contains(strings.getValue("settings_discover"))
             }
-            labels.forEach { (id, keys) ->
+            workflowLabels.forEach { (id, keys) ->
                 val task = checkNotNull(using.getElementById(id)) { "$language missing #$id" }
                 val text =
                     if (task.tagName() == "h3") {

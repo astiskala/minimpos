@@ -23,7 +23,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HistorySwitchEntity::class,
         GiftCardOperationEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -210,6 +210,21 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /**
+         * Adds meal-voucher facts: product and sold-line eligibility (false for every existing row, so nothing becomes
+         * voucher-payable by itself) and nullable tender request/answer facts, preserving unfinished tenders.
+         */
+        val MIGRATION_21_22: Migration =
+            object : Migration(21, 22) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE `products` ADD COLUMN `mealVoucherEligible` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE `sale_lines` ADD COLUMN `mealVoucherEligible` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `mealVoucher` TEXT")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `fundingSource` TEXT")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `paymentMethodVariant` TEXT")
+                }
+            }
+
         /** Opens lazily on first query with versioned migrations; no destructive fallback is configured. */
         fun create(context: Context): AppDatabase =
             Room
@@ -226,6 +241,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_18_19,
                     MIGRATION_19_20,
                     MIGRATION_20_21,
+                    MIGRATION_21_22,
                 ).build()
     }
 }

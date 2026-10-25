@@ -91,6 +91,28 @@ class TenderReceiptTest {
     }
 
     @Test
+    fun `a meal voucher is listed even alone, beside the card that paid the rest, with its voucher facts`() {
+        val notes = listOf("Meal voucher: Titres-restaurant", "Not refundable")
+        val receipt =
+            sale.copy(
+                tenders =
+                    listOf(
+                        ReceiptTender(ReceiptTenderKind.MEAL_VOUCHER, "MC **** 0009", 2500),
+                        ReceiptTender(ReceiptTenderKind.CARD, "VISA", 500),
+                    ),
+                cardPlans = notes,
+            )
+        val elements = builder.sale(receipt).elements
+        assertThat(elements).containsAtLeast(
+            ReceiptElement.Row("Meal voucher MC **** 0009", "$25.00"),
+            ReceiptElement.Row("Card VISA", "$5.00"),
+        )
+        assertThat(elements).containsAtLeastElementsIn(notes.map { ReceiptElement.Text(it) })
+        val alone = rows(sale.copy(tenders = listOf(ReceiptTender(ReceiptTenderKind.MEAL_VOUCHER, null, 3000))))
+        assertThat(alone).contains(ReceiptElement.Row("Meal voucher", "$30.00"))
+    }
+
+    @Test
     fun `a stored-value receipt lists its amounts, balance, outcome and every Adyen receipt`() {
         val receipt =
             GiftCardReceipt(

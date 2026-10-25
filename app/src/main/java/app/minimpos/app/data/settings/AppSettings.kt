@@ -396,6 +396,10 @@ enum class ReceiptTipping {
  *   offers no gift-card actions, and only [GiftCardSetting.complete] ones are offered. Shared by the merchant account's
  *   terminals.
  * @property mexicanInstallments Merchant confirms Mexican issuer-program agreements and installment fees with Adyen.
+ * @property mealVouchers Merchant confirms meal-voucher onboarding for the verified store's market (issuer contracts,
+ *   registered MIDs, Adyen enablement); the market itself comes only from the verified store country.
+ * @property mealVoucherAccountSelection For Brazilian PAT vouchers: the app asks for the voucher account
+ *   (`selectedAccountType`); false leaves the choice to the terminal's own screen, which Adyen Support enables.
  */
 @Serializable
 data class PaymentSettings(
@@ -434,6 +438,8 @@ data class PaymentSettings(
     val allowMke: Boolean = false,
     val giftCards: List<GiftCardSetting> = emptyList(),
     val mexicanInstallments: Boolean = false,
+    val mealVouchers: Boolean = false,
+    val mealVoucherAccountSelection: Boolean = false,
 ) {
     /**
      * These settings with [linkExpiryHours] and terminal tipping numbers within their valid ranges, and one entry per

@@ -32,6 +32,7 @@ internal fun localizedReceiptTexts(
         giftCardTitle = localized.getString(R.string.receipt_gift_card_title),
         giftCardAttention = localized.getString(R.string.gift_card_needs_attention),
         mexicanPlan = { localized.mexicanPlan(it) },
+        mealVoucher = { localized.mealVoucherFacts(it) },
     )
 
 private fun receiptLabels(localizedContext: Context) =
@@ -73,6 +74,7 @@ private fun receiptLabels(localizedContext: Context) =
         balanceDue = localizedContext.getString(R.string.receipt_balance_due),
         cashReturned = localizedContext.getString(R.string.split_cash_returned),
         tenderGiftCard = localizedContext.getString(R.string.split_tender_gift_card),
+        tenderMealVoucher = localizedContext.getString(R.string.split_tender_meal_voucher),
         giftCard = localizedContext.getString(R.string.receipt_gift_card),
         balance = localizedContext.getString(R.string.receipt_gift_card_balance),
         tipTotal = localizedContext.getString(R.string.receipt_tip_total),

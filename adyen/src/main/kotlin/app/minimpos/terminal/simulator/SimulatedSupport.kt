@@ -279,6 +279,7 @@ internal fun buildPaymentAdditional(
     if (!payment.isOffline) {
         additional[NexoVocabulary.PSP_REFERENCE] = payment.psp
     }
+    if (payment.card.variant.endsWith(VOUCHER_VARIANT_SUFFIX)) additional[NexoVocabulary.FUNDING_SOURCE] = PREPAID
     if (refusal == null) {
         if (payment.isOffline) {
             additional[NexoVocabulary.OFFLINE] = "true"
@@ -355,3 +356,9 @@ internal fun simulatedAudioGuidance(saleData: SaleData?): Boolean =
                 }
         }.getOrDefault(false)
     } == true
+
+/** Brazilian voucher variants Adyen documents end with this, e.g. `elo_voucher_br`. */
+private const val VOUCHER_VARIANT_SUFFIX = "_voucher_br"
+
+/** The `fundingSource` Adyen documents for a Brazilian meal voucher. */
+private const val PREPAID = "PREPAID"

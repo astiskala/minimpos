@@ -234,7 +234,14 @@ class SaleSession(
     ) = edited {
         cart.update {
             (if (singleItem) Cart() else it).addProduct(
-                CartProduct(product.id, product.name, product.sku, product.priceMinor, AppliedTax(tax.name, tax.rateMilliPercent)),
+                CartProduct(
+                    product.id,
+                    product.name,
+                    product.sku,
+                    product.priceMinor,
+                    AppliedTax(tax.name, tax.rateMilliPercent),
+                    product.mealVoucherEligible,
+                ),
                 newKey,
             )
         }

@@ -47,6 +47,7 @@ class CodecTest {
                     CatalogueProduct("Gift card", 5_000_000_000, 1, null, "GC"),
                     CatalogueProduct("Stamp", 120, null, null, null),
                     CatalogueProduct("Catering deposit", 20_000, 0, null, null, preAuthorisation = true),
+                    CatalogueProduct("Salade", 890, 0, 1, "SAL", mealVoucherEligible = true),
                 ),
         )
 
@@ -71,6 +72,15 @@ class CodecTest {
     fun `the product kind survives the transfer`() {
         val decoded = decodeCatalogue(encodeCatalogue(catalogue))
         assertThat(decoded.products.filter { it.preAuthorisation }.map { it.name }).containsExactly("Catering deposit")
+    }
+
+    @Test
+    fun `meal-voucher eligibility survives the transfer and unknown product flags are rejected`() {
+        val decoded = decodeCatalogue(encodeCatalogue(catalogue))
+        assertThat(decoded.products.filter { it.mealVoucherEligible }.map { it.name }).containsExactly("Salade")
+        assertThat(decoded.products.single { it.mealVoucherEligible }.preAuthorisation).isFalse()
+        assertThat(decodeCatalogue(cataloguePacketFor(body(flags = 3))).products.single().mealVoucherEligible).isTrue()
+        assertFormatError("Invalid flags") { decodeCatalogue(cataloguePacketFor(body(flags = 4))) }
     }
 
     @Test
@@ -373,9 +383,10 @@ class CodecTest {
     private fun body(
         taxRate: Int = 10_000,
         taxIndex: Int = 0,
+        flags: Int = 0,
     ): ByteArray =
         "AUD".toByteArray() + varint(1) + varint(1) + "G".toByteArray() + varint(taxRate) + varint(0) +
-            varint(1) + varint(1) + "P".toByteArray() + varint(100) + varint(taxIndex + 1) + varint(0) + varint(0) + varint(0)
+            varint(1) + varint(1) + "P".toByteArray() + varint(100) + varint(taxIndex + 1) + varint(0) + varint(0) + varint(flags)
 
     private fun cataloguePacketFor(body: ByteArray) = packetFor(varint(1) + body)
 

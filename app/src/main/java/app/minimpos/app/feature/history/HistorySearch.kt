@@ -111,7 +111,15 @@ class HistorySearch(
 
                     is HistoryItem.Sale -> {
                         item.tenders.flatMap {
-                            listOfNotNull(it.mexicanPayment, it.returnedPaymentType, it.returnedInstallments, it.returnedPlanId)
+                            listOfNotNull(
+                                it.mexicanPayment,
+                                it.returnedPaymentType,
+                                it.returnedInstallments,
+                                it.returnedPlanId,
+                                it.mealVoucher,
+                                it.paymentMethodVariant,
+                                it.fundingSource,
+                            )
                         }
                     }
                 }

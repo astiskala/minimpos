@@ -28,12 +28,15 @@ class TransferFormatException(
  *
  * The current format is version 5. The body starts with a varint of sections present (bit 0: catalogue, bit 1:
  * settings, bit 2: sealed secrets, bit 3: connection), followed by those sections in order. Settings, secrets and
- * connection are length-prefixed bytes. Product records end with flags (bit 0: pre-authorisation).
+ * connection are length-prefixed bytes. Product records end with flags (bit 0: pre-authorisation, bit 1: meal-voucher
+ * eligible); other bits are rejected.
  * The app and setup helper use this one format; any other version is rejected.
  */
 object TransferCodec {
     private const val VERSION: Int = 5
     private const val FLAG_PRE_AUTHORISATION = 1L
+    private const val FLAG_MEAL_VOUCHER = 2L
+    private const val PRODUCT_FLAGS = FLAG_PRE_AUTHORISATION or FLAG_MEAL_VOUCHER
     private const val SECTION_CATALOGUE = 1L
     private const val SECTION_SETTINGS = 2L
     private const val SECTION_SECRETS = 4L
@@ -122,7 +125,9 @@ object TransferCodec {
             body.writeVarint((it.taxRateIndex?.plus(1) ?: 0).toLong())
             body.writeVarint((it.categoryIndex?.plus(1) ?: 0).toLong())
             body.writeString(it.sku.orEmpty())
-            body.writeVarint(if (it.preAuthorisation) FLAG_PRE_AUTHORISATION else 0)
+            body.writeVarint(
+                (if (it.preAuthorisation) FLAG_PRE_AUTHORISATION else 0) or (if (it.mealVoucherEligible) FLAG_MEAL_VOUCHER else 0),
+            )
         }
     }
 
@@ -212,17 +217,18 @@ object TransferCodec {
                 val name = reader.readString()
                 val priceMinor = reader.readVarint()
                 val tax = reader.readCount()
+                val category = reader.readCount()
+                val sku = reader.readString().ifEmpty { null }
+                val flags = reader.readVarint()
+                if (flags and PRODUCT_FLAGS.inv() != 0L) throw TransferFormatException("Invalid flags for product '$name'")
                 CatalogueProduct(
                     name = name,
                     priceMinor = priceMinor,
                     taxRateIndex = (tax - 1).takeIf { tax > 0 },
-                    categoryIndex =
-                        reader
-                            .readCount()
-                            .takeIf { stored -> stored > 0 }
-                            ?.minus(1),
-                    sku = reader.readString().ifEmpty { null },
-                    preAuthorisation = (reader.readVarint() and FLAG_PRE_AUTHORISATION) != 0L,
+                    categoryIndex = (category - 1).takeIf { category > 0 },
+                    sku = sku,
+                    preAuthorisation = flags and FLAG_PRE_AUTHORISATION != 0L,
+                    mealVoucherEligible = flags and FLAG_MEAL_VOUCHER != 0L,
                 )
             }
         return Catalogue(currency, taxRates, categories, products)

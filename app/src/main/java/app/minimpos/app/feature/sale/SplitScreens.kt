@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -41,10 +42,15 @@ import app.minimpos.app.data.db.TenderKind
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.feature.giftcard.CardChoice
 import app.minimpos.app.feature.giftcard.GiftCardPicker
+import app.minimpos.app.feature.mealVoucherBlocked
+import app.minimpos.app.feature.mealVoucherFacts
+import app.minimpos.app.feature.mealVoucherLabel
+import app.minimpos.app.feature.mealVoucherRules
 import app.minimpos.app.feature.mexicanPlan
 import app.minimpos.app.history.SaleResultNext
 import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.payment.Checkout
+import app.minimpos.app.payment.MealVoucherAvailability
 import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.BottomActions
@@ -65,6 +71,7 @@ import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.money.AmountEntry
 import app.minimpos.core.money.MoneyFormatter
+import app.minimpos.core.voucher.MealVoucherScheme
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 
@@ -89,6 +96,7 @@ fun SplitScreen(
             when {
                 state.cashStage -> vm.enterCash(false)
                 state.giftCardStage -> vm.enterGiftCard(false)
+                state.voucherStage -> vm.enterVoucher(false)
                 else -> navigator.back()
             }
         },
@@ -103,6 +111,8 @@ fun SplitScreen(
                     onGiftCard = { vm.enterGiftCard(true) },
                     onPayGiftCard = { gate.run { if (vm.payByGiftCard()) navigator.replace(Route.Payment(SaleKind.SALE)) } },
                     onConfirmCash = { vm.confirmCash { id -> navigator.replace(Route.SaleResult(id)) } },
+                    onVoucher = { vm.enterVoucher(true) },
+                    onPayVoucher = { gate.run { if (vm.payByCard()) navigator.replace(Route.Payment(SaleKind.SALE)) } },
                 )
             }
         },
@@ -120,7 +130,13 @@ fun SplitScreen(
                 SplitChoices(
                     state,
                     money,
-                    SplitEvents(vm::selectMode, vm::updateAmount, vm::setShares, vm::setQuantity, vm::updateCard),
+                    SplitEvents(
+                        vm::selectMode,
+                        vm::updateAmount,
+                        vm::setShares,
+                        vm::setQuantity,
+                        vm::updateCard,
+                    ) { vm.enterVoucher(true, it) },
                     Modifier.fillMaxSize().padding(padding),
                 )
             }
@@ -138,9 +154,19 @@ private fun SplitActions(
     onConfirmCash: () -> Unit,
     onGiftCard: () -> Unit,
     onPayGiftCard: () -> Unit,
+    onVoucher: () -> Unit,
+    onPayVoucher: () -> Unit,
 ) {
     BottomActions {
-        if (state.giftCardStage) {
+        if (state.voucherStage) {
+            PrimaryButton(
+                stringResource(R.string.split_pay_meal_voucher_amount, money.format(state.amountMinor)),
+                onPayVoucher,
+                enabled = state.voucherReady,
+                icon = Icons.Default.Restaurant,
+                modifier = Modifier.testTag("payMealVoucher"),
+            )
+        } else if (state.giftCardStage) {
             PrimaryButton(
                 stringResource(R.string.split_pay_gift_card_amount, money.format(state.amountMinor)),
                 onPayGiftCard,
@@ -171,16 +197,34 @@ private fun SplitActions(
                 icon = Icons.Default.Payments,
                 modifier = Modifier.testTag("splitCash"),
             )
-            if (state.giftCards.isNotEmpty()) {
-                SecondaryButton(
-                    stringResource(R.string.split_pay_gift_card),
-                    onGiftCard,
-                    enabled = state.valid,
-                    icon = Icons.Default.CardGiftcard,
-                    modifier = Modifier.testTag("splitGiftCard"),
-                )
-            }
+            StoredValueTenders(state, onGiftCard, onVoucher)
         }
+    }
+}
+
+/** Gift cards and meal vouchers, when configured; the voucher stage itself explains why it cannot pay now. */
+@Composable
+private fun ColumnScope.StoredValueTenders(
+    state: SplitUiState,
+    onGiftCard: () -> Unit,
+    onVoucher: () -> Unit,
+) {
+    if (state.giftCards.isNotEmpty()) {
+        SecondaryButton(
+            stringResource(R.string.split_pay_gift_card),
+            onGiftCard,
+            enabled = state.valid,
+            icon = Icons.Default.CardGiftcard,
+            modifier = Modifier.testTag("splitGiftCard"),
+        )
+    }
+    if (state.voucher != null) {
+        SecondaryButton(
+            stringResource(R.string.split_pay_meal_voucher),
+            onVoucher,
+            icon = Icons.Default.Restaurant,
+            modifier = Modifier.testTag("splitMealVoucher"),
+        )
     }
 }
 
@@ -194,6 +238,7 @@ private class SplitEvents(
     val onShares: (Int) -> Unit,
     val onQuantity: (position: Int, quantity: Int) -> Unit,
     val onCard: ((CardChoice) -> CardChoice) -> Unit = {},
+    val onVoucher: (MealVoucherScheme) -> Unit = {},
 )
 
 @Composable
@@ -204,12 +249,24 @@ private fun SplitChoices(
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
-    LazyColumn(modifier, contentPadding = PaddingValues(dimens.screenPadding), horizontalAlignment = Alignment.CenterHorizontally) {
+    LazyColumn(
+        modifier.testTag("splitChoices"),
+        contentPadding = PaddingValues(dimens.screenPadding),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         item(key = "summary", contentType = "summary") {
             Column(
                 Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(dimens.spacing),
             ) { SplitSummary(state, money, events) }
+        }
+        if (state.voucherStage) {
+            item(key = "voucher", contentType = "voucher") {
+                Column(
+                    Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth().padding(top = dimens.spacing),
+                    verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+                ) { MealVoucherDetails(state, money, events.onVoucher) }
+            }
         }
         if (state.giftCardStage) {
             item(key = "giftCard", contentType = "giftCard") {
@@ -264,6 +321,11 @@ private fun ColumnScope.SplitSummary(
         CashEntry(state, money)
         return
     }
+    if (state.voucherStage) {
+        // A voucher pays a typed amount only, so the allocation modes are not offered.
+        SplitAmount(state, money)
+        return
+    }
     val modes =
         listOfNotNull(SplitMode.AMOUNT, SplitMode.SHARES.takeIf { balance.sharesOpen }, SplitMode.ITEMS.takeIf { balance.itemsOpen })
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -276,13 +338,22 @@ private fun ColumnScope.SplitSummary(
             ) { Text(stringResource(modeLabel(mode)), maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
     }
+    SplitAmount(state, money)
+    if (state.mode == SplitMode.SHARES) Shares(state, money, events.onShares)
+}
+
+/** What the next tender collects. */
+@Composable
+private fun SplitAmount(
+    state: SplitUiState,
+    money: MoneyFormatter,
+) {
     Text(
         money.format(state.amountMinor),
         style = LocalDimens.current.amountStyle,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth().testTag("splitAmount"),
     )
-    if (state.mode == SplitMode.SHARES) Shares(state, money, events.onShares)
 }
 
 /** One sold line with what earlier tenders already pay for and the units this tender pays for. */
@@ -362,6 +433,47 @@ private fun ColumnScope.CashEntry(
     Text(stringResource(R.string.split_cash_note), style = MaterialTheme.typography.bodySmall)
 }
 
+/**
+ * The meal voucher paying the next tender: its market and documented limits, the eligible amount and why it cannot pay
+ * now, all before payment; an offline demo lets the operator pick the market it demonstrates.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ColumnScope.MealVoucherDetails(
+    state: SplitUiState,
+    money: MoneyFormatter,
+    onChoose: (MealVoucherScheme) -> Unit,
+) {
+    val reading = state.voucher ?: return
+    val balance = state.balance ?: return
+    val scheme = reading.scheme
+    if (state.voucherAvailability.simulated) {
+        Text(stringResource(R.string.voucher_demo), style = MaterialTheme.typography.bodySmall)
+        if (reading.schemes.size > 1) {
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                reading.schemes.forEachIndexed { index, choice ->
+                    SegmentedButton(
+                        selected = choice == scheme,
+                        onClick = { onChoose(choice) },
+                        shape = SegmentedButtonDefaults.itemShape(index, reading.schemes.size),
+                        modifier = Modifier.testTag("voucherScheme_${choice.name}"),
+                    ) { Text(stringResource(mealVoucherLabel(choice)), maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                }
+            }
+        }
+    }
+    Card(Modifier.testTag("mealVoucher")) {
+        scheme?.let { Text(stringResource(mealVoucherLabel(it)), style = MaterialTheme.typography.titleSmall) }
+        if (scheme?.productEligibility == true) {
+            LabeledValue(stringResource(R.string.voucher_eligible), money.format(balance.eligibleMinor))
+        }
+        LabeledValue(stringResource(R.string.voucher_limit), money.format(reading.limitMinor), emphasize = true)
+    }
+    scheme?.let { Text(stringResource(mealVoucherRules(it)), style = MaterialTheme.typography.bodySmall) }
+    if (scheme?.productEligibility == true) Text(stringResource(R.string.voucher_custom_items), style = MaterialTheme.typography.bodySmall)
+    reading.blocked?.let { BlockedReason(stringResource(mealVoucherBlocked(it))) }
+}
+
 private fun modeLabel(mode: SplitMode): Int =
     when (mode) {
         SplitMode.AMOUNT -> R.string.split_mode_amount
@@ -407,7 +519,9 @@ internal fun ColumnScope.SplitProgress(
         )
     }
     val context = androidx.compose.ui.platform.LocalContext.current
-    record.tenders.forEach { tender -> context.mexicanPlan(tender).forEach { Text(it) } }
+    record.tenders.sortedBy { it.sequence }.forEach { tender ->
+        (context.mexicanPlan(tender) + context.mealVoucherFacts(tender)).forEach { Text(it) }
+    }
     SaleTenders(record, money)
 }
 
@@ -429,7 +543,13 @@ private fun SaleTenders(
                     stringResource(R.string.split_tender_cash)
                 } else {
                     listOfNotNull(
-                        stringResource(if (tender.giftCard != null) R.string.split_tender_gift_card else R.string.split_tender_card),
+                        stringResource(
+                            when {
+                                tender.giftCard != null -> R.string.split_tender_gift_card
+                                tender.mealVoucher != null -> R.string.split_tender_meal_voucher
+                                else -> R.string.split_tender_card
+                            },
+                        ),
                         tender.paymentBrand?.uppercase(),
                         tender.maskedPan,
                     ).joinToString(" ")
@@ -473,6 +593,18 @@ private fun splitViewModel(saleId: String?): SplitViewModel {
                         it.provider.supports(GiftCardOperation.REDEEM)
                     }.takeIf { terminal.capabilities.giftCards }
                     .orEmpty()
+            },
+            combine(container.settingsState, container.walletDiscovery.state) { settings, discovery ->
+                { currency: String ->
+                    MealVoucherAvailability(
+                        configured = settings.payment.mealVouchers,
+                        schemes = discovery.mealVoucherSchemes(currency),
+                        context = discovery.context,
+                        identity = discovery.identity,
+                        simulated = discovery.simulated,
+                        accountSelection = settings.payment.mealVoucherAccountSelection,
+                    )
+                }
             },
         )
     }

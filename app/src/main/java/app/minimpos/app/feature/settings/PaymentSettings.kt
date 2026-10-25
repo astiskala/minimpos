@@ -72,6 +72,24 @@ internal fun ColumnScope.PaymentsSection(
         tag = "allowMke",
         blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
     )
+    MarketSettings(payment, update)
+    SectionHeader(stringResource(R.string.settings_tokenization))
+    ShopperReferenceSettings(payment, update)
+    SectionHeader(stringResource(R.string.settings_payment_links))
+    PaymentLinkSettings(payment, update)
+    SectionHeader(stringResource(R.string.settings_gift_cards), Modifier.testTag("giftCardsHeader"))
+    GiftCardSettings(payment, update)
+}
+
+/**
+ * Market-specific card workflows the merchant confirmed with Adyen: Mexican installments and meal vouchers, whose market
+ * itself comes from the verified store; Brazilian voucher selection is asked only once vouchers are on.
+ */
+@Composable
+private fun ColumnScope.MarketSettings(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
     SettingSwitch(
         stringResource(R.string.mexican_title),
         payment.mexicanInstallments,
@@ -79,12 +97,22 @@ internal fun ColumnScope.PaymentsSection(
         subtitle = stringResource(R.string.mexican_configuration),
         tag = "mexicanInstallments",
     )
-    SectionHeader(stringResource(R.string.settings_tokenization))
-    ShopperReferenceSettings(payment, update)
-    SectionHeader(stringResource(R.string.settings_payment_links))
-    PaymentLinkSettings(payment, update)
-    SectionHeader(stringResource(R.string.settings_gift_cards), Modifier.testTag("giftCardsHeader"))
-    GiftCardSettings(payment, update)
+    SettingSwitch(
+        stringResource(R.string.voucher_title),
+        payment.mealVouchers,
+        { value -> update { it.copy(mealVouchers = value) } },
+        subtitle = stringResource(R.string.voucher_configuration),
+        tag = "mealVouchers",
+    )
+    if (payment.mealVouchers) {
+        SettingSwitch(
+            stringResource(R.string.voucher_account_title),
+            payment.mealVoucherAccountSelection,
+            { value -> update { it.copy(mealVoucherAccountSelection = value) } },
+            subtitle = stringResource(R.string.voucher_account_description),
+            tag = "mealVoucherAccountSelection",
+        )
+    }
 }
 
 /**

@@ -157,7 +157,7 @@ class RepositoriesTest {
             products =
                 listOf(
                     CatalogueProduct("Latte", 500, 0, 0, "L1"),
-                    CatalogueProduct("Water", 300, 1, null, null),
+                    CatalogueProduct("Water", 300, 1, null, null, mealVoucherEligible = true),
                     CatalogueProduct("Catering deposit", 20_000, 0, null, "CD", preAuthorisation = true),
                 ),
         )
@@ -212,6 +212,10 @@ class RepositoriesTest {
             assertThat(products.keys).containsExactly("Latte", "Water", "Tea", "Catering deposit")
             assertThat(products.getValue("Latte").priceMinor).isEqualTo(500)
             assertThat(products.getValue("Water").priceMinor).isEqualTo(300)
+            // Voucher eligibility arrives with the catalog without touching names, prices or tax.
+            assertThat(products.getValue("Water").mealVoucherEligible).isTrue()
+            assertThat(products.getValue("Latte").mealVoucherEligible).isFalse()
+            assertThat(products.getValue("Tea").mealVoucherEligible).isFalse()
         }
 
     @Test

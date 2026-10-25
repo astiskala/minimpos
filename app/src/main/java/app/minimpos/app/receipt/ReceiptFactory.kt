@@ -75,6 +75,7 @@ data class ReceiptSampleTexts(
  * @property giftCardTitle Localised stored-value receipt title.
  * @property giftCardAttention Localised note on an activity that still needs a check, confirmation or repair.
  * @property mexicanPlan Localized requested and returned plan text for a tender, empty for ordinary history.
+ * @property mealVoucher Localized requested market and returned voucher facts for a tender, empty for other tenders.
  */
 data class ReceiptTexts(
     val labels: ReceiptLabels = ReceiptLabels(),
@@ -89,6 +90,7 @@ data class ReceiptTexts(
     val giftCardTitle: String = "GIFT CARD",
     val giftCardAttention: String = "Needs attention",
     val mexicanPlan: (SaleTenderEntity) -> List<String> = { emptyList() },
+    val mealVoucher: (SaleTenderEntity) -> List<String> = { emptyList() },
 )
 
 /**
@@ -190,7 +192,7 @@ class ReceiptFactory(
                         (sale.amountMinor - it - (sale.tipMinor ?: 0) - (sale.cashBackMinor ?: 0)).coerceAtLeast(0)
                     },
                 discloseSurcharge = standing.approved && !sale.paymentLink && !sale.savedCard,
-                cardPlans = record.tenders.flatMap(resolved.mexicanPlan),
+                cardPlans = record.tenders.sortedBy { it.sequence }.flatMap { resolved.mexicanPlan(it) + resolved.mealVoucher(it) },
                 tenders = receiptTenders(record),
                 balanceDueMinor = sale.remainingMinor.takeIf { sale.isPartiallyPaid },
             )
@@ -374,7 +376,12 @@ internal fun receiptTenders(record: SaleWithLines): List<ReceiptTender> =
             ReceiptTender(ReceiptTenderKind.CASH, null, tender.requestedMinor, tender.cashReceivedMinor, tender.changeMinor)
         } else {
             val detail = listOfNotNull(tender.paymentBrand?.uppercase(), tender.maskedPan).joinToString(" ").ifBlank { null }
-            val kind = if (tender.giftCard != null) ReceiptTenderKind.GIFT_CARD else ReceiptTenderKind.CARD
+            val kind =
+                when {
+                    tender.giftCard != null -> ReceiptTenderKind.GIFT_CARD
+                    tender.mealVoucher != null -> ReceiptTenderKind.MEAL_VOUCHER
+                    else -> ReceiptTenderKind.CARD
+                }
             ReceiptTender(kind, detail, tender.authorisedMinor ?: tender.requestedMinor)
         }
     }

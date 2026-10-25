@@ -17,6 +17,8 @@ import app.minimpos.core.ids.Ids
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.refund.RefundCalculator
 import app.minimpos.core.refund.RefundableLine
+import app.minimpos.core.voucher.MealVoucherScheme
+import app.minimpos.core.voucher.VoucherRefund
 import app.minimpos.terminal.client.RefundParams
 import app.minimpos.terminal.client.TerminalClient
 import java.math.BigInteger
@@ -55,6 +57,12 @@ enum class RefundInvalidReason {
      * device's history has, so it is refunded there or in the Customer Area, never with a terminal reversal.
      */
     CHARGED_ELSEWHERE,
+
+    /**
+     * Only meal vouchers whose network supports no refunds (Titres-restaurant through Conecs) paid what is left, so
+     * nothing can be returned through the app; staff offer store credit or another remedy instead, never cash.
+     */
+    VOUCHER_NOT_REFUNDABLE,
 }
 
 /** What the operator chose to refund of a [RefundablePayment]. */
@@ -495,7 +503,13 @@ class RefundablePayment private constructor(
                 }
 
                 else -> {
-                    eligible(record)?.let(::refundable) ?: Refundability.NotRefundable(RefundInvalidReason.NOT_REFUNDABLE)
+                    eligible(record)?.let(::refundable) ?: Refundability.NotRefundable(
+                        if (record.tenders.any { it.approved } && record.tenders.filter { it.approved }.all(::voucherOnly)) {
+                            RefundInvalidReason.VOUCHER_NOT_REFUNDABLE
+                        } else {
+                            RefundInvalidReason.NOT_REFUNDABLE
+                        },
+                    )
                 }
             }
         }
@@ -598,7 +612,8 @@ class RefundablePayment private constructor(
         fun isCheckoutTransaction(transactionId: String): Boolean = transactionId.startsWith(".")
 
         /**
-         * Reads one original approved tender: a card (or a gift card whose provider takes refunds) with a valid
+         * Reads one original approved tender: a card (or a gift card whose provider takes refunds, or a meal voucher
+         * whose market supports refunds to the original voucher) with a valid
          * transaction timestamp, referenced by its transaction, or recorded cash, referenced locally by its tender ID
          * and recording time; null when it cannot safely be referenced.
          */
@@ -609,6 +624,8 @@ class RefundablePayment private constructor(
             if (tender.status != SaleStatus.APPROVED) return null
             // Adyen documents payments only for local gift cards: their value is never returned through the app.
             if (tender.giftCard?.let { GiftCardProvider.valueOf(it) }?.supports(GiftCardOperation.REFUND) == false) return null
+            // Titres-restaurant (Conecs) refunds are not supported; other vouchers return only to the original voucher.
+            if (MealVoucherScheme.stored(tender.mealVoucher)?.refund == VoucherRefund.NONE) return null
             val cash = tender.kind == TenderKind.CASH
             val transaction = (if (cash) tender.id else tender.poiTransactionId) ?: return null
             val timestamp =
@@ -664,6 +681,12 @@ class RefundablePayment private constructor(
                 record,
             )
         }
+
+        private fun voucherOnly(tender: SaleTenderEntity): Boolean =
+            MealVoucherScheme.stored(tender.mealVoucher)?.refund == VoucherRefund.NONE
+
+        /** Whether [tender] is a meal voucher whose value the app never returns ([VoucherRefund.NONE]). */
+        fun keepsVoucherValue(tender: SaleTenderEntity): Boolean = tender.approved && voucherOnly(tender)
 
         private fun refundable(payment: RefundablePayment): Refundability =
             if (payment.remainingMinor > 0) {

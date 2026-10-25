@@ -205,6 +205,10 @@ answers and balances, `BalanceInquiry`, redemption partial approvals (and whethe
 terminal totals include stored-value management;
 Mexican debit/credit routing and installment issuer agreements, counts, refusal/partial answers, receipt `productType`,
 status recovery and referenced full/partial refunds on local and cloud terminals;
+meal vouchers: Brazilian PAT `selectedAccountType` `MEAL_VOUCHER` requests and the Support-enabled terminal selection
+screen, returned `fundingSource`/`paymentMethodVariant`, short-balance refusals and referenced refunds; European
+Mastercard/Visa voucher recognition, partial approvals and refunds; Titres-restaurant (Conecs) routing, the EUR 25 daily
+limit and Sunday/public-holiday declines; issuer MID/MCC registration declines and status recovery of voucher payments;
 `GetTotalsRequest` and `ReconciliationRequest` (`SaleReconciliation`); chained `AdminRequest` waiting-screen sessions with
 `DisplayRequest` and `InputRequest`; `AllowPartialAuthorisation` (`Result=Partial`); `AskGiving` two-step
 `TransactionStatus` (`SaleID=AdyenGiving`) lookups; `MOTO` and `ForceEntryMode=Keyed` (MKE); and offline EMV /

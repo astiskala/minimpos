@@ -30,6 +30,8 @@ import app.minimpos.app.R
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.feature.capture.CaptureScreen
 import app.minimpos.app.feature.capture.TipScreen
+import app.minimpos.app.feature.giftcard.GiftCardActivityScreen
+import app.minimpos.app.feature.giftcard.GiftCardsScreen
 import app.minimpos.app.feature.history.HistoryScreen
 import app.minimpos.app.feature.history.ReconciliationScreen
 import app.minimpos.app.feature.history.RefundDetailScreen
@@ -138,10 +140,13 @@ private fun AppEntries(
                 entry<Route.SavedCard> { PinGate(navigator, manager = true) { SavedCardScreen(navigator) } }
                 entry<Route.SavedCardSale> { PinGate(navigator, manager = true) { SaleScreen(navigator, SaleKind.SALE, card = it.card) } }
                 entry<Route.SavedCardReview> { PinGate(navigator, manager = true) { SavedCardReviewScreen(it.card, navigator) } }
+                entry<Route.GiftCards> { GiftCardsScreen(navigator) }
+                entry<Route.GiftCardActivity> { GiftCardActivityScreen(it.groupId, navigator) }
                 entry<Route.Reconciliation> { ReconciliationScreen(navigator) }
                 entry<Route.History>(metadata = historyList) { HistoryScreen(navigator) }
                 entry<Route.SaleDetail>(metadata = historyDetail) { SaleDetailScreen(it.saleId, navigator) }
                 entry<Route.RefundDetail>(metadata = historyDetail) { RefundDetailScreen(it.refundId, navigator) }
+                entry<Route.GiftCardDetail>(metadata = historyDetail) { GiftCardActivityScreen(it.groupId, navigator, fromHistory = true) }
                 entry<Route.Products> { PinGate(navigator) { ProductsScreen(navigator) } }
                 entry<Route.ProductEdit> { PinGate(navigator) { ProductEditScreen(it.productId, it.sku, navigator) } }
                 entry<Route.TransferExport> { PinGate(navigator) { TransferExportScreen(navigator) } }

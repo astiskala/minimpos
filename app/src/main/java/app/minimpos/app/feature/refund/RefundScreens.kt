@@ -92,6 +92,7 @@ import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.codec.RefundQrPayload
+import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.core.money.AmountEntry
 import app.minimpos.core.money.MoneyFormatter
 import kotlinx.coroutines.flow.flowOf
@@ -376,6 +377,14 @@ private fun ReturnComponents(
     money: MoneyFormatter,
 ) {
     val split = original.legs.isNotEmpty()
+    // Local gift cards take payments only, so their share of the sale is not offered for return here.
+    if (original.local
+            ?.tenders
+            .orEmpty()
+            .any { it.approved && it.giftCard == GiftCardProvider.LOCAL.name }
+    ) {
+        OutcomeNote(stringResource(R.string.refund_gift_card_local))
+    }
     LabeledValue(
         stringResource(R.string.surcharge_return_fee),
         (if (split) original.surchargeFor(state.allocation) else original.surchargeFor(state.choice))?.let(money::format)
@@ -662,7 +671,7 @@ internal fun tenderLabel(tender: SaleTenderEntity): String =
         stringResource(R.string.split_tender_cash)
     } else {
         listOf(
-            stringResource(R.string.split_tender_card),
+            stringResource(if (tender.giftCard != null) R.string.split_tender_gift_card else R.string.split_tender_card),
             tender.paymentBrand?.uppercase(),
             tender.maskedPan,
         ).filterNotNull().joinToString(" ")

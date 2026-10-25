@@ -1,6 +1,7 @@
 package app.minimpos.app
 
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.repo.GiftCardRepository
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
@@ -40,6 +41,8 @@ class CashArchitectureTest {
             refunds: RefundRepository,
             refund: RefundEntity,
         ) = refunds.recordCashReturn(refund, null)
+
+        suspend fun handOver(giftCards: GiftCardRepository) = giftCards.recordCashHandover("h")
     }
 
     private companion object {
@@ -67,6 +70,11 @@ class CashArchitectureTest {
                     .haveNameNotMatching(except(RefundLegs::class.java))
                     .should()
                     .callMethodWhere(callTo(RefundRepository::class.java, "recordCashReturn")),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(except(CashTenders::class.java))
+                    .should()
+                    .callMethodWhere(callTo(GiftCardRepository::class.java, "recordCashHandover")),
             )
     }
 }

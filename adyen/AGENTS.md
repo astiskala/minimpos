@@ -41,6 +41,9 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
   `AdditionalData`/`AdditionalResponse`, Base64 admin/payment-operation payloads in SDK string fields,
   Payments app App Links and unstructured terminal rejections. See CONTRIBUTING's API model ownership for the coverage
   and transport boundary.
+- Financial requests (payments, reversals, gift-card `StoredValue`) go through `client/TerminalExchange`, which recovers
+  a missing answer with status checks of the request's own message category; never resend. A scanned gift-card number
+  lives only in `GiftCardAccount` until its request is built.
 - Amounts cross `TerminalClient` in minor units with typed intents (such as `appPrintsReceipts`); only the client
   converts them to and from nexo's major units, with the Adyen decimals it is constructed with (`currencyDigits`).
 - `TerminalLocalAPI` posts to `<endpoint>:8443/nexo/`; `xerces:xercesImpl` supplies `DatatypeFactory` on Android.

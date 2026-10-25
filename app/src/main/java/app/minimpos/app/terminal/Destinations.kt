@@ -199,10 +199,14 @@ class SimulatedTerminal(
     ) {
         val sales = items.filterIsInstance<HistoryItem.Sale>().map { it.sale }
         val refunds = items.filterIsInstance<HistoryItem.Refund>().map { it.refund }
+        val stages = items.filterIsInstance<HistoryItem.GiftCard>().flatMap { it.activity.stages }
         simulator.forget(
             SimulatorRemoval(
-                (sales.mapNotNull { it.serviceId } + refunds.mapNotNull { it.serviceId }).toSet(),
-                (sales.mapNotNull { it.poiTransactionId } + tenders.mapNotNull { it.poiTransactionId }).toSet(),
+                (sales.mapNotNull { it.serviceId } + refunds.mapNotNull { it.serviceId } + stages.mapNotNull { it.serviceId }).toSet(),
+                (
+                    sales.mapNotNull { it.poiTransactionId } + tenders.mapNotNull { it.poiTransactionId } +
+                        stages.mapNotNull { it.poiTransactionId }
+                ).toSet(),
                 (sales.mapNotNull { it.pspReference } + tenders.mapNotNull { it.pspReference }).toSet(),
                 chargeKeys,
             ),

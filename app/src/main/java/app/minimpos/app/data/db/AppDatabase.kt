@@ -21,8 +21,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SaleTenderEntity::class,
         RefundEntity::class,
         HistorySwitchEntity::class,
+        GiftCardOperationEntity::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +35,9 @@ abstract class AppDatabase : RoomDatabase() {
 
     /** Refunds. */
     abstract fun refundDao(): RefundDao
+
+    /** Stored-value (gift-card) stages. */
+    abstract fun giftCardDao(): GiftCardDao
 
     /** Opening the current database. */
     companion object {
@@ -165,6 +169,36 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /**
+         * Preserves every version-19 sale, tender and refund: existing tenders were not paid by gift card, and the new
+         * stored-value table starts empty.
+         */
+        val MIGRATION_19_20: Migration =
+            object : Migration(19, 20) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `giftCard` TEXT")
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS `gift_card_operations` (`id` TEXT NOT NULL, `groupId` TEXT NOT NULL, " +
+                            "`stage` TEXT NOT NULL, `category` TEXT, `createdAt` INTEGER NOT NULL, `processedAt` INTEGER, " +
+                            "`status` TEXT NOT NULL, `provider` TEXT, `providerCode` TEXT, `entry` TEXT, `cardLastFour` TEXT, " +
+                            "`currency` TEXT NOT NULL, `amountMinor` INTEGER NOT NULL, `approvedMinor` INTEGER, " +
+                            "`balanceMinor` INTEGER, `merchantReference` TEXT NOT NULL, `serviceId` TEXT, `poiId` TEXT, " +
+                            "`poiTransactionId` TEXT, `poiTimestamp` TEXT, `pspReference` TEXT, `poiReconciliationId` TEXT, " +
+                            "`funds` TEXT, `originalId` TEXT, `message` TEXT, `errorCondition` TEXT, `reason` TEXT, `context` TEXT, " +
+                            "`environment` TEXT, `customerReceiptJson` TEXT, `cashierReceiptJson` TEXT, PRIMARY KEY(`id`))",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_gift_card_operations_createdAt_id` " +
+                            "ON `gift_card_operations` (`createdAt`, `id`)",
+                    )
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_gift_card_operations_groupId` ON `gift_card_operations` (`groupId`)")
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_gift_card_operations_processedAt_id` " +
+                            "ON `gift_card_operations` (`processedAt`, `id`)",
+                    )
+                }
+            }
+
         /** Opens lazily on first query with versioned migrations; no destructive fallback is configured. */
         fun create(context: Context): AppDatabase =
             Room
@@ -179,6 +213,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_16_17,
                     MIGRATION_17_18,
                     MIGRATION_18_19,
+                    MIGRATION_19_20,
                 ).build()
     }
 }

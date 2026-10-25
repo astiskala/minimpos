@@ -118,6 +118,12 @@ enum class SetupProblem {
     /** The destination cannot report terminal totals or close a reconciliation period (Tap to Pay). */
     TOTALS,
 
+    /** The destination takes no gift cards (Tap to Pay). */
+    GIFT_CARDS,
+
+    /** No gift-card provider that supports the action is set up in Settings › Payments. */
+    GIFT_CARD_PROVIDER,
+
     /** Original sale/card balance changed after refund review; the request was not sent. */
     REFUND_BALANCE,
 }

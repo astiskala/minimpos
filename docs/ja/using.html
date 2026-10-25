@@ -83,7 +83,7 @@
   <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
-  <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
+  <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#gift-cards">ギフトカード</a></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
   </a></li><li><a href="#terminal-tips">端末でのチップ</a></li><li><a href="#tips">領収書のチップ</a></li><li><a href="#more">
   追加デバイスとデータ</a></li>
 </ol></div>
@@ -97,7 +97,7 @@
   <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
-  <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
+  <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#gift-cards">ギフトカード</a></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
   </a></li><li><a href="#terminal-tips">端末でのチップ</a></li><li><a href="#tips">領収書のチップ</a></li><li><a href="#more">
   追加デバイスとデータ</a></li>
 </ol></details>
@@ -371,6 +371,9 @@
           <h3 id="split-payments">販売を分割する・現金で受け取る</h3>
           <p>会計画面で<strong>分割または現金で支払う</strong>をタップします。この支払いで払う<strong>金額</strong>、<strong>均等割</strong>または<strong>商品</strong>を選び、<strong>カード</strong>または<strong>現金</strong>をタップします。価格と税は登録時のままで、端数の1単位は最初の分割に加わります。現金の場合は受け取った額を入力し、表示されたお釣りを渡してから確定します。現金はこの端末にのみ記録され、決済端末には送られません。</p>
           <p>全額が支払われるまで販売は<strong>一部支払済み</strong>のままです。結果画面または<strong>取引履歴</strong>で<strong>残高を回収</strong>をタップすると、再起動後も続けられます。分割する前に、チップ、寄付、音声ガイド、MOTO・手動入力をオフにしてください。商品は全額で回収し、それ以外のカード金額はカード発行会社が一部承認することがあります。カードの結果が不明な場合は、先に確認してから回収を続けてください。レシートにはすべての支払いが記載され、日次レポートでは現金が区別されます。端末の合計に現金は含まれません。</p>
+          <p>ギフトカードを設定している場合は、<strong>ギフトカード</strong>をタップして選んだ金額をギフトカードで支払えます。
+            残高が足りない場合は一部が承認され、残りは引き続き受け取れます。ギフトカード決済の返金はカードに戻ります。
+            ただしローカルギフトカードはMini mPOSの外で返金します。</p>
           <h3 id="shopper-display">購入者向け端末画面を使う</h3>
           <p>別のネットワーク端末またはクラウド端末を使う場合、<strong>設定 › 購入者向け端末画面</strong>を開きます。決済前の明細表示、注文確認、会計のメール欄が空の場合のメール入力を選べます。メール入力には
             <a href="#receipts">領収書のメール送信</a>の設定が必要です。<strong>領収書を自動でメール送信</strong>
@@ -482,6 +485,31 @@
             応答がない場合、選択を無効化して一覧を再取得します。
             未確認のままなら<strong>削除を確認</strong>を使い、解決するまで請求や削除の再試行は行わないでください。
           </p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="gift-cards">
+          <h2>ギフトカードを販売・管理する</h2>
+          <p>ギフトカードはAdyen端末で利用できます。Tap to Payでは利用できません。<strong>設定 › 決済 › ギフトカード</strong>で、
+            Adyenでオンボーディングを完了した各プロバイダーをオンにし、Intersolveまたはローカルギフトカードの場合はAdyenから案内されたカード種別を入力し、
+            スタッフのカード提示方法（カメラでスキャンして有効期限を入力、または端末でスワイプ・手入力）を選びます。
+            各プロバイダーについてAdyenが案内している操作だけが表示されます。無効化はGivexのみ、ローカルギフトカードは決済のみです。</p>
+          <ol>
+            <li>ホームで<strong>ギフトカード</strong>をタップし、プロバイダーとカードの提示方法を選びます。</li>
+            <li><strong>残高照会</strong>、<strong>有効化</strong>、<strong>チャージ</strong>、
+              <strong>現金払い出し</strong>、<strong>カードへ返金</strong>、
+              <strong>無効化</strong>のいずれかを選びます。</li>
+            <li>金額を追加する場合は<strong>カード決済</strong>、または<strong>アプリ外で受領</strong>を選んで受け取ったことを確認します。</li>
+            <li>確認し、マネージャーPINで承認します。</li>
+          </ol>
+          <p>残高照会に承認は不要です。カードの金額を変更するには、マネージャーPINの設定が必要です（現時点での既定の運用）
+            。カード決済を先に行い、承認されてから金額を送信します。決済の結果が不明な場合は、先に確認してください。
+            決済は完了したのに金額が追加されなかった場合は<strong>金額未追加</strong>と表示されます。
+            金額を再送信するか、カード決済を返金するか、代金を返したことを記録してください。自動で繰り返されることはありません。</p>
+          <p><strong>チャージ取消</strong>は、24時間以内のカードの最新チャージに表示されます。
+            現金払い出しは通常、残高全額を払い出してカードを使えなくします。一部のGivexカードのみ一部払い出しが可能です。
+            承認後に現金を渡し、<strong>現金を渡しました</strong>をタップします。確認していない受け渡しは再起動後も<strong>要対応</strong>に残ります。
+            ギフトカードの取引は<strong>取引履歴</strong>と日次レポートに売上とは別に表示され、
+            売上には含まれません。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="payment-links">

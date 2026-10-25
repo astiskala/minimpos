@@ -15,15 +15,20 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.BarcodeScan
 import app.minimpos.terminal.client.DiagnosisResult
+import app.minimpos.terminal.client.GiftCardAccount
+import app.minimpos.terminal.client.GiftCardBalance
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.PrintOutcome
 import app.minimpos.terminal.client.RefundParams
+import app.minimpos.terminal.client.StoredValueParams
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
+import app.minimpos.terminal.client.balance
+import app.minimpos.terminal.client.storedValue
 import app.minimpos.terminal.paymentsapp.PaymentsAppLinks
 import app.minimpos.terminal.transport.CloudCredentials
 import app.minimpos.terminal.transport.CloudDevices
@@ -350,7 +355,8 @@ class TerminalGateway(
         send(paying = true, serviceId, onSending, onContext, expected, expectedIdentity) {
             val supportsModel = it.destination.simulatesApi || TerminalClient.audioGuidanceMinimumSoftware(it.client.identity.poiId) != null
             val compatible = it.destination.supportsTerminalFeatures && supportsModel && audioGuidancePoiId == it.client.identity.poiId
-            if (params.audioGuidance && !compatible) {
+            val unsupported = (params.audioGuidance && !compatible) || (params.giftCard != null && !it.destination.giftCards)
+            if (unsupported) {
                 TransactionOutcome.NotProcessed(Fault.Unsupported)
             } else {
                 it.client.pay(params, serviceId)
@@ -379,6 +385,32 @@ class TerminalGateway(
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
     ): Attempt<TransactionOutcome> = send(paying = false, serviceId, onSending, onContext, expected) { it.client.refund(params, serviceId) }
+
+    /**
+     * Activates, loads, undoes a load of or deactivates a gift card, see [TerminalClient.storedValue]; [onSending] and
+     * missing setup are handled as for [pay]. A destination without gift cards ([DestinationRules.giftCards]) sends
+     * nothing ([TransactionOutcome.NotProcessed] with [Fault.Unsupported]); an [expected] context that no longer
+     * matches sends nothing either.
+     */
+    suspend fun storedValue(
+        params: StoredValueParams,
+        serviceId: String,
+        expected: PaymentContext? = null,
+        onContext: suspend (PaymentContext) -> Unit = {},
+        onSending: suspend (poiId: String) -> Unit = {},
+    ): Attempt<TransactionOutcome> =
+        send(paying = true, serviceId, onSending, onContext, expected) {
+            if (it.destination.giftCards) it.client.storedValue(params, serviceId) else TransactionOutcome.NotProcessed(Fault.Unsupported)
+        }
+
+    /**
+     * Reads a gift card's balance, see [TerminalClient.balance]; nothing changes on the card. Missing setup sends
+     * nothing ([Attempt.NotSetUp]); an unreachable destination or one without gift cards is [GiftCardBalance.Failed].
+     */
+    suspend fun balance(account: GiftCardAccount): Attempt<GiftCardBalance> =
+        attempt(paying = true, unreachable = { GiftCardBalance.Failed(it) }) { open ->
+            Attempt.Made(if (open.destination.giftCards) open.client.balance(account) else GiftCardBalance.Failed(Fault.Unsupported))
+        }
 
     /**
      * Asks the terminal once for the result of the [kind] of transaction sent with [serviceId], see

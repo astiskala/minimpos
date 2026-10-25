@@ -201,12 +201,17 @@ class SmallScreenTest {
     fun `home guides terminal setup through the Adyen API test before the shared key`() {
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.TEST)) }
         compose.setContent { MiniMposApp(container) }
-        // Beside the setup card, the tiles keep their icons above their labels, and Settings remains in the top-right corner.
-        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "settings").forEach {
-            compose.onNodeWithTag(it).assertIsDisplayed()
+        // Beside the setup card, the tiles keep their icons above their labels, scrolling rather than shrinking below their
+        // own minimum, and Settings remains in the top-right corner.
+        listOf("newSale", "preAuth", "savedCard", "giftCards", "refund", "history", "reconciliation").forEach {
+            compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed()
         }
         compose.onNodeWithTag("settings").assertIsDisplayed()
-        compose.onNodeWithTag("terminalSetup").assertIsDisplayed().performClick()
+        compose
+            .onNodeWithTag("terminalSetup")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         waitForTag("apiKey")
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("HarbourCoffeeCOM")

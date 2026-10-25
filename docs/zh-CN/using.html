@@ -82,7 +82,7 @@
   Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#audio-guidance">使用语音引导付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分与现金</a></li><li>
   <a href="#shopper-display">购物者端屏幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">离线支付</a></li><li><a href="#wallets">扫描钱包付款码</a></li><li><a href="#shoppers">
-  识别号和保存卡片</a><ul><li><a href="#saved-card">管理令牌</a></li></ul></li><li><a href="#payment-links">付款链接</a></li><li>
+  识别号和保存卡片</a><ul><li><a href="#saved-card">管理令牌</a></li></ul></li><li><a href="#gift-cards">礼品卡</a></li><li><a href="#payment-links">付款链接</a></li><li>
   <a href="#preauth">订金</a></li><li><a href="#terminal-tips">终端小费</a></li><li><a href="#tips">收据小费</a></li><li>
   <a href="#more">更多设备和数据</a></li>
 </ol></div>
@@ -95,7 +95,7 @@
   Adyen 功能</a></li><li><a href="#terminal-checkout">可选结账流程</a><ul><li><a href="#audio-guidance">使用语音引导付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分与现金</a></li><li>
   <a href="#shopper-display">购物者端屏幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">离线支付</a></li><li><a href="#wallets">扫描钱包付款码</a></li><li><a href="#shoppers">
-  识别号和保存卡片</a><ul><li><a href="#saved-card">管理令牌</a></li></ul></li><li><a href="#payment-links">付款链接</a></li><li>
+  识别号和保存卡片</a><ul><li><a href="#saved-card">管理令牌</a></li></ul></li><li><a href="#gift-cards">礼品卡</a></li><li><a href="#payment-links">付款链接</a></li><li>
   <a href="#preauth">订金</a></li><li><a href="#terminal-tips">终端小费</a></li><li><a href="#tips">收据小费</a></li><li>
   <a href="#more">更多设备和数据</a></li>
 </ol></details>
@@ -345,6 +345,8 @@
           <h3 id="split-payments">拆分销售或收取现金</h3>
           <p>在结账页点按<strong>拆分或现金支付</strong>。选择本次付款的<strong>金额</strong>、<strong>均分</strong>或<strong>商品</strong>，然后点按<strong>刷卡</strong>或<strong>现金</strong>。价格和税额保持登记时不变，多出的最小货币单位分给前几份。现金付款时，输入购物者给的金额，找回显示的零钱，然后确认。现金只记录在本设备上，不会发送到终端。</p>
           <p>销售在付清前保持<strong>部分已付</strong>。在结果页或<strong>交易记录</strong>中点按<strong>收取余额</strong>即可继续，重启后也可以。拆分前请关闭小费、捐款、语音引导以及 MOTO 或手动输入。按商品付款时全额收取；其他刷卡金额仍可能由发卡行部分授权。刷卡结果未知时，请先确认再继续收款。收据会列出每笔付款，每日报告会单独列出现金；终端合计从不包含现金。</p>
+          <p>设置礼品卡后，点击<strong>礼品卡</strong>即可用礼品卡支付所选金额。余额不足时会部分获批，
+            其余部分可继续收取。礼品卡付款的退款会退回到卡中；本地礼品卡除外，需在 Mini mPOS 之外退款。</p>
           <h3 id="shopper-display">使用购物者端终端屏幕</h3>
           <p>使用独立的网络或云终端时，打开<strong>设置 › 购物者端终端屏幕</strong>。可选择在付款前显示商品明细、请购物者确认订单，或在结账未填写电子邮件时收集电子邮件。收集电子邮件需要先设置
             <a href="#receipts">电子收据</a>；开启<strong>自动发送电子收据</strong>后，收据会自动发送。批准后可显示二维码并邀请购物者进行 0–10 评分；终端返回的评分显示在交易详情中。
@@ -444,6 +446,28 @@
             如未收到响应，Mini mPOS会使已有选择失效并重新获取列表。
             如结果仍未确认，请使用<strong>检查删除结果</strong>，在解决前不要扣款或再次删除。
           </p>
+          <p class="back-to-contents"><a href="#contents">返回目录</a></p>
+        </section>
+        <section id="gift-cards">
+          <h2>销售和管理礼品卡</h2>
+          <p>礼品卡需配合 Adyen 终端使用；Tap to Pay 不支持礼品卡。在<strong>设置 › 支付 › 礼品卡</strong>中，
+            开启您已在 Adyen 完成接入的每个服务商；对于 Intersolve 或本地礼品卡，添加 Adyen 提供的卡类型；
+            并选择员工出示卡片的方式：用相机扫描并输入有效期，或在终端上刷卡或手动输入。只提供 Adyen 为该服务商说明的操作：
+            停用仅限 Givex，本地礼品卡仅支持付款。</p>
+          <ol>
+            <li>在主页点击<strong>礼品卡</strong>，然后选择服务商和出示卡片的方式。</li>
+            <li>选择<strong>查询余额</strong>、<strong>激活</strong>、<strong>充值</strong>、
+              <strong>提取现金</strong>、<strong>退款到卡</strong>或<strong>停用</strong>。</li>
+            <li>充入金额时，选择<strong>刷卡付款</strong>，或选择<strong>在应用外收款</strong>并确认已收到款项。</li>
+            <li>确认后，使用经理PIN批准。</li>
+          </ol>
+          <p>查询余额无需批准。更改卡内金额需要已设置的经理PIN（目前的默认做法）。先完成刷卡付款，付款获批后才发送金额；
+            如果付款结果未知，请先查询。如果已收款但金额未充入，活动会显示<strong>金额未充入</strong>：
+            请重新发送金额、退还刷卡付款，或记录已退还的款项。不会自动重复任何操作。</p>
+          <p><strong>撤销充值</strong>仅对该卡 24 小时内的最近一次充值显示。提现通常支付全部余额并停用此卡；
+            只有部分 Givex 卡允许部分提现。获批后交付现金，然后点击<strong>现金已交付</strong>；
+            未确认的交付即使重启后也会保留在<strong>需要处理</strong>中。礼品卡活动显示在<strong>交易记录</strong>中，
+            并在每日报告中单独列出；从不计入销售。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="payment-links">

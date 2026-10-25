@@ -6,6 +6,8 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.repo.TenderBalance
 import app.minimpos.app.data.repo.remainingAmountKnown
+import app.minimpos.app.data.settings.GiftCardSetting
+import app.minimpos.app.feature.giftcard.CardChoice
 import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.payment.CashTenders
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -71,6 +74,9 @@ data class SplitItem(
  * @property received Cash received, entered on the keypad during [cashStage].
  * @property rejected Whether the last start was refused because the sale changed; review and try again.
  * @property recording Whether a cash tender is being recorded.
+ * @property giftCards Configured gift-card providers that take payments; empty offers no gift-card tender.
+ * @property giftCardStage Whether the gift card for this tender is being presented.
+ * @property card The gift card being presented.
  */
 data class SplitUiState(
     val loaded: Boolean = false,
@@ -86,6 +92,9 @@ data class SplitUiState(
     val received: AmountEntry = AmountEntry(),
     val rejected: Boolean = false,
     val recording: Boolean = false,
+    val giftCards: List<GiftCardSetting> = emptyList(),
+    val giftCardStage: Boolean = false,
+    val card: CardChoice = CardChoice(),
 ) {
     /** Whether shares of a split already begun are fixed, so their count can no longer change. */
     val sharesFixed: Boolean get() = balance?.nextShare != null
@@ -117,6 +126,9 @@ data class SplitUiState(
     /** Whether the next tender can be collected as chosen. */
     val valid: Boolean get() = balance?.accepts(amountMinor, allocation) == true && (mode != SplitMode.ITEMS || allocation != null)
 
+    /** Whether the gift card presented can pay this tender now. */
+    val giftCardReady: Boolean get() = giftCardStage && valid && card.present(giftCards) != null
+
     /** Change to hand back for the cash received; null while too little was entered. */
     val changeMinor: Long? get() = (received.minor - amountMinor).takeIf { received.minor >= amountMinor && amountMinor > 0 }
 
@@ -136,6 +148,7 @@ data class SplitUiState(
  * @param payments Stored sales and their tenders.
  * @param lifecycle Runs card tenders on the terminal.
  * @param cash Records cash tenders.
+ * @param giftCards Configured gift-card providers that take payments.
  * @param clock Stamps references and cash tenders.
  * @param zone The time zone of generated references.
  */
@@ -146,6 +159,7 @@ class SplitViewModel(
     payments: StoredPayments,
     private val lifecycle: TransactionLifecycle<PaymentStart>,
     private val cash: CashTenders,
+    giftCards: Flow<List<GiftCardSetting>> = flowOf(emptyList()),
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) : ViewModel() {
@@ -194,8 +208,15 @@ class SplitViewModel(
 
     /** The screen state, updated whenever the sale or checkout and the operator's choices change. */
     val state: StateFlow<SplitUiState> =
-        combine(source, local) { loaded, choices ->
+        combine(source, local, giftCards) { loaded, choices, settings ->
+            val provider =
+                choices.card.provider?.takeIf { chosen -> settings.any { it.provider == chosen } } ?: settings.firstOrNull()?.provider
+            val setting = settings.firstOrNull { it.provider == provider }
+            val entry =
+                choices.card.entry.takeIf { setting?.entries?.contains(it) == true } ?: setting?.entries?.minOrNull() ?: choices.card.entry
             choices.copy(
+                giftCards = settings,
+                card = choices.card.copy(provider = provider, entry = entry),
                 loaded = loaded.loaded,
                 currency = loaded.currency,
                 saleId = loaded.saleId,
@@ -238,6 +259,29 @@ class SplitViewModel(
         if (!current.valid) return false
         val start = start(current) ?: return reject()
         return lifecycle.start(start) != null
+    }
+
+    /** Opens or closes gift-card presentation for the chosen tender. */
+    fun enterGiftCard(open: Boolean) =
+        local.update {
+            it.copy(giftCardStage = open && state.value.valid, cashStage = false, card = it.card.copy(scanned = null), rejected = false)
+        }
+
+    /** Updates the gift card being presented. */
+    fun updateCard(transform: (CardChoice) -> CardChoice) = local.update { it.copy(card = transform(it.card)) }
+
+    /** Starts the chosen tender as a gift-card redemption on the terminal; false when not ready or a payment is running. */
+    fun payByGiftCard(): Boolean {
+        val current = state.value
+        if (!current.giftCardReady) return false
+        val card = current.card.present(current.giftCards) ?: return false
+        val start = start(current)?.withGiftCard(card) ?: return reject().also { card.discard() }
+        local.update { it.copy(giftCardStage = false, card = it.card.copy(scanned = null)) }
+        return lifecycle.start(start) != null ||
+            run {
+                card.discard()
+                false
+            }
     }
 
     /** Opens or closes cash entry for the chosen tender, starting with the exact amount received. */

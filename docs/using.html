@@ -91,7 +91,7 @@
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
-  <a href="#saved-card">Manage tokens</a></li></ul></li><li><a href="#payment-links">Payment links</a></li><li>
+  <a href="#saved-card">Manage tokens</a></li></ul></li><li><a href="#gift-cards">Gift cards</a></li><li><a href="#payment-links">Payment links</a></li><li>
   <a href="#preauth">Deposits</a></li><li><a href="#terminal-tips">Tips on the terminal</a></li><li><a href="#tips">Tips
   on the receipt</a></li><li><a href="#more">More devices and data</a></li>
 </ol></div>
@@ -107,7 +107,7 @@
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
-  <a href="#saved-card">Manage tokens</a></li></ul></li><li><a href="#payment-links">Payment links</a></li><li>
+  <a href="#saved-card">Manage tokens</a></li></ul></li><li><a href="#gift-cards">Gift cards</a></li><li><a href="#payment-links">Payment links</a></li><li>
   <a href="#preauth">Deposits</a></li><li><a href="#terminal-tips">Tips on the terminal</a></li><li><a href="#tips">Tips
   on the receipt</a></li><li><a href="#more">More devices and data</a></li>
 </ol></details>
@@ -437,6 +437,9 @@
             manual entry before splitting. Items are collected in full; other card amounts can still be partially approved
             by the issuer. Resolve an unknown card result before collecting more. The receipt lists every payment, and the
             daily report shows cash separately; terminal totals never include it.</p>
+          <p>With gift cards set up, tap <strong>Gift card</strong> to pay the chosen amount with one. A short balance is
+            approved in part and the rest stays to collect. A return of a gift-card payment goes back to the card,
+            except for local gift cards, which are refunded outside Mini mPOS.</p>
           <h3 id="shopper-display">Use the shopper-facing terminal screen</h3>
           <p>With a separate network/cloud terminal, open <strong>Settings › Shopper terminal display</strong>. Choose
             whether to show item details before payment, ask the shopper to confirm the order, or collect an email when
@@ -574,6 +577,33 @@
             invalidates selections and checks a fresh listing. If deletion remains unconfirmed, use <strong>Check
             deletion</strong>; do not charge or retry deletion until resolved.
           </p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+        </section>
+        <section id="gift-cards">
+          <h2>Sell and manage gift cards</h2>
+          <p>Gift cards work with an Adyen terminal; Tap to Pay can’t take them. In <strong>Settings › Payments › Gift
+            cards</strong>, turn on each provider you completed onboarding with at Adyen, add the card type Adyen gave
+            you for Intersolve or local gift cards, and choose how staff present cards: scan with the camera and enter
+            the expiry date, or swipe or key in on the terminal. Only the actions Adyen documents for a provider are
+            offered: deactivation is Givex only, and local gift cards take payments only.</p>
+          <ol>
+            <li>On Home, tap <strong>Gift cards</strong>, then choose the provider and how the card is presented.</li>
+            <li>Choose <strong>Check balance</strong>, <strong>Activate</strong>, <strong>Load</strong>, <strong>Cash
+              out</strong>, <strong>Refund to card</strong> or <strong>Deactivate</strong>.</li>
+            <li>For a new value, choose <strong>Card payment</strong>, or <strong>Received outside app</strong> and
+              confirm you received the money.</li>
+            <li>Confirm, then approve with the Manager PIN.</li>
+          </ol>
+          <p>Checking a balance needs no approval. Changing a card’s value needs a configured Manager PIN, the working
+            default for now. A card payment is taken first and the value is sent only once it is approved; if the
+            payment’s result is unknown, check it before anything else happens. If the payment was taken but no value
+            was added, the activity shows <strong>Value not added</strong>: send the value again, refund the card
+            payment, or record the money given back. Nothing is repeated automatically.</p>
+          <p><strong>Undo load</strong> appears for the card’s latest load within 24 hours. A cash out normally pays the
+            whole balance and ends the card; only some Givex cards allow less. Hand the cash over once it is approved,
+            then tap <strong>Cash handed over</strong>; an unconfirmed handover stays under <strong>Needs
+            attention</strong>, also after a restart. Gift card activity appears in <strong>History</strong> and
+            separately in the daily report; it is never counted as a sale.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="payment-links">

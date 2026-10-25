@@ -98,11 +98,29 @@ class HistorySearch(
     ): Boolean {
         if (method != null && (sale == null || !method.matches(sale))) return false
         if (terms.isEmpty()) return true
-        val texts = sale?.let(::saleTexts).orEmpty() + if (item is HistoryItem.Refund) refundTexts(item) else emptyList()
+        val texts =
+            sale?.let(::saleTexts).orEmpty() +
+                when (item) {
+                    is HistoryItem.Refund -> refundTexts(item)
+                    is HistoryItem.GiftCard -> giftCardTexts(item)
+                    is HistoryItem.Sale -> emptyList()
+                }
         val (currency, amounts) =
             when (item) {
-                is HistoryItem.Sale -> item.sale.currency to setOf(item.sale.amountMinor, item.sale.totalMinor)
-                is HistoryItem.Refund -> item.refund.currency to setOf(item.refund.amountMinor)
+                is HistoryItem.Sale -> {
+                    item.sale.currency to setOf(item.sale.amountMinor, item.sale.totalMinor)
+                }
+
+                is HistoryItem.Refund -> {
+                    item.refund.currency to setOf(item.refund.amountMinor)
+                }
+
+                is HistoryItem.GiftCard -> {
+                    item.activity.currency to
+                        item.activity.stages
+                            .map { it.amountMinor }
+                            .toSet()
+                }
             }
         val parsed =
             amountsByCurrency.getOrPut(currency) {
@@ -113,6 +131,9 @@ class HistorySearch(
             texts.any { it.contains(terms[index], ignoreCase = true) } || parsed[index] in amounts
         }
     }
+
+    private fun giftCardTexts(item: HistoryItem.GiftCard): List<String> =
+        item.activity.stages.flatMap { listOfNotNull(it.merchantReference, it.pspReference, it.cardLastFour, it.providerCode) }
 
     private fun saleTexts(sale: SaleEntity): List<String> =
         listOfNotNull(
@@ -193,6 +214,7 @@ enum class HistoryFilter {
                 when (item) {
                     is HistoryItem.Sale -> item.sale.kind == SaleKind.PRE_AUTHORISATION
                     is HistoryItem.Refund -> item.refund.cancellation && item.refund.saleId in preAuths
+                    is HistoryItem.GiftCard -> false
                 }
             }
 

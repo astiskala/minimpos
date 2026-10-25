@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Balance
+import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -305,12 +306,13 @@ private fun PaymentTile(
 @Composable
 private fun ColumnScope.AreaTiles(onOpen: (Route) -> Unit) {
     val savedCard = stringResource(R.string.home_saved_card)
+    val giftCards = stringResource(R.string.home_gift_cards)
     val refund = stringResource(R.string.home_refund)
     val history = stringResource(R.string.home_history)
     val reconciliation = stringResource(R.string.home_reconciliation)
     val labels =
         rememberSharedFontSize(
-            listOf(savedCard, refund, history, reconciliation),
+            listOf(savedCard, giftCards, refund, history, reconciliation),
             MaterialTheme.typography.titleMedium,
             MIN_TILE_LABEL_SIZE,
         )
@@ -323,14 +325,21 @@ private fun ColumnScope.AreaTiles(onOpen: (Route) -> Unit) {
             modifier = Modifier.testTag("savedCard"),
         )
         HomeTile(
+            Icons.Default.CardGiftcard,
+            giftCards,
+            labels,
+            onClick = { onOpen(Route.GiftCards) },
+            modifier = Modifier.testTag("giftCards"),
+        )
+    }
+    Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+        HomeTile(
             Icons.Default.QrCodeScanner,
             refund,
             labels,
             onClick = { onOpen(Route.RefundScan) },
             modifier = Modifier.testTag("refund"),
         )
-    }
-    Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
         HomeTile(
             Icons.AutoMirrored.Filled.ReceiptLong,
             history,
@@ -338,6 +347,9 @@ private fun ColumnScope.AreaTiles(onOpen: (Route) -> Unit) {
             onClick = { onOpen(Route.History) },
             modifier = Modifier.testTag("history"),
         )
+    }
+    // Row-major among the implemented areas; the last one takes the whole row rather than leaving an empty half.
+    Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
         HomeTile(
             Icons.Default.Balance,
             reconciliation,

@@ -11,6 +11,8 @@ import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.repo.TenderAllocationJson
 import app.minimpos.app.data.repo.returnsTo
 import app.minimpos.core.codec.RefundQrPayload
+import app.minimpos.core.giftcard.GiftCardOperation
+import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.core.ids.Ids
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.refund.RefundCalculator
@@ -596,15 +598,17 @@ class RefundablePayment private constructor(
         fun isCheckoutTransaction(transactionId: String): Boolean = transactionId.startsWith(".")
 
         /**
-         * Reads one original approved tender: a card with a valid transaction timestamp, referenced by its transaction,
-         * or recorded cash, referenced locally by its tender ID and recording time; null when it cannot safely be
-         * referenced.
+         * Reads one original approved tender: a card (or a gift card whose provider takes refunds) with a valid
+         * transaction timestamp, referenced by its transaction, or recorded cash, referenced locally by its tender ID
+         * and recording time; null when it cannot safely be referenced.
          */
         internal fun fromTender(
             record: SaleWithLines,
             tender: SaleTenderEntity,
         ): RefundablePayment? {
             if (tender.status != SaleStatus.APPROVED) return null
+            // Adyen documents payments only for local gift cards: their value is never returned through the app.
+            if (tender.giftCard?.let { GiftCardProvider.valueOf(it) }?.supports(GiftCardOperation.REFUND) == false) return null
             val cash = tender.kind == TenderKind.CASH
             val transaction = (if (cash) tender.id else tender.poiTransactionId) ?: return null
             val timestamp =

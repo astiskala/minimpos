@@ -91,7 +91,7 @@
   Pagamentos parciais</a></li><li><a href="#split-payments">Divisão e dinheiro</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
   caridade</a></li><li><a href="#keyed-entry">MOTO e MKE</a></li></ul></li><li><a href="#offline">Pagamentos off-line
   </a></li><li><a href="#wallets">Digitalizar códigos de carteira</a></li><li><a href="#shoppers">Referências e cartões
-  salvos</a><ul><li><a href="#saved-card">Gerenciar tokens</a></li></ul></li><li><a href="#payment-links">Links de
+  salvos</a><ul><li><a href="#saved-card">Gerenciar tokens</a></li></ul></li><li><a href="#gift-cards">Cartões-presente</a></li><li><a href="#payment-links">Links de
   pagamento</a></li><li><a href="#preauth">Depósitos</a></li><li><a href="#terminal-tips">gorjetas no terminal</a></li>
   <li><a href="#tips">gorjetas sobre o recibo</a></li><li><a href="#more">Mais dispositivos e dados</a></li>
 </ol></div>
@@ -107,7 +107,7 @@
   Pagamentos parciais</a></li><li><a href="#split-payments">Divisão e dinheiro</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
   caridade</a></li><li><a href="#keyed-entry">MOTO e MKE</a></li></ul></li><li><a href="#offline">Pagamentos off-line
   </a></li><li><a href="#wallets">Digitalizar códigos de carteira</a></li><li><a href="#shoppers">Referências e cartões
-  salvos</a><ul><li><a href="#saved-card">Gerenciar tokens</a></li></ul></li><li><a href="#payment-links">Links de
+  salvos</a><ul><li><a href="#saved-card">Gerenciar tokens</a></li></ul></li><li><a href="#gift-cards">Cartões-presente</a></li><li><a href="#payment-links">Links de
   pagamento</a></li><li><a href="#preauth">Depósitos</a></li><li><a href="#terminal-tips">gorjetas no terminal</a></li>
   <li><a href="#tips">gorjetas sobre o recibo</a></li><li><a href="#more">Mais dispositivos e dados</a></li>
 </ol></details>
@@ -458,6 +458,9 @@
             áudio e MOTO ou digitação manual antes de dividir. Itens são cobrados por completo; outros valores no cartão
             ainda podem ser aprovados parcialmente pelo emissor. Resolva um resultado desconhecido antes de cobrar mais. O
             recibo lista cada pagamento e o relatório diário separa o dinheiro; os totais do terminal nunca o incluem.</p>
+          <p>Com cartões-presente configurados, toque em <strong>Cartão-presente</strong> para pagar o valor escolhido
+            com um deles. Um saldo insuficiente é aprovado em parte e o restante continua a receber. A devolução de um
+            pagamento com cartão-presente volta ao cartão, exceto para cartões locais, reembolsados fora do Mini mPOS.</p>
           <h3 id="shopper-display">Usar a tela do terminal voltada para o cliente</h3>
           <p>Com um terminal de rede/nuvem separado, abra <strong>Configurações › Tela do terminal para o cliente</strong>. Escolha se deseja mostrar os detalhes do item antes do pagamento, pedir ao comprador para
             confirmar o pedido ou receber um e-mail quando a finalização da compra não tiver nenhum. Solicitar um e-mail
@@ -602,6 +605,36 @@
             resposta, o Mini mPOS invalida as seleções e consulta uma nova lista. Se continuar sem confirmação, toque
             em <strong>Verificar exclusão</strong>; não cobre nem repita a exclusão até resolver.
           </p>
+          <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
+        </section>
+        <section id="gift-cards">
+          <h2>Vender e gerenciar cartões-presente</h2>
+          <p>Cartões-presente funcionam com um terminal Adyen; o Tap to Pay não os aceita. Em <strong>Configurações ›
+            Pagamentos › Cartões-presente</strong>, ative cada provedor com o qual você concluiu a integração na Adyen,
+            adicione o tipo de cartão que a Adyen informou para Intersolve ou cartões locais e escolha como a equipe
+            apresenta os cartões: escanear com a câmera e informar a validade, ou passar ou digitar no terminal. Só são
+            oferecidas as ações que a Adyen documenta para cada provedor: a desativação é só para Givex e cartões locais
+            aceitam apenas pagamentos.</p>
+          <ol>
+            <li>Na tela inicial, toque em <strong>Cartões-presente</strong> e escolha o provedor e como o cartão é
+              apresentado.</li>
+            <li>Escolha <strong>Consultar saldo</strong>, <strong>Ativar</strong>, <strong>Recarregar</strong>,
+              <strong>Sacar em dinheiro</strong>, <strong>Reembolsar no cartão</strong> ou <strong>Desativar</strong>.</li>
+            <li>Para adicionar valor, escolha <strong>Pagamento com cartão</strong>, ou <strong>Recebido fora do
+              app</strong> e confirme que recebeu o dinheiro.</li>
+            <li>Confirme e aprove com o PIN de gerente.</li>
+          </ol>
+          <p>Consultar o saldo não exige aprovação. Alterar o valor de um cartão exige um PIN de gerente configurado, o
+            padrão de trabalho por enquanto. O pagamento com cartão é cobrado primeiro e o valor só é enviado depois da
+            aprovação; se o resultado do pagamento for desconhecido, verifique-o antes de qualquer outra ação. Se o
+            pagamento foi cobrado mas nenhum valor foi adicionado, a atividade mostra <strong>Valor não
+            adicionado</strong>: envie o valor de novo, reembolse o pagamento com cartão ou registre o valor devolvido.
+            Nada é repetido automaticamente.</p>
+          <p><strong>Desfazer recarga</strong> aparece para a última recarga do cartão nas últimas 24 horas. O saque
+            normalmente paga todo o saldo e encerra o cartão; só alguns cartões Givex permitem menos. Entregue o
+            dinheiro após a aprovação e toque em <strong>Dinheiro entregue</strong>; uma entrega não confirmada fica em
+            <strong>Requer atenção</strong>, mesmo após reiniciar. A atividade de cartões-presente aparece no
+            <strong>Histórico</strong> e separadamente no relatório diário; nunca conta como venda.</p>
           <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
         </section>
         <section id="payment-links">

@@ -39,6 +39,12 @@ sealed interface DestinationRules {
     /** Whether physical-terminal capabilities (terminal tipping, Giving, MOTO/MKE, totals, display) are supported. */
     val supportsTerminalFeatures: Boolean get() = true
 
+    /**
+     * Whether Terminal API gift-card requests (stored value, balance inquiry, gift-card payments) can be sent; the
+     * Payments app documents none. Provider onboarding is the merchant's configuration, never inferred here.
+     */
+    val giftCards: Boolean get() = supportsTerminalFeatures
+
     /** Whether receipt print requests are supported, independently of printer hardware and local preferences. */
     val supportsPrinting: Boolean get() = true
 

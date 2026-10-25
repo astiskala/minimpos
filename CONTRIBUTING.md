@@ -197,6 +197,12 @@ receipt disclosure and DCC/adjustment restrictions;
 split tenders with operator amounts, equal shares and item units, including issuer partial approvals of a share,
 `SaleReferenceID` linking in the Customer Area, terminal totals beside locally recorded cash, and multi-leg referenced
 refunds of split sales;
+gift cards for Givex, SVS, Fiserv ValueLink, Intersolve card types and local gift cards: provider onboarding, swiped,
+keyed and scanned entry (including the scanned expiry format), `StoredValue` activation/load/`Reverse`/`Unload`
+answers and balances, `BalanceInquiry`, redemption partial approvals (and whether `TotalFeesAmount` is reported),
+`redemptionType=cashback` cash-out, `PaymentType=Refund` gift-card refunds, referenced refunds of redemptions,
+`TransactionStatus` recovery with message category `StoredValue`, the most-recent-load/24-hour undo rule, and whether
+terminal totals include stored-value management;
 `GetTotalsRequest` and `ReconciliationRequest` (`SaleReconciliation`); chained `AdminRequest` waiting-screen sessions with
 `DisplayRequest` and `InputRequest`; `AllowPartialAuthorisation` (`Result=Partial`); `AskGiving` two-step
 `TransactionStatus` (`SaleID=AdyenGiving`) lookups; `MOTO` and `ForceEntryMode=Keyed` (MKE); and offline EMV /

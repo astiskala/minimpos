@@ -124,9 +124,9 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
   links stay offline and clearly label their screen and delivered receipts as demos; their QR codes cannot take payments.
 - Optional Manager PIN approval is separate from admin access and must be checked again before financial operations.
 - Keep deliberate UI choices: no TEST banner (only simulator), no Home terminal-status line or unprotected-settings
-  warning. Home keeps both full-width sale/pre-authorization tiles, half-width Tokens/Refund and
-  History/Reconciliation. The top-right Settings icon opens main Settings under the admin lock; Products lives there.
-  Gated tiles stay pressable and explain; only the setup card is shown.
+  warning. Home keeps both full-width sale/pre-authorization tiles, then Tokens/Gift cards, Refund/History and a
+  full-width Reconciliation, in row-major order until Cashout arrives. The top-right Settings icon opens main Settings
+  under the admin lock; Products lives there. Gated tiles stay pressable and explain; only the setup card is shown.
 - Ask the shopper's email on the terminal only once emailed receipts are ready (SMTP set up, capture not Never); a
   terminal email is sent automatically like a checkout one.
 - Every product has a tax rate; use 0% for untaxed items. Turning tax off keeps rates. The last rate cannot be deleted.

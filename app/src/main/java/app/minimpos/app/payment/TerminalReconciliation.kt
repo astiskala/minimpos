@@ -101,5 +101,6 @@ class TerminalReconciliation(
         when (this) {
             is HistoryItem.Sale -> StoredTransaction.Sale(id)
             is HistoryItem.Refund -> StoredTransaction.Refund(id)
+            is HistoryItem.GiftCard -> StoredTransaction.GiftCard(id)
         }
 }

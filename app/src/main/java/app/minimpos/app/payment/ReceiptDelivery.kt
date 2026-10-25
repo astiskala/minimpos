@@ -2,6 +2,7 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.repo.GiftCardRepository
 import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleEvent
@@ -48,7 +49,7 @@ import java.time.ZoneId
 
 /**
  * A stored transaction whose receipt is delivered, see [ReceiptDelivery]: a sale (taken on a terminal or through a
- * payment link) or a refund (or cancellation).
+ * payment link), a refund (or cancellation) or a stored-value activity.
  */
 sealed interface StoredTransaction {
     /**
@@ -66,6 +67,15 @@ sealed interface StoredTransaction {
      * @property id The refund's ID.
      */
     data class Refund(
+        val id: String,
+    ) : StoredTransaction
+
+    /**
+     * A stored-value (gift-card) activity.
+     *
+     * @property id The activity's group ID.
+     */
+    data class GiftCard(
         val id: String,
     ) : StoredTransaction
 }
@@ -145,6 +155,8 @@ class ReceiptRecords(
     val refunds: RefundRepository,
     /** All retained records; reports never use UI filters. */
     val history: HistoryRepository,
+    /** Stored-value activities; null where none are kept. */
+    val giftCards: GiftCardRepository? = null,
 )
 
 /**
@@ -220,6 +232,7 @@ class ReceiptDelivery(
         when (transaction) {
             is StoredTransaction.Sale -> saleOffer(transaction.id, fresh)
             is StoredTransaction.Refund -> refundOffer(transaction.id)
+            is StoredTransaction.GiftCard -> giftCardOffer(transaction.id)
         }
 
     /**
@@ -233,14 +246,22 @@ class ReceiptDelivery(
             when (transaction) {
                 is StoredTransaction.Sale -> transaction.id
                 is StoredTransaction.Refund -> transaction.id
+                is StoredTransaction.GiftCard -> transaction.id
             }
         if (!claim(id)) return flowOf(AutoDelivery())
         val progress = MutableStateFlow(AutoProgress(AutoDelivery()))
         scope.launch {
             val plan =
                 when (transaction) {
-                    is StoredTransaction.Sale -> automationForSale(transaction.id)
-                    is StoredTransaction.Refund -> DeliveryPlan(print = printsAutomatically(settings.current()))
+                    is StoredTransaction.Sale -> {
+                        automationForSale(transaction.id)
+                    }
+
+                    is StoredTransaction.Refund, is StoredTransaction.GiftCard -> {
+                        DeliveryPlan(
+                            print = printsAutomatically(settings.current()),
+                        )
+                    }
                 }
             progress.value = AutoProgress(AutoDelivery(printing = plan.print, emailing = plan.emailTo != null, emailTo = plan.emailTo))
             coroutineScope {
@@ -279,6 +300,7 @@ class ReceiptDelivery(
         when (transaction) {
             is StoredTransaction.Sale -> printSale(transaction.id, copy)
             is StoredTransaction.Refund -> ReceiptPrint(printRefund(transaction.id))
+            is StoredTransaction.GiftCard -> ReceiptPrint(printGiftCard(transaction.id))
         }
 
     /**
@@ -292,6 +314,7 @@ class ReceiptDelivery(
         when (transaction) {
             is StoredTransaction.Sale -> emailSale(transaction.id, to)
             is StoredTransaction.Refund -> emailRefund(transaction.id, to)
+            is StoredTransaction.GiftCard -> emailGiftCard(transaction.id, to)
         }
 
     private val documentSettings = settings.settings.map { it.receipt to it.languageTag }.distinctUntilChanged()
@@ -359,6 +382,43 @@ class ReceiptDelivery(
                     },
             )
         }
+    }
+
+    private fun giftCardOffer(groupId: String): Flow<ReceiptOffer> {
+        val records = records.giftCards ?: return flowOf(ReceiptOffer(null, canPrint = false, canEmail = false))
+        val documents =
+            combine(records.observe(groupId), documentSettings) { activity, (receipt, _) ->
+                activity?.let { it to receipts.giftCard(it, receipt) }
+            }.flowOn(cpu)
+        return combine(documents, emailSettings, capabilities) { documents, (email, _), (printer, share) ->
+            ReceiptOffer(
+                receipt = documents?.second,
+                canPrint = printer,
+                canEmail = email,
+                canShare = share,
+                share =
+                    documents?.takeIf { share }?.let { (activity, receipt) ->
+                        val main = activity.change ?: activity.stages.first()
+                        SharedReceipt(receipt, main.merchantReference, main.movedMinor, activity.currency)
+                    },
+            )
+        }
+    }
+
+    private suspend fun printGiftCard(groupId: String): ActionResult {
+        val current = settings.current()
+        val activity = records.giftCards?.activity(groupId) ?: return ActionResult.Missing
+        return print(withContext(cpu) { receipts.giftCard(activity, current.receipt) }, current)
+    }
+
+    private suspend fun emailGiftCard(
+        groupId: String,
+        to: String,
+    ): ActionResult {
+        val activity = records.giftCards?.activity(groupId) ?: return ActionResult.Missing
+        val document = withContext(cpu) { receipts.giftCard(activity, settings.current().receipt) }
+        val main = activity.change ?: activity.stages.first()
+        return emailer.send(to, document, main.merchantReference, ReceiptKind.GIFT_CARD)
     }
 
     /** Releases unclaimed automatic deliveries after confirmed complete history deletion. */

@@ -91,7 +91,7 @@
   parciales</a></li><li><a href="#split-payments">Dividir y efectivo</a></li><li><a href="#shopper-display">Pantalla del cliente</a></li><li><a href="#giving">Donaciones de
   caridad</a></li><li><a href="#keyed-entry">MOTO y MKE</a></li></ul></li><li><a href="#offline">Pagos fuera de línea
   </a></li><li><a href="#wallets">Escanear códigos de billetera</a></li><li><a href="#shoppers">Referencias y tarjetas
-  guardadas</a><ul><li><a href="#saved-card">Administrar tokens</a></li></ul></li><li><a href="#payment-links">Enlaces de
+  guardadas</a><ul><li><a href="#saved-card">Administrar tokens</a></li></ul></li><li><a href="#gift-cards">Tarjetas de regalo</a></li><li><a href="#payment-links">Enlaces de
   pago</a></li><li><a href="#preauth">Depósitos</a></li><li><a href="#terminal-tips">propinas sobre la terminal</a></li>
   <li><a href="#tips">propinas sobre el recibo</a></li><li><a href="#more">Más dispositivos y datos</a></li>
 </ol></div>
@@ -107,7 +107,7 @@
   parciales</a></li><li><a href="#split-payments">Dividir y efectivo</a></li><li><a href="#shopper-display">Pantalla del cliente</a></li><li><a href="#giving">Donaciones de
   caridad</a></li><li><a href="#keyed-entry">MOTO y MKE</a></li></ul></li><li><a href="#offline">Pagos fuera de línea
   </a></li><li><a href="#wallets">Escanear códigos de billetera</a></li><li><a href="#shoppers">Referencias y tarjetas
-  guardadas</a><ul><li><a href="#saved-card">Administrar tokens</a></li></ul></li><li><a href="#payment-links">Enlaces de
+  guardadas</a><ul><li><a href="#saved-card">Administrar tokens</a></li></ul></li><li><a href="#gift-cards">Tarjetas de regalo</a></li><li><a href="#payment-links">Enlaces de
   pago</a></li><li><a href="#preauth">Depósitos</a></li><li><a href="#terminal-tips">propinas sobre la terminal</a></li>
   <li><a href="#tips">propinas sobre el recibo</a></li><li><a href="#more">Más dispositivos y datos</a></li>
 </ol></details>
@@ -457,6 +457,9 @@
             de audio y MOTO o ingreso manual antes de dividir. Los artículos se cobran completos; otros montos con tarjeta
             pueden aprobarse parcialmente por el emisor. Resuelva un resultado desconocido antes de cobrar más. El recibo
             muestra cada pago y el informe diario separa el efectivo; los totales del terminal nunca lo incluyen.</p>
+          <p>Con tarjetas de regalo configuradas, toca <strong>Tarjeta de regalo</strong> para pagar el monto elegido con
+            una. Un saldo insuficiente se aprueba en parte y el resto queda por cobrar. La devolución de un pago con
+            tarjeta de regalo regresa a la tarjeta, salvo las tarjetas locales, que se reembolsan fuera de Mini mPOS.</p>
           <h3 id="shopper-display">Utilice la pantalla del terminal orientada al comprador</h3>
           <p>Con un terminal de red/nube independiente, abra <strong>Configuración › Pantalla del terminal para el
             cliente</strong>. Elija si desea mostrar los detalles del artículo antes del pago, pedirle al comprador que
@@ -609,6 +612,34 @@
             invalida las selecciones y consulta una lista nueva. Si sigue sin confirmarse, toque <strong>Comprobar
             eliminación</strong>; no cobre ni repita la eliminación hasta resolverla.
           </p>
+          <p class="back-to-contents"><a href="#contents">Volver al contenido</a></p>
+        </section>
+        <section id="gift-cards">
+          <h2>Vender y administrar tarjetas de regalo</h2>
+          <p>Las tarjetas de regalo funcionan con una terminal Adyen; Tap to Pay no las acepta. En <strong>Configuración
+            › Pagos › Tarjetas de regalo</strong>, activa cada proveedor con el que completaste la incorporación en
+            Adyen, agrega el tipo de tarjeta que Adyen te indicó para Intersolve o tarjetas locales y elige cómo
+            presenta el personal las tarjetas: escanear con la cámara e ingresar el vencimiento, o deslizar o teclear en
+            la terminal. Solo se ofrecen las acciones que Adyen documenta para cada proveedor: la desactivación es solo
+            para Givex y las tarjetas locales solo aceptan pagos.</p>
+          <ol>
+            <li>En Inicio, toca <strong>Tarjetas de regalo</strong> y elige el proveedor y cómo se presenta la tarjeta.</li>
+            <li>Elige <strong>Consultar saldo</strong>, <strong>Activar</strong>, <strong>Recargar</strong>,
+              <strong>Retirar efectivo</strong>, <strong>Reembolsar a tarjeta</strong> o <strong>Desactivar</strong>.</li>
+            <li>Para agregar valor, elige <strong>Pago con tarjeta</strong>, o <strong>Recibido fuera de la app</strong> y
+              confirma que recibiste el dinero.</li>
+            <li>Confirma y aprueba con el PIN de gerente.</li>
+          </ol>
+          <p>Consultar el saldo no requiere aprobación. Cambiar el valor de una tarjeta requiere un PIN de gerente
+            configurado, el criterio de trabajo por ahora. Primero se cobra el pago con tarjeta y el valor se envía solo
+            cuando se aprueba; si el resultado del pago se desconoce, consúltalo antes de continuar. Si se cobró el pago
+            pero no se agregó valor, la actividad muestra <strong>Valor no agregado</strong>: envía el valor de nuevo,
+            reembolsa el pago con tarjeta o registra el dinero devuelto. Nada se repite automáticamente.</p>
+          <p><strong>Deshacer recarga</strong> aparece para la última recarga de la tarjeta dentro de 24 horas. Un retiro
+            de efectivo normalmente paga todo el saldo y cierra la tarjeta; solo algunas tarjetas Givex permiten menos.
+            Entrega el efectivo cuando se apruebe y toca <strong>Efectivo entregado</strong>; una entrega sin confirmar
+            queda en <strong>Requiere atención</strong>, también tras reiniciar. La actividad de tarjetas de regalo
+            aparece en <strong>Historial</strong> y por separado en el reporte diario; nunca cuenta como venta.</p>
           <p class="back-to-contents"><a href="#contents">Volver al contenido</a></p>
         </section>
         <section id="payment-links">

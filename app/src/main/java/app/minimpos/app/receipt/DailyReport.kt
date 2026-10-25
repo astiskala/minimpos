@@ -82,6 +82,24 @@ enum class ReportText {
 
     /** Original environment unavailable. */
     UNKNOWN,
+
+    /** Gift-card value activated, loaded or refunded onto cards, less loads undone; never sales. */
+    GIFT_VALUE_ADDED,
+
+    /** Gift-card value paid out by cash-out. */
+    GIFT_VALUE_REMOVED,
+
+    /** Card payments collecting gift-card value. */
+    GIFT_FUNDING_CARD,
+
+    /** Gift-card value funds staff confirmed were received outside the app. */
+    GIFT_FUNDING_EXTERNAL,
+
+    /** Gift-card funding refunded or given back because no value was delivered. */
+    GIFT_FUNDING_RETURNED,
+
+    /** Cash handed over for gift-card cash-outs, never in terminal totals. */
+    GIFT_CASH_HANDED_OVER,
 }
 
 internal object DailyReport {
@@ -171,7 +189,25 @@ internal object DailyReport {
                 add(ReceiptElement.Row(text(ReportText.NET), money.format(total.netMinor), TextStyle.BOLD))
                 add(ReceiptElement.Row("${text(ReportText.HOLDS)} (${total.holdCount})", money.format(total.heldMinor)))
                 add(ReceiptElement.Row(text(ReportText.UNRESOLVED), total.unresolvedCount.toString()))
+                giftCardRows(total, money, text).forEach(::add)
             }
         }
+    }
+
+    /** Stored-value movements, only when any moved; separate from sales, refunds and their net. */
+    private fun giftCardRows(
+        total: CurrencyHistoryTotals,
+        money: MoneyFormatter,
+        text: (ReportText) -> String,
+    ) = buildList {
+        val gift = total.giftCards
+        listOf(
+            ReportText.GIFT_VALUE_ADDED to gift.valueAddedMinor,
+            ReportText.GIFT_VALUE_REMOVED to gift.valueRemovedMinor,
+            ReportText.GIFT_FUNDING_CARD to gift.cardFundingMinor,
+            ReportText.GIFT_FUNDING_EXTERNAL to gift.externalFundingMinor,
+            ReportText.GIFT_FUNDING_RETURNED to gift.fundingReturnedMinor,
+            ReportText.GIFT_CASH_HANDED_OVER to gift.cashHandedOverMinor,
+        ).filter { it.second != 0L }.forEach { (label, amount) -> add(ReceiptElement.Row(text(label), money.format(amount))) }
     }
 }

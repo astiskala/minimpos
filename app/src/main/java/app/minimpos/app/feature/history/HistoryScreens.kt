@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
+import app.minimpos.app.data.db.GiftCardStatus
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
@@ -61,6 +62,8 @@ import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.ReceiptActions
 import app.minimpos.app.feature.StatusCheck
+import app.minimpos.app.feature.giftcard.giftCardStageLabel
+import app.minimpos.app.feature.giftcard.statusLabel
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.modificationNote
 import app.minimpos.app.feature.outcomeNote
@@ -188,6 +191,7 @@ private fun ColumnScope.HistoryBody(
                 when (item) {
                     is HistoryItem.Sale -> navigator.openFrom(Route.History, Route.SaleDetail(item.sale.id))
                     is HistoryItem.Refund -> navigator.openFrom(Route.History, Route.RefundDetail(item.refund.id))
+                    is HistoryItem.GiftCard -> navigator.openFrom(Route.History, Route.GiftCardDetail(item.activity.groupId))
                 }
             }
         }
@@ -436,6 +440,27 @@ private fun historyRowText(
                 if (refund.cancellation) amount else "−$amount",
                 refundStatusTitle(refund.status, refund.cancellation),
                 refundStatusKind(refund.status),
+            )
+        }
+
+        is HistoryItem.GiftCard -> {
+            val activity = item.activity
+            val main = activity.change ?: activity.funding ?: activity.stages.first()
+            HistoryRowText(
+                stringResource(R.string.history_gift_card, stringResource(giftCardStageLabel(activity.kind))),
+                listOfNotNull(time, activity.cardLastFour?.let { "**** $it" }, main.merchantReference).joinToString(" · "),
+                money[activity.currency].format(main.amountMinor),
+                stringResource(
+                    when {
+                        activity.needsAttention -> R.string.gift_card_needs_attention
+                        else -> statusLabel(main.status)
+                    },
+                ),
+                when {
+                    activity.needsAttention || activity.unresolved -> StatusKind.WARNING
+                    main.status == GiftCardStatus.SUCCEEDED -> StatusKind.SUCCESS
+                    else -> StatusKind.ERROR
+                },
             )
         }
     }

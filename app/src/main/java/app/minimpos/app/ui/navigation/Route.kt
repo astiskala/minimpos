@@ -178,6 +178,31 @@ sealed interface Route : NavKey {
         override val requiresManager get() = true
     }
 
+    /**
+     * Gift cards: balance, activation, load, undoing a load, cash-out, deactivation and refunds onto a card, with the
+     * activities that still need a check, a confirmation or a repair. Value changes ask for the Manager PIN themselves,
+     * so balance inquiries stay an ordinary workflow.
+     */
+    @Serializable data object GiftCards : Route
+
+    /**
+     * Waiting for a gift-card activity's terminal requests, then its result.
+     *
+     * @property groupId The activity.
+     */
+    @Serializable data class GiftCardActivity(
+        val groupId: String,
+    ) : Route
+
+    /**
+     * A stored-value activity from history.
+     *
+     * @property groupId The activity shown.
+     */
+    @Serializable data class GiftCardDetail(
+        val groupId: String,
+    ) : Route
+
     /** Terminal totals compared with Mini mPOS, closing the terminal's period and today's report. */
     @Serializable data object Reconciliation : Route
 

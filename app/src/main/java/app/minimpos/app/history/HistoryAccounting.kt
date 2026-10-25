@@ -1,10 +1,14 @@
 package app.minimpos.app.history
 
+import app.minimpos.app.data.db.GiftCardCategory
+import app.minimpos.app.data.db.GiftCardStage
+import app.minimpos.app.data.db.GiftCardStatus
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.repo.GiftCardActivity
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.recordedEnvironment
 import app.minimpos.terminal.client.TerminalTotalsOutcome
@@ -30,12 +34,15 @@ data class HistoryActivity(
     val cashBackMinor: Long = 0,
     /** Whether the amount is cash recorded locally rather than card money the terminal reports. */
     val cash: Boolean = false,
+    /** What a [HistoryActivityKind.GIFT_CARD] stage moved; empty for other activities. */
+    val giftCard: GiftCardActivity.Totals = GiftCardActivity.Totals(),
 ) {
     /** ISO 4217 currency code, unchanged from the original operation. */
     val currency: String get() =
         when (item) {
             is HistoryItem.Sale -> item.sale.currency
             is HistoryItem.Refund -> item.refund.currency
+            is HistoryItem.GiftCard -> item.activity.currency
         }
 
     /** Original account environment, or demo when no real money moved. */
@@ -72,6 +79,9 @@ enum class HistoryActivityKind {
 
     /** Paid online with no actual payment date available. */
     ONLINE,
+
+    /** A resolved stored-value stage: gift-card value, its funding or cash handed over; never a sale. */
+    GIFT_CARD,
 }
 
 /** Distinct report sections prevent real, test and demo amounts from mixing. */
@@ -121,6 +131,8 @@ data class CurrencyHistoryTotals(
     val cashSalesMinor: Long = 0,
     /** Cash handed back, already included in [refundsMinor], recorded locally and never in terminal totals. */
     val cashRefundsMinor: Long = 0,
+    /** Stored-value movements, separate from sales and refunds: gift-card value, funding and cash handed over. */
+    val giftCards: GiftCardActivity.Totals = GiftCardActivity.Totals(),
 ) {
     /** Local sales minus accepted refund requests, in minor units. */
     val netMinor: Long get() = salesMinor - refundsMinor
@@ -324,6 +336,7 @@ object HistoryAccounting {
                 a.unknownRefundSurchargeCount + b.unknownRefundSurchargeCount,
                 Math.addExact(a.cashSalesMinor, b.cashSalesMinor),
                 Math.addExact(a.cashRefundsMinor, b.cashRefundsMinor),
+                a.giftCards + b.giftCards,
             )
         }
     }
@@ -405,7 +418,20 @@ object HistoryAccounting {
                         val r = item.refund
                         if (r.status == RefundStatus.REQUESTED && !r.cancellation) refunds.merge(r.currency, r.amountMinor, Long::plus)
                     }
+
+                    is HistoryItem.GiftCard -> {
+                        addGiftCard(entry, item)
+                    }
                 }
+            }
+
+            /** A gift-card payment as a debit, or its refund or reversal as a credit, like the terminal counts them. */
+            private fun addGiftCard(
+                entry: TerminalActivity,
+                item: HistoryItem.GiftCard,
+            ) {
+                val target = if (entry.credit) refunds else sales
+                target.merge(item.activity.currency, entry.amountMinor ?: 0, Math::addExact)
             }
         }
     }
@@ -418,6 +444,7 @@ object HistoryAccounting {
         when (item) {
             is HistoryItem.Sale -> item.sale.issues.isNotEmpty()
             is HistoryItem.Refund -> item.refund.status.unresolved
+            is HistoryItem.GiftCard -> item.activity.needsAttention
         }
 
     /**
@@ -487,6 +514,10 @@ object HistoryAccounting {
                             add(HistoryActivity(item, refund.createdAt, HistoryActivityKind.ISSUE))
                         }
                     }
+
+                    is HistoryItem.GiftCard -> {
+                        giftCardActivities(item).forEach(::add)
+                    }
                 }
             }
         }
@@ -501,16 +532,53 @@ object HistoryAccounting {
             .takeIf { rows -> rows.all { (it.kind == TenderKind.CASH || it.serviceId != null) && it.authorisedMinor != null } }
             .orEmpty()
 
-    /** One terminal processing event; amounts override only complete, newly recorded tender facts. */
+    /** Each resolved stage's movement, and an issue while the activity needs a check, confirmation or repair. */
+    private fun giftCardActivities(item: HistoryItem.GiftCard): List<HistoryActivity> =
+        buildList {
+            val activity = item.activity
+            activity.stages.filter { it.status == GiftCardStatus.SUCCEEDED }.forEach { stage ->
+                add(
+                    HistoryActivity(
+                        item,
+                        stage.processedAt ?: stage.createdAt,
+                        HistoryActivityKind.GIFT_CARD,
+                        giftCard = activity.totalsOf(stage),
+                    ),
+                )
+            }
+            if (activity.needsAttention) add(HistoryActivity(item, activity.createdAt, HistoryActivityKind.ISSUE))
+        }
+
+    /**
+     * One terminal processing event; amounts override only complete, newly recorded tender facts. A [credit] is money
+     * the terminal reports going back to a card.
+     */
     private data class TerminalActivity(
         val item: HistoryItem,
         val at: Long,
         val period: String?,
         val amountMinor: Long? = null,
+        val credit: Boolean = false,
     )
+
+    // Gift-card payments and reversals reach the terminal's card totals like other payments; whether its totals also
+    // report stored-value management is unverified, so activations, loads and undos are not compared.
+    private fun giftCardTerminalEntries(item: HistoryItem.GiftCard): List<TerminalActivity> =
+        item.activity.stages
+            .filter {
+                it.status == GiftCardStatus.SUCCEEDED &&
+                    (it.category == GiftCardCategory.PAYMENT || it.category == GiftCardCategory.REVERSAL)
+            }.map {
+                val credit = it.stage == GiftCardStage.REFUND || it.stage == GiftCardStage.FUNDING_REFUND
+                TerminalActivity(item, it.processedAt ?: it.createdAt, it.poiReconciliationId, it.movedMinor, credit)
+            }
 
     private fun terminalEntries(item: HistoryItem): List<TerminalActivity> =
         when (item) {
+            is HistoryItem.GiftCard -> {
+                giftCardTerminalEntries(item)
+            }
+
             is HistoryItem.Refund -> {
                 listOf(TerminalActivity(item, item.refund.processedAt ?: item.refund.createdAt, item.refund.poiReconciliationId))
             }
@@ -640,6 +708,10 @@ object HistoryAccounting {
                         .size,
                 refundedSurchargesMinor = refunds.fold(0L) { sum, refund -> Math.addExact(sum, refund.surchargeMinor ?: 0) },
                 unknownRefundSurchargeCount = refunds.count { it.surchargeMinor == null },
+                giftCards =
+                    entries.filter { it.kind == HistoryActivityKind.GIFT_CARD }.fold(GiftCardActivity.Totals()) { sum, entry ->
+                        sum + entry.giftCard
+                    },
                 cashSalesMinor = sales.filter { it.cash }.sumOf { it.amountMinor },
                 cashRefundsMinor = refunds.filter { it.cash }.sumOf { it.amountMinor },
                 purchaseMinor =
@@ -697,12 +769,28 @@ object HistoryAccounting {
                 val r = item.refund
                 r.terminalOperation && (poiId.isBlank() || r.context?.poiId == poiId)
             }
+
+            is HistoryItem.GiftCard -> {
+                item.activity.stages.any { it.stage.sent && (poiId.isBlank() || it.poiId == poiId || it.context?.poiId == poiId) }
+            }
         }
 
     /** Whether the terminal outcome remains unresolved, excluding Checkout adjustments and captures. */
     internal fun isUnresolvedTerminalItem(item: HistoryItem): Boolean =
         when (item) {
-            is HistoryItem.Sale -> PaymentIssue.OUTCOME in item.sale.issues
-            is HistoryItem.Refund -> item.refund.status.unresolved
+            is HistoryItem.Sale -> {
+                PaymentIssue.OUTCOME in item.sale.issues
+            }
+
+            is HistoryItem.Refund -> {
+                item.refund.status.unresolved
+            }
+
+            is HistoryItem.GiftCard -> {
+                item.activity.stages.any {
+                    it.stage.sent &&
+                        (it.status == GiftCardStatus.PENDING || it.status == GiftCardStatus.UNKNOWN)
+                }
+            }
         }
 }

@@ -342,7 +342,7 @@ class TransactionLifecycle<R>(
                     is Attempt.Made -> attempt.result
                 }
             if (outcome is TransactionOutcome.Unknown) return@withLock Recheck.StillUnknown(Failure.Remote(outcome.fault))
-            val settlement = settle(outcome)
+            val settlement = settlementOf(outcome)
             if (!stored(id, settlement)) return@withLock Recheck.Settled
             attempt.onStored()
             complete(id, settlement)
@@ -394,7 +394,7 @@ class TransactionLifecycle<R>(
         val settlement =
             when (attempt) {
                 is Attempt.Made -> {
-                    settle(attempt.result)
+                    settlementOf(attempt.result)
                 }
 
                 is Attempt.NotSetUp -> {
@@ -424,29 +424,29 @@ class TransactionLifecycle<R>(
         id: String,
         settlement: Settlement,
     ): Boolean = book.settle(id, settlement).also { if (!it) runner.resolved(id) }
-
-    /** Classifies [outcome]. */
-    private fun settle(outcome: TransactionOutcome): Settlement =
-        when (outcome) {
-            is TransactionOutcome.Completed -> {
-                val details = outcome.details
-                val decline = details.decline
-                val status =
-                    when {
-                        decline == null -> SettlementStatus.SUCCEEDED
-                        decline.cancelled -> SettlementStatus.CANCELLED
-                        else -> SettlementStatus.DECLINED
-                    }
-                // A decline is worded from its stored ErrorCondition; only the terminal's own text is kept as its message.
-                Settlement(status, details.message?.text?.takeIf { decline != null }, details)
-            }
-
-            is TransactionOutcome.NotProcessed -> {
-                Settlement(SettlementStatus.FAILED, null, reason = StoredReason.NotDone(Failure.Remote(outcome.fault)))
-            }
-
-            is TransactionOutcome.Unknown -> {
-                Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(Failure.Remote(outcome.fault)))
-            }
-        }
 }
+
+/** Classifies a terminal [outcome] as it is stored: one reading shared by every runner of terminal operations. */
+internal fun settlementOf(outcome: TransactionOutcome): Settlement =
+    when (outcome) {
+        is TransactionOutcome.Completed -> {
+            val details = outcome.details
+            val decline = details.decline
+            val status =
+                when {
+                    decline == null -> SettlementStatus.SUCCEEDED
+                    decline.cancelled -> SettlementStatus.CANCELLED
+                    else -> SettlementStatus.DECLINED
+                }
+            // A decline is worded from its stored ErrorCondition; only the terminal's own text is kept as its message.
+            Settlement(status, details.message?.text?.takeIf { decline != null }, details)
+        }
+
+        is TransactionOutcome.NotProcessed -> {
+            Settlement(SettlementStatus.FAILED, null, reason = StoredReason.NotDone(Failure.Remote(outcome.fault)))
+        }
+
+        is TransactionOutcome.Unknown -> {
+            Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(Failure.Remote(outcome.fault)))
+        }
+    }

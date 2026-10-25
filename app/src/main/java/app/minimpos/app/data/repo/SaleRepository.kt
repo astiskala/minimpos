@@ -49,15 +49,17 @@ class SaleRepository(
     }
 
     /**
-     * Opens the next card attempt [event] of partially paid sale [id] with its [allocation], storing the sale's new
-     * identity and a PENDING tender row in one transaction. Returns false, storing nothing, when the sale is missing,
-     * its balance changed since the review, a tender is unresolved, or the amount or allocation is not acceptable.
+     * Opens the next card attempt [event] of partially paid sale [id] with its [allocation] (redeeming [giftCard], a
+     * provider name, when not null), storing the sale's new identity and a PENDING tender row in one transaction.
+     * Returns false, storing nothing, when the sale is missing, its balance changed since the review, a tender is
+     * unresolved, or the amount or allocation is not acceptable.
      */
     suspend fun openTender(
         id: String,
         event: SaleEvent.TenderOpened,
         allocation: TenderAllocation?,
         createdAt: Long,
+        giftCard: String? = null,
     ): Boolean =
         db.withTransaction {
             val record = dao.sale(id) ?: return@withTransaction false
@@ -69,7 +71,7 @@ class SaleRepository(
             dao.update(sale.after(event))
             dao.upsertTender(
                 openedTender(sale.id, record.tenders.size + 1, event.amountMinor, allocation, createdAt)
-                    .copy(serviceId = event.serviceId, context = sale.context),
+                    .copy(serviceId = event.serviceId, context = sale.context, giftCard = giftCard),
             )
             true
         }

@@ -126,7 +126,7 @@ class SmallScreenHomeTest {
     }
 
     /**
-     * The four half-width tiles show their labels at one size, whatever each label needs alone (Reconciliation needs
+     * The area tiles show their labels at one size, whatever each label needs alone (Reconciliation needs
      * the least), with the icon above the label rather than beside it; the two payment tiles do the same with their
      * titles, which stay on one line.
      */
@@ -137,6 +137,7 @@ class SmallScreenHomeTest {
         val tiles =
             mapOf(
                 "savedCard" to R.string.home_saved_card,
+                "giftCards" to R.string.home_gift_cards,
                 "refund" to R.string.home_refund,
                 "history" to R.string.home_history,
                 "reconciliation" to R.string.home_reconciliation,
@@ -186,6 +187,7 @@ class SmallScreenHomeTest {
         }
         mapOf(
             "savedCard" to R.string.home_saved_card,
+            "giftCards" to R.string.home_gift_cards,
             "refund" to R.string.home_refund,
             "history" to R.string.home_history,
             "reconciliation" to R.string.home_reconciliation,

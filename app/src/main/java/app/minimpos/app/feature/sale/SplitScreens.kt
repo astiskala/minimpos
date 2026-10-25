@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
+import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,8 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TenderKind
 import app.minimpos.app.data.settings.PaymentSettings
+import app.minimpos.app.feature.giftcard.CardChoice
+import app.minimpos.app.feature.giftcard.GiftCardPicker
 import app.minimpos.app.history.SaleResultNext
 import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.payment.Checkout
@@ -58,8 +61,10 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.money.AmountEntry
 import app.minimpos.core.money.MoneyFormatter
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 
 /**
@@ -79,7 +84,13 @@ fun SplitScreen(
     val gate = currentSetupGate()
     MiniScaffold(
         title = stringResource(R.string.split_title),
-        onBack = { if (state.cashStage) vm.enterCash(false) else navigator.back() },
+        onBack = {
+            when {
+                state.cashStage -> vm.enterCash(false)
+                state.giftCardStage -> vm.enterGiftCard(false)
+                else -> navigator.back()
+            }
+        },
         modifier = modifier,
         bottomBar = {
             if (state.balance != null) {
@@ -88,6 +99,8 @@ fun SplitScreen(
                     money,
                     onCard = { gate.run { if (vm.payByCard()) navigator.replace(Route.Payment(SaleKind.SALE)) } },
                     onCash = { vm.enterCash(true) },
+                    onGiftCard = { vm.enterGiftCard(true) },
+                    onPayGiftCard = { gate.run { if (vm.payByGiftCard()) navigator.replace(Route.Payment(SaleKind.SALE)) } },
                     onConfirmCash = { vm.confirmCash { id -> navigator.replace(Route.SaleResult(id)) } },
                 )
             }
@@ -106,7 +119,7 @@ fun SplitScreen(
                 SplitChoices(
                     state,
                     money,
-                    SplitEvents(vm::selectMode, vm::updateAmount, vm::setShares, vm::setQuantity),
+                    SplitEvents(vm::selectMode, vm::updateAmount, vm::setShares, vm::setQuantity, vm::updateCard),
                     Modifier.fillMaxSize().padding(padding),
                 )
             }
@@ -122,9 +135,19 @@ private fun SplitActions(
     onCard: () -> Unit,
     onCash: () -> Unit,
     onConfirmCash: () -> Unit,
+    onGiftCard: () -> Unit,
+    onPayGiftCard: () -> Unit,
 ) {
     BottomActions {
-        if (state.cashStage) {
+        if (state.giftCardStage) {
+            PrimaryButton(
+                stringResource(R.string.split_pay_gift_card_amount, money.format(state.amountMinor)),
+                onPayGiftCard,
+                enabled = state.giftCardReady,
+                icon = Icons.Default.CardGiftcard,
+                modifier = Modifier.testTag("payGiftCard"),
+            )
+        } else if (state.cashStage) {
             PrimaryButton(
                 stringResource(R.string.split_confirm_cash, money.format(state.received.minor)),
                 onConfirmCash,
@@ -147,6 +170,15 @@ private fun SplitActions(
                 icon = Icons.Default.Payments,
                 modifier = Modifier.testTag("splitCash"),
             )
+            if (state.giftCards.isNotEmpty()) {
+                SecondaryButton(
+                    stringResource(R.string.split_pay_gift_card),
+                    onGiftCard,
+                    enabled = state.valid,
+                    icon = Icons.Default.CardGiftcard,
+                    modifier = Modifier.testTag("splitGiftCard"),
+                )
+            }
         }
     }
 }
@@ -160,6 +192,7 @@ private class SplitEvents(
     val onAmount: ((AmountEntry) -> AmountEntry) -> Unit,
     val onShares: (Int) -> Unit,
     val onQuantity: (position: Int, quantity: Int) -> Unit,
+    val onCard: ((CardChoice) -> CardChoice) -> Unit = {},
 )
 
 @Composable
@@ -177,7 +210,23 @@ private fun SplitChoices(
                 verticalArrangement = Arrangement.spacedBy(dimens.spacing),
             ) { SplitSummary(state, money, events) }
         }
-        if (state.cashStage || state.mode == SplitMode.AMOUNT) {
+        if (state.giftCardStage) {
+            item(key = "giftCard", contentType = "giftCard") {
+                Column(
+                    Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth().padding(top = dimens.spacing),
+                    verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+                ) {
+                    GiftCardPicker(
+                        state.giftCards,
+                        state.card,
+                        onProvider = { provider -> events.onCard { CardChoice(provider = provider) } },
+                        onEntry = { entry -> events.onCard { it.copy(entry = entry, scanned = null) } },
+                        onScan = { number -> events.onCard { it.copy(scanned = number.filter(Char::isDigit)) } },
+                        onExpiry = { expiry -> events.onCard { it.copy(expiry = expiry.filter(Char::isDigit).take(4)) } },
+                    )
+                }
+            }
+        } else if (state.cashStage || state.mode == SplitMode.AMOUNT) {
             item(key = "keypad", contentType = "keypad") {
                 Column(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth().padding(top = dimens.spacing)) {
                     NumericKeypad(
@@ -377,7 +426,7 @@ private fun SaleTenders(
                     stringResource(R.string.split_tender_cash)
                 } else {
                     listOfNotNull(
-                        stringResource(R.string.split_tender_card),
+                        stringResource(if (tender.giftCard != null) R.string.split_tender_gift_card else R.string.split_tender_card),
                         tender.paymentBrand?.uppercase(),
                         tender.maskedPan,
                     ).joinToString(" ")
@@ -414,6 +463,14 @@ private fun splitViewModel(saleId: String?): SplitViewModel {
             container.storedPayments,
             container.payments,
             container.cashTenders,
+            combine(container.settingsState, container.terminalStatus.state) { settings, terminal ->
+                // Only providers that take payments, on a destination that takes gift cards.
+                settings.payment.offeredGiftCards
+                    .filter {
+                        it.provider.supports(GiftCardOperation.REDEEM)
+                    }.takeIf { terminal.capabilities.giftCards }
+                    .orEmpty()
+            },
         )
     }
 }

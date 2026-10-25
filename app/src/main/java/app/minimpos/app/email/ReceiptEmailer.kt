@@ -28,6 +28,7 @@ import javax.mail.MessagingException
  * @property testBody Body of the test email.
  * @property preAuthIntro Paragraph above a pre-authorisation receipt.
  * @property cancellationIntro Paragraph above the receipt of a cancelled payment that only held its amount.
+ * @property giftCardIntro Paragraph above a stored-value (gift-card) receipt.
  * @property linkSubject Subject of a payment link email, with the `{business}` and `{reference}` placeholders of
  *   [app.minimpos.app.data.settings.EmailSettings.subject].
  * @property linkIntro Paragraph above the unpaid receipt in a payment link email.
@@ -42,6 +43,7 @@ data class EmailTexts(
     val testBody: String,
     val preAuthIntro: String,
     val cancellationIntro: String,
+    val giftCardIntro: String = "Here is your gift card receipt.",
     val linkSubject: String = "Payment request from {business}",
     val linkIntro: String = "Pay securely online with the link or the QR code below.",
     val demoSubject: String = "Demo link",
@@ -87,6 +89,7 @@ class ReceiptEmailer(
                 ReceiptKind.DEMO_LINK -> Envelope(words.simulationNote, words.demoSubject)
                 ReceiptKind.REFUND -> Envelope(words.refundIntro, current.email.subject)
                 ReceiptKind.CANCELLATION -> Envelope(words.cancellationIntro, current.email.subject)
+                ReceiptKind.GIFT_CARD -> Envelope(words.giftCardIntro, current.email.subject)
             }
         return send(current, to, document, reference, envelope)
     }

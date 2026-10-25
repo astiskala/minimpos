@@ -88,6 +88,9 @@ data class TerminalState(
      */
     val totalsBlocked: SetupProblem? get() = connectionProblem ?: SetupProblem.TOTALS.takeUnless { capabilities.supportsTerminalFeatures }
 
+    /** Why gift-card requests cannot be sent now: missing connection setup, or [SetupProblem.GIFT_CARDS] (Tap to Pay). */
+    val giftCardsBlocked: SetupProblem? get() = connectionProblem ?: SetupProblem.GIFT_CARDS.takeUnless { capabilities.giftCards }
+
     /**
      * Whether receipts and payment links can be shared through Android's share sheet: on phones and tablets, not on an
      * Adyen terminal, which has no apps to share with (it emails instead).

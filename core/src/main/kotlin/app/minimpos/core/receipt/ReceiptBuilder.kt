@@ -229,12 +229,13 @@ class ReceiptBuilder(
         receipt: SaleReceipt,
     ) {
         val tenders = receipt.tenders
-        if (tenders.size > 1 || tenders.any { it.kind == ReceiptTenderKind.CASH }) {
+        if (tenders.size > 1 || tenders.any { it.kind != ReceiptTenderKind.CARD }) {
             tenders.forEach { tender ->
                 val label =
                     when (tender.kind) {
                         ReceiptTenderKind.CARD -> listOfNotNull(labels.tenderCard, tender.detail).joinToString(" ")
                         ReceiptTenderKind.CASH -> labels.tenderCash
+                        ReceiptTenderKind.GIFT_CARD -> listOfNotNull(labels.tenderGiftCard, tender.detail).joinToString(" ")
                     }
                 out += Row(label, money.format(tender.amountMinor))
                 tender.receivedMinor?.let { out += Row(labels.cashReceived, money.format(it)) }
@@ -297,6 +298,23 @@ class ReceiptBuilder(
         out += Text(labels.payLinkIntro, Align.CENTER)
         out += ReceiptElement.Link(link.url, labels.payNow)
         link.validUntil?.let { out += Text(labels.linkValidFormat.format(money.locale, it), Align.CENTER) }
+    }
+
+    /** A stored-value receipt: the activity, its card and amounts, the balance, its outcome and Adyen's receipts. */
+    fun giftCard(receipt: GiftCardReceipt): ReceiptDocument {
+        val out = mutableListOf<ReceiptElement>()
+        header(out, title = receipt.title)
+        if (out.isNotEmpty() && out.last() != Blank) out += Blank
+        out += Row(labels.date, receipt.dateTime)
+        if (options.showReferences) out += Row(labels.reference, receipt.reference)
+        receipt.card?.let { out += Row(labels.giftCard, it) }
+        out += Divider
+        receipt.lines.forEach { out += Row(it.label, money.format(it.amountMinor), if (it.bold) TextStyle.BOLD else TextStyle.NORMAL) }
+        receipt.balanceMinor?.let { out += Row(labels.balance, money.format(it)) }
+        receipt.standingNote?.let { note(out, it, blankBefore = true) }
+        receipt.cardReceipts.forEach { cardReceipt(out, it) }
+        footer(out)
+        return ReceiptDocument(out)
     }
 
     private fun cardReceipt(

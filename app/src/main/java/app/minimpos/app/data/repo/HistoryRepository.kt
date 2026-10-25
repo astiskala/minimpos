@@ -2,6 +2,7 @@ package app.minimpos.app.data.repo
 
 import androidx.room.withTransaction
 import app.minimpos.app.data.db.AppDatabase
+import app.minimpos.app.data.db.GiftCardStatus
 import app.minimpos.app.data.db.HistoryKey
 import app.minimpos.app.data.db.HistorySwitchEntity
 import app.minimpos.app.data.db.RefundEntity
@@ -21,7 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.serializer
 
-/** One entry of the transaction history: a sale or a refund. */
+/** One entry of the transaction history: a sale, a refund or a stored-value activity. */
 sealed interface HistoryItem {
     /** The sale's or refund's ID; sale and refund IDs are both random UUIDs, so they do not collide. */
     val id: String
@@ -54,6 +55,18 @@ sealed interface HistoryItem {
         override val id: String get() = refund.id
         override val createdAt: Long get() = refund.createdAt
     }
+
+    /**
+     * A stored-value (gift-card) activity; never a merchandise sale.
+     *
+     * @property activity Its stages, without receipt bodies in history reads.
+     */
+    data class GiftCard(
+        val activity: GiftCardActivity,
+    ) : HistoryItem {
+        override val id: String get() = activity.groupId
+        override val createdAt: Long get() = activity.createdAt
+    }
 }
 
 /**
@@ -72,6 +85,7 @@ class HistoryRepository(
 ) {
     private val saleDao = db.saleDao()
     private val refundDao = db.refundDao()
+    private val giftCardDao = db.giftCardDao()
 
     /** Whether any history exists, emitted again after each write to either table, without materializing records. */
     val changes: Flow<Boolean> = saleDao.historyChanges()
@@ -80,11 +94,11 @@ class HistoryRepository(
     val reader = Reader(db, cpu)
 
     /**
-     * Marks sales and refunds that never got an answer (for example because the app was killed mid-payment) as UNKNOWN,
-     * so staff can check them from history, together with the tender rows they were sending, and captures that were
-     * being requested as UNKNOWN, so they can be sent again; all for [StoredReason.Interrupted] (a sale's
-     * [SaleEvent.Interrupted]). Only safe at startup, before any payment, refund or capture starts, because it treats
-     * every PENDING row as interrupted.
+     * Marks sales, refunds and stored-value stages that never got an answer (for example because the app was killed
+     * mid-payment) as UNKNOWN, so staff can check them from history, together with the tender rows they were sending,
+     * and captures that were being requested as UNKNOWN, so they can be sent again; all for [StoredReason.Interrupted]
+     * (a sale's [SaleEvent.Interrupted]). Only safe at startup, before any payment, refund or capture starts, because
+     * it treats every PENDING row as interrupted.
      */
     suspend fun settleInterrupted() {
         db.withTransaction {
@@ -94,6 +108,9 @@ class HistoryRepository(
             saleDao.interruptPendingTenders()
             refundDao.pendingRefunds().forEach {
                 refundDao.update(it.copy(status = RefundStatus.UNKNOWN, message = null, reason = StoredReason.Interrupted))
+            }
+            giftCardDao.pending().forEach {
+                giftCardDao.update(it.copy(status = GiftCardStatus.UNKNOWN, message = null, reason = StoredReason.Interrupted))
             }
         }
     }
@@ -124,6 +141,7 @@ class HistoryRepository(
             saleDao.rememberHistorySwitch(HistorySwitchEntity(terminalJson = json))
             refundDao.deleteAllRefunds()
             saleDao.deleteAllSales()
+            giftCardDao.deleteAll()
         }
         onPurged()
     }
@@ -162,7 +180,25 @@ class HistoryRepository(
         onRemoved(removed.first, removed.second)
     }
 
-    private suspend fun deleteSettledBefore(before: Long): Int = deleteRefundsBefore(before) + deleteSalesBefore(before)
+    private suspend fun deleteSettledBefore(before: Long): Int =
+        deleteRefundsBefore(before) + deleteSalesBefore(before) + deleteGiftCardsBefore(before)
+
+    // Activities still needing a check, a confirmation or a repair stay, whatever their age.
+    private suspend fun deleteGiftCardsBefore(before: Long): Int {
+        var deleted = 0
+        keysetBatches<String> { last ->
+            val (groups, removed, erased) =
+                db.withTransaction {
+                    val groups = giftCardDao.retentionGroups(last.orEmpty(), before, BATCH_SIZE)
+                    val eligible = GiftCardActivity.of(giftCardDao.historyGroups(groups)).filterNot { it.needsAttention }
+                    Triple(groups, giftCardDao.deleteGroups(eligible.map { it.groupId }), eligible.map { HistoryItem.GiftCard(it) })
+                }
+            onRemoved(erased, emptyList())
+            deleted += removed
+            groups
+        }
+        return deleted
+    }
 
     // The retention batch queries already enforce the age cut-off; only eligibility is decided here.
     private suspend fun deleteRefundsBefore(before: Long): Int {
@@ -211,6 +247,7 @@ class HistoryRepository(
     ) {
         private val saleDao = db.saleDao()
         private val refundDao = db.refundDao()
+        private val giftCardDao = db.giftCardDao()
 
         /**
          * Reads at most 256 indexed candidates before [before] and on/after [afterAt] (epoch milliseconds).
@@ -224,9 +261,17 @@ class HistoryRepository(
                 // UNION ALL merges covering indexes without a temporary sort. Drop duplicate timestamps within this bounded batch.
                 val keys = saleDao.historyKeys(before?.at ?: Long.MAX_VALUE, before?.id ?: "\uffff", afterAt, BATCH_SIZE).distinct()
                 val refunds = refundDao.historyRecords(keys.filter { it.refund }.map { it.id })
-                val sales = saleDao.historyParents(keys.filterNot { it.refund }.map { it.id } + refunds.mapNotNull { it.saleId })
+                val saleIds = keys.filterNot { it.refund || it.giftCard }.map { it.id }
+                val sales = saleDao.historyParents(saleIds + refunds.mapNotNull { it.saleId })
                 val tenders = saleDao.historyTenders(sales.map { it.id }).groupBy { it.saleId }
-                HistoryBatch(keys, sales.associateBy { it.id }, refunds.associateBy { it.id }, tenders)
+                val giftCards = GiftCardActivity.of(giftCardDao.historyGroups(keys.filter { it.giftCard }.map { it.id }.distinct()))
+                HistoryBatch(
+                    keys,
+                    sales.associateBy { it.id },
+                    refunds.associateBy { it.id },
+                    tenders,
+                    giftCards.associateBy { it.groupId },
+                )
             }
 
         /**
@@ -252,6 +297,12 @@ class HistoryRepository(
                         currentCoroutineContext().ensureActive()
                         refundDao.historyBatch(last?.id.orEmpty(), BATCH_SIZE).also { batch ->
                             result = reduce(result, batch.map { HistoryItem.Refund(it) })
+                        }
+                    }
+                    keysetBatches<String> { last ->
+                        currentCoroutineContext().ensureActive()
+                        giftCardDao.groupIds(last.orEmpty(), BATCH_SIZE).also { groups ->
+                            result = reduce(result, GiftCardActivity.of(giftCardDao.historyGroups(groups)).map { HistoryItem.GiftCard(it) })
                         }
                     }
                     result
@@ -311,16 +362,22 @@ internal inline fun <E> keysetBatches(next: (last: E?) -> List<E>) {
  * @property sales Lightweight sales, including refund parents.
  * @property refunds Lightweight refunds.
  * @property tenders Lightweight original tenders keyed by sale ID.
+ * @property giftCards Lightweight stored-value activities keyed by group ID.
  */
 data class HistoryBatch(
     val keys: List<HistoryKey>,
     val sales: Map<String, SaleEntity>,
     val refunds: Map<String, RefundEntity>,
     val tenders: Map<String, List<SaleTenderEntity>> = emptyMap(),
+    val giftCards: Map<String, GiftCardActivity> = emptyMap(),
 ) {
     /** Candidate's original record; null if a concurrent deletion removed it. */
     fun item(key: HistoryKey): HistoryItem? =
-        if (key.refund) refunds[key.id]?.let(HistoryItem::Refund) else sales[key.id]?.let { HistoryItem.Sale(it, tenders[it.id].orEmpty()) }
+        when {
+            key.giftCard -> giftCards[key.id]?.let(HistoryItem::GiftCard)
+            key.refund -> refunds[key.id]?.let(HistoryItem::Refund)
+            else -> sales[key.id]?.let { HistoryItem.Sale(it, tenders[it.id].orEmpty()) }
+        }
 }
 
 /**
@@ -341,5 +398,9 @@ val HistoryItem.recordedEnvironment: String?
 
             is HistoryItem.Refund -> {
                 refund.context?.historyEnvironment
+            }
+
+            is HistoryItem.GiftCard -> {
+                activity.stages.firstNotNullOfOrNull { it.context?.historyEnvironment ?: it.environment }
             }
         }

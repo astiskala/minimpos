@@ -64,4 +64,48 @@ class TenderReceiptTest {
         val cashOnly = rows(sale.copy(tenders = listOf(ReceiptTender(ReceiptTenderKind.CASH, null, 3000, 3000, 0))))
         assertThat(cashOnly).contains(ReceiptElement.Row("Cash", "$30.00"))
     }
+
+    @Test
+    fun `a gift card redemption is listed even alone, with its provider and digits`() {
+        val gift = rows(sale.copy(tenders = listOf(ReceiptTender(ReceiptTenderKind.GIFT_CARD, "SVS **** 0042", 3000))))
+        assertThat(gift).contains(ReceiptElement.Row("Gift card SVS **** 0042", "$30.00"))
+        val bare = rows(sale.copy(tenders = listOf(ReceiptTender(ReceiptTenderKind.GIFT_CARD, null, 3000))))
+        assertThat(bare).contains(ReceiptElement.Row("Gift card", "$30.00"))
+    }
+
+    @Test
+    fun `a stored-value receipt lists its amounts, balance, outcome and every Adyen receipt`() {
+        val receipt =
+            GiftCardReceipt(
+                title = "GIFT CARD · Load",
+                reference = "G-1",
+                dateTime = "25/10/2026",
+                card = "SVS **** 0042",
+                lines = listOf(GiftCardReceiptLine("Card payment", 1500), GiftCardReceiptLine("Load", 1500, bold = true)),
+                balanceMinor = 2000,
+                standingNote = "Needs attention",
+                cardReceipts = listOf(listOf(CardReceiptLine(name = "APPROVED")), listOf(CardReceiptLine(name = "Tender", value = "T1"))),
+            )
+        val elements = builder.giftCard(receipt).elements
+        assertThat(elements)
+            .containsAtLeast(
+                ReceiptElement.Text("GIFT CARD · Load", Align.CENTER, TextStyle.BOLD),
+                ReceiptElement.Row("Reference", "G-1"),
+                ReceiptElement.Row("Gift card", "SVS **** 0042"),
+                ReceiptElement.Row("Card payment", "$15.00"),
+                ReceiptElement.Row("Load", "$15.00", TextStyle.BOLD),
+                ReceiptElement.Row("Balance", "$20.00"),
+                ReceiptElement.Text("Needs attention", Align.CENTER, TextStyle.BOLD),
+                ReceiptElement.Row("Tender", "T1"),
+            ).inOrder()
+        val plain =
+            ReceiptBuilder(
+                ReceiptBranding(),
+                ReceiptOptions(showReferences = false),
+                ReceiptLabels(),
+                MoneyFormatter(CurrencySpec.of("AUD"), Locale.forLanguageTag("en-AU")),
+            ).giftCard(receipt.copy(card = null, balanceMinor = null, standingNote = null, cardReceipts = emptyList()))
+                .elements
+        assertThat(plain.filterIsInstance<ReceiptElement.Row>().map { it.left }).containsExactly("Date", "Card payment", "Load").inOrder()
+    }
 }

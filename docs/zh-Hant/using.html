@@ -82,7 +82,7 @@
   功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li>
   <a href="#shopper-display">顧客端螢幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">離線支付</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#shoppers">
-  參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#payment-links">付款連結</a></li><li>
+  參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#gift-cards">禮品卡</a></li><li><a href="#payment-links">付款連結</a></li><li>
   <a href="#preauth">訂金</a></li><li><a href="#terminal-tips">終端小費</a></li><li><a href="#tips">收據小費</a></li><li>
   <a href="#more">更多設備和資料</a></li>
 </ol></div>
@@ -95,7 +95,7 @@
   功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li>
   <a href="#shopper-display">顧客端螢幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">離線支付</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#shoppers">
-  參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#payment-links">付款連結</a></li><li>
+  參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#gift-cards">禮品卡</a></li><li><a href="#payment-links">付款連結</a></li><li>
   <a href="#preauth">訂金</a></li><li><a href="#terminal-tips">終端小費</a></li><li><a href="#tips">收據小費</a></li><li>
   <a href="#more">更多設備和資料</a></li>
 </ol></details>
@@ -345,6 +345,8 @@
           <h3 id="split-payments">拆分銷售或收取現金</h3>
           <p>在結帳頁點按<strong>拆分或以現金付款</strong>。選擇本次付款的<strong>金額</strong>、<strong>均分</strong>或<strong>商品</strong>，然後點按<strong>刷卡</strong>或<strong>現金</strong>。價格和稅額保持登記時不變，多出的最小貨幣單位分給前幾份。現金付款時，輸入顧客給的金額，找回顯示的零錢，然後確認。現金只記錄在本裝置上，不會傳送到終端。</p>
           <p>銷售在付清前保持<strong>部分已付</strong>。在結果頁或<strong>交易紀錄</strong>中點按<strong>收取餘額</strong>即可繼續，重新啟動後也可以。拆分前請關閉小費、捐款、語音指引及 MOTO 或手動輸入。按商品付款時全額收取；其他刷卡金額仍可能由發卡機構部分授權。刷卡結果未知時，請先確認再繼續收款。收據會列出每筆付款，每日報告會另列現金；終端合計從不包含現金。</p>
+          <p>設定禮品卡後，點按<strong>禮品卡</strong>即可用禮品卡支付所選金額。餘額不足時會部分獲批，
+            餘下款項可繼續收取。禮品卡付款的退款會退回卡內；本地禮品卡除外，需在 Mini mPOS 以外退款。</p>
           <h3 id="shopper-display">使用顧客端終端螢幕</h3>
           <p>使用獨立的網絡或雲端終端時，開啟<strong>設定 › 顧客端終端螢幕</strong>。可選擇在付款前顯示商品明細、請顧客確認訂單，或在結帳未填寫電郵時收集電郵。收集電郵需要先設定
             <a href="#receipts">電郵收據</a>；開啟<strong>自動發送電子收據</strong>後，收據會自動發送。批准後可顯示二維碼並邀請顧客進行 0–10 評分；終端回傳的評分顯示在交易詳情中。
@@ -444,6 +446,28 @@
             如未收到回應，Mini mPOS會令已有選擇失效並重新取得清單。
             如結果仍未確認，請使用<strong>檢查刪除結果</strong>，在解決前不要扣款或再次刪除。
           </p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="gift-cards">
+          <h2>銷售和管理禮品卡</h2>
+          <p>禮品卡需配合 Adyen 終端使用；Tap to Pay 不支援禮品卡。在<strong>設定 › 支付 › 禮品卡</strong>中，
+            開啟你已在 Adyen 完成接入的每個供應商；如屬 Intersolve 或本地禮品卡，新增 Adyen 提供的卡類型；
+            並選擇員工出示卡的方式：用相機掃描並輸入到期日，或在終端上刷卡或手動輸入。只提供 Adyen 為該供應商說明的操作：
+            停用只限 Givex，本地禮品卡只限付款。</p>
+          <ol>
+            <li>在主頁點按<strong>禮品卡</strong>，然後選擇供應商和出示卡的方式。</li>
+            <li>選擇<strong>查詢餘額</strong>、<strong>啟用</strong>、<strong>增值</strong>、
+              <strong>提取現金</strong>、<strong>退款到卡</strong>或<strong>停用</strong>。</li>
+            <li>增值時，選擇<strong>刷卡付款</strong>，或選擇<strong>在應用程式外收款</strong>並確認已收到款項。</li>
+            <li>確認後，使用經理PIN批准。</li>
+          </ol>
+          <p>查詢餘額毋須批准。更改卡內金額需要已設定的經理PIN（目前的預設做法）。先完成刷卡付款，付款獲批後才發送金額；
+            如付款結果不明，請先查詢。如已收款但金額未增值，活動會顯示<strong>金額未增值</strong>：
+            請重新發送金額、退還刷卡付款，或記錄已退還的款項。不會自動重複任何操作。</p>
+          <p><strong>撤銷增值</strong>只會在該卡 24 小時內最近一次增值顯示。提現通常支付全部餘額並停用此卡；
+            只有部分 Givex 卡允許部分提現。獲批後交付現金，然後點按<strong>現金已交付</strong>；
+            未確認的交付即使重新啟動後仍會留在<strong>需要處理</strong>中。禮品卡活動會顯示在<strong>交易紀錄</strong>中，
+            並在每日報告中另行列出；不會計入銷售。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="payment-links">

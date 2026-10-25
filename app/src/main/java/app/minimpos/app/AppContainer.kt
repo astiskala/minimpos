@@ -6,11 +6,11 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.dataStoreFile
 import app.minimpos.app.data.db.AppDatabase
-import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.CatalogRepository
+import app.minimpos.app.data.repo.GiftCardRepository
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.RefundRepository
@@ -38,13 +38,14 @@ import app.minimpos.app.email.EmailTexts
 import app.minimpos.app.email.MailTransport
 import app.minimpos.app.email.ReceiptEmailer
 import app.minimpos.app.email.SmtpMailer
-import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.feature.localizedReceiptTexts
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.payment.Captures
 import app.minimpos.app.payment.CashTenders
 import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.FinancialOperations
+import app.minimpos.app.payment.GiftCards
 import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.PricingChanges
@@ -64,7 +65,6 @@ import app.minimpos.app.qr.QrCodes
 import app.minimpos.app.receipt.ReceiptFactory
 import app.minimpos.app.receipt.ReceiptSampleTexts
 import app.minimpos.app.receipt.ReceiptTexts
-import app.minimpos.app.receipt.ReportText
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.AndroidDeviceInfo
 import app.minimpos.app.terminal.CapabilityDiscovery
@@ -93,7 +93,6 @@ import app.minimpos.app.update.GitHubReleases
 import app.minimpos.app.update.UpdateCheck
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.ReceiptDocument
-import app.minimpos.core.receipt.ReceiptLabels
 import app.minimpos.core.tax.StarterTax
 import app.minimpos.terminal.checkout.AdyenCheckout
 import app.minimpos.terminal.checkout.CheckoutApi
@@ -268,6 +267,9 @@ class AppContainer(
     /** Stored refunds. */
     val refundRecords = RefundRepository(database, sales)
 
+    /** Stored stored-value (gift-card) stages. */
+    val giftCardRecords = GiftCardRepository(database)
+
     /** The combined transaction history and its housekeeping. */
     val history = HistoryRepository(database, onRemoved = ::historyRemoved, onPurged = ::historyPurged)
 
@@ -423,7 +425,7 @@ class AppContainer(
     val receipts =
         ReceiptDelivery(
             settings = settings,
-            records = ReceiptRecords(sales, refundRecords, history),
+            records = ReceiptRecords(sales, refundRecords, history, giftCardRecords),
             receipts = receiptFactory,
             gateway = gateway,
             status = terminalStatus,
@@ -546,11 +548,36 @@ class AppContainer(
     private val checkoutRefunds =
         CheckoutRefunds(appScope, refundRecords, sales, api::target, onAccepted = { receipts.arm(it) }, approval = managerApproval)
 
+    /** Cash tenders of immediate sales and gift-card cash handovers, recorded locally after confirmation. */
+    val cashTenders =
+        CashTenders(
+            sales,
+            { settingsState.value.terminal.historyEnvironment(automaticMode) },
+            ::completeSale,
+            giftCards = giftCardRecords,
+        )
+
+    /** Every stored-value (gift-card) activity: funding, value changes, cash-outs, repairs and their status checks. */
+    val giftCards: GiftCards =
+        GiftCards(
+            scope = appScope,
+            gateway = gateway,
+            records = giftCardRecords,
+            cash = cashTenders,
+            approval = managerApproval,
+            busy = ::financialOperationRunning,
+            blocked = { terminalStatus.state.value.giftCardsBlocked },
+            environment = { settingsState.value.terminal.historyEnvironment(automaticMode) },
+            onFinished = { receipts.arm(it) },
+            referencePrefix = { settingsState.value.payment.referencePrefix },
+        )
+
     /**
      * Every financial operation, whichever way it is sent: status checks, refund routing and whether anything is being
      * sent now, which setup changes wait for.
      */
-    val operations = FinancialOperations(payments, refunds, savedCardCharges, checkoutRefunds, links, sales, refundRecords)
+    val operations: FinancialOperations =
+        FinancialOperations(payments, refunds, savedCardCharges, checkoutRefunds, links, sales, refundRecords, giftCards)
 
     private fun historyPurged() {
         operations.forgetAll()
@@ -576,9 +603,6 @@ class AppContainer(
 
     /** Returns split across several tenders or including cash, one persisted leg at a time. */
     val refundLegs = RefundLegs(appScope, operations, refundRecords, managerApproval)
-
-    /** Cash tenders of immediate sales, recorded locally after confirmation without reaching Adyen. */
-    val cashTenders = CashTenders(sales, { settingsState.value.terminal.historyEnvironment(automaticMode) }, ::completeSale)
 
     /**
      * One terminal reconciliation: rechecks unresolved terminal operations, reads or closes the period and compares its
@@ -741,69 +765,7 @@ class AppContainer(
 
     private fun receiptTexts(languageTag: String = settingsState.value.languageTag): ReceiptTexts {
         val localized = context.withAppLanguage(languageTag.ifEmpty { settingsState.value.languageTag })
-        return ReceiptTexts(
-            labels = receiptLabels(localized),
-            locale = localized.locale,
-            sample = sampleTexts(localized),
-            simulationNote = localized.getString(R.string.link_simulation_note),
-            demoLink = localized.getString(R.string.link_demo_label),
-            standing = { standing ->
-                when (standing) {
-                    // The receipt builder already warns about payments that were not approved.
-                    PaymentStanding.CHARGED, PaymentStanding.NOT_APPROVED -> null
-
-                    PaymentStanding.AWAITING_TIP -> localized.getString(R.string.detail_tip_awaiting)
-
-                    PaymentStanding.HELD -> localized.getString(R.string.receipt_pre_auth_note)
-
-                    PaymentStanding.CAPTURE_REQUESTED -> localized.getString(R.string.status_capture_requested)
-
-                    PaymentStanding.CAPTURE_FAILED -> localized.getString(R.string.status_capture_failed)
-
-                    PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN -> localized.getString(R.string.status_capture_unknown)
-
-                    PaymentStanding.HOLD_CANCELLED -> localized.getString(R.string.status_cancellation_requested)
-                }
-            },
-            refund = { status ->
-                localized.getString(
-                    when (status) {
-                        RefundStatus.REQUESTED -> R.string.refund_status_requested
-                        RefundStatus.PENDING -> R.string.status_pending
-                        RefundStatus.UNKNOWN -> R.string.status_unknown
-                        RefundStatus.FAILED -> R.string.status_failed
-                    },
-                )
-            },
-            report = { label ->
-                localized.getString(
-                    when (label) {
-                        ReportText.TITLE -> R.string.report_title
-                        ReportText.GENERATED -> R.string.report_generated
-                        ReportText.SALES -> R.string.report_sales
-                        ReportText.TIPS -> R.string.report_tips
-                        ReportText.SURCHARGES -> R.string.surcharge_label
-                        ReportText.PURCHASE -> R.string.surcharge_purchase_known
-                        ReportText.UNKNOWN_SURCHARGES -> R.string.surcharge_unknown_count
-                        ReportText.REFUNDS -> R.string.report_refunds
-                        ReportText.CASH_SALES -> R.string.report_cash_sales
-                        ReportText.CASH_REFUNDS -> R.string.report_cash_refunds
-                        ReportText.REFUND_SURCHARGES -> R.string.surcharge_return_fee
-                        ReportText.UNKNOWN_REFUND_SURCHARGES -> R.string.surcharge_unknown_refund_count
-                        ReportText.NET -> R.string.report_net
-                        ReportText.HOLDS -> R.string.report_holds
-                        ReportText.UNRESOLVED -> R.string.report_unresolved
-                        ReportText.ONLINE -> R.string.report_online
-                        ReportText.UNDATED -> R.string.report_undated
-                        ReportText.UNDATED_NOTE -> R.string.report_undated_note
-                        ReportText.NOTE -> R.string.report_note
-                        ReportText.ISSUE_NOTE -> R.string.report_issue_note
-                        ReportText.DEMO -> R.string.report_demo
-                        ReportText.UNKNOWN -> R.string.report_unknown
-                    },
-                )
-            },
-        )
+        return localizedReceiptTexts(localized, sampleTexts(localized))
     }
 
     private fun sampleTexts(localizedContext: Context = this.localizedContext) =
@@ -812,59 +774,6 @@ class AppContainer(
             custom = localizedContext.getString(R.string.receipt_sample_item),
             taxed = installation(localizedContext).sampleTaxName,
             zero = localizedContext.getString(R.string.receipt_sample_zero_tax),
-        )
-
-    private fun receiptLabels(localizedContext: Context = this.localizedContext) =
-        ReceiptLabels(
-            date = localizedContext.getString(R.string.receipt_date),
-            reference = localizedContext.getString(R.string.receipt_reference),
-            customer = localizedContext.getString(R.string.receipt_customer),
-            subtotal = localizedContext.getString(R.string.receipt_subtotal),
-            tax = localizedContext.getString(R.string.receipt_tax),
-            total = localizedContext.getString(R.string.receipt_total),
-            includesTaxFormat = localizedContext.getString(R.string.receipt_includes_tax),
-            quantityFormat = localizedContext.getString(R.string.receipt_quantity),
-            refundQrCaption = localizedContext.getString(R.string.receipt_refund_qr_caption),
-            merchantCopy = localizedContext.getString(R.string.receipt_merchant_copy),
-            refundTitle = localizedContext.getString(R.string.receipt_refund_title),
-            originalReference = localizedContext.getString(R.string.receipt_original_sale),
-            refundTotal = localizedContext.getString(R.string.receipt_refund_total),
-            partialRefund = localizedContext.getString(R.string.receipt_partial_refund),
-            fullRefund = localizedContext.getString(R.string.receipt_full_refund),
-            cardSaved = localizedContext.getString(R.string.receipt_card_saved),
-            notCompleted = localizedContext.getString(R.string.receipt_not_completed),
-            preAuthTitle = localizedContext.getString(R.string.receipt_pre_auth_title),
-            amountHeld = localizedContext.getString(R.string.receipt_amount_held),
-            preAuthNote = localizedContext.getString(R.string.receipt_pre_auth_note),
-            cancellationTitle = localizedContext.getString(R.string.receipt_cancellation_title),
-            cancelledReference = localizedContext.getString(R.string.receipt_cancelled_reference),
-            cancellationNote = localizedContext.getString(R.string.receipt_cancellation_note),
-            released = localizedContext.getString(R.string.receipt_released),
-            amount = localizedContext.getString(R.string.receipt_amount),
-            tip = localizedContext.getString(R.string.receipt_tip),
-            surcharge = localizedContext.getString(R.string.surcharge_label),
-            unreported = localizedContext.getString(R.string.surcharge_unknown),
-            charged = localizedContext.getString(R.string.surcharge_charged),
-            purchase = localizedContext.getString(R.string.surcharge_purchase),
-            tenderCard = localizedContext.getString(R.string.split_tender_card),
-            tenderCash = localizedContext.getString(R.string.split_tender_cash),
-            cashReceived = localizedContext.getString(R.string.split_cash_received),
-            change = localizedContext.getString(R.string.split_change),
-            balanceDue = localizedContext.getString(R.string.receipt_balance_due),
-            cashReturned = localizedContext.getString(R.string.split_cash_returned),
-            tipTotal = localizedContext.getString(R.string.receipt_tip_total),
-            signature = localizedContext.getString(R.string.receipt_signature),
-            heldNow = localizedContext.getString(R.string.receipt_held_now),
-            captured = localizedContext.getString(R.string.receipt_captured),
-            taxableGrossFormat = localizedContext.getString(R.string.receipt_taxable_gross_format),
-            taxableNetFormat = localizedContext.getString(R.string.receipt_taxable_net_format),
-            amountDue = localizedContext.getString(R.string.receipt_amount_due),
-            unpaid = localizedContext.getString(R.string.receipt_unpaid),
-            payLinkCaption = localizedContext.getString(R.string.receipt_pay_link_caption),
-            payLinkIntro = localizedContext.getString(R.string.receipt_pay_link_intro),
-            payNow = localizedContext.getString(R.string.receipt_pay_now),
-            linkValidFormat = localizedContext.getString(R.string.receipt_link_valid),
-            paidOnline = localizedContext.getString(R.string.receipt_paid_online),
         )
 
     // The demo label and note are the receipt's own, so an email's envelope says what its receipt says.
@@ -879,6 +788,7 @@ class AppContainer(
             testBody = localizedContext.getString(R.string.email_test_body),
             preAuthIntro = localizedContext.getString(R.string.email_pre_auth_intro),
             cancellationIntro = localizedContext.getString(R.string.email_cancellation_intro),
+            giftCardIntro = localizedContext.getString(R.string.email_gift_card_intro),
             linkSubject = localizedContext.getString(R.string.email_link_subject),
             linkIntro = localizedContext.getString(R.string.email_link_intro),
         )

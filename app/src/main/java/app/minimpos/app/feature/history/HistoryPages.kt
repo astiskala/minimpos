@@ -128,6 +128,7 @@ internal class HistoryPages(
                         when (item) {
                             is HistoryItem.Sale -> item.sale
                             is HistoryItem.Refund -> item.refund.saleId?.let(batch.sales::get)
+                            is HistoryItem.GiftCard -> null
                         }
                     val preAuths = sale?.takeIf { it.kind == SaleKind.PRE_AUTHORISATION }?.let { setOf(it.id) }.orEmpty()
                     if (!filter.matches(item, preAuths) || !search.matches(item, sale)) {

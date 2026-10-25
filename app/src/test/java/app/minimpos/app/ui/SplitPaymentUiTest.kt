@@ -20,6 +20,7 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.settings.GiftCardSetting
 import app.minimpos.app.feature.refund.RefundLegsScreen
 import app.minimpos.app.feature.refund.RefundScreen
 import app.minimpos.app.feature.refund.RefundViewModel
@@ -27,6 +28,9 @@ import app.minimpos.app.feature.sale.SplitMode
 import app.minimpos.app.feature.sale.SplitScreen
 import app.minimpos.app.feature.sale.SplitViewModel
 import app.minimpos.app.payment.Checkout
+import app.minimpos.app.payment.GiftCardFunding
+import app.minimpos.app.payment.GiftCardRequest
+import app.minimpos.app.payment.PresentedGiftCard
 import app.minimpos.app.payment.RefundStarted
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.payment.splitStart
@@ -34,10 +38,14 @@ import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.MiniMposTheme
+import app.minimpos.core.giftcard.GiftCardEntry
+import app.minimpos.core.giftcard.GiftCardProvider
+import app.minimpos.core.money.AmountEntry
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -132,7 +140,10 @@ class SplitPaymentUiTest {
         }
     }
 
-    private fun splitViewModel(saleId: String?): SplitViewModel {
+    private fun splitViewModel(
+        saleId: String?,
+        giftCards: List<GiftCardSetting> = emptyList(),
+    ): SplitViewModel {
         val container = env.container
         val session = container.session(SaleKind.SALE)
         return SplitViewModel(
@@ -142,6 +153,7 @@ class SplitPaymentUiTest {
             container.storedPayments,
             container.payments,
             container.cashTenders,
+            flowOf(giftCards),
         )
     }
 
@@ -197,6 +209,43 @@ class SplitPaymentUiTest {
             assertThat(await { container.sales.get(id)!! }.sale.isPartiallyPaid).isFalse()
         } finally {
             close(models.values.toList())
+        }
+    }
+
+    @Test
+    fun `a gift card pays what it holds and leaves the rest of the split to collect`() {
+        ringUp()
+        val container = env.container
+        val svs = GiftCardSetting(GiftCardProvider.SVS)
+        await { container.managerPin.setPin("2468") }
+        container.managerLock.unlock()
+        val activation =
+            checkNotNull(
+                container.giftCards.start(
+                    GiftCardRequest.Activate(PresentedGiftCard.of(svs, GiftCardEntry.SWIPED)!!, 500, "AUD", GiftCardFunding.EXTERNAL),
+                ),
+            )
+        await { container.giftCards.state.first { it == TransactionState.Finished(activation) } }
+        container.giftCards.acknowledge()
+        val vm = splitViewModel(null, listOf(svs))
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.Checkout(), Route.Split()))
+        try {
+            show { if (navigator.current is Route.Split) SplitScreen(null, navigator, vm = vm) }
+            compose.awaitCondition("split loaded") { vm.state.value.balance != null }
+            vm.updateAmount { AmountEntry(900) }
+            compose.awaitCondition("whole balance typed") { vm.state.value.amountMinor == 900L }
+            compose.onNodeWithTag("splitGiftCard").assertIsDisplayed().performClick()
+            compose.awaitCondition("gift card presented") { vm.state.value.giftCardReady }
+            compose.onNodeWithTag("payGiftCard").assertIsDisplayed().performClick()
+            compose.awaitCondition("gift card collected") { container.payments.state.value is TransactionState.Finished }
+            val id = (container.payments.state.value as TransactionState.Finished).id
+            container.payments.acknowledge()
+            val record = await { container.sales.get(id)!! }
+            assertThat(record.tenders.single().giftCard).isEqualTo("SVS")
+            assertThat(record.sale.paidMinor).isEqualTo(500)
+            assertThat(record.sale.remainingMinor).isEqualTo(400)
+        } finally {
+            close(listOf(vm))
         }
     }
 

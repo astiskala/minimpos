@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.combine
  * @param links Payment links, whose status check asks Adyen about the link.
  * @param sales Where sales are stored, read to route a sale's status check.
  * @param refundRecords Where refunds are stored, read to route a refund's status check.
+ * @param giftCards Stored-value activities on the terminal, which count as running and route their own status checks.
  */
 class FinancialOperations(
     private val payments: TransactionLifecycle<PaymentStart>,
@@ -33,6 +34,7 @@ class FinancialOperations(
     private val links: PaymentLinks,
     private val sales: SaleRepository,
     private val refundRecords: RefundRepository,
+    private val giftCards: GiftCards? = null,
 ) {
     /** Releases every runner's process-only requests after confirmed complete history deletion. */
     internal fun forgetAll() {
@@ -41,6 +43,7 @@ class FinancialOperations(
         charges.forgetAll()
         checkoutRefunds.forgetAll()
         links.forgetAll()
+        giftCards?.forgetAll()
     }
 
     /** Releases process-only request material after durable history deletion, routed to every runner. */
@@ -50,17 +53,19 @@ class FinancialOperations(
         charges.forget(ids)
         checkoutRefunds.forget(ids)
         links.forget(ids)
+        giftCards?.forget(ids)
     }
 
     /**
      * Whether a card payment, refund, saved-card charge or Checkout refund is being sent now, so the configuration it
-     * is sent with must not be replaced. Token deletion and its active reconciliation also hold credentials steady.
-     * Unfinished history alone does not count.
+     * is sent with must not be replaced. Token deletion and its active reconciliation, and stored-value activities,
+     * also hold credentials steady. Unfinished history alone does not count.
      */
     val running: Boolean
         get() =
             charges.managing ||
-                listOf(payments.state, refunds.state, charges.state, checkoutRefunds.state).any { it.value is TransactionState.Processing }
+                listOfNotNull(payments.state, refunds.state, charges.state, checkoutRefunds.state, giftCards?.state)
+                    .any { it.value is TransactionState.Processing }
 
     /**
      * The payment running or just finished, whichever way it is sent: on the terminal (scanned wallets included) or as a
@@ -147,6 +152,10 @@ class FinancialOperations(
                     refund.checkoutRefund -> checkoutRefunds.recheck(refund.id)
                     else -> refunds.recheck(refund.id)
                 }
+            }
+
+            is StoredTransaction.GiftCard -> {
+                giftCards?.recheck(transaction.id) ?: Recheck.Settled
             }
         }
 

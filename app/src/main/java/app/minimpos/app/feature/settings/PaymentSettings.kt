@@ -6,11 +6,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
+import app.minimpos.app.data.settings.GiftCardSetting
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.feature.giftcard.entryLabel
+import app.minimpos.app.feature.giftcard.providerName
 import app.minimpos.app.terminal.DestinationCapabilities
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SectionHeader
+import app.minimpos.core.giftcard.GiftCardEntry
+import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.core.shopper.EmailReferenceMode
 
 /** Stores the payment settings with [transform] applied, through [SettingsEvents.onUpdate]. */
@@ -71,7 +76,74 @@ internal fun ColumnScope.PaymentsSection(
     ShopperReferenceSettings(payment, update)
     SectionHeader(stringResource(R.string.settings_payment_links))
     PaymentLinkSettings(payment, update)
+    SectionHeader(stringResource(R.string.settings_gift_cards), Modifier.testTag("giftCardsHeader"))
+    GiftCardSettings(payment, update)
 }
+
+/**
+ * The gift-card providers the merchant completed onboarding with at Adyen, each with its card type where Adyen needs
+ * one and how staff may present its cards; only what a provider supports is offered. Shared merchant configuration, so
+ * it stays editable on a destination without gift cards, whose Gift cards screen explains that instead.
+ */
+@Composable
+private fun ColumnScope.GiftCardSettings(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    SettingNote(stringResource(R.string.settings_gift_cards_hint))
+    GiftCardProvider.entries.forEach { provider ->
+        val setting = payment.giftCards.firstOrNull { it.provider == provider }
+
+        fun change(transform: (GiftCardSetting) -> GiftCardSetting?) =
+            update { current ->
+                val existing = current.giftCards.firstOrNull { it.provider == provider } ?: GiftCardSetting(provider)
+                current.copy(giftCards = current.giftCards.filterNot { it.provider == provider } + listOfNotNull(transform(existing)))
+            }
+        SettingSwitch(
+            providerName(provider),
+            setting != null,
+            { on -> change { if (on) it else null } },
+            subtitle = stringResource(providerHint(provider)),
+            tag = "giftCard_${provider.name}",
+        )
+        if (setting == null) return@forEach
+        if (provider.configuresCode) {
+            SettingTextField(
+                stringResource(R.string.settings_gift_card_code),
+                setting.code,
+                { value -> change { it.copy(code = value.trim().lowercase()) } },
+                supporting = stringResource(R.string.settings_gift_card_code_hint),
+                autoCorrect = false,
+            )
+        }
+        GiftCardEntry.entries.forEach { entry ->
+            SettingSwitch(
+                stringResource(entryLabel(entry)),
+                entry in setting.entries,
+                { on -> change { it.copy(entries = if (on) it.entries + entry else it.entries - entry) } },
+                subtitle = stringResource(entryHint(entry)),
+                tag = "giftCard_${provider.name}_${entry.name}",
+            )
+        }
+        if (!setting.complete) SettingNote(stringResource(R.string.settings_gift_card_incomplete))
+    }
+}
+
+/** How staff present a card by [entry], in one line. */
+private fun entryHint(entry: GiftCardEntry): Int =
+    when (entry) {
+        GiftCardEntry.SCANNED -> R.string.settings_gift_card_scanned_hint
+        GiftCardEntry.SWIPED -> R.string.settings_gift_card_swiped_hint
+        GiftCardEntry.KEYED -> R.string.settings_gift_card_keyed_hint
+    }
+
+/** What Adyen documents for [provider], in one line. */
+private fun providerHint(provider: GiftCardProvider): Int =
+    when (provider) {
+        GiftCardProvider.GIVEX -> R.string.settings_gift_card_givex
+        GiftCardProvider.LOCAL -> R.string.settings_gift_card_local
+        GiftCardProvider.SVS, GiftCardProvider.FISERV, GiftCardProvider.INTERSOLVE -> R.string.settings_gift_card_standard
+    }
 
 /** How long payment links remain payable; API readiness belongs to Terminal settings. */
 @Composable

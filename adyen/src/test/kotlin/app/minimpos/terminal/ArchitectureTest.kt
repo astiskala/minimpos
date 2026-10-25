@@ -6,7 +6,7 @@ import app.minimpos.terminal.checkout.CheckoutModifications
 import app.minimpos.terminal.checkout.CheckoutPaymentLinks
 import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.client.Decline
-import app.minimpos.terminal.client.TerminalClient
+import app.minimpos.terminal.client.TerminalExchange
 import app.minimpos.terminal.client.TransactionDetails
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppCredentials
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
@@ -288,8 +288,8 @@ class ArchitectureTest {
             resideInAnyPackage("app.minimpos.terminal.client..")
                 .and(
                     DescribedPredicate.not(
-                        DescribedPredicate.describe("TerminalAnswer or TerminalClient.execute") {
-                            it.name.endsWith(".TerminalAnswerKt") || it.name == TerminalClient::class.java.name
+                        DescribedPredicate.describe("TerminalAnswer or TerminalExchange.execute") {
+                            it.name.endsWith(".TerminalAnswerKt") || it.name == TerminalExchange::class.java.name
                         },
                     ),
                 ),

@@ -31,6 +31,7 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.app.data.settings.GiftCardSetting
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.CaptureStep
 import app.minimpos.app.feature.modificationNote
@@ -39,6 +40,8 @@ import app.minimpos.app.feature.stillUnconfirmed
 import app.minimpos.app.feature.text
 import app.minimpos.app.feature.walletCheckFailed
 import app.minimpos.app.payment.WalletScanProblem
+import app.minimpos.core.giftcard.GiftCardEntry
+import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
@@ -230,6 +233,17 @@ class LocalizedUiTest {
     fun `Japanese wallet checkout and demo scan fit AMS1`() = walletFits()
 
     @Test
+    fun `Japanese gift card load fits AMS1`() = giftCardsFit()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese gift card load fits AMS1`() = giftCardsFit()
+
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese gift card load fits AMS1`() = giftCardsFit()
+
+    @Test
     @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
     fun `Chinese wallet checkout and demo scan fit AMS1`() = walletFits()
 
@@ -278,6 +292,41 @@ class LocalizedUiTest {
         compose.onNodeWithTag("back").performClick()
         compose.onNodeWithTag("settings").assertContentDescriptionEquals("Settings")
         assertThat(await { env.container.settings.current() }).isEqualTo(original)
+    }
+
+    /** The Home tile and the gift-card load screen keep their label, choices and pinned action on an AMS1. */
+    private fun giftCardsFit() {
+        val context = env.context
+        env.useSimulator {
+            it.copy(
+                payment =
+                    it.payment.copy(
+                        giftCards =
+                            listOf(
+                                GiftCardSetting(GiftCardProvider.GIVEX),
+                                GiftCardSetting(GiftCardProvider.SVS, entries = setOf(GiftCardEntry.SWIPED, GiftCardEntry.KEYED)),
+                            ),
+                    ),
+            )
+        }
+        compose.setContent { MiniMposApp(env.container) }
+        compose.waitUntilAtLeastOneExists(hasTestTag("giftCards"), 15_000)
+        compose
+            .onNodeWithTag("giftCards")
+            .performScrollTo()
+            .assertTextContains(context.getString(R.string.home_gift_cards))
+            .performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("giftCardOperation_LOAD"), 15_000)
+        compose.onNodeWithTag("giftCardProvider_1").performScrollTo().performClick()
+        compose.onNodeWithTag("giftCardOperation_LOAD").performScrollTo().performClick()
+        compose.onNodeWithTag("key_5").performScrollTo().performClick()
+        compose
+            .onNodeWithTag("giftCardFunding_1")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+        compose.onNodeWithTag("giftCardExternalConfirmed").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("giftCardStart").assertIsDisplayed()
     }
 
     private fun walletFits() {

@@ -125,6 +125,9 @@ data class ReceiptOptions(
  * @property change Label of the change handed back for a cash tender.
  * @property balanceDue Label of the purchase balance still due on a partially paid sale.
  * @property cashReturned Note on the receipt of cash handed back for a cash tender, instead of a request outcome.
+ * @property tenderGiftCard Label of a gift-card tender in the breakdown, followed by its provider and last digits.
+ * @property giftCard Label of the gift card a stored-value receipt is for.
+ * @property balance Label of a gift card's balance as last reported.
  */
 data class ReceiptLabels(
     val date: String = "Date",
@@ -187,6 +190,12 @@ data class ReceiptLabels(
     val balanceDue: String = "BALANCE DUE",
     /** Note on the receipt of cash handed back for a cash tender. */
     val cashReturned: String = "Cash returned",
+    /** A gift-card tender in the breakdown. */
+    val tenderGiftCard: String = "Gift card",
+    /** The gift card a stored-value receipt is for. */
+    val giftCard: String = "Gift card",
+    /** A gift card's balance as last reported. */
+    val balance: String = "Balance",
 )
 
 /**
@@ -323,6 +332,9 @@ enum class ReceiptTenderKind {
 
     /** Cash recorded locally, with what was received and the change. */
     CASH,
+
+    /** A gift card redeemed on the terminal, whose own Adyen receipt lines follow verbatim. */
+    GIFT_CARD,
 }
 
 /**
@@ -379,3 +391,39 @@ data class RefundReceipt(
 
 /** "GST 10%" - or the name as-is when the merchant already put the rate in it. */
 fun AppliedTax.label(): String = if ('%' in name) name else "$name ${TaxRates.format(rateMilliPercent)}%".trim()
+
+/**
+ * One amount line on a stored-value receipt.
+ *
+ * @property label What it is, already localized, such as the value loaded or the cash handed over.
+ * @property amountMinor In minor units of the receipt's currency.
+ * @property bold Whether it is the receipt's main amount.
+ */
+data class GiftCardReceiptLine(
+    val label: String,
+    val amountMinor: Long,
+    val bold: Boolean = false,
+)
+
+/**
+ * The data for a stored-value (gift-card) receipt: never a sale or refund receipt.
+ *
+ * @property title The activity, already localized, such as "GIFT CARD LOAD".
+ * @property reference The activity's merchant reference.
+ * @property dateTime When it began, already formatted for the locale.
+ * @property card Provider and last digits of the gift card; null when unknown.
+ * @property lines Its amounts in order.
+ * @property balanceMinor The card's balance as last reported, in minor units; null when unreported.
+ * @property standingNote Current localized outcome; null for none.
+ * @property cardReceipts Adyen's receipt lines of each answered stage, printed verbatim in order.
+ */
+data class GiftCardReceipt(
+    val title: String,
+    val reference: String,
+    val dateTime: String,
+    val card: String?,
+    val lines: List<GiftCardReceiptLine>,
+    val balanceMinor: Long?,
+    val standingNote: String?,
+    val cardReceipts: List<List<CardReceiptLine>>,
+)

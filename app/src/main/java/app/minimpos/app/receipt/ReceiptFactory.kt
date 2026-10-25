@@ -1,9 +1,12 @@
 package app.minimpos.app.receipt
 
+import app.minimpos.app.data.db.GiftCardStage
+import app.minimpos.app.data.db.GiftCardStatus
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.repo.GiftCardActivity
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.history.HistoryReport
@@ -15,6 +18,8 @@ import app.minimpos.core.cart.TaxBreakdown
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
+import app.minimpos.core.receipt.GiftCardReceipt
+import app.minimpos.core.receipt.GiftCardReceiptLine
 import app.minimpos.core.receipt.ReceiptBranding
 import app.minimpos.core.receipt.ReceiptBuilder
 import app.minimpos.core.receipt.ReceiptCopy
@@ -64,6 +69,9 @@ data class ReceiptSampleTexts(
  *   approved, whose warning the receipt builder prints itself.
  * @property refund Localised refund-request status note.
  * @property report Localised daily-report heading and row labels.
+ * @property giftCardStage Localised name of a stored-value stage, such as "Load".
+ * @property giftCardTitle Localised stored-value receipt title.
+ * @property giftCardAttention Localised note on an activity that still needs a check, confirmation or repair.
  */
 data class ReceiptTexts(
     val labels: ReceiptLabels = ReceiptLabels(),
@@ -74,6 +82,9 @@ data class ReceiptTexts(
     val standing: (PaymentStanding) -> String?,
     val refund: (RefundStatus) -> String?,
     val report: (ReportText) -> String,
+    val giftCardStage: (GiftCardStage) -> String = { it.name },
+    val giftCardTitle: String = "GIFT CARD",
+    val giftCardAttention: String = "Needs attention",
 )
 
 /**
@@ -219,6 +230,37 @@ class ReceiptFactory(
     }
 
     /**
+     * The receipt of stored-value [activity]: never a sale receipt. Lists each completed stage's amount, the card's
+     * last reported balance and Adyen's receipt lines of every answered stage verbatim.
+     */
+    fun giftCard(
+        activity: GiftCardActivity,
+        settings: ReceiptSettings,
+    ): ReceiptDocument {
+        val resolved = current
+        val main = activity.change ?: activity.stages.first()
+        val receipt =
+            GiftCardReceipt(
+                title = "${resolved.giftCardTitle} · ${resolved.giftCardStage(activity.kind)}",
+                reference = main.merchantReference,
+                dateTime = formatDateTime(activity.createdAt),
+                card =
+                    listOfNotNull(
+                        activity.stages.firstNotNullOfOrNull { it.providerCode }?.uppercase(),
+                        activity.cardLastFour?.let { "**** $it" },
+                    ).joinToString(" ").ifBlank { null },
+                lines =
+                    activity.stages.filter { it.status == GiftCardStatus.SUCCEEDED }.map {
+                        GiftCardReceiptLine(resolved.giftCardStage(it.stage), it.movedMinor, bold = it.id == main.id)
+                    },
+                balanceMinor = activity.balanceMinor,
+                standingNote = resolved.giftCardAttention.takeIf { activity.needsAttention },
+                cardReceipts = activity.stages.map { ReceiptLinesJson.decode(it.customerReceiptJson) }.filter { it.isNotEmpty() },
+            )
+        return builder(settings, CurrencySpec.of(activity.currency), resolved).giftCard(receipt)
+    }
+
+    /**
      * A sample receipt with [settings] in [currency], as Settings previews and test-prints it: two items (one taxed at
      * 10%, one at the configured marked rate or tax-free), totals in tax [mode], a customer reference when
      * [withCustomerReference] (checkout asks for one) and a refund QR code, dated now. Gross amounts are fixed,
@@ -320,6 +362,7 @@ internal fun receiptTenders(record: SaleWithLines): List<ReceiptTender> =
             ReceiptTender(ReceiptTenderKind.CASH, null, tender.requestedMinor, tender.cashReceivedMinor, tender.changeMinor)
         } else {
             val detail = listOfNotNull(tender.paymentBrand?.uppercase(), tender.maskedPan).joinToString(" ").ifBlank { null }
-            ReceiptTender(ReceiptTenderKind.CARD, detail, tender.authorisedMinor ?: tender.requestedMinor)
+            val kind = if (tender.giftCard != null) ReceiptTenderKind.GIFT_CARD else ReceiptTenderKind.CARD
+            ReceiptTender(kind, detail, tender.authorisedMinor ?: tender.requestedMinor)
         }
     }

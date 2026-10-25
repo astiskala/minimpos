@@ -410,5 +410,16 @@ class TransactionActions private constructor(
             receipts: ReceiptDelivery,
             operations: FinancialOperations,
         ) = TransactionActions(scope, receipts, StoredTransaction.Refund(refundId), fresh = false, operations)
+
+        /**
+         * The actions on stored-value activity [groupId], in [scope]: its receipt through [receipts] and status checks
+         * of an unknown stage, with its original message category, through [operations].
+         */
+        fun forGiftCard(
+            scope: CoroutineScope,
+            groupId: String,
+            receipts: ReceiptDelivery,
+            operations: FinancialOperations,
+        ) = TransactionActions(scope, receipts, StoredTransaction.GiftCard(groupId), fresh = false, operations)
     }
 }

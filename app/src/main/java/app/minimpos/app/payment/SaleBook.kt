@@ -9,10 +9,13 @@ import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.repo.TenderBalance
 import app.minimpos.core.cart.CartTotals
+import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.split.AllocatableLine
 import app.minimpos.terminal.client.CardEntryOverride
+import app.minimpos.terminal.client.GiftCardPayment
+import app.minimpos.terminal.client.GiftCardUse
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.ScannedPayment
@@ -51,6 +54,7 @@ import app.minimpos.terminal.client.TransactionKind
  * @property allocation Equal-share or item allocation this tender pays; null for an amount or the whole balance.
  * @property reviewedPaidMinor Purchase already paid when an [existingSaleId] tender was reviewed; a changed stored
  *   amount refuses the start as stale.
+ * @property giftCard Transient gift card this tender redeems (a split tender of an immediate sale); null for cards.
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
  */
@@ -79,8 +83,18 @@ data class PaymentStart(
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
     val allocation: TenderAllocation? = null,
     val reviewedPaidMinor: Long = 0,
+    val giftCard: PresentedGiftCard? = null,
 ) {
     init {
+        require(
+            giftCard == null || (
+                kind == SaleKind.SALE && !tipOnReceipt && tokenization == null && terminalTip == null && shopperFlow == null &&
+                    !askGiving && !audioGuidance && scannedPayment == null && cardEntryOverride == CardEntryOverride.NORMAL &&
+                    giftCard.setting.provider.supports(GiftCardOperation.REDEEM)
+            ),
+        ) {
+            "Gift cards redeem an immediate sale without card features"
+        }
         require(allocation !is TenderAllocation.Items || !allowPartialAuthorisation) {
             "Item tenders are collected in full so their units are paid exactly once"
         }
@@ -132,6 +146,16 @@ data class PaymentStart(
     /** What this payment requests on its tender, in [currency]. */
     val amount: OperationAmount get() = OperationAmount(requestedAmountMinor, currency.code)
 
+    /** This tender paid with [card] instead of a payment card: no card saving or special entry; a short balance may be approved. */
+    fun withGiftCard(card: PresentedGiftCard): PaymentStart =
+        copy(
+            giftCard = card,
+            tokenization = null,
+            cardEntryOverride = CardEntryOverride.NORMAL,
+            // Adyen asks gift-card payments to allow a short balance; item tenders are still collected in full.
+            allowPartialAuthorisation = allocation !is TenderAllocation.Items,
+        )
+
     /** Attaches a transient [instrument] only to this validated sale, bound to [context] and exact [setupIdentity]. */
     internal fun withScanned(
         instrument: ScannedPayment,
@@ -173,7 +197,16 @@ class SaleBook(
         val existing = request.existingSaleId
         if (existing != null) {
             val opened = SaleEvent.TenderOpened(serviceId, request.requestedAmountMinor, request.reviewedPaidMinor)
-            return sales.openTender(existing, opened, request.allocation, createdAt)
+            return sales.openTender(
+                existing,
+                opened,
+                request.allocation,
+                createdAt,
+                request.giftCard
+                    ?.setting
+                    ?.provider
+                    ?.name,
+            )
         }
         val split = request.requestedAmountMinor != request.totals.amounts.gross || request.allocation != null
         if (split && !splitBalance(request).accepts(request.requestedAmountMinor, request.allocation)) return false
@@ -181,7 +214,14 @@ class SaleBook(
         sales.createPending(
             pendingSale(id, request, createdAt).copy(serviceId = serviceId),
             lines(id, request.totals),
-            tender.copy(serviceId = serviceId),
+            tender.copy(
+                serviceId = serviceId,
+                giftCard =
+                    request.giftCard
+                        ?.setting
+                        ?.provider
+                        ?.name,
+            ),
         )
         return true
     }
@@ -205,11 +245,11 @@ class SaleBook(
                 merchantReference = request.merchantReference,
                 shopperReference = request.shopperReference,
                 shopperEmail = request.shopperEmail,
-                recurringProcessingModel = tokenization?.recurringProcessingModel,
+                recurringProcessingModel = tokenization?.recurringProcessingModel?.takeIf { request.giftCard == null },
                 // The app prints its own combined receipt, including the card details.
                 appPrintsReceipts = true,
                 metadata = listOfNotNull(request.customerReference?.let { "customerReference" to it }).toMap(),
-                requestCardAlias = tokenization != null && request.scannedPayment == null,
+                requestCardAlias = tokenization != null && request.scannedPayment == null && request.giftCard == null,
                 // A tip on the receipt is captured later with the tip, as Adyen's tipping on the receipt flow asks.
                 preAuthorisation = request.manualCapture,
                 scannedPayment = request.scannedPayment,
@@ -220,6 +260,7 @@ class SaleBook(
                 saleReferenceId = request.merchantReference.takeIf { isSplit || request.allowPartialAuthorisation },
                 askGiving = request.askGiving,
                 cardEntryOverride = request.cardEntryOverride,
+                giftCard = request.giftCard?.let { GiftCardPayment(it.account, GiftCardUse.REDEEM) },
             ),
             audioGuidancePoiId = request.audioGuidancePoiId,
             expected = request.walletContext,
@@ -229,6 +270,7 @@ class SaleBook(
 
     override fun release(request: PaymentStart) {
         request.scannedPayment?.discard()
+        request.giftCard?.discard()
     }
 
     override suspend fun sending(

@@ -156,6 +156,9 @@ enum class TransactionKind {
 
     /** A referenced refund (nexo message category `Reversal`). */
     REFUND,
+
+    /** A gift-card activation, load, undone load or deactivation (nexo message category `StoredValue`). */
+    STORED_VALUE,
 }
 
 /** Card entry mode override for a terminal payment. */
@@ -239,8 +242,22 @@ data class PaymentParams(
     val audioGuidance: Boolean = false,
     /** Overrides how the card is entered on the terminal (`MOTO` tender option or `ForceEntryMode=Keyed`). */
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
+    /**
+     * Pays with, pays out or refunds onto a gift card (`PaymentInstrumentType=StoredValue`); null for card payments.
+     * Only redemption may allow partial approval; no terminal card features apply.
+     */
+    val giftCard: GiftCardPayment? = null,
 ) {
     init {
+        require(
+            giftCard == null || (
+                !preAuthorisation && scannedPayment == null && terminalTip == null && shopperFlow == null && !askGiving &&
+                    !audioGuidance && cardEntryOverride == CardEntryOverride.NORMAL && recurringProcessingModel == null &&
+                    !requestCardAlias && (giftCard.use == GiftCardUse.REDEEM || !allowPartialAuthorisation)
+            ),
+        ) {
+            "Gift card requests are immediate, without card features, and only redemption allows partial approval"
+        }
         require(
             !audioGuidance || (
                 terminalTip == null && !askGiving && scannedPayment == null &&
@@ -443,6 +460,11 @@ data class TransactionDetails(
     val surchargeMinor: Long? = null,
     /** Cash returned to the shopper, included in [amountMinor]; null when unreported. Never merchandise. */
     val cashBackMinor: Long? = null,
+    /**
+     * A gift card's balance after a stored-value operation (`CurrentBalance`, else the value `ItemAmount` reports), in
+     * minor units of [currency]; null when unreported and for card payments.
+     */
+    val balanceMinor: Long? = null,
     /** The ISO 4217 currency code of a payment's [amountMinor]. */
     val currency: String?,
     /** The card scheme, e.g. `mc` or `visa`. */

@@ -34,6 +34,9 @@ enum class ReceiptKind {
 
     /** A cancelled hold's receipt: the amount was released, nothing refunded. */
     CANCELLATION,
+
+    /** A stored-value (gift-card) activity's receipt; never a sale. */
+    GIFT_CARD,
     ;
 
     /** Reading a stored transaction. */

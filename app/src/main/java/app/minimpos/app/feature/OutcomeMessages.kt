@@ -9,6 +9,7 @@ import app.minimpos.app.R
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.EmailFault
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.db.GiftCardOperationEntity
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SetupProblem
@@ -135,6 +136,12 @@ fun SaleEntity.modificationNote(): String? =
 @Composable
 @ReadOnlyComposable
 fun RefundEntity.outcomeNote(): String? = note(reason?.text(R.string.refund_unknown_outcome, R.string.payment_interrupted), message)
+
+/** Why this stored-value stage did not succeed, worded as [SaleEntity.outcomeNote]; null when nothing is stored. */
+val GiftCardOperationEntity.outcomeNote: String?
+    @Composable
+    @ReadOnlyComposable
+    get() = note(reason?.text(R.string.gift_card_unknown_outcome, R.string.payment_interrupted), message)
 
 /** The app's [worded] reason, with what Adyen or the terminal said ([said]) in brackets after it. */
 private fun note(
@@ -363,6 +370,8 @@ private val SetupProblem.textRes: Int
             SetupProblem.TOKEN_DELETION_PENDING -> R.string.setup_token_deletion_pending
             SetupProblem.SHOPPER_REFERENCE -> R.string.setup_shopper_reference
             SetupProblem.TOTALS -> R.string.setup_totals
+            SetupProblem.GIFT_CARDS -> R.string.setup_gift_cards
+            SetupProblem.GIFT_CARD_PROVIDER -> R.string.setup_gift_card_provider
         }
 
 /** Why a tip, capture or adjustment did not go through, named after what was sent; a refusal says the amount. */

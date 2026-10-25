@@ -246,25 +246,25 @@ Read first: `adyen/.../client/TerminalClient.kt`, `ClientModels.kt`, `transport/
 `app/.../terminal/WalletOffers.kt`, `CapabilityDiscovery.kt`, operation/repository/history/receipt owners, and Home
 routes.
 
-- [ ] Verify the operation matrix for Givex, SVS, Fiserv, Intersolve, and payment-only local gift cards. At review time,
+- [x] Verify the operation matrix for Givex, SVS, Fiserv, Intersolve, and payment-only local gift cards. At review time,
   deactivation is documented for Givex only. Offer only configured, provider-supported actions and entry methods.
-- [ ] Add typed SDK requests/responses for balance, activation, load, undo load, redemption, refunds, cash-out, and
+- [x] Add typed SDK requests/responses for balance, activation, load, undo load, redemption, refunds, cash-out, and
   supported deactivation. Separate business intent from Payment/Reversal/StoredValue wire categories and recover with
   the right one.
-- [ ] Add durable stored-value records rather than disguising every balance change as a merchandise sale. Include those
+- [x] Add durable stored-value records rather than disguising every balance change as a merchandise sale. Include those
   operations in running/recovery/retention/history routing. Retain only safe display identifiers and needed recovery
   facts.
-- [ ] Support card-funded activation/load and staff-confirmed external funding with an explicit funding source. Model
+- [x] Support card-funded activation/load and staff-confirmed external funding with an explicit funding source. Model
   funding and loading as separately persisted linked stages. Unknown funding prevents loading; unknown loading requires
   status recovery. A failed load after confirmed funding needs a visible repair/refund path, not a blind repeated load.
-- [ ] Add Gift cards between Tokens and Refund on Home. Include balance and lifecycle actions on its screen, and
+- [x] Add Gift cards between Tokens and Refund on Home. Include balance and lifecycle actions on its screen, and
   redemption at sale checkout using milestone 05's remaining balance. Include provider-specific referenced/unreferenced
   gift-card refunds here; milestone 10 adds general unreferenced card refunds using the reusable refund intent/recovery
   contracts.
-- [ ] Enforce undo-load eligibility, including the documented most-recent-load/24-hour condition. For gift-card
+- [x] Enforce undo-load eligibility, including the documented most-recent-load/24-hour condition. For gift-card
   cash-out, separately persist approved value removal and cash handover; expose interrupted handover for review after
   restart.
-- [ ] Extend the simulator with balances and linked funding/value operations. Test provider differences, partial
+- [x] Extend the simulator with balances and linked funding/value operations. Test provider differences, partial
   redemption, insufficient funds, declines, all interruption boundaries, duplicate starts, refund/void races, and
   migration/accounting.
 
@@ -419,22 +419,23 @@ independently, with the provider/destination and evidence location.
 | 02 | Accessible payments | implemented | `c8752cc` | `scripts/dev finish`; SDK 33 + 28; 100% Adyen line coverage | Physical terminal/software/enablement unconfirmed |
 | 03 | Surcharge accounting | implemented | `c62d133` | `scripts/dev finish`; SDK 33 + 28; schema 18 | Configured TEST surcharge/refund checks unconfirmed |
 | 04 | Tokens and Settings navigation | implemented | `3f1c712` | `scripts/dev finish`; SDK 33 + 28; schema 18 unchanged | TEST roles, deletion and propagation unconfirmed |
-| 05 | Split payments and cash | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 19 | Partial-approval, linking and multi-leg refund checks unconfirmed |
-| 06 | Gift-card lifecycle | not started | - | - | Provider onboarding/TEST cards unconfirmed |
+| 05 | Split payments and cash | implemented | `d208036` | `scripts/dev finish`; SDK 33 + 28; schema 19 | Partial-approval, linking and multi-leg refund checks unconfirmed |
+| 06 | Gift-card lifecycle | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 20 | Provider onboarding/TEST cards, StoredValue recovery unconfirmed |
 | 07 | Mexican installments | not started | - | - | Eligible Mexican TEST setup unconfirmed |
 | 08 | Meal vouchers | not started | - | - | Country/provider TEST setups unconfirmed |
 | 09 | Cashback/Cashout | not started | - | - | With-purchase/standalone enablement unconfirmed |
 | 10 | Unreferenced card refunds | not started | - | - | Eligible country/account enablement unconfirmed |
 
-Resume note: milestones 01 (`100b1a3`), 02 (`c8752cc`), 03 (`c62d133`), 04 (`3f1c712`) and 05 (this commit) are
-implemented on `codex/adyen-capabilities`. Stopped after milestone 05 as requested; milestones 06–10 remain unstarted.
-Database version is 19 (preserving `MIGRATION_18_19`, build-generated schema, upgrade test); no dependency changed.
-The configured Manager PIN requirement for token deletion and cash refunds follows the plan’s provisional working
-default, not a separately confirmed preference. `scripts/dev finish` passed on October 25, 2026, including SDK 33 and
-SDK 28; see milestone 05 evidence for the log. Physical terminal/phone checks, accessibility enablement, Payments app
-beta access, configured TEST surcharge/refund checks, TEST token-role/deletion/propagation checks and real split,
-partial-approval and multi-leg refund checks remain unconfirmed. Real calls, pushes, publications and releases require
-separate authorization.
+Resume note: milestones 01 (`100b1a3`), 02 (`c8752cc`), 03 (`c62d133`), 04 (`3f1c712`), 05 (`d208036`) and 06 (this
+commit) are implemented on `codex/adyen-capabilities`. Stopped after milestone 06 as requested; milestones 07–10 remain
+unstarted. Database version is 20 (preserving `MIGRATION_19_20`, build-generated schema, upgrade test); no dependency
+changed. The configured Manager PIN requirement for token deletion, cash refunds and gift-card value changes, repairs
+and cash handovers follows the plan’s provisional working default, not a separately confirmed preference.
+`scripts/dev finish` passed on October 26, 2026, including SDK 33 and SDK 28; see milestone 06 evidence for the log.
+Physical terminal/phone checks, accessibility enablement, Payments app beta access, configured TEST surcharge/refund
+checks, TEST token-role/deletion/propagation checks, real split/partial-approval/multi-leg refund checks and every
+gift-card provider check remain unconfirmed. Real calls, pushes, publications and releases require separate
+authorization.
 
 Milestone 01 evidence:
 
@@ -652,6 +653,56 @@ Milestone 05 evidence:
 - Real-Adyen gaps: partial approvals within splits, `SaleReferenceID` linking in the Customer Area, terminal totals
   beside local cash, multi-leg referenced refunds and their Customer Area outcomes remain unverified. Earlier gaps
   remain open. No real Adyen calls, pushes, publications or releases were made.
+
+Milestone 06 evidence:
+
+- Revalidated Adyen’s [gift-card operation matrix](https://docs.adyen.com/point-of-sale/alternative-payment-methods/gift-cards-terminal-api)
+  and its activate, load, balance, payment, undo-load, refund and deactivate/cash-out pages, plus
+  [transaction status](https://docs.adyen.com/point-of-sale/basic-tapi-integration/verify-transaction-status), on
+  October 25, 2026. Givex, SVS, Fiserv (`valuelink`) and Intersolve card types support activation, load, balance,
+  undo load, redemption, refunds and cash-out; deactivation (`Unload`, zero amount) is Givex only; local gift cards
+  (Denmark, France, the Netherlands, Norway, Sweden, United Kingdom) take payments only. Activation/load/undo/deactivation
+  use message category `StoredValue`; balance uses `BalanceInquiry`; redemption, cash-out (`redemptionType=cashback`,
+  normally the whole balance, partial only for some Givex cards) and unreferenced refunds (`PaymentType=Refund`) use
+  `Payment`; referenced refunds are reversals needing no card details. Undo refers to the most recent load within 24
+  hours by `.pspReference`. Status checks document `Payment`, `Reversal` and `StoredValue`. The pinned SDK 43.1.0 models
+  every request, `StoredValueResponse` inside repeated status responses and `SaleToAcquirerData.redemptionType`; no
+  dependency or handwritten wire model changed.
+- Providers are explicit merchant configuration in shared `PaymentSettings.giftCards` (card type for Intersolve and local
+  cards, scanned/swiped/keyed entry). Only configured providers’ documented operations are offered; nothing is inferred
+  from the simulator, currency or language. Tap to Pay (`DestinationRules.giftCards`) takes no gift-card requests and
+  the runner refuses to start there. Scanned numbers stay in a single-use `GiftCardAccount`; only the last four digits
+  are stored, never numbers or PINs.
+- Schema 20 adds `gift_card_operations` (durable stages linked by group: funding by card or staff-confirmed external
+  funds, the value change, repair, cash handover) and `sale_tenders.giftCard`. Business intent (`GiftCardStage`) is
+  separate from the stored message category; each stage is stored PENDING before sending, settled in place, made
+  UNKNOWN at restart and rechecked with its original category and context. `GiftCardActivity` alone decides what an
+  activity needs: unknown funding blocks the value; a value not delivered after confirmed funding offers sending the
+  value again (explicitly, never automatically), a referenced refund of the card payment or recording external funds
+  given back; undo is offered only for the card’s latest local load within 24 hours. Approved cash-outs store a cash
+  handover awaiting staff, confirmed only through `CashTenders` (new ArchUnit rule with deliberate violation); an
+  unconfirmed handover survives restart and retention. Activities join running checks, history routing, search,
+  retention, environment purges, simulator forgetting, receipts, email, terminal comparison and the daily report as
+  stored value, never sales.
+- Home has the Gift cards tile between Tokens and Refund (Refund/History, then full-width Reconciliation). The screen
+  reads balances without approval; value changes are confirmed, then need a configured Manager PIN (provisional
+  default) checked again before sending. Split checkout offers a Gift card tender with partial approval reusing
+  `TenderBalance`; redemptions return by reversal, except local cards, which are refunded outside the app. The simulator
+  keeps provider-side balances and linked funding/value behavior. `TerminalExchange` now owns message building and
+  category-correct recovery for payments, reversals and stored value.
+- Seven-language strings and Using Mini mPOS sections, CONTEXT, AGENTS and CONTRIBUTING gaps are updated. Tests cover
+  the provider matrix, wire shapes, StoredValue recovery, simulator rules (partial redemption, insufficient funds,
+  whole-balance cash-out, Givex-only deactivation, 24-hour latest-load undo, refunds), card and external funding,
+  refused activation repair, continue after activation, unknown funding recovery, cash handover after restart, Manager
+  approval, duplicate and blocked starts, cancellation, split redemption and its return, local-card exclusion,
+  accounting/reconciliation/report rows, the 19→20 upgrade, AMS1 at 1.5× text and Japanese/Chinese AMS1 screens.
+- Full gate passed on October 26, 2026: `scripts/dev finish`, log `build/gradle-logs/run-x35w5B/output.log`, including
+  SDK 33 and 28, lint, detekt, coverage (core and Adyen 100%), Markdown and website checks. The first gate exposed a
+  same-millisecond stage ordering bug on SDK 28; stages now keep their stored order.
+- Real-Adyen gaps: provider onboarding and TEST cards for every provider, entry methods and scanned expiry format,
+  StoredValue answers and status recovery, partial redemption fee reporting (a partial approval without
+  `TotalFeesAmount` still stops remainder collection conservatively), cash-out, undo and refund behavior, and whether
+  terminal totals include stored-value management remain unverified. No real Adyen calls, pushes or releases were made.
 
 ## Adyen source map
 

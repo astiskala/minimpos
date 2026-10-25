@@ -1,5 +1,6 @@
 package app.minimpos.app.payment
 
+import app.minimpos.app.data.repo.GiftCardRepository
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.repo.TenderAllocation
@@ -10,10 +11,10 @@ import kotlin.uuid.Uuid
 
 /**
  * Cash tenders of immediate sales, recorded locally once the operator confirmed the cash received and the change
- * handed back; nothing is sent to Adyen or a terminal, so no setup is needed and terminal totals never include them.
- * Each recording is one transaction that checks the reviewed balance, allocation and unresolved tenders again, so a
- * stale review, an excessive amount or a concurrent card attempt is refused with nothing stored. Recordings are
- * serialized; screens follow the stored sale.
+ * handed back, and the cash handed over for approved gift-card cash-outs; nothing is sent to Adyen or a terminal, so no
+ * setup is needed and terminal totals never include them. Each recording is one transaction that checks the reviewed
+ * balance, allocation and unresolved tenders again, so a stale review, an excessive amount or a concurrent card attempt
+ * is refused with nothing stored. Recordings are serialized; screens follow the stored sale.
  *
  * @param sales Where sales and their tenders are stored.
  * @param environment The current history environment (LIVE, TEST or SIMULATOR), kept with each cash tender so reports
@@ -21,12 +22,14 @@ import kotlin.uuid.Uuid
  * @param onPaid Called with a new sale and its start once its first cash tender is stored, to arm its receipt and
  *   complete the session revision it was rung up in.
  * @param newId Generates sale IDs.
+ * @param giftCards Where gift-card cash handovers are stored; null where none are recorded.
  */
 class CashTenders(
     private val sales: SaleRepository,
     private val environment: () -> String?,
     private val onPaid: (id: String, start: PaymentStart) -> Unit = { _, _ -> },
     private val newId: () -> String = { Uuid.random().toString() },
+    private val giftCards: GiftCardRepository? = null,
 ) {
     private val mutex = Mutex()
 
@@ -71,6 +74,12 @@ class CashTenders(
         val cash = payment(amountMinor, receivedMinor) ?: return false
         return mutex.withLock { sales.recordCash(saleId, SaleEvent.CashTendered(cash, reviewedPaidMinor), allocation, environment()) }
     }
+
+    /**
+     * Records that staff handed over the cash of gift-card handover stage [stageId] (an approved cash-out); false,
+     * storing nothing, when it is no longer awaiting. Approval is the caller's ([GiftCards]); serialized with tenders.
+     */
+    suspend fun handOver(stageId: String): Boolean = mutex.withLock { giftCards?.recordCashHandover(stageId) == true }
 
     private fun payment(
         amountMinor: Long,

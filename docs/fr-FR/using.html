@@ -91,7 +91,7 @@
   partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
-  </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#payment-links">Liens de paiement
+  </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#gift-cards">Cartes cadeaux</a></li><li><a href="#payment-links">Liens de paiement
   </a></li><li><a href="#preauth">Dépôts</a></li><li><a href="#terminal-tips">pourboires sur le terminal</a></li><li>
   <a href="#tips">pourboires sur le reçu</a></li><li><a href="#more">Plus d&#x27;appareils et de données</a></li>
 </ol></div>
@@ -107,7 +107,7 @@
   partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
-  </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#payment-links">Liens de paiement
+  </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#gift-cards">Cartes cadeaux</a></li><li><a href="#payment-links">Liens de paiement
   </a></li><li><a href="#preauth">Dépôts</a></li><li><a href="#terminal-tips">pourboires sur le terminal</a></li><li>
   <a href="#tips">pourboires sur le reçu</a></li><li><a href="#more">Plus d&#x27;appareils et de données</a></li>
 </ol></details>
@@ -474,6 +474,10 @@
             entier ; les autres montants par carte peuvent encore être partiellement autorisés par l’émetteur. Résolvez un
             résultat inconnu avant d’encaisser davantage. Le reçu liste chaque paiement et le rapport du jour sépare les
             espèces ; les totaux du terminal ne les incluent jamais.</p>
+          <p>Avec des cartes cadeaux configurées, touchez <strong>Carte cadeau</strong> pour payer le montant choisi avec
+            l’une d’elles. Un solde insuffisant est accepté en partie et le reste reste à encaisser. Le remboursement
+            d’un paiement par carte cadeau revient sur la carte, sauf pour les cartes locales, remboursées hors de Mini
+            mPOS.</p>
           <h3 id="shopper-display">Utilisez l'écran du terminal destiné aux acheteurs</h3>
           <p>Avec un terminal réseau/cloud séparé, ouvrez <strong>Paramètres › Affichage du terminal pour le client</strong>. Choisissez d’afficher les articles avant le paiement, de demander au client de confirmer la commande ou de saisir son adresse e-mail si elle manque au paiement. Configurez d’abord les <a href="#receipts">reçus par e-mail</a>. Le reçu est envoyé automatiquement si <strong>Envoyez automatiquement le reçu par e-mail
             </strong> est activé. Après approbation, vous pouvez afficher un code QR et demander une note de 0 à 10 ; la note reçue apparaît dans les détails de la transaction.</p>
@@ -622,6 +626,38 @@
             actualise la liste. Si le résultat reste non confirmé, appuyez sur <strong>Vérifier la
             suppression</strong> ; ne débitez pas et ne relancez pas la suppression avant sa résolution.
           </p>
+          <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+        </section>
+        <section id="gift-cards">
+          <h2>Vendre et gérer des cartes cadeaux</h2>
+          <p>Les cartes cadeaux fonctionnent avec un terminal Adyen ; Tap to Pay ne les accepte pas. Dans
+            <strong>Paramètres › Paiements › Cartes cadeaux</strong>, activez chaque fournisseur pour lequel vous avez
+            terminé l’intégration chez Adyen, ajoutez le type de carte indiqué par Adyen pour Intersolve ou les cartes
+            locales, et choisissez comment le personnel présente les cartes : scanner avec l’appareil photo et saisir la
+            date d’expiration, ou glisser ou saisir sur le terminal. Seules les actions documentées par Adyen pour un
+            fournisseur sont proposées : la désactivation est réservée à Givex et les cartes locales n’acceptent que les
+            paiements.</p>
+          <ol>
+            <li>Sur l’accueil, touchez <strong>Cartes cadeaux</strong>, puis choisissez le fournisseur et la façon de
+              présenter la carte.</li>
+            <li>Choisissez <strong>Consulter le solde</strong>, <strong>Activer</strong>, <strong>Recharger</strong>,
+              <strong>Retrait espèces</strong>, <strong>Rembourser sur la carte</strong> ou <strong>Désactiver</strong>.</li>
+            <li>Pour ajouter de la valeur, choisissez <strong>Paiement par carte</strong>, ou <strong>Reçu hors de
+              l’app</strong> et confirmez avoir reçu l’argent.</li>
+            <li>Confirmez, puis validez avec le PIN responsable.</li>
+          </ol>
+          <p>Consulter un solde ne demande aucune validation. Modifier la valeur d’une carte nécessite un PIN responsable
+            configuré, le choix par défaut pour l’instant. Le paiement par carte est encaissé d’abord et la valeur n’est
+            envoyée qu’après son acceptation ; si son résultat est inconnu, vérifiez-le avant toute autre action. Si le
+            paiement a été encaissé sans ajout de valeur, l’activité indique <strong>Valeur non ajoutée</strong> :
+            renvoyez la valeur, remboursez le paiement par carte ou enregistrez l’argent rendu. Rien n’est répété
+            automatiquement.</p>
+          <p><strong>Annuler la recharge</strong> apparaît pour la dernière recharge de la carte dans les 24 heures. Un
+            retrait verse normalement tout le solde et clôt la carte ; seules certaines cartes Givex permettent moins.
+            Remettez les espèces une fois le retrait accepté, puis touchez <strong>Espèces remises</strong> ; une remise
+            non confirmée reste sous <strong>À traiter</strong>, même après un redémarrage. L’activité des cartes
+            cadeaux apparaît dans <strong>Historique</strong> et à part dans le rapport du jour ; elle n’est jamais
+            comptée comme une vente.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="payment-links">

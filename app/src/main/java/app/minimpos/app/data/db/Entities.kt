@@ -7,6 +7,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
+import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.payment.PaymentContext
 
 /** Confirmed history purge awaiting its non-secret destination settings write; singleton recovery journal. */
@@ -686,6 +687,8 @@ enum class TenderKind {
  * @property changeMinor Change handed back for a cash tender; null for cards.
  * @property environment History environment (LIVE, TEST or SIMULATOR) a cash tender was recorded in; null for cards,
  *   whose [context] says it, or while unestablished.
+ * @property giftCard For a gift-card redemption (a [TenderKind.CARD] terminal tender paid from a gift card), the
+ *   [app.minimpos.core.giftcard.GiftCardProvider] name; null for other tenders.
  */
 @Entity(
     tableName = "sale_tenders",
@@ -733,6 +736,7 @@ data class SaleTenderEntity(
     val cashReceivedMinor: Long? = null,
     val changeMinor: Long? = null,
     val environment: String? = null,
+    val giftCard: String? = null,
 ) {
     /** Whether this tender collected money: an approved card or recorded cash. */
     val approved: Boolean get() = status == SaleStatus.APPROVED
@@ -759,4 +763,192 @@ data class SaleWithLines(
 ) {
     /** [lines] in cart order (by [SaleLineEntity.position]). */
     val sortedLines: List<SaleLineEntity> by lazy { lines.sortedBy { it.position } }
+}
+
+/**
+ * What one stored-value stage does for its business intent; the wire message category it is sent and recovered with is
+ * [category], decided here once.
+ *
+ * @property category The Terminal API message category, or null for a stage recorded locally without any request.
+ */
+enum class GiftCardStage(
+    val category: GiftCardCategory?,
+) {
+    /** A card payment collecting the value to activate or load (`Payment`). */
+    FUNDING_CARD(GiftCardCategory.PAYMENT),
+
+    /** Staff confirmed the value was received outside the app; local. */
+    FUNDING_EXTERNAL(null),
+
+    /** Activates a card, with or without an initial amount (`StoredValue`). */
+    ACTIVATE(GiftCardCategory.STORED_VALUE),
+
+    /** Loads value onto a card (`StoredValue`). */
+    LOAD(GiftCardCategory.STORED_VALUE),
+
+    /** Undoes a card's most recent load (`StoredValue`, `Reverse`). */
+    UNDO_LOAD(GiftCardCategory.STORED_VALUE),
+
+    /** Deactivates a card (`StoredValue`, `Unload`). */
+    DEACTIVATE(GiftCardCategory.STORED_VALUE),
+
+    /** Pays a card's value out (`Payment`, `redemptionType=cashback`). */
+    CASH_OUT(GiftCardCategory.PAYMENT),
+
+    /** Cash handed to the shopper for an approved cash-out, awaiting or confirmed by staff; local. */
+    CASH_HANDOVER(null),
+
+    /** Unreferenced refund onto a card (`Payment`, `PaymentType=Refund`). */
+    REFUND(GiftCardCategory.PAYMENT),
+
+    /** Referenced refund of the funding card payment (`Reversal`). */
+    FUNDING_REFUND(GiftCardCategory.REVERSAL),
+
+    /** Staff confirmed externally received funds were given back; local. */
+    FUNDING_RETURNED(null),
+    ;
+
+    /** Whether the stage is sent to a terminal rather than recorded locally. */
+    val sent: Boolean get() = category != null
+
+    /** The provider operation it needs; null for funding, repairs and cash handovers, which use no gift card. */
+    val operation: GiftCardOperation?
+        get() =
+            when (this) {
+                ACTIVATE -> GiftCardOperation.ACTIVATE
+                LOAD -> GiftCardOperation.LOAD
+                UNDO_LOAD -> GiftCardOperation.UNDO_LOAD
+                DEACTIVATE -> GiftCardOperation.DEACTIVATE
+                CASH_OUT -> GiftCardOperation.CASH_OUT
+                REFUND -> GiftCardOperation.REFUND
+                FUNDING_CARD, FUNDING_EXTERNAL, CASH_HANDOVER, FUNDING_REFUND, FUNDING_RETURNED -> null
+            }
+
+    /** Whether it changes a card's value: activation, load, undo, deactivation, cash-out or refund. */
+    val changesValue: Boolean get() = operation != null
+}
+
+/** The Terminal API message category a gift-card stage was sent with; status checks ask for the same. */
+enum class GiftCardCategory {
+    /** `Payment`. */
+    PAYMENT,
+
+    /** `StoredValue`. */
+    STORED_VALUE,
+
+    /** `Reversal`. */
+    REVERSAL,
+}
+
+/** Where a gift-card stage stands. */
+enum class GiftCardStatus {
+    /** Stored before sending; at startup an interrupted one becomes [UNKNOWN]. */
+    PENDING,
+
+    /** Done: approved, accepted, or confirmed by staff. */
+    SUCCEEDED,
+
+    /** Refused by the terminal or provider. */
+    DECLINED,
+
+    /** Cancelled on the terminal. */
+    CANCELLED,
+
+    /** Never took effect. */
+    FAILED,
+
+    /** May have taken effect; checked again with the original message category. */
+    UNKNOWN,
+
+    /** A local stage awaiting staff confirmation, such as cash still to hand over. */
+    AWAITING,
+    ;
+
+    /** Whether it still needs a check or a confirmation. */
+    val unresolved: Boolean get() = this == PENDING || this == UNKNOWN || this == AWAITING
+
+    /** Whether it conclusively did not take effect. */
+    val notDone: Boolean get() = this == DECLINED || this == CANCELLED || this == FAILED
+}
+
+/**
+ * One stage of a stored-value activity (table `gift_card_operations`): funding, a value change, a cash handover or a
+ * repair, linked by [groupId]. Stored before anything is sent, settled in place; never a merchandise sale. Only safe
+ * display identifiers are kept: never a gift card's number or PIN.
+ *
+ * @property id Random UUID.
+ * @property groupId The activity it belongs to: the first stage's ID.
+ * @property stage What it does.
+ * @property category The message category it was sent with ([GiftCardStage.category] when stored); null when local.
+ * @property createdAt When it was stored, epoch milliseconds.
+ * @property processedAt When it was answered or confirmed, epoch milliseconds; null while unresolved.
+ * @property status Where it stands.
+ * @property provider The [app.minimpos.core.giftcard.GiftCardProvider] name; null for funding card payments.
+ * @property providerCode The `StoredValueProvider` sent; null for card funding and local stages.
+ * @property entry The [app.minimpos.core.giftcard.GiftCardEntry] name it was presented with; null when no card was
+ *   read.
+ * @property cardLastFour Last four digits of the gift card, from the scan or the terminal; null when unknown.
+ * @property currency ISO 4217 code.
+ * @property amountMinor What it requested or recorded, in minor units.
+ * @property approvedMinor What was approved, in minor units; null until known.
+ * @property balanceMinor The card's balance the answer reported, in minor units; null when unreported.
+ * @property merchantReference Its `SaleTransactionID`.
+ * @property serviceId Its ServiceID; null for local stages.
+ * @property poiId The terminal it was sent to.
+ * @property poiTransactionId The terminal's transaction ID; identifies a load for undo and a funding payment for
+ *   refund.
+ * @property poiTimestamp The terminal's transaction timestamp exactly as received.
+ * @property pspReference Adyen's reference.
+ * @property poiReconciliationId The terminal's reconciliation period.
+ * @property funds For a funding stage, the value stage it pays for ([GiftCardStage.ACTIVATE] or [GiftCardStage.LOAD]);
+ *   null otherwise.
+ * @property originalId The stage it refers to: an undo's load, a funding refund's or return's funding stage, a
+ *   handover's cash-out; null otherwise.
+ * @property message The terminal's own words when it did not succeed, verbatim.
+ * @property errorCondition The answer's ErrorCondition.
+ * @property reason Why it did not succeed without an answer to tell, worded at the UI.
+ * @property context The original payment context it was sent in.
+ * @property environment The history environment a local stage was recorded in.
+ * @property customerReceiptJson Adyen's shopper receipt fields, verbatim.
+ * @property cashierReceiptJson Adyen's merchant receipt fields, verbatim.
+ */
+@Entity(
+    tableName = "gift_card_operations",
+    indices = [Index(value = ["createdAt", "id"]), Index("groupId"), Index(value = ["processedAt", "id"])],
+)
+data class GiftCardOperationEntity(
+    @PrimaryKey val id: String,
+    val groupId: String,
+    val stage: GiftCardStage,
+    val category: GiftCardCategory?,
+    val createdAt: Long,
+    val processedAt: Long? = null,
+    val status: GiftCardStatus,
+    val provider: String? = null,
+    val providerCode: String? = null,
+    val entry: String? = null,
+    val cardLastFour: String? = null,
+    val currency: String,
+    val amountMinor: Long,
+    val approvedMinor: Long? = null,
+    val balanceMinor: Long? = null,
+    val merchantReference: String,
+    val serviceId: String? = null,
+    val poiId: String? = null,
+    val poiTransactionId: String? = null,
+    val poiTimestamp: String? = null,
+    val pspReference: String? = null,
+    val poiReconciliationId: String? = null,
+    val funds: GiftCardStage? = null,
+    val originalId: String? = null,
+    val message: String? = null,
+    val errorCondition: String? = null,
+    val reason: StoredReason? = null,
+    val context: PaymentContext? = null,
+    val environment: String? = null,
+    val customerReceiptJson: String? = null,
+    val cashierReceiptJson: String? = null,
+) {
+    /** What it moved, in minor units: the approved amount, else what a confirmed local stage recorded; 0 otherwise. */
+    val movedMinor: Long get() = if (status == GiftCardStatus.SUCCEEDED) approvedMinor ?: amountMinor else 0
 }

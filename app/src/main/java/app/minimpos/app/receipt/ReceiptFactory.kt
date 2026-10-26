@@ -79,6 +79,8 @@ data class ReceiptSampleTexts(
  * @property mexicanPlan Localized requested and returned plan text for a tender, empty for ordinary history.
  * @property cashback Requested and approved cash, card charge and recorded handover, localized at delivery.
  * @property mealVoucher Localized requested market and returned voucher facts for a tender, empty for other tenders.
+ * @property unreferenced Localized lines of an unreferenced refund: no original payment, its reason, any synchronous
+ *   acquirer answer and any cancellation request; empty for referenced refunds.
  */
 data class ReceiptTexts(
     val labels: ReceiptLabels = ReceiptLabels(),
@@ -96,6 +98,7 @@ data class ReceiptTexts(
     val mexicanPlan: (SaleTenderEntity) -> List<String> = { emptyList() },
     val cashback: (SaleEntity) -> List<String> = { emptyList() },
     val mealVoucher: (SaleTenderEntity) -> List<String> = { emptyList() },
+    val unreferenced: (RefundEntity) -> List<String> = { emptyList() },
 )
 
 /**
@@ -224,7 +227,8 @@ class ReceiptFactory(
 
     /**
      * The receipt of [refund], referring to the original sale by its merchant reference (or, for a payment known only
-     * from its QR code without one, its transaction ID). The cancellation of a pre-authorisation is labelled as one.
+     * from its QR code without one, its transaction ID). The cancellation of a pre-authorisation is labelled as one; an
+     * unreferenced refund names no original, only that it has none and why it was made.
      */
     fun refund(
         refund: RefundEntity,
@@ -234,7 +238,7 @@ class ReceiptFactory(
         val receipt =
             RefundReceipt(
                 reference = refund.merchantReference,
-                originalReference = refund.originalReference ?: refund.originalTransactionId,
+                originalReference = (refund.originalReference ?: refund.originalTransactionId).takeUnless { refund.unreferenced },
                 dateTime = formatDateTime(refund.createdAt),
                 items =
                     ReceiptLinesJson.decodeRefunded(refund.linesJson).map {
@@ -247,6 +251,7 @@ class ReceiptFactory(
                 standingNote = if (refund.cash) resolved.labels.cashReturned else resolved.refund(refund.status),
                 surchargeMinor = refund.surchargeMinor,
                 tipMinor = refund.tipMinor,
+                unreferencedNotes = if (refund.unreferenced) resolved.unreferenced(refund) else emptyList(),
             )
         return builder(settings, CurrencySpec.of(refund.currency), resolved).refund(receipt)
     }

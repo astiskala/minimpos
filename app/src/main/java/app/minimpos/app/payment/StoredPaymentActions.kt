@@ -1,10 +1,13 @@
 package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.UnreferencedRefundReason
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.terminal.WalletAvailability
+import app.minimpos.core.ids.Ids
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Clock
 import java.time.ZoneId
@@ -52,6 +55,33 @@ class StoredPaymentActions(
             legs?.start(requests) == true -> RefundStarted.LEGS
             else -> RefundStarted.NONE
         }
+    }
+
+    /**
+     * Starts an unreferenced card refund of [amountMinor] in [currency] for [reason], once staff reviewed it: allowed
+     * only while [UnreferencedRefunds.allows] holds for the stored configuration and verified [facts]. The request is
+     * frozen with the configuration identity it was reviewed under and an `R` merchant reference; the configured Manager
+     * PIN is checked again before sending. Null, with nothing stored or sent, when not allowed or a refund is running.
+     */
+    fun refundWithoutReceipt(
+        amountMinor: Long,
+        currency: String,
+        reason: UnreferencedRefundReason,
+        facts: WalletAvailability,
+    ): String? {
+        val payment = settings.value.payment
+        val configuration = payment.unreferencedRefunds
+        if (!UnreferencedRefunds.allows(configuration, facts, currency, amountMinor)) return null
+        val prefix = payment.referencePrefix.trim().let { if (it.isEmpty()) "R" else "$it-R" }
+        return operations.unreferencedRefund(
+            UnreferencedRefundStart(
+                amountMinor = amountMinor,
+                currency = currency,
+                merchantReference = Ids.transactionReference(prefix, clock.instant(), zone()),
+                reason = reason,
+                confirmation = configuration.identity,
+            ),
+        )
     }
 
     /** Starts a full reversal of [record]'s held payment; null when not cancellable or a refund is already running. */

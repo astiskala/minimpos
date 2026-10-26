@@ -338,7 +338,7 @@ private fun ColumnScope.AreaTiles(onOpen: (Route) -> Unit) {
             Icons.Default.QrCodeScanner,
             refund,
             labels,
-            onClick = { onOpen(Route.RefundScan) },
+            onClick = { onOpen(Route.RefundStart) },
             modifier = Modifier.testTag("refund"),
         )
         HomeTile(

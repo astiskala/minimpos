@@ -1270,6 +1270,8 @@ class ArchitectureTest {
                 .or(declaredIn("app.minimpos.app.data.repo", "GiftCardActivity.kt"))
                 .or(declaredIn("app.minimpos.app.data.repo", "CashHandover.kt"))
                 .or(declaredIn("app.minimpos.app.payment", "Cashback.kt"))
+                .or(declaredIn("app.minimpos.app.payment", "UnreferencedRefunds.kt"))
+                .or(declaredIn("app.minimpos.app.data.settings", "UnreferencedRefundSettings.kt"))
                 .or(declaredIn("app.minimpos.app.payment", "PaymentLinkRequests.kt"))
                 .or(declaredIn("app.minimpos.app.data.repo", "SaleEvent.kt"))
                 .or(declaredIn("app.minimpos.app.data.settings", "AppSettings.kt"))

@@ -55,7 +55,6 @@ import com.google.gson.JsonParser
 import kotlinx.coroutines.delay
 import java.io.IOException
 import java.math.BigDecimal
-import java.math.RoundingMode
 import java.net.SocketTimeoutException
 import java.time.Clock
 import java.time.ZoneId
@@ -110,6 +109,8 @@ enum class SimulatedOutcome {
  * @property offlineMode Whether payments are approved online or simulated offline (`OFFLINE_EMV` or `STORE_AND_FORWARD`).
  * @property unconfirmedBatchCount Simulated `unconfirmedBatchCount` returned when [offlineMode] is not `ONLINE`.
  * @property surchargeAmount Fixed surcharge in major units, rounded to the requested precision; simulation only.
+ * @property refundsProcessedSynchronously Whether approved unreferenced refunds report `acquirerResponseCode=Approved`,
+ *   as when the card scheme and country process them synchronously; false answers Adyen's usual asynchronous request.
  */
 data class SimulatorConfig(
     val outcome: SimulatedOutcome = SimulatedOutcome.APPROVE,
@@ -125,6 +126,7 @@ data class SimulatorConfig(
     val unconfirmedBatchCount: Int = 1,
     /** Fixed surcharge in major units, rounded to the request precision; simulation only, never a pricing engine. */
     val surchargeAmount: BigDecimal = BigDecimal.ZERO,
+    val refundsProcessedSynchronously: Boolean = false,
 ) {
     private companion object {
         const val DEFAULT_SIMULATED_RATING = 9
@@ -355,7 +357,7 @@ class TerminalSimulator(
         val additional =
             buildPaymentAdditional(payment, request.saleData?.saleToAcquirerData, refusal, random) {
                 randomString(TOKEN_LENGTH, DIGITS)
-            }
+            } + refundAdditional(payment, authorizedAmount, settings)
         return PaymentResponse().apply {
             response =
                 Response().apply {
@@ -418,10 +420,9 @@ class TerminalSimulator(
                 ?.singleOrNull()
                 .orEmpty()
         val approved = outcome == SimulatedOutcome.APPROVE || outcome == SimulatedOutcome.TIMEOUT
-        val partialBase = if (approved) simulatedPartialAmount(request.saleData, amount.requestedAmount, settings) else null
+        val refund = request.unreferencedRefund
+        val (partialBase, tipAmount, surcharge) = simulatedAmounts(request, approved, settings)
         val baseApproved = partialBase ?: amount.requestedAmount
-        val tipAmount = if (approved && partialBase == null) simulatedTipAmount(request.saleData, baseApproved) else null
-        val surcharge = settings.surchargeAmount.max(BigDecimal.ZERO).setScale(amount.requestedAmount.scale(), RoundingMode.HALF_UP)
         val authorizedAmount = if (approved) baseApproved + (tipAmount ?: BigDecimal.ZERO) + surcharge else BigDecimal.ZERO
         val payment =
             SimulatedPayment(
@@ -443,8 +444,9 @@ class TerminalSimulator(
                 partial = partialBase != null,
                 givingServiceId = simulatedGivingServiceId(request.saleData, approved, partialBase != null, settings),
                 entryOverride = simulatedCardEntryOverride(request),
-                offlineMode = settings.offlineMode,
+                offlineMode = if (refund) OfflineProcessingMode.ONLINE else settings.offlineMode,
                 unconfirmedBatchCount = settings.unconfirmedBatchCount,
+                refund = refund,
             )
         payment.givingServiceId?.let { givingId ->
             completed.remember(
@@ -472,15 +474,11 @@ class TerminalSimulator(
         currency: String,
         authorizedAmount: BigDecimal,
     ) {
-        ledger.approved(payment.psp, manualCapture = payment.preAuthorisation)
-        if (!payment.preAuthorisation) {
-            val key = payment.transactionId
-            paymentAmountsByTransactionId[key] = currency to authorizedAmount
-            periodTotals.compute(currency) { _, current ->
-                val base = current ?: SimulatedPeriodTotals(currency)
-                base.copy(debitAmount = base.debitAmount + authorizedAmount, debitCount = base.debitCount + 1)
-            }
-        }
+        if (payment.refund) ledger.refunded(payment.psp) else ledger.approved(payment.psp, manualCapture = payment.preAuthorisation)
+        if (payment.preAuthorisation) return
+        // An unreferenced refund is a credit with no payment a later reversal could refer to.
+        if (!payment.refund) paymentAmountsByTransactionId[payment.transactionId] = currency to authorizedAmount
+        periodTotals.compute(currency) { _, current -> (current ?: SimulatedPeriodTotals(currency)).plus(authorizedAmount, payment.refund) }
     }
 
     private fun paymentResult(
@@ -488,7 +486,7 @@ class TerminalSimulator(
         requestedCurrency: String,
         authorized: BigDecimal,
     ) = PaymentResult().apply {
-        paymentType = PaymentType.NORMAL
+        paymentType = if (payment.refund) PaymentType.REFUND else PaymentType.NORMAL
         paymentInstrumentData = paymentInstrument(payment)
         amountsResp =
             AmountsResp().apply {
@@ -729,7 +727,7 @@ class TerminalSimulator(
                 add(receiptLine("txdate", "Date", DateTimeFormatter.ofPattern("dd/MM/yyyy").format(now)))
                 add(receiptLine("txtime", "Time", DateTimeFormatter.ofPattern("HH:mm:ss").format(now)))
                 add(receiptLine("filler"))
-                add(receiptLine("txtype", if (payment.preAuthorisation) "Pre-authorization" else "Payment", bold = true))
+                add(receiptLine("txtype", payment.typeLabel, bold = true))
                 add(receiptLine("surcharge", "Surcharge", payment.surchargeAmount.toPlainString()))
                 add(receiptLine("totalAmount", "TOTAL", payment.amountText, bold = true))
                 add(receiptLine("filler"))

@@ -10,6 +10,7 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.data.db.unresolved
 import app.minimpos.app.data.settings.StorageJson
 import app.minimpos.app.data.settings.TerminalSettings
 import kotlinx.coroutines.CoroutineDispatcher
@@ -210,7 +211,7 @@ class HistoryRepository(
                     val parents = saleDao.historyParents(records.mapNotNull { it.saleId }.distinct()).associateBy { it.id }
                     val eligible =
                         records.filter {
-                            !it.status.unresolved && it.saleId?.let { id -> parents[id]?.retentionEligible } != false
+                            !it.unresolved && it.saleId?.let { id -> parents[id]?.retentionEligible } != false
                         }
                     Triple(records, refundDao.deleteHistory(eligible.map { it.id }), eligible.map { HistoryItem.Refund(it) })
                 }

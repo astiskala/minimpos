@@ -82,7 +82,7 @@
         <div class="desktop-contents"><p class="toc-title">En esta página</p><ol>
 <li><a href="#business">antes de vender</a><ul><li><a href="#pricing">Moneda e impuestos</a></li><li>
   <a href="#products">Productos</a></li><li><a href="#staff">PIN del personal</a></li></ul></li><li><a href="#sell">
-  Realizar un pago con tarjeta</a></li><li><a href="#refund">Reembolsar o cancelar</a></li><li><a href="#receipts">
+  Realizar un pago con tarjeta</a></li><li><a href="#refund">Reembolsar o cancelar</a><ul><li><a href="#unreferenced-refunds">Reembolso sin recibo</a></li></ul></li><li><a href="#receipts">
   Recibos</a><ul><li><a href="#customize-receipts">Personalizar recibos</a></li><li><a href="#language-receipts">Idioma
   del recibo</a></li><li><a href="#email">Recibos por correo</a></li></ul></li><li><a href="#history">Historial</a><ul>
   <li><a href="#close-day">cerrar el dia</a></li><li><a href="#reconciliation">Conciliar con la terminal</a></li></ul>
@@ -98,7 +98,7 @@
         <details class="mobile-contents"><summary class="toc-title">En esta página</summary><ol>
 <li><a href="#business">antes de vender</a><ul><li><a href="#pricing">Moneda e impuestos</a></li><li>
   <a href="#products">Productos</a></li><li><a href="#staff">PIN del personal</a></li></ul></li><li><a href="#sell">
-  Realizar un pago con tarjeta</a></li><li><a href="#refund">Reembolsar o cancelar</a></li><li><a href="#receipts">
+  Realizar un pago con tarjeta</a></li><li><a href="#refund">Reembolsar o cancelar</a><ul><li><a href="#unreferenced-refunds">Reembolso sin recibo</a></li></ul></li><li><a href="#receipts">
   Recibos</a><ul><li><a href="#customize-receipts">Personalizar recibos</a></li><li><a href="#language-receipts">Idioma
   del recibo</a></li><li><a href="#email">Recibos por correo</a></li></ul></li><li><a href="#history">Historial</a><ul>
   <li><a href="#close-day">cerrar el dia</a></li><li><a href="#reconciliation">Conciliar con la terminal</a></li></ul>
@@ -201,18 +201,41 @@
           </dl>
           <p>Para reembolsar:</p>
           <ol>
-            <li>En Inicio, toque <strong>REEMBOLSO</strong> y escanee el código de reembolso QR en el recibo, o abra la
-              venta original en <strong>Historial</strong>.</li>
+            <li>En Inicio, toque <strong>Reembolso</strong> y luego <strong>Escanear recibo</strong> para escanear el código QR de
+              reembolso del recibo, o <strong>Elegir un pago</strong> para abrir la venta original en <strong>Historial</strong>.</li>
             <li>Elija un reembolso completo, un importe o artículos individuales. Los reembolsos de artículos necesitan
               la venta original de este dispositivo.</li>
             <li>Confirme el reembolso e ingrese al Gerente PIN si se le solicita.</li>
           </ol>
-          <p>Cada reembolso está vinculado a su pago original; No se admiten reembolsos sin uno. Enlaces de pago pagados
-            por reembolso en el Área de Clientes.</p>
+          <p>Estos reembolsos están vinculados a su pago original. Los enlaces de pago pagados se reembolsan en el Área de
+            Clientes.</p>
           <p id="split-refunds">Una venta dividida se reembolsa a sus pagos originales. Mini mPOS propone cuánto vuelve a cada tarjeta y cuánto
             efectivo devolver; toque un pago para ajustarlo dentro de lo que puede devolver. Primero se reembolsan las
             tarjetas, una a la vez, y luego el efectivo. Devolver efectivo requiere un PIN de gerente. Si no se acepta un
             reembolso con tarjeta, no se devuelve nada más; abra la venta para revisar lo que queda.</p>
+          <h3 id="unreferenced-refunds">Reembolso sin recibo</h3>
+          <p>Use <strong>Reembolso sin recibo</strong> solo cuando no haya un pago que reembolsar, como una devolución sin
+            recibo. Devuelve un monto a la tarjeta que presenta el cliente y no está vinculado a ningún pago, así que Mini
+            mPOS no puede verificar lo pagado. Usted es responsable de reembolsos erróneos o repetidos.</p>
+          <p>Empieza desactivado. Pida a Adyen que habilite los reembolsos no referenciados para la tienda y defina el
+            límite de reembolso de Adyen en el Área de
+            Clientes. Luego, en Configuración › Pagos, active <strong>Permitir
+            reembolsos sin recibo</strong>, defina su propio <strong>Límite de reembolso</strong> y configure un PIN de
+            gerente. Mini mPOS usa la tienda y el país que Adyen verificó para la terminal. Adyen no permite estos
+            reembolsos en tiendas de Brasil, México, Australia, Malasia, Singapur, Hong Kong o India, ni con billeteras de
+            código QR como Alipay o WeChat Pay. Se admiten terminales de pago conectadas localmente o por la nube; Tap to
+            Pay no se ofrece.</p>
+          <p>Toque <strong>Reembolso sin recibo</strong>, ingrese el monto, elija un motivo, confirme y apruebe con el PIN de
+            gerente; luego el cliente presenta la tarjeta. <strong>Reembolso solicitado</strong> significa que Adyen
+            recibió la solicitud; <strong>Reembolso aprobado</strong> significa que el adquirente lo aprobó de inmediato.
+            En ambos casos, Adyen confirma el resultado en el Área de Clientes. El historial, los recibos y el reporte diario
+            muestran estos reembolsos por separado; concílielos manualmente.</p>
+          <p>Si el soporte de Adyen configuró un retraso de reembolso, active <strong>Retraso de reembolso
+            configurado</strong>. Mientras dure el retraso, abra el reembolso y toque <strong>Cancelar reembolso</strong>.
+            Una cancelación solicitada significa que Adyen la recibió; revise el Área de Clientes para saber si se detuvo el
+            reembolso.</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/unreferenced">Adyen: Unreferenced refunds</a> · <a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/cancel-unreferenced">Adyen: Cancel an unreferenced
+            refund</a></p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">importante</p>
             <p><strong>Reembolso solicitado</strong> significa que Adyen recibió la solicitud, no que el cliente tenga

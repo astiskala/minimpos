@@ -226,6 +226,12 @@ cash-out, girocard and European Visa/Mastercard purchase-linked cashback, issuer
 unknown-result recovery, receipts, terminal totals and purchase-only referenced refunds. Local/cloud simulator tests do
 not establish real support. No real calls were made for this implementation.
 
+Unreferenced refund verification remains open: Adyen enablement per store or terminal, the Customer Area limit and
+merchant-category exclusions, the excluded-country error, `PaymentType=Refund` answers on local and cloud terminals
+(`transactionType`, `posAuthAmountValue`, synchronous `acquirerResponseCode` per scheme and country), `Payment`-category
+status recovery, receipts with `transaction_type_refund`, terminal totals, Payments app support, and `/voidPendingRefund`
+with a Support-configured refund delay, its credential role and `VOID_PENDING_REFUND` outcome. No real calls were made.
+
 ## Make changes that fit
 
 [AGENTS.md](AGENTS.md) is the single list of repository constraints for every contributor: money, compatibility,

@@ -394,6 +394,34 @@ class ReceiptBuilderTest {
     }
 
     @Test
+    fun `unreferenced refund receipts name no original and claim no returned surcharge or tip`() {
+        val doc =
+            builder().refund(
+                RefundReceipt(
+                    reference = "MP-R2",
+                    originalReference = null,
+                    dateTime = "30/09/2026 10:00",
+                    items = emptyList(),
+                    amount = 900,
+                    cardReceipt = cardLines,
+                    standingNote = "Refund requested",
+                    unreferencedNotes = listOf("Unreferenced refund", "Reason: Return without receipt"),
+                ),
+            )
+        assertThat(doc.elements)
+            .containsAtLeast(
+                Row("Reference", "MP-R2"),
+                Text("Unreferenced refund"),
+                Text("Reason: Return without receipt"),
+                Row("REFUND TOTAL", "$9.00", TextStyle.BOLD),
+                Row("Card", "**** 9999"),
+            ).inOrder()
+        val rows = doc.elements.filterIsInstance<Row>().map { it.left }
+        assertThat(rows).containsNoneOf("Original sale", "Surcharge", "Tip")
+        assertThat(doc.elements).doesNotContain(Text("Partial refund"))
+    }
+
+    @Test
     fun `pre-authorisation receipts are titled, show the amount held and get a refund QR only once captured`() {
         val doc = builder().sale(sale().copy(preAuthorisation = true))
         assertThat(doc.elements)

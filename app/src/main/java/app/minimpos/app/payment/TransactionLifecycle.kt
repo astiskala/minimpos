@@ -132,6 +132,7 @@ sealed interface TerminalOperation {
      * @property expected Checked destination for scanned or Mexican-routed payments; null for ordinary collection.
      * @property setupIdentity Exact checked store/scan setup fingerprint; null for ordinary collection.
      * @property cashbackIdentity Non-secret configuration identity confirmed for a cash request; null for ordinary collection.
+     * @property unreferencedIdentity Non-secret configuration identity confirmed for an unreferenced refund; null otherwise.
      */
     data class Pay(
         val params: PaymentParams,
@@ -139,9 +140,14 @@ sealed interface TerminalOperation {
         val expected: PaymentContext? = null,
         val setupIdentity: String? = null,
         val cashbackIdentity: String? = null,
+        val unreferencedIdentity: String? = null,
     ) : TerminalOperation {
         override val amount: OperationAmount get() = OperationAmount(params.amountMinor, params.currency)
-        override val needsApproval: Boolean get() = params.cashBackMinor != null || params.cardEntryOverride.needsManagerApproval
+        override val needsApproval: Boolean
+            get() = params.cashBackMinor != null || params.unreferencedRefund || params.cardEntryOverride.needsManagerApproval
+
+        /** Whether only a configured Manager PIN may approve it: cash requests and unreferenced refunds. */
+        val needsConfiguredApproval: Boolean get() = params.cashBackMinor != null || params.unreferencedRefund
     }
 
     /**
@@ -356,7 +362,7 @@ class TransactionLifecycle<R>(
         grant: ManagerApproval.Grant,
     ): Boolean =
         when {
-            operation is TerminalOperation.Pay && operation.params.cashBackMinor != null -> approval.allowsConfigured(grant)
+            operation is TerminalOperation.Pay && operation.needsConfiguredApproval -> approval.allowsConfigured(grant)
             operation.needsApproval -> approval.allows(grant)
             else -> true
         }
@@ -392,6 +398,7 @@ class TransactionLifecycle<R>(
                             expected = operation.expected,
                             expectedIdentity = operation.setupIdentity,
                             cashbackIdentity = operation.cashbackIdentity,
+                            unreferencedIdentity = operation.unreferencedIdentity,
                             onSending = onSending,
                             onContext = { book.recordContext(id, it) },
                         )

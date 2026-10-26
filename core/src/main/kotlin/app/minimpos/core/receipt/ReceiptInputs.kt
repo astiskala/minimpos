@@ -367,7 +367,8 @@ data class ReceiptTender(
  * The data for a refund receipt.
  *
  * @property reference the refund's own merchant reference.
- * @property originalReference the refunded sale's merchant reference (or its transaction id when that is unknown).
+ * @property originalReference the refunded sale's merchant reference (or its transaction id when that is unknown);
+ *   null for an unreferenced refund, which names no original payment and prints [unreferencedNotes] instead.
  * @property dateTime the refund's date and time, already formatted for the locale.
  * @property items the refunded items; empty for a refund of an amount, which prints [ReceiptLabels.partialRefund].
  * @property amount the refunded amount in minor units.
@@ -379,10 +380,12 @@ data class ReceiptTender(
  * @property standingNote Current localized request outcome; null for none.
  * @property surchargeMinor Fee included in the returned amount; null when unknown.
  * @property tipMinor Tip included in the returned amount; null when unknown.
+ * @property unreferencedNotes Localized lines of an unreferenced refund, such as that it is not linked to an original
+ *   payment and why it was made; empty for referenced refunds.
  */
 data class RefundReceipt(
     val reference: String,
-    val originalReference: String,
+    val originalReference: String?,
     val dateTime: String,
     val items: List<ReceiptItem>,
     val amount: Long,
@@ -396,6 +399,7 @@ data class RefundReceipt(
     val surchargeMinor: Long? = null,
     /** Tip included in [amount]; null for unknown historical allocations. */
     val tipMinor: Long? = null,
+    val unreferencedNotes: List<String> = emptyList(),
 )
 
 /** "GST 10%" - or the name as-is when the merchant already put the rate in it. */

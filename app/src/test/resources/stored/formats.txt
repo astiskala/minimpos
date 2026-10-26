@@ -72,6 +72,14 @@ settings.json: app.minimpos.app.data.settings.AppSettings
       currency?: string
       storeId?: string
       storeCountry?: string
+    unreferencedRefunds: app.minimpos.app.data.settings.UnreferencedRefundSettings
+      enabled: boolean
+      limitMinor: long
+      delayed: boolean
+      context?: app.minimpos.core.payment.PaymentContext (as above)
+      currency?: string
+      storeId?: string
+      storeCountry?: string
   receipt: app.minimpos.app.data.settings.ReceiptSettings
     businessName: string
     addressLines: string
@@ -264,6 +272,14 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
           environment? required: string
           host?: string
           simulated: boolean
+        currency?: string
+        storeId?: string
+        storeCountry?: string
+      unreferencedRefunds: app.minimpos.app.data.settings.UnreferencedRefundSettings
+        enabled: boolean
+        limitMinor: long
+        delayed: boolean
+        context?: app.minimpos.core.payment.PaymentContext (as above)
         currency?: string
         storeId?: string
         storeCountry?: string

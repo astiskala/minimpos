@@ -567,12 +567,51 @@ enum class RefundStatus {
     val unresolved: Boolean get() = this == PENDING || this == UNKNOWN
 }
 
+/** Why staff made an unreferenced refund; stored by name in `refunds.unreferencedReason`. Added in version 24. */
+enum class UnreferencedRefundReason {
+    /** Goods returned without a receipt or payment record. */
+    RETURN_WITHOUT_RECEIPT,
+
+    /** The original payment was taken elsewhere, such as another system or device. */
+    PAID_ELSEWHERE,
+
+    /** A price adjustment or goodwill payment to the shopper's card. */
+    PRICE_ADJUSTMENT,
+
+    /** Another operational reason. */
+    OTHER,
+}
+
 /**
- * A referenced refund (table `refunds`): a Terminal API reversal of an earlier payment.
+ * Where asking Adyen to cancel a delayed unreferenced refund stands; stored by name in `refunds.cancelStatus`. Adyen
+ * reports whether the refund was actually cancelled only in a webhook, so [REQUESTED] is never a cancelled refund.
+ * Added in database version 24.
+ */
+enum class RefundCancelStatus {
+    /** Stored before the request is sent; still SENDING later means its answer went missing. */
+    SENDING,
+
+    /** Adyen received the cancellation request (`[voidPendingRefund-received]`); the Customer Area confirms it. */
+    REQUESTED,
+
+    /** Adyen rejected it, or it was never sent; the refund stands. */
+    FAILED,
+
+    /** Whether Adyen received it is not known; only the same request may be sent again. */
+    UNKNOWN,
+    ;
+
+    /** Whether the request may have reached Adyen without an answer, so only the same request may be sent again. */
+    val unresolved: Boolean get() = this == SENDING || this == UNKNOWN
+}
+
+/**
+ * A refund (table `refunds`): a referenced Terminal API reversal of an earlier payment, or an [unreferenced] card refund
+ * that names no original payment at all.
  *
- * The payment can have been taken on this terminal (then [saleId] links it) or be identified only by the refund QR
- * code printed on its receipt. The row is inserted as [RefundStatus.PENDING] before the terminal is called. Amounts are
- * in minor units of [currency].
+ * A referenced refund's payment can have been taken on this terminal (then [saleId] links it) or be identified only by
+ * the refund QR code printed on its receipt. The row is inserted as [RefundStatus.PENDING] before the terminal is
+ * called. Amounts are in minor units of [currency].
  */
 @Entity(tableName = "refunds", indices = [Index(value = ["createdAt", "id"]), Index("saleId"), Index(value = ["processedAt", "id"])])
 data class RefundEntity(
@@ -587,10 +626,13 @@ data class RefundEntity(
     val createdAt: Long,
     /** The refund's own merchant reference, such as `R-260930-145811-VQ45`. */
     val merchantReference: String,
-    /** POITransactionID of the payment being refunded. */
-    val originalTransactionId: String,
-    /** The original payment's POITransactionID time stamp, exactly as sent in the reversal request. */
-    val originalTimestamp: String,
+    /** POITransactionID of the payment being refunded; null for an [unreferenced] refund, which has none. */
+    val originalTransactionId: String?,
+    /**
+     * The original payment's POITransactionID time stamp, exactly as sent in the reversal request; null for an
+     * [unreferenced] refund.
+     */
+    val originalTimestamp: String?,
     /** Merchant reference of the original payment, shown on the refund receipt; null if unknown. */
     val originalReference: String?,
     /** ISO 4217 code of the original payment's currency. */
@@ -653,7 +695,35 @@ data class RefundEntity(
      * [originalTransactionId] is then the local tender ID and [originalTimestamp] its recording time. Added in version 19.
      */
     @ColumnInfo(defaultValue = "0") val cash: Boolean = false,
+    /**
+     * Whether this is an unreferenced card refund: a Terminal API `Payment` with `PaymentType=Refund` to the card the
+     * shopper presents, sent with [serviceId] and recovered as a payment. It has no original payment, so [saleId],
+     * [originalTransactionId], [originalTimestamp] and [originalReference] are null. Added in database version 24.
+     */
+    @ColumnInfo(defaultValue = "0") val unreferenced: Boolean = false,
+    /** Why staff made an [unreferenced] refund, frozen before sending; null for referenced refunds. */
+    val unreferencedReason: UnreferencedRefundReason? = null,
+    /**
+     * `acquirerResponseCode` reported for an [unreferenced] refund, verbatim: Adyen sends it only when the card scheme
+     * and country process the refund synchronously. Null when omitted, which leaves the refund only requested.
+     */
+    val acquirerResponseCode: String? = null,
+    /** Where cancelling this delayed [unreferenced] refund stands; null when no cancellation was asked for. */
+    val cancelStatus: RefundCancelStatus? = null,
+    /** When the cancellation was first sent, in epoch milliseconds, for its idempotency retention; null without one. */
+    val cancelStartedAt: Long? = null,
+    /** Why the cancellation was not received when the app says so; null otherwise. */
+    val cancelReason: StoredReason? = null,
+    /** Adyen's PSP reference of the cancellation request, when it sent one. */
+    val cancelPspReference: String? = null,
 )
+
+/**
+ * Whether this refund still needs attention: its own outcome is open ([RefundStatus.unresolved]) or a cancellation of it
+ * may have reached Adyen unanswered ([RefundCancelStatus.unresolved]). The one rule behind History issues, retention and
+ * environment-switch warnings for refunds.
+ */
+val RefundEntity.unresolved: Boolean get() = status.unresolved || cancelStatus?.unresolved == true
 
 /** How one tender of a sale was paid; stored by name in `sale_tenders.kind`. Added in database version 19. */
 enum class TenderKind {

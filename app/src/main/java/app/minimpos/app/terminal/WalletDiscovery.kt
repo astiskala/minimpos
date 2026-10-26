@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * @property storeId Verified assigned Management store ID; null when unassigned or simulated.
  * @property mealVoucherDestination Whether the destination supports meal-voucher tenders.
  * @property cashbackDestination Whether this destination carries Terminal API cashback.
+ * @property unreferencedRefundDestination Whether this destination carries unreferenced card refunds.
  * @property simulated Whether the resolved destination supplies offline demos, not a reading of stored payment meaning.
  * @property checking Whether a refresh is running.
  * @property checked Whether a complete discovery answer has been obtained.
@@ -49,6 +50,7 @@ data class WalletAvailability(
     val storeId: String? = null,
     val mealVoucherDestination: Boolean = false,
     val cashbackDestination: Boolean = false,
+    val unreferencedRefundDestination: Boolean = false,
     val simulated: Boolean = false,
     val checking: Boolean = false,
     val checked: Boolean = false,
@@ -138,6 +140,7 @@ class WalletDiscovery(
                     mexicanDestination = setup.capabilities.mexicanInstallments,
                     mealVoucherDestination = setup.capabilities.mealVouchers,
                     cashbackDestination = setup.destination.cashback,
+                    unreferencedRefundDestination = setup.destination.unreferencedRefunds,
                     simulated = setup.apiSetup == ApiSetup.Simulated,
                     checking = true,
                 )

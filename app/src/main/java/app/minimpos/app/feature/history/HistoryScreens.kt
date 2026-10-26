@@ -1,5 +1,6 @@
 package app.minimpos.app.feature.history
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -450,8 +451,8 @@ private fun historyRowText(
             val refund = item.refund
             val amount = money[refund.currency].format(refund.amountMinor)
             HistoryRowText(
-                stringResource(if (refund.cancellation) R.string.history_cancellation else R.string.history_refund),
-                listOf(time, refund.originalReference ?: refund.originalTransactionId).joinToString(" · "),
+                stringResource(refundRowTitle(refund)),
+                "$time · ${refund.originalReference ?: refund.originalTransactionId ?: refund.merchantReference}",
                 // A cancellation releases a hold rather than paying money back.
                 if (refund.cancellation) amount else "−$amount",
                 refundStatusTitle(refund.status, refund.cancellation),
@@ -818,4 +819,13 @@ private fun saleDetailTitle(sale: SaleEntity?): Int =
         sale?.kind == SaleKind.PRE_AUTHORISATION -> R.string.detail_pre_auth_title
         sale?.cashout == true -> R.string.cashout_title
         else -> R.string.detail_title
+    }
+
+/** A refund row's title: a cancellation, a refund without receipt, or a referenced refund. */
+@StringRes
+private fun refundRowTitle(refund: RefundEntity): Int =
+    when {
+        refund.cancellation -> R.string.history_cancellation
+        refund.unreferenced -> R.string.unreferenced_title
+        else -> R.string.history_refund
     }

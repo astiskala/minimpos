@@ -46,6 +46,8 @@ import app.minimpos.app.feature.refund.RefundProcessingScreen
 import app.minimpos.app.feature.refund.RefundResultScreen
 import app.minimpos.app.feature.refund.RefundScanScreen
 import app.minimpos.app.feature.refund.RefundScreen
+import app.minimpos.app.feature.refund.RefundStartScreen
+import app.minimpos.app.feature.refund.UnreferencedRefundScreen
 import app.minimpos.app.feature.sale.CashbackHandoverScreen
 import app.minimpos.app.feature.sale.CashoutScreen
 import app.minimpos.app.feature.sale.CheckoutScreen
@@ -134,7 +136,9 @@ private fun AppEntries(
                 entry<Route.PaymentLink> { PaymentLinkScreen(it.saleId, it.fresh, navigator) }
                 entry<Route.Tip> { PinGate(navigator, manager = true) { TipScreen(it.saleId, navigator) } }
                 entry<Route.Capture> { PinGate(navigator, manager = true) { CaptureScreen(it.saleId, it.adjustOnly, navigator) } }
+                entry<Route.RefundStart> { PinGate(navigator, manager = true) { RefundStartScreen(navigator) } }
                 entry<Route.RefundScan> { PinGate(navigator, manager = true) { RefundScanScreen(navigator) } }
+                entry<Route.UnreferencedRefund> { PinGate(navigator, manager = true) { UnreferencedRefundScreen(navigator) } }
                 entry<Route.Refund> { PinGate(navigator, manager = true) { RefundScreen(it.payload, it.saleId, navigator) } }
                 entry<Route.RefundProcessing> { RefundProcessingScreen(navigator) }
                 entry<Route.RefundLegs> { RefundLegsScreen(navigator) }

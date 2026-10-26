@@ -29,12 +29,13 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   defines captured statuses. `StoredPayment.actions` owns allowed actions and is checked by capture operations too.
   `SaleEntity.issues` is the one issue reading; screens get whole days from `HistoryAccounting.days`.
   `saleResultNext` is the one reading of what a result screen offers next, payment links included.
-- \* Decision rules stay pure: Checkout, Cashback, PaymentLinkRequests, SaleEvent, TenderBalance, GiftCardActivity,
-  PaymentStanding, RefundablePayment, HistorySearch, HistoryAccounting, ReceiptKind, TerminalAssignments, WalletOffers,
-  TerminalSetup, TerminalSetupPlan, DestinationRules, NewInstallation, VerifiedSetup and settings models. No Android,
-  coroutines, repositories or clocks; do not rederive their decisions elsewhere. History filters reuse accounting's
-  issue meaning rather than reading pending/unknown status fields. `ReceiptStanding` owns receipt meaning; only the
-  stored-payment reading interprets the original payment context's simulator flag for demo links.
+- \* Decision rules stay pure: Checkout, Cashback, UnreferencedRefunds, PaymentLinkRequests, SaleEvent, TenderBalance,
+  GiftCardActivity, PaymentStanding, RefundablePayment, HistorySearch, HistoryAccounting, ReceiptKind,
+  TerminalAssignments, WalletOffers, TerminalSetup, TerminalSetupPlan, DestinationRules, NewInstallation, VerifiedSetup
+  and settings models. No Android, coroutines, repositories or clocks; do not rederive their decisions elsewhere.
+  History filters reuse accounting's issue meaning rather than reading pending/unknown status fields. `ReceiptStanding`
+  owns receipt meaning; only the stored-payment reading interprets the original payment context's simulator flag for
+  demo links.
 - \* Work begun on one setup checks it is still stored only through `TerminalSetupSource.SetupFence`, which
   alone compares secret fingerprints. The source takes everything it calls as constructor arguments. `VerifiedSetup`
   alone decides what the verified-setup fingerprint covers; only the source reads `AppSettings.verifiedSetup`.
@@ -93,6 +94,11 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   Card cashback handovers also belong to `CashTenders`; approval never implies physical cash handover.
   Gift-card value changes, repairs and handovers require a configured Manager PIN under the capabilities plan's
   provisional default; balance inquiries and redemption do not. Never store gift-card numbers or PINs.
+- \* Unreferenced refunds start only through `StoredPaymentActions.refundWithoutReceipt`, which rechecks
+  `UnreferencedRefunds` readiness (verified store country, explicit enablement, local limit); the gateway checks the
+  confirmed configuration again at send and `TransactionLifecycle` a configured Manager PIN. They are refunds in history
+  sent as `Payment`s, so only their own book rechecks them, as payments. Only `RefundCancellations` asks Adyen to cancel
+  a delayed one or records its request status; a received cancellation never means the refund stopped.
 - Meal-voucher markets come only from `WalletAvailability.mealVoucherSchemes` (verified store country; currency only
   labels an offline demo). `Checkout.mealVoucher` decides what a voucher tender may do and explains blocks before
   payment; `TenderBalance.acceptsVoucher` checks the eligible amount again where the tender is stored. Voucher value is

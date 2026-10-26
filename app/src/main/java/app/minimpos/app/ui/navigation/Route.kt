@@ -112,8 +112,18 @@ sealed interface Route : NavKey {
         override val requiresManager get() = true
     }
 
+    /** How to find what to refund: scan a receipt, choose a payment in History, or refund without a receipt. */
+    @Serializable data object RefundStart : Route {
+        override val requiresManager get() = true
+    }
+
     /** Scanning the refund QR code on a receipt. */
     @Serializable data object RefundScan : Route {
+        override val requiresManager get() = true
+    }
+
+    /** An unreferenced card refund: an amount and reason, linked to no original payment. */
+    @Serializable data object UnreferencedRefund : Route {
         override val requiresManager get() = true
     }
 

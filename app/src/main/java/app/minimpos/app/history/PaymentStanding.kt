@@ -1,6 +1,7 @@
 package app.minimpos.app.history
 
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.RefundCancelStatus
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
@@ -11,6 +12,7 @@ import app.minimpos.app.data.repo.cashAwaitingHandover
 import app.minimpos.app.data.repo.remainingAmountKnown
 import app.minimpos.terminal.client.Decline
 import app.minimpos.terminal.client.RetryAdvice
+import app.minimpos.terminal.client.TerminalClient
 
 /**
  * Where a stored sale stands as a payment, worked out once from its status, kind, capture and cancellation. It is the
@@ -355,6 +357,22 @@ private val SaleEntity.canCheckAgain: Boolean
  */
 val RefundEntity.canCheckAgain: Boolean
     get() = status == RefundStatus.UNKNOWN && (checkoutRefund || serviceId != null)
+
+/**
+ * Whether the delayed unreferenced refund [this] can be asked to be cancelled now, given the merchant confirmed Adyen
+ * Support configured a refund [delayed]: accepted, with a PSP reference, and no cancellation received yet. Adyen
+ * enforces the delay itself, so an expired delay is its rejection, not this reading.
+ */
+fun RefundEntity.cancellable(delayed: Boolean): Boolean =
+    unreferenced && status == RefundStatus.REQUESTED && pspReference != null && cancelStatus != RefundCancelStatus.REQUESTED &&
+        (delayed || cancelStatus?.unresolved == true)
+
+/**
+ * Whether this accepted unreferenced refund was approved synchronously by the acquirer (`acquirerResponseCode=Approved`)
+ * rather than only requested; either way Adyen confirms the refund itself only in the Customer Area.
+ */
+val RefundEntity.approvedSynchronously: Boolean
+    get() = unreferenced && status == RefundStatus.REQUESTED && TerminalClient.refundApproved(acquirerResponseCode)
 
 /** What the Checkout API can do with [sale], which has a PSP reference. */
 private fun captureActions(sale: SaleEntity): Set<PaymentAction> {

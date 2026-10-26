@@ -52,6 +52,7 @@ import app.minimpos.app.payment.PricingChanges
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.ReceiptRecords
 import app.minimpos.app.payment.RefundBook
+import app.minimpos.app.payment.RefundCancellations
 import app.minimpos.app.payment.RefundLegs
 import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SaleSession
@@ -60,6 +61,8 @@ import app.minimpos.app.payment.ShopperPromptTexts
 import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.app.payment.TerminalReconciliation
 import app.minimpos.app.payment.TransactionLifecycle
+import app.minimpos.app.payment.UnreferencedRefundBook
+import app.minimpos.app.payment.UnreferencedRefundStart
 import app.minimpos.app.payment.WalletPayments
 import app.minimpos.app.qr.QrCodes
 import app.minimpos.app.receipt.ReceiptFactory
@@ -523,6 +526,25 @@ class AppContainer(
             approval = managerApproval,
         )
 
+    /** Runs unreferenced card refunds, which history keeps as refunds and the terminal answers as payments. */
+    private val unreferencedRefunds: TransactionLifecycle<UnreferencedRefundStart> =
+        TransactionLifecycle(
+            scope = appScope,
+            gateway = gateway,
+            book = UnreferencedRefundBook(refundRecords),
+            onSucceeded = { id, _ -> receipts.arm(id) },
+            approval = managerApproval,
+        )
+
+    /** Asks Adyen to cancel delayed unreferenced refunds, with their own identity and request-status recovery. */
+    val refundCancellations =
+        RefundCancellations(
+            refundRecords,
+            api::target,
+            delayed = { settingsState.value.payment.unreferencedRefunds.delayed },
+            approval = managerApproval,
+        )
+
     /** Charges saved cards through the Checkout API and asks again about unknown charges. */
     val savedCardCharges =
         SavedCardCharges(
@@ -578,7 +600,18 @@ class AppContainer(
      * sent now, which setup changes wait for.
      */
     val operations: FinancialOperations =
-        FinancialOperations(payments, refunds, savedCardCharges, checkoutRefunds, links, sales, refundRecords, giftCards)
+        FinancialOperations(
+            payments,
+            refunds,
+            savedCardCharges,
+            checkoutRefunds,
+            links,
+            sales,
+            refundRecords,
+            giftCards,
+            unreferencedRefunds,
+            refundCancellations,
+        )
 
     private fun historyPurged() {
         operations.forgetAll()

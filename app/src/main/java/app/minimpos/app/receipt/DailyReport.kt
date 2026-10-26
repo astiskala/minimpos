@@ -53,6 +53,9 @@ enum class ReportText {
     /** Cash handed back, included in refunds. */
     CASH_REFUNDS,
 
+    /** Unreferenced card refunds, included in refunds. */
+    UNREFERENCED_REFUNDS,
+
     /** Surcharge already included in accepted refunds. */
     REFUND_SURCHARGES,
 
@@ -191,6 +194,9 @@ internal object DailyReport {
                     0L
                 ) {
                     add(ReceiptElement.Row(text(ReportText.CASH_REFUNDS), money.format(total.cashRefundsMinor)))
+                }
+                if (total.unreferencedRefundsMinor != 0L) {
+                    add(ReceiptElement.Row(text(ReportText.UNREFERENCED_REFUNDS), money.format(total.unreferencedRefundsMinor)))
                 }
                 add(ReceiptElement.Row(text(ReportText.REFUND_SURCHARGES), money.format(total.refundedSurchargesMinor)))
                 add(ReceiptElement.Row(text(ReportText.UNKNOWN_REFUND_SURCHARGES), total.unknownRefundSurchargeCount.toString()))

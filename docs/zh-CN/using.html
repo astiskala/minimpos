@@ -75,7 +75,7 @@
           <a href="using" aria-current="page">使用 Mini mPOS</a><br><a href="troubleshooting">故障排查</a></p>
         <div class="desktop-contents"><p class="toc-title">本页目录</p><ol>
 <li><a href="#business">开始销售前</a><ul><li><a href="#pricing">币种和税费</a></li><li><a href="#products">商品</a></li><li>
-  <a href="#staff">员工 PIN</a></li></ul></li><li><a href="#sell">银行卡收款</a></li><li><a href="#refund">退款或撤销</a></li><li>
+  <a href="#staff">员工 PIN</a></li></ul></li><li><a href="#sell">银行卡收款</a></li><li><a href="#refund">退款或撤销</a><ul><li><a href="#unreferenced-refunds">无收据退款</a></li></ul></li><li>
   <a href="#receipts">收据</a><ul><li><a href="#customize-receipts">自定义收据</a></li><li><a href="#language-receipts">收据语言
   </a></li><li><a href="#email">电子收据</a></li></ul></li><li><a href="#history">交易记录</a><ul><li><a href="#close-day">每日平账
   </a></li><li><a href="#reconciliation">与终端对账</a></li></ul></li><li class="advanced-start"><a href="#capabilities">检查
@@ -88,7 +88,7 @@
 </ol></div>
         <details class="mobile-contents"><summary class="toc-title">本页目录</summary><ol>
 <li><a href="#business">开始销售前</a><ul><li><a href="#pricing">币种和税费</a></li><li><a href="#products">商品</a></li><li>
-  <a href="#staff">员工 PIN</a></li></ul></li><li><a href="#sell">银行卡收款</a></li><li><a href="#refund">退款或撤销</a></li><li>
+  <a href="#staff">员工 PIN</a></li></ul></li><li><a href="#sell">银行卡收款</a></li><li><a href="#refund">退款或撤销</a><ul><li><a href="#unreferenced-refunds">无收据退款</a></li></ul></li><li>
   <a href="#receipts">收据</a><ul><li><a href="#customize-receipts">自定义收据</a></li><li><a href="#language-receipts">收据语言
   </a></li><li><a href="#email">电子收据</a></li></ul></li><li><a href="#history">交易记录</a><ul><li><a href="#close-day">每日平账
   </a></li><li><a href="#reconciliation">与终端对账</a></li></ul></li><li class="advanced-start"><a href="#capabilities">检查
@@ -167,12 +167,19 @@
           </dl>
           <p>退款步骤：</p>
           <ol>
-            <li>在首页点按<strong>退款</strong>并扫描收据上的退款二维码，或在<strong>交易记录</strong>中打开原销售。</li>
+            <li>在首页点按<strong>退款</strong>，然后点按<strong>扫描收据</strong>扫描收据上的退款二维码，或点按<strong>选择付款</strong>在<strong>交易记录</strong>中打开原销售。</li>
             <li>选择全额、指定金额或按商品退款。按商品退款要求本设备保留原销售。</li>
             <li>确认退款，如有提示则输入经理 PIN。</li>
           </ol>
-          <p>每笔退款都关联原付款，不支持无原付款的退款。已支付的付款链接请在商户后台退款。</p>
+          <p>这些退款关联原付款。已支付的付款链接请在商户后台退款。</p>
           <p id="split-refunds">拆分的销售会退回原付款。Mini mPOS 会建议退回每张银行卡的金额和要退还的现金；点按某笔付款即可在可退范围内调整金额。先逐笔退款到银行卡，最后退还现金。退还现金需要经理PIN。如果某笔银行卡退款未被受理，其余付款不会退回；请打开该销售查看剩余部分。</p>
+          <h3 id="unreferenced-refunds">无收据退款</h3>
+          <p>仅在没有可退款的付款时（例如无收据退货）使用<strong>无收据退款</strong>。它将金额退还到顾客出示的卡，不关联任何付款，因此 Mini mPOS 无法核实已付款项。错误或重复退款由您承担责任。</p>
+          <p>此功能默认关闭。请让 Adyen 为门店启用非关联退款，并在 Customer Area 中设置 Adyen 的退款上限。然后在设置 › 支付中开启<strong>允许无收据退款</strong>，设置您自己的<strong>退款上限</strong>和经理PIN。Mini mPOS 使用 Adyen 为终端验证的门店和国家/地区。Adyen 不允许巴西、墨西哥、澳大利亚、马来西亚、新加坡、香港或印度的门店进行此类退款，也不允许支付宝或微信支付等二维码钱包。支持本地或通过云连接的支付终端；Tap to Pay 不提供此功能。</p>
+          <p>点按<strong>无收据退款</strong>，输入金额，选择原因，确认后用经理PIN批准，顾客随后出示卡。<strong>已请求退款</strong>表示 Adyen 已收到请求；<strong>退款已批准</strong>表示收单机构已即时批准。无论哪种情况，Adyen 都会在 Customer Area 中确认结果。交易记录、收据和日报会单独显示这些退款；请手动对账。</p>
+          <p>如果 Adyen 支持团队设置了退款延迟，请开启<strong>已设置退款延迟</strong>。在延迟期内，打开该退款并点按<strong>取消退款</strong>。已请求取消表示 Adyen 已收到请求；请在 Customer Area 中查看退款是否已停止。</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/unreferenced">Adyen: Unreferenced refunds</a> · <a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/cancel-unreferenced">Adyen: Cancel an unreferenced
+            refund</a></p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
             <p><strong>已请求退款</strong>表示 Adyen 已收到请求，不表示购物者已收到款项。请在商户后台确认最终结果。退款结果未知时，<a href="troubleshooting#unknown">

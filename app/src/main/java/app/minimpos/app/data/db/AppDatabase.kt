@@ -23,7 +23,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HistorySwitchEntity::class,
         GiftCardOperationEntity::class,
     ],
-    version = 23,
+    version = 24,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -236,6 +236,40 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /**
+         * Makes a refund's original payment optional for unreferenced refunds. SQLite cannot relax NOT NULL in place, so
+         * `refunds` is rebuilt with every row, unfinished ones included, and its indices; existing rows stay referenced.
+         */
+        val MIGRATION_23_24: Migration =
+            object : Migration(23, 24) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS `refunds_new` (`id` TEXT NOT NULL, `saleId` TEXT, `createdAt` INTEGER NOT NULL, " +
+                            "`merchantReference` TEXT NOT NULL, `originalTransactionId` TEXT, `originalTimestamp` TEXT, " +
+                            "`originalReference` TEXT, `currency` TEXT NOT NULL, `amountMinor` INTEGER NOT NULL, " +
+                            "`full` INTEGER NOT NULL, `status` TEXT NOT NULL, `serviceId` TEXT, `pspReference` TEXT, `message` TEXT, " +
+                            "`customerReceiptJson` TEXT, " +
+                            "`linesJson` TEXT, `cancellation` INTEGER NOT NULL DEFAULT 0, `reason` TEXT, `context` TEXT, " +
+                            "`processedAt` INTEGER, `poiReconciliationId` TEXT, `checkoutRefund` INTEGER NOT NULL DEFAULT 0, " +
+                            "`tenderId` TEXT, `surchargeMinor` INTEGER, `tipMinor` INTEGER, `cash` INTEGER NOT NULL DEFAULT 0, " +
+                            "`unreferenced` INTEGER NOT NULL DEFAULT 0, `unreferencedReason` TEXT, `acquirerResponseCode` TEXT, " +
+                            "`cancelStatus` TEXT, `cancelStartedAt` INTEGER, `cancelReason` TEXT, `cancelPspReference` TEXT, " +
+                            "PRIMARY KEY(`id`))",
+                    )
+                    val columns =
+                        "`id`, `saleId`, `createdAt`, `merchantReference`, `originalTransactionId`, `originalTimestamp`, " +
+                            "`originalReference`, `currency`, `amountMinor`, `full`, `status`, `serviceId`, `pspReference`, " +
+                            "`message`, `customerReceiptJson`, `linesJson`, `cancellation`, `reason`, `context`, `processedAt`, " +
+                            "`poiReconciliationId`, `checkoutRefund`, `tenderId`, `surchargeMinor`, `tipMinor`, `cash`"
+                    db.execSQL("INSERT INTO `refunds_new` ($columns) SELECT $columns FROM `refunds`")
+                    db.execSQL("DROP TABLE `refunds`")
+                    db.execSQL("ALTER TABLE `refunds_new` RENAME TO `refunds`")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_refunds_createdAt_id` ON `refunds` (`createdAt`, `id`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_refunds_saleId` ON `refunds` (`saleId`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_refunds_processedAt_id` ON `refunds` (`processedAt`, `id`)")
+                }
+            }
+
         /** Opens lazily on first query with versioned migrations; no destructive fallback is configured. */
         fun create(context: Context): AppDatabase =
             Room
@@ -254,6 +288,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_20_21,
                     MIGRATION_21_22,
                     MIGRATION_22_23,
+                    MIGRATION_23_24,
                 ).build()
     }
 }

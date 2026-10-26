@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
+import app.minimpos.app.data.db.RefundCancelStatus
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleLineEntity
@@ -57,10 +58,14 @@ import app.minimpos.app.feature.ReceiptActions
 import app.minimpos.app.feature.ResultAction
 import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.StatusCheck
+import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.outcomeNote
+import app.minimpos.app.feature.text
 import app.minimpos.app.history.RefundInvalidReason
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.history.approvedSynchronously
+import app.minimpos.app.payment.RefundCancelResult
 import app.minimpos.app.payment.RefundLegSkip
 import app.minimpos.app.payment.RefundLegState
 import app.minimpos.app.payment.RefundStarted
@@ -96,6 +101,7 @@ import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.core.money.AmountEntry
 import app.minimpos.core.money.MoneyFormatter
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /** Scans the refund QR code on a receipt and opens the refund for it; other codes show a message and scanning goes on. */
@@ -759,6 +765,14 @@ fun RefundResultScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val gate = currentSetupGate()
 
+    var approveCancel by rememberSaveable { mutableStateOf(false) }
+    if (approveCancel) {
+        return ManagerApproval(onApprove = {
+            approveCancel = false
+            gate.run { vm.cancelRefund() }
+        }, onCancel = { approveCancel = false })
+    }
+
     fun done() {
         vm.finish()
         if (fromHistory) navigator.back() else navigator.home()
@@ -777,7 +791,7 @@ fun RefundResultScreen(
                         ResultAction(stringResource(R.string.refund_new), "newRefund") {
                             gate.run {
                                 vm.finish()
-                                navigator.replace(Route.RefundScan)
+                                navigator.replace(Route.RefundStart)
                             }
                         }.takeUnless { refund.cancellation },
                 )
@@ -791,6 +805,7 @@ fun RefundResultScreen(
             RefundDetailsCard(refund, container::formatDateTime)
             if (state.canRecheck) StatusCheck(state.transaction, vm.transaction::recheck, vm.transaction::dismissCheckResult)
             if (state.accepted) ReceiptActions(state.transaction, vm.transaction, MerchantCopy.NONE)
+            RefundCancellation(state, onConfirm = { approveCancel = true }, onDismiss = vm::dismissCancel)
         }
     }
     ShareEffect(state.transaction.share, vm.transaction::shared)
@@ -815,15 +830,81 @@ private fun RefundOutcome(
     money: MoneyFormatter,
 ) = OutcomeHeader(
     refundStatusKind(refund.status),
-    refundStatusTitle(refund.status, refund.cancellation),
+    if (refund.approvedSynchronously) {
+        stringResource(
+            R.string.refund_status_approved,
+        )
+    } else {
+        refundStatusTitle(refund.status, refund.cancellation)
+    },
     money.format(refund.amountMinor),
     titleTag = "refundStatus",
 ) {
-    if (refund.status == RefundStatus.REQUESTED) {
-        OutcomeNote(stringResource(if (refund.cancellation) R.string.cancellation_async_note else R.string.refund_async_note))
+    when {
+        refund.approvedSynchronously -> {
+            OutcomeNote(stringResource(R.string.unreferenced_approved_note))
+        }
+
+        refund.status == RefundStatus.REQUESTED -> {
+            OutcomeNote(stringResource(if (refund.cancellation) R.string.cancellation_async_note else R.string.refund_async_note))
+        }
     }
     refund.outcomeNote()?.let { OutcomeNote(it) }
 }
+
+/**
+ * Cancelling a delayed unreferenced refund: what Adyen was last asked, and the action while it can still be asked,
+ * confirmed and approved with the Manager PIN when one is set. A received request never claims the refund stopped.
+ */
+@Composable
+private fun RefundCancellation(
+    state: RefundResultUiState,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val refund = state.refund ?: return
+    var confirm by rememberSaveable { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth()) {
+        refund.cancelStatus?.let { OutcomeNote(stringResource(refundCancelNote(it)), Modifier.testTag("refundCancelStatus")) }
+        when (val result = state.cancel) {
+            is RefundCancelResult.NotDone -> OutcomeNote(result.failure.text())
+            is RefundCancelResult.Unconfirmed -> OutcomeNote(result.failure.text())
+            RefundCancelResult.Requested, RefundCancelResult.NotAllowed, null -> Unit
+        }
+        if (state.canCancel || state.cancelling) {
+            SecondaryButton(
+                stringResource(if (refund.cancelStatus?.unresolved == true) R.string.refund_cancel_retry else R.string.refund_cancel),
+                {
+                    onDismiss()
+                    confirm = true
+                },
+                Modifier.testTag("cancelUnreferencedRefund"),
+                loading = state.cancelling,
+            )
+        }
+        if (confirm) {
+            ConfirmDialog(
+                title = stringResource(R.string.refund_cancel),
+                message = stringResource(R.string.refund_cancel_confirm),
+                confirmLabel = stringResource(R.string.refund_cancel),
+                onConfirm = {
+                    confirm = false
+                    onConfirm()
+                },
+                onDismiss = { confirm = false },
+            )
+        }
+    }
+}
+
+/** What Adyen was last asked about cancelling a delayed refund in [status]. */
+@StringRes
+private fun refundCancelNote(status: RefundCancelStatus): Int =
+    when (status) {
+        RefundCancelStatus.REQUESTED -> R.string.refund_cancel_requested
+        RefundCancelStatus.FAILED -> R.string.refund_cancel_failed
+        RefundCancelStatus.SENDING, RefundCancelStatus.UNKNOWN -> R.string.refund_cancel_unknown
+    }
 
 /** How a refund in [status] is shown: accepted is a success, failed an error, and the rest warnings. */
 fun refundStatusKind(status: RefundStatus): StatusKind =
@@ -862,8 +943,20 @@ private fun RefundDetailsCard(
         LabeledValue(stringResource(R.string.detail_reference), refund.merchantReference)
         LabeledValue(
             stringResource(if (refund.cancellation) R.string.receipt_cancelled_reference else R.string.receipt_original_sale),
-            refund.originalReference ?: refund.originalTransactionId,
+            if (refund.unreferenced) {
+                stringResource(R.string.unreferenced_none)
+            } else {
+                refund.originalReference
+                    ?: refund.originalTransactionId
+            },
         )
+        refund.unreferencedReason?.let {
+            LabeledValue(
+                stringResource(R.string.unreferenced_reason),
+                stringResource(unreferencedReasonLabel(it)),
+            )
+        }
+        refund.acquirerResponseCode?.let { LabeledValue(stringResource(R.string.unreferenced_acquirer), it) }
         LabeledValue(stringResource(R.string.detail_date), formatDateTime(refund.createdAt))
         LabeledValue(stringResource(R.string.detail_psp), refund.pspReference)
     }
@@ -882,6 +975,8 @@ private fun refundResultViewModel(
             container.receipts,
             container.operations,
             justMade = !fromHistory,
+            cancellations = container.refundCancellations,
+            delayed = container.settingsState.map { it.payment.unreferencedRefunds.delayed },
         )
     }
 }

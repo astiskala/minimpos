@@ -27,6 +27,16 @@ class TerminalFeaturesGuideTest {
             "mexican-installments" to listOf("mexican_title"),
             "cashback" to listOf("cashback_title"),
             "cashout" to listOf("cashout_title", "cashback_handover"),
+            "unreferenced-refunds" to
+                listOf(
+                    "refund_entry_unreferenced",
+                    "unreferenced_settings_enable",
+                    "unreferenced_settings_limit",
+                    "unreferenced_settings_delay",
+                    "refund_cancel",
+                    "refund_status_approved",
+                    "refund_status_requested",
+                ),
             "meal-vouchers" to
                 listOf("voucher_title", "split_open", "split_pay_meal_voucher", "products_meal_voucher", "voucher_account_title"),
             "partial-payments" to listOf("settings_allow_partial_auth", "status_partially_paid"),
@@ -58,6 +68,8 @@ class TerminalFeaturesGuideTest {
             listOf(
                 "https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers",
                 "https://docs.adyen.com/point-of-sale/cashback-and-cash-out",
+                "https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/unreferenced",
+                "https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/cancel-unreferenced",
                 "https://docs.adyen.com/industries/markets/europe-meal-vouchers",
             ).forEach { url -> assertWithMessage("$language $url").that(using.select("a[href='$url']")).isNotEmpty() }
             assertThat(using.text()).contains("EUR 25".takeUnless { language == "fr-FR" } ?: "25 EUR")

@@ -74,8 +74,16 @@ internal data class SimulatedPayment(
     val entryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
     val offlineMode: OfflineProcessingMode = OfflineProcessingMode.ONLINE,
     val unconfirmedBatchCount: Int = 0,
+    val refund: Boolean = false,
 ) {
     val isOffline: Boolean get() = approved && offlineMode != OfflineProcessingMode.ONLINE
+    val typeLabel: String
+        get() =
+            when {
+                refund -> "Refund"
+                preAuthorisation -> "Pre-authorization"
+                else -> "Payment"
+            }
     val transactionId: String get() = if (isOffline) tender else "$tender.$psp"
 }
 
@@ -229,7 +237,18 @@ internal data class SimulatedPeriodTotals(
     val debitCount: Int = 0,
     val creditAmount: BigDecimal = BigDecimal.ZERO,
     val creditCount: Int = 0,
-)
+) {
+    /** These totals with one more [amount], counted as a [credit] (a refund) or else a debit. */
+    fun plus(
+        amount: BigDecimal,
+        credit: Boolean,
+    ): SimulatedPeriodTotals =
+        if (credit) {
+            copy(creditAmount = creditAmount + amount, creditCount = creditCount + 1)
+        } else {
+            copy(debitAmount = debitAmount + amount, debitCount = debitCount + 1)
+        }
+}
 
 internal fun buildSimulatedTransactionTotals(entries: List<SimulatedPeriodTotals>): List<TransactionTotals> =
     entries.sortedBy { it.currency }.map { item ->

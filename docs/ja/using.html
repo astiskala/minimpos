@@ -75,7 +75,7 @@
           <a href="using" aria-current="page">Mini mPOS の使い方</a><br><a href="troubleshooting">トラブルシューティング</a></p>
         <div class="desktop-contents"><p class="toc-title">このページの内容</p><ol>
 <li><a href="#business">販売を始める前に</a><ul><li><a href="#pricing">通貨と税</a></li><li><a href="#products">商品</a></li><li>
-  <a href="#staff">スタッフの PIN</a></li></ul></li><li><a href="#sell">カード決済を受け付ける</a></li><li><a href="#refund">返金・取消</a>
+  <a href="#staff">スタッフの PIN</a></li></ul></li><li><a href="#sell">カード決済を受け付ける</a></li><li><a href="#refund">返金・取消</a><ul><li><a href="#unreferenced-refunds">領収書なしの返金</a></li></ul>
   </li><li><a href="#receipts">領収書</a><ul><li><a href="#customize-receipts">領収書をカスタマイズ</a></li><li>
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
@@ -89,7 +89,7 @@
 </ol></div>
         <details class="mobile-contents"><summary class="toc-title">このページの内容</summary><ol>
 <li><a href="#business">販売を始める前に</a><ul><li><a href="#pricing">通貨と税</a></li><li><a href="#products">商品</a></li><li>
-  <a href="#staff">スタッフの PIN</a></li></ul></li><li><a href="#sell">カード決済を受け付ける</a></li><li><a href="#refund">返金・取消</a>
+  <a href="#staff">スタッフの PIN</a></li></ul></li><li><a href="#sell">カード決済を受け付ける</a></li><li><a href="#refund">返金・取消</a><ul><li><a href="#unreferenced-refunds">領収書なしの返金</a></li></ul>
   </li><li><a href="#receipts">領収書</a><ul><li><a href="#customize-receipts">領収書をカスタマイズ</a></li><li>
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
@@ -175,12 +175,19 @@
           </dl>
           <p>返金の手順：</p>
           <ol>
-            <li>ホームで<strong>返金</strong>をタップして領収書の返金用 QR コードをスキャンするか、<strong>取引履歴</strong>で元の販売を開きます。</li>
+            <li>ホームで<strong>返金</strong>をタップし、<strong>領収書をスキャン</strong>で領収書の返金用 QR コードをスキャンするか、<strong>決済を選択</strong>で<strong>取引履歴</strong>から元の販売を開きます。</li>
             <li>全額、指定金額、商品単位のいずれかを選びます。商品単位の返金には、このデバイスに元の販売が必要です。</li>
             <li>返金を確定し、求められたらマネージャーPINを入力します。</li>
           </ol>
-          <p>返金は必ず元の決済に紐づきます。元の決済がない返金には対応しません。支払済みの決済リンクは Customer Area で返金します。</p>
+          <p>これらの返金は元の決済に紐づきます。支払済みの決済リンクは Customer Area で返金します。</p>
           <p id="split-refunds">分割した販売は元の支払いに返金されます。Mini mPOS が各カードへの返金額と返す現金を提案します。支払いをタップすると、返金できる範囲で金額を調整できます。カードが1件ずつ先に返金され、現金は最後です。現金を返すにはマネージャーPINが必要です。カードの返金が受理されなかった場合、以降は返金されません。販売を開いて残りを確認してください。</p>
+          <h3 id="unreferenced-refunds">領収書なしの返金</h3>
+          <p><strong>領収書なしで返金</strong>は、領収書のない返品など、返金する決済がない場合にのみ使用します。お客様が提示するカードに金額を返金し、どの決済にも紐づかないため、Mini mPOS は支払額を確認できません。誤った返金や重複した返金の責任は加盟店が負います。</p>
+          <p>初期状態ではオフです。Adyen に店舗の非参照返金の有効化を依頼し、Customer Area で Adyen の返金上限を設定してください。次に、設定 › 決済で<strong>領収書なしの返金を許可</strong>をオンにし、独自の<strong>返金上限</strong>とマネージャーPINを設定します。Mini mPOS は Adyen が端末について確認した店舗と国を使用します。Adyen は、ブラジル、メキシコ、オーストラリア、マレーシア、シンガポール、香港、インドの店舗、および Alipay や WeChat Pay などの QR コードウォレットでは、この返金を認めていません。ローカルまたはクラウドで接続した決済端末に対応しています。Tap to Pay では提供されません。</p>
+          <p><strong>領収書なしで返金</strong>をタップし、金額を入力して理由を選び、確定してマネージャーPINで承認すると、お客様がカードを提示します。<strong>返金要求済み</strong>は Adyen がリクエストを受け取ったこと、<strong>返金承認済み</strong>はアクワイアラーが即時に承認したことを意味します。いずれの場合も、Adyen が Customer Area で結果を確定します。取引履歴、領収書、日次レポートではこれらの返金を別に表示します。手動で照合してください。</p>
+          <p>Adyen サポートが返金の保留期間を設定している場合は、<strong>返金保留期間を設定済み</strong>をオンにします。保留期間中は返金を開いて<strong>返金を取り消す</strong>をタップできます。取り消しの依頼は Adyen が受け取ったことを意味します。返金が止まったかは Customer Area で確認してください。</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/unreferenced">Adyen: Unreferenced refunds</a> · <a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/cancel-unreferenced">Adyen: Cancel an unreferenced
+            refund</a></p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
             <p><strong>返金要求済み</strong>は Adyen がリクエストを受け取ったという意味で、購入者への入金完了ではありません。最終結果は Customer Area

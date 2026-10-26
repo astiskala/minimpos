@@ -225,6 +225,7 @@ class TerminalClient(
 
     private fun paymentInstrumentChoice(params: PaymentParams): PaymentData? =
         params.scannedPayment?.let(::scannedInstrument) ?: params.giftCard?.paymentData()
+            ?: PaymentData().apply { paymentType = PaymentType.REFUND }.takeIf { params.unreferencedRefund }
             ?: params.mexicanPayment?.count?.let { count ->
                 PaymentData().apply {
                     paymentType = PaymentType.INSTALMENT
@@ -645,6 +646,12 @@ class TerminalClient(
                 "M450", "P630", "SFO1" -> "1.124"
                 else -> null
             }
+
+        /**
+         * Whether a stored unreferenced refund's verbatim `acquirerResponseCode` says the acquirer approved it
+         * synchronously (`Approved`); Adyen still confirms the refund with its `REFUND_WITH_DATA` webhook.
+         */
+        fun refundApproved(acquirerResponseCode: String?): Boolean = acquirerResponseCode?.trim() == NexoVocabulary.APPROVED
 
         private val TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
 

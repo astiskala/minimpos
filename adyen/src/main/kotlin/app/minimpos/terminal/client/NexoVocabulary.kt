@@ -49,6 +49,18 @@ internal object NexoVocabulary {
     /** With ErrorCondition `Busy`, the ServiceID of the transaction the terminal is busy with. */
     const val BUSY_SERVICE_ID = "serviceId"
 
+    /** An unreferenced refund's acquirer answer, sent only when it is processed synchronously, e.g. `Approved`. */
+    const val ACQUIRER_RESPONSE_CODE = "acquirerResponseCode"
+
+    /** The [ACQUIRER_RESPONSE_CODE] of an approved synchronous refund. */
+    const val APPROVED = "Approved"
+
+    /** The kind of transaction the terminal processed, e.g. `REFUND` for an unreferenced refund. */
+    const val TRANSACTION_TYPE = "transactionType"
+
+    /** An unreferenced refund's amount in minor units, as the terminal reports it. */
+    const val POS_AUTH_AMOUNT_VALUE = "posAuthAmountValue"
+
     /** The payment method, e.g. `visa`. */
     const val PAYMENT_METHOD = "paymentMethod"
 

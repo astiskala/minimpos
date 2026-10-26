@@ -12,16 +12,21 @@ import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.canCheckAgain
+import app.minimpos.app.history.cancellable
 import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.ReceiptDelivery
+import app.minimpos.app.payment.RefundCancelResult
+import app.minimpos.app.payment.RefundCancellations
 import app.minimpos.app.payment.RefundStarted
 import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.money.AmountEntry
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -169,11 +174,20 @@ class RefundViewModel(
  *
  * @property refund The refund, or null until loaded.
  * @property transaction The receipt, printing and emailing it, and re-checking an unknown outcome.
+ * @property delayed Whether the merchant confirmed Adyen Support configured a refund delay for unreferenced refunds.
+ * @property cancel What the last cancellation request on this screen found; null before one.
+ * @property cancelling Whether a cancellation request is being sent.
  */
 data class RefundResultUiState(
     val refund: RefundEntity? = null,
     val transaction: TransactionActionsState = TransactionActionsState(),
+    val delayed: Boolean = false,
+    val cancel: RefundCancelResult? = null,
+    val cancelling: Boolean = false,
 ) {
+    /** Whether Adyen can be asked to cancel this delayed unreferenced refund, or to receive an unresolved request again. */
+    val canCancel: Boolean get() = refund?.cancellable(delayed) == true && !cancelling
+
     /** Whether the terminal accepted the refund (Adyen confirms it later). */
     val accepted: Boolean get() = refund?.status == RefundStatus.REQUESTED
 
@@ -194,21 +208,44 @@ data class RefundResultUiState(
  * @param receipts Prints and emails its receipt.
  * @param operations Asks again about an unknown outcome the way the refund was sent, and leaves the result.
  * @param justMade False when opened from history: leaving acknowledges nothing.
+ * @param cancellations Asks Adyen to cancel a delayed unreferenced refund; null offers none.
+ * @param delayed Whether the merchant confirmed Adyen Support configured a refund delay.
  */
 class RefundResultViewModel(
-    refundId: String,
+    private val refundId: String,
     refunds: RefundRepository,
     receipts: ReceiptDelivery,
     private val operations: FinancialOperations,
     private val justMade: Boolean = true,
+    private val cancellations: RefundCancellations? = null,
+    delayed: Flow<Boolean> = flowOf(false),
 ) : ViewModel() {
     /** The receipt, printing and emailing it, and re-checking an unknown outcome. */
     val transaction = TransactionActions.forRefund(viewModelScope, refundId, receipts, operations)
 
+    private val cancelling = MutableStateFlow<Pair<Boolean, RefundCancelResult?>>(false to null)
+
     /** The screen state, updated whenever the refund, settings, printer or an action changes. */
     val state: StateFlow<RefundResultUiState> =
-        combine(refunds.observe(refundId), transaction.state) { refund, actions -> RefundResultUiState(refund, actions) }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, RefundResultUiState())
+        combine(refunds.observe(refundId), transaction.state, delayed, cancelling) { refund, actions, delay, cancel ->
+            RefundResultUiState(refund, actions, delay, cancel.second, cancel.first)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, RefundResultUiState())
+
+    /**
+     * Asks Adyen to cancel this delayed unreferenced refund, or sends an unresolved request again with its identity;
+     * once sent, it finishes even when the screen closes. Ignored while one is being sent.
+     */
+    fun cancelRefund() {
+        val owner = cancellations ?: return
+        if (cancelling.value.first) return
+        cancelling.value = true to null
+        viewModelScope.launch { cancelling.value = false to owner.cancel(refundId) }
+    }
+
+    /** Dismisses the last cancellation result. */
+    fun dismissCancel() {
+        cancelling.update { it.copy(second = null) }
+    }
 
     /** Leaves the result, so the next refund can start. */
     fun finish() {

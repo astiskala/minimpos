@@ -51,6 +51,12 @@ sealed interface DestinationRules {
     /** Terminal API cashback; market and card enablement are separate. */
     val cashback: Boolean get() = supportsTerminalFeatures
 
+    /**
+     * Unreferenced card refunds (`PaymentType=Refund`) on payment terminals. Adyen also documents them for the Payments
+     * app, but its setup verifies no assigned store country here, so the excluded markets could not be enforced.
+     */
+    val unreferencedRefunds: Boolean get() = supportsTerminalFeatures
+
     /** Meal vouchers are documented for payment terminals; the mobile support matrix does not list them. */
     val mealVouchers: Boolean get() = supportsTerminalFeatures
 

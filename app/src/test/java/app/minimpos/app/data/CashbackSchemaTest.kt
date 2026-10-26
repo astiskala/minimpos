@@ -52,7 +52,7 @@ class CashbackSchemaTest {
                     assertThat(record.tenders.single().requestedCashBackMinor).isNull()
                     assertThat(db.giftCardDao().stage("g22")?.serviceId).isEqualTo("GIFT22")
                     assertThat(db.giftCardDao().stage("h22")?.status).isEqualTo(GiftCardStatus.AWAITING)
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(23)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {

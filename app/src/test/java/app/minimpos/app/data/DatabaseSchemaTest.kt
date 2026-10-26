@@ -29,11 +29,11 @@ import kotlin.uuid.Uuid
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun exportedSchema(version: Int = 23): JSONObject = schemaJson(version)
+    private fun exportedSchema(version: Int = 24): JSONObject = schemaJson(version)
 
     private fun createExportedDatabase(
         name: String,
-        version: Int = 23,
+        version: Int = 24,
     ) = createSchemaDatabase(context, name, version)
 
     private fun <T> withDatabase(
@@ -68,7 +68,7 @@ class DatabaseSchemaTest {
                     assertThat(tender.returnedPaymentType).isNull()
                     assertThat(tender.returnedInstallments).isNull()
                     assertThat(tender.returnedPlanId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(23)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {
@@ -455,7 +455,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.merchantReference).isEqualTo("MP-10")
                     assertThat(sale.poiReconciliationId).isNull()
                     assertThat(sale.savedCard).isFalse()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(23)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {
@@ -502,7 +502,7 @@ class DatabaseSchemaTest {
                             .single()
                             .name,
                     ).isEqualTo("GST")
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(23)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {
@@ -533,7 +533,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.status).isEqualTo(SaleStatus.DECLINED)
                     assertThat(sale.errorCondition).isEqualTo("Busy")
                     assertThat(sale.busyServiceId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(23)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {
@@ -566,7 +566,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.captureStartedAt).isEqualTo(200)
                     assertThat(sale.captureStatus?.name).isEqualTo("UNKNOWN")
                     assertThat(sale.totalMinor).isEqualTo(1000)
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(23)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {

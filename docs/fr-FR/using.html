@@ -82,7 +82,7 @@
         <div class="desktop-contents"><p class="toc-title">Sur cette page</p><ol>
 <li><a href="#business">Avant de vendre</a><ul><li><a href="#pricing">Devise et taxes</a></li><li><a href="#products">
   Produits</a></li><li><a href="#staff">Codes PIN du personnel</a></li></ul></li><li><a href="#sell">Accepter un
-  paiement par carte</a></li><li><a href="#refund">Rembourser ou annuler</a></li><li><a href="#receipts">Reçus</a><ul>
+  paiement par carte</a></li><li><a href="#refund">Rembourser ou annuler</a><ul><li><a href="#unreferenced-refunds">Remboursement sans reçu</a></li></ul></li><li><a href="#receipts">Reçus</a><ul>
   <li><a href="#customize-receipts">Personnaliser les reçus</a></li><li><a href="#language-receipts">Langue du reçu</a>
   </li><li><a href="#email">Reçus par e-mail</a></li></ul></li><li><a href="#history">Historique</a><ul><li>
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
@@ -98,7 +98,7 @@
         <details class="mobile-contents"><summary class="toc-title">Sur cette page</summary><ol>
 <li><a href="#business">Avant de vendre</a><ul><li><a href="#pricing">Devise et taxes</a></li><li><a href="#products">
   Produits</a></li><li><a href="#staff">Codes PIN du personnel</a></li></ul></li><li><a href="#sell">Accepter un
-  paiement par carte</a></li><li><a href="#refund">Rembourser ou annuler</a></li><li><a href="#receipts">Reçus</a><ul>
+  paiement par carte</a></li><li><a href="#refund">Rembourser ou annuler</a><ul><li><a href="#unreferenced-refunds">Remboursement sans reçu</a></li></ul></li><li><a href="#receipts">Reçus</a><ul>
   <li><a href="#customize-receipts">Personnaliser les reçus</a></li><li><a href="#language-receipts">Langue du reçu</a>
   </li><li><a href="#email">Reçus par e-mail</a></li></ul></li><li><a href="#history">Historique</a><ul><li>
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
@@ -203,19 +203,45 @@
           </dl>
           <p>Pour rembourser :</p>
           <ol>
-            <li>Sur Accueil, appuyez sur <strong>REMBOURSEMENT</strong> et scannez le code de remboursement QR sur le
-              reçu, ou ouvrez la vente originale dans <strong>Historique</strong>.</li>
+            <li>Sur Accueil, appuyez sur <strong>Remboursement</strong>, puis <strong>Scanner le reçu</strong> pour scanner le
+              code QR de remboursement, ou <strong>Choisir un paiement</strong> pour ouvrir la vente d’origine dans
+              <strong>Historique</strong>.</li>
             <li>Choisissez un remboursement complet, un montant ou des articles individuels. Les remboursements
               d'articles nécessitent la vente originale sur cet appareil.</li>
             <li>Confirmez le remboursement et entrez le PIN responsable si demandé.</li>
           </ol>
-          <p>Chaque remboursement est lié à son paiement initial ; les remboursements sans un ne sont pas pris en
-            charge. Remboursez les liens de paiement payés dans le Customer Area.</p>
+          <p>Ces remboursements sont liés à leur paiement d’origine. Remboursez les liens de paiement payés dans le Customer
+            Area.</p>
           <p id="split-refunds">Une vente partagée est remboursée sur ses paiements d’origine. Mini mPOS propose le montant restitué à chaque carte
             et les espèces à rendre ; touchez un paiement pour l’ajuster dans la limite de ce qu’il peut restituer. Les
             cartes sont remboursées d’abord, une à la fois, puis les espèces. Rendre des espèces nécessite un PIN responsable.
             Si un remboursement par carte n’est pas accepté, rien d’autre n’est restitué ; ouvrez la vente pour vérifier le
             reste.</p>
+          <h3 id="unreferenced-refunds">Remboursement sans reçu</h3>
+          <p>Utilisez <strong>Rembourser sans reçu</strong> uniquement s’il n’y a aucun paiement à rembourser, par exemple
+            un retour sans reçu. Le montant est rendu sur la carte présentée par le client, sans lien avec un paiement :
+            Mini mPOS ne peut pas vérifier ce qui a été payé. Vous êtes responsable des remboursements erronés ou
+            répétés.</p>
+          <p>Cette option est désactivée au départ. Demandez à Adyen d’activer les remboursements non référencés pour la
+            boutique et définissez la limite de remboursement d’Adyen dans le Customer Area. Ensuite, dans Paramètres ›
+            Paiements, activez <strong>Autoriser les remboursements sans reçu</strong>, définissez votre propre
+            <strong>Limite de remboursement</strong> et un PIN responsable. Mini mPOS utilise la boutique et le pays
+            qu’Adyen a vérifiés pour le terminal. Adyen n’autorise pas ces remboursements pour les boutiques au Brésil, au
+            Mexique, en Australie, en Malaisie, à Singapour, à Hong Kong ou en Inde, ni pour les wallets à code QR comme
+            Alipay ou WeChat Pay. Les terminaux de paiement connectés en local ou via le cloud sont pris en charge ; Tap to
+            Pay n’est pas proposé.</p>
+          <p>Appuyez sur <strong>Rembourser sans reçu</strong>, saisissez le montant, choisissez un motif, confirmez et
+            approuvez avec le PIN responsable ; le client présente ensuite sa carte. <strong>Remboursement
+            demandé</strong> signifie qu’Adyen a reçu la demande ; <strong>Remboursement approuvé</strong> signifie que
+            l’acquéreur l’a approuvé immédiatement. Dans les deux cas, Adyen confirme le résultat dans le Customer Area.
+            L’historique, les reçus et le rapport du jour présentent ces remboursements à part ; rapprochez-les
+            manuellement.</p>
+          <p>Si le support Adyen a configuré un délai de remboursement, activez <strong>Délai de remboursement
+            configuré</strong>. Pendant ce délai, ouvrez le remboursement et appuyez sur <strong>Annuler le
+            remboursement</strong>. Une annulation demandée signifie qu’Adyen l’a reçue ; consultez le Customer Area pour
+            savoir si le remboursement a été arrêté.</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/unreferenced">Adyen: Unreferenced refunds</a> · <a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/cancel-unreferenced">Adyen: Cancel an unreferenced
+            refund</a></p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Important</p>
             <p><strong>Remboursement demandé</strong> Cela signifie qu'Adyen a reçu la demande, et non que le client a

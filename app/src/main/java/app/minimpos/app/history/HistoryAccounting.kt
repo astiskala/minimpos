@@ -8,6 +8,7 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.db.unresolved
 import app.minimpos.app.data.repo.GiftCardActivity
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.recordedEnvironment
@@ -34,6 +35,8 @@ data class HistoryActivity(
     val cashBackMinor: Long = 0,
     /** Whether the amount is cash recorded locally rather than card money the terminal reports. */
     val cash: Boolean = false,
+    /** Whether this is an unreferenced card refund, linked to no original payment. */
+    val unreferenced: Boolean = false,
     /** What a [HistoryActivityKind.GIFT_CARD] stage moved; empty for other activities. */
     val giftCard: GiftCardActivity.Totals = GiftCardActivity.Totals(),
 ) {
@@ -140,6 +143,8 @@ data class CurrencyHistoryTotals(
     val cashbackMinor: Long = 0,
     /** Cash physically handed over on this report day, never in terminal totals. */
     val cashHandedOverMinor: Long = 0,
+    /** Unreferenced card refunds, already included in [refundsMinor]; requests, not final settlement. */
+    val unreferencedRefundsMinor: Long = 0,
 ) {
     /** Local sales minus accepted refund requests, in minor units. */
     val netMinor: Long get() = salesMinor - refundsMinor
@@ -346,6 +351,7 @@ object HistoryAccounting {
                 a.giftCards + b.giftCards,
                 Math.addExact(a.cashbackMinor, b.cashbackMinor),
                 Math.addExact(a.cashHandedOverMinor, b.cashHandedOverMinor),
+                Math.addExact(a.unreferencedRefundsMinor, b.unreferencedRefundsMinor),
             )
         }
     }
@@ -452,7 +458,7 @@ object HistoryAccounting {
     fun needsAttention(item: HistoryItem): Boolean =
         when (item) {
             is HistoryItem.Sale -> item.sale.issues.isNotEmpty()
-            is HistoryItem.Refund -> item.refund.status.unresolved
+            is HistoryItem.Refund -> item.refund.unresolved
             is HistoryItem.GiftCard -> item.activity.needsAttention
         }
 
@@ -516,10 +522,11 @@ object HistoryAccounting {
                                     tipMinor = refund.tipMinor ?: 0,
                                     surchargeMinor = refund.surchargeMinor,
                                     cash = refund.cash,
+                                    unreferenced = refund.unreferenced,
                                 ),
                             )
                         }
-                        if (refund.status.unresolved) {
+                        if (refund.unresolved) {
                             add(HistoryActivity(item, refund.createdAt, HistoryActivityKind.ISSUE))
                         }
                     }
@@ -734,6 +741,7 @@ object HistoryAccounting {
                     },
                 cashSalesMinor = sales.filter { it.cash }.sumOf { it.amountMinor },
                 cashRefundsMinor = refunds.filter { it.cash }.sumOf { it.amountMinor },
+                unreferencedRefundsMinor = refunds.filter { it.unreferenced }.sumOf { it.amountMinor },
                 purchaseMinor =
                     sales.filter { it.surchargeMinor != null }.sumOf {
                         (it.withoutCashback() - it.tipMinor - (it.surchargeMinor ?: 0)).coerceAtLeast(0)

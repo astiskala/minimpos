@@ -54,7 +54,8 @@ class RefundBook(
         return refunds.settle(id, status, settlement.message, settlement.details, settlement.reason)
     }
 
-    override suspend fun unsettledServiceId(id: String): String? = refunds.get(id)?.takeIf { it.status == RefundStatus.UNKNOWN }?.serviceId
+    override suspend fun unsettledServiceId(id: String): String? =
+        refunds.get(id)?.takeIf { !it.unreferenced && it.status == RefundStatus.UNKNOWN }?.serviceId
 }
 
 /**

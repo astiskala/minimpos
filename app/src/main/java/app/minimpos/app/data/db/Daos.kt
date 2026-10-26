@@ -30,7 +30,8 @@ private const val REFUND_HISTORY_COLUMNS = """
     id, saleId, createdAt, merchantReference, originalTransactionId, originalTimestamp,
     originalReference, currency, amountMinor, full, tenderId, surchargeMinor, tipMinor, status, serviceId, pspReference, message, NULL AS
     customerReceiptJson, NULL AS linesJson, cancellation, reason, context, processedAt,
-    poiReconciliationId, checkoutRefund, cash
+    poiReconciliationId, checkoutRefund, cash, unreferenced, unreferencedReason, acquirerResponseCode, cancelStatus,
+    cancelStartedAt, cancelReason, cancelPspReference
 """
 
 /** Every [GiftCardOperationEntity] column for history and maintenance reads, with receipt payloads left null. */

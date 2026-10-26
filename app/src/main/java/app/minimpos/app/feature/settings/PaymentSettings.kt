@@ -12,6 +12,7 @@ import app.minimpos.app.data.settings.CashbackCard
 import app.minimpos.app.data.settings.GiftCardSetting
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.data.settings.UnreferencedRefundSettings
 import app.minimpos.app.feature.giftcard.entryLabel
 import app.minimpos.app.feature.giftcard.providerName
 import app.minimpos.app.terminal.DestinationCapabilities
@@ -80,6 +81,7 @@ internal fun ColumnScope.PaymentsSection(
     )
     MarketSettings(payment, update)
     CashbackSettings(payment, update)
+    UnreferencedRefundSection(payment, update)
     SectionHeader(stringResource(R.string.settings_tokenization))
     ShopperReferenceSettings(payment, update)
     SectionHeader(stringResource(R.string.settings_payment_links))
@@ -369,5 +371,48 @@ private fun ColumnScope.CashbackSettings(
         money.formatPlain(cash.limitMinor),
         { value -> change { it.copy(limitMinor = CurrencySpec.of(currency).parseMinor(value) ?: 0) } },
         supporting = stringResource(R.string.cashback_limit_hint),
+    )
+}
+
+/**
+ * Explicit Adyen enablement, local limit and refund delay of unreferenced refunds, bound to the verified store when
+ * turned on. The country rule and Adyen's own limit are explained here, never configured.
+ */
+@Composable
+private fun ColumnScope.UnreferencedRefundSection(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    val refunds = payment.unreferencedRefunds
+    val container = LocalAppContainer.current
+    val verified by container.walletDiscovery.state.collectAsStateWithLifecycle()
+    val currency = container.currency().code
+    val money = rememberMoneyFormatter(currency)
+    val change: ((UnreferencedRefundSettings) -> UnreferencedRefundSettings) -> Unit = { transform ->
+        update { it.copy(unreferencedRefunds = transform(it.unreferencedRefunds)) }
+    }
+    val confirm: (UnreferencedRefundSettings) -> UnreferencedRefundSettings = { value ->
+        value.confirmedFor(verified.context, verified.storeId, verified.storeCountry, currency)
+    }
+    SectionHeader(stringResource(R.string.unreferenced_settings_title))
+    SettingSwitch(
+        stringResource(R.string.unreferenced_settings_enable),
+        refunds.enabled,
+        { value -> change { if (value) confirm(it).copy(enabled = true) else it.copy(enabled = false) } },
+        subtitle = stringResource(R.string.unreferenced_settings_enable_hint),
+        tag = "unreferencedEnable",
+    )
+    SettingTextField(
+        stringResource(R.string.unreferenced_settings_limit),
+        money.formatPlain(refunds.limitMinor),
+        { value -> change { it.copy(limitMinor = CurrencySpec.of(currency).parseMinor(value) ?: 0) } },
+        supporting = stringResource(R.string.unreferenced_settings_limit_hint),
+    )
+    SettingSwitch(
+        stringResource(R.string.unreferenced_settings_delay),
+        refunds.delayed,
+        { value -> change { if (value) confirm(it).copy(delayed = true) else it.copy(delayed = false) } },
+        subtitle = stringResource(R.string.unreferenced_settings_delay_hint),
+        tag = "unreferencedDelay",
     )
 }

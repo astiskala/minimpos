@@ -130,6 +130,22 @@ interface PaymentModifications {
     ): ModificationResult = ModificationResult.Failed(Fault.Unsupported)
 
     /**
+     * Asks Adyen to cancel the unreferenced in-person refund [refundPspReference] while its refund delay lasts
+     * (Classic Payments API v68 `POST /voidPendingRefund` with `originalReference`). Adyen answers
+     * [ModificationResult.Received] (`[voidPendingRefund-received]`); whether the refund was cancelled arrives only in
+     * its `VOID_PENDING_REFUND` webhook, so it is shown in the Customer Area. Only Support-configured delayed refunds
+     * can be cancelled, and only before the delay ends. A 403 names the Classic API role the key lacks. By default
+     * nothing is sent ([Fault.Unsupported]).
+     *
+     * @param refundPspReference The PSP reference of the unreferenced refund.
+     * @param idempotencyKey Sent as `Idempotency-Key`, so repeating a cancellation whose outcome is unknown is safe.
+     */
+    suspend fun cancelPendingRefund(
+        refundPspReference: String,
+        idempotencyKey: String,
+    ): ModificationResult = ModificationResult.Failed(Fault.Unsupported)
+
+    /**
      * Checks that the API key is accepted for the merchant account without changing anything (a payment methods
      * request). Returns null when it is, else why not.
      */
@@ -167,11 +183,27 @@ data class CheckoutCredentials(
                 TerminalEnvironment.LIVE -> "https://${liveUrlPrefix.trim()}-checkout-live.adyenpayments.com/checkout/$API_VERSION"
             }
 
+    /** The Classic Payments API base URL for [environment], used only to cancel delayed refunds; no trailing slash. */
+    val paymentBaseUrl: String
+        get() =
+            when (environment) {
+                TerminalEnvironment.TEST -> {
+                    "https://pal-test.adyen.com/pal/servlet/Payment/$PAYMENT_API_VERSION"
+                }
+
+                TerminalEnvironment.LIVE -> {
+                    "https://${liveUrlPrefix.trim()}-pal-live.adyenpayments.com/pal/servlet/Payment/$PAYMENT_API_VERSION"
+                }
+            }
+
     override fun toString() = "CheckoutCredentials($merchantAccount, $environment)"
 
-    /** The API version the endpoints use. */
+    /** The API versions the endpoints use. */
     companion object {
         /** The Checkout API version, the one the Adyen Java library uses. */
         const val API_VERSION = "v72"
+
+        /** The Classic Payments API version of `/voidPendingRefund`, the one the Adyen Java library uses. */
+        const val PAYMENT_API_VERSION = "v68"
     }
 }

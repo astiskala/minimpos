@@ -75,7 +75,7 @@
           <a href="using" aria-current="page">使用 Mini mPOS</a><br><a href="troubleshooting">疑難排解</a></p>
         <div class="desktop-contents"><p class="toc-title">本頁目錄</p><ol>
 <li><a href="#business">開始銷售前</a><ul><li><a href="#pricing">貨幣和稅費</a></li><li><a href="#products">商品</a></li><li>
-  <a href="#staff">員工 PIN</a></li></ul></li><li><a href="#sell">銀行卡收款</a></li><li><a href="#refund">退款或撤銷</a></li><li>
+  <a href="#staff">員工 PIN</a></li></ul></li><li><a href="#sell">銀行卡收款</a></li><li><a href="#refund">退款或撤銷</a><ul><li><a href="#unreferenced-refunds">無收據退款</a></li></ul></li><li>
   <a href="#receipts">收據</a><ul><li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a>
   </li><li><a href="#email">電子收據</a></li></ul></li><li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a>
   </li><li><a href="#reconciliation">與終端對帳</a></li></ul></li><li class="advanced-start"><a href="#capabilities">檢查 Adyen
@@ -88,7 +88,7 @@
 </ol></div>
         <details class="mobile-contents"><summary class="toc-title">本頁目錄</summary><ol>
 <li><a href="#business">開始銷售前</a><ul><li><a href="#pricing">貨幣和稅費</a></li><li><a href="#products">商品</a></li><li>
-  <a href="#staff">員工 PIN</a></li></ul></li><li><a href="#sell">銀行卡收款</a></li><li><a href="#refund">退款或撤銷</a></li><li>
+  <a href="#staff">員工 PIN</a></li></ul></li><li><a href="#sell">銀行卡收款</a></li><li><a href="#refund">退款或撤銷</a><ul><li><a href="#unreferenced-refunds">無收據退款</a></li></ul></li><li>
   <a href="#receipts">收據</a><ul><li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a>
   </li><li><a href="#email">電子收據</a></li></ul></li><li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a>
   </li><li><a href="#reconciliation">與終端對帳</a></li></ul></li><li class="advanced-start"><a href="#capabilities">檢查 Adyen
@@ -167,12 +167,19 @@
           </dl>
           <p>退款步驟：</p>
           <ol>
-            <li>在首頁點按<strong>退款</strong>並掃描收據上的退款二維碼，或在<strong>交易紀錄</strong>中打開原銷售。</li>
+            <li>在首頁點按<strong>退款</strong>，然後點按<strong>掃描收據</strong>掃描收據上的退款二維碼，或點按<strong>選擇付款</strong>在<strong>交易紀錄</strong>中開啟原銷售。</li>
             <li>選擇全額、指定金額或按商品退款。按商品退款要求本設備保留原銷售。</li>
             <li>確認退款，如有提示則輸入經理 PIN。</li>
           </ol>
-          <p>每筆退款都關聯原付款，不支援無原付款的退款。已支付的付款連結請在商戶後台退款。</p>
+          <p>這些退款關聯原付款。已支付的付款連結請在商戶後台退款。</p>
           <p id="split-refunds">拆分的銷售會退回原付款。Mini mPOS 會建議退回每張信用卡的金額和要退還的現金；點按某筆付款即可在可退範圍內調整金額。先逐筆退款到信用卡，最後退還現金。退還現金需要經理PIN。如果某筆信用卡退款未被受理，其餘付款不會退回；請開啟此筆銷售查看剩餘部分。</p>
+          <h3 id="unreferenced-refunds">無收據退款</h3>
+          <p>僅在沒有可退款的付款時（例如無收據退貨）使用<strong>無收據退款</strong>。它將金額退還到顧客出示的卡，不關聯任何付款，因此 Mini mPOS 無法核實已付款項。錯誤或重複退款由您承擔責任。</p>
+          <p>此功能預設關閉。請讓 Adyen 為門店啟用非關聯退款，並在 Customer Area 中設定 Adyen 的退款上限。然後在設定 › 支付中開啟<strong>允許無收據退款</strong>，設定您自己的<strong>退款上限</strong>和經理PIN。Mini mPOS 使用 Adyen 為終端驗證的門店和國家/地區。Adyen 不允許巴西、墨西哥、澳洲、馬來西亞、新加坡、香港或印度的門店進行此類退款，也不允許支付寶或微信支付等二維碼錢包。支援本地或透過雲端連接的支付終端；Tap to Pay 不提供此功能。</p>
+          <p>點按<strong>無收據退款</strong>，輸入金額，選擇原因，確認後用經理PIN批准，顧客隨後出示卡。<strong>已請求退款</strong>表示 Adyen 已收到請求；<strong>退款已批准</strong>表示收單機構已即時批准。無論哪種情況，Adyen 都會在 Customer Area 中確認結果。交易紀錄、收據和日報會單獨顯示這些退款；請手動對帳。</p>
+          <p>如果 Adyen 支援團隊設定了退款延遲，請開啟<strong>已設定退款延遲</strong>。在延遲期內，開啟該退款並點按<strong>取消退款</strong>。已請求取消表示 Adyen 已收到請求；請在 Customer Area 中查看退款是否已停止。</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/unreferenced">Adyen: Unreferenced refunds</a> · <a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/cancel-unreferenced">Adyen: Cancel an unreferenced
+            refund</a></p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
             <p><strong>已請求退款</strong>表示 Adyen 已收到請求，不表示顧客已收到款項。請在商戶後台確認最終結果。退款結果未知時，<a href="troubleshooting#unknown">

@@ -74,16 +74,14 @@ class ReceiptBuilder(
         if (out.isNotEmpty() && out.last() != Blank) out += Blank
         out += Row(labels.date, receipt.dateTime)
         if (options.showReferences) out += Row(labels.reference, receipt.reference)
-        out += Row(if (cancellation) labels.cancelledReference else labels.originalReference, receipt.originalReference)
+        val original = receipt.originalReference
+        original?.let { out += Row(if (cancellation) labels.cancelledReference else labels.originalReference, it) }
         out += Divider
-        when {
-            cancellation -> out += Text(labels.cancellationNote)
-            receipt.items.isEmpty() -> out += Text(if (receipt.full) labels.fullRefund else labels.partialRefund)
-            else -> items(out, receipt.items)
-        }
+        refundBody(out, receipt)
         out += Divider
         out += Row(if (cancellation) labels.released else labels.refundTotal, money.format(receipt.amount), TextStyle.BOLD)
-        if (!cancellation) {
+        // An unreferenced refund returns no recorded payment's surcharge or tip.
+        if (!cancellation && original != null) {
             out += Row(labels.surcharge, receipt.surchargeMinor?.let(money::format) ?: labels.unreported)
             receipt.tipMinor?.let { out += Row(labels.tip, money.format(it)) }
         }
@@ -91,6 +89,19 @@ class ReceiptBuilder(
         cardReceipt(out, receipt.cardReceipt)
         footer(out)
         return ReceiptDocument(out)
+    }
+
+    // What was returned: the cancellation note, an unreferenced refund's notes, its items, or a full or partial refund.
+    private fun refundBody(
+        out: MutableList<ReceiptElement>,
+        receipt: RefundReceipt,
+    ) {
+        when {
+            receipt.cancellation -> out += Text(labels.cancellationNote)
+            receipt.originalReference == null -> receipt.unreferencedNotes.forEach { out += Text(it) }
+            receipt.items.isEmpty() -> out += Text(if (receipt.full) labels.fullRefund else labels.partialRefund)
+            else -> items(out, receipt.items)
+        }
     }
 
     private fun header(

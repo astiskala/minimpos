@@ -5,6 +5,7 @@ import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.RefundStart
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 
 /**
@@ -25,6 +26,8 @@ import kotlinx.coroutines.flow.combine
  * @param sales Where sales are stored, read to route a sale's status check.
  * @param refundRecords Where refunds are stored, read to route a refund's status check.
  * @param giftCards Stored-value activities on the terminal, which count as running and route their own status checks.
+ * @param unreferenced Unreferenced card refunds on the terminal: refunds in history, sent and checked as payments.
+ * @param cancellations Cancellations of delayed unreferenced refunds, which count as running while being sent.
  */
 class FinancialOperations(
     private val payments: TransactionLifecycle<PaymentStart>,
@@ -35,6 +38,8 @@ class FinancialOperations(
     private val sales: SaleRepository,
     private val refundRecords: RefundRepository,
     private val giftCards: GiftCards? = null,
+    private val unreferenced: TransactionLifecycle<UnreferencedRefundStart>? = null,
+    private val cancellations: RefundCancellations? = null,
 ) {
     /** Releases every runner's process-only requests after confirmed complete history deletion. */
     internal fun forgetAll() {
@@ -44,6 +49,7 @@ class FinancialOperations(
         checkoutRefunds.forgetAll()
         links.forgetAll()
         giftCards?.forgetAll()
+        unreferenced?.forgetAll()
     }
 
     /** Releases process-only request material after durable history deletion, routed to every runner. */
@@ -54,17 +60,18 @@ class FinancialOperations(
         checkoutRefunds.forget(ids)
         links.forget(ids)
         giftCards?.forget(ids)
+        unreferenced?.forget(ids)
     }
 
     /**
      * Whether a card payment, refund, saved-card charge or Checkout refund is being sent now, so the configuration it
-     * is sent with must not be replaced. Token deletion and its active reconciliation, and stored-value activities,
-     * also hold credentials steady. Unfinished history alone does not count.
+     * is sent with must not be replaced. Token deletion and its active reconciliation, stored-value activities,
+     * unreferenced refunds and their cancellations also hold credentials steady. Unfinished history alone does not count.
      */
     val running: Boolean
         get() =
-            charges.managing ||
-                listOfNotNull(payments.state, refunds.state, charges.state, checkoutRefunds.state, giftCards?.state)
+            charges.managing || cancellations?.running == true ||
+                listOfNotNull(payments.state, refunds.state, charges.state, checkoutRefunds.state, giftCards?.state, unreferenced?.state)
                     .any { it.value is TransactionState.Processing }
 
     /**
@@ -89,14 +96,27 @@ class FinancialOperations(
         charges.acknowledge()
     }
 
+    private val unreferencedState = unreferenced?.state ?: MutableStateFlow(TransactionState.Idle)
+
     /**
-     * The refund (or cancellation) running or just finished, whichever way it is sent; the refund screens follow it to
-     * its result. [currentRefund] is its value now.
+     * The refund (or cancellation) running or just finished, whichever way it is sent, unreferenced refunds included;
+     * the refund screens follow it to its result. [currentRefund] is its value now.
      */
-    val refundProgress: Flow<TransactionState> = combine(refunds.state, checkoutRefunds.state, ::following)
+    val refundProgress: Flow<TransactionState> =
+        combine(refunds.state, unreferencedState, checkoutRefunds.state) { referenced, unreferenced, checkout ->
+            following(following(referenced, unreferenced), checkout)
+        }
 
     /** [refundProgress] now, for a screen's first frame. */
-    val currentRefund: TransactionState get() = following(refunds.state.value, checkoutRefunds.state.value)
+    val currentRefund: TransactionState
+        get() = following(following(refunds.state.value, unreferencedState.value), checkoutRefunds.state.value)
+
+    /**
+     * Starts the unreferenced card refund [request] on the terminal, holding the Manager approval held now. Returns the
+     * refund's ID; null, with nothing stored or sent, while any refund is running or none can be sent here.
+     */
+    fun unreferencedRefund(request: UnreferencedRefundStart): String? =
+        if (currentRefund is TransactionState.Processing) null else unreferenced?.start(request)
 
     /**
      * Starts [request] the way its payment was taken: a saved-card charge's refund through the Checkout API, others on
@@ -125,6 +145,7 @@ class FinancialOperations(
     /** Leaves a finished refund, whichever way it was sent, so the next one can start. */
     fun acknowledgeRefund() {
         refunds.acknowledge()
+        unreferenced?.acknowledge()
         checkoutRefunds.acknowledge()
     }
 
@@ -150,6 +171,7 @@ class FinancialOperations(
                 when {
                     refund == null -> Recheck.Settled
                     refund.checkoutRefund -> checkoutRefunds.recheck(refund.id)
+                    refund.unreferenced -> unreferenced?.recheck(refund.id) ?: Recheck.Settled
                     else -> refunds.recheck(refund.id)
                 }
             }
@@ -159,15 +181,15 @@ class FinancialOperations(
             }
         }
 
-    /** The operation a screen follows: whichever is running, else one sent through the Checkout API that finished, else the terminal's. */
+    /** The operation a screen follows: [first] while it runs, else [second] unless idle, else [first]. */
     private fun following(
-        terminal: TransactionState,
-        checkout: TransactionState,
+        first: TransactionState,
+        second: TransactionState,
     ): TransactionState =
         when {
-            terminal is TransactionState.Processing -> terminal
-            checkout != TransactionState.Idle -> checkout
-            else -> terminal
+            first is TransactionState.Processing -> first
+            second != TransactionState.Idle -> second
+            else -> first
         }
 
     /** This link answer as a status check: settled once the link exists or ended, else still unknown for why. */

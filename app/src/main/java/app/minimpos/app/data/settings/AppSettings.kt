@@ -401,6 +401,8 @@ enum class ReceiptTipping {
  * @property mealVoucherAccountSelection For Brazilian PAT vouchers: the app asks for the voucher account
  *   (`selectedAccountType`); false leaves the choice to the terminal's own screen, which Adyen Support enables.
  * @property cashback Explicit Support enablement, card program and local cash limit; disabled by default.
+ * @property unreferencedRefunds Explicit Adyen enablement, local limit and refund delay of unreferenced refunds;
+ *   disabled by default.
  */
 @Serializable
 data class PaymentSettings(
@@ -442,6 +444,7 @@ data class PaymentSettings(
     val mealVouchers: Boolean = false,
     val mealVoucherAccountSelection: Boolean = false,
     val cashback: CashbackSettings = CashbackSettings(),
+    val unreferencedRefunds: UnreferencedRefundSettings = UnreferencedRefundSettings(),
 ) {
     /**
      * These settings with [linkExpiryHours] and terminal tipping numbers within their valid ranges, and one entry per
@@ -451,6 +454,7 @@ data class PaymentSettings(
     fun normalized(): PaymentSettings =
         copy(
             cashback = cashback.copy(limitMinor = cashback.limitMinor.coerceAtLeast(0)),
+            unreferencedRefunds = unreferencedRefunds.copy(limitMinor = unreferencedRefunds.limitMinor.coerceAtLeast(0)),
             giftCards = giftCards.distinctBy { it.provider },
             linkExpiryHours = linkExpiryHours.coerceIn(LINK_EXPIRY_HOURS),
             lowBasketThresholdMinor = lowBasketThresholdMinor.coerceAtLeast(0),

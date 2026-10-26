@@ -35,6 +35,7 @@ internal fun localizedReceiptTexts(
         cashback = { localized.cashbackFacts(it) },
         mexicanPlan = { localized.mexicanPlan(it) },
         mealVoucher = { localized.mealVoucherFacts(it) },
+        unreferenced = { localized.unreferencedRefundFacts(it) },
     )
 
 private fun receiptLabels(localizedContext: Context) =
@@ -137,6 +138,7 @@ private fun reportLabel(label: ReportText): Int =
         ReportText.CASH_HANDED_OVER -> R.string.cashback_handed_over
         ReportText.CASH_SALES -> R.string.report_cash_sales
         ReportText.CASH_REFUNDS -> R.string.report_cash_refunds
+        ReportText.UNREFERENCED_REFUNDS -> R.string.report_unreferenced_refunds
         ReportText.REFUND_SURCHARGES -> R.string.surcharge_return_fee
         ReportText.UNKNOWN_REFUND_SURCHARGES -> R.string.surcharge_unknown_refund_count
         ReportText.NET -> R.string.report_net

@@ -57,7 +57,7 @@ class MealVoucherSchemaTest {
                     val product = db.catalogDao().productsOnce().single()
                     assertThat(product.name).isEqualTo("Salade")
                     assertThat(product.mealVoucherEligible).isFalse()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(23)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {

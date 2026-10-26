@@ -43,13 +43,14 @@ internal class SimulatedLedger {
             State.CHARGED -> rejected("The payment was captured when it was taken (simulated)")
             State.CANCELLED -> rejected("The payment was cancelled (simulated)")
             State.HELD, State.CAPTURED, null -> null
+            State.REFUND_PENDING, State.REFUND_CANCELLED -> rejected("This is a refund, not a payment (simulated)")
         }
 
     /** How Adyen would reject an adjustment of [psp]; null when it can be adjusted (it is held, or unknown). */
     fun adjustmentRefusal(psp: String): Fault? =
         when (payments[psp]) {
             State.CAPTURED -> rejected("The payment was already captured (simulated)")
-            State.CHARGED, State.CANCELLED -> captureRefusal(psp)
+            State.CHARGED, State.CANCELLED, State.REFUND_PENDING, State.REFUND_CANCELLED -> captureRefusal(psp)
             State.HELD, null -> null
         }
 
@@ -58,18 +59,35 @@ internal class SimulatedLedger {
         when (payments[psp]) {
             State.HELD -> rejected("The payment was not captured (simulated)")
             State.CANCELLED -> rejected("The payment was cancelled (simulated)")
+            State.REFUND_PENDING, State.REFUND_CANCELLED -> rejected("This is a refund, not a payment (simulated)")
             State.CHARGED, State.CAPTURED, null -> null
         }
 
     /** Adyen's rejection of a modification the payment no longer allows, with its simulated words. */
     private fun rejected(said: String) = Fault.AdyenRejected(HTTP_UNPROCESSABLE, null, ExternalText(said))
 
+    /** Records the accepted unreferenced refund [psp], which a delayed-refund cancellation may stop. */
+    fun refunded(psp: String) {
+        payments[psp] = State.REFUND_PENDING
+    }
+
+    /**
+     * Cancels the unreferenced refund [psp] while it is pending; null when it was, else how Adyen would reject it (not a
+     * pending refund this simulator accepted, or already cancelled).
+     */
+    fun voidRefusal(psp: String): Fault? =
+        when {
+            payments.replace(psp, State.REFUND_PENDING, State.REFUND_CANCELLED) -> null
+            payments[psp] == State.REFUND_CANCELLED -> rejected("The refund was already cancelled (simulated)")
+            else -> rejected("No pending unreferenced refund (simulated)")
+        }
+
     /** Records that [psp] was captured, when it was held. */
     fun captured(psp: String) {
         payments.replace(psp, State.HELD, State.CAPTURED)
     }
 
-    private enum class State { CHARGED, HELD, CAPTURED, CANCELLED }
+    private enum class State { CHARGED, HELD, CAPTURED, CANCELLED, REFUND_PENDING, REFUND_CANCELLED }
 
     private companion object {
         /** How Adyen rejects a modification it cannot apply to the payment. */
@@ -121,6 +139,13 @@ class SimulatedModifications internal constructor(
         idempotencyKey: String,
     ): ModificationResult =
         ledger.refundRefusal(paymentPspReference)?.let { ModificationResult.Failed(it) }
+            ?: ModificationResult.Received(pspReference(random))
+
+    override suspend fun cancelPendingRefund(
+        refundPspReference: String,
+        idempotencyKey: String,
+    ): ModificationResult =
+        ledger.voidRefusal(refundPspReference)?.let { ModificationResult.Failed(it) }
             ?: ModificationResult.Received(pspReference(random))
 
     override suspend fun verify(): Fault? = null

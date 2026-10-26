@@ -82,7 +82,7 @@
         <div class="desktop-contents"><p class="toc-title">On this page</p><ol>
 <li><a href="#business">Before you sell</a><ul><li><a href="#pricing">Currency and tax</a></li><li><a href="#products">
   Products</a></li><li><a href="#staff">Staff PINs</a></li></ul></li><li><a href="#sell">Take a card payment</a></li>
-  <li><a href="#refund">Refund or cancel</a></li><li><a href="#receipts">Receipts</a><ul><li>
+  <li><a href="#refund">Refund or cancel</a><ul><li><a href="#unreferenced-refunds">Refund without receipt</a></li></ul></li><li><a href="#receipts">Receipts</a><ul><li>
   <a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li>
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
@@ -98,7 +98,7 @@
         <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
 <li><a href="#business">Before you sell</a><ul><li><a href="#pricing">Currency and tax</a></li><li><a href="#products">
   Products</a></li><li><a href="#staff">Staff PINs</a></li></ul></li><li><a href="#sell">Take a card payment</a></li>
-  <li><a href="#refund">Refund or cancel</a></li><li><a href="#receipts">Receipts</a><ul><li>
+  <li><a href="#refund">Refund or cancel</a><ul><li><a href="#unreferenced-refunds">Refund without receipt</a></li></ul></li><li><a href="#receipts">Receipts</a><ul><li>
   <a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li>
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
@@ -195,18 +195,37 @@
           </dl>
           <p>To refund:</p>
           <ol>
-            <li>On Home, tap <strong>Refund</strong> and scan the refund QR code on the receipt, or open the original
-              sale in <strong>History</strong>.</li>
+            <li>On Home, tap <strong>Refund</strong>, then <strong>Scan receipt</strong> to scan the refund QR code on the receipt,
+              or <strong>Choose a payment</strong> to open the original sale in <strong>History</strong>.</li>
             <li>Choose a full refund, an amount or individual items. Item refunds need the original sale on this device.
               </li>
             <li>Confirm the refund, and enter the Manager PIN if asked.</li>
           </ol>
-          <p>Every refund is linked to its original payment; refunds without one are not supported. Refund paid payment
-            links in the Customer Area.</p>
+          <p>These refunds are linked to their original payment. Refund paid payment links in the Customer Area.</p>
           <p id="split-refunds">A split sale is refunded to its original payments. Mini mPOS proposes how much goes back to each card and how
             much cash to hand back; tap a payment to adjust it within what it can return. Cards are refunded first, one at
             a time, then cash. Returning cash needs a Manager PIN. If a card refund is not accepted, nothing more is
             returned; open the sale to review what is left.</p>
+          <h3 id="unreferenced-refunds">Refund without receipt</h3>
+          <p>Use <strong>Refund without receipt</strong> only when there is no payment to refund, such as a return without
+            a receipt. It returns an amount to the card the shopper presents and is linked to no payment, so Mini mPOS
+            cannot check what was paid. You are liable for wrong or repeated refunds.</p>
+          <p>It starts off. Ask Adyen to enable unreferenced refunds for the store and set Adyen’s refund limit in the
+            Customer Area. Then, in Settings › Payments, turn on <strong>Allow refunds without receipt</strong>, set your
+            own <strong>Refund limit</strong> and set a Manager PIN. Mini mPOS uses the store and country Adyen verified
+            for the terminal. Adyen does not allow these refunds for stores in Brazil, Mexico, Australia, Malaysia,
+            Singapore, Hong Kong or India, nor for QR-code wallets such as Alipay or WeChat Pay. Payment terminals
+            connected locally or through the cloud are supported; Tap to Pay is not offered.</p>
+          <p>Tap <strong>Refund without receipt</strong>, enter the amount, choose a reason, confirm and approve with the
+            Manager PIN; the shopper then presents the card. <strong>Refund requested</strong> means Adyen received the
+            request; <strong>Refund approved</strong> means the acquirer approved it at once. Either way, Adyen confirms
+            the outcome in the Customer Area. History, receipts and the daily report show these refunds separately;
+            reconcile them manually.</p>
+          <p>If Adyen Support set a refund delay, turn on <strong>Refund delay set up</strong>. While the delay lasts, open
+            the refund and tap <strong>Cancel refund</strong>. A requested cancellation means Adyen received it; check the
+            Customer Area to see if the refund was stopped.</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/unreferenced">Adyen: Unreferenced refunds</a> · <a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/cancel-unreferenced">Adyen: Cancel an unreferenced
+            refund</a></p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Important</p>
             <p><strong>Refund requested</strong> means Adyen received the request, not that the customer has the money.

@@ -349,22 +349,22 @@ Read first: `app/.../feature/refund/RefundScreens.kt`, `RefundViewModels.kt`, `h
 `payment/RefundBook.kt`, `TransactionLifecycle.kt`, `FinancialOperations.kt`, refund records/repository, and
 TerminalClient.
 
-- [ ] Make the Refund entry offer receipt scanning, selecting a stored payment, and Refund without receipt. Keep
+- [x] Make the Refund entry offer receipt scanning, selecting a stored payment, and Refund without receipt. Keep
   existing referenced-refund detail flows and their eligibility checks. The new flow starts disabled and requires a
   configured Manager PIN, an operational reason, an amount review, and approval recheck before sending.
-- [ ] Reuse/extend explicit refund intents introduced for gift cards. Original-payment IDs/timestamps are genuinely
+- [x] Reuse/extend explicit refund intents introduced for gift cards. Original-payment IDs/timestamps are genuinely
   optional for an unreferenced refund; do not use empty/fake original facts or imply verification against a nonexistent
   original.
-- [ ] Send PaymentRequest with PaymentType Refund while retaining refund business/history semantics. Recover against the
+- [x] Send PaymentRequest with PaymentType Refund while retaining refund business/history semantics. Recover against the
   original Payment category. Preserve permitted synchronous confirmation, asynchronous requested, refused, and unknown
   outcomes correctly; a successful request alone does not establish final asynchronous completion.
-- [ ] Gate by documented country, scheme, destination, and account configuration, including mobile support where
+- [x] Gate by documented country, scheme, destination, and account configuration, including mobile support where
   verified. At review time Adyen excludes Brazil, Mexico, Australia, Malaysia, Singapore, Hong Kong, and India, and
   excludes QR wallet unreferenced refunds. Revalidate this list. Provider-specific gift-card rules must remain distinct.
-- [ ] Support local limits and guide merchants to Adyen's required enablement/limits. Do not claim the app can set an
+- [x] Support local limits and guide merchants to Adyen's required enablement/limits. Do not claim the app can set an
   Adyen limit through an endpoint that does not support it. Implement permitted cancellation of delayed requests where
   documented; distinguish request-status recovery from final refund settlement.
-- [ ] Test no original sale, known original context where relevant, country/scheme denial, PIN expiry, double
+- [x] Test no original sale, known original context where relevant, country/scheme denial, PIN expiry, double
   submission, Payment-category recovery, accepted versus confirmed results, retained unknown operations, migration, and
   receipts.
 
@@ -423,16 +423,87 @@ independently, with the provider/destination and evidence location.
 | 06 | Gift-card lifecycle | implemented | `807c62e` | `scripts/dev finish`; SDK 33 + 28; schema 20 | Provider onboarding/TEST cards, StoredValue recovery unconfirmed |
 | 07 | Mexican installments | implemented | `d18a349` | `scripts/dev finish`; SDK 33 + 28; schema 21 | Mexican issuer/local/cloud/receipt/refund TEST checks unconfirmed |
 | 08 | Meal vouchers | implemented | `e793d80` | `scripts/dev finish`; SDK 33 + 28; schema 22 | Market/issuer onboarding, voucher TEST cards, refunds and recovery unconfirmed |
-| 09 | Cashback/Cashout | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 23 | With-purchase/standalone enablement unconfirmed |
-| 10 | Unreferenced card refunds | not started | - | - | Eligible country/account enablement unconfirmed |
+| 09 | Cashback/Cashout | implemented | `0871263` | `scripts/dev finish`; SDK 33 + 28; schema 23 | With-purchase/standalone enablement unconfirmed |
+| 10 | Unreferenced card refunds | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 24 | Store enablement, limits, delay/cancel and recovery unconfirmed |
 
-Resume note: milestones 01–09 are implemented on `codex/adyen-capabilities`, with 08 at `e793d80` and 09 in this
-commit. Stop after 09; milestone 10 is not started. The database is version 23 (nullable requested cash on sales and
-terminal tenders, nullable physical handover time on sales), with data-preserving `MIGRATION_22_23` and a
-build-generated schema. Released schemas and stored fixtures are retained. No dependencies changed. Preflight and
-`scripts/dev finish` passed; the complete gate log is `build/gradle-logs/run-odUgIC/output.log`, including SDK 33 and
-SDK 28, architecture, localization, website, lint, detekt and coverage. Core and Adyen retain 100% line coverage.
-All earlier real-Adyen gaps remain open. No real calls, pushes, publications or releases were made or authorized.
+Resume note: all ten milestones are implemented on `codex/adyen-capabilities`, with 09 at `0871263` (full hash
+`08712639`) and 10 in this commit. Stop after 10. The database is version 24: `refunds` was rebuilt so an unreferenced
+refund's original transaction ID and timestamp are genuinely null, and gained the unreferenced flag, frozen reason,
+verbatim `acquirerResponseCode` and the delayed-refund cancellation identity/status, with data-preserving
+`MIGRATION_23_24` and a build-generated schema. Released schemas and stored fixtures are retained; the stored-format
+snapshot gained `PaymentSettings.unreferencedRefunds`. No dependencies changed. Preflight and `scripts/dev finish` passed;
+the complete gate log is `build/gradle-logs/run-xTti2b/output.log`, including SDK 33 and SDK 28, architecture, localization,
+website, lint, detekt and coverage. Core and Adyen retain 100% line coverage. All real-Adyen gaps remain open. No real
+calls, pushes, publications or releases were made or authorized.
+
+Milestone 10 protocol and market evidence (October 26, 2026):
+
+- Full gate passed: `scripts/dev finish`, `build/gradle-logs/run-xTti2b/output.log`, including both SDK suites and
+  coverage. Focused Adyen, payment, database, architecture, localization, AMS1/CJK UI and website lanes passed during
+  iteration. No thresholds, suppressions, baselines or exclusions were added; detekt findings were fixed by extracting
+  helpers. Dependencies did not change; the release R8 rules now also keep the Jackson members of the Classic API
+  `com.adyen.model.payment` models, and `AdyenModelR8Test` shrinks and round-trips both cancellation models.
+- Rechecked [unreferenced refunds](https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/unreferenced/),
+  [cancel an unreferenced refund](https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/cancel-unreferenced),
+  the [mobile support matrix](https://docs.adyen.com/point-of-sale/ipp-mobile/) and the
+  [Payments app integration](https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app). The excluded
+  markets are unchanged: Brazil, Mexico, Australia, Malaysia, Singapore, Hong Kong and India; QR-code wallets (Alipay,
+  WeChat Pay) are excluded and must use referenced refunds; some MCCs are excluded without a published list. The
+  behavior table is:
+
+  | Market / card / destination | App behavior |
+  | --- | --- |
+  | Verified store in an excluded country | Blocked before review (`UnreferencedRefundBlock.COUNTRY`), even when enabled |
+  | Other verified store, card presented on a local or cloud payment terminal | Offered after explicit enablement, local limit and configured Manager PIN |
+  | Excluded MCC or card scheme refusal | Not predicted; Adyen's refusal is stored verbatim as declined |
+  | QR-code wallets | Not offered: the request asks the shopper to present a card; wallets refund by reference |
+  | Payments app / Tap to Pay | Documented by Adyen with enablement, but not offered: this app verifies no assigned store country there |
+  | Simulator | Explicit offline demo with asynchronous answers; establishes no market, scheme or account support |
+  | Gift cards | Unchanged provider-specific `GiftCardUse.REFUND` path from milestone 06 |
+
+- Exact request (pinned SDK 43.1.0 nexo models, no handwritten wire model): `MessageCategory=Payment`,
+  `PaymentRequest.SaleData.SaleTransactionID` (`R-…` reference, UTC timestamp), `PaymentTransaction.AmountsReq`
+  (`Currency`, `RequestedAmount`) and `PaymentData.PaymentType=Refund`, with application info and the `ReceiptHandler`
+  tender option only; `PaymentParams.unreferencedRefund` refuses every other card feature, shopper reference and
+  `SaleReferenceID`. The answer's `Response.Result=Success` is stored as **requested**: Adyen documents asynchronous
+  processing and the `REFUND_WITH_DATA` webhook as the outcome, which this backend-free app shows only as Customer Area
+  guidance. `acquirerResponseCode` (sent only when the scheme and country process synchronously) is kept verbatim;
+  `Approved` is shown as **Refund approved**, still not final settlement. Refusals are declined, unsent requests failed
+  and missing answers unknown.
+- Enablement and limits: Adyen enables unreferenced refunds per store/terminal (Customer Area or Management
+  `refunds.unreferenced.enableUnreferencedRefunds`); the unreferenced refund limit is set only in the Customer Area or by
+  Support, and the refund delay only by Support. The app does not call the Management endpoint and claims to set no Adyen
+  limit. Merchant confirmation (`PaymentSettings.unreferencedRefunds`) binds enablement, a positive local limit, the
+  currency and the Support refund delay to the verified Management store ID/country and payment context; a moved store
+  or changed currency clears it. `UnreferencedRefunds` (pure) decides readiness; `StoredPaymentActions` freezes the
+  reason, reference and configuration identity; the gateway rechecks the identity, destination and limit at send; the
+  lifecycle requires a configured Manager PIN held from confirmation and checked again before sending.
+- Durable state: each refund is inserted PENDING with its ServiceID before sending, records the actual payment context,
+  settles in place, becomes UNKNOWN at restart and is rechecked only by its own book with `TransactionKind.PAYMENT`
+  (status `MessageCategory=Payment`, original ServiceID, original context); the referenced refund book never claims it.
+  Original-payment IDs/timestamps are null rather than invented; receipts and details say there is no original.
+- Cancellation: Classic Payments API v68 `/voidPendingRefund` (SDK `VoidPendingRefundRequest`/`ModificationResult`),
+  `originalReference` = the refund's PSP reference, through the existing `AdyenHttp` transport and Checkout credential.
+  `[voidPendingRefund-received]` is stored as cancellation **requested**; `VOID_PENDING_REFUND` is the Customer Area
+  outcome. Each request is stored SENDING with `void-<refund ID>` as idempotency key before sending; unknown answers stay
+  unresolved and are resent unchanged within the seven-day key window; a later definite rejection cannot overwrite an
+  unresolved first request. Offered only with the merchant's delay confirmation, the original context and approval.
+  A 403 names the Classic API role; the role is not added to every setup.
+- Receipts, history and reports: refund receipts omit an original and surcharge/tip, list "not linked", the reason,
+  any acquirer answer and cancellation request, and keep Adyen fields verbatim. History titles them Refund without
+  receipt; search finds their references. Day totals and the daily report show them within refunds and separately;
+  terminal reconciliation counts them as credits. Unresolved refunds or cancellations remain issues, survive retention
+  and trigger environment-switch warnings.
+- Automated scope: Adyen request/answer fields, synchronous versus asynchronous answers, missing-answer recovery by
+  Payment category, unknown results, invalid combinations, simulator credits and cancellation, Classic API URL/body/
+  idempotency/403/odd answers; pure readiness for every excluded market, unverified/changed facts and simulator demo;
+  absent original, requested versus approved, interruption/restart routing, retention of unknown operations, changed
+  configuration and limit, unconfigured and expired Manager PIN, repeated starts, accounting, cancellation identity and
+  context mismatch; 23 → 24 migration with unfinished and Checkout refunds; receipts; AMS1 at 1.5× text, Japanese and
+  both Chinese scripts; `DoubleActivationTest`; a new ArchUnit rule with deliberate violations; seven-language guide.
+- Real-Adyen verification remains open for store enablement and MCC exclusions, Customer Area limits, local/cloud
+  terminal answers per scheme/country, `acquirerResponseCode`, status recovery, receipts, terminal totals, Payments app
+  support, the refund delay, `/voidPendingRefund` roles and outcomes. Simulator approval proves none.
 
 Milestone 09 protocol and market evidence (October 26, 2026):
 

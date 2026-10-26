@@ -350,11 +350,15 @@ class TerminalGateway(
         expected: PaymentContext? = null,
         expectedIdentity: String? = null,
         cashbackIdentity: String? = null,
+        unreferencedIdentity: String? = null,
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
     ): Attempt<TransactionOutcome> =
         send(paying = true, serviceId, onSending, onContext, expected, expectedIdentity) {
-            if (!cashbackConfigured(params, it.context(), cashbackIdentity) ||
+            val configured =
+                cashbackConfigured(params, it.context(), cashbackIdentity) &&
+                    unreferencedConfigured(params, it.destination, it.context(), unreferencedIdentity)
+            if (!configured ||
                 unsupported(
                     params,
                     it.destination,
@@ -380,6 +384,22 @@ class TerminalGateway(
                 .current()
                 .settings.payment.cashback
         return current.identity == confirmed && current.permits(cash, params.amountMinor, params.currency, context)
+    }
+
+    // An unreferenced refund goes only where it is carried, under the confirmation it was started with, within the limit.
+    private suspend fun unreferencedConfigured(
+        params: PaymentParams,
+        destination: DestinationRules,
+        context: PaymentContext,
+        confirmed: String?,
+    ): Boolean {
+        if (!params.unreferencedRefund) return true
+        val current =
+            setups
+                .current()
+                .settings.payment.unreferencedRefunds
+        return destination.unreferencedRefunds && current.identity == confirmed &&
+            current.permits(params.amountMinor, params.currency, context)
     }
 
     // Whether [destination] cannot carry what [params] select: audio guidance for another or unsupported terminal, gift

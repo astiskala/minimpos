@@ -22,6 +22,7 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.settings.CashbackCard
 import app.minimpos.app.data.settings.CashbackSettings
+import app.minimpos.app.data.settings.UnreferencedRefundSettings
 import app.minimpos.app.items
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
@@ -165,6 +166,42 @@ class DoubleActivationTest {
         assertThat(handed).isNotNull()
         assertThat(await { container.cashTenders.handOverCashback(record.id) }).isFalse()
         assertThat(await { checkNotNull(container.sales.get(record.id)).sale.cashHandedOverAt }).isEqualTo(handed)
+    }
+
+    @Test
+    fun `a refund without receipt double tapped through confirmation and approval is sent once`() {
+        await {
+            container.managerPin.setPin("2468")
+            container.walletDiscovery.refresh()
+        }
+        val facts = container.walletDiscovery.state.value
+        env.updateSettings {
+            it.copy(
+                payment =
+                    it.payment.copy(
+                        unreferencedRefunds =
+                            UnreferencedRefundSettings(enabled = true, limitMinor = 10_000, context = facts.context, currency = "AUD"),
+                    ),
+            )
+        }
+        compose.onNodeWithTag("refund").performScrollTo().performClick()
+        waitForTag("pin_2")
+        listOf(2, 4, 6, 8).forEach { compose.onNodeWithTag("pin_$it").performClick() }
+        compose.onNodeWithTag("pin_OK").performClick()
+        waitForTag("refundUnreferenced")
+        doubleTap("refundUnreferenced")
+        waitForTag("startUnreferencedRefund")
+        listOf(7, 0, 0).forEach { compose.onNodeWithTag("key_$it").performScrollTo().performClick() }
+        compose.onNodeWithTag("reason_RETURN_WITHOUT_RECEIPT").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("startUnreferencedRefund") and isEnabled(), 15_000)
+        doubleTap("startUnreferencedRefund")
+        waitForTag("confirm")
+        doubleTap("confirm")
+        waitForText("Refund requested")
+        val refund = refunds().single().refund
+        assertThat(refund.unreferenced).isTrue()
+        assertThat(refund.amountMinor).isEqualTo(700)
+        assertThat(refund.originalTransactionId).isNull()
     }
 
     @Test

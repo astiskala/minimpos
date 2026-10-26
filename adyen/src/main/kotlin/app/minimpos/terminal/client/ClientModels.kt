@@ -256,8 +256,22 @@ data class PaymentParams(
     val mealVoucherAccount: Boolean = false,
     /** Cash requested within [amountMinor], in minor units; null for payments without cash. */
     val cashBackMinor: Long? = null,
+    /**
+     * Sends `PaymentData.PaymentType=Refund`: an unreferenced refund of [amountMinor] to the card the shopper presents,
+     * linked to no original payment. Adyen enables it per store or terminal; it carries no other card feature.
+     */
+    val unreferencedRefund: Boolean = false,
 ) {
     init {
+        require(
+            !unreferencedRefund || (
+                amountMinor > 0 && cashBackMinor == null && !preAuthorisation && scannedPayment == null &&
+                    giftCard == null && mexicanPayment == null && !mealVoucherAccount && terminalTip == null &&
+                    shopperFlow == null && !askGiving && !audioGuidance && !allowPartialAuthorisation &&
+                    cardEntryOverride == CardEntryOverride.NORMAL && recurringProcessingModel == null &&
+                    !requestCardAlias && shopperReference == null && saleReferenceId == null
+            ),
+        ) { "An unreferenced refund is a card refund without other card features" }
         require(
             cashBackMinor == null || (
                 cashBackMinor > 0 && cashBackMinor <= amountMinor && !preAuthorisation && scannedPayment == null &&
@@ -556,6 +570,12 @@ data class TransactionDetails(
      * when "return adjust authorisation data" is enabled in the Customer Area; null otherwise.
      */
     val adjustAuthorisationData: String? get() = additionalData[ADJUST_AUTHORISATION_DATA]
+
+    /**
+     * `acquirerResponseCode` of an unreferenced refund, verbatim; Adyen sends it only when the card scheme and country
+     * process the refund synchronously. Null when omitted, which leaves the refund requested.
+     */
+    val acquirerResponseCode: String? get() = additionalData[NexoVocabulary.ACQUIRER_RESPONSE_CODE]?.trim()?.ifEmpty { null }
 
     /** `AdditionalResponse` keys read by the typed properties. */
     companion object {

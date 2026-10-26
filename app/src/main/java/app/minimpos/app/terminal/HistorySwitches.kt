@@ -1,5 +1,6 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.app.data.db.unresolved
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.recordedEnvironment
@@ -83,7 +84,7 @@ class HistorySwitches(
     private fun unfinished(item: HistoryItem): Boolean =
         when (item) {
             is HistoryItem.Sale -> !item.sale.retentionEligible && !item.sale.sample
-            is HistoryItem.Refund -> item.refund.status.unresolved
+            is HistoryItem.Refund -> item.refund.unresolved
             is HistoryItem.GiftCard -> item.activity.unresolved || item.activity.needsAttention
         }
 

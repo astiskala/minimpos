@@ -47,6 +47,7 @@ import app.minimpos.terminal.client.RetryAdvice
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -305,6 +306,7 @@ class SaleViewModel(
  * @param charges Looks up and charges the shopper's saved tokens; null offers no token charge.
  * @param lookupDelay How long the shopper reference must stay unchanged before its tokens are looked up.
  * @param cpu Dispatcher for checkout calculation shared with saved-card lookup.
+ * @param managerConfigured Whether a Manager PIN exists, required for cashback.
  */
 class CheckoutViewModel(
     private val session: SaleSession,
@@ -320,12 +322,14 @@ class CheckoutViewModel(
     charges: SavedCardCharges? = null,
     lookupDelay: Duration = 700.milliseconds,
     private val cpu: CoroutineDispatcher = Dispatchers.Default,
+    managerConfigured: Flow<Boolean> = flowOf(false),
 ) : ViewModel() {
     private val checkout =
         session.checkout(
             settings = settings,
             terminal = terminal,
             wallets = discovery?.state ?: flowOf(WalletAvailability()),
+            managerConfigured = managerConfigured,
             offersLinks = links != null,
             currency = currency,
         )

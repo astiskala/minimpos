@@ -1273,7 +1273,7 @@
     <string name="surcharge_unknown_refund_count">Reembolsos con recargos no informados</string>
     <string name="surcharge_remaining_unknown">No se informó el recargo. El importe de compra restante es desconocido. Revisa el Área de Clientes o reembolsa esta tarjeta antes de empezar de nuevo.</string>
     <string name="split_open">Dividir o pagar en efectivo</string>
-    <string name="split_blocked">Desactive propinas, donaciones, guía de audio y MOTO o ingreso manual para dividir esta venta.</string>
+    <string name="split_blocked">Desactiva el retiro con compra, las mensualidades, las propinas, las donaciones, el audio y MOTO o la entrada manual para dividir esta venta.</string>
     <string name="split_title">Dividir pago</string>
     <string name="split_unavailable">No se puede dividir ahora. La venta debe tener un saldo pendiente y ningún pago en curso.</string>
     <string name="split_collect_balance">Cobrar saldo</string>
@@ -1464,4 +1464,27 @@
     <string name="voucher_requested">Vale de comida: %1$s</string>
     <string name="voucher_returned">Vale informado: %1$s</string>
     <string name="voucher_not_refundable">No reembolsable</string>
+    <string name="cashback_title">Retiro con compra</string>
+    <string name="cashout_title">Retiro de efectivo</string>
+    <string name="cashback_enable">Habilitar retiro con compra</string>
+    <string name="cashout_enable">Habilitar retiro sin compra</string>
+    <string name="cashback_configuration">Confirma que Adyen habilitó esta tienda y programa de tarjetas. Se requieren tienda verificada, límite local y PIN de gerente.</string>
+    <string name="cashout_configuration">Aquí solo eftpos de Australia permite retiros sin compra. Confirma su habilitación por separado con Adyen.</string>
+    <string name="cashback_card_hint">Confirma con Adyen la elegibilidad de esta tarjeta y tienda asignada.</string>
+    <string name="cashback_limit">Límite local de efectivo</string>
+    <string name="cashback_limit_hint">Máximo por solicitud en la moneda de pago. Confirma los límites del emisor y la tienda con Adyen.</string>
+    <string name="cashback_requested">Efectivo solicitado</string>
+    <string name="cashback_approved">Efectivo aprobado</string>
+    <string name="cashback_card_charge">Cargo a tarjeta</string>
+    <string name="cashback_card_confirm">Confirmé que el cliente tiene una tarjeta %1$s elegible</string>
+    <string name="cashback_unavailable">No disponible: revisa habilitación, tarjeta, tienda verificada, destino y límite en Configuración.</string>
+    <string name="cashback_conflicts">Confirma la tarjeta y un importe dentro del límite. Usa una venta completa sin división, autorización parcial, propinas, Giving, audio, entrada especial ni guardado de tarjeta.</string>
+    <string name="cashback_handover">Registrar efectivo entregado</string>
+    <string name="cashback_handover_confirm">Confirma solo después de entregar el efectivo aprobado. Revisa entregas anteriores. Un recibo o consulta de estado no confirma la entrega.</string>
+    <string name="cashback_handed_over">Efectivo entregado</string>
+    <string name="cashback_not_handed_over">Sin entrega de efectivo registrada</string>
+    <string name="cashback_missing_amount">Faltan importes de efectivo o no coinciden. No entregues efectivo; revisa el pago original en el Área de Clientes.</string>
+    <string name="cashout_confirm">¿Solicitar %1$s sin compra? Entrega solo el efectivo aprobado por la terminal y registra la entrega.</string>
+    <string name="cashout_start">Retirar %1$s</string>
+    <string name="email_cashout_intro">Aquí está tu recibo de retiro de efectivo.</string>
 </resources>

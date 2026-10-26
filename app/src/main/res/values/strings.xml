@@ -1267,7 +1267,7 @@
     <string name="surcharge_unknown_refund_count">Refunds with unreported surcharges</string>
     <string name="surcharge_remaining_unknown">The surcharge was not reported. The remaining purchase amount is unknown. Check the Customer Area or refund this card before starting again.</string>
     <string name="split_open">Split or pay cash</string>
-    <string name="split_blocked">Turn off tipping, donations, audio guidance and MOTO or manual entry to split this sale.</string>
+    <string name="split_blocked">Turn off cashback, installments, tipping, donations, audio guidance and MOTO or manual entry to split this sale.</string>
     <string name="split_title">Split payment</string>
     <string name="split_unavailable">Nothing can be split now. The sale must have a balance due and no payment in progress.</string>
     <string name="split_collect_balance">Collect balance</string>
@@ -1458,4 +1458,27 @@
     <string name="voucher_requested">Meal voucher: %1$s</string>
     <string name="voucher_returned">Voucher reported: %1$s</string>
     <string name="voucher_not_refundable">Not refundable</string>
+    <string name="cashback_title">Cashback</string>
+    <string name="cashout_title">Cashout</string>
+    <string name="cashback_enable">Enable cashback with purchases</string>
+    <string name="cashout_enable">Enable standalone cashout</string>
+    <string name="cashback_configuration">Confirm Adyen Support enabled this store and card program. A verified store, local limit and Manager PIN are required.</string>
+    <string name="cashout_configuration">Only Australian eftpos supports standalone cashout here. Confirm its separate enablement with Adyen Support.</string>
+    <string name="cashback_card_hint">Confirm this card program and the assigned store’s eligibility with Adyen.</string>
+    <string name="cashback_limit">Local cash limit</string>
+    <string name="cashback_limit_hint">Maximum cash per request in the payment currency. Confirm issuer and store limits with Adyen.</string>
+    <string name="cashback_requested">Cash requested</string>
+    <string name="cashback_approved">Cash approved</string>
+    <string name="cashback_card_charge">Card charge</string>
+    <string name="cashback_card_confirm">I confirmed the shopper has an eligible %1$s card</string>
+    <string name="cashback_unavailable">Unavailable: check enablement, card program, verified store, destination and local limit in Settings.</string>
+    <string name="cashback_conflicts">Confirm an eligible card and enter cash within the local limit. Use a whole card sale without splits, partial authorization, tips, Giving, audio guidance, special entry or card saving.</string>
+    <string name="cashback_handover">Record cash handed over</string>
+    <string name="cashback_handover_confirm">Confirm only after handing the approved cash to the shopper. Check earlier handovers first. Receipts and status checks never mean cash was handed over.</string>
+    <string name="cashback_handed_over">Cash handed over</string>
+    <string name="cashback_not_handed_over">No cash handover recorded</string>
+    <string name="cashback_missing_amount">Cash figures are missing or inconsistent. Do not hand over cash; investigate the original payment in the Customer Area.</string>
+    <string name="cashout_confirm">Request %1$s in cash without a purchase? Hand over only the cash the terminal approves, then record the handover.</string>
+    <string name="cashout_start">Cashout %1$s</string>
+    <string name="email_cashout_intro">Here is your cashout receipt.</string>
 </resources>

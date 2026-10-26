@@ -254,8 +254,18 @@ data class PaymentParams(
      * meal or food voucher (app-controlled selection); false leaves the account to the card or the terminal's own screen.
      */
     val mealVoucherAccount: Boolean = false,
+    /** Cash requested within [amountMinor], in minor units; null for payments without cash. */
+    val cashBackMinor: Long? = null,
 ) {
     init {
+        require(
+            cashBackMinor == null || (
+                cashBackMinor > 0 && cashBackMinor <= amountMinor && !preAuthorisation && scannedPayment == null &&
+                    giftCard == null && mexicanPayment == null && !mealVoucherAccount && terminalTip == null &&
+                    !askGiving && !audioGuidance && !allowPartialAuthorisation &&
+                    cardEntryOverride == CardEntryOverride.NORMAL && recurringProcessingModel == null && !requestCardAlias
+            ),
+        ) { "Cashback requires an immediate card payment without other card features" }
         require(
             !mealVoucherAccount || (
                 currency == "BRL" && !preAuthorisation && scannedPayment == null && giftCard == null && terminalTip == null &&

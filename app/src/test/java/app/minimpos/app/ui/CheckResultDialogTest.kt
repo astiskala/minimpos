@@ -61,6 +61,7 @@ class CheckResultDialogTest {
         env.useSimulator { it.copy(email = it.email.copy(host = "smtp.example.com", fromAddress = "shop@example.com")) }
         compose.setContent { MiniMposApp(env.container) }
         compose.onNodeWithTag("settings").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("section_email"), 15_000)
         compose.onNodeWithTag("section_email").performScrollTo().performClick()
         compose.onNodeWithTag("sendTestEmail").performScrollTo().performClick()
         compose.onNodeWithTag("dialogInput").performTextInput("shopper@example.com")

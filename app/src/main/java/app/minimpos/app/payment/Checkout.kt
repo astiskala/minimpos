@@ -8,6 +8,7 @@ import app.minimpos.app.data.repo.acceptsTender
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.ids.Ids
@@ -29,6 +30,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZonedDateTime
 
 /**
  * App-localized text for the optional shopper-facing terminal session.
@@ -75,6 +77,8 @@ data class ShopperPromptTexts(
  * @property audioGuidanceSimulated Whether the choice demonstrates the flow without physical terminal requirements.
  * @property audioGuidanceTarget Resolved terminal POIID; binds the per-shopper confirmation to that terminal.
  * @property mexicanRoutingAvailable Verified Mexican store assignment on a supported destination, or explicit offline demo.
+ * @property cashbackAvailable Verified purchase-linked market and explicit merchant configuration.
+ * @property managerConfigured Whether a Manager PIN is configured; cashback requires it before starting.
  * @property mexicanContext Original context of the verified assignment; null before discovery.
  * @property mexicanIdentity Setup fingerprint for that assignment; null before discovery.
  */
@@ -96,6 +100,8 @@ data class Checkout(
     val audioGuidanceSimulated: Boolean = false,
     val audioGuidanceTarget: String? = null,
     val mexicanRoutingAvailable: Boolean = false,
+    val cashbackAvailable: Boolean = false,
+    val managerConfigured: Boolean = false,
     val mexicanContext: PaymentContext? = null,
     val mexicanIdentity: String? = null,
 ) {
@@ -234,7 +240,7 @@ data class Checkout(
                 TenderCeremony(
                     emptySet(),
                     specialEntryWarning = requiresSpecialEntryApproval,
-                    managerApproval = requiresSpecialEntryApproval,
+                    managerApproval = requiresSpecialEntryApproval || form.cashBackMinor > 0,
                 )
             }
 
@@ -327,10 +333,30 @@ data class Checkout(
                 listOf(form.tipOnReceipt, form.askGratuity, form.askGiving, form.tokenize).none { it == true }
         )
 
+    /** Selected cash requires a whole immediate card sale; unavailable choices remain selected and block sending. */
+    val cashbackReady: Boolean get() =
+        form.cashBackMinor == 0L || (
+            managerConfigured && form.cashbackConfirmation == payment.cashback && cashbackAvailable &&
+                form.cashBackMinor in 1..payment.cashback.limitMinor &&
+                !preAuthorisation &&
+                form.cashBackMinor <= Long.MAX_VALUE - totals.amounts.gross && !tipOnReceipt && !askGratuity && !askGiving &&
+                !form.audioGuidance && form.mexicanPayment == null && !tokenize &&
+                form.cardEntryOverride == CardEntryOverride.NORMAL && !payment.allowPartialAuthorisation &&
+                listOf(form.tipOnReceipt, form.askGratuity, form.askGiving, form.tokenize).none { it == true }
+        )
+
+    /** Requested card amount in minor units, including selected cash; an invalid cash entry leaves Pay disabled. */
+    val requestedCardMinor: Long get() =
+        if (form.cashBackMinor in 0..(Long.MAX_VALUE - totals.amounts.gross)) {
+            Math.addExact(totals.amounts.gross, form.cashBackMinor)
+        } else {
+            totals.amounts.gross
+        }
+
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */
     val canPay: Boolean get() =
         !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid &&
-            audioGuidanceReady && mexicanRoutingReady
+            audioGuidanceReady && mexicanRoutingReady && cashbackReady
 
     /**
      * The payment to start, or null unless [canPay]. A blank merchant reference is generated from [now] in [zone] with
@@ -360,8 +386,11 @@ data class Checkout(
             askGiving = askGiving,
             cardEntryOverride = effectiveCardEntry,
             mexicanPayment = form.mexicanPayment,
-            walletContext = mexicanContext.takeIf { form.mexicanPayment != null },
-            walletSetupIdentity = mexicanIdentity.takeIf { form.mexicanPayment != null },
+            walletContext = mexicanContext.takeIf { form.mexicanPayment != null || form.cashBackMinor > 0 },
+            walletSetupIdentity = mexicanIdentity.takeIf { form.mexicanPayment != null || form.cashBackMinor > 0 },
+            cashBackMinor = form.cashBackMinor.takeIf { it > 0 },
+            cashbackConfiguration = payment.cashback.takeIf { form.cashBackMinor > 0 },
+            requestedAmountMinor = requestedCardMinor,
             audioGuidance = form.audioGuidance,
             audioGuidancePoiId = audioGuidanceTarget.takeIf { form.audioGuidance },
         )
@@ -378,7 +407,7 @@ data class Checkout(
     val splitBlocked: Boolean get() = blocksSplit()
 
     private fun blocksSplit(): Boolean =
-        tipOnReceipt || askGratuity || askGiving || form.audioGuidance || form.mexicanPayment != null ||
+        form.cashBackMinor != 0L || tipOnReceipt || askGratuity || askGiving || form.audioGuidance || form.mexicanPayment != null ||
             effectiveCardEntry != CardEntryOverride.NORMAL
 
     /**
@@ -411,7 +440,10 @@ data class Checkout(
      * Whether a payment link is offered instead of the terminal: for a sale (a pre-authorisation always goes to the
      * terminal) that [canPay], while links are [linksAvailable].
      */
-    val canSendLink: Boolean get() = form.mexicanPayment == null && !form.audioGuidance && !preAuthorisation && linksAvailable && canPay
+    val canSendLink: Boolean get() =
+        form.cashBackMinor == 0L && form.mexicanPayment == null && !form.audioGuidance && !preAuthorisation &&
+            linksAvailable &&
+            canPay
 
     /**
      * The payment link to create, or null unless [canSendLink]: the [paymentStart] at [now] in [zone] without tipping on
@@ -448,14 +480,17 @@ data class Checkout(
         fromCheckout: Boolean = false,
     ): SavedCardStart? {
         val model = payment.recurringModel().value
-        if (form.audioGuidance || form.mexicanPayment != null) return null
+        if (form.cashBackMinor != 0L || form.audioGuidance || form.mexicanPayment != null) return null
         if (preAuthorisation || shopperReference == null || !card.supports(model)) return null
         val start = paymentStart(now, zone)?.forSavedCard() ?: return null
         return SavedCardStart(start, card, model, fromCheckout = fromCheckout)
     }
 
     /** Whether scanned wallets are offered, independently of entered-field validation. */
-    val offersScanWallet: Boolean get() = form.mexicanPayment == null && !form.audioGuidance && !preAuthorisation && wallets.isNotEmpty()
+    val offersScanWallet: Boolean get() =
+        form.cashBackMinor == 0L && form.mexicanPayment == null && !form.audioGuidance &&
+            !preAuthorisation &&
+            wallets.isNotEmpty()
 
     /** Whether a configured scanned wallet can pay this checkout now. */
     val canScanWallet: Boolean get() = offersScanWallet && canPay
@@ -488,6 +523,38 @@ data class Checkout(
 
     /** Checkout limits and continuation of stored partially paid sales. */
     companion object {
+        /**
+         * Standalone cash-out from explicitly configured and verified [availability], in [currency], for [cashMinor]
+         * minor units at [now], including its time zone. No merchandise, tax or unrelated checkout session is attached. Manager PIN
+         * and unchanged configuration are checked again by the sending owners.
+         */
+        fun cashoutStart(
+            availability: WalletAvailability,
+            payment: PaymentSettings,
+            currency: CurrencySpec,
+            cashMinor: Long,
+            now: ZonedDateTime,
+        ): PaymentStart? {
+            if (!Cashback.ready(payment.cashback, availability, currency.code, true) ||
+                cashMinor !in 1..payment.cashback.limitMinor
+            ) {
+                return null
+            }
+            return PaymentStart(
+                totals = Cart().totals(TaxMode.INCLUSIVE),
+                currency = currency,
+                merchantReference = Ids.transactionReference(payment.referencePrefix, now.toInstant(), now.zone),
+                customerReference = null,
+                shopperEmail = null,
+                tokenization = null,
+                requestedAmountMinor = cashMinor,
+                cashBackMinor = cashMinor,
+                cashbackConfiguration = payment.cashback,
+                walletContext = availability.context,
+                walletSetupIdentity = availability.identity,
+            )
+        }
+
         /**
          * Next card tender for a stored partially paid [sale], or null when no balance can be collected: [amountMinor] of
          * its unpaid balance chosen as [allocation] (the whole balance by default). Reuses its references and currency,

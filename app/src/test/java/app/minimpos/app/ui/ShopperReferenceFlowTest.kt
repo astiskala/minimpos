@@ -5,12 +5,14 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.isOn
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import app.minimpos.app.GST_RATES
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
@@ -170,9 +172,11 @@ class ShopperReferenceFlowTest {
         ringUpCustomAmount(5, 0, 0)
         compose.clickWhenEnabled("charge")
         waitForTag("pay")
-        compose.onNodeWithTag("customerReference").performTextInput("CUST-7")
+        compose.onNodeWithTag("customerReference").performTextInput("x")
+        compose.waitUntilAtLeastOneExists(hasTestTag("pay") and isEnabled().not(), 15_000)
+        compose.onNodeWithTag("customerReference").performTextReplacement("CUST-7")
         compose.onNodeWithTag("tokenize").assertDoesNotExist()
-        compose.onNodeWithTag("pay").performClick()
+        compose.clickWhenEnabled("pay")
         waitForText("Approved")
         val sale = await { container.history.items().first { it.isNotEmpty() } }.single()
         val record = await { container.sales.get(sale.id)!! }.sale

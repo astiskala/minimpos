@@ -300,6 +300,10 @@ data class SaleEntity(
     val tenderRequestedMinor: Long? = null,
     /** Cashback included in the terminal total; null when unreported. Added in version 18. */
     val cashBackMinor: Long? = null,
+    /** Frozen cash requested beyond merchandise; null for earlier or ordinary payments. */
+    val requestedCashBackMinor: Long? = null,
+    /** Operator-confirmed handover time, epoch milliseconds; null until explicitly recorded through CashTenders. */
+    val cashHandedOverAt: Long? = null,
     /**
      * What the payment holds after authorisation adjustments; null while it was never adjusted, when [totalMinor] is
      * held. Added in database version 6.
@@ -681,6 +685,7 @@ enum class TenderKind {
  * @property tipMinor Reported tip included in the authorized total; null when unreported.
  * @property surchargeMinor Reported fee included in the authorized total; null when unreported.
  * @property cashBackMinor Cash returned within the authorized total; null when unreported.
+ * @property requestedCashBackMinor Frozen requested cash beyond merchandise; null for ordinary/earlier tenders.
  * @property serviceId Original request identity; null for historical rows.
  * @property context Original destination/account; null for historical rows.
  * @property poiReconciliationId Original terminal reconciliation period; null when unavailable.
@@ -735,6 +740,8 @@ data class SaleTenderEntity(
     val surchargeMinor: Long? = null,
     /** Reported cashback included in [authorisedMinor]; never refundable merchandise. */
     val cashBackMinor: Long? = null,
+    /** Frozen cash requested beyond merchandise; null for earlier or ordinary payments. */
+    val requestedCashBackMinor: Long? = null,
     /** Original payment request ServiceID; null for historical tenders. */
     val serviceId: String? = null,
     /** Original destination/account for this tender; null for historical rows. */

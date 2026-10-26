@@ -28,7 +28,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  * @property mexicanStore Whether Management verified an assigned Mexican store for this context.
  * @property mexicanDestination Whether the destination supports Mexican Terminal API card routing.
  * @property storeCountry Country of the store Management verified as assigned for this context; null when unassigned.
+ * @property storeId Verified assigned Management store ID; null when unassigned or simulated.
  * @property mealVoucherDestination Whether the destination supports meal-voucher tenders.
+ * @property cashbackDestination Whether this destination carries Terminal API cashback.
  * @property simulated Whether the resolved destination supplies offline demos, not a reading of stored payment meaning.
  * @property checking Whether a refresh is running.
  * @property checked Whether a complete discovery answer has been obtained.
@@ -44,7 +46,9 @@ data class WalletAvailability(
     val mexicanStore: Boolean = false,
     val mexicanDestination: Boolean = false,
     val storeCountry: String? = null,
+    val storeId: String? = null,
     val mealVoucherDestination: Boolean = false,
+    val cashbackDestination: Boolean = false,
     val simulated: Boolean = false,
     val checking: Boolean = false,
     val checked: Boolean = false,
@@ -133,6 +137,7 @@ class WalletDiscovery(
                     supported = setup.capabilities.scannedWallets,
                     mexicanDestination = setup.capabilities.mexicanInstallments,
                     mealVoucherDestination = setup.capabilities.mealVouchers,
+                    cashbackDestination = setup.destination.cashback,
                     simulated = setup.apiSetup == ApiSetup.Simulated,
                     checking = true,
                 )
@@ -202,6 +207,7 @@ class WalletDiscovery(
                             origin,
                             initial.copy(
                                 offers = WalletOffers.configured(methods.methods, terminal.storeId, terminal.countryCode),
+                                storeId = terminal.storeId.takeIf { it.isNotBlank() },
                                 mexicanStore = terminal.storeId.isNotBlank() && terminal.countryCode.equals("MX", ignoreCase = true),
                                 storeCountry = terminal.countryCode.uppercase().takeIf { terminal.storeId.isNotBlank() && it.isNotBlank() },
                                 nativeScanner = WalletOffers.nativeScanner(terminal.model, terminal.id),

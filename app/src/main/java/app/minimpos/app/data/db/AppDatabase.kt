@@ -23,7 +23,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HistorySwitchEntity::class,
         GiftCardOperationEntity::class,
     ],
-    version = 22,
+    version = 23,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -225,6 +225,17 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /** Preserves purchase and unfinished identities; old rows acquire no requested cash or handover. */
+        val MIGRATION_22_23: Migration =
+            object : Migration(22, 23) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    listOf("sales", "sale_tenders").forEach { table ->
+                        db.execSQL("ALTER TABLE `$table` ADD COLUMN `requestedCashBackMinor` INTEGER")
+                        if (table == "sales") db.execSQL("ALTER TABLE `$table` ADD COLUMN `cashHandedOverAt` INTEGER")
+                    }
+                }
+            }
+
         /** Opens lazily on first query with versioned migrations; no destructive fallback is configured. */
         fun create(context: Context): AppDatabase =
             Room
@@ -242,6 +253,7 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_19_20,
                     MIGRATION_20_21,
                     MIGRATION_21_22,
+                    MIGRATION_22_23,
                 ).build()
     }
 }

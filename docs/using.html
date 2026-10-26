@@ -87,7 +87,7 @@
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Check Adyen capabilities</a></li><li><a href="#terminal-checkout">
-  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#mexican-installments">Mexican card installments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li><a href="#meal-vouchers">Take meal vouchers</a></li><li>
+  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#mexican-installments">Mexican card installments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li><a href="#cashback">Cashback</a></li><li><a href="#cashout">Cashout</a></li><li><a href="#meal-vouchers">Take meal vouchers</a></li><li>
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
@@ -103,7 +103,7 @@
   <li><a href="#email">Email receipts</a></li></ul></li><li><a href="#history">History</a><ul><li><a href="#close-day">
   Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Check Adyen capabilities</a></li><li><a href="#terminal-checkout">
-  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#mexican-installments">Mexican card installments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li><a href="#meal-vouchers">Take meal vouchers</a></li><li>
+  Optional checkout workflows</a><ul><li><a href="#audio-guidance">Use audio-guided payments</a></li><li><a href="#mexican-installments">Mexican card installments</a></li><li><a href="#partial-payments">Partial payments</a></li><li><a href="#split-payments">Split and cash</a></li><li><a href="#cashback">Cashback</a></li><li><a href="#cashout">Cashout</a></li><li><a href="#meal-vouchers">Take meal vouchers</a></li><li>
   <a href="#shopper-display">Shopper display</a></li><li><a href="#giving">Charity donations</a></li><li>
   <a href="#keyed-entry">MOTO and MKE</a></li></ul></li><li><a href="#offline">Offline payments</a></li><li>
   <a href="#wallets">Scan wallet codes</a></li><li><a href="#shoppers">References and saved cards</a><ul><li>
@@ -452,6 +452,27 @@
           <p>With gift cards set up, tap <strong>Gift card</strong> to pay the chosen amount with one. A short balance is
             approved in part and the rest stays to collect. A return of a gift-card payment goes back to the card,
             except for local gift cards, which are refunded outside Mini mPOS.</p>
+          <h3 id="cashback">Cashback</h3>
+          <p>Enable Cashback in Settings › Payments after confirming your store and card program with Adyen. Set a local
+          cash limit and a Manager PIN. Mini mPOS checks the verified store and destination; currency or language does
+          not establish eligibility.</p>
+          <p>At checkout, enter the extra cash requested and confirm the eligible card. Use a whole card sale without
+          split tenders, partial authorization, gift cards, meal vouchers, installments, tips, Giving, audio guidance,
+          MOTO/MKE, links, tokens or scanned wallets. Turn off conflicting choices explicitly before paying.</p>
+          <h3 id="cashout">Cashout</h3>
+          <p>Cashout on Home requests cash without a purchase. Enable it separately after Adyen confirms Australian
+          eftpos cash-out for the assigned store. Payment terminals connected locally or through the cloud are
+          supported; Tap to Pay is unavailable.</p>
+          <p>After approval, check the cash approved and the card charge. A purchase can be approved while cashback is
+          refused; no merchandise remains unpaid for that reason. Hand over only the approved cash, then choose Record
+          cash handed over and approve with the Manager PIN. Check earlier handovers before confirming. Never hand over
+          cash when its amount is unreported.</p>
+          <p>History retains unfinished requests and unrecorded handovers. Check an unknown result instead of requesting
+          cash again. Receipts, reprints and status checks do not record handover. Daily reports separate approved cash
+          and handed-over cash from sales; terminal reconciliation compares the card charge. Referenced refunds return
+          only eligible purchase value to the original card, never cash disbursed. Cashout has no merchandise to
+          refund.</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/cashback-and-cash-out">Adyen: Cashback</a></p>
           <h3 id="meal-vouchers">Take meal vouchers</h3>
           <p>Turn on <strong>Meal vouchers</strong> in Settings › Payments only after you signed the issuer contracts, registered
             your store and Adyen enabled the vouchers. The verified store country of the terminal decides which vouchers

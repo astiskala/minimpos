@@ -62,6 +62,7 @@ import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.ReceiptActions
 import app.minimpos.app.feature.StatusCheck
+import app.minimpos.app.feature.cashbackFacts
 import app.minimpos.app.feature.giftcard.giftCardStageLabel
 import app.minimpos.app.feature.giftcard.statusLabel
 import app.minimpos.app.feature.lock.ManagerApproval
@@ -72,6 +73,7 @@ import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.refund.RefundResultScreen
 import app.minimpos.app.feature.refund.refundStatusKind
 import app.minimpos.app.feature.refund.refundStatusTitle
+import app.minimpos.app.feature.sale.CashbackHandover
 import app.minimpos.app.feature.sale.EnterTipButton
 import app.minimpos.app.feature.sale.HoldNotes
 import app.minimpos.app.feature.sale.SplitProgress
@@ -81,6 +83,7 @@ import app.minimpos.app.feature.sale.statusTitle
 import app.minimpos.app.history.DayTotals
 import app.minimpos.app.history.HistoryDay
 import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.cashout
 import app.minimpos.app.history.decline
 import app.minimpos.app.history.linkUnsettled
 import app.minimpos.app.history.methodCode
@@ -425,6 +428,10 @@ private fun historyRowText(
                     stringResource(R.string.history_offline_label).takeIf { sale.offlineMode != null },
                     paymentMethodText(sale),
                     sale.customerReference,
+                    androidx.compose.ui.platform.LocalContext.current
+                        .cashbackFacts(sale)
+                        .joinToString(" · ")
+                        .ifBlank { null },
                     item.tenders
                         .sortedBy { it.sequence }
                         .flatMap {
@@ -507,9 +514,8 @@ fun SaleDetailScreen(
         }, onCancel = { approval = null })
     }
     val gate = currentSetupGate()
-    val preAuth = state.record?.sale?.kind == SaleKind.PRE_AUTHORISATION
     MiniScaffold(
-        title = stringResource(if (preAuth) R.string.detail_pre_auth_title else R.string.detail_title),
+        title = stringResource(saleDetailTitle(state.record?.sale)),
         onBack = navigator::back,
         modifier = modifier,
     ) { padding ->
@@ -519,6 +525,7 @@ fun SaleDetailScreen(
         // The outcome and actions come first, as on the result screen, so they show without scrolling past every detail.
         ScreenColumn(padding) {
             SaleDetailOutcome(state, money, container::formatDateTime)
+            CashbackHandover(sale, navigator)
             HoldActions(
                 state = state,
                 onEnterTip = { gate.run { navigator.push(Route.Tip(sale.id)) } },
@@ -538,7 +545,7 @@ fun SaleDetailScreen(
             if (sale.approved) {
                 ReceiptActions(state.transaction, vm.transaction, MerchantCopy.ALWAYS, email = sale.shopperEmail.orEmpty())
             }
-            SaleRefunds(state.refunds, money, preAuth, container::formatDateTime) {
+            SaleRefunds(state.refunds, money, sale.kind == SaleKind.PRE_AUTHORISATION, container::formatDateTime) {
                 navigator.push(Route.RefundDetail(it))
             }
             PaymentDetailsCard(sale)
@@ -805,3 +812,10 @@ fun RefundDetailScreen(
     refundId: String,
     navigator: Navigator,
 ) = RefundResultScreen(refundId, navigator, fromHistory = true)
+
+private fun saleDetailTitle(sale: SaleEntity?): Int =
+    when {
+        sale?.kind == SaleKind.PRE_AUTHORISATION -> R.string.detail_pre_auth_title
+        sale?.cashout == true -> R.string.cashout_title
+        else -> R.string.detail_title
+    }

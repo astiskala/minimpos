@@ -31,6 +31,8 @@ internal fun localizedReceiptTexts(
         giftCardStage = { localized.getString(giftCardStageLabel(it)) },
         giftCardTitle = localized.getString(R.string.receipt_gift_card_title),
         giftCardAttention = localized.getString(R.string.gift_card_needs_attention),
+        cashoutTitle = localized.getString(R.string.cashout_title),
+        cashback = { localized.cashbackFacts(it) },
         mexicanPlan = { localized.mexicanPlan(it) },
         mealVoucher = { localized.mealVoucherFacts(it) },
     )
@@ -131,6 +133,8 @@ private fun reportLabel(label: ReportText): Int =
         ReportText.PURCHASE -> R.string.surcharge_purchase_known
         ReportText.UNKNOWN_SURCHARGES -> R.string.surcharge_unknown_count
         ReportText.REFUNDS -> R.string.report_refunds
+        ReportText.CASHBACK -> R.string.cashback_approved
+        ReportText.CASH_HANDED_OVER -> R.string.cashback_handed_over
         ReportText.CASH_SALES -> R.string.report_cash_sales
         ReportText.CASH_REFUNDS -> R.string.report_cash_refunds
         ReportText.REFUND_SURCHARGES -> R.string.surcharge_return_fee

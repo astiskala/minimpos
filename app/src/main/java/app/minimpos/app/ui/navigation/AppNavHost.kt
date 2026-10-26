@@ -46,6 +46,8 @@ import app.minimpos.app.feature.refund.RefundProcessingScreen
 import app.minimpos.app.feature.refund.RefundResultScreen
 import app.minimpos.app.feature.refund.RefundScanScreen
 import app.minimpos.app.feature.refund.RefundScreen
+import app.minimpos.app.feature.sale.CashbackHandoverScreen
+import app.minimpos.app.feature.sale.CashoutScreen
 import app.minimpos.app.feature.sale.CheckoutScreen
 import app.minimpos.app.feature.sale.PaymentLinkScreen
 import app.minimpos.app.feature.sale.PaymentScreen
@@ -140,6 +142,12 @@ private fun AppEntries(
                 entry<Route.SavedCard> { PinGate(navigator, manager = true) { SavedCardScreen(navigator) } }
                 entry<Route.SavedCardSale> { PinGate(navigator, manager = true) { SaleScreen(navigator, SaleKind.SALE, card = it.card) } }
                 entry<Route.SavedCardReview> { PinGate(navigator, manager = true) { SavedCardReviewScreen(it.card, navigator) } }
+                entry<Route.CashbackHandover> {
+                    CashbackHandoverScreen(it.saleId, navigator)
+                }
+                entry<Route.Cashout> {
+                    CashoutScreen(navigator)
+                }
                 entry<Route.GiftCards> { GiftCardsScreen(navigator) }
                 entry<Route.GiftCardActivity> { GiftCardActivityScreen(it.groupId, navigator) }
                 entry<Route.Reconciliation> { ReconciliationScreen(navigator) }

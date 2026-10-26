@@ -325,17 +325,17 @@ Read first: the established cash-movement contracts from 05/06, `adyen/.../clien
 `app/.../payment/Checkout.kt`, financial-operation and Manager owners, capability discovery, Home, receipts, and
 history.
 
-- [ ] Add checkout cashback and a dedicated Cashout screen between Refund and History. Both start disabled and require a
+- [x] Add checkout cashback and a dedicated Cashout screen between Refund and History. Both start disabled and require a
   configured Manager PIN, checked again at send time. Readiness must distinguish with-purchase and standalone support.
-- [ ] Build requests and parse returned CashBackAmount using documented SDK fields. Persist purchase, requested/approved
+- [x] Build requests and parse returned CashBackAmount using documented SDK fields. Persist purchase, requested/approved
   cashback, total card charge, and context separately. Cash disbursed is not merchandise revenue or taxable sale value.
-- [ ] Treat the response's cashback amount as authoritative. Correctly handle a purchase approved with cashback refused
+- [x] Treat the response's cashback amount as authoritative. Correctly handle a purchase approved with cashback refused
   and any documented partial result; do not misread that as an unpaid merchandise balance or automatically pay out cash.
-- [ ] Separate terminal approval from the operator's recorded cash handover. Reuse the durable payout state from
+- [x] Separate terminal approval from the operator's recorded cash handover. Reuse the durable payout state from
   gift-card cash-out. Restart/reprinting/status checks must not automatically imply another handover.
-- [ ] Apply market/card/destination and combination restrictions, local amount limits, receipts, cash reports, and
+- [x] Apply market/card/destination and combination restrictions, local amount limits, receipts, cash reports, and
   terminal reconciliation. Standalone eligibility must not be inferred from purchase-linked cashback support.
-- [ ] Test approval, denial, partial outcomes, unknown answers, changed setup, repeated taps, PIN expiry, cash handover
+- [x] Test approval, denial, partial outcomes, unknown answers, changed setup, repeated taps, PIN expiry, cash handover
   interruption, reports, and the final Home layout.
 
 Start with TerminalClient, Checkout, cash-movement, history/receipt, and Manager tests, then payment/database and
@@ -422,19 +422,95 @@ independently, with the provider/destination and evidence location.
 | 05 | Split payments and cash | implemented | `d208036` | `scripts/dev finish`; SDK 33 + 28; schema 19 | Partial-approval, linking and multi-leg refund checks unconfirmed |
 | 06 | Gift-card lifecycle | implemented | `807c62e` | `scripts/dev finish`; SDK 33 + 28; schema 20 | Provider onboarding/TEST cards, StoredValue recovery unconfirmed |
 | 07 | Mexican installments | implemented | `d18a349` | `scripts/dev finish`; SDK 33 + 28; schema 21 | Mexican issuer/local/cloud/receipt/refund TEST checks unconfirmed |
-| 08 | Meal vouchers | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 22 | Market/issuer onboarding, voucher TEST cards, refunds and recovery unconfirmed |
-| 09 | Cashback/Cashout | not started | - | - | With-purchase/standalone enablement unconfirmed |
+| 08 | Meal vouchers | implemented | `e793d80` | `scripts/dev finish`; SDK 33 + 28; schema 22 | Market/issuer onboarding, voucher TEST cards, refunds and recovery unconfirmed |
+| 09 | Cashback/Cashout | implemented | this commit | `scripts/dev finish`; SDK 33 + 28; schema 23 | With-purchase/standalone enablement unconfirmed |
 | 10 | Unreferenced card refunds | not started | - | - | Eligible country/account enablement unconfirmed |
 
-Resume note: milestones 01 (`100b1a3`), 02 (`c8752cc`), 03 (`c62d133`), 04 (`3f1c712`), 05 (`d208036`),
-06 (`807c62e`), 07 (`d18a349`) and 08 (this commit) are implemented on `codex/adyen-capabilities`. Stopped after
-milestone 08 as requested; milestones 09–10 remain unstarted. Database version is 22 with product and sold-line
-voucher eligibility and nullable tender voucher request/answer facts, `MIGRATION_21_22`, build-generated schema and
-upgrade tests; no dependency changed. `scripts/dev finish` passed on October 26, 2026, including SDK 33 and SDK 28; log
-`build/gradle-logs/run-9pGoz8/output.log`. All earlier real-Adyen verification gaps remain unconfirmed, as do every meal-voucher
-market, issuer onboarding, terminal selection screen, partial approval, refund and recovery behavior. No real calls,
-pushes, publications or releases were made or authorized. The configured Manager PIN requirement for token deletion,
-cash refunds and gift-card value changes, repairs and cash handovers remains the plan's provisional working default.
+Resume note: milestones 01–09 are implemented on `codex/adyen-capabilities`, with 08 at `e793d80` and 09 in this
+commit. Stop after 09; milestone 10 is not started. The database is version 23 (nullable requested cash on sales and
+terminal tenders, nullable physical handover time on sales), with data-preserving `MIGRATION_22_23` and a
+build-generated schema. Released schemas and stored fixtures are retained. No dependencies changed. Preflight and
+`scripts/dev finish` passed; the complete gate log is `build/gradle-logs/run-odUgIC/output.log`, including SDK 33 and
+SDK 28, architecture, localization, website, lint, detekt and coverage. Core and Adyen retain 100% line coverage.
+All earlier real-Adyen gaps remain open. No real calls, pushes, publications or releases were made or authorized.
+
+Milestone 09 protocol and market evidence (October 26, 2026):
+
+- Full gate passed: `scripts/dev finish`, `build/gradle-logs/run-odUgIC/output.log`, including both SDK suites and
+  coverage. The final ledger-only update is checked again before committing. Focused request, settlement, handover,
+  migration, receipt, compact UI and website checks also passed during iteration. No thresholds, suppressions,
+  baselines or exclusions were added. No release build was needed because dependencies did not change.
+- The gate exposed asynchronous Settings navigation assumptions in existing UI tests; they now wait for the target
+  section. Checkout tests also wait for validation state and scroll the final Home rows before activating them.
+  Cashout with a reported surcharge is still wholly ineligible for merchandise refunds; unreported or inconsistent
+  cashback cannot enlarge a refund balance.
+- Rechecked [cashback/cash-out](https://docs.adyen.com/point-of-sale/cashback-and-cash-out),
+  [partial authorizations](https://docs.adyen.com/point-of-sale/partial-authorizations),
+  [transaction status](https://docs.adyen.com/point-of-sale/basic-tapi-integration/verify-transaction-status),
+  [referenced refunds](https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/referenced/) and
+  [terminal release notes](https://docs.adyen.com/point-of-sale/firmware-release-notes). The market matrix is:
+
+  | Verified market/card | With purchase | Standalone cash-out | Destination and enablement |
+  | --- | --- | --- | --- |
+  | Australia / eftpos debit (AUD) | Yes | Yes | Terminal API physical terminals, local/cloud; Support enablement |
+  | Germany / girocard debit (app: EUR) | Yes | No | Same; merchant confirms store/card program |
+  | Europe / Visa | Yes | No | Same; explicit store enablement |
+  | Europe / Mastercard | Specific countries confirmed by Support | No | Same; no guessed acceptance-country list |
+  | Other cards/markets; Payments app/Tap to Pay | Not offered | Not offered | No documented support inferred |
+  | Simulator | Explicit offline demo | Explicit eftpos demo | Establishes no real eligibility |
+
+- Shared behavior for the permitted programs (Terminal API, not the standalone terminal menu):
+
+  | Behavior | Exact contract / app restriction |
+  | --- | --- |
+  | Purchase request | `PaymentRequest.PaymentTransaction.AmountsReq.RequestedAmount` = purchase + cash; `.CashBackAmount` = cash |
+  | Standalone request | Same SDK fields, purchase zero; no speculative `PaymentType=CashAdvance` or acquirer extension |
+  | Approved cash | `PaymentResponse.PaymentResult.AmountsResp.CashBackAmount`, within `AuthorizedAmount`, is authoritative |
+  | Partial / refused cash | Cashback `Partial` approves the purchase without cash; never a merchandise remainder. Omitted cash remains unreported |
+  | Limits | No universal numeric amount limit documented; explicit local positive limit, currency-bound, with issuer/store limits still applying |
+  | Receipts | Original Adyen fields verbatim; separate request, approved cash, card charge and operator handover; Cashout title and email kind |
+  | Daily cash report | Approved cash and physical cash handed over are separate; cash never merchandise sales or tax |
+  | Terminal reconciliation | Compare the full card debit with terminal totals; physical cash handover is a local event |
+  | Referenced refunds | App excludes all cash from merchandise return balances; no Cashout merchandise or card-cash reversal is offered |
+
+  The cashback page supplies the request/result semantics; the app's local handover and refund restrictions are
+  deliberate safeguards, not claims of a documented generic cash reversal. No `AllowPartialAuthorisation` tender option
+  is added. No missing component is replaced by the requested amount. Customer Area remains authoritative.
+- Release notes identify girocard support in terminal software 1.64 and Visa/Mastercard extension in 1.72; version alone
+  proves no account enablement. The [standalone terminal menu](https://docs.adyen.com/point-of-sale/standalone/standalone-use)
+  does not offer purchase-free cash-out. That integration is distinct from this app's Terminal API Cashout screen.
+  The [905_4 error](https://docs.adyen.com/development-resources/error-codes) mentions eftpos in Australia/New Zealand;
+  that error explanation does not establish New Zealand support against the current feature matrix.
+- Pinned SDK 43.1.0 inspected with `javap`: `AmountsReq.get/setRequestedAmount`, `get/setCashBackAmount`,
+  `AmountsResp.get/setAuthorizedAmount`, `get/setCashBackAmount` use `BigDecimal`. Existing `TerminalClient` parses
+  returned cash with its one Adyen-decimal converter; only the request setter was missing. No handwritten wire model
+  or dependency change is needed. These are normal `Payment` requests, recovered by original category and ServiceID.
+- App contract: explicit configuration is bound to verified Management store ID/country, payment context and currency.
+  The European geographic boundary is EEA, Switzerland and the United Kingdom; membership does not establish card
+  program acceptance. The [payment-method matrix](https://docs.adyen.com/payment-methods) lists eftpos in AUD.
+  The app conservatively offers German girocard cashback in EUR; other currency combinations are not claimed.
+  No editable country setting. Purchase-linked and standalone flags start off; a positive local limit and configured
+  Manager PIN are required. The operator confirms the eligible card program. Undocumented combinations are blocked
+  before payment and retained visibly, never silently dropped. A selected cash request has a whole immediate card
+  purchase, no split/cash tender, gift card, voucher, installments, tips, Giving, audio, MOTO/MKE, links, tokens or wallets.
+- Cash receipt lines show requested/approved cash, card charge and recorded handover independently, retaining Adyen
+  fields verbatim. Daily sales exclude cash; reports separately show approved cash and physical cash handed over on
+  the handover date. Terminal reconciliation uses the total card charge. Cash is excluded from referenced merchandise
+  refund balances; no standalone cash-out merchandise refund exists. The referenced-refund page documents returning
+  purchase value, and does not establish a card-cash reversal facility; the app offers none. Customer Area is authoritative.
+- `CashTenders` owns handovers for both card cashback and gift-card cash-out; their shared pure `CashHandover` reading
+  keeps terminal approval separate from operator recording. Awaiting/unreported cash survives retention and restart.
+  Reprinting/status recovery cannot record handover. Repeated confirmations cannot overwrite its original time.
+- Automated regression scope includes exact SDK request/returned cash fields, purchase-only refusal/partials,
+  unknown-answer recovery under the original Payment identity, configuration/store/currency changes, mandatory PIN
+  expiry checks, repeated activation, one-time handover across restart/history clearing, full-debit reconciliation,
+  cash-only surcharge/refund separation, schema 22 → 23 preservation and stored-format compatibility. The AMS1 Home
+  and Cashout tests exercise large text, Japanese and both Chinese scripts; receipts and guides cover seven languages.
+  Checkout displays the full requested card charge while preserving separate merchandise/tax totals.
+- Real-Adyen verification remains open for every market/card/store enablement, minimum/maximum issuer amounts,
+  terminal software and local/cloud destinations, purchase-only partials, refused cash, omitted or unusual cash amounts,
+  original-identity recovery, receipts, terminal totals and purchase-only referenced refunds.
+  Simulator approval proves none.
 
 Milestone 01 evidence:
 

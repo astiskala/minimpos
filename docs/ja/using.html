@@ -80,7 +80,7 @@
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Adyen機能を確認</a></li><li><a href="#terminal-checkout">任意の会計フロー</a>
-  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#mexican-installments">メキシコのカード分割払い</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#meal-vouchers">食事券を受け付ける</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
+  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#mexican-installments">メキシコのカード分割払い</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#cashback">購入時の現金引き出し</a></li><li><a href="#cashout">現金引き出し</a></li><li><a href="#meal-vouchers">食事券を受け付ける</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
   <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#gift-cards">ギフトカード</a></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
@@ -94,7 +94,7 @@
   <a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li></ul></li><li><a href="#history">
   取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Adyen機能を確認</a></li><li><a href="#terminal-checkout">任意の会計フロー</a>
-  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#mexican-installments">メキシコのカード分割払い</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#meal-vouchers">食事券を受け付ける</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
+  <ul><li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li><li><a href="#mexican-installments">メキシコのカード分割払い</a></li><li><a href="#partial-payments">一部承認の決済</a></li><li><a href="#split-payments">分割と現金</a></li><li><a href="#cashback">購入時の現金引き出し</a></li><li><a href="#cashout">現金引き出し</a></li><li><a href="#meal-vouchers">食事券を受け付ける</a></li><li><a href="#shopper-display">購入者向け画面</a></li><li>
   <a href="#giving">チャリティ寄付</a></li><li><a href="#keyed-entry">MOTOとMKE</a></li></ul></li><li><a href="#offline">オフライン決済
   </a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#shoppers">参照IDとカード保存</a><ul><li>
   <a href="#saved-card">トークンを管理する</a></li></ul></li><li><a href="#gift-cards">ギフトカード</a></li><li><a href="#payment-links">決済リンク</a></li><li><a href="#preauth">予約金
@@ -381,6 +381,18 @@
           <p>ギフトカードを設定している場合は、<strong>ギフトカード</strong>をタップして選んだ金額をギフトカードで支払えます。
             残高が足りない場合は一部が承認され、残りは引き続き受け取れます。ギフトカード決済の返金はカードに戻ります。
             ただしローカルギフトカードはMini mPOSの外で返金します。</p>
+          <h3 id="cashback">購入時の現金引き出し</h3>
+          <p>Adyenに店舗とカードプログラムの有効化を確認してから、設定 › 決済で購入時の現金引き出しを有効にします。上限額とマネージャーPINを設定してください。通貨や言語だけでは利用資格を確認できません。</p>
+          <p>会計で追加の現金額を入力し、対象カードを確認します。分割払い、部分承認、ギフトカード、食事券、メキシコの分割払い、チップ、Giving、音声案内、MOTO/MKE、リンク、トークン、スキャン式ウォレットは併用できま
+          せん。競合する選択肢は明示的にオフにしてください。</p>
+          <h3 id="cashout">現金引き出し</h3>
+          <p>ホームの現金引き出しは購入なしで現金を要求します。割り当て店舗でオーストラリアのeftposによる引き出しが有効であることをAdyenに別途確認してください。ローカルおよびクラウド端末に対応し、Tap to
+          Payには対応しません。</p>
+          <p>承認後、現金の承認額とカード請求額を確認します。購入のみが承認され、現金が拒否されても、それだけで商品代金が未払いになることはありません。承認額のみを渡し、「現金の引き渡しを記録」を選び、マネージャーPINで承認し
+          てください。過去の引き渡しを先に確認し、額が未報告なら現金を渡さないでください。</p>
+          <p>履歴には未解決の要求と未記録の引き渡しが残ります。結果が不明なら再要求せず状況を確認してください。レシート、再印刷、状況照会では引き渡しは記録されません。日次レポートは承認現金と引き渡した現金を売上と区別し、端末照
+          合ではカード請求額を比較します。参照付き返金は対象の商品代金のみを元のカードに戻し、渡した現金は返金しません。購入なしの引き出しには返金対象の商品がありません。</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/cashback-and-cash-out">Adyen: Cashback</a></p>
           <h3 id="meal-vouchers">食事券を受け付ける</h3>
           <p>発行会社との契約、店舗登録、Adyenでの有効化が済んでから、「設定」›「決済」で<strong>食事券</strong>をオンにしてください。
             対象の食事券は端末の確認済みの店舗の国で決まります。ブラジルのPAT食事券、ベルギー・フィンランド・ドイツ・ルクセンブルク・

@@ -256,6 +256,7 @@ class TerminalClient(
                 AmountsReq().apply {
                     currency = params.currency
                     requestedAmount = money.major(params.amountMinor, params.currency)
+                    cashBackAmount = params.cashBackMinor?.let { money.major(it, params.currency) }
                 }
         }
 

@@ -2,10 +2,13 @@ package app.minimpos.app.feature.settings
 
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.R
+import app.minimpos.app.data.settings.CashbackCard
 import app.minimpos.app.data.settings.GiftCardSetting
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
@@ -14,9 +17,12 @@ import app.minimpos.app.feature.giftcard.providerName
 import app.minimpos.app.terminal.DestinationCapabilities
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SectionHeader
+import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.core.giftcard.GiftCardEntry
 import app.minimpos.core.giftcard.GiftCardProvider
+import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.shopper.EmailReferenceMode
+import app.minimpos.app.data.settings.CashbackSettings as CashbackConfiguration
 
 /** Stores the payment settings with [transform] applied, through [SettingsEvents.onUpdate]. */
 internal fun SettingsEvents.onPaymentUpdate(transform: (PaymentSettings) -> PaymentSettings) =
@@ -73,6 +79,7 @@ internal fun ColumnScope.PaymentsSection(
         blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
     )
     MarketSettings(payment, update)
+    CashbackSettings(payment, update)
     SectionHeader(stringResource(R.string.settings_tokenization))
     ShopperReferenceSettings(payment, update)
     SectionHeader(stringResource(R.string.settings_payment_links))
@@ -316,5 +323,51 @@ private fun ColumnScope.SaveCardDefaults(
         { value -> update { it.copy(preAuthTokenizeDefaultOn = value) } },
         subtitle = stringResource(R.string.settings_pre_auth_tokenize_default_hint),
         tag = "preAuthTokenizeDefault",
+    )
+}
+
+/** Explicit Support/card enablement and local cash limit, separate for purchase-linked and standalone requests. */
+@Composable
+private fun ColumnScope.CashbackSettings(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    val cash = payment.cashback
+    val container = LocalAppContainer.current
+    val verified by container.walletDiscovery.state.collectAsStateWithLifecycle()
+    val currency = container.currency().code
+    val money = rememberMoneyFormatter(currency)
+    val change: ((CashbackConfiguration) -> CashbackConfiguration) -> Unit = { transform ->
+        update { it.copy(cashback = transform(it.cashback)) }
+    }
+    val confirm: (CashbackConfiguration) -> CashbackConfiguration = { value ->
+        value.confirmedFor(verified.context, verified.storeId, verified.storeCountry, currency)
+    }
+    SectionHeader(stringResource(R.string.cashback_title))
+    SettingSwitch(
+        stringResource(R.string.cashback_enable),
+        cash.enabled,
+        { value -> change { if (value) confirm(it).copy(enabled = true) else it.copy(enabled = false) } },
+        subtitle = stringResource(R.string.cashback_configuration),
+    )
+    SettingSwitch(
+        stringResource(R.string.cashout_enable),
+        cash.standalone,
+        { value -> change { if (value) confirm(it).copy(standalone = true) else it.copy(standalone = false) } },
+        subtitle = stringResource(R.string.cashout_configuration),
+    )
+    CashbackCard.entries.forEach { card ->
+        SettingSwitch(
+            card.name,
+            cash.card == card,
+            { checked -> change { it.selecting(card.takeIf { checked }) } },
+            subtitle = stringResource(R.string.cashback_card_hint),
+        )
+    }
+    SettingTextField(
+        stringResource(R.string.cashback_limit),
+        money.formatPlain(cash.limitMinor),
+        { value -> change { it.copy(limitMinor = CurrencySpec.of(currency).parseMinor(value) ?: 0) } },
+        supporting = stringResource(R.string.cashback_limit_hint),
     )
 }

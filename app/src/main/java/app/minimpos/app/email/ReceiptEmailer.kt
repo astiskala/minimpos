@@ -34,6 +34,7 @@ import javax.mail.MessagingException
  * @property linkIntro Paragraph above the unpaid receipt in a payment link email.
  * @property demoSubject Subject of an offline demo link or its receipt.
  * @property simulationNote Intro identifying a simulated link as non-payable.
+ * @property cashoutIntro Paragraph above a cash-out receipt, without describing a merchandise purchase.
  */
 data class EmailTexts(
     val appName: String,
@@ -48,6 +49,7 @@ data class EmailTexts(
     val linkIntro: String = "Pay securely online with the link or the QR code below.",
     val demoSubject: String = "Demo link",
     val simulationNote: String = "Simulation only. No money moved.",
+    val cashoutIntro: String = "Here is your cashout receipt.",
 )
 
 /**
@@ -83,6 +85,7 @@ class ReceiptEmailer(
         val words = texts
         val envelope =
             when (kind) {
+                ReceiptKind.CASHOUT -> Envelope(words.cashoutIntro, current.email.subject)
                 ReceiptKind.SALE -> Envelope(words.intro, current.email.subject)
                 ReceiptKind.PRE_AUTHORISATION -> Envelope(words.preAuthIntro, current.email.subject)
                 ReceiptKind.UNPAID_LINK -> Envelope(words.linkIntro, words.linkSubject)

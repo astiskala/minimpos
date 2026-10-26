@@ -372,6 +372,7 @@ class TerminalSimulator(
             poiData = poiData(payment.tender, payment.psp.takeUnless { payment.isOffline })
             paymentResult =
                 paymentResult(payment, amount.currency, authorizedAmount).apply {
+                    amountsResp.cashBackAmount = if (payment.approved) amount.cashBackAmount else null
                     request.paymentData?.instalment?.let {
                         paymentType = PaymentType.INSTALMENT
                         instalment = it

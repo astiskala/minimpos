@@ -8,6 +8,7 @@ import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.repo.TenderBalance
+import app.minimpos.app.data.settings.CashbackSettings
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.money.CurrencySpec
@@ -61,6 +62,8 @@ import app.minimpos.terminal.client.TransactionKind
  * @property giftCard Transient gift card this tender redeems (a split tender of an immediate sale); null for cards.
  * @property mealVoucher Meal-voucher market this tender pays from, frozen with its eligible amount and the verified
  *   store's [walletContext]; null for other tenders.
+ * @property cashBackMinor Cash requested in addition to the purchase, minor units; null for no cash.
+ * @property cashbackConfiguration Exact non-secret enablement the operator confirmed; checked again before sending.
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
  */
@@ -92,8 +95,20 @@ data class PaymentStart(
     val reviewedPaidMinor: Long = 0,
     val giftCard: PresentedGiftCard? = null,
     val mealVoucher: MealVoucherScheme? = null,
+    val cashBackMinor: Long? = null,
+    val cashbackConfiguration: CashbackSettings? = null,
 ) {
     init {
+        require(
+            cashBackMinor == null || (
+                cashBackMinor > 0 && cashbackConfiguration != null && kind == SaleKind.SALE && !tipOnReceipt && terminalTip == null &&
+                    !askGiving &&
+                    !audioGuidance && !allowPartialAuthorisation && tokenization == null && scannedPayment == null &&
+                    giftCard == null && mealVoucher == null && mexicanPayment == null && existingSaleId == null &&
+                    allocation == null && cardEntryOverride == CardEntryOverride.NORMAL && walletContext != null &&
+                    walletSetupIdentity != null && requestedAmountMinor == Math.addExact(totals.amounts.gross, cashBackMinor)
+            ),
+        ) { "Cashback requires a verified whole immediate card payment without other features" }
         require(
             mealVoucher == null || (
                 currency.code == mealVoucher.currency && kind == SaleKind.SALE && !tipOnReceipt && terminalTip == null &&
@@ -256,7 +271,9 @@ class SaleBook(
                 request.mealVoucher,
             )
         }
-        val split = request.requestedAmountMinor != request.totals.amounts.gross || request.allocation != null
+        val split =
+            request.cashBackMinor == null &&
+                (request.requestedAmountMinor != request.totals.amounts.gross || request.allocation != null)
         val voucher = request.mealVoucher
         if (voucher != null && !splitBalance(request).acceptsVoucher(request.requestedAmountMinor, voucher)) return false
         if (split && !splitBalance(request).accepts(request.requestedAmountMinor, request.allocation)) return false
@@ -267,6 +284,7 @@ class SaleBook(
             tender.copy(
                 serviceId = serviceId,
                 mexicanPayment = request.mexicanPayment?.name,
+                requestedCashBackMinor = request.cashBackMinor,
                 mealVoucher = request.mealVoucher?.name,
                 giftCard =
                     request.giftCard
@@ -315,7 +333,9 @@ class SaleBook(
                 mexicanPayment = request.mexicanPayment,
                 giftCard = request.giftCard?.let { GiftCardPayment(it.account, GiftCardUse.REDEEM) },
                 mealVoucherAccount = request.mealVoucher?.selection == VoucherSelection.ACCOUNT_TYPE,
+                cashBackMinor = request.cashBackMinor,
             ),
+            cashbackIdentity = request.cashbackConfiguration?.identity,
             audioGuidancePoiId = request.audioGuidancePoiId,
             expected = request.walletContext,
             setupIdentity = request.walletSetupIdentity,
@@ -424,6 +444,7 @@ class SaleBook(
                 tipOnReceipt = request.tipOnReceipt,
                 audioGuidance = request.audioGuidance,
                 tenderRequestedMinor = request.requestedAmountMinor,
+                requestedCashBackMinor = request.cashBackMinor,
             )
         }
 

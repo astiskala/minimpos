@@ -1273,7 +1273,7 @@
     <string name="surcharge_unknown_refund_count">Reembolsos com sobretaxa não informada</string>
     <string name="surcharge_remaining_unknown">A sobretaxa não foi informada. O valor restante da compra é desconhecido. Confira na Customer Area ou reembolse este cartão antes de recomeçar.</string>
     <string name="split_open">Dividir ou pagar em dinheiro</string>
-    <string name="split_blocked">Desative gorjetas, doações, orientação por áudio e MOTO ou digitação manual para dividir esta venda.</string>
+    <string name="split_blocked">Desative saque com compra, parcelamento, gorjetas, doações, áudio e MOTO ou entrada manual para dividir esta venda.</string>
     <string name="split_title">Dividir pagamento</string>
     <string name="split_unavailable">Nada pode ser dividido agora. A venda deve ter saldo devido e nenhum pagamento em andamento.</string>
     <string name="split_collect_balance">Cobrar saldo</string>
@@ -1464,4 +1464,27 @@
     <string name="voucher_requested">Vale-refeição: %1$s</string>
     <string name="voucher_returned">Vale informado: %1$s</string>
     <string name="voucher_not_refundable">Não reembolsável</string>
+    <string name="cashback_title">Saque com compra</string>
+    <string name="cashout_title">Saque</string>
+    <string name="cashback_enable">Ativar saque com compras</string>
+    <string name="cashout_enable">Ativar saque sem compra</string>
+    <string name="cashback_configuration">Confirme a ativação da loja e do programa de cartões pela Adyen. Exige loja verificada, limite local e PIN de gerente.</string>
+    <string name="cashout_configuration">Somente eftpos australiano permite saque sem compra aqui. Confirme a ativação separada com a Adyen.</string>
+    <string name="cashback_card_hint">Confirme com a Adyen a elegibilidade do programa e da loja atribuída.</string>
+    <string name="cashback_limit">Limite local de saque</string>
+    <string name="cashback_limit_hint">Máximo por solicitação na moeda de pagamento. Confirme limites do emissor e da loja com a Adyen.</string>
+    <string name="cashback_requested">Saque solicitado</string>
+    <string name="cashback_approved">Saque aprovado</string>
+    <string name="cashback_card_charge">Cobrança no cartão</string>
+    <string name="cashback_card_confirm">Confirmei que o cliente tem um cartão %1$s elegível</string>
+    <string name="cashback_unavailable">Indisponível: confira ativação, cartão, loja verificada, destino e limite em Configurações.</string>
+    <string name="cashback_conflicts">Confirme o cartão e o valor dentro do limite. Use uma venda inteira sem divisão, autorização parcial, gorjeta, Giving, áudio, entrada especial ou salvamento de cartão.</string>
+    <string name="cashback_handover">Registrar dinheiro entregue</string>
+    <string name="cashback_handover_confirm">Confirme somente após entregar o valor aprovado. Confira entregas anteriores. Recibos e consultas de status não confirmam a entrega.</string>
+    <string name="cashback_handed_over">Dinheiro entregue</string>
+    <string name="cashback_not_handed_over">Nenhuma entrega registrada</string>
+    <string name="cashback_missing_amount">Valores de saque ausentes ou inconsistentes. Não entregue dinheiro; verifique o pagamento original na Customer Area.</string>
+    <string name="cashout_confirm">Solicitar %1$s sem compra? Entregue somente o valor aprovado pelo terminal e registre a entrega.</string>
+    <string name="cashout_start">Sacar %1$s</string>
+    <string name="email_cashout_intro">Aqui está seu recibo de saque.</string>
 </resources>

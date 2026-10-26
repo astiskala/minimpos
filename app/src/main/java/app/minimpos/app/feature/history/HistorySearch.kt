@@ -5,6 +5,7 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.cashout
 import app.minimpos.app.history.methodCode
 import app.minimpos.app.history.standing
 import app.minimpos.core.money.CurrencySpec
@@ -126,7 +127,8 @@ class HistorySearch(
         val (currency, amounts) =
             when (item) {
                 is HistoryItem.Sale -> {
-                    item.sale.currency to setOf(item.sale.amountMinor, item.sale.totalMinor)
+                    item.sale.currency to
+                        setOfNotNull(item.sale.amountMinor, item.sale.totalMinor, item.sale.requestedCashBackMinor, item.sale.cashBackMinor)
                 }
 
                 is HistoryItem.Refund -> {
@@ -155,6 +157,8 @@ class HistorySearch(
 
     private fun saleTexts(sale: SaleEntity): List<String> =
         listOfNotNull(
+            "cashback".takeIf { sale.requestedCashBackMinor != null },
+            "cashout".takeIf { sale.cashout },
             sale.merchantReference,
             sale.pspReference,
             sale.authCode,
@@ -221,7 +225,7 @@ enum class HistoryFilter {
             }
 
             SALES -> {
-                item is HistoryItem.Sale && item.sale.kind == SaleKind.SALE
+                item is HistoryItem.Sale && item.sale.kind == SaleKind.SALE && !item.sale.cashout
             }
 
             AWAITING_TIP -> {

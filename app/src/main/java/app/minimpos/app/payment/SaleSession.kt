@@ -5,6 +5,7 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.settings.AppSettings
+import app.minimpos.app.data.settings.CashbackSettings
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
@@ -46,6 +47,8 @@ import kotlin.uuid.Uuid
  * @property audioGuidanceConfirmedFor POIID whose software, Support enablement and non-signature card flow the operator confirmed.
  * @property cardEntryOverride Selected card entry mode (`NORMAL`, `MOTO` or `MKE`).
  * @property mexicanPayment Shopper-selected Mexican debit/credit routing; null uses ordinary terminal routing.
+ * @property cashBackMinor Cash requested beyond merchandise in minor units; zero means none.
+ * @property cashbackConfirmation Exact configuration whose card program the operator confirmed; changes require reconfirmation.
  */
 data class CheckoutForm(
     val transactionReference: String = "",
@@ -59,6 +62,8 @@ data class CheckoutForm(
     val audioGuidanceConfirmedFor: String? = null,
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
     val mexicanPayment: MexicanPayment? = null,
+    val cashBackMinor: Long = 0,
+    val cashbackConfirmation: CashbackSettings? = null,
 )
 
 /**
@@ -123,12 +128,19 @@ class SaleSession(
         terminal: Flow<TerminalState> = flowOf(TerminalState()),
         wallets: Flow<WalletAvailability> = flowOf(WalletAvailability()),
         offersLinks: Boolean = true,
+        managerConfigured: Flow<Boolean> = flowOf(false),
         currency: (AppSettings) -> CurrencySpec,
     ): Flow<Checkout> =
         flow {
             val prices = CheckoutPrices()
             emitAll(
-                combine(snapshot, settings, terminal, wallets) { snapshot, appSettings, status, availableWallets ->
+                combine(
+                    snapshot,
+                    settings,
+                    terminal,
+                    wallets,
+                    managerConfigured,
+                ) { snapshot, appSettings, status, availableWallets, manager ->
                     val payment = appSettings.payment
                     val resolvedCurrency = currency(appSettings)
                     val caps = status.capabilities
@@ -150,6 +162,8 @@ class SaleSession(
                         audioGuidanceMinimumSoftware = status.audioGuidanceMinimumSoftware,
                         audioGuidanceSimulated = status.apiSetup == ApiSetup.Simulated,
                         audioGuidanceTarget = status.poiId,
+                        managerConfigured = manager,
+                        cashbackAvailable = Cashback.ready(payment.cashback, availableWallets, resolvedCurrency.code, false),
                         mexicanRoutingAvailable = availableWallets.mexicanRouting,
                         mexicanContext = availableWallets.context,
                         mexicanIdentity = availableWallets.identity,

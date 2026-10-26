@@ -1261,7 +1261,7 @@
     <string name="surcharge_unknown_refund_count">附加費未報告的退款筆數</string>
     <string name="surcharge_remaining_unknown">附加費未報告，剩餘購買金額不明。請在 Customer Area 核實，或先向此卡退款再重新收款。</string>
     <string name="split_open">拆分或以現金付款</string>
-    <string name="split_blocked">如要拆分此筆銷售，請關閉小費、捐款、語音指引及 MOTO 或手動輸入。</string>
+    <string name="split_blocked">要分單收款，請關閉購物提款、分期、小費、捐款、語音指引以及 MOTO 或手動輸入。</string>
     <string name="split_title">拆分付款</string>
     <string name="split_unavailable">目前無法拆分。此筆銷售必須有待付餘額，且沒有進行中的付款。</string>
     <string name="split_collect_balance">收取餘額</string>
@@ -1452,4 +1452,27 @@
     <string name="voucher_requested">餐券：%1$s</string>
     <string name="voucher_returned">回報的餐券：%1$s</string>
     <string name="voucher_not_refundable">不可退款</string>
+    <string name="cashback_title">購物提款</string>
+    <string name="cashout_title">提款</string>
+    <string name="cashback_enable">啟用購物提款</string>
+    <string name="cashout_enable">啟用獨立提款</string>
+    <string name="cashback_configuration">請確認 Adyen 已為此門店及卡計劃啟用此功能。需要已驗證的門店、本地限額及經理 PIN。</string>
+    <string name="cashout_configuration">此處僅澳洲 eftpos 支援獨立提款。請向 Adyen 確認已獨立啟用。</string>
+    <string name="cashback_card_hint">請向 Adyen 確認此卡計劃及已分配門店的資格。</string>
+    <string name="cashback_limit">本地提款限額</string>
+    <string name="cashback_limit_hint">每筆請求的現金上限，使用付款貨幣。請向 Adyen 確認發卡行及門店限額。</string>
+    <string name="cashback_requested">要求提款金額</string>
+    <string name="cashback_approved">批准提款金額</string>
+    <string name="cashback_card_charge">卡扣款金額</string>
+    <string name="cashback_card_confirm">我已確認顧客持有合資格的 %1$s 卡</string>
+    <string name="cashback_unavailable">未能使用：請在設定中檢查啟用狀態、卡計劃、已驗證門店、收款終端及限額。</string>
+    <string name="cashback_conflicts">請確認合資格的卡，並輸入限額內金額。須整筆刷卡，不可與分單、部分授權、小費、Giving、語音指引、特殊輸入或儲存卡同時使用。</string>
+    <string name="cashback_handover">記錄現金已交付</string>
+    <string name="cashback_handover_confirm">僅在將批准的現金交給顧客後確認。請先檢查以往交付記錄。收據及狀態查詢並不代表現金已交付。</string>
+    <string name="cashback_handed_over">現金已交付</string>
+    <string name="cashback_not_handed_over">尚無現金交付記錄</string>
+    <string name="cashback_missing_amount">現金金額缺失或不一致。請勿交付現金；請在 Customer Area 中核查原始付款。</string>
+    <string name="cashout_confirm">要求無購物提款 %1$s？僅交付終端批准的現金，然後記錄交付。</string>
+    <string name="cashout_start">提款 %1$s</string>
+    <string name="email_cashout_intro">這是您的提款收據。</string>
 </resources>

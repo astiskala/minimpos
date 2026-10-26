@@ -131,15 +131,17 @@ sealed interface TerminalOperation {
      * @property audioGuidancePoiId Confirmed audio-guidance terminal; null for ordinary payments.
      * @property expected Checked destination for scanned or Mexican-routed payments; null for ordinary collection.
      * @property setupIdentity Exact checked store/scan setup fingerprint; null for ordinary collection.
+     * @property cashbackIdentity Non-secret configuration identity confirmed for a cash request; null for ordinary collection.
      */
     data class Pay(
         val params: PaymentParams,
         val audioGuidancePoiId: String? = null,
         val expected: PaymentContext? = null,
         val setupIdentity: String? = null,
+        val cashbackIdentity: String? = null,
     ) : TerminalOperation {
         override val amount: OperationAmount get() = OperationAmount(params.amountMinor, params.currency)
-        override val needsApproval: Boolean get() = params.cardEntryOverride.needsManagerApproval
+        override val needsApproval: Boolean get() = params.cashBackMinor != null || params.cardEntryOverride.needsManagerApproval
     }
 
     /**
@@ -349,6 +351,16 @@ class TransactionLifecycle<R>(
             Recheck.Settled
         }
 
+    private suspend fun allowed(
+        operation: TerminalOperation,
+        grant: ManagerApproval.Grant,
+    ): Boolean =
+        when {
+            operation is TerminalOperation.Pay && operation.params.cashBackMinor != null -> approval.allowsConfigured(grant)
+            operation.needsApproval -> approval.allows(grant)
+            else -> true
+        }
+
     private suspend fun run(
         id: String,
         request: R,
@@ -368,7 +380,7 @@ class TransactionLifecycle<R>(
         }
         val operation = book.operation(request)
         val attempt =
-            if (operation.needsApproval && !approval.allows(grant)) {
+            if (!allowed(operation, grant)) {
                 Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
             } else {
                 when (operation) {
@@ -379,6 +391,7 @@ class TransactionLifecycle<R>(
                             audioGuidancePoiId = operation.audioGuidancePoiId,
                             expected = operation.expected,
                             expectedIdentity = operation.setupIdentity,
+                            cashbackIdentity = operation.cashbackIdentity,
                             onSending = onSending,
                             onContext = { book.recordContext(id, it) },
                         )

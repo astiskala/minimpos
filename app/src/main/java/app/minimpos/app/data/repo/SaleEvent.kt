@@ -32,6 +32,17 @@ import java.time.Instant
  * other.
  */
 sealed interface SaleEvent {
+    /** Local cash recordings, dispatched together without terminal outcomes. */
+    sealed interface CashEvent : SaleEvent
+
+    /** Explicit operator cash handover, stamped only at persistence. */
+    data class CashHandedOver(
+        /** Recording time in epoch milliseconds; null until persisted. */
+        val at: Long? = null,
+    ) : CashEvent {
+        override fun stamped(now: Long): SaleEvent = copy(at = at ?: now)
+    }
+
     /**
      * This event with the time it records stamped: the happening's own ([Settled.processedAt],
      * [CaptureSending.startedAt], [CaptureAnswered.processedAt]) taken from the terminal's own timestamp when it sent
@@ -76,7 +87,7 @@ sealed interface SaleEvent {
         val cash: CashPayment,
         val paidMinor: Long,
         val processedAt: Long? = null,
-    ) : SaleEvent {
+    ) : CashEvent {
         override fun stamped(now: Long): SaleEvent = copy(processedAt = processedAt ?: now)
     }
 
@@ -317,7 +328,7 @@ val SaleEntity.retentionEligible: Boolean
             }
 
             SaleStatus.APPROVED -> {
-                !adjustmentPending && !isPartiallyPaid &&
+                !cashAwaitingHandover && !adjustmentPending && !isPartiallyPaid &&
                     (!manualCapture || holdCancelled || captureStatus?.captured == true)
             }
 
@@ -329,16 +340,16 @@ val SaleEntity.retentionEligible: Boolean
 /** This sale after [event] happened to it. */
 fun SaleEntity.after(event: SaleEvent): SaleEntity =
     when (event) {
+        is SaleEvent.CashEvent -> {
+            cashEvent(event)
+        }
+
         is SaleEvent.Sending -> {
             copy(poiId = event.poiId)
         }
 
         is SaleEvent.TenderOpened -> {
             openedTender(event)
-        }
-
-        is SaleEvent.CashTendered -> {
-            cashTendered(event)
         }
 
         is SaleEvent.Settled -> {
@@ -570,6 +581,7 @@ private fun SaleEntity.settledAmounts(
     details: TransactionDetails,
 ): Pair<Long?, Long> {
     if (event.status != SaleStatus.APPROVED || manualCapture || event.repeated) return null to paidMinor
+    if (requestedCashBackMinor != null) return null to totalMinor
     val terminalTipMinor = details.tipMinor?.takeIf { it > 0 }
     val reportedMinor = details.amountMinor
     val remaining = totalMinor - paidMinor
@@ -725,3 +737,12 @@ internal fun SaleWithLines.refundedBy(refund: RefundEntity): SaleWithLines {
     val total = if (refund.full && refund.tenderId == null) sale.amountMinor else Math.addExact(sale.refundedMinor, refund.amountMinor)
     return copy(sale = sale.copy(refundedMinor = total.coerceAtMost(sale.amountMinor)), lines = refundedLines)
 }
+
+/** Cash approved but not handed over, or an approved cash request whose returned cash amount is unreported. */
+val SaleEntity.cashAwaitingHandover: Boolean get() = cashHandover?.needsAttention == true
+
+private fun SaleEntity.cashEvent(event: SaleEvent.CashEvent): SaleEntity =
+    when (event) {
+        is SaleEvent.CashTendered -> cashTendered(event)
+        is SaleEvent.CashHandedOver -> if (cashHandover?.canRecord == true) copy(cashHandedOverAt = event.at) else this
+    }

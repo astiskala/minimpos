@@ -142,6 +142,14 @@ class SaleRepository(
         dao.upsertTender(cashTender(sale.id, 1, stamped, allocation, environment))
     }
 
+    /** Records an approved cash payout once, sharing the cash owner with gift-card handovers. */
+    suspend fun recordCashHandover(id: String): Boolean =
+        db.withTransaction {
+            val sale = dao.header(id) ?: return@withTransaction false
+            if (sale.cashHandover?.canRecord != true) return@withTransaction false
+            record(id, SaleEvent.CashHandedOver())
+        }
+
     /** Returns the sale with ID [id] and its lines, or null if there is none (for example after pruning). */
     suspend fun get(id: String): SaleWithLines? = dao.sale(id)
 

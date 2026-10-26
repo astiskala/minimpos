@@ -106,11 +106,12 @@ class ConsistentPatternsTest {
         compose.onNodeWithText(env.context.getString(R.string.action_cancel)).performClick()
         compose.onNodeWithTag("productGrid").assertDoesNotExist()
         // History needs no setup.
-        compose.onNodeWithTag("history").performClick()
+        compose.onNodeWithTag("history").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("back"), 15_000)
         compose.onNodeWithTag("back").performClick()
         compose
             .onNodeWithTag("terminalSetup")
+            .performScrollTo()
             .assertTextContains(env.context.getString(R.string.setup_required_title), substring = true)
             .assertTextContains(env.context.getString(R.string.home_setup_text), substring = true)
             .performClick()

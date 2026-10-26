@@ -19,7 +19,9 @@ import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.repo.RefundedLine
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.after
+import app.minimpos.app.data.repo.cashAwaitingHandover
 import app.minimpos.app.data.repo.refundedBy
+import app.minimpos.app.data.repo.retentionEligible
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.SaleResultNext
@@ -81,6 +83,47 @@ class SaleEventTest {
     private fun SaleEntity.actions() = SaleWithLines(this, emptyList()).actions
 
     private fun SaleEntity.afterAll(vararg events: SaleEvent): SaleEntity = events.fold(this) { sale, event -> sale.after(event) }
+
+    @Test
+    fun `cashback partial means purchase paid and cash refused with no merchandise remainder`() {
+        val requested = pending.copy(requestedCashBackMinor = 500, tenderRequestedMinor = 2500)
+        val answer = approved.copy(partial = true, amountMinor = 2000, cashBackMinor = 0, surchargeMinor = 0)
+        val paid = requested.after(SaleEvent.Settled(SaleStatus.APPROVED, null, answer))
+        assertThat(paid.paidMinor).isEqualTo(2000)
+        assertThat(paid.remainingMinor).isEqualTo(0)
+        assertThat(paid.cashBackMinor).isEqualTo(0)
+        assertThat(paid.cashHandedOverAt).isNull()
+        assertThat(paid.retentionEligible).isTrue()
+    }
+
+    @Test
+    fun `a smaller reported cash amount remains authoritative without creating an unpaid purchase balance`() {
+        val requested = pending.copy(requestedCashBackMinor = 500, tenderRequestedMinor = 2500)
+        val answer = approved.copy(partial = true, amountMinor = 2250, cashBackMinor = 250, surchargeMinor = 0)
+        val paid = requested.after(SaleEvent.Settled(SaleStatus.APPROVED, null, answer))
+        assertThat(paid.paidMinor).isEqualTo(2000)
+        assertThat(paid.remainingMinor).isEqualTo(0)
+        assertThat(paid.cashBackMinor).isEqualTo(250)
+        assertThat(paid.cashHandedOverAt).isNull()
+    }
+
+    @Test
+    fun `cash approval and recorded handover are independent and repeated recovery cannot repeat handover`() {
+        val requested = pending.copy(requestedCashBackMinor = 500, tenderRequestedMinor = 2500)
+        val answer = approved.copy(amountMinor = 2500, cashBackMinor = 500, surchargeMinor = 0)
+        val paid = requested.after(SaleEvent.Settled(SaleStatus.APPROVED, null, answer))
+        assertThat(paid.retentionEligible).isFalse()
+        assertThat(paid.cashAwaitingHandover).isTrue()
+        val handed = paid.after(SaleEvent.CashHandedOver().stamped(100))
+        assertThat(handed.cashHandedOverAt).isEqualTo(100)
+        assertThat(handed.after(SaleEvent.CashHandedOver().stamped(200))).isEqualTo(handed)
+        assertThat(handed.after(SaleEvent.Settled(SaleStatus.APPROVED, null, answer, repeated = true)).cashHandedOverAt).isEqualTo(100)
+        assertThat(handed.retentionEligible).isTrue()
+        val unreported = requested.after(SaleEvent.Settled(SaleStatus.APPROVED, null, answer.copy(cashBackMinor = null)))
+        assertThat(unreported.cashAwaitingHandover).isTrue()
+        assertThat(unreported.after(SaleEvent.CashHandedOver().stamped(300)).cashHandedOverAt).isNull()
+        assertThat(unreported.retentionEligible).isFalse()
+    }
 
     @Test
     fun `partial card approvals keep purchases tips and fees separate across tenders`() {

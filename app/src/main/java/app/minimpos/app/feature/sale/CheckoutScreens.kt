@@ -66,6 +66,7 @@ import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.SaleResultNext
+import app.minimpos.app.history.cashout
 import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.history.standing
 import app.minimpos.app.payment.Checkout
@@ -128,7 +129,7 @@ fun CheckoutScreen(
         navigator = navigator,
         kind = kind,
         actions = CheckoutCallbacks(vm::pay, vm::scanWallet, vm::sendLink, vm::update),
-        tokens = tokens.isNotEmpty() && !state.form.audioGuidance && state.form.mexicanPayment == null,
+        tokens = state.form.cashBackMinor == 0L && tokens.isNotEmpty() && !state.form.audioGuidance && state.form.mexicanPayment == null,
         onChooseToken = { choosingToken = true },
         modifier = modifier,
     )
@@ -404,7 +405,7 @@ private fun CheckoutActions(
             text =
                 stringResource(
                     if (state.preAuthorisation) R.string.pre_auth_charge else R.string.checkout_pay,
-                    money.format(state.totals.amounts.gross),
+                    money.format(state.requestedCardMinor),
                 ),
             enabled = state.canPay,
             onClick = pay,
@@ -605,6 +606,7 @@ private fun ColumnScope.CheckoutSwitches(
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
 ) {
     MexicanPaymentChoices(state, onUpdate)
+    CashbackChoices(state, onUpdate)
     AudioGuidanceSwitches(state, onUpdate)
     if (state.canTokenize) {
         SaveCardSwitch(
@@ -766,6 +768,7 @@ private fun checkoutViewModel(kind: SaleKind): CheckoutViewModel {
             walletPayments = container.walletPayments,
             discovery = container.walletDiscovery,
             charges = container.savedCardCharges.takeIf { kind == SaleKind.SALE },
+            managerConfigured = container.managerPin.pinConfigured,
         )
     }
 }
@@ -859,7 +862,7 @@ fun SaleResultScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val record = state.record
     val money = rememberMoneyFormatter(record?.sale?.currency ?: PaymentSettings.FALLBACK_CURRENCY)
-    val ringUp = Route.ringUp(state.kind)
+    val ringUp = resultOrigin(state)
     val gate = currentSetupGate()
 
     fun done(route: Route) {
@@ -884,7 +887,7 @@ fun SaleResultScreen(
                             onPayRemaining = { gate.run { if (vm.payRemaining()) navigator.replace(Route.Payment(state.kind)) } },
                         ) {
                             vm.finish()
-                            navigator.replace(Route.Checkout(state.kind))
+                            navigator.replace(if (ringUp == Route.Cashout) Route.Cashout else Route.Checkout(state.kind))
                         },
                 )
             }
@@ -900,6 +903,7 @@ fun SaleResultScreen(
                     Modifier.testTag("paymentTroubleshooting"),
                 )
             }
+            CashbackHandover(record.sale, navigator)
             SalePaymentCard(record.sale)
             SplitProgress(record, money) { navigator.push(Route.Split(saleId = saleId)) }
             if (state.approved) {
@@ -964,7 +968,13 @@ private fun saleResultNext(
 
         SaleResultNext.NEW_SALE -> {
             ResultAction(
-                stringResource(if (state.preAuthorisation) R.string.result_new_pre_auth else R.string.result_new_sale),
+                stringResource(
+                    when {
+                        sale.cashout -> R.string.cashout_title
+                        state.preAuthorisation -> R.string.result_new_pre_auth
+                        else -> R.string.result_new_sale
+                    },
+                ),
                 "newSaleAfter",
                 onNewSale,
             )
@@ -1056,3 +1066,8 @@ private fun saleResultViewModel(saleId: String): SaleResultViewModel {
 
 /** The width from which the action bar puts Scan wallet and Create payment link side by side. */
 private val SIDE_BY_SIDE_ACTIONS_WIDTH = 480.dp
+
+private fun resultOrigin(state: SaleResultUiState): Route {
+    val sale = state.record?.sale
+    return if (sale?.cashout == true) Route.Cashout else Route.ringUp(state.kind)
+}

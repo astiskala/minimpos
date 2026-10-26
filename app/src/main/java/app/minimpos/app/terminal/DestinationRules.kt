@@ -48,7 +48,10 @@ sealed interface DestinationRules {
     /** Mexican POS routing is documented for payment terminals; the Payments app has no documented support. */
     val mexicanInstallments: Boolean get() = supportsTerminalFeatures
 
-    /** Meal vouchers are documented for payment terminals; Adyen's mobile support matrix does not list them. */
+    /** Terminal API cashback; market and card enablement are separate. */
+    val cashback: Boolean get() = supportsTerminalFeatures
+
+    /** Meal vouchers are documented for payment terminals; the mobile support matrix does not list them. */
     val mealVouchers: Boolean get() = supportsTerminalFeatures
 
     /** Whether receipt print requests are supported, independently of printer hardware and local preferences. */

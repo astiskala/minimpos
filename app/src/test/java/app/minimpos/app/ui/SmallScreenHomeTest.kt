@@ -62,6 +62,34 @@ class SmallScreenHomeTest {
     private fun waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
 
     @Test
+    @Config(qualifiers = "ja-rJP-w320dp-h460dp-hdpi")
+    fun `Japanese final home fits AMS1`() = homeTextsShareSizes()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese final home fits AMS1`() = homeTextsShareSizes()
+
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese final home fits AMS1`() = homeTextsShareSizes()
+
+    @Test
+    fun `final home keeps sale and preauth full width then tokens gift refund cashout history reconciliation`() {
+        compose.setContent { MiniMposApp(container) }
+        waitForTag("newSale")
+        val rows = listOf("savedCard" to "giftCards", "refund" to "cashout", "history" to "reconciliation")
+        var previous = compose.onNodeWithTag("preAuth").getUnclippedBoundsInRoot().bottom
+        rows.forEach { (left, right) ->
+            val a = compose.onNodeWithTag(left).getUnclippedBoundsInRoot()
+            val b = compose.onNodeWithTag(right).getUnclippedBoundsInRoot()
+            assertThat(a.top).isEqualTo(b.top)
+            assertThat(a.left).isLessThan(b.left)
+            assertThat(a.top).isAtLeast(previous)
+            previous = a.bottom
+        }
+    }
+
+    @Test
     fun `home tiles keep their labels and touch size beside the setup card on the smallest terminal`() {
         compose.setContent { MiniMposApp(container) }
         assertHomeTilesUsable()
@@ -139,6 +167,7 @@ class SmallScreenHomeTest {
                 "savedCard" to R.string.home_saved_card,
                 "giftCards" to R.string.home_gift_cards,
                 "refund" to R.string.home_refund,
+                "cashout" to R.string.cashout_title,
                 "history" to R.string.home_history,
                 "reconciliation" to R.string.home_reconciliation,
             )
@@ -189,6 +218,7 @@ class SmallScreenHomeTest {
             "savedCard" to R.string.home_saved_card,
             "giftCards" to R.string.home_gift_cards,
             "refund" to R.string.home_refund,
+            "cashout" to R.string.cashout_title,
             "history" to R.string.home_history,
             "reconciliation" to R.string.home_reconciliation,
         ).forEach { (tag, label) ->

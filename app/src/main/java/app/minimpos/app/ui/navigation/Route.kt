@@ -185,6 +185,16 @@ sealed interface Route : NavKey {
      */
     @Serializable data object GiftCards : Route
 
+    /** Standalone card cash-out, with separately verified support and explicit cash handover. */
+    @Serializable data object Cashout : Route
+
+    /** Records the approved cash of [saleId] handed to the shopper once. */
+    @Serializable data class CashbackHandover(
+        val saleId: String,
+    ) : Route {
+        override val requiresSetup get() = false
+    }
+
     /**
      * Waiting for a gift-card activity's terminal requests, then its result.
      *

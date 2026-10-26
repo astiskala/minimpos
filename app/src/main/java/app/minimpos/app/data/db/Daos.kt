@@ -16,7 +16,7 @@ private const val SALE_HISTORY_COLUMNS = """
     tokenizationRequested, storedPaymentMethodId, serviceId, poiId, poiTransactionId, poiTimestamp,
     pspReference, paymentBrand, maskedPan, entryMode, authCode, message, NULL AS customerReceiptJson,
     NULL AS cashierReceiptJson, signatureRequired, refundedMinor, emailedTo, errorCondition,
-    refusalReason, kind, tipOnReceipt, audioGuidance, tipMinor, surchargeMinor, terminalPaidMinor, cashBackMinor, tenderRequestedMinor, authorisedMinor, adjustment, NULL AS
+    refusalReason, kind, tipOnReceipt, audioGuidance, tipMinor, surchargeMinor, terminalPaidMinor, cashBackMinor, requestedCashBackMinor, cashHandedOverAt, tenderRequestedMinor, authorisedMinor, adjustment, NULL AS
     adjustAuthorisationData, capturedMinor, captureStatus, modificationMessage, paymentMethodVariant,
     holdCancelled, paymentLink, paymentLinkId, paymentLinkUrl, paymentLinkExpiresAt, reason,
     modificationReason, context, linkLocale, linkCountry, linkRecurringModel, adjustmentKey,
@@ -252,7 +252,7 @@ interface SaleDao {
         pspReference, paymentBrand, maskedPan, createdAt, tipMinor, surchargeMinor, cashBackMinor, serviceId, context,
         poiReconciliationId, NULL AS customerReceiptJson, NULL AS cashierReceiptJson, kind, allocationJson,
         cashReceivedMinor, changeMinor, environment, giftCard, mexicanPayment, returnedPaymentType, returnedInstallments, returnedPlanId,
-        mealVoucher, fundingSource, paymentMethodVariant FROM sale_tenders WHERE saleId IN (:ids)""",
+        mealVoucher, fundingSource, paymentMethodVariant, requestedCashBackMinor FROM sale_tenders WHERE saleId IN (:ids)""",
     )
     suspend fun historyTenders(ids: List<String>): List<SaleTenderEntity>
 

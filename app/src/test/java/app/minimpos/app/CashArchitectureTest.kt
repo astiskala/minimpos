@@ -42,6 +42,8 @@ class CashArchitectureTest {
             refund: RefundEntity,
         ) = refunds.recordCashReturn(refund, null)
 
+        suspend fun cardCash(sales: SaleRepository) = sales.recordCashHandover("c")
+
         suspend fun handOver(giftCards: GiftCardRepository) = giftCards.recordCashHandover("h")
     }
 
@@ -64,7 +66,7 @@ class CashArchitectureTest {
                     .that()
                     .haveNameNotMatching(except(CashTenders::class.java))
                     .should()
-                    .callMethodWhere(callTo(SaleRepository::class.java, "recordCash", "createCash")),
+                    .callMethodWhere(callTo(SaleRepository::class.java, "recordCash", "createCash", "recordCashHandover")),
                 noClasses()
                     .that()
                     .haveNameNotMatching(except(RefundLegs::class.java))

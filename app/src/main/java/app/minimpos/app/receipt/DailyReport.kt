@@ -17,6 +17,12 @@ import java.util.Locale
 
 /** Localized daily-summary labels, read at printing rather than retained in financial records. */
 enum class ReportText {
+    /** Cash approved by card issuers, excluded from sales. */
+    CASHBACK,
+
+    /** Card cash physically handed over by staff. */
+    CASH_HANDED_OVER,
+
     /** Local-summary document title. */
     TITLE,
 
@@ -172,6 +178,8 @@ internal object DailyReport {
             val money = MoneyFormatter(CurrencySpec.of(code), locale)
             add(ReceiptElement.Text(code, style = TextStyle.BOLD))
             add(ReceiptElement.Row("${text(ReportText.SALES)} (${total.saleCount})", money.format(total.salesMinor)))
+            add(ReceiptElement.Row(text(ReportText.CASHBACK), money.format(total.cashbackMinor)))
+            add(ReceiptElement.Row(text(ReportText.CASH_HANDED_OVER), money.format(total.cashHandedOverMinor)))
             add(ReceiptElement.Row(text(ReportText.TIPS), money.format(total.tipsMinor)))
             add(ReceiptElement.Row(text(ReportText.PURCHASE), money.format(total.purchaseMinor)))
             add(ReceiptElement.Row(text(ReportText.SURCHARGES), money.format(total.surchargesMinor)))

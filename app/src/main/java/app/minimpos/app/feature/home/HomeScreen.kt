@@ -308,11 +308,12 @@ private fun ColumnScope.AreaTiles(onOpen: (Route) -> Unit) {
     val savedCard = stringResource(R.string.home_saved_card)
     val giftCards = stringResource(R.string.home_gift_cards)
     val refund = stringResource(R.string.home_refund)
+    val cashout = stringResource(R.string.cashout_title)
     val history = stringResource(R.string.home_history)
     val reconciliation = stringResource(R.string.home_reconciliation)
     val labels =
         rememberSharedFontSize(
-            listOf(savedCard, giftCards, refund, history, reconciliation),
+            listOf(savedCard, giftCards, refund, cashout, history, reconciliation),
             MaterialTheme.typography.titleMedium,
             MIN_TILE_LABEL_SIZE,
         )
@@ -341,23 +342,14 @@ private fun ColumnScope.AreaTiles(onOpen: (Route) -> Unit) {
             modifier = Modifier.testTag("refund"),
         )
         HomeTile(
-            Icons.AutoMirrored.Filled.ReceiptLong,
-            history,
-            labels,
-            onClick = { onOpen(Route.History) },
-            modifier = Modifier.testTag("history"),
-        )
-    }
-    // Row-major among the implemented areas; the last one takes the whole row rather than leaving an empty half.
-    Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
-        HomeTile(
             Icons.Default.Balance,
-            reconciliation,
+            cashout,
             labels,
-            onClick = { onOpen(Route.Reconciliation) },
-            modifier = Modifier.testTag("reconciliation"),
+            onClick = { onOpen(Route.Cashout) },
+            modifier = Modifier.testTag("cashout"),
         )
     }
+    HistoryTiles(history, reconciliation, labels, onOpen)
 }
 
 /** Points to Terminal settings while payments cannot work yet: something is missing, or the terminal did not answer. */
@@ -490,3 +482,29 @@ private val MIN_TILE_LABEL_SIZE = 12.sp
 
 /** The smallest a payment tile's title shrinks to, for a long translation or large text, before it is ellipsized. */
 private val MIN_PAYMENT_TITLE_SIZE = 16.sp
+
+/** The final Home row keeps History before Reconciliation at every text size. */
+@Composable
+private fun ColumnScope.HistoryTiles(
+    history: String,
+    reconciliation: String,
+    labels: TextAutoSize,
+    onOpen: (Route) -> Unit,
+) {
+    Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+        HomeTile(
+            Icons.AutoMirrored.Filled.ReceiptLong,
+            history,
+            labels,
+            onClick = { onOpen(Route.History) },
+            modifier = Modifier.testTag("history"),
+        )
+        HomeTile(
+            Icons.Default.Balance,
+            reconciliation,
+            labels,
+            onClick = { onOpen(Route.Reconciliation) },
+            modifier = Modifier.testTag("reconciliation"),
+        )
+    }
+}

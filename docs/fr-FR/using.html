@@ -88,7 +88,7 @@
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
   </ul></li><li class="advanced-start"><a href="#capabilities">Vérifier les capacités d&#x27;Adyen</a></li><li>
   <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#mexican-installments">Paiements échelonnés au Mexique</a></li><li><a href="#partial-payments">Paiements
-  partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#meal-vouchers">Accepter les titres-restaurant</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
+  partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#cashback">Retrait avec achat</a></li><li><a href="#cashout">Retrait d’espèces</a></li><li><a href="#meal-vouchers">Accepter les titres-restaurant</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
   </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#gift-cards">Cartes cadeaux</a></li><li><a href="#payment-links">Liens de paiement
@@ -104,7 +104,7 @@
   <a href="#close-day">Clôturer la journée</a></li><li><a href="#reconciliation">Réconcilier avec le terminal</a></li>
   </ul></li><li class="advanced-start"><a href="#capabilities">Vérifier les capacités d&#x27;Adyen</a></li><li>
   <a href="#terminal-checkout">Flux de travail de paiement facultatifs</a><ul><li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li><li><a href="#mexican-installments">Paiements échelonnés au Mexique</a></li><li><a href="#partial-payments">Paiements
-  partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#meal-vouchers">Accepter les titres-restaurant</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
+  partiels</a></li><li><a href="#split-payments">Partage et espèces</a></li><li><a href="#cashback">Retrait avec achat</a></li><li><a href="#cashout">Retrait d’espèces</a></li><li><a href="#meal-vouchers">Accepter les titres-restaurant</a></li><li><a href="#shopper-display">Affichage client</a></li><li><a href="#giving">Dons de charité</a>
   </li><li><a href="#keyed-entry">MOTO et MKE</a></li></ul></li><li><a href="#offline">Paiements hors ligne</a></li><li>
   <a href="#wallets">Scanner les codes du portefeuille</a></li><li><a href="#shoppers">Références et cartes enregistrées
   </a><ul><li><a href="#saved-card">Gérer les jetons</a></li></ul></li><li><a href="#gift-cards">Cartes cadeaux</a></li><li><a href="#payment-links">Liens de paiement
@@ -490,6 +490,27 @@
             l’une d’elles. Un solde insuffisant est accepté en partie et le reste reste à encaisser. Le remboursement
             d’un paiement par carte cadeau revient sur la carte, sauf pour les cartes locales, remboursées hors de Mini
             mPOS.</p>
+          <h3 id="cashback">Retrait avec achat</h3>
+          <p>Activez le Retrait avec achat dans Réglages › Paiements après confirmation du magasin et du programme avec
+          Adyen. Définissez un plafond local et un code responsable. Devise et langue ne prouvent pas l’éligibilité.</p>
+          <p>Au paiement, saisissez les espèces supplémentaires et confirmez la carte éligible. Utilisez une vente
+          entière sans fractionnement, autorisation partielle, carte cadeau, titre-restaurant, mensualités, pourboire,
+          Giving, audio, MOTO/MKE, lien, token ni portefeuille scanné. Désactivez explicitement les options
+          incompatibles.</p>
+          <h3 id="cashout">Retrait d’espèces</h3>
+          <p>Retrait d’espèces sur l’accueil demande des espèces sans achat. Activez-le séparément après confirmation
+          par Adyen du retrait eftpos australien pour le magasin affecté. Les terminaux locaux et cloud sont pris en
+          charge ; Tap to Pay est indisponible.</p>
+          <p>Après autorisation, vérifiez les espèces autorisées et le débit sur la carte. L’achat peut être autorisé
+          sans retrait, sans solde de marchandises impayé pour cette raison. Remettez uniquement le montant autorisé,
+          puis choisissez Enregistrer la remise d’espèces et approuvez avec le code responsable. Vérifiez les remises
+          précédentes. Ne remettez rien si le montant n’est pas communiqué.</p>
+          <p>L’historique conserve demandes non résolues et remises non enregistrées. Vérifiez un résultat inconnu au
+          lieu de recommencer. Reçus, réimpressions et vérifications ne confirment pas la remise. Le rapport distingue
+          espèces autorisées et remises des ventes ; le rapprochement compare le débit sur la carte. Les remboursements
+          référencés retournent seulement l’achat éligible à la carte originale, jamais les espèces remises. Un retrait
+          sans achat n’a aucune marchandise à rembourser.</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/cashback-and-cash-out">Adyen: Cashback</a></p>
           <h3 id="meal-vouchers">Accepter les titres-restaurant</h3>
           <p>Activez <strong>Titres-restaurant</strong> dans Paramètres › Paiements seulement après avoir signé les contrats
             émetteurs, enregistré votre magasin et obtenu l’activation par Adyen. Le pays vérifié du magasin du terminal

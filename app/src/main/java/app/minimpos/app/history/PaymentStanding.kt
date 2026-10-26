@@ -7,6 +7,7 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.repo.cashAwaitingHandover
 import app.minimpos.app.data.repo.remainingAmountKnown
 import app.minimpos.terminal.client.Decline
 import app.minimpos.terminal.client.RetryAdvice
@@ -199,6 +200,7 @@ fun saleResultNext(sale: SaleEntity): SaleResultNext =
  * @property paidOnline Whether it was paid through its payment link, which the receipt says.
  * @property simulatedLink Whether this is an offline demo link, including after completion or cancellation.
  * @property standing Full payment standing retained for receipt notes.
+ * @property cashout Whether this is standalone cash-out, with no merchandise.
  */
 data class ReceiptStanding(
     val approved: Boolean,
@@ -213,6 +215,7 @@ data class ReceiptStanding(
     val simulatedLink: Boolean = false,
     /** Current standing retained through receipt rendering. */
     val standing: PaymentStanding = PaymentStanding.CHARGED,
+    val cashout: Boolean = false,
 ) {
     /** Reading a sale. */
     companion object {
@@ -233,6 +236,7 @@ data class ReceiptStanding(
                 paidOnline = sale.paidOnline,
                 simulatedLink = sale.simulatedLink,
                 standing = standing,
+                cashout = sale.cashout,
             )
         }
     }
@@ -262,6 +266,9 @@ val RefundEntity.terminalOperation: Boolean get() = !checkoutRefund && !cash
 
 /** What about a stored sale still needs attention, see [issues]. */
 enum class PaymentIssue {
+    /** Approved cashback awaits an operator handover, or its returned amount needs investigation. */
+    CASH_HANDOVER,
+
     /** Whether the payment went through is not known yet: it is still pending or its outcome is unknown. */
     OUTCOME,
 
@@ -280,6 +287,7 @@ val SaleEntity.issues: Set<PaymentIssue>
     get() =
         buildSet {
             if (status == SaleStatus.PENDING || status == SaleStatus.UNKNOWN) add(PaymentIssue.OUTCOME)
+            if (cashAwaitingHandover) add(PaymentIssue.CASH_HANDOVER)
             if (adjustmentPending) add(PaymentIssue.ADJUSTMENT)
             if (standing in CAPTURE_ISSUES) add(PaymentIssue.CAPTURE)
         }
@@ -362,3 +370,6 @@ private fun captureActions(sale: SaleEntity): Set<PaymentAction> {
         if (retry && sale.capturedMinor != null) add(PaymentAction.RETRY_CAPTURE)
     }
 }
+
+/** Whether this record is a standalone card cash-out, with no merchandise or taxable sale value. */
+val SaleEntity.cashout: Boolean get() = requestedCashBackMinor != null && totalMinor == 0L

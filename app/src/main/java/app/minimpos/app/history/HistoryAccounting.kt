@@ -59,6 +59,9 @@ data class HistoryActivity(
 
 /** Monetary meaning of an activity; opened entries carry no amount. */
 enum class HistoryActivityKind {
+    /** Operator-recorded cash payout, dated when cash was handed over. */
+    CASH_HANDOVER,
+
     /** Original attempt, retained even when declined or cancelled. */
     OPENED,
 
@@ -133,6 +136,10 @@ data class CurrencyHistoryTotals(
     val cashRefundsMinor: Long = 0,
     /** Stored-value movements, separate from sales and refunds: gift-card value, funding and cash handed over. */
     val giftCards: GiftCardActivity.Totals = GiftCardActivity.Totals(),
+    /** Approved card cash, separate from merchandise and local physical handover. */
+    val cashbackMinor: Long = 0,
+    /** Cash physically handed over on this report day, never in terminal totals. */
+    val cashHandedOverMinor: Long = 0,
 ) {
     /** Local sales minus accepted refund requests, in minor units. */
     val netMinor: Long get() = salesMinor - refundsMinor
@@ -337,6 +344,8 @@ object HistoryAccounting {
                 Math.addExact(a.cashSalesMinor, b.cashSalesMinor),
                 Math.addExact(a.cashRefundsMinor, b.cashRefundsMinor),
                 a.giftCards + b.giftCards,
+                Math.addExact(a.cashbackMinor, b.cashbackMinor),
+                Math.addExact(a.cashHandedOverMinor, b.cashHandedOverMinor),
             )
         }
     }
@@ -621,8 +630,11 @@ object HistoryAccounting {
             } else {
                 addAll(approvedActivities(item))
             }
+            sale.cashHandedOverAt?.let {
+                add(HistoryActivity(item, it, HistoryActivityKind.CASH_HANDOVER, sale.cashBackMinor ?: 0))
+            }
             val issues = sale.issues
-            if (PaymentIssue.OUTCOME in issues || PaymentIssue.ADJUSTMENT in issues) {
+            if (PaymentIssue.OUTCOME in issues || PaymentIssue.ADJUSTMENT in issues || PaymentIssue.CASH_HANDOVER in issues) {
                 add(HistoryActivity(item, sale.createdAt, HistoryActivityKind.ISSUE))
             }
             if (PaymentIssue.CAPTURE in issues) {
@@ -691,8 +703,16 @@ object HistoryAccounting {
             val refunds = entries.filter { it.kind == HistoryActivityKind.REFUND }
             val holds = entries.filter { it.kind == HistoryActivityKind.HELD }
             CurrencyHistoryTotals(
-                salesMinor = sales.sumOf { it.amountMinor },
-                saleCount = sales.map { it.item.id }.distinct().size,
+                salesMinor = sales.sumOf { it.withoutCashback() },
+                cashbackMinor = sales.sumOf { it.cashBackMinor },
+                cashHandedOverMinor = entries.filter { it.kind == HistoryActivityKind.CASH_HANDOVER }.sumOf { it.amountMinor },
+                saleCount =
+                    sales
+                        .filterNot {
+                            (it.item as? HistoryItem.Sale)?.sale?.cashout == true
+                        }.map { it.item.id }
+                        .distinct()
+                        .size,
                 tipsMinor = sales.sumOf { it.tipMinor },
                 refundsMinor = refunds.sumOf { it.amountMinor },
                 refundCount = refunds.size,
@@ -716,7 +736,7 @@ object HistoryAccounting {
                 cashRefundsMinor = refunds.filter { it.cash }.sumOf { it.amountMinor },
                 purchaseMinor =
                     sales.filter { it.surchargeMinor != null }.sumOf {
-                        (it.amountMinor - it.tipMinor - (it.surchargeMinor ?: 0) - it.cashBackMinor).coerceAtLeast(0)
+                        (it.withoutCashback() - it.tipMinor - (it.surchargeMinor ?: 0)).coerceAtLeast(0)
                     },
             )
         }
@@ -793,4 +813,14 @@ object HistoryAccounting {
                 }
             }
         }
+}
+
+/** Cash is never sale revenue, even when its component is unreported: the frozen purchase remains separate. */
+internal fun HistoryActivity.withoutCashback(): Long {
+    val sale = (item as? HistoryItem.Sale)?.sale
+    return when {
+        sale?.cashout == true -> 0
+        sale?.requestedCashBackMinor != null -> Math.addExact(sale.totalMinor, surchargeMinor ?: 0)
+        else -> (amountMinor - cashBackMinor).coerceAtLeast(0)
+    }
 }

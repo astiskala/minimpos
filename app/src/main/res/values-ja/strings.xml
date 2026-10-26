@@ -1261,7 +1261,7 @@
     <string name="surcharge_unknown_refund_count">サーチャージ未報告の返金</string>
     <string name="surcharge_remaining_unknown">サーチャージが未報告のため、購入額の残額は不明です。Customer Areaで確認するか、このカードに返金してからやり直してください。</string>
     <string name="split_open">分割または現金で支払う</string>
-    <string name="split_blocked">この販売を分割するには、チップ、寄付、音声ガイド、MOTO・手動入力をオフにしてください。</string>
+    <string name="split_blocked">この売上を分割するには、現金引き出し、メキシコの分割払い、チップ、寄付、音声案内、MOTOまたは手入力をオフにしてください。</string>
     <string name="split_title">支払いを分割</string>
     <string name="split_unavailable">現在は分割できません。未払い残高があり、処理中の支払いがない販売が必要です。</string>
     <string name="split_collect_balance">残高を回収</string>
@@ -1452,4 +1452,27 @@
     <string name="voucher_requested">食事券: %1$s</string>
     <string name="voucher_returned">報告された食事券: %1$s</string>
     <string name="voucher_not_refundable">返金不可</string>
+    <string name="cashback_title">購入時の現金引き出し</string>
+    <string name="cashout_title">現金引き出し</string>
+    <string name="cashback_enable">購入時の現金引き出しを有効にする</string>
+    <string name="cashout_enable">購入なしの引き出しを有効にする</string>
+    <string name="cashback_configuration">Adyenが店舗とカードプログラムを有効化したことを確認してください。確認済み店舗、上限額、マネージャーPINが必要です。</string>
+    <string name="cashout_configuration">購入なしの引き出しはオーストラリアのeftposのみです。Adyenに別途有効化を確認してください。</string>
+    <string name="cashback_card_hint">カードプログラムと割り当て店舗の対応をAdyenに確認してください。</string>
+    <string name="cashback_limit">現金引き出し上限</string>
+    <string name="cashback_limit_hint">決済通貨での1回の上限です。発行会社と店舗の上限をAdyenに確認してください。</string>
+    <string name="cashback_requested">現金の要求額</string>
+    <string name="cashback_approved">現金の承認額</string>
+    <string name="cashback_card_charge">カード請求額</string>
+    <string name="cashback_card_confirm">対象の%1$sカードであることを確認しました</string>
+    <string name="cashback_unavailable">利用できません。設定で有効化、カード、確認済み店舗、送信先、上限を確認してください。</string>
+    <string name="cashback_conflicts">対象カードと上限内の金額を確認してください。分割、部分承認、チップ、Giving、音声案内、特殊入力、カード保存は併用できません。</string>
+    <string name="cashback_handover">現金の引き渡しを記録</string>
+    <string name="cashback_handover_confirm">承認された現金を渡してから確認してください。過去の引き渡しを先に確認してください。レシートや状況照会は引き渡しを意味しません。</string>
+    <string name="cashback_handed_over">現金引き渡し済み</string>
+    <string name="cashback_not_handed_over">現金引き渡しの記録なし</string>
+    <string name="cashback_missing_amount">現金の金額が未報告か一致しません。現金を渡さず、Customer Areaで元の決済を確認してください。</string>
+    <string name="cashout_confirm">購入なしで%1$sを引き出しますか？端末の承認額のみを渡し、引き渡しを記録してください。</string>
+    <string name="cashout_start">%1$sを引き出す</string>
+    <string name="email_cashout_intro">現金引き出しのレシートをお送りします。</string>
 </resources>

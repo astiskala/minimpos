@@ -79,7 +79,7 @@
   <a href="#receipts">收據</a><ul><li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a>
   </li><li><a href="#email">電子收據</a></li></ul></li><li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a>
   </li><li><a href="#reconciliation">與終端對帳</a></li></ul></li><li class="advanced-start"><a href="#capabilities">檢查 Adyen
-  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#mexican-installments">墨西哥信用卡分期付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li><a href="#meal-vouchers">接受餐券</a></li><li>
+  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#mexican-installments">墨西哥信用卡分期付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li><a href="#cashback">購物提款</a></li><li><a href="#cashout">提款</a></li><li><a href="#meal-vouchers">接受餐券</a></li><li>
   <a href="#shopper-display">顧客端螢幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">離線支付</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#shoppers">
   參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#gift-cards">禮品卡</a></li><li><a href="#payment-links">付款連結</a></li><li>
@@ -92,7 +92,7 @@
   <a href="#receipts">收據</a><ul><li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a>
   </li><li><a href="#email">電子收據</a></li></ul></li><li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a>
   </li><li><a href="#reconciliation">與終端對帳</a></li></ul></li><li class="advanced-start"><a href="#capabilities">檢查 Adyen
-  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#mexican-installments">墨西哥信用卡分期付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li><a href="#meal-vouchers">接受餐券</a></li><li>
+  功能</a></li><li><a href="#terminal-checkout">可選結帳流程</a><ul><li><a href="#audio-guidance">使用語音引導付款</a></li><li><a href="#mexican-installments">墨西哥信用卡分期付款</a></li><li><a href="#partial-payments">部分付款</a></li><li><a href="#split-payments">拆分與現金</a></li><li><a href="#cashback">購物提款</a></li><li><a href="#cashout">提款</a></li><li><a href="#meal-vouchers">接受餐券</a></li><li>
   <a href="#shopper-display">顧客端螢幕</a></li><li><a href="#giving">慈善捐款</a></li><li><a href="#keyed-entry">MOTO 和 MKE</a>
   </li></ul></li><li><a href="#offline">離線支付</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#shoppers">
   參考編號和儲存卡</a><ul><li><a href="#saved-card">管理代碼</a></li></ul></li><li><a href="#gift-cards">禮品卡</a></li><li><a href="#payment-links">付款連結</a></li><li>
@@ -352,6 +352,15 @@
           <p>銷售在付清前保持<strong>部分已付</strong>。在結果頁或<strong>交易紀錄</strong>中點按<strong>收取餘額</strong>即可繼續，重新啟動後也可以。拆分前請關閉小費、捐款、語音指引及 MOTO 或手動輸入。按商品付款時全額收取；其他刷卡金額仍可能由發卡機構部分授權。刷卡結果未知時，請先確認再繼續收款。收據會列出每筆付款，每日報告會另列現金；終端合計從不包含現金。</p>
           <p>設定禮品卡後，點按<strong>禮品卡</strong>即可用禮品卡支付所選金額。餘額不足時會部分獲批，
             餘下款項可繼續收取。禮品卡付款的退款會退回卡內；本地禮品卡除外，需在 Mini mPOS 以外退款。</p>
+          <h3 id="cashback">購物提款</h3>
+          <p>向 Adyen 確認門店及卡計劃已啟用後，在設定 › 付款中啟用購物提款。請設定本地限額及經理 PIN。貨幣或語言並不證明資格。</p>
+          <p>在結帳時輸入額外現金，並確認顧客持有合資格的卡。須整筆刷卡，不可與分單、部分授權、禮品卡、餐券、墨西哥分期、小費、Giving、語音指引、MOTO/MKE、連結、令牌或掃碼錢包同時使用。請明確關閉衝突選項。</p>
+          <h3 id="cashout">提款</h3>
+          <p>主頁的提款可在無購物時要求現金。須獨立向 Adyen 確認已為已分配門店啟用澳洲 eftpos 提款。支援本地及雲端支付終端，不支援 Tap to Pay。</p>
+          <p>批准後請核對批准提款金額及卡扣款金額。購物可能獲批但提款被拒，這不會因此產生未付商品餘額。僅交付批准的現金，然後選擇記錄現金已交付，並透過經理 PIN 批准。先檢查以往交付記錄。金額未報告時請勿交付現金。</p>
+          <p>交易紀錄保留未解決請求及未記錄交付。結果未知時請查詢狀態，不要再次提款。收據、重印及狀態查詢不會記錄交付。日報將批准現金、已交付現金與銷售區分；終端對帳比較卡扣款金額。關聯退款僅將合資格的購物金額退回原卡，不退已提
+          款現金。無購物提款沒有可退商品。</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/cashback-and-cash-out">Adyen: Cashback</a></p>
           <h3 id="meal-vouchers">接受餐券</h3>
           <p>請在簽署發卡機構合約、登記店舖並由 Adyen 啟用餐券後，才在「設定」›「支付」中開啟<strong>餐券</strong>。適用的餐券由終端
             已驗證的店舖國家/地區決定：巴西 PAT 餐券；比利時、芬蘭、德國、盧森堡和西班牙的 Mastercard 或 Visa 餐券；或法國的

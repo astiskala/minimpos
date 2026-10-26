@@ -29,7 +29,7 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   defines captured statuses. `StoredPayment.actions` owns allowed actions and is checked by capture operations too.
   `SaleEntity.issues` is the one issue reading; screens get whole days from `HistoryAccounting.days`.
   `saleResultNext` is the one reading of what a result screen offers next, payment links included.
-- \* Decision rules stay pure: Checkout, PaymentLinkRequests, SaleEvent, TenderBalance, GiftCardActivity,
+- \* Decision rules stay pure: Checkout, Cashback, PaymentLinkRequests, SaleEvent, TenderBalance, GiftCardActivity,
   PaymentStanding, RefundablePayment, HistorySearch, HistoryAccounting, ReceiptKind, TerminalAssignments, WalletOffers,
   TerminalSetup, TerminalSetupPlan, DestinationRules, NewInstallation, VerifiedSetup and settings models. No Android,
   coroutines, repositories or clocks; do not rederive their decisions elsewhere. History filters reuse accounting's
@@ -90,6 +90,7 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   `RefundablePayment.requests`.
 - Only `GiftCards` sends stored-value stages, each stored before sending and recovered with its original message
   category; `GiftCardActivity` alone decides what an activity still needs (check, continue, repair, handover, undo).
+  Card cashback handovers also belong to `CashTenders`; approval never implies physical cash handover.
   Gift-card value changes, repairs and handovers require a configured Manager PIN under the capabilities plan's
   provisional default; balance inquiries and redemption do not. Never store gift-card numbers or PINs.
 - Meal-voucher markets come only from `WalletAvailability.mealVoucherSchemes` (verified store country; currency only

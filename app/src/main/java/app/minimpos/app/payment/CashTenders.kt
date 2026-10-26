@@ -4,6 +4,8 @@ import app.minimpos.app.data.repo.GiftCardRepository
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.repo.TenderAllocation
+import app.minimpos.app.data.repo.cashHandover
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.core.split.CashPayment
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -23,6 +25,7 @@ import kotlin.uuid.Uuid
  *   complete the session revision it was rung up in.
  * @param newId Generates sale IDs.
  * @param giftCards Where gift-card cash handovers are stored; null where none are recorded.
+ * @param approval Configured Manager PIN approval for card cashback handovers.
  */
 class CashTenders(
     private val sales: SaleRepository,
@@ -30,6 +33,7 @@ class CashTenders(
     private val onPaid: (id: String, start: PaymentStart) -> Unit = { _, _ -> },
     private val newId: () -> String = { Uuid.random().toString() },
     private val giftCards: GiftCardRepository? = null,
+    private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
 ) {
     private val mutex = Mutex()
 
@@ -80,6 +84,17 @@ class CashTenders(
      * storing nothing, when it is no longer awaiting. Approval is the caller's ([GiftCards]); serialized with tenders.
      */
     suspend fun handOver(stageId: String): Boolean = mutex.withLock { giftCards?.recordCashHandover(stageId) == true }
+
+    /** Records a sale cashback/cash-out handover once, after approval checked by the caller. */
+    suspend fun handOverCashback(saleId: String): Boolean {
+        val grant = approval.grant()
+        return mutex.withLock {
+            val sale = sales.get(saleId)?.sale ?: return@withLock false
+            if (sale.cashHandover?.canRecord != true) return@withLock false
+            if (!approval.allowsConfigured(grant)) return@withLock false
+            sales.recordCashHandover(saleId)
+        }
+    }
 
     private fun payment(
         amountMinor: Long,

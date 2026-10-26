@@ -25,6 +25,8 @@ class TerminalFeaturesGuideTest {
             "audio-guidance" to listOf("checkout_audio_guidance", "checkout_audio_confirm"),
             "terminal-tips" to listOf("checkout_tip_on_terminal", "settings_dynamic_tip_override", "settings_tip_on_pre_tax"),
             "mexican-installments" to listOf("mexican_title"),
+            "cashback" to listOf("cashback_title"),
+            "cashout" to listOf("cashout_title", "cashback_handover"),
             "meal-vouchers" to
                 listOf("voucher_title", "split_open", "split_pay_meal_voucher", "products_meal_voucher", "voucher_account_title"),
             "partial-payments" to listOf("settings_allow_partial_auth", "status_partially_paid"),
@@ -55,6 +57,7 @@ class TerminalFeaturesGuideTest {
             val using = Jsoup.parse(directory.resolve("using.html").readText())
             listOf(
                 "https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers",
+                "https://docs.adyen.com/point-of-sale/cashback-and-cash-out",
                 "https://docs.adyen.com/industries/markets/europe-meal-vouchers",
             ).forEach { url -> assertWithMessage("$language $url").that(using.select("a[href='$url']")).isNotEmpty() }
             assertThat(using.text()).contains("EUR 25".takeUnless { language == "fr-FR" } ?: "25 EUR")

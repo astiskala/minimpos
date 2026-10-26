@@ -1273,7 +1273,7 @@
     <string name="surcharge_unknown_refund_count">Remboursements avec supplément non indiqué</string>
     <string name="surcharge_remaining_unknown">Le supplément n’a pas été indiqué. Le montant d’achat restant est inconnu. Vérifiez dans le Customer Area ou remboursez cette carte avant de recommencer.</string>
     <string name="split_open">Partager ou payer en espèces</string>
-    <string name="split_blocked">Désactivez pourboires, dons, guidage audio et MOTO ou saisie manuelle pour partager cette vente.</string>
+    <string name="split_blocked">Désactivez le retrait avec achat, les mensualités, les pourboires, les dons, l’audio et MOTO ou la saisie manuelle pour fractionner cette vente.</string>
     <string name="split_title">Partager le paiement</string>
     <string name="split_unavailable">Rien ne peut être partagé pour l’instant. La vente doit avoir un solde dû et aucun paiement en cours.</string>
     <string name="split_collect_balance">Encaisser le solde</string>
@@ -1464,4 +1464,27 @@
     <string name="voucher_requested">Titre-restaurant : %1$s</string>
     <string name="voucher_returned">Titre signalé : %1$s</string>
     <string name="voucher_not_refundable">Non remboursable</string>
+    <string name="cashback_title">Retrait avec achat</string>
+    <string name="cashout_title">Retrait d’espèces</string>
+    <string name="cashback_enable">Activer le retrait avec achat</string>
+    <string name="cashout_enable">Activer le retrait sans achat</string>
+    <string name="cashback_configuration">Confirmez l’activation par Adyen pour ce magasin et ce programme. Magasin vérifié, plafond local et code responsable requis.</string>
+    <string name="cashout_configuration">Seul eftpos en Australie permet ici le retrait sans achat. Confirmez son activation séparée avec Adyen.</string>
+    <string name="cashback_card_hint">Confirmez avec Adyen l’éligibilité du programme et du magasin affecté.</string>
+    <string name="cashback_limit">Plafond local d’espèces</string>
+    <string name="cashback_limit_hint">Maximum par demande dans la devise de paiement. Confirmez les limites de l’émetteur et du magasin avec Adyen.</string>
+    <string name="cashback_requested">Espèces demandées</string>
+    <string name="cashback_approved">Espèces autorisées</string>
+    <string name="cashback_card_charge">Montant débité sur la carte</string>
+    <string name="cashback_card_confirm">J’ai confirmé que le client présente une carte %1$s éligible</string>
+    <string name="cashback_unavailable">Indisponible : vérifiez activation, carte, magasin vérifié, destination et plafond dans Réglages.</string>
+    <string name="cashback_conflicts">Confirmez la carte et un montant sous le plafond. Utilisez une vente entière sans fractionnement, autorisation partielle, pourboire, Giving, audio, saisie spéciale ni enregistrement de carte.</string>
+    <string name="cashback_handover">Enregistrer la remise d’espèces</string>
+    <string name="cashback_handover_confirm">Confirmez après avoir remis les espèces autorisées. Vérifiez les remises précédentes. Reçus et vérifications ne prouvent jamais la remise.</string>
+    <string name="cashback_handed_over">Espèces remises</string>
+    <string name="cashback_not_handed_over">Aucune remise d’espèces enregistrée</string>
+    <string name="cashback_missing_amount">Montants d’espèces manquants ou incohérents. Ne remettez pas d’espèces ; vérifiez le paiement original dans Customer Area.</string>
+    <string name="cashout_confirm">Demander %1$s sans achat ? Remettez uniquement les espèces autorisées par le terminal, puis enregistrez la remise.</string>
+    <string name="cashout_start">Retirer %1$s</string>
+    <string name="email_cashout_intro">Voici votre reçu de retrait d’espèces.</string>
 </resources>

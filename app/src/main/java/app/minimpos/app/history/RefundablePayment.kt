@@ -1,6 +1,7 @@
 package app.minimpos.app.history
 
 import app.minimpos.app.data.db.RefundStatus
+import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
@@ -621,10 +622,11 @@ class RefundablePayment private constructor(
             record: SaleWithLines,
             tender: SaleTenderEntity,
         ): RefundablePayment? {
-            if (tender.status != SaleStatus.APPROVED) return null
+            if (record.sale.cashout || tender.status != SaleStatus.APPROVED) return null
             // Adyen documents payments only for local gift cards: their value is never returned through the app.
             if (tender.giftCard?.let { GiftCardProvider.valueOf(it) }?.supports(GiftCardOperation.REFUND) == false) return null
             // Titres-restaurant (Conecs) refunds are not supported; other vouchers return only to the original voucher.
+            if (!refundableCashback(tender.requestedCashBackMinor, tender.cashBackMinor)) return null
             if (MealVoucherScheme.stored(tender.mealVoucher)?.refund == VoucherRefund.NONE) return null
             val cash = tender.kind == TenderKind.CASH
             val transaction = (if (cash) tender.id else tender.poiTransactionId) ?: return null
@@ -649,7 +651,8 @@ class RefundablePayment private constructor(
 
         private fun eligible(record: SaleWithLines): RefundablePayment? {
             val sale = record.sale
-            if (sale.sample) return null
+            if (sale.sample || sale.cashout) return null
+            if (!cashbackRefundKnown(sale)) return null
             if (sale.status == SaleStatus.APPROVED && !sale.manualCapture && record.tenders.any { it.approved }) {
                 val first =
                     record.tenders
@@ -727,3 +730,14 @@ internal fun proportional(
     }
     return shares
 }
+
+// An absent or inconsistent reported cash component cannot establish a merchandise refund balance.
+private fun refundableCashback(
+    requested: Long?,
+    approved: Long?,
+): Boolean = requested == null || (approved != null && approved in 0..requested)
+
+// A cash request also needs the actual card charge before a referenced merchandise return is safe.
+private fun cashbackRefundKnown(sale: SaleEntity): Boolean =
+    refundableCashback(sale.requestedCashBackMinor, sale.cashBackMinor) &&
+        (sale.requestedCashBackMinor == null || sale.terminalPaidMinor != null)

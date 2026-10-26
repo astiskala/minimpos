@@ -20,6 +20,8 @@ import app.minimpos.app.awaitCondition
 import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.data.settings.CashbackCard
+import app.minimpos.app.data.settings.CashbackSettings
 import app.minimpos.app.items
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
@@ -112,6 +114,57 @@ class DoubleActivationTest {
         compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Pre-authorized"), 15_000)
         openInHistory("Pre-authorized")
         waitForTag("capture")
+    }
+
+    @Test
+    fun `cashout and explicit handover double taps each record once`() {
+        await {
+            container.managerPin.setPin("2468")
+            container.walletDiscovery.refresh()
+        }
+        val facts = container.walletDiscovery.state.value
+        env.updateSettings {
+            it.copy(
+                payment =
+                    it.payment.copy(
+                        cashback =
+                            CashbackSettings(
+                                standalone = true,
+                                card = CashbackCard.EFTPOS,
+                                limitMinor = 10_000,
+                                context = facts.context,
+                                currency = "AUD",
+                            ),
+                    ),
+            )
+        }
+        compose.onNodeWithTag("cashout").performScrollTo().performClick()
+        waitForTag("startCashout")
+        listOf(5, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithText("I confirmed the shopper has an eligible eftpos card").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("startCashout") and isEnabled(), 15_000)
+        doubleTap("startCashout")
+        waitForTag("confirm")
+        doubleTap("confirm")
+        waitForTag("pin_2")
+        listOf(2, 4, 6, 8).forEach { compose.onNodeWithTag("pin_$it").performClick() }
+        doubleTap("pin_OK")
+        waitForText("Approved")
+        val record = sales().single()
+        assertThat(record.sale.totalMinor).isEqualTo(0)
+        assertThat(record.sale.cashBackMinor).isEqualTo(500)
+        assertThat(record.sale.cashHandedOverAt).isNull()
+        compose.onNodeWithTag("cashbackHandover").performScrollTo().performClick()
+        waitForTag("confirmCashbackHandover")
+        doubleTap("confirmCashbackHandover")
+        waitForTag("pin_2")
+        listOf(2, 4, 6, 8).forEach { compose.onNodeWithTag("pin_$it").performClick() }
+        doubleTap("pin_OK")
+        waitForText("Cash handed over")
+        val handed = await { checkNotNull(container.sales.get(record.id)).sale.cashHandedOverAt }
+        assertThat(handed).isNotNull()
+        assertThat(await { container.cashTenders.handOverCashback(record.id) }).isFalse()
+        assertThat(await { checkNotNull(container.sales.get(record.id)).sale.cashHandedOverAt }).isEqualTo(handed)
     }
 
     @Test

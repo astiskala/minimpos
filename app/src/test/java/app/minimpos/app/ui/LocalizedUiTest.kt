@@ -370,25 +370,15 @@ class LocalizedUiTest {
         audioGuidance: Boolean = false,
         mexican: Boolean = false,
     ) {
-        if (mexican) {
-            env.updateSettings {
-                it.copy(
-                    payment =
-                        it.payment.copy(
-                            currencyCode = "MXN",
-                            mexicanInstallments = true,
-                            allowPartialAuthorisation = false,
-                        ),
-                )
-            }
-            await { env.container.walletDiscovery.refresh() }
-        }
+        if (mexican) configureMexicanCheckout()
         val context = env.context
         compose.setContent { MiniMposApp(env.container) }
-        listOf("newSale", "refund", "history", "settings").forEach {
-            compose.onNodeWithTag(it).assertIsDisplayed()
-        }
-        compose.onNodeWithTag("newSale").assertTextContains(context.getString(R.string.home_new_sale)).performClick()
+        assertHomeAreas()
+        compose
+            .onNodeWithTag("newSale")
+            .performScrollTo()
+            .assertTextContains(context.getString(R.string.home_new_sale))
+            .performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("addCustom"), 15_000)
         compose.onNodeWithText(context.getString(R.string.sale_custom_description)).performClick()
         compose.onNodeWithText(context.getString(R.string.sale_custom_default_name)).assertIsDisplayed()
@@ -428,5 +418,26 @@ class LocalizedUiTest {
         compose.onNodeWithTag("resultStatus").assertTextContains(context.getString(R.string.status_approved))
         compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()
         compose.onNodeWithTag("home").assertIsDisplayed()
+    }
+
+    private fun configureMexicanCheckout() {
+        env.updateSettings {
+            it.copy(
+                payment =
+                    it.payment.copy(
+                        currencyCode = "MXN",
+                        mexicanInstallments = true,
+                        allowPartialAuthorisation = false,
+                    ),
+            )
+        }
+        await { env.container.walletDiscovery.refresh() }
+    }
+
+    private fun assertHomeAreas() {
+        listOf("newSale", "refund", "cashout", "history").forEach {
+            compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed()
+        }
+        compose.onNodeWithTag("settings").assertIsDisplayed()
     }
 }

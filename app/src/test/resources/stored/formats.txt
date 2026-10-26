@@ -56,6 +56,22 @@ settings.json: app.minimpos.app.data.settings.AppSettings
     mexicanInstallments: boolean
     mealVouchers: boolean
     mealVoucherAccountSelection: boolean
+    cashback: app.minimpos.app.data.settings.CashbackSettings
+      enabled: boolean
+      standalone: boolean
+      card?: enum app.minimpos.app.data.settings.CashbackCard [EFTPOS, GIROCARD, VISA, MASTERCARD]
+      limitMinor: long
+      context?: app.minimpos.core.payment.PaymentContext
+        destination required: string
+        poiId required: string
+        saleId required: string
+        merchantAccount required: string
+        environment? required: string
+        host?: string
+        simulated: boolean
+      currency?: string
+      storeId?: string
+      storeCountry?: string
   receipt: app.minimpos.app.data.settings.ReceiptSettings
     businessName: string
     addressLines: string
@@ -235,6 +251,22 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
       mexicanInstallments: boolean
       mealVouchers: boolean
       mealVoucherAccountSelection: boolean
+      cashback: app.minimpos.app.data.settings.CashbackSettings
+        enabled: boolean
+        standalone: boolean
+        card?: enum app.minimpos.app.data.settings.CashbackCard [EFTPOS, GIROCARD, VISA, MASTERCARD]
+        limitMinor: long
+        context?: app.minimpos.core.payment.PaymentContext
+          destination required: string
+          poiId required: string
+          saleId required: string
+          merchantAccount required: string
+          environment? required: string
+          host?: string
+          simulated: boolean
+        currency?: string
+        storeId?: string
+        storeCountry?: string
     receipt: app.minimpos.app.data.settings.ReceiptSettings
       businessName: string
       addressLines: string

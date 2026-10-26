@@ -555,6 +555,7 @@ class AppContainer(
             { settingsState.value.terminal.historyEnvironment(automaticMode) },
             ::completeSale,
             giftCards = giftCardRecords,
+            approval = managerApproval,
         )
 
     /** Every stored-value (gift-card) activity: funding, value changes, cash-outs, repairs and their status checks. */
@@ -789,6 +790,7 @@ class AppContainer(
             preAuthIntro = localizedContext.getString(R.string.email_pre_auth_intro),
             cancellationIntro = localizedContext.getString(R.string.email_cancellation_intro),
             giftCardIntro = localizedContext.getString(R.string.email_gift_card_intro),
+            cashoutIntro = localizedContext.getString(R.string.email_cashout_intro),
             linkSubject = localizedContext.getString(R.string.email_link_subject),
             linkIntro = localizedContext.getString(R.string.email_link_intro),
         )

@@ -104,12 +104,23 @@ data class GiftCardActivity(
     /** Whether confirmed funding has neither delivered value nor been repaired: a visible repair is needed. */
     val needsRepair: Boolean get() = funded && !delivered && !repaired && !unresolved
 
+    /** Cash-out handover, read through the same durable payout rules as card cashback. */
+    val cashHandover: CashHandover? get() =
+        stages.firstOrNull { it.stage == GiftCardStage.CASH_HANDOVER }?.let {
+            CashHandover(
+                it.amountMinor,
+                it.amountMinor,
+                it.amountMinor,
+                (it.processedAt ?: it.createdAt).takeIf { _ -> it.status == GiftCardStatus.SUCCEEDED },
+            )
+        }
+
     /** The checks, confirmations and repairs it still needs, whatever the time. */
     val attention: Set<GiftCardAction>
         get() =
             buildSet {
                 if (stages.any { it.status == GiftCardStatus.UNKNOWN && it.stage.sent }) add(GiftCardAction.CHECK_AGAIN)
-                if (stages.any { it.stage == GiftCardStage.CASH_HANDOVER && it.status == GiftCardStatus.AWAITING }) {
+                if (cashHandover?.needsAttention == true) {
                     add(GiftCardAction.CONFIRM_HANDOVER)
                 }
                 if (needsRepair) {

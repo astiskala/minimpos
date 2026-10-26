@@ -221,6 +221,11 @@ accepted code formats before LIVE use; do not execute real calls without separat
 Do not describe simulator coverage as proof of these behaviors. Mobile SDK card readers are intentionally absent:
 they require a backend for certificates, a private Maven repository, PCI MPoC and six-monthly updates.
 
+Cashback/cash-out verification remains open: Support enablement for each store/card program, Australian eftpos standalone
+cash-out, girocard and European Visa/Mastercard purchase-linked cashback, issuer limits, purchase-only partial answers,
+unknown-result recovery, receipts, terminal totals and purchase-only referenced refunds. Local/cloud simulator tests do
+not establish real support. No real calls were made for this implementation.
+
 ## Make changes that fit
 
 [AGENTS.md](AGENTS.md) is the single list of repository constraints for every contributor: money, compatibility,

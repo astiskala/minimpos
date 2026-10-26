@@ -4,6 +4,7 @@ import app.minimpos.app.data.db.GiftCardStage
 import app.minimpos.app.data.db.GiftCardStatus
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
+import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TenderKind
@@ -73,8 +74,10 @@ data class ReceiptSampleTexts(
  * @property report Localised daily-report heading and row labels.
  * @property giftCardStage Localised name of a stored-value stage, such as "Load".
  * @property giftCardTitle Localised stored-value receipt title.
+ * @property cashoutTitle Localized title for standalone card cash-out receipts.
  * @property giftCardAttention Localised note on an activity that still needs a check, confirmation or repair.
  * @property mexicanPlan Localized requested and returned plan text for a tender, empty for ordinary history.
+ * @property cashback Requested and approved cash, card charge and recorded handover, localized at delivery.
  * @property mealVoucher Localized requested market and returned voucher facts for a tender, empty for other tenders.
  */
 data class ReceiptTexts(
@@ -88,8 +91,10 @@ data class ReceiptTexts(
     val report: (ReportText) -> String,
     val giftCardStage: (GiftCardStage) -> String = { it.name },
     val giftCardTitle: String = "GIFT CARD",
+    val cashoutTitle: String = "CASHOUT",
     val giftCardAttention: String = "Needs attention",
     val mexicanPlan: (SaleTenderEntity) -> List<String> = { emptyList() },
+    val cashback: (SaleEntity) -> List<String> = { emptyList() },
     val mealVoucher: (SaleTenderEntity) -> List<String> = { emptyList() },
 )
 
@@ -192,11 +197,14 @@ class ReceiptFactory(
                         (sale.amountMinor - it - (sale.tipMinor ?: 0) - (sale.cashBackMinor ?: 0)).coerceAtLeast(0)
                     },
                 discloseSurcharge = standing.approved && !sale.paymentLink && !sale.savedCard,
-                cardPlans = record.tenders.sortedBy { it.sequence }.flatMap { resolved.mexicanPlan(it) + resolved.mealVoucher(it) },
+                cardPlans =
+                    resolved.cashback(sale) +
+                        record.tenders.sortedBy { it.sequence }.flatMap { resolved.mexicanPlan(it) + resolved.mealVoucher(it) },
                 tenders = receiptTenders(record),
                 balanceDueMinor = sale.remainingMinor.takeIf { sale.isPartiallyPaid },
             )
-        return builder(settings, currency, resolved, simulated).sale(receipt, copy)
+        val branding = if (ReceiptKind.of(standing) == ReceiptKind.CASHOUT) settings.copy(title = resolved.cashoutTitle) else settings
+        return builder(branding, currency, resolved, simulated).sale(receipt, copy)
     }
 
     // Every approved card's original fields, falling back to the sale body for historical or refused payments.

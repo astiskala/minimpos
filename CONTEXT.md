@@ -53,6 +53,10 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Offline payment | Local-terminal transaction approved offline (`OnlineFlag=false`, `offlineAuthCode` for Offline EMV vs Store-and-forward, `unconfirmedBatchCount`); surfaces outstanding unforwarded offline batches in History and reconciliation. | `OfflineProcessingMode`, `SaleEntity.offlineMode`, `SaleEntity.unconfirmedBatchCount` |
 | Sale event | A happening that changes a stored sale; the sole decision of which statuses/fields it writes. | `data/repo/SaleEvent`, `SaleEntity.after` |
 
+Cashback is cash requested with an immediate card purchase; Cashout requests cash without merchandise. The terminal
+reports approved cash separately from the card charge. Cash handover is a durable operator confirmation through
+`CashTenders`, never an automatic consequence of approval, recovery or receipt delivery.
+
 ## Following up
 
 | Term | Meaning | Owner / code name |

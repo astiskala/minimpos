@@ -89,6 +89,7 @@ class SettingsStructureTest {
         env.useSimulator()
         compose.setContent { MiniMposApp(env.container) }
         compose.onNodeWithTag("settings").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("section_terminal"), 15_000)
         listOf(
             "terminal",
             "capabilities",

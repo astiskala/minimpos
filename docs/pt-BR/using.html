@@ -88,7 +88,7 @@
   <a href="#close-day">Fechar o dia</a></li><li><a href="#reconciliation">Reconciliar com o terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Verifique as capacidades da Adyen</a></li><li>
   <a href="#terminal-checkout">Fluxos de trabalho de checkout opcionais</a><ul><li><a href="#audio-guidance">Aceitar pagamentos com orientação por áudio</a></li><li><a href="#mexican-installments">Parcelamento de cartões no México</a></li><li><a href="#partial-payments">
-  Pagamentos parciais</a></li><li><a href="#split-payments">Divisão e dinheiro</a></li><li><a href="#meal-vouchers">Aceitar vale-refeição</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
+  Pagamentos parciais</a></li><li><a href="#split-payments">Divisão e dinheiro</a></li><li><a href="#cashback">Saque com compra</a></li><li><a href="#cashout">Saque</a></li><li><a href="#meal-vouchers">Aceitar vale-refeição</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
   caridade</a></li><li><a href="#keyed-entry">MOTO e MKE</a></li></ul></li><li><a href="#offline">Pagamentos off-line
   </a></li><li><a href="#wallets">Digitalizar códigos de carteira</a></li><li><a href="#shoppers">Referências e cartões
   salvos</a><ul><li><a href="#saved-card">Gerenciar tokens</a></li></ul></li><li><a href="#gift-cards">Cartões-presente</a></li><li><a href="#payment-links">Links de
@@ -104,7 +104,7 @@
   <a href="#close-day">Fechar o dia</a></li><li><a href="#reconciliation">Reconciliar com o terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Verifique as capacidades da Adyen</a></li><li>
   <a href="#terminal-checkout">Fluxos de trabalho de checkout opcionais</a><ul><li><a href="#audio-guidance">Aceitar pagamentos com orientação por áudio</a></li><li><a href="#mexican-installments">Parcelamento de cartões no México</a></li><li><a href="#partial-payments">
-  Pagamentos parciais</a></li><li><a href="#split-payments">Divisão e dinheiro</a></li><li><a href="#meal-vouchers">Aceitar vale-refeição</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
+  Pagamentos parciais</a></li><li><a href="#split-payments">Divisão e dinheiro</a></li><li><a href="#cashback">Saque com compra</a></li><li><a href="#cashout">Saque</a></li><li><a href="#meal-vouchers">Aceitar vale-refeição</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
   caridade</a></li><li><a href="#keyed-entry">MOTO e MKE</a></li></ul></li><li><a href="#offline">Pagamentos off-line
   </a></li><li><a href="#wallets">Digitalizar códigos de carteira</a></li><li><a href="#shoppers">Referências e cartões
   salvos</a><ul><li><a href="#saved-card">Gerenciar tokens</a></li></ul></li><li><a href="#gift-cards">Cartões-presente</a></li><li><a href="#payment-links">Links de
@@ -473,6 +473,26 @@
           <p>Com cartões-presente configurados, toque em <strong>Cartão-presente</strong> para pagar o valor escolhido
             com um deles. Um saldo insuficiente é aprovado em parte e o restante continua a receber. A devolução de um
             pagamento com cartão-presente volta ao cartão, exceto para cartões locais, reembolsados fora do Mini mPOS.</p>
+          <h3 id="cashback">Saque com compra</h3>
+          <p>Ative <strong>Saque com compra</strong> em Configurações › Pagamentos após confirmar a loja e o programa com a Adyen.
+          Defina um limite local e um PIN de gerente. Moeda e idioma não comprovam elegibilidade.</p>
+          <p>No checkout, informe o dinheiro adicional e confirme o cartão elegível. Use uma venda inteira sem divisão,
+          autorização parcial, cartão-presente, vale, parcelamento mexicano, gorjeta, Giving, áudio, MOTO/MKE, link,
+          token ou carteira escaneada. Desative explicitamente as opções incompatíveis.</p>
+          <h3 id="cashout">Saque</h3>
+          <p>Saque na tela inicial solicita dinheiro sem compra. Ative separadamente após a Adyen confirmar o saque
+          eftpos australiano para a loja atribuída. Terminais locais e na nuvem são aceitos; Tap to Pay está
+          indisponível.</p>
+          <p>Após a aprovação, confira o saque aprovado e a cobrança no cartão. A compra pode ser aprovada sem o saque,
+          sem deixar mercadorias pendentes por esse motivo. Entregue somente o valor aprovado, selecione Registrar
+          dinheiro entregue e aprove com o PIN de gerente. Confira entregas anteriores. Não entregue dinheiro se o valor
+          não for informado.</p>
+          <p>O histórico preserva solicitações não resolvidas e entregas não registradas. Consulte um resultado
+          desconhecido em vez de solicitar outro saque. Recibos, reimpressões e consultas não registram entregas. O
+          relatório separa dinheiro aprovado e entregue das vendas; a conciliação compara a cobrança no cartão.
+          Reembolsos referenciados devolvem apenas a compra elegível ao cartão original, nunca o dinheiro sacado. Saques
+          sem compra não têm mercadorias para reembolsar.</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/cashback-and-cash-out">Adyen: Cashback</a></p>
           <h3 id="meal-vouchers">Aceitar vale-refeição</h3>
           <p>Ative <strong>Vale-refeição</strong> em Configurações › Pagamentos somente depois de assinar os contratos com os
             emissores, cadastrar a loja e ter os vales habilitados pela Adyen. O país verificado da loja do terminal

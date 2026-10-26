@@ -9,6 +9,7 @@ import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.cancellable
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.transport.Fault
@@ -78,7 +79,7 @@ class RefundCancellations(
     suspend fun cancel(id: String): RefundCancelResult =
         mutex.withLock {
             val refund =
-                refunds.get(id)?.takeIf { approval.allowsNow() && it.cancellable(delayed()) }
+                refunds.get(id)?.takeIf { approval.forAction(ManagerAction.UNREFERENCED_REFUND).allowsNow() && it.cancellable(delayed()) }
                     ?: return@withLock RefundCancelResult.NotAllowed
             val unresolved = refund.cancelStatus?.unresolved == true
             when (val access = target().modifications(refund.context)) {
@@ -93,7 +94,7 @@ class RefundCancellations(
                             return@withLock RefundCancelResult.Unconfirmed(Failure.NotSetUp(it))
                         }
                     }
-                    if (!approval.allowsNow()) return@withLock RefundCancelResult.NotAllowed
+                    if (!approval.forAction(ManagerAction.UNREFERENCED_REFUND).allowsNow()) return@withLock RefundCancelResult.NotAllowed
                     withContext(NonCancellable) { send(refund, access) }
                 }
             }

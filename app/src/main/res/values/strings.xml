@@ -680,8 +680,33 @@
   <string name="manager_pin_set">Set Manager PIN</string>
   <string name="manager_pin_change">Change Manager PIN</string>
   <string name="manager_pin_remove">Remove Manager PIN</string>
-  <string name="manager_pin_remove_message">Refunds, cancellations, captures and adjustments no longer need Manager approval.</string>
-  <string name="manager_pin_hint">Optional: require Manager approval for refunds, cancellations, captures and adjustments. Set an admin PIN first to protect these settings.</string>
+  <string name="manager_pin_remove_message">Protected actions will stay blocked until you set a Manager PIN again or change their permissions.</string>
+  <string name="manager_action_sale">Ordinary sales</string>
+  <string name="manager_action_pre_authorisation">Pre-authorizations</string>
+  <string name="manager_action_cash_payment">Cash payments</string>
+  <string name="manager_action_link_create">Payment-link creation</string>
+  <string name="manager_action_referenced_refund">Referenced refunds</string>
+  <string name="manager_action_unreferenced_refund">Refunds without receipt</string>
+  <string name="manager_action_cash_refund">Cash refunds</string>
+  <string name="manager_action_capture">Captures and receipt tips</string>
+  <string name="manager_action_adjust_authorisation">Authorization changes and renewals</string>
+  <string name="manager_action_cancel_authorisation">Authorization cancellation</string>
+  <string name="manager_action_cashout">Cashout and cashback</string>
+  <string name="manager_action_gift_card_change">Gift-card value changes</string>
+  <string name="manager_action_saved_card_charge">Saved-card charges</string>
+  <string name="manager_action_token_delete">Token deletion</string>
+  <string name="manager_action_manual_entry">MOTO and manual card entry</string>
+  <string name="manager_action_link_change">Payment-link changes</string>
+  <string name="manager_action_close_period">Reconciliation period closing</string>
+  <string name="manager_action_history">History and transaction details</string>
+  <string name="manager_action_receipt">Receipt reprinting, emailing and sharing</string>
+  <string name="manager_action_totals">Reconciliation totals</string>
+  <string name="manager_action_saved_card_lookup">Saved-card lookup</string>
+  <string name="manager_action_gift_card_balance">Gift-card balance lookup</string>
+  <string name="manager_permissions">Manager permissions</string>
+  <string name="manager_permission_hint">Require Manager PIN for this action.</string>
+  <string name="manager_pin_required">This action requires a Manager PIN. Set one in Settings › Security, or have an admin change its permission.</string>
+  <string name="manager_pin_hint">Choose which actions require the Manager PIN. Without an Admin PIN, everyone can use all actions. With an Admin PIN, protected actions stay blocked until a Manager PIN is set.</string>
 
   <!-- Settings: overview and language -->
   <string name="settings_title">Settings</string>
@@ -1136,7 +1161,7 @@
   <string name="settings_set_pin">Set PIN</string>
   <string name="settings_change_pin">Change Admin PIN</string>
   <string name="settings_remove_pin">Remove Admin PIN</string>
-  <string name="settings_remove_pin_message">This removes protection from settings and products. It also removes the Manager PIN if one is set.</string>
+  <string name="settings_remove_pin_message">This removes protection from settings and products, removes the Manager PIN and lets everyone use all actions. Permission choices are kept.</string>
   <string name="settings_auto_lock">Lock again after</string>
   <string name="settings_auto_lock_hint">How long settings and products stay open after the admin PIN is entered.</string>
   <string name="settings_auto_lock_never">Only when leaving</string>
@@ -1475,7 +1500,7 @@
   <string name="cashout_title">Cashout</string>
   <string name="cashback_enable">Enable cashback with purchases</string>
   <string name="cashout_enable">Enable standalone cashout</string>
-  <string name="cashback_configuration">Confirm Adyen Support enabled this store and card program. A verified store, local limit and Manager PIN are required.</string>
+  <string name="cashback_configuration">Confirm Adyen Support enabled this store and card program. A verified store and local limit are required.</string>
   <string name="cashout_configuration">Only Australian eftpos supports standalone cashout here. Confirm its separate enablement with Adyen Support.</string>
   <string name="cashback_card_hint">Confirm this card program and the assigned store’s eligibility with Adyen.</string>
   <string name="cashback_limit">Local cash limit</string>
@@ -1534,7 +1559,7 @@
   <string name="report_unreferenced_refunds">Without receipt</string>
   <string name="unreferenced_settings_title">Refunds without receipt</string>
   <string name="unreferenced_settings_enable">Allow refunds without receipt</string>
-  <string name="unreferenced_settings_enable_hint">Turn on only after Adyen enabled unreferenced refunds for this store. Needs a verified store, a limit and a Manager PIN.</string>
+  <string name="unreferenced_settings_enable_hint">Turn on only after Adyen enabled unreferenced refunds for this store. Needs a verified store and a limit.</string>
   <string name="unreferenced_settings_limit">Refund limit</string>
   <string name="unreferenced_settings_limit_hint">Largest refund without receipt in the payment currency. Adyen’s own limit, set in the Customer Area, also applies.</string>
   <string name="unreferenced_settings_delay">Refund delay set up</string>

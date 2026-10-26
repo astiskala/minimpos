@@ -83,8 +83,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
 - \* Only `SavedCardLookup` lists and selects saved cards for a charge. It owns reference/model/target freshness and
   model eligibility; Checkout still validates pure request facts. Tokens retains its explicit lookup across
   reference/cart/review screens; checkout's automatic lookup stays screen-scoped. Only `SavedCardCharges` deletes tokens,
-  serializing with charges/rechecks and invalidating every lookup before sending. Confirmed deletion requires a
-  configured Manager PIN; admin unlock never authorizes it.
+  serializing with charges/rechecks and invalidating every lookup before sending. Confirmed deletion follows its configured
+  Manager permission; admin unlock never authorizes a protected action.
 - \* Only `CashTenders` records cash tenders and gift-card cash handovers, and only `RefundLegs` records cash handed
   back; cash reaches neither Adyen nor a terminal, so the stored balance, allocation and review checks are its only
   safeguards. `TenderBalance` is the one allocation reading; returns of split sales go to every original tender through
@@ -92,13 +92,13 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
 - Only `GiftCards` sends stored-value stages, each stored before sending and recovered with its original message
   category; `GiftCardActivity` alone decides what an activity still needs (check, continue, repair, handover, undo).
   Card cashback handovers also belong to `CashTenders`; approval never implies physical cash handover.
-  Gift-card value changes, repairs and handovers require a configured Manager PIN; balance
-  inquiries and redemption do not. Never store gift-card numbers or PINs.
+  Gift-card value changes, repairs, handovers and balance inquiries follow their configured Manager permissions.
+  Redemption follows the sale permission. Never store gift-card numbers or PINs.
 - \* Unreferenced refunds start only through `StoredPaymentActions.refundWithoutReceipt`, which rechecks
   `UnreferencedRefunds` readiness (verified store country, explicit enablement, local limit); the gateway checks the
-  confirmed configuration again at send and `TransactionLifecycle` a configured Manager PIN. They are refunds in history
-  sent as `Payment`s, so only their own book rechecks them, as payments. Only `RefundCancellations` asks Adyen to cancel
-  a delayed one or records its request status; a received cancellation never means the refund stopped.
+  confirmed configuration again at send and `TransactionLifecycle` the configured Manager permission. They are
+  refunds in history sent as `Payment`s, so only their own book rechecks them, as payments. Only `RefundCancellations`
+  asks Adyen to cancel a delayed one or records its request status; a received cancellation never means the refund stopped.
 - Meal-voucher markets come only from `WalletAvailability.mealVoucherSchemes` (verified store country; currency only
   labels an offline demo). `Checkout.mealVoucher` decides what a voucher tender may do and explains blocks before
   payment; `TenderBalance.acceptsVoucher` checks the eligible amount again where the tender is stored. Voucher value is
@@ -154,7 +154,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
 - \* Only PIN-entry UI and `data.security` verify PINs. Financial actions request Manager approval and recheck it before
   sending; admin access is separate. Secrets remain in `SecretStore`. `payment` decides approval only through
   `ManagerApproval`: an operation keeps the grant it started with, so leaving the approving screen cannot refuse it.
-  `Checkout.ceremony` decides per tender what is dropped and confirmed and whether approval is asked.
+  `Checkout.ceremony` decides per tender what is dropped and confirmed; `Checkout.managerActions` selects the live
+  Manager permission scopes.
 - \* `TerminalState.needsSetup` is read only by the container's `SetupGate`, followed by `SetupGateHost` in the nav host.
   Every UI action reaching Adyen or a terminal runs through `currentSetupGate().run`/`GatedButton(requiresSetup = true)`;
   content that only means something once set up shows `SetupRequired`. Setup tools and `StatusCheck` never do, and Home

@@ -13,6 +13,7 @@ import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkApi
@@ -100,6 +101,7 @@ class PaymentLinks(
             clock = clock,
             newId = newId,
             mutex = mutex,
+            approval = approval.forActions(setOf(ManagerAction.SALE, ManagerAction.LINK_CREATE)),
         )
 
     /** Whether creation, recovery, a status check or cancellation is using the current API target. */
@@ -156,7 +158,7 @@ class PaymentLinks(
         mutex.withLock {
             val sale = sales.get(saleId)?.sale?.takeIf { it.status == SaleStatus.AWAITING_PAYMENT }
             val linkId = sale?.paymentLinkId ?: return@withLock LinkUpdate.Settled
-            if (!approval.allowsNow()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
+            if (!approval.forAction(ManagerAction.LINK_CHANGE).allowsNow()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
             withApi(sale) { stored(saleId, it.expire(linkId), cancelling = true) }
         }
 
@@ -171,7 +173,7 @@ class PaymentLinks(
             if (!sale.simulatedLink) return@withLock notSetUp(SetupProblem.PAYMENT_CONTEXT)
             if (sale.status != SaleStatus.AWAITING_PAYMENT) return@withLock LinkUpdate.Settled
             val linkId = sale.paymentLinkId ?: return@withLock LinkUpdate.Settled
-            if (!approval.allowsNow()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
+            if (!approval.forAction(ManagerAction.LINK_CHANGE).allowsNow()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
             withApi(sale) { api ->
                 when (val result = api.status(linkId)) {
                     is PaymentLinkResult.Answered -> {

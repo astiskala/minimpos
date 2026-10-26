@@ -14,6 +14,7 @@ import app.minimpos.app.history.simulatedSale
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.app.terminal.TerminalState
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.CardChargeRequest
 import app.minimpos.terminal.checkout.CardChargeResult
@@ -118,7 +119,17 @@ class SavedCardCharges(
     private val targets: Flow<ApiTarget> = flow { emit(target()) },
 ) {
     private val mutex = Mutex()
-    private val operations = CheckoutOperations(scope, Book(sales), target, onCharged, clock, newId, approval, mutex)
+    private val operations =
+        CheckoutOperations(
+            scope,
+            Book(sales),
+            target,
+            onCharged,
+            clock,
+            newId,
+            approval.forActions(setOf(ManagerAction.SALE, ManagerAction.SAVED_CARD_CHARGE)),
+            mutex,
+        )
     private var deletionOrigin: ApiTarget? = null
 
     /** Invalidates every explicit and automatic selection synchronously when token management changes its evidence. */
@@ -160,6 +171,13 @@ class SavedCardCharges(
         shopperReference: String,
         origin: ApiTarget,
     ): CardLookup {
+        if (!approval
+                .forAction(
+                    ManagerAction.SAVED_CARD_LOOKUP,
+                ).allowsNow()
+        ) {
+            return CardLookup.NotDone(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL))
+        }
         if (target() != origin) return CardLookup.NotDone(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
         val result =
             when (val access = origin.savedCards(origin.context)) {
@@ -223,7 +241,7 @@ class SavedCardCharges(
                                     )
                                 }
 
-                                !approval.allowsConfigured(grant) -> {
+                                !approval.forAction(ManagerAction.TOKEN_DELETE).allowsConfigured(grant) -> {
                                     TokenDeletionState(
                                         card,
                                         reference,

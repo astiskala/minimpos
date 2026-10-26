@@ -110,6 +110,9 @@ settings.json: app.minimpos.app.data.settings.AppSettings
     bcc: string
     subject: string
   security: app.minimpos.app.data.settings.SecuritySettings
+    managerRequirements: map
+      key: string
+      value: boolean
     autoLockMinutes: int
   simulator: app.minimpos.app.data.settings.SimulatorSettings
     outcome: enum app.minimpos.terminal.simulator.SimulatedOutcome [APPROVE, DECLINE, CANCEL, BUSY, TIMEOUT, RANDOM]
@@ -313,6 +316,9 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
       bcc: string
       subject: string
     security: app.minimpos.app.data.settings.SecuritySettings
+      managerRequirements: map
+        key: string
+        value: boolean
       autoLockMinutes: int
     simulator: app.minimpos.app.data.settings.SimulatorSettings
       outcome: enum app.minimpos.terminal.simulator.SimulatedOutcome [APPROVE, DECLINE, CANCEL, BUSY, TIMEOUT, RANDOM]

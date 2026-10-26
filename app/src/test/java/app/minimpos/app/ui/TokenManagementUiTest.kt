@@ -29,6 +29,7 @@ import app.minimpos.app.payment.TokenDeletionStatus
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SetupGateHost
 import app.minimpos.app.ui.theme.MiniMposTheme
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.StoredCard
 import com.google.common.truth.Truth.assertThat
@@ -73,7 +74,16 @@ class TokenManagementUiTest {
                     context = PaymentContext("SIMULATOR", "SIM", "POS", "", null, simulated = true),
                 ),
             )
+            env.container.pinManager.setPin("1357")
             if (manager) env.container.managerPin.setPin("2468")
+            env.container.settings.update {
+                it.copy(
+                    security =
+                        it.security.copy(
+                            managerRequirements = mapOf(ManagerAction.SAVED_CARD_LOOKUP.name to manager),
+                        ),
+                )
+            }
         }
         compose.setContent { MiniMposApp(env.container) }
         compose.onNodeWithTag("savedCard").performScrollTo().performClick()

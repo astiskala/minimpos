@@ -6,6 +6,7 @@ import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.repo.cashHandover
 import app.minimpos.app.data.security.ManagerApproval
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.split.CashPayment
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -46,6 +47,7 @@ class CashTenders(
         receivedMinor: Long,
         createdAt: Long,
     ): String? {
+        if (!approval.forActions(setOf(ManagerAction.SALE, ManagerAction.CASH_PAYMENT)).allowsNow()) return null
         if (start.existingSaleId != null || start.manualCapture || start.scannedPayment != null) return null
         val cash = payment(start.requestedAmountMinor, receivedMinor) ?: return null
         if (!SaleBook.splitBalance(start).accepts(cash.amountMinor, start.allocation)) return null
@@ -75,6 +77,7 @@ class CashTenders(
         receivedMinor: Long,
         reviewedPaidMinor: Long,
     ): Boolean {
+        if (!approval.forActions(setOf(ManagerAction.SALE, ManagerAction.CASH_PAYMENT)).allowsNow()) return false
         val cash = payment(amountMinor, receivedMinor) ?: return false
         return mutex.withLock { sales.recordCash(saleId, SaleEvent.CashTendered(cash, reviewedPaidMinor), allocation, environment()) }
     }
@@ -91,7 +94,7 @@ class CashTenders(
         return mutex.withLock {
             val sale = sales.get(saleId)?.sale ?: return@withLock false
             if (sale.cashHandover?.canRecord != true) return@withLock false
-            if (!approval.allowsConfigured(grant)) return@withLock false
+            if (!approval.forAction(ManagerAction.CASHOUT).allowsConfigured(grant)) return@withLock false
             sales.recordCashHandover(saleId)
         }
     }

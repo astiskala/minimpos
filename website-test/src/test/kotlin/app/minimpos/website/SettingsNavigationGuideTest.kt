@@ -33,6 +33,8 @@ class SettingsNavigationGuideTest {
             val using = Jsoup.parse(directory.resolve("using.html").readText())
             val labels = using.select("strong").eachText()
             assertWithMessage("$language admin PIN setup").that(labels).contains(strings.getValue("settings_set_pin"))
+            assertWithMessage("$language configurable Manager permissions").that(labels).contains(strings.getValue("manager_permissions"))
+            assertWithMessage("$language separate Manager PIN setup").that(labels).contains(strings.getValue("manager_pin_set"))
             assertWithMessage("$language simulator link action")
                 .that(using.select("#payment-links strong").eachText())
                 .contains(strings.getValue("link_simulate"))

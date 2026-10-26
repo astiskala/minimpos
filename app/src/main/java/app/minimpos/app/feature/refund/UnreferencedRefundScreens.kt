@@ -58,6 +58,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.AmountEntry
 import app.minimpos.core.money.CurrencySpec
 import kotlinx.coroutines.flow.Flow
@@ -118,7 +119,7 @@ private fun RefundWay(
  * @property amount The amount typed in.
  * @property reason Why staff make it; null until chosen.
  * @property block Why none can be made now; null when ready.
- * @property managerConfigured Whether a Manager PIN is configured, which every unreferenced refund needs.
+ * @property managerConfigured Whether this action is public or a Manager PIN is configured to approve it.
  * @property limitMinor The local limit in minor units of [currency].
  */
 internal data class UnreferencedRefundState(
@@ -195,7 +196,7 @@ internal fun UnreferencedRefundScreen(
     var confirm by rememberSaveable { mutableStateOf(false) }
     var approve by rememberSaveable { mutableStateOf(false) }
     if (approve) {
-        return ManagerApproval(onApprove = {
+        return ManagerApproval(actions = setOf(ManagerAction.UNREFERENCED_REFUND), onApprove = {
             approve = false
             if (vm.start() != null) navigator.replace(Route.RefundProcessing)
         }, onCancel = { approve = false })
@@ -304,7 +305,7 @@ private fun unreferencedRefundViewModel(): UnreferencedRefundViewModel {
         UnreferencedRefundViewModel(
             container.settingsState,
             container.walletDiscovery.state,
-            container.managerPin.pinConfigured,
+            container.managerAvailable(ManagerAction.UNREFERENCED_REFUND),
             container::currency,
             container.storedPaymentActions,
         )

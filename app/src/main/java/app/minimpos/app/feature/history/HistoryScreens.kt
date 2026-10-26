@@ -66,7 +66,7 @@ import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.cashbackFacts
 import app.minimpos.app.feature.giftcard.giftCardStageLabel
 import app.minimpos.app.feature.giftcard.statusLabel
-import app.minimpos.app.feature.lock.ManagerApproval
+import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.feature.mealVoucherFacts
 import app.minimpos.app.feature.mexicanPlan
 import app.minimpos.app.feature.modificationNote
@@ -115,6 +115,7 @@ import app.minimpos.app.ui.components.rememberSearchControl
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.payment.PaymentMethods
 import app.minimpos.core.payment.ScanWallet
@@ -507,13 +508,7 @@ fun SaleDetailScreen(
     val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
     var cancelling by rememberSaveable { mutableStateOf(false) }
-    var approval by remember { mutableStateOf<(() -> Unit)?>(null) }
-    if (approval != null) {
-        return ManagerApproval(onApprove = {
-            approval?.invoke()
-            approval = null
-        }, onCancel = { approval = null })
-    }
+    val approve = rememberManagerAction()
     val gate = currentSetupGate()
     MiniScaffold(
         title = stringResource(saleDetailTitle(state.record?.sale)),
@@ -532,14 +527,22 @@ fun SaleDetailScreen(
                 onEnterTip = { gate.run { navigator.push(Route.Tip(sale.id)) } },
                 onCapture = { gate.run { navigator.push(Route.Capture(sale.id)) } },
                 onAdjust = { gate.run { navigator.push(Route.Capture(sale.id, adjustOnly = true)) } },
-                onRetryCapture = { gate.run { approval = vm::retryCapture } },
+                onRetryCapture = {
+                    gate.run {
+                        approve(setOf(ManagerAction.CAPTURE), vm::retryCapture)
+                    }
+                },
             )
             SaleDetailActions(
                 state = state,
                 onRecheck = vm.transaction::recheck,
                 onCheckDismiss = vm.transaction::dismissCheckResult,
                 onRefund = { gate.run { navigator.push(Route.Refund(saleId = sale.id)) } },
-                onCancel = { gate.run { approval = { cancelling = true } } },
+                onCancel = {
+                    gate.run {
+                        approve(setOf(ManagerAction.CANCEL_AUTHORISATION)) { cancelling = true }
+                    }
+                },
                 onShowLink = { navigator.push(Route.PaymentLink(sale.id)) },
             )
             SplitProgress(record, money) { navigator.push(Route.Split(saleId = sale.id)) }

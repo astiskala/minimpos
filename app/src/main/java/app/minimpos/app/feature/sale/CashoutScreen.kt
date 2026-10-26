@@ -26,6 +26,7 @@ import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
+import app.minimpos.core.access.ManagerAction
 
 /** Standalone eftpos cash-out, kept separate from merchandise and purchase-linked cashback readiness. */
 @Composable
@@ -40,7 +41,7 @@ internal fun CashoutScreen(
     var confirm by remember { mutableStateOf(false) }
     var approve by remember { mutableStateOf(false) }
     if (approve) {
-        return ManagerApproval(onApprove = {
+        return ManagerApproval(actions = setOf(ManagerAction.CASHOUT), onApprove = {
             approve = false
             if (vm.start()) navigator.replace(Route.Payment(SaleKind.SALE))
         }, onCancel = { approve = false })
@@ -83,7 +84,7 @@ internal fun CashoutScreen(
     }
 }
 
-/** Records cash handover after a separate confirmation and configured Manager PIN recheck. */
+/** Records cash handover after a separate confirmation and a live Manager permission recheck. */
 @Composable
 internal fun CashbackHandoverScreen(
     saleId: String,
@@ -94,7 +95,7 @@ internal fun CashbackHandoverScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     var approve by remember { mutableStateOf(false) }
     if (approve) {
-        return ManagerApproval(onApprove = {
+        return ManagerApproval(actions = setOf(ManagerAction.CASHOUT), onApprove = {
             approve = false
             vm.confirm()
         }, onCancel = { approve = false })
@@ -124,7 +125,7 @@ private fun cashoutViewModel(): CashoutViewModel {
         CashoutViewModel(
             container.settingsState,
             container.walletDiscovery.state,
-            container.managerPin.pinConfigured,
+            container.managerAvailable(ManagerAction.CASHOUT),
             container::currency,
             container.payments,
         )
@@ -135,6 +136,6 @@ private fun cashoutViewModel(): CashoutViewModel {
 private fun cashHandoverViewModel(saleId: String): CashHandoverViewModel {
     val container = LocalAppContainer.current
     return viewModel(key = "cash-$saleId") {
-        CashHandoverViewModel(saleId, container.storedPayments, container.cashTenders, container.managerPin.pinConfigured)
+        CashHandoverViewModel(saleId, container.storedPayments, container.cashTenders, container.managerAvailable(ManagerAction.CASHOUT))
     }
 }

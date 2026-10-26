@@ -77,6 +77,18 @@ enum class PaymentStanding(
         private const val PERCENT = 100
 
         /**
+         * Whether capturing [amountMinor] requires an authorization change or repeating an unresolved one.
+         * A non-null [tipMinor] applies the receipt-tip overcapture rule; null is an ordinary capture.
+         */
+        fun captureNeedsAdjustment(
+            sale: SaleEntity,
+            amountMinor: Long,
+            tipMinor: Long? = null,
+        ): Boolean =
+            sale.adjustmentPending ||
+                (amountMinor > sale.heldMinor && (tipMinor == null || tipNeedsAdjustment(sale.totalMinor, tipMinor)))
+
+        /**
          * Adyen's rule of thumb for tipping on the receipt: a tip above this percentage of the bill needs an authorisation
          * adjustment before the capture; a smaller one is simply captured with the bill (overcapture).
          */

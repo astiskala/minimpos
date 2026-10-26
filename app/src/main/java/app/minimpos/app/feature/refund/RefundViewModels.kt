@@ -19,6 +19,7 @@ import app.minimpos.app.payment.RefundCancelResult
 import app.minimpos.app.payment.RefundCancellations
 import app.minimpos.app.payment.RefundStarted
 import app.minimpos.app.payment.StoredPaymentActions
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.money.AmountEntry
 import kotlinx.coroutines.flow.Flow
@@ -82,8 +83,21 @@ data class RefundUiState(
     /** What each original tender returns: staff adjustments, else the automatic proposal; empty without tenders. */
     val allocation: Map<String, Long> get() = adjusted ?: original?.proposal(choice).orEmpty()
 
-    /** Whether any cash is handed back, which needs a configured Manager PIN. */
+    /** Whether any card tender is refunded, including a foreign receipt with no stored legs. */
+    val returnsCard: Boolean get() =
+        original?.let { payment ->
+            payment.legs.isEmpty() || payment.legs.any { !it.cash && (allocation[it.tender?.id] ?: 0) > 0 }
+        } == true
+
+    /** Whether any cash is handed back, which follows the cash-refund Manager permission. */
     val returnsCash: Boolean get() = original?.legs.orEmpty().any { it.cash && (allocation[it.tender?.id] ?: 0) > 0 }
+
+    /** Manager permissions for the currently allocated card and cash return legs. */
+    val managerActions: Set<ManagerAction> get() =
+        buildSet {
+            if (returnsCard) add(ManagerAction.REFERENCED_REFUND)
+            if (returnsCash) add(ManagerAction.CASH_REFUND)
+        }
 
     /** Whether [refundMinor] can be refunded: more than 0, no more than what is left, and fully allocated to tenders. */
     val amountValid: Boolean

@@ -7,6 +7,7 @@ import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.TerminalGateway
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.RefundParams
@@ -121,11 +122,11 @@ sealed interface TerminalOperation {
     /** What it charges or refunds, which its waiting screen shows. */
     val amount: OperationAmount
 
-    /** Whether it moves money only with Manager approval, see [ManagerApproval]. */
-    val needsApproval: Boolean
+    /** Actions this request performs, re-evaluated against the live Manager policy before sending. */
+    val managerActions: Set<ManagerAction>
 
     /**
-     * A card payment. MOTO and MKE payments need Manager approval; ordinary card entry does not.
+     * A card payment whose Manager permissions follow its sale kind, cash request and card-entry method.
      *
      * @property params What to charge.
      * @property audioGuidancePoiId Confirmed audio-guidance terminal; null for ordinary payments.
@@ -133,6 +134,7 @@ sealed interface TerminalOperation {
      * @property setupIdentity Exact checked store/scan setup fingerprint; null for ordinary collection.
      * @property cashbackIdentity Non-secret configuration identity confirmed for a cash request; null for ordinary collection.
      * @property unreferencedIdentity Non-secret configuration identity confirmed for an unreferenced refund; null otherwise.
+     * @property collectionAction Sale or pre-authorization permission; null derives it from the wire request.
      */
     data class Pay(
         val params: PaymentParams,
@@ -141,26 +143,45 @@ sealed interface TerminalOperation {
         val setupIdentity: String? = null,
         val cashbackIdentity: String? = null,
         val unreferencedIdentity: String? = null,
+        val collectionAction: ManagerAction? = null,
     ) : TerminalOperation {
-        override val amount: OperationAmount get() = OperationAmount(params.amountMinor, params.currency)
-        override val needsApproval: Boolean
-            get() = params.cashBackMinor != null || params.unreferencedRefund || params.cardEntryOverride.needsManagerApproval
+        override val managerActions: Set<ManagerAction> get() =
+            buildSet {
+                when {
+                    params.unreferencedRefund -> {
+                        add(ManagerAction.UNREFERENCED_REFUND)
+                    }
 
-        /** Whether only a configured Manager PIN may approve it: cash requests and unreferenced refunds. */
-        val needsConfiguredApproval: Boolean get() = params.cashBackMinor != null || params.unreferencedRefund
+                    params.cashBackMinor != null -> {
+                        add(ManagerAction.CASHOUT)
+                        if (params.amountMinor > (params.cashBackMinor ?: 0L)) add(ManagerAction.SALE)
+                    }
+
+                    else -> {
+                        add(
+                            collectionAction ?: if (params.preAuthorisation) ManagerAction.PRE_AUTHORISATION else ManagerAction.SALE,
+                        )
+                    }
+                }
+                if (params.cardEntryOverride.needsManagerApproval) add(ManagerAction.MANUAL_ENTRY)
+            }
+        override val amount: OperationAmount get() = OperationAmount(params.amountMinor, params.currency)
     }
 
     /**
-     * A referenced refund, which always needs Manager approval.
+     * A referenced refund or hold cancellation, with separate Manager permissions.
      *
      * @property params The payment to refund, and how much.
      * @property amount The amount refunded, the whole original amount for a full one.
+     * @property cancellation Whether this releases a held authorization rather than returning captured funds.
      */
     data class Refund(
         val params: RefundParams,
         override val amount: OperationAmount,
+        val cancellation: Boolean = false,
     ) : TerminalOperation {
-        override val needsApproval: Boolean get() = true
+        override val managerActions: Set<ManagerAction> get() =
+            setOf(if (cancellation) ManagerAction.CANCEL_AUTHORISATION else ManagerAction.REFERENCED_REFUND)
     }
 }
 
@@ -252,7 +273,7 @@ interface TransactionBook<R> {
  * @param clock Stamps the records.
  * @param newId Generates record IDs.
  * @param newServiceId Generates the ServiceIDs of the requests.
- * @param approval Manager approval of the operations that need it ([TerminalOperation.needsApproval]): taken when one
+ * @param approval Manager approval of the operations that need it ([TerminalOperation.managerActions]): taken when one
  *   starts and checked again immediately before sending.
  */
 class TransactionLifecycle<R>(
@@ -363,12 +384,17 @@ class TransactionLifecycle<R>(
     private suspend fun allowed(
         operation: TerminalOperation,
         grant: ManagerApproval.Grant,
-    ): Boolean =
-        when {
-            operation is TerminalOperation.Pay && operation.needsConfiguredApproval -> approval.allowsConfigured(grant)
-            operation.needsApproval -> approval.allows(grant)
-            else -> true
+    ): Boolean {
+        val scoped = approval.forActions(operation.managerActions)
+        val configuredApproval =
+            operation is TerminalOperation.Pay &&
+                (operation.params.unreferencedRefund || operation.params.cashBackMinor != null)
+        return if (configuredApproval) {
+            scoped.allowsConfigured(grant)
+        } else {
+            scoped.allows(grant)
         }
+    }
 
     private suspend fun run(
         id: String,

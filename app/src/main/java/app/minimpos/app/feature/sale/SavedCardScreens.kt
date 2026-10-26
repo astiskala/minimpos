@@ -42,6 +42,7 @@ import app.minimpos.app.R
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.feature.GatedButton
 import app.minimpos.app.feature.lock.ManagerApproval
+import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.feature.text
 import app.minimpos.app.payment.TokenDeletionOffer
 import app.minimpos.app.payment.TokenDeletionState
@@ -61,6 +62,7 @@ import app.minimpos.app.ui.navigation.ChosenCard
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.terminal.checkout.StoredCard
 import kotlinx.coroutines.launch
 
@@ -79,11 +81,12 @@ fun SavedCardScreen(
     val dimens = LocalDimens.current
     val container = LocalAppContainer.current
     val gate = currentSetupGate()
-    val managerConfigured by container.managerPin.pinConfigured.collectAsStateWithLifecycle(initialValue = false)
+    val managerConfigured by container.managerAvailable(ManagerAction.TOKEN_DELETE).collectAsStateWithLifecycle(initialValue = false)
     var confirmation by remember { mutableStateOf<TokenDeletionOffer?>(null) }
     var approval by remember { mutableStateOf<TokenDeletionOffer?>(null) }
     approval?.let { offer ->
         return ManagerApproval(
+            actions = setOf(ManagerAction.TOKEN_DELETE),
             onApprove = {
                 approval = null
                 gate.run { vm.delete(offer) }
@@ -311,6 +314,7 @@ fun SavedCardReviewScreen(
     modifier: Modifier = Modifier,
     vm: SavedCardViewModel = savedCardViewModel(),
 ) {
+    val approveCharge = rememberManagerAction()
     val state by vm.state.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(state.checkout.currency)
     val charge = state.charge
@@ -332,16 +336,10 @@ fun SavedCardReviewScreen(
         snackbarHostState = snackbar,
         bottomBar = {
             if (!charging) {
-                BottomActions {
-                    GatedButton(
-                        stringResource(R.string.saved_card_charge, total),
-                        { vm.charge(card.stored(state.recurringModel)) },
-                        blocked = state.lookup.selectionProblem(card.stored(state.recurringModel)),
-                        enabled = state.checkout.canPay && state.shopperReference != null,
-                        primary = true,
-                        requiresSetup = true,
-                        modifier = Modifier.testTag("chargeSavedCard"),
-                    )
+                SavedCardChargeBar(state, card, total) {
+                    approveCharge(setOf(ManagerAction.SALE, ManagerAction.SAVED_CARD_CHARGE)) {
+                        vm.charge(card.stored(state.recurringModel))
+                    }
                 }
             }
         },
@@ -370,6 +368,26 @@ fun SavedCardReviewScreen(
                 modifier = Modifier.padding(top = LocalDimens.current.spacing),
             )
         }
+    }
+}
+
+@Composable
+private fun SavedCardChargeBar(
+    state: SavedCardUiState,
+    card: ChosenCard,
+    total: String,
+    onCharge: () -> Unit,
+) {
+    BottomActions {
+        GatedButton(
+            stringResource(R.string.saved_card_charge, total),
+            onCharge,
+            blocked = state.lookup.selectionProblem(card.stored(state.recurringModel)),
+            enabled = state.checkout.canPay && state.shopperReference != null,
+            primary = true,
+            requiresSetup = true,
+            modifier = Modifier.testTag("chargeSavedCard"),
+        )
     }
 }
 

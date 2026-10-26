@@ -65,6 +65,7 @@ class GiftCardUiTest {
     @Test
     fun `value changes explain the missing Manager PIN while balance stays available`() {
         simulator(svs)
+        await { container.pinManager.setPin("1357") }
         openGiftCards()
         compose.waitUntilAtLeastOneExists(hasTestTag("giftCardStart"), 15_000)
         compose.onNodeWithTag("giftCardStart").assertIsDisplayed().assertIsEnabled()
@@ -79,7 +80,10 @@ class GiftCardUiTest {
     fun `an activation fits the smallest terminal at large text and ends on its result`() {
         RuntimeEnvironment.setFontScale(1.5f)
         simulator(svs)
-        await { container.managerPin.setPin("2468") }
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+        }
         openGiftCards()
         compose.waitUntilAtLeastOneExists(hasTestTag("giftCardOperation_ACTIVATE"), 15_000)
         compose.onNodeWithTag("giftCardEntry_1").performScrollTo().performClick()

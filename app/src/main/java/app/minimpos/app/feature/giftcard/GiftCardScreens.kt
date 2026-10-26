@@ -51,6 +51,7 @@ import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.lock.ManagerApproval
+import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.text
 import app.minimpos.app.payment.GiftCardBalanceResult
@@ -80,6 +81,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.giftcard.GiftCardEntry
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.giftcard.GiftCardProvider
@@ -100,11 +102,13 @@ fun GiftCardsScreen(
     vm: GiftCardsViewModel = giftCardsViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val approveBalance = rememberManagerAction()
     val money = rememberMoneyFormatter(state.currency)
     var confirm by rememberSaveable { mutableStateOf(false) }
     var approve by rememberSaveable { mutableStateOf(false) }
     if (approve) {
         return ManagerApproval(
+            actions = setOf(ManagerAction.GIFT_CARD_CHANGE),
             onApprove = {
                 approve = false
                 vm.start()?.let { navigator.push(Route.GiftCardActivity(it)) }
@@ -119,7 +123,11 @@ fun GiftCardsScreen(
         title = stringResource(R.string.gift_card_title),
         onBack = navigator::back,
         modifier = modifier,
-        bottomBar = { StartBar(state, money, onStart = { if (state.changesValue) confirm = true else vm.readBalance() }) },
+        bottomBar = {
+            StartBar(state, money, onStart = {
+                if (state.changesValue) confirm = true else approveBalance(setOf(ManagerAction.GIFT_CARD_BALANCE)) { vm.readBalance() }
+            })
+        },
     ) { padding ->
         if (state.loaded && state.settings.isEmpty()) {
             EmptyState(
@@ -419,6 +427,7 @@ fun GiftCardActivityScreen(
     BackHandler(enabled = !processing) { done() }
     approved?.let { action ->
         return ManagerApproval(
+            actions = setOf(ManagerAction.GIFT_CARD_CHANGE),
             onApprove = {
                 approved = null
                 vm.follow(action)
@@ -781,7 +790,7 @@ private fun giftCardsViewModel(): GiftCardsViewModel {
             container.giftCards,
             container.giftCardRecords,
             container.settingsState.map { it.payment to container.currency(it).code },
-            container.managerPin.pinConfigured,
+            container.managerAvailable(ManagerAction.GIFT_CARD_CHANGE),
             container.terminalStatus.state.map { it.giftCardsBlocked },
         )
     }
@@ -801,7 +810,7 @@ private fun giftCardActivityViewModel(
             container.receipts,
             container.operations,
             container.settingsState.map { it.payment },
-            container.managerPin.pinConfigured,
+            container.managerAvailable(ManagerAction.GIFT_CARD_CHANGE),
             justStarted = !fromHistory,
         )
     }

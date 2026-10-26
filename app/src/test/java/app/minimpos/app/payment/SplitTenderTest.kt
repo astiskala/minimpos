@@ -17,6 +17,7 @@ import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.receipt.ReceiptElement
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
@@ -202,7 +203,16 @@ class SplitTenderTest {
         val allocation = payment.proposal(RefundChoice.Everything)
         assertThat(allocation.values).containsExactly(500L, 800L).inOrder()
 
-        // Without a Manager PIN the card is refunded but the cash is not handed back.
+        await { container.pinManager.setPin("1357") }
+        env.updateSettings {
+            it.copy(
+                security =
+                    it.security.copy(
+                        managerRequirements = mapOf(ManagerAction.REFERENCED_REFUND.name to false),
+                    ),
+            )
+        }
+        // Public card refunds remain available while manager-only cash returns need a configured PIN.
         assertThat(container.storedPaymentActions.refund(payment, RefundChoice.Everything, allocation)).isEqualTo(RefundStarted.LEGS)
         val blocked = await { container.refundLegs.state.first { it?.finished == true } }!!
         assertThat(blocked.legs.map { it.cash }).containsExactly(false, true).inOrder()

@@ -1,6 +1,7 @@
 package app.minimpos.app.data.settings
 
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.giftcard.GiftCardEntry
 import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.core.money.AdyenCurrencies
@@ -27,7 +28,7 @@ import kotlinx.serialization.Serializable
  * @property payment Currency, tax, references and what checkout asks for.
  * @property receipt Receipt content and printing.
  * @property email SMTP settings for emailed receipts.
- * @property security Admin area locking.
+ * @property security Admin area locking and Manager permissions.
  * @property simulator How the built-in terminal simulator behaves.
  * @property history How long sales and refunds are kept.
  * @property pricingChange Local recoverable pricing journal; null when stable, never shared.
@@ -682,15 +683,20 @@ data class EmailSettings(
 }
 
 /**
- * Admin area locking. The admin PIN itself is in [app.minimpos.app.data.security.PinManager].
+ * Admin area locking and per-action Manager permissions. The admin PIN itself is in [app.minimpos.app.data.security.PinManager].
  *
+ * @property managerRequirements Overrides keyed by [ManagerAction] names; omitted actions retain their defaults.
  * @property autoLockMinutes Minutes without activity after which the admin area locks again; 0 locks it only when the
  *   admin area is left. Never negative.
  */
 @Serializable
 data class SecuritySettings(
+    val managerRequirements: Map<String, Boolean> = emptyMap(),
     val autoLockMinutes: Int = 2,
 ) {
+    /** Whether [action] needs Manager approval once an admin PIN exists. */
+    fun requiresManager(action: ManagerAction): Boolean = managerRequirements[action.name] ?: action.defaultRequired
+
     /** These settings with [autoLockMinutes] not negative. */
     fun normalized(): SecuritySettings = copy(autoLockMinutes = autoLockMinutes.coerceAtLeast(0))
 }

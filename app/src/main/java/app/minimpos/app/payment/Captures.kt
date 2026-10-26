@@ -13,6 +13,7 @@ import app.minimpos.app.history.standing
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
@@ -112,7 +113,7 @@ class Captures(
                 allowing(saleId, PaymentAction.ENTER_TIP)?.takeIf { tipMinor >= 0 } ?: return@withLock CaptureResult.NotAllowed
             val total = Math.addExact(Math.addExact(sale.totalMinor, sale.surchargeMinor ?: 0), tipMinor)
             if (!PaymentStanding.captureAmountAllowed(sale, total)) return@withLock CaptureResult.NotAllowed
-            if (sale.adjustmentPending || (PaymentStanding.tipNeedsAdjustment(sale.totalMinor, tipMinor) && total > sale.heldMinor)) {
+            if (PaymentStanding.captureNeedsAdjustment(sale, total, tipMinor)) {
                 // The tip is only saved once the higher amount is authorised.
                 withApi(target, sale) { modifications ->
                     adjusted(sale, total, modifications) { capture(it, total, modifications, tipMinor) }
@@ -135,7 +136,7 @@ class Captures(
             val sale =
                 allowing(saleId, PaymentAction.CAPTURE)?.takeIf { amountMinor > 0 } ?: return@withLock CaptureResult.NotAllowed
             if (!PaymentStanding.captureAmountAllowed(sale, amountMinor)) return@withLock CaptureResult.NotAllowed
-            if (sale.adjustmentPending || amountMinor > sale.heldMinor) {
+            if (PaymentStanding.captureNeedsAdjustment(sale, amountMinor)) {
                 withApi(target, sale) { modifications ->
                     adjusted(sale, amountMinor, modifications) { capture(it, amountMinor, modifications) }
                 }
@@ -172,16 +173,15 @@ class Captures(
     private suspend fun allowing(
         saleId: String,
         action: PaymentAction,
-    ): SaleEntity? =
-        if (!approval.allowsNow()) {
-            null
-        } else {
-            sales
-                .get(saleId)
-                ?.let(::StoredPayment)
-                ?.takeIf { action in it.actions }
-                ?.sale
-        }
+    ): SaleEntity? {
+        val permission = if (action == PaymentAction.ADJUST) ManagerAction.ADJUST_AUTHORISATION else ManagerAction.CAPTURE
+        if (!approval.forAction(permission).allowsNow()) return null
+        return sales
+            .get(saleId)
+            ?.let(::StoredPayment)
+            ?.takeIf { action in it.actions }
+            ?.sale
+    }
 
     /** Runs [send] with the Checkout API when [target] has it; else nothing is sent, and [sale] records why. */
     private suspend fun withApi(
@@ -224,7 +224,7 @@ class Captures(
         amount: Long,
         modifications: PaymentModifications,
     ): CaptureResult {
-        if (!approval.allowsNow()) return CaptureResult.NotAllowed
+        if (!approval.forAction(ManagerAction.ADJUST_AUTHORISATION).allowsNow()) return CaptureResult.NotAllowed
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
         // An unresolved request keeps its identity; a separate renewal or amount change gets a new identity.
         if (sale.adjustmentPending && sale.adjustmentAmountMinor != amount) return CaptureResult.NotAllowed
@@ -261,7 +261,7 @@ class Captures(
         modifications: PaymentModifications,
         tipMinor: Long? = null,
     ): CaptureResult {
-        if (!approval.allowsNow()) return CaptureResult.NotAllowed
+        if (!approval.forAction(ManagerAction.CAPTURE).allowsNow()) return CaptureResult.NotAllowed
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
         val unresolved = sale.standing in setOf(PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN)
         if (sale.capturedMinor == amount) {

@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
 import app.minimpos.app.feature.OutcomeMessage
+import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
@@ -45,6 +46,7 @@ import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.AmountEntry
 import app.minimpos.core.money.MoneyFormatter
 
@@ -62,6 +64,7 @@ fun TipScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var confirming by rememberSaveable { mutableStateOf<Long?>(null) }
+    val approve = rememberManagerAction()
     val gate = currentSetupGate()
     LaunchedEffect(state.submission.done) { if (state.submission.done) navigator.back() }
     MiniScaffold(
@@ -100,7 +103,14 @@ fun TipScreen(
                 money = money,
                 onConfirm = {
                     confirming = null
-                    vm.submit(tip)
+                    approve(
+                        buildSet {
+                            add(ManagerAction.CAPTURE)
+                            if (state.sale?.let { PaymentStanding.captureNeedsAdjustment(it, state.billMinor + tip, tip) } == true) {
+                                add(ManagerAction.ADJUST_AUTHORISATION)
+                            }
+                        },
+                    ) { vm.submit(tip) }
                 },
                 onDismiss = { confirming = null },
             )
@@ -191,6 +201,7 @@ fun CaptureScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var confirming by rememberSaveable { mutableStateOf(false) }
+    val approve = rememberManagerAction()
     val gate = currentSetupGate()
     LaunchedEffect(state.submission.done) { if (state.submission.done) navigator.back() }
     val sale = state.sale
@@ -222,7 +233,14 @@ fun CaptureScreen(
                 money = money,
                 onConfirm = {
                     confirming = false
-                    vm.submit()
+                    approve(
+                        buildSet {
+                            if (!adjustOnly) add(ManagerAction.CAPTURE)
+                            if (adjustOnly || state.sale?.let { PaymentStanding.captureNeedsAdjustment(it, state.amountMinor) } == true) {
+                                add(ManagerAction.ADJUST_AUTHORISATION)
+                            }
+                        },
+                    ) { vm.submit() }
                 },
                 onDismiss = { confirming = false },
             )

@@ -9,6 +9,7 @@ import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.terminal.WalletAvailability
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.ids.Ids
@@ -78,7 +79,7 @@ data class ShopperPromptTexts(
  * @property audioGuidanceTarget Resolved terminal POIID; binds the per-shopper confirmation to that terminal.
  * @property mexicanRoutingAvailable Verified Mexican store assignment on a supported destination, or explicit offline demo.
  * @property cashbackAvailable Verified purchase-linked market and explicit merchant configuration.
- * @property managerConfigured Whether a Manager PIN is configured; cashback requires it before starting.
+ * @property managerConfigured Whether cashback is public or a Manager PIN is configured to approve it.
  * @property mexicanContext Original context of the verified assignment; null before discovery.
  * @property mexicanIdentity Setup fingerprint for that assignment; null before discovery.
  */
@@ -332,6 +333,28 @@ data class Checkout(
                 form.cardEntryOverride == CardEntryOverride.NORMAL && !payment.allowPartialAuthorisation && !tokenize &&
                 listOf(form.tipOnReceipt, form.askGratuity, form.askGiving, form.tokenize).none { it == true }
         )
+
+    /** Permissions for starting [tender], including the sale and its chosen collection method. */
+    fun managerActions(tender: Tender): Set<ManagerAction> =
+        buildSet {
+            add(if (preAuthorisation) ManagerAction.PRE_AUTHORISATION else ManagerAction.SALE)
+            when (tender) {
+                Tender.LINK -> {
+                    add(ManagerAction.LINK_CREATE)
+                }
+
+                Tender.TOKEN -> {
+                    add(ManagerAction.SAVED_CARD_LOOKUP)
+                }
+
+                Tender.TERMINAL -> {
+                    if (form.cashBackMinor > 0) add(ManagerAction.CASHOUT)
+                    if (form.cardEntryOverride.needsManagerApproval) add(ManagerAction.MANUAL_ENTRY)
+                }
+
+                Tender.WALLET -> {}
+            }
+        }
 
     /** Selected cash requires a whole immediate card sale; unavailable choices remain selected and block sending. */
     val cashbackReady: Boolean get() =

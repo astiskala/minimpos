@@ -34,6 +34,9 @@ data class SavedCardLookupState(
     val failure: Failure? = null,
     val blocked: Failure? = null,
 ) {
+    /** Whether the listing was refused for missing Manager approval and can be retried after approval. */
+    val requiresManagerApproval: Boolean get() = failure == Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)
+
     /** Whether [card]'s identifier belongs to the current chargeable reading, including a screen's restored card choice. */
     fun chargeable(card: StoredCard): Boolean = eligible.any { it.id == card.id }
 

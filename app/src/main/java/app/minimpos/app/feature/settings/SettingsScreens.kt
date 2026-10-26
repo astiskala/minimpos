@@ -1198,6 +1198,7 @@ private fun SecuritySection(
         subtitle = stringResource(R.string.settings_auto_lock_hint),
     )
     ManagerPinSettings(state, events) { onSetPin(true) }
+    ManagerPermissions(state, events)
     SettingNote(stringResource(R.string.settings_pin_forgotten))
 }
 

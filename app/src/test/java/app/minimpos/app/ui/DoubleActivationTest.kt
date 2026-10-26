@@ -120,6 +120,7 @@ class DoubleActivationTest {
     @Test
     fun `cashout and explicit handover double taps each record once`() {
         await {
+            container.pinManager.setPin("1357")
             container.managerPin.setPin("2468")
             container.walletDiscovery.refresh()
         }
@@ -171,6 +172,7 @@ class DoubleActivationTest {
     @Test
     fun `a refund without receipt double tapped through confirmation and approval is sent once`() {
         await {
+            container.pinManager.setPin("1357")
             container.managerPin.setPin("2468")
             container.walletDiscovery.refresh()
         }
@@ -185,11 +187,11 @@ class DoubleActivationTest {
             )
         }
         compose.onNodeWithTag("refund").performScrollTo().performClick()
+        waitForTag("refundUnreferenced")
+        doubleTap("refundUnreferenced")
         waitForTag("pin_2")
         listOf(2, 4, 6, 8).forEach { compose.onNodeWithTag("pin_$it").performClick() }
         compose.onNodeWithTag("pin_OK").performClick()
-        waitForTag("refundUnreferenced")
-        doubleTap("refundUnreferenced")
         waitForTag("startUnreferencedRefund")
         listOf(7, 0, 0).forEach { compose.onNodeWithTag("key_$it").performScrollTo().performClick() }
         compose.onNodeWithTag("reason_RETURN_WITHOUT_RECEIPT").performScrollTo().performClick()
@@ -215,7 +217,10 @@ class DoubleActivationTest {
     @Test
     fun `double taps through the MOTO warning and Manager approval start one payment`() {
         env.updateSettings { it.copy(payment = it.payment.copy(allowMoto = true)) }
-        await { container.managerPin.setPin("2468") }
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+        }
         checkout(1, 2, 5, 0)
         compose.onNodeWithTag("motoSwitch").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("motoSwitch") and isOn(), 15_000)

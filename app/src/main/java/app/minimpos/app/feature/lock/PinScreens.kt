@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +40,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.R
 import app.minimpos.app.data.security.PinCheck
@@ -52,6 +55,7 @@ import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -66,10 +70,12 @@ fun PinGate(
     navigator: Navigator,
     modifier: Modifier = Modifier,
     manager: Boolean = false,
+    action: ManagerAction = ManagerAction.REFERENCED_REFUND,
     content: @Composable () -> Unit,
 ) {
     val container = LocalAppContainer.current
-    val pins = if (manager) container.managerPin else container.pinManager
+    if (manager) return ManagerGate(setOf(action), navigator, content)
+    val pins = container.pinManager
     val lock = if (manager) container.managerLock else container.sessionLock
     val pinSet by pins.pinConfigured.collectAsStateWithLifecycle(initialValue = null)
     val unlocked by lock.unlocked.collectAsStateWithLifecycle()
@@ -91,22 +97,33 @@ fun PinGate(
 }
 
 /**
- * Runs [onApprove] after the optional Manager PIN is accepted; [onCancel] abandons the pending action. It is shown in
+ * Runs [onApprove] after the live permission policy for [actions] is satisfied; [onCancel] abandons the pending action. It is shown in
  * place of the screen that asked, so Back cancels it like the app bar's arrow rather than leaving that screen.
  */
 @Composable
 fun ManagerApproval(
+    actions: Set<ManagerAction>,
     onApprove: () -> Unit,
     onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
+    val required by remember(actions) { container.managerRequired(actions) }.collectAsStateWithLifecycle(initialValue = null)
     val configured by container.managerPin.pinConfigured.collectAsStateWithLifecycle(initialValue = null)
     val unlocked by container.managerLock.unlocked.collectAsStateWithLifecycle()
     val approve by rememberUpdatedState(onApprove)
-    LaunchedEffect(configured, unlocked) {
-        if (configured != null && (configured == false || unlocked)) approve()
+    LaunchedEffect(required, configured, unlocked) {
+        container.managerLock.expire(container.settingsState.value.security.autoLockMinutes * 60_000L)
+        val approved = configured == true && container.managerLock.unlocked.value
+        if (required == false || (required == true && approved)) approve()
     }
-    if (configured == true && !unlocked) {
+    if (required == true && configured == false) {
+        BackHandler(onBack = onCancel)
+        MiniScaffold(title = stringResource(R.string.manager_pin_title), onBack = onCancel, modifier = modifier) { padding ->
+            Text(stringResource(R.string.manager_pin_required), Modifier.padding(padding).padding(LocalDimens.current.screenPadding))
+        }
+    }
+    if (required == true && configured == true && !unlocked) {
         BackHandler(onBack = onCancel)
         UnlockScreen(onUnlock = container.managerLock::unlock, onCancel = onCancel, manager = true)
     }
@@ -295,3 +312,52 @@ private fun PinKeys(
         if (key == OK) Icon(Icons.Default.Check, contentDescription = stringResource(R.string.action_ok)) else KeyLabel(key)
     },
 )
+
+/** Protects an expensive workflow's entry for [actions], preserving the existing navigation and inactivity session. */
+@Composable
+fun ManagerGate(
+    actions: Set<ManagerAction>,
+    navigator: Navigator,
+    content: @Composable () -> Unit,
+) {
+    val container = LocalAppContainer.current
+    val required by remember(actions) { container.managerRequired(actions) }.collectAsStateWithLifecycle(initialValue = null)
+    val configured by container.managerPin.pinConfigured.collectAsStateWithLifecycle(initialValue = null)
+    val unlocked by container.managerLock.unlocked.collectAsStateWithLifecycle()
+    val settings by container.settingsState.collectAsStateWithLifecycle()
+    LaunchedEffect(navigator.current) { container.managerLock.touch(settings.security.autoLockMinutes * 60_000L) }
+    LaunchedEffect(unlocked, settings.security.autoLockMinutes) {
+        while (unlocked) {
+            delay(1.seconds)
+            container.managerLock.expire(settings.security.autoLockMinutes * 60_000L)
+        }
+    }
+    val approved = configured == true && unlocked
+    if (required == false || (required == true && approved)) {
+        content()
+    } else {
+        ManagerApproval(actions, onApprove = {}, onCancel = navigator::back)
+    }
+}
+
+/** Requests approval in an overlay, then runs the selected action once; cancelling leaves its form intact. */
+@Composable
+fun rememberManagerAction(): (Set<ManagerAction>, () -> Unit) -> Unit {
+    var pending by remember { mutableStateOf<Pair<Set<ManagerAction>, () -> Unit>?>(null) }
+    BackHandler(enabled = pending != null) { pending = null }
+    pending?.let { (actions, run) ->
+        Dialog(
+            onDismissRequest = { pending = null },
+            properties =
+                DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Surface(Modifier.fillMaxSize()) {
+                ManagerApproval(actions, onApprove = {
+                    pending = null
+                    run()
+                }, onCancel = { pending = null })
+            }
+        }
+    }
+    return { actions, run -> pending = actions to run }
+}

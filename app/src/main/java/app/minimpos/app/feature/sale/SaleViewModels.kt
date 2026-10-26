@@ -31,6 +31,7 @@ import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.SavedCardCharges
+import app.minimpos.app.payment.SavedCardLookupState
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.payment.WalletPayments
 import app.minimpos.app.payment.savedCardStart
@@ -306,7 +307,7 @@ class SaleViewModel(
  * @param charges Looks up and charges the shopper's saved tokens; null offers no token charge.
  * @param lookupDelay How long the shopper reference must stay unchanged before its tokens are looked up.
  * @param cpu Dispatcher for checkout calculation shared with saved-card lookup.
- * @param managerConfigured Whether a Manager PIN exists, required for cashback.
+ * @param managerConfigured Whether cashback is public or a Manager PIN is configured to approve it.
  */
 class CheckoutViewModel(
     private val session: SaleSession,
@@ -343,6 +344,14 @@ class CheckoutViewModel(
      * cannot be charged to a token (a pre-authorisation, or no Checkout API). A lookup changes nothing.
      */
     private val cardLookup = charges?.lookup(viewModelScope, state, terminal, lookupDelay)
+
+    /** Current lookup progress and failure, including an approval requirement for an explicit retry. */
+    val tokenLookup: StateFlow<SavedCardLookupState> = cardLookup?.state ?: MutableStateFlow(SavedCardLookupState())
+
+    /** Explicitly repeats the current lookup after Manager approval, without changing its shopper reference. */
+    fun findTokens() {
+        cardLookup?.find()
+    }
 
     /** Current chargeable cards; freshness and recurring-model eligibility belong to the saved-card lookup. */
     val tokens: StateFlow<List<StoredCard>> =

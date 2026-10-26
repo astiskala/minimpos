@@ -144,15 +144,22 @@
             <li>For a deposit, switch on <strong>Pre-authorization product</strong> so that it appears only in
               pre-authorizations.</li>
           </ol>
-          <h3 id="staff">Set staff PINs</h3>
-          <ol>
-            <li>In <strong>Settings › Security</strong>, tap <strong>Set PIN</strong>. It protects Settings and
-              Products. Choose how soon the app locks again.</li>
-            <li>Optionally, tap <strong>Set Manager PIN</strong>. Staff then need it for refunds, cancellations,
-              captures, amount adjustments and entering tips.</li>
-          </ol>
-          <p>To replace or remove the admin PIN, use <strong>Change Admin PIN</strong> or <strong>Remove Admin PIN</strong>; removing it also removes the Manager PIN. Repeated wrong attempts lock PIN entry for a while. For
-            a forgotten PIN, see <a href="troubleshooting#access">PIN problems</a>.</p>
+          <h3 id="staff">Set up staff PINs</h3>
+          <p>Use <strong>Set PIN</strong> to start, and <strong>Change Admin PIN</strong> or <strong>Remove Admin
+            PIN</strong> to change admin access. Use <strong>Set Manager PIN</strong> for protected actions.</p>
+          <p>In Settings › Security, set an Admin PIN to protect Settings and Products. Choose how soon access locks
+            again.</p>
+          <p>Under <strong>Manager permissions</strong>, choose which actions require the separate Manager PIN. Similar actions share a
+            switch; referenced refunds, refunds without receipt and cash refunds have separate switches. Set a Manager
+            PIN for protected actions. The Admin PIN cannot approve them.</p>
+          <p>Without an Admin PIN, everyone can use all actions. Once an Admin PIN exists, protected actions stay
+            blocked until a Manager PIN is configured. Public actions stay available even when a Manager PIN exists.</p>
+          <p>Removing the Manager PIN keeps protected actions blocked and preserves permission choices. Removing the
+            Admin PIN also removes the Manager PIN and makes all actions public; choices are kept for later. Repeated
+            wrong PIN attempts temporarily lock PIN entry.</p>
+          <p>The Manager approval mentioned in the guides follows these permissions. Status checks for unfinished
+            operations remain available. Automatic receipts follow receipt settings.</p>
+          <p><a href="troubleshooting#access">PIN help</a></p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="sell">
@@ -665,11 +672,11 @@
               confirm you received the money.</li>
             <li>Confirm, then approve with the Manager PIN.</li>
           </ol>
-          <p>Checking a balance needs no approval. Changing a card’s value needs a configured Manager PIN, the working
-            default for now. A card payment is taken first and the value is sent only once it is approved; if the
-            payment’s result is unknown, check it before anything else happens. If the payment was taken but no value
-            was added, the activity shows <strong>Value not added</strong>: send the value again, refund the card
-            payment, or record the money given back. Nothing is repeated automatically.</p>
+          <p>Approval for balance checks and value changes follows <a href="#staff">staff permissions</a>. A card
+            payment is taken first and the value is sent only once it is approved; if the payment’s result is unknown,
+            check it before anything else happens. If the payment was taken but no value was added, the activity shows
+            <strong>Value not added</strong>: send the value again, refund the card payment, or record the money given
+            back. Nothing is repeated automatically.</p>
           <p><strong>Undo load</strong> appears for the card’s latest load within 24 hours. A cash out normally pays the
             whole balance and ends the card; only some Givex cards allow less. Hand the cash over once it is approved,
             then tap <strong>Cash handed over</strong>; an unconfirmed handover stays under <strong>Needs

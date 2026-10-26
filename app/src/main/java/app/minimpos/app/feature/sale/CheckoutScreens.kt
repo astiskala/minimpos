@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -62,6 +63,7 @@ import app.minimpos.app.feature.ResultAction
 import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.lock.ManagerApproval
+import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.history.PaymentAction
@@ -95,6 +97,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.payment.PaymentMethods
 import app.minimpos.core.payment.ScanWallet
@@ -117,11 +120,16 @@ fun CheckoutScreen(
     modifier: Modifier = Modifier,
     vm: CheckoutViewModel = checkoutViewModel(kind),
 ) {
+    val approveToken = rememberManagerAction()
     val tokens by vm.tokens.collectAsStateWithLifecycle()
+    val lookup by vm.tokenLookup.collectAsStateWithLifecycle()
+    val needsLookupApproval = lookup.requiresManagerApproval
     var choosingToken by rememberSaveable { mutableStateOf(false) }
-    TokenChoice(choosingToken, tokens, onDismiss = { choosingToken = false }) { card ->
+    TokenChoice(choosingToken, tokens, finding = lookup.finding, onDismiss = { choosingToken = false }) { card ->
         choosingToken = false
-        if (vm.chargeToken(card)) navigator.replace(Route.Payment(SaleKind.SALE))
+        approveToken(setOf(ManagerAction.SALE, ManagerAction.SAVED_CARD_CHARGE)) {
+            if (vm.chargeToken(card)) navigator.replace(Route.Payment(SaleKind.SALE))
+        }
     }
     val state by vm.state.collectAsStateWithLifecycle()
     CheckoutContent(
@@ -129,8 +137,13 @@ fun CheckoutScreen(
         navigator = navigator,
         kind = kind,
         actions = CheckoutCallbacks(vm::pay, vm::scanWallet, vm::sendLink, vm::update),
-        tokens = state.form.cashBackMinor == 0L && tokens.isNotEmpty() && !state.form.audioGuidance && state.form.mexicanPayment == null,
-        onChooseToken = { choosingToken = true },
+        tokens =
+            state.form.cashBackMinor == 0L && (tokens.isNotEmpty() || needsLookupApproval) && !state.form.audioGuidance &&
+                state.form.mexicanPayment == null,
+        onChooseToken = {
+            choosingToken = true
+            if (needsLookupApproval) vm.findTokens()
+        },
         modifier = modifier,
     )
 }
@@ -198,11 +211,15 @@ private fun CheckoutContent(
     ) {
         val ceremony = state.ceremony(tender)
         val next = CeremonyStep.entries.firstOrNull { (done == null || it > done) && it.needed(ceremony) }
-        if (next == null) start(tender) else step = tender to next
+        if (next == null) step = tender to CeremonyStep.APPROVAL else step = tender to next
     }
     val current = step
     if (current?.second == CeremonyStep.APPROVAL) {
-        return ManagerApproval(onApprove = { start(current.first) }, onCancel = { step = null })
+        return ManagerApproval(
+            actions = state.managerActions(current.first),
+            onApprove = { start(current.first) },
+            onCancel = { step = null },
+        )
     }
     current?.let { (tender, shown) ->
         CeremonyDialog(tender, shown, state, onConfirm = { advance(tender, shown) }, onDismiss = { step = null })
@@ -459,6 +476,7 @@ private fun TokenCheckoutButton(
 private fun TokenChoice(
     visible: Boolean,
     tokens: List<StoredCard>,
+    finding: Boolean,
     onDismiss: () -> Unit,
     onChoose: (StoredCard) -> Unit,
 ) {
@@ -467,6 +485,11 @@ private fun TokenChoice(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.checkout_choose_token)) },
         text = {
+            if (finding) {
+                CircularProgressIndicator()
+            } else if (tokens.isEmpty()) {
+                Text(stringResource(R.string.saved_card_none))
+            }
             LazyColumn(Modifier.heightIn(max = 360.dp)) {
                 items(tokens, key = { it.id }) { card ->
                     ListItem(
@@ -768,7 +791,7 @@ private fun checkoutViewModel(kind: SaleKind): CheckoutViewModel {
             walletPayments = container.walletPayments,
             discovery = container.walletDiscovery,
             charges = container.savedCardCharges.takeIf { kind == SaleKind.SALE },
-            managerConfigured = container.managerPin.pinConfigured,
+            managerConfigured = container.managerAvailable(ManagerAction.CASHOUT),
         )
     }
 }

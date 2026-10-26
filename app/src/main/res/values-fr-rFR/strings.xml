@@ -682,8 +682,33 @@
   <string name="manager_pin_set">Définir le PIN responsable</string>
   <string name="manager_pin_change">Modifier le PIN responsable</string>
   <string name="manager_pin_remove">Supprimer le PIN responsable</string>
-  <string name="manager_pin_remove_message">Les remboursements, annulations, captures et ajustements ne nécessitent plus l’approbation du responsable.</string>
-  <string name="manager_pin_hint">Facultatif : exigez l’approbation du responsable pour les remboursements, annulations, captures et ajustements. Définissez d’abord un PIN administrateur pour protéger ces paramètres.</string>
+  <string name="manager_pin_remove_message">Les actions protégées resteront bloquées tant que vous ne définissez pas un nouveau PIN responsable ou ne modifiez pas leurs autorisations.</string>
+  <string name="manager_action_sale">Ventes ordinaires</string>
+  <string name="manager_action_pre_authorisation">Préautorisations</string>
+  <string name="manager_action_cash_payment">Paiements en espèces</string>
+  <string name="manager_action_link_create">Création de liens de paiement</string>
+  <string name="manager_action_referenced_refund">Remboursements référencés</string>
+  <string name="manager_action_unreferenced_refund">Remboursements sans reçu</string>
+  <string name="manager_action_cash_refund">Remboursements en espèces</string>
+  <string name="manager_action_capture">Captures et pourboires sur reçu</string>
+  <string name="manager_action_adjust_authorisation">Modifications et renouvellements d’autorisation</string>
+  <string name="manager_action_cancel_authorisation">Annulation d’autorisation</string>
+  <string name="manager_action_cashout">Retrait et remise d’espèces</string>
+  <string name="manager_action_gift_card_change">Modifications de valeur des cartes-cadeaux</string>
+  <string name="manager_action_saved_card_charge">Débits de cartes enregistrées</string>
+  <string name="manager_action_token_delete">Suppression de jetons</string>
+  <string name="manager_action_manual_entry">MOTO et saisie manuelle de carte</string>
+  <string name="manager_action_link_change">Modifications des liens de paiement</string>
+  <string name="manager_action_close_period">Clôture de période de rapprochement</string>
+  <string name="manager_action_history">Historique et détails des transactions</string>
+  <string name="manager_action_receipt">Réimpression, envoi et partage des reçus</string>
+  <string name="manager_action_totals">Totaux de rapprochement</string>
+  <string name="manager_action_saved_card_lookup">Recherche de cartes enregistrées</string>
+  <string name="manager_action_gift_card_balance">Consultation du solde des cartes-cadeaux</string>
+  <string name="manager_permissions">Autorisations du responsable</string>
+  <string name="manager_permission_hint">Exiger le PIN responsable pour cette action.</string>
+  <string name="manager_pin_required">Cette action nécessite un PIN responsable. Définissez-le dans Paramètres › Sécurité, ou demandez à un administrateur de modifier son autorisation.</string>
+  <string name="manager_pin_hint">Choisissez les actions nécessitant le PIN responsable. Sans PIN administrateur, tous peuvent utiliser toutes les actions. Avec ce PIN, les actions protégées restent bloquées tant qu’un PIN responsable n’est pas défini.</string>
 
   <!-- Settings: overview and language -->
   <string name="settings_title">Paramètres</string>
@@ -1140,7 +1165,7 @@
   <string name="settings_set_pin">Définir le PIN</string>
   <string name="settings_change_pin">Modifier le PIN administrateur</string>
   <string name="settings_remove_pin">Supprimer le PIN administrateur</string>
-  <string name="settings_remove_pin_message">Cela supprime la protection des paramètres et des produits. Le PIN responsable est également supprimé s’il est défini.</string>
+  <string name="settings_remove_pin_message">Cela supprime la protection des paramètres et des produits ainsi que le PIN responsable, et permet à tous d’utiliser toutes les actions. Les autorisations choisies sont conservées.</string>
   <string name="settings_auto_lock">Verrouillez à nouveau après</string>
   <string name="settings_auto_lock_hint">Combien de temps les paramètres et les produits restent ouverts après la saisie du PIN administrateur.</string>
   <string name="settings_auto_lock_never">Seulement en partant</string>
@@ -1481,7 +1506,7 @@
   <string name="cashout_title">Retrait d’espèces</string>
   <string name="cashback_enable">Activer le retrait avec achat</string>
   <string name="cashout_enable">Activer le retrait sans achat</string>
-  <string name="cashback_configuration">Confirmez l’activation par Adyen pour ce magasin et ce programme. Magasin vérifié, plafond local et code responsable requis.</string>
+  <string name="cashback_configuration">Confirmez l’activation par Adyen pour ce magasin et ce programme. Magasin vérifié et plafond local requis.</string>
   <string name="cashout_configuration">Seul eftpos en Australie permet ici le retrait sans achat. Confirmez son activation séparée avec Adyen.</string>
   <string name="cashback_card_hint">Confirmez avec Adyen l’éligibilité du programme et du magasin affecté.</string>
   <string name="cashback_limit">Plafond local d’espèces</string>
@@ -1540,7 +1565,7 @@
   <string name="report_unreferenced_refunds">Sans reçu</string>
   <string name="unreferenced_settings_title">Remboursements sans reçu</string>
   <string name="unreferenced_settings_enable">Autoriser les remboursements sans reçu</string>
-  <string name="unreferenced_settings_enable_hint">N’activez qu’après l’activation par Adyen des remboursements non référencés pour cette boutique. Boutique vérifiée, limite et PIN responsable requis.</string>
+  <string name="unreferenced_settings_enable_hint">N’activez qu’après l’activation par Adyen des remboursements non référencés pour cette boutique. Boutique vérifiée et limite requises.</string>
   <string name="unreferenced_settings_limit">Limite de remboursement</string>
   <string name="unreferenced_settings_limit_hint">Plus gros remboursement sans reçu dans la devise de paiement. La limite d’Adyen, définie dans le Customer Area, s’applique aussi.</string>
   <string name="unreferenced_settings_delay">Délai de remboursement configuré</string>

@@ -65,6 +65,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.MoneyFormatter
 
 /**
@@ -89,7 +90,7 @@ fun PaymentLinkScreen(
     var dialog by rememberSaveable { mutableStateOf<LinkDialog?>(null) }
     var approval by rememberSaveable { mutableStateOf<LinkApproval?>(null) }
     if (approval != null) {
-        return ManagerApproval(onApprove = {
+        return ManagerApproval(actions = setOf(ManagerAction.LINK_CHANGE), onApprove = {
             if (approval == LinkApproval.SIMULATE) vm.simulate() else dialog = LinkDialog.CANCEL
             approval = null
         }, onCancel = { approval = null })

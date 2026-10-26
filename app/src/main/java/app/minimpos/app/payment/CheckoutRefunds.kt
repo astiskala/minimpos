@@ -12,6 +12,7 @@ import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
@@ -51,7 +52,15 @@ class CheckoutRefunds(
     approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
 ) {
     private val operations =
-        CheckoutOperations(scope, Book(refunds, sales), target, { id, _ -> onAccepted(id) }, clock, newId, approval)
+        CheckoutOperations(
+            scope,
+            Book(refunds, sales),
+            target,
+            { id, _ -> onAccepted(id) },
+            clock,
+            newId,
+            approval.forAction(ManagerAction.REFERENCED_REFUND),
+        )
 
     /** The refund running now, which the refund screens follow to its result. */
     val state: StateFlow<TransactionState> = operations.state

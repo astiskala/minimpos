@@ -2,11 +2,13 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.GiftCardRepository
 import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.EmailCapture
 import app.minimpos.app.data.settings.MerchantCopyPolicy
@@ -25,6 +27,7 @@ import app.minimpos.app.receipt.ReceiptSurface
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalStatus
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.terminal.client.PrintOutcome
@@ -180,6 +183,7 @@ class ReceiptRecords(
  * @param emailer Emails them.
  * @param scope Owns claimed automatic delivery independently of the screen observing it.
  * @param clock Stamps when a daily summary was generated.
+ * @param approval Approval of manual receipt delivery; automatic delivery follows receipt settings.
  * @param cpu Dispatcher for receipt construction outside the UI thread.
  */
 class ReceiptDelivery(
@@ -191,6 +195,7 @@ class ReceiptDelivery(
     private val emailer: ReceiptEmailer,
     private val scope: CoroutineScope,
     private val clock: Clock = Clock.systemUTC(),
+    private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
     private val cpu: CoroutineDispatcher = Dispatchers.Default,
 ) {
     /** Whether a daily summary can be printed with the current destination and receipt settings. */
@@ -267,13 +272,13 @@ class ReceiptDelivery(
             coroutineScope {
                 if (plan.print) {
                     launch {
-                        val printed = print(transaction)
+                        val printed = printApproved(transaction)
                         progress.update { it.copy(reading = it.reading.copy(printing = false, printed = printed)) }
                     }
                 }
                 plan.emailTo?.let { to ->
                     launch {
-                        val emailed = email(transaction, to)
+                        val emailed = emailApproved(transaction, to)
                         progress.update { it.copy(reading = it.reading.copy(emailing = false, emailed = emailed)) }
                     }
                 }
@@ -296,6 +301,11 @@ class ReceiptDelivery(
     suspend fun print(
         transaction: StoredTransaction,
         copy: ReceiptCopy = ReceiptCopy.CUSTOMER,
+    ): ReceiptPrint = if (manualAllowed()) printApproved(transaction, copy) else ReceiptPrint(managerFailure())
+
+    private suspend fun printApproved(
+        transaction: StoredTransaction,
+        copy: ReceiptCopy = ReceiptCopy.CUSTOMER,
     ): ReceiptPrint =
         when (transaction) {
             is StoredTransaction.Sale -> printSale(transaction.id, copy)
@@ -310,12 +320,22 @@ class ReceiptDelivery(
     suspend fun email(
         transaction: StoredTransaction,
         to: String,
+    ): ActionResult = if (manualAllowed()) emailApproved(transaction, to) else managerFailure()
+
+    private suspend fun emailApproved(
+        transaction: StoredTransaction,
+        to: String,
     ): ActionResult =
         when (transaction) {
             is StoredTransaction.Sale -> emailSale(transaction.id, to)
             is StoredTransaction.Refund -> emailRefund(transaction.id, to)
             is StoredTransaction.GiftCard -> emailGiftCard(transaction.id, to)
         }
+
+    /** Whether a manual receipt may be delivered or shared now; automatic delivery does not request approval. */
+    suspend fun manualAllowed(): Boolean = approval.forAction(ManagerAction.RECEIPT).allowsNow()
+
+    private fun managerFailure(): ActionResult = ActionResult.Failed(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL))
 
     private val documentSettings = settings.settings.map { it.receipt to it.languageTag }.distinctUntilChanged()
     private val emailSettings =

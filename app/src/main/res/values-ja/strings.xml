@@ -678,8 +678,33 @@
   <string name="manager_pin_set">マネージャーPINを設定</string>
   <string name="manager_pin_change">マネージャーPINを変更</string>
   <string name="manager_pin_remove">マネージャーPINを削除</string>
-  <string name="manager_pin_remove_message">返金、取消、キャプチャ、金額調整にマネージャーの承認が不要になります。</string>
-  <string name="manager_pin_hint">任意：返金、取消、キャプチャ、金額調整にマネージャーの承認を求めます。この設定を保護するため、先に管理者PINを設定してください。</string>
+  <string name="manager_pin_remove_message">保護された操作は、マネージャーPINを再設定するか権限を変更するまで利用できません。</string>
+  <string name="manager_action_sale">通常の売上</string>
+  <string name="manager_action_pre_authorisation">事前承認</string>
+  <string name="manager_action_cash_payment">現金払い</string>
+  <string name="manager_action_link_create">決済リンクの作成</string>
+  <string name="manager_action_referenced_refund">元の決済に紐づく返金</string>
+  <string name="manager_action_unreferenced_refund">レシートなしの返金</string>
+  <string name="manager_action_cash_refund">現金の返金</string>
+  <string name="manager_action_capture">キャプチャとレシートのチップ</string>
+  <string name="manager_action_adjust_authorisation">承認額の変更と承認の更新</string>
+  <string name="manager_action_cancel_authorisation">承認の取消</string>
+  <string name="manager_action_cashout">キャッシュアウトとキャッシュバック</string>
+  <string name="manager_action_gift_card_change">ギフトカードの残高変更</string>
+  <string name="manager_action_saved_card_charge">保存済みカードへの請求</string>
+  <string name="manager_action_token_delete">トークンの削除</string>
+  <string name="manager_action_manual_entry">MOTOとカード情報の手入力</string>
+  <string name="manager_action_link_change">決済リンクの変更</string>
+  <string name="manager_action_close_period">照合期間の締め</string>
+  <string name="manager_action_history">履歴と取引詳細</string>
+  <string name="manager_action_receipt">レシートの再印刷・メール送信・共有</string>
+  <string name="manager_action_totals">照合の合計</string>
+  <string name="manager_action_saved_card_lookup">保存済みカードの検索</string>
+  <string name="manager_action_gift_card_balance">ギフトカードの残高照会</string>
+  <string name="manager_permissions">マネージャー権限</string>
+  <string name="manager_permission_hint">この操作にマネージャーPINを要求します。</string>
+  <string name="manager_pin_required">この操作にはマネージャーPINが必要です。設定 › セキュリティで設定するか、管理者に権限の変更を依頼してください。</string>
+  <string name="manager_pin_hint">マネージャーPINが必要な操作を選びます。管理者PINがない場合は、誰でもすべての操作を利用できます。管理者PINを設定すると、保護された操作はマネージャーPINを設定するまで利用できません。</string>
 
   <!-- Settings: overview and language -->
   <string name="settings_title">設定</string>
@@ -1132,7 +1157,7 @@
   <string name="settings_set_pin">PINを設定</string>
   <string name="settings_change_pin">管理者PINを変更</string>
   <string name="settings_remove_pin">管理者PINを削除</string>
-  <string name="settings_remove_pin_message">設定と商品が保護されなくなります。マネージャーPINも設定されている場合は削除されます。</string>
+  <string name="settings_remove_pin_message">設定と商品が保護されなくなり、マネージャーPINも削除され、誰でもすべての操作を利用できるようになります。選択した権限は保持されます。</string>
   <string name="settings_auto_lock">再ロックまでの時間</string>
   <string name="settings_auto_lock_hint">管理者PINを入力した後、設定と商品を開いたままにする時間です。</string>
   <string name="settings_auto_lock_never">画面を離れたときのみ</string>
@@ -1469,7 +1494,7 @@
   <string name="cashout_title">現金引き出し</string>
   <string name="cashback_enable">購入時の現金引き出しを有効にする</string>
   <string name="cashout_enable">購入なしの引き出しを有効にする</string>
-  <string name="cashback_configuration">Adyenが店舗とカードプログラムを有効化したことを確認してください。確認済み店舗、上限額、マネージャーPINが必要です。</string>
+  <string name="cashback_configuration">Adyenが店舗とカードプログラムを有効化したことを確認してください。確認済み店舗と上限額が必要です。</string>
   <string name="cashout_configuration">購入なしの引き出しはオーストラリアのeftposのみです。Adyenに別途有効化を確認してください。</string>
   <string name="cashback_card_hint">カードプログラムと割り当て店舗の対応をAdyenに確認してください。</string>
   <string name="cashback_limit">現金引き出し上限</string>
@@ -1528,7 +1553,7 @@
   <string name="report_unreferenced_refunds">領収書なし</string>
   <string name="unreferenced_settings_title">領収書なしの返金</string>
   <string name="unreferenced_settings_enable">領収書なしの返金を許可</string>
-  <string name="unreferenced_settings_enable_hint">Adyenがこの店舗で非参照返金を有効にした後にのみオンにしてください。確認済みの店舗、上限、マネージャーPINが必要です。</string>
+  <string name="unreferenced_settings_enable_hint">Adyenがこの店舗で非参照返金を有効にした後にのみオンにしてください。確認済みの店舗と上限が必要です。</string>
   <string name="unreferenced_settings_limit">返金上限</string>
   <string name="unreferenced_settings_limit_hint">決済通貨での領収書なし返金の最大額。Customer Areaで設定されたAdyen自身の上限も適用されます。</string>
   <string name="unreferenced_settings_delay">返金保留期間を設定済み</string>

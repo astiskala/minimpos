@@ -147,17 +147,24 @@
             <li>Para um depósito, ligue <strong>Produto de pré-autorização</strong> para que apareça apenas nas
               pré-autorizações.</li>
           </ol>
-          <h3 id="staff">Definir PINs de equipe</h3>
-          <ol>
-            <li>Em <strong>Configurações › Segurança</strong>, toque em <strong>Definir PIN</strong>. Ele protege
-              configurações e produtos. Escolha quando o aplicativo será bloqueado novamente.</li>
-            <li>Opcionalmente, toque em <strong>Definir PIN de gerente</strong>. A equipe então precisa dele para
-              reembolsos, cancelamentos, capturas, ajustes de valores e inserção de gorjetas.</li>
-          </ol>
-          <p>Para substituir ou remover o PIN de administrador, use <strong>Alterar PIN de administrador</strong> ou
-            <strong>Remover PIN de administrador</strong>; removê-lo também remove o PIN de gerente. Tentativas erradas
-            repetidas bloqueiam a entrada PIN por um tempo. Para um PIN esquecido, consulte
-            <a href="troubleshooting#access">Problemas PIN</a>.</p>
+          <h3 id="staff">Configurar os PINs da equipe</h3>
+          <p>Use <strong>Definir PIN</strong> para começar e <strong>Alterar PIN de administrador</strong> ou
+            <strong>Remover PIN de administrador</strong> para alterar o acesso de administrador. Use <strong>Definir
+            PIN de gerente</strong> para ações protegidas.</p>
+          <p>Em Configurações › Segurança, defina um PIN de administrador para proteger Configurações e Produtos.
+            Escolha quando o acesso será bloqueado novamente.</p>
+          <p>Em <strong>Permissões do gerente</strong>, escolha quais ações exigem o PIN de gerente separado. Ações semelhantes
+            compartilham um controle; reembolsos com referência, sem recibo e em dinheiro têm controles separados.
+            Defina um PIN de gerente para ações protegidas. O PIN de administrador não as autoriza.</p>
+          <p>Sem PIN de administrador, todos podem usar todas as ações. Depois de defini-lo, ações protegidas ficam
+            bloqueadas até definir um PIN de gerente. Ações públicas continuam disponíveis mesmo com um PIN de
+            gerente.</p>
+          <p>Remover o PIN de gerente mantém as permissões e as ações protegidas bloqueadas. Remover o PIN de
+            administrador também remove o PIN de gerente e libera todas as ações para todos; as escolhas são mantidas.
+            Várias tentativas incorretas bloqueiam temporariamente a entrada do PIN.</p>
+          <p>A aprovação do gerente mencionada nos guias segue essas permissões. As consultas de status de operações
+            pendentes continuam disponíveis. Recibos automáticos seguem suas configurações.</p>
+          <p><a href="troubleshooting#access">Ajuda com o PIN</a></p>
           <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
         </section>
         <section id="sell">
@@ -700,12 +707,11 @@
               app</strong> e confirme que recebeu o dinheiro.</li>
             <li>Confirme e aprove com o PIN de gerente.</li>
           </ol>
-          <p>Consultar o saldo não exige aprovação. Alterar o valor de um cartão exige um PIN de gerente configurado, o
-            padrão de trabalho por enquanto. O pagamento com cartão é cobrado primeiro e o valor só é enviado depois da
-            aprovação; se o resultado do pagamento for desconhecido, verifique-o antes de qualquer outra ação. Se o
-            pagamento foi cobrado mas nenhum valor foi adicionado, a atividade mostra <strong>Valor não
-            adicionado</strong>: envie o valor de novo, reembolse o pagamento com cartão ou registre o valor devolvido.
-            Nada é repetido automaticamente.</p>
+          <p>A aprovação de consultas de saldo e alterações de valor segue as <a href="#staff">permissões da equipe</a>.
+            O pagamento com cartão é cobrado primeiro e o valor só é enviado depois da aprovação; se o resultado do
+            pagamento for desconhecido, verifique-o antes de qualquer outra ação. Se o pagamento foi cobrado mas nenhum
+            valor foi adicionado, a atividade mostra <strong>Valor não adicionado</strong>: envie o valor de novo,
+            reembolse o pagamento com cartão ou registre o valor devolvido. Nada é repetido automaticamente.</p>
           <p><strong>Desfazer recarga</strong> aparece para a última recarga do cartão nas últimas 24 horas. O saque
             normalmente paga todo o saldo e encerra o cartão; só alguns cartões Givex permitem menos. Entregue o
             dinheiro após a aprovação e toque em <strong>Dinheiro entregue</strong>; uma entrega não confirmada fica em

@@ -682,8 +682,33 @@
   <string name="manager_pin_set">Establecer PIN de gerente</string>
   <string name="manager_pin_change">Cambiar PIN de gerente</string>
   <string name="manager_pin_remove">Eliminar PIN de gerente</string>
-  <string name="manager_pin_remove_message">Los reembolsos, cancelaciones, capturas y ajustes ya no necesitan la aprobación del Gerente.</string>
-  <string name="manager_pin_hint">Opcional: exige la aprobación del gerente para reembolsos, cancelaciones, capturas y ajustes. Primero establece un PIN de administrador para proteger esta configuración.</string>
+  <string name="manager_pin_remove_message">Las acciones protegidas seguirán bloqueadas hasta que configures otro PIN de gerente o cambies sus permisos.</string>
+  <string name="manager_action_sale">Ventas normales</string>
+  <string name="manager_action_pre_authorisation">Preautorizaciones</string>
+  <string name="manager_action_cash_payment">Pagos en efectivo</string>
+  <string name="manager_action_link_create">Creación de enlaces de pago</string>
+  <string name="manager_action_referenced_refund">Reembolsos con referencia</string>
+  <string name="manager_action_unreferenced_refund">Reembolsos sin recibo</string>
+  <string name="manager_action_cash_refund">Reembolsos en efectivo</string>
+  <string name="manager_action_capture">Capturas y propinas en recibos</string>
+  <string name="manager_action_adjust_authorisation">Cambios y renovaciones de autorización</string>
+  <string name="manager_action_cancel_authorisation">Cancelación de autorizaciones</string>
+  <string name="manager_action_cashout">Retiro y entrega de efectivo</string>
+  <string name="manager_action_gift_card_change">Cambios de valor de tarjetas de regalo</string>
+  <string name="manager_action_saved_card_charge">Cargos a tarjetas guardadas</string>
+  <string name="manager_action_token_delete">Eliminación de tokens</string>
+  <string name="manager_action_manual_entry">MOTO e ingreso manual de tarjeta</string>
+  <string name="manager_action_link_change">Cambios en enlaces de pago</string>
+  <string name="manager_action_close_period">Cierre del periodo de conciliación</string>
+  <string name="manager_action_history">Historial y detalles de transacciones</string>
+  <string name="manager_action_receipt">Reimpresión, envío y uso compartido de recibos</string>
+  <string name="manager_action_totals">Totales de conciliación</string>
+  <string name="manager_action_saved_card_lookup">Consulta de tarjetas guardadas</string>
+  <string name="manager_action_gift_card_balance">Consulta de saldo de tarjetas de regalo</string>
+  <string name="manager_permissions">Permisos de gerente</string>
+  <string name="manager_permission_hint">Exigir el PIN de gerente para esta acción.</string>
+  <string name="manager_pin_required">Esta acción requiere un PIN de gerente. Configúralo en Ajustes › Seguridad o pide al administrador que cambie el permiso.</string>
+  <string name="manager_pin_hint">Elige qué acciones requieren el PIN de gerente. Sin PIN de administrador, todos pueden usar todas las acciones. Con él, las acciones protegidas se bloquean hasta configurar un PIN de gerente.</string>
 
   <!-- Settings: overview and language -->
   <string name="settings_title">Configuración</string>
@@ -1140,7 +1165,7 @@
   <string name="settings_set_pin">Establecer PIN</string>
   <string name="settings_change_pin">Cambiar PIN de administrador</string>
   <string name="settings_remove_pin">Eliminar PIN de administrador</string>
-  <string name="settings_remove_pin_message">Esto elimina la protección de la configuración y los productos. También elimina el PIN de gerente, si está configurado.</string>
+  <string name="settings_remove_pin_message">Esto elimina la protección de ajustes y productos, elimina el PIN de gerente y permite todas las acciones a todos. Se conservan los permisos elegidos.</string>
   <string name="settings_auto_lock">Bloquear de nuevo después</string>
   <string name="settings_auto_lock_hint">Cuánto tiempo permanecen abiertas las configuraciones y los productos después de ingresar al PIN de administrador.</string>
   <string name="settings_auto_lock_never">Solo al salir</string>
@@ -1481,7 +1506,7 @@
   <string name="cashout_title">Retiro de efectivo</string>
   <string name="cashback_enable">Habilitar retiro con compra</string>
   <string name="cashout_enable">Habilitar retiro sin compra</string>
-  <string name="cashback_configuration">Confirma que Adyen habilitó esta tienda y programa de tarjetas. Se requieren tienda verificada, límite local y PIN de gerente.</string>
+  <string name="cashback_configuration">Confirma que Adyen habilitó esta tienda y programa de tarjetas. Se requieren una tienda verificada y un límite local.</string>
   <string name="cashout_configuration">Aquí solo eftpos de Australia permite retiros sin compra. Confirma su habilitación por separado con Adyen.</string>
   <string name="cashback_card_hint">Confirma con Adyen la elegibilidad de esta tarjeta y tienda asignada.</string>
   <string name="cashback_limit">Límite local de efectivo</string>
@@ -1540,7 +1565,7 @@
   <string name="report_unreferenced_refunds">Sin recibo</string>
   <string name="unreferenced_settings_title">Reembolsos sin recibo</string>
   <string name="unreferenced_settings_enable">Permitir reembolsos sin recibo</string>
-  <string name="unreferenced_settings_enable_hint">Actívalo solo después de que Adyen habilite los reembolsos no referenciados para esta tienda. Requiere tienda verificada, un límite y un PIN de gerente.</string>
+  <string name="unreferenced_settings_enable_hint">Actívalo solo después de que Adyen habilite los reembolsos no referenciados para esta tienda. Requiere una tienda verificada y un límite.</string>
   <string name="unreferenced_settings_limit">Límite de reembolso</string>
   <string name="unreferenced_settings_limit_hint">Reembolso sin recibo más alto en la moneda de pago. También aplica el límite propio de Adyen, configurado en el Área de Clientes.</string>
   <string name="unreferenced_settings_delay">Retraso de reembolso configurado</string>

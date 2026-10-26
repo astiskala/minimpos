@@ -137,7 +137,10 @@ class StoredPaymentActionsTest {
     fun `manager approval is still checked by financial implementation after initiation`() {
         env.useSimulator()
         val payment = refundable(pay())
-        await { container.managerPin.setPin("2468") }
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+        }
         assertThat(
             actions().refund(payment, RefundChoice.Everything, payment.proposal(RefundChoice.Everything)),
         ).isEqualTo(RefundStarted.SINGLE)

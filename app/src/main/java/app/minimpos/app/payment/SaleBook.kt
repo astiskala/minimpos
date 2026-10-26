@@ -9,6 +9,7 @@ import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.repo.TenderBalance
 import app.minimpos.app.data.settings.CashbackSettings
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.money.CurrencySpec
@@ -309,32 +310,34 @@ class SaleBook(
         val tokenization = request.tokenization
         val isSplit = request.existingSaleId != null || request.requestedAmountMinor < request.totals.amounts.gross
         return TerminalOperation.Pay(
-            PaymentParams(
-                amountMinor = request.requestedAmountMinor,
-                currency = request.currency.code,
-                merchantReference = request.merchantReference,
-                shopperReference = request.shopperReference,
-                shopperEmail = request.shopperEmail,
-                recurringProcessingModel = tokenization?.recurringProcessingModel?.takeIf { request.giftCard == null },
-                // The app prints its own combined receipt, including the card details.
-                appPrintsReceipts = true,
-                metadata = listOfNotNull(request.customerReference?.let { "customerReference" to it }).toMap(),
-                requestCardAlias = tokenization != null && request.scannedPayment == null && request.giftCard == null,
-                // A tip on the receipt is captured later with the tip, as Adyen's tipping on the receipt flow asks.
-                preAuthorisation = request.manualCapture,
-                scannedPayment = request.scannedPayment,
-                terminalTip = request.terminalTip,
-                audioGuidance = request.audioGuidance,
-                shopperFlow = request.shopperFlow,
-                allowPartialAuthorisation = request.allowPartialAuthorisation,
-                saleReferenceId = request.merchantReference.takeIf { isSplit || request.allowPartialAuthorisation },
-                askGiving = request.askGiving,
-                cardEntryOverride = request.cardEntryOverride,
-                mexicanPayment = request.mexicanPayment,
-                giftCard = request.giftCard?.let { GiftCardPayment(it.account, GiftCardUse.REDEEM) },
-                mealVoucherAccount = request.mealVoucher?.selection == VoucherSelection.ACCOUNT_TYPE,
-                cashBackMinor = request.cashBackMinor,
-            ),
+            collectionAction = if (request.kind == SaleKind.PRE_AUTHORISATION) ManagerAction.PRE_AUTHORISATION else ManagerAction.SALE,
+            params =
+                PaymentParams(
+                    amountMinor = request.requestedAmountMinor,
+                    currency = request.currency.code,
+                    merchantReference = request.merchantReference,
+                    shopperReference = request.shopperReference,
+                    shopperEmail = request.shopperEmail,
+                    recurringProcessingModel = tokenization?.recurringProcessingModel?.takeIf { request.giftCard == null },
+                    // The app prints its own combined receipt, including the card details.
+                    appPrintsReceipts = true,
+                    metadata = listOfNotNull(request.customerReference?.let { "customerReference" to it }).toMap(),
+                    requestCardAlias = tokenization != null && request.scannedPayment == null && request.giftCard == null,
+                    // A tip on the receipt is captured later with the tip, as Adyen's tipping on the receipt flow asks.
+                    preAuthorisation = request.manualCapture,
+                    scannedPayment = request.scannedPayment,
+                    terminalTip = request.terminalTip,
+                    audioGuidance = request.audioGuidance,
+                    shopperFlow = request.shopperFlow,
+                    allowPartialAuthorisation = request.allowPartialAuthorisation,
+                    saleReferenceId = request.merchantReference.takeIf { isSplit || request.allowPartialAuthorisation },
+                    askGiving = request.askGiving,
+                    cardEntryOverride = request.cardEntryOverride,
+                    mexicanPayment = request.mexicanPayment,
+                    giftCard = request.giftCard?.let { GiftCardPayment(it.account, GiftCardUse.REDEEM) },
+                    mealVoucherAccount = request.mealVoucher?.selection == VoucherSelection.ACCOUNT_TYPE,
+                    cashBackMinor = request.cashBackMinor,
+                ),
             cashbackIdentity = request.cashbackConfiguration?.identity,
             audioGuidancePoiId = request.audioGuidancePoiId,
             expected = request.walletContext,

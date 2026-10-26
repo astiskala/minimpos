@@ -148,17 +148,24 @@
               pré-autorisations.</li>
           </ol>
           <h3 id="staff">Configurer les PIN du personnel</h3>
-          <ol>
-            <li>Dans <strong>Paramètres › Sécurité</strong>, appuyez sur <strong>Définir le PIN</strong>. Il protège les
-              paramètres et les produits. Choisissez le délai avant le prochain verrouillage de l’application.</li>
-            <li>Vous pouvez éventuellement appuyer sur <strong>Définir le PIN responsable</strong>. Le personnel en a
-              ensuite besoin pour les remboursements, les annulations, les captures, les ajustements de montant et la
-              saisie des pourboires.</li>
-          </ol>
-          <p>Pour remplacer ou supprimer le PIN administrateur, utilisez <strong>Modifier le PIN administrateur</strong>
-            ou <strong>Supprimer le PIN administrateur</strong>; sa suppression supprime également le PIN responsable.
-            Des tentatives erronées répétées verrouillent l'entrée PIN pendant un certain temps. Pour un PIN oublié,
-            voir <a href="troubleshooting#access">Problèmes PIN</a>.</p>
+          <p>Utilisez <strong>Définir le PIN</strong> pour commencer, puis <strong>Modifier le PIN
+            administrateur</strong> ou <strong>Supprimer le PIN administrateur</strong> pour modifier l’accès
+            administrateur. Utilisez <strong>Définir le PIN responsable</strong> pour les actions protégées.</p>
+          <p>Dans Paramètres › Sécurité, définissez un PIN administrateur pour protéger les paramètres et les produits.
+            Choisissez le délai avant le prochain verrouillage.</p>
+          <p>Dans <strong>Autorisations du responsable</strong>, choisissez les actions nécessitant le PIN responsable, qui reste
+            distinct. Les actions similaires partagent un commutateur ; les remboursements référencés, sans reçu et en
+            espèces ont des commutateurs séparés. Définissez un PIN responsable pour les actions protégées. Le PIN
+            administrateur ne les autorise pas.</p>
+          <p>Sans PIN administrateur, tous peuvent utiliser toutes les actions. Dès qu’il existe, les actions protégées
+            restent bloquées tant qu’un PIN responsable n’est pas défini. Les actions publiques restent disponibles même
+            avec un PIN responsable.</p>
+          <p>Supprimer le PIN responsable conserve les autorisations et laisse les actions protégées bloquées. Supprimer
+            le PIN administrateur supprime aussi le PIN responsable et rend toutes les actions publiques ; les choix
+            sont conservés. Plusieurs tentatives incorrectes bloquent temporairement la saisie du PIN.</p>
+          <p>L’approbation du responsable mentionnée dans les guides suit ces autorisations. Les vérifications de statut
+            des opérations inachevées restent disponibles. Les reçus automatiques suivent leurs paramètres.</p>
+          <p><a href="troubleshooting#access">Aide sur les PIN</a></p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="sell">
@@ -725,8 +732,8 @@
               l’app</strong> et confirmez avoir reçu l’argent.</li>
             <li>Confirmez, puis validez avec le PIN responsable.</li>
           </ol>
-          <p>Consulter un solde ne demande aucune validation. Modifier la valeur d’une carte nécessite un PIN responsable
-            configuré, le choix par défaut pour l’instant. Le paiement par carte est encaissé d’abord et la valeur n’est
+          <p>L’approbation des consultations de solde et des modifications de valeur suit les <a
+            href="#staff">autorisations du personnel</a>. Le paiement par carte est encaissé d’abord et la valeur n’est
             envoyée qu’après son acceptation ; si son résultat est inconnu, vérifiez-le avant toute autre action. Si le
             paiement a été encaissé sans ajout de valeur, l’activité indique <strong>Valeur non ajoutée</strong> :
             renvoyez la valeur, remboursez le paiement par carte ou enregistrez l’argent rendu. Rien n’est répété

@@ -148,16 +148,24 @@
               preautorizaciones.</li>
           </ol>
           <h3 id="staff">Configurar los PIN del personal</h3>
-          <ol>
-            <li>en <strong>Configuración › Seguridad</strong>, toque <strong>Establecer PIN</strong>. Protege
-              Configuraciones y Productos. Elija qué tan pronto se vuelve a bloquear la aplicación.</li>
-            <li>Opcionalmente, toque <strong>Establecer PIN de gerente</strong>. Luego, el personal lo necesita para
-              reembolsos, cancelaciones, capturas, ajustes de montos e ingreso de propinas.</li>
-          </ol>
-          <p>Para reemplazar o eliminar el PIN de administrador, use <strong>Cambiar PIN de administrador</strong> o
-            <strong>Eliminar PIN de administrador</strong>; al eliminarlo también se elimina el PIN de gerente. Los
-            repetidos intentos incorrectos bloquean la entrada a PIN por un tiempo. Para un PIN olvidado, consulte
-            <a href="troubleshooting#access">Problemas con PIN</a>.</p>
+          <p>Usa <strong>Establecer PIN</strong> para comenzar y <strong>Cambiar PIN de administrador</strong> o
+            <strong>Eliminar PIN de administrador</strong> para cambiar el acceso de administrador. Usa
+            <strong>Establecer PIN de gerente</strong> para las acciones protegidas.</p>
+          <p>En Ajustes › Seguridad, establece un PIN de administrador para proteger Ajustes y Productos. Elige cuándo
+            se vuelve a bloquear el acceso.</p>
+          <p>En <strong>Permisos de gerente</strong>, elige qué acciones requieren el PIN de gerente, que es independiente. Las acciones
+            similares comparten un interruptor; los reembolsos con referencia, sin recibo y en efectivo tienen
+            interruptores separados. Configura un PIN de gerente para las acciones protegidas. El PIN de administrador
+            no las autoriza.</p>
+          <p>Sin PIN de administrador, todos pueden usar todas las acciones. Al configurarlo, las acciones protegidas
+            quedan bloqueadas hasta configurar un PIN de gerente. Las acciones públicas siguen disponibles aunque exista
+            un PIN de gerente.</p>
+          <p>Eliminar el PIN de gerente conserva los permisos y mantiene bloqueadas las acciones protegidas. Eliminar el
+            PIN de administrador también elimina el PIN de gerente y permite todas las acciones a todos; las elecciones
+            se conservan. Varios intentos incorrectos bloquean temporalmente el ingreso del PIN.</p>
+          <p>La aprobación del gerente mencionada en las guías depende de estos permisos. Las consultas de estado de
+            operaciones pendientes siguen disponibles. Los recibos automáticos siguen su configuración.</p>
+          <p><a href="troubleshooting#access">Ayuda con el PIN</a></p>
           <p class="back-to-contents"><a href="#contents">Volver al contenido</a></p>
         </section>
         <section id="sell">
@@ -705,11 +713,11 @@
               confirma que recibiste el dinero.</li>
             <li>Confirma y aprueba con el PIN de gerente.</li>
           </ol>
-          <p>Consultar el saldo no requiere aprobación. Cambiar el valor de una tarjeta requiere un PIN de gerente
-            configurado, el criterio de trabajo por ahora. Primero se cobra el pago con tarjeta y el valor se envía solo
-            cuando se aprueba; si el resultado del pago se desconoce, consúltalo antes de continuar. Si se cobró el pago
-            pero no se agregó valor, la actividad muestra <strong>Valor no agregado</strong>: envía el valor de nuevo,
-            reembolsa el pago con tarjeta o registra el dinero devuelto. Nada se repite automáticamente.</p>
+          <p>La aprobación de consultas de saldo y cambios de valor sigue los <a href="#staff">permisos del
+            personal</a>. Primero se cobra el pago con tarjeta y el valor se envía solo cuando se aprueba; si el
+            resultado del pago se desconoce, consúltalo antes de continuar. Si se cobró el pago pero no se agregó valor,
+            la actividad muestra <strong>Valor no agregado</strong>: envía el valor de nuevo, reembolsa el pago con
+            tarjeta o registra el dinero devuelto. Nada se repite automáticamente.</p>
           <p><strong>Deshacer recarga</strong> aparece para la última recarga de la tarjeta dentro de 24 horas. Un retiro
             de efectivo normalmente paga todo el saldo y cierra la tarjeta; solo algunas tarjetas Givex permiten menos.
             Entrega el efectivo cuando se apruebe y toca <strong>Efectivo entregado</strong>; una entrega sin confirmar

@@ -14,6 +14,7 @@ import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.settings.GiftCardSetting
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.TerminalGateway
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.giftcard.GiftCardEntry
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.ids.Ids
@@ -253,7 +254,7 @@ sealed interface GiftCardRequest {
 
 /**
  * Why staff cannot start [operation] now: the destination takes no gift cards or is not set up ([blocked]), no
- * configured provider ([setting]) supports it, or a value change lacks a configured Manager PIN ([managerConfigured]);
+ * configured provider ([setting]) supports it, or a value change requires a missing Manager PIN ([managerConfigured]);
  * null when it can start. Pure; the Gift cards screen shows it.
  */
 fun giftCardStartProblem(
@@ -308,7 +309,7 @@ sealed interface GiftCardBalanceResult {
  * automatically.
  *
  * One activity runs at a time, on [scope] so it survives navigation; [state] follows it like other financial
- * operations. Value changes, funding repairs and cash handovers need a configured Manager PIN, checked again
+ * operations. Value changes, funding repairs and cash handovers follow their Manager permission, checked again
  * immediately before sending; balance inquiries need none.
  *
  * @param scope Application scope.
@@ -409,6 +410,10 @@ class GiftCards(
 
     /** Reads [card]'s balance; nothing is stored and nothing changes on the card. */
     suspend fun balance(card: PresentedGiftCard): GiftCardBalanceResult {
+        if (!approval.forAction(ManagerAction.GIFT_CARD_BALANCE).allowsNow()) {
+            card.discard()
+            return GiftCardBalanceResult.NotRead(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL))
+        }
         if (!card.setting.provider.supports(GiftCardOperation.BALANCE)) {
             card.discard()
             return GiftCardBalanceResult.NotRead(Failure.Remote(Fault.Unsupported))
@@ -468,11 +473,11 @@ class GiftCards(
         }
 
     /**
-     * Records that the cash of activity [groupId]'s approved cash-out was handed over, with a configured Manager PIN;
+     * Records that the cash of activity [groupId]'s approved cash-out was handed over, after its configured Manager approval;
      * false, storing nothing, without approval or when nothing is awaiting.
      */
     suspend fun confirmHandover(groupId: String): Boolean {
-        if (!approval.allowsConfigured(approval.grant())) return false
+        if (!approval.forAction(ManagerAction.GIFT_CARD_CHANGE).allowsConfigured(approval.grant())) return false
         val stage =
             records.activity(groupId)?.stages?.firstOrNull {
                 it.stage == GiftCardStage.CASH_HANDOVER && it.status == GiftCardStatus.AWAITING
@@ -615,7 +620,7 @@ class GiftCards(
                 approvedMinor = change.amountMinor,
                 environment = environment(),
             )
-        return Funded(null).takeIf { approval.allowsConfigured(grant) && records.open(fund) }
+        return Funded(null).takeIf { approval.forAction(ManagerAction.GIFT_CARD_CHANGE).allowsConfigured(grant) && records.open(fund) }
     }
 
     /** Activates or loads again for an activity whose funding is confirmed and whose value was not delivered. */
@@ -753,7 +758,9 @@ class GiftCards(
         request: GiftCardRequest.ReturnFunds,
         grant: ManagerApproval.Grant,
     ): Boolean {
-        val funding = records.activity(groupId)?.funding?.takeIf { approval.allowsConfigured(grant) } ?: return false
+        val funding =
+            records.activity(groupId)?.funding?.takeIf { approval.forAction(ManagerAction.GIFT_CARD_CHANGE).allowsConfigured(grant) }
+                ?: return false
         val entity =
             stage(Change(groupId, null, funding.movedMinor, request.currency, GiftCardStage.FUNDING_RETURNED)).copy(
                 status = GiftCardStatus.SUCCEEDED,
@@ -780,7 +787,7 @@ class GiftCards(
     ): GiftCardStatus {
         current[entity.groupId] = entity.id
         val attempt =
-            if (!approval.allowsConfigured(grant)) {
+            if (!approval.forAction(ManagerAction.GIFT_CARD_CHANGE).allowsConfigured(grant)) {
                 Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
             } else {
                 call(
@@ -795,7 +802,7 @@ class GiftCards(
                         }
                     },
                     { records.recordContext(entity.id, it) },
-                    { approval.allowsConfigured(grant) },
+                    { approval.forAction(ManagerAction.GIFT_CARD_CHANGE).allowsConfigured(grant) },
                 )
             }
         val settlement =

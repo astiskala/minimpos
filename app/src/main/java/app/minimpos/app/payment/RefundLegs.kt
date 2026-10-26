@@ -4,6 +4,7 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.RefundStart
+import app.minimpos.core.access.ManagerAction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,7 @@ enum class RefundLegSkip {
     /** An earlier leg was not accepted, so later legs wait for staff review. */
     EARLIER_LEG,
 
-    /** Cash returns need a configured Manager PIN and an unexpired approval. */
+    /** Cash returns follow the configured Manager permission and recheck approval. */
     MANAGER_APPROVAL,
 
     /** The sale's balances or returns changed since the review; review the return again. */
@@ -63,7 +64,7 @@ data class RefundRun(
  * (refused, failed or unknown) stops the rest, so staff review the sale again; pending and unknown legs keep reserving
  * their tender's balance. Each leg carries the review snapshot plus the legs this run stored before it, so a change by
  * anyone else refuses it as stale. The Manager approval taken when staff confirmed the return covers every leg; cash
- * legs require a configured Manager PIN. Process death leaves stored legs to their usual recovery and starts nothing.
+ * legs follow their configured Manager permissions. Process death leaves stored legs to their usual recovery and starts nothing.
  *
  * @param scope Application scope the run survives navigation in.
  * @param operations Sends card legs and follows their progress.
@@ -138,7 +139,13 @@ class RefundLegs(
         request: RefundStart,
         grant: ManagerApproval.Grant,
     ): Triple<String?, RefundStatus?, RefundLegSkip?> {
-        if (!approval.allowsConfigured(grant)) return Triple(null, null, RefundLegSkip.MANAGER_APPROVAL)
+        if (!approval
+                .forAction(
+                    ManagerAction.CASH_REFUND,
+                ).allowsConfigured(grant)
+        ) {
+            return Triple(null, null, RefundLegSkip.MANAGER_APPROVAL)
+        }
         val id = newId()
         val recorded = records.recordCashReturn(request.pendingRefund(id, clock.millis()), request.reviewedRefunds)
         return if (recorded) Triple(id, RefundStatus.REQUESTED, null) else Triple(null, null, RefundLegSkip.BALANCE_CHANGED)

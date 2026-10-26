@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import app.minimpos.app.R
+import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.EmailReceiptDialog
 import app.minimpos.app.ui.components.PrimaryButton
@@ -32,6 +33,7 @@ import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
 
@@ -73,13 +75,14 @@ fun ColumnScope.ReceiptActions(
     modifier: Modifier = Modifier,
     email: String = "",
 ) {
+    val approve = rememberManagerAction()
     val gate = currentSetupGate()
     var askEmail by rememberSaveable { mutableStateOf(false) }
     var shown by rememberSaveable { mutableStateOf(false) }
     if (state.canPrint) {
         SecondaryButton(
             stringResource(R.string.result_print),
-            { gate.run { events.print(ReceiptCopy.CUSTOMER) } },
+            { approve(setOf(ManagerAction.RECEIPT)) { gate.run { events.print(ReceiptCopy.CUSTOMER) } } },
             loading = state.print.running,
             icon = Icons.Default.Print,
             modifier = Modifier.testTag("print"),
@@ -89,7 +92,7 @@ fun ColumnScope.ReceiptActions(
         if (due || merchantCopy == MerchantCopy.ALWAYS) {
             SecondaryButton(
                 stringResource(R.string.result_print_merchant),
-                { gate.run { events.print(ReceiptCopy.MERCHANT) } },
+                { approve(setOf(ManagerAction.RECEIPT)) { gate.run { events.print(ReceiptCopy.MERCHANT) } } },
                 loading = state.print.running,
                 icon = Icons.Default.Print,
                 modifier = Modifier.testTag("printMerchant"),
@@ -100,7 +103,7 @@ fun ColumnScope.ReceiptActions(
     if (state.canEmail) {
         SecondaryButton(
             stringResource(R.string.result_email),
-            { askEmail = true },
+            { approve(setOf(ManagerAction.RECEIPT)) { askEmail = true } },
             loading = state.email.running,
             icon = Icons.Default.Email,
             modifier = Modifier.testTag("emailReceipt"),
@@ -110,7 +113,7 @@ fun ColumnScope.ReceiptActions(
     if (state.canShare) {
         SecondaryButton(
             stringResource(R.string.result_share),
-            events::share,
+            { approve(setOf(ManagerAction.RECEIPT), events::share) },
             icon = Icons.Default.Share,
             modifier = Modifier.testTag("shareReceipt"),
         )
@@ -120,7 +123,8 @@ fun ColumnScope.ReceiptActions(
         EmailReceiptDialog(
             onSend = {
                 askEmail = false
-                events.email(it)
+                val to = it
+                approve(setOf(ManagerAction.RECEIPT)) { events.email(to) }
             },
             onDismiss = { askEmail = false },
             initial = email,

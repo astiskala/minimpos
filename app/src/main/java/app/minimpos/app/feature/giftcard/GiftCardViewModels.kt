@@ -81,7 +81,7 @@ data class CardChoice(
  * @property externalConfirmed Whether staff confirmed receiving the funds outside the app.
  * @property balance The last balance read; null when none was read for the current card.
  * @property reading Whether a balance is being read.
- * @property managerConfigured Whether a Manager PIN is set, which value changes require.
+ * @property managerConfigured Whether value changes are public or a Manager PIN is configured to approve them.
  * @property blocked Why gift-card requests cannot be sent on this destination now; null when they can.
  * @property activities Recent and unresolved activities, newest first.
  * @property now Epoch milliseconds the undo window is read against.
@@ -179,7 +179,7 @@ data class GiftCardsUiState(
  * @param giftCards Sends gift-card requests.
  * @param records Recent activities.
  * @param payment Payment settings with the configured providers and the currency.
- * @param managerConfigured Whether a Manager PIN is set.
+ * @param managerConfigured Whether the relevant action is public or a Manager PIN is configured to approve it.
  * @param blocked Why gift-card requests cannot be sent now, from the terminal state.
  * @param clock Reads the undo window.
  */
@@ -323,7 +323,7 @@ class GiftCardsViewModel(
  * @property actions What staff may do now.
  * @property transaction Receipt and status check actions.
  * @property settings Configured providers, for presenting the card again.
- * @property managerConfigured Whether a Manager PIN is set.
+ * @property managerConfigured Whether the relevant action is public or a Manager PIN is configured to approve it.
  * @property refused Whether the last follow-up could not start or was not recorded.
  * @property card The card presented again to send a funded value again.
  */
@@ -354,7 +354,7 @@ data class GiftCardActivityUiState(
  * @param receipts Receipt delivery.
  * @param operations Status checks.
  * @param payment Configured providers.
- * @param managerConfigured Whether a Manager PIN is set.
+ * @param managerConfigured Whether the relevant action is public or a Manager PIN is configured to approve it.
  * @param justStarted Whether it was just started here, so leaving acknowledges its progress.
  * @param clock Reads the undo window.
  */

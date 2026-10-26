@@ -5,12 +5,14 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
+import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
@@ -79,6 +81,7 @@ class SplitPaymentUiTest {
     fun `returning cash waits for a Manager PIN and each leg is shown`() {
         val container = env.container
         val saleId = cashThenCard()
+        await { container.pinManager.setPin("1357") }
         val vm = RefundViewModel(null, saleId, container.sales, container.storedPaymentActions)
         val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.Refund(saleId = saleId)))
         try {
@@ -89,9 +92,11 @@ class SplitPaymentUiTest {
             }
             compose.awaitCondition("split return proposed") { vm.state.value.allocation.size == 2 }
             assertThat(vm.state.value.returnsCash).isTrue()
-            compose.onNodeWithTag("blockedReason").assertIsDisplayed()
-            compose.onNodeWithTag("refundTender_${vm.state.value.allocation.keys.first()}").performScrollTo().assertIsDisplayed()
-            await { container.managerPin.setPin("2468") }
+            compose.onNodeWithText(env.context.getString(R.string.manager_pin_required)).assertIsDisplayed()
+            await {
+                container.pinManager.setPin("1357")
+                container.managerPin.setPin("2468")
+            }
             container.managerLock.unlock()
             compose.awaitCondition("cash return allowed") { vm.refund() == RefundStarted.LEGS }
             navigator.replace(Route.RefundLegs)
@@ -217,7 +222,10 @@ class SplitPaymentUiTest {
         ringUp()
         val container = env.container
         val svs = GiftCardSetting(GiftCardProvider.SVS)
-        await { container.managerPin.setPin("2468") }
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+        }
         container.managerLock.unlock()
         val activation =
             checkNotNull(

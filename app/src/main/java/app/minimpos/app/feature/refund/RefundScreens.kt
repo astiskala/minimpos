@@ -59,6 +59,8 @@ import app.minimpos.app.feature.ResultAction
 import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.lock.ManagerApproval
+import app.minimpos.app.feature.lock.ManagerGate
+import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.text
 import app.minimpos.app.history.RefundInvalidReason
@@ -96,6 +98,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.core.money.AmountEntry
@@ -155,52 +158,64 @@ fun RefundScreen(
     var confirm by rememberSaveable { mutableStateOf(false) }
     val ready = state.load as? Refundability.Refundable
     val gate = currentSetupGate()
-    val managerConfigured by container.managerPin.pinConfigured.collectAsStateWithLifecycle(initialValue = false)
+    val managerConfigured by container.managerAvailable(ManagerAction.CASH_REFUND).collectAsStateWithLifecycle(initialValue = false)
     val cashBlocked = state.returnsCash && !managerConfigured
+    val approveRefund = rememberManagerAction()
 
-    MiniScaffold(
-        title = stringResource(R.string.refund_title),
-        onBack = navigator::back,
-        modifier = modifier,
-        bottomBar = { if (ready != null) RefundBar(ready.payment.currency, state, cashBlocked) { gate.run { confirm = true } } },
-    ) { padding ->
-        when (val load = state.load) {
-            null -> {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+    val permissions =
+        buildSet {
+            if (state.returnsCard) add(ManagerAction.REFERENCED_REFUND)
+            if (state.returnsCash) add(ManagerAction.CASH_REFUND)
+        }
+    ManagerGate(permissions, navigator) {
+        MiniScaffold(
+            title = stringResource(R.string.refund_title),
+            onBack = navigator::back,
+            modifier = modifier,
+            bottomBar = { if (ready != null) RefundBar(ready.payment.currency, state, cashBlocked) { gate.run { confirm = true } } },
+        ) { padding ->
+            when (val load = state.load) {
+                null -> {
+                    Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
 
-            is Refundability.NotRefundable -> {
-                RefundUnavailable(load.reason, onBack = navigator::back, modifier = Modifier.padding(padding))
-            }
+                is Refundability.NotRefundable -> {
+                    RefundUnavailable(load.reason, onBack = navigator::back, modifier = Modifier.padding(padding))
+                }
 
-            is Refundability.Refundable -> {
-                RemoteRefundReview(load.payment.local == null && !state.remoteReviewed, { vm.reviewRemote(true) }, navigator::back)
-                RefundChoice(
-                    state = state,
-                    original = load.payment,
-                    formatDateTime = container::formatDateTime,
-                    onSelectOption = vm::selectOption,
-                    onEditLeg = vm::editLeg,
-                    onLegAmount = vm::updateLeg,
-                    onResetAllocation = vm::resetAllocation,
-                    onQuantity = vm::setQuantity,
-                    onAmount = vm::updateAmount,
-                    modifier = Modifier.padding(padding),
-                )
-                if (confirm) {
-                    RefundConfirmation(state, load.payment.currency, onDismiss = { confirm = false }) {
-                        confirm = false
-                        when (vm.refund()) {
-                            RefundStarted.SINGLE -> navigator.replace(Route.RefundProcessing)
-                            RefundStarted.LEGS -> navigator.replace(Route.RefundLegs)
-                            RefundStarted.NONE -> Unit
+                is Refundability.Refundable -> {
+                    RemoteRefundReview(load.payment.local == null && !state.remoteReviewed, { vm.reviewRemote(true) }, navigator::back)
+                    RefundChoice(
+                        state = state,
+                        original = load.payment,
+                        formatDateTime = container::formatDateTime,
+                        onSelectOption = vm::selectOption,
+                        onEditLeg = vm::editLeg,
+                        onLegAmount = vm::updateLeg,
+                        onResetAllocation = vm::resetAllocation,
+                        onQuantity = vm::setQuantity,
+                        onAmount = vm::updateAmount,
+                        modifier = Modifier.padding(padding),
+                    )
+                    if (confirm) {
+                        RefundConfirmation(state, load.payment.currency, onDismiss = { confirm = false }) {
+                            confirm = false
+                            approveRefund(state.managerActions) { navigator.showRefundProgress(vm.refund()) }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+private fun Navigator.showRefundProgress(started: RefundStarted) {
+    when (started) {
+        RefundStarted.SINGLE -> replace(Route.RefundProcessing)
+        RefundStarted.LEGS -> replace(Route.RefundLegs)
+        RefundStarted.NONE -> Unit
     }
 }
 
@@ -767,7 +782,7 @@ fun RefundResultScreen(
 
     var approveCancel by rememberSaveable { mutableStateOf(false) }
     if (approveCancel) {
-        return ManagerApproval(onApprove = {
+        return ManagerApproval(actions = setOf(ManagerAction.UNREFERENCED_REFUND), onApprove = {
             approveCancel = false
             gate.run { vm.cancelRefund() }
         }, onCancel = { approveCancel = false })

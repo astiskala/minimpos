@@ -93,7 +93,10 @@ class PinAccessFlowTest {
             )
         val saleId = container.payments.started(start)
         await { container.payments.state.first { it == TransactionState.Finished(saleId) } }
-        await { container.managerPin.setPin("2468") }
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+        }
         compose.onNodeWithTag("history").performClick()
         waitForText("held-sale")
         compose.onNodeWithText("held-sale").performClick()
@@ -123,7 +126,10 @@ class PinAccessFlowTest {
             )
         val saleId = container.payments.started(start)
         await { container.payments.state.first { it == TransactionState.Finished(saleId) } }
-        await { container.managerPin.setPin("2468") }
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+        }
         compose.onNodeWithTag("history").performClick()
         waitForText("manager-refund")
         compose.onNodeWithText("manager-refund").performClick()
@@ -159,6 +165,8 @@ class PinAccessFlowTest {
             container.managerPin.setPin("2468")
         }
         compose.onNodeWithText("Refund").performClick()
+        waitForText("Scan receipt")
+        compose.onNodeWithText("Scan receipt").performClick()
         waitForTag("pin_1")
         compose.onNodeWithText("Enter the Manager PIN").assertIsDisplayed()
         listOf(1, 3, 5, 7).forEach { compose.onNodeWithTag("pin_$it").performClick() }

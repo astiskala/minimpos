@@ -678,8 +678,33 @@
   <string name="manager_pin_set">设置经理 PIN</string>
   <string name="manager_pin_change">更改经理 PIN</string>
   <string name="manager_pin_remove">移除经理 PIN</string>
-  <string name="manager_pin_remove_message">退款、取消预授权、扣款和金额调整将不再需要经理批准。</string>
-  <string name="manager_pin_hint">可选：退款、取消预授权、扣款和金额调整需要经理批准。请先设置管理员 PIN，以保护这些设置。</string>
+  <string name="manager_pin_remove_message">受保护的操作将继续被阻止，直到重新设置经理 PIN 或更改操作权限。</string>
+  <string name="manager_action_sale">普通销售</string>
+  <string name="manager_action_pre_authorisation">预授权</string>
+  <string name="manager_action_cash_payment">现金付款</string>
+  <string name="manager_action_link_create">创建付款链接</string>
+  <string name="manager_action_referenced_refund">关联原交易的退款</string>
+  <string name="manager_action_unreferenced_refund">无收据退款</string>
+  <string name="manager_action_cash_refund">现金退款</string>
+  <string name="manager_action_capture">扣款和收据小费</string>
+  <string name="manager_action_adjust_authorisation">更改和续期授权</string>
+  <string name="manager_action_cancel_authorisation">取消授权</string>
+  <string name="manager_action_cashout">取现和现金返还</string>
+  <string name="manager_action_gift_card_change">更改礼品卡余额</string>
+  <string name="manager_action_saved_card_charge">保存的银行卡扣款</string>
+  <string name="manager_action_token_delete">删除令牌</string>
+  <string name="manager_action_manual_entry">MOTO 和手动输入银行卡</string>
+  <string name="manager_action_link_change">更改付款链接</string>
+  <string name="manager_action_close_period">关闭对账周期</string>
+  <string name="manager_action_history">历史记录和交易详情</string>
+  <string name="manager_action_receipt">重新打印、发送和分享收据</string>
+  <string name="manager_action_totals">对账总额</string>
+  <string name="manager_action_saved_card_lookup">查询保存的银行卡</string>
+  <string name="manager_action_gift_card_balance">查询礼品卡余额</string>
+  <string name="manager_permissions">经理权限</string>
+  <string name="manager_permission_hint">此操作需要经理 PIN。</string>
+  <string name="manager_pin_required">此操作需要经理 PIN。请在设置 › 安全中设置，或让管理员更改此操作的权限。</string>
+  <string name="manager_pin_hint">选择哪些操作需要经理 PIN。未设置管理员 PIN 时，所有人都可使用全部操作。设置管理员 PIN 后，受保护的操作将被阻止，直到设置经理 PIN。</string>
 
   <!-- Settings: overview and language -->
   <string name="settings_title">设置</string>
@@ -1132,7 +1157,7 @@
   <string name="settings_set_pin">设置 PIN</string>
   <string name="settings_change_pin">更改管理员 PIN</string>
   <string name="settings_remove_pin">移除管理员 PIN</string>
-  <string name="settings_remove_pin_message">设置和商品将不再受到保护。已设置的经理 PIN 也会被移除。</string>
+  <string name="settings_remove_pin_message">设置和商品将不再受保护，经理 PIN 将被移除，所有人均可使用全部操作。权限选择会保留。</string>
   <string name="settings_auto_lock">重新锁定时间</string>
   <string name="settings_auto_lock_hint">输入管理员 PIN 后，设置和商品保持解锁的时长。</string>
   <string name="settings_auto_lock_never">仅在离开时</string>
@@ -1469,7 +1494,7 @@
   <string name="cashout_title">取现</string>
   <string name="cashback_enable">启用购物取现</string>
   <string name="cashout_enable">启用单独取现</string>
-  <string name="cashback_configuration">请确认 Adyen 已为此门店和卡计划启用此功能。需要已验证的门店、本地限额和经理 PIN。</string>
+  <string name="cashback_configuration">请确认 Adyen 已为此门店和卡计划启用此功能。需要已验证的门店和本地限额。</string>
   <string name="cashout_configuration">此处仅澳大利亚 eftpos 支持单独取现。请向 Adyen 确认已单独启用。</string>
   <string name="cashback_card_hint">请向 Adyen 确认此卡计划和已分配门店的资格。</string>
   <string name="cashback_limit">本地取现限额</string>
@@ -1528,7 +1553,7 @@
   <string name="report_unreferenced_refunds">无收据</string>
   <string name="unreferenced_settings_title">无收据退款</string>
   <string name="unreferenced_settings_enable">允许无收据退款</string>
-  <string name="unreferenced_settings_enable_hint">仅在 Adyen 为此门店启用非关联退款后开启。需要已验证的门店、上限和经理PIN。</string>
+  <string name="unreferenced_settings_enable_hint">仅在 Adyen 为此门店启用非关联退款后开启。需要已验证的门店和上限。</string>
   <string name="unreferenced_settings_limit">退款上限</string>
   <string name="unreferenced_settings_limit_hint">以付款货币计的最大无收据退款金额。在 Customer Area 中设置的 Adyen 自有上限同样适用。</string>
   <string name="unreferenced_settings_delay">已设置退款延迟</string>

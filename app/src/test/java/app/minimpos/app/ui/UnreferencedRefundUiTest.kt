@@ -114,6 +114,7 @@ class UnreferencedRefundUiTest {
         env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "EUR")) }
         await {
             container.walletDiscovery.refresh()
+            container.pinManager.setPin("1357")
             container.managerPin.setPin("2468")
         }
         val facts = container.walletDiscovery.state.value

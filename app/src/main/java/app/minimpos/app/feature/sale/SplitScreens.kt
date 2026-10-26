@@ -42,6 +42,7 @@ import app.minimpos.app.data.db.TenderKind
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.feature.giftcard.CardChoice
 import app.minimpos.app.feature.giftcard.GiftCardPicker
+import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.feature.mealVoucherBlocked
 import app.minimpos.app.feature.mealVoucherFacts
 import app.minimpos.app.feature.mealVoucherLabel
@@ -68,6 +69,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.money.AmountEntry
 import app.minimpos.core.money.MoneyFormatter
@@ -89,7 +91,14 @@ fun SplitScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(state.currency.ifEmpty { PaymentSettings.FALLBACK_CURRENCY })
+    val approve = rememberManagerAction()
     val gate = currentSetupGate()
+
+    fun pay(start: () -> Boolean) {
+        approve(setOf(ManagerAction.SALE)) {
+            gate.run { if (start()) navigator.replace(Route.Payment(SaleKind.SALE)) }
+        }
+    }
     MiniScaffold(
         title = stringResource(R.string.split_title),
         onBack = {
@@ -106,13 +115,17 @@ fun SplitScreen(
                 SplitActions(
                     state,
                     money,
-                    onCard = { gate.run { if (vm.payByCard()) navigator.replace(Route.Payment(SaleKind.SALE)) } },
+                    onCard = { pay(vm::payByCard) },
                     onCash = { vm.enterCash(true) },
                     onGiftCard = { vm.enterGiftCard(true) },
-                    onPayGiftCard = { gate.run { if (vm.payByGiftCard()) navigator.replace(Route.Payment(SaleKind.SALE)) } },
-                    onConfirmCash = { vm.confirmCash { id -> navigator.replace(Route.SaleResult(id)) } },
+                    onPayGiftCard = { pay(vm::payByGiftCard) },
+                    onConfirmCash = {
+                        approve(setOf(ManagerAction.SALE, ManagerAction.CASH_PAYMENT)) {
+                            vm.confirmCash { id -> navigator.replace(Route.SaleResult(id)) }
+                        }
+                    },
                     onVoucher = { vm.enterVoucher(true) },
-                    onPayVoucher = { gate.run { if (vm.payByCard()) navigator.replace(Route.Payment(SaleKind.SALE)) } },
+                    onPayVoucher = { pay(vm::payByCard) },
                 )
             }
         },

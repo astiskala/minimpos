@@ -369,7 +369,9 @@ class TransactionActions private constructor(
     /** Asks for the receipt to be shared; the screen hands [TransactionActionsState.share] to the share sheet. */
     override fun share() {
         val shared = shareable ?: return
-        state.update { it.copy(share = shared) }
+        scope.launch {
+            if (receipts.manualAllowed()) state.update { it.copy(share = shared) }
+        }
     }
 
     /** Reports that the screen handed the waiting receipt to the share sheet, so it is not shared twice. */

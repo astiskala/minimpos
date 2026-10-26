@@ -94,6 +94,7 @@ import app.minimpos.app.ui.components.SetupGate
 import app.minimpos.app.update.AppUpdate
 import app.minimpos.app.update.GitHubReleases
 import app.minimpos.app.update.UpdateCheck
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.tax.StarterTax
@@ -128,8 +129,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -254,9 +257,22 @@ class AppContainer(
     val managerApproval =
         ManagerApproval(
             configured = { managerPin.pinConfigured.first() },
+            requirement = { pinManager.pinConfigured.first() && settingsState.value.security.requiresManager(it) },
             session = managerLock,
             autoLockMillis = { settingsState.value.security.autoLockMinutes.minutes.inWholeMilliseconds },
         )
+
+    /** Whether any of [actions] requires approval on this device now. */
+    fun managerRequired(actions: Set<ManagerAction>): Flow<Boolean> =
+        combine(settings.settings, pinManager.pinConfigured) { current, admin ->
+            admin && actions.any(current.security::requiresManager)
+        }
+
+    /** Whether [action] can be offered: public, or a Manager PIN exists to approve it. */
+    fun managerAvailable(action: ManagerAction): Flow<Boolean> =
+        combine(settings.settings, pinManager.pinConfigured, managerPin.pinConfigured) { current, admin, manager ->
+            !admin || !current.security.requiresManager(action) || manager
+        }
 
     /** Whether the admin area is unlocked. */
     val sessionLock = SessionLock()
@@ -429,6 +445,7 @@ class AppContainer(
         ReceiptDelivery(
             settings = settings,
             records = ReceiptRecords(sales, refundRecords, history, giftCardRecords),
+            approval = managerApproval,
             receipts = receiptFactory,
             gateway = gateway,
             status = terminalStatus,

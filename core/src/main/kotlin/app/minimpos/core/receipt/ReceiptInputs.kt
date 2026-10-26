@@ -2,6 +2,7 @@ package app.minimpos.core.receipt
 
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.TaxBreakdown
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.tax.TaxAmounts
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.core.tax.TaxRates
@@ -36,6 +37,8 @@ data class CardReceiptLine(
  * @property title a heading under the header on sale receipts, e.g. "TAX INVOICE"; refund receipts use
  *   [ReceiptLabels.refundTitle] instead.
  * @property footer free text at the bottom, possibly several lines; lines are trimmed and empty ones dropped.
+ * @property logo the centered receipt logo, or null for none.
+ * @property printBusinessName whether the business name appears below the logo.
  */
 data class ReceiptBranding(
     val businessName: String = "",
@@ -45,6 +48,8 @@ data class ReceiptBranding(
     val phone: String = "",
     val title: String = "",
     val footer: String = "",
+    val logo: MonoBitmap? = null,
+    val printBusinessName: Boolean = true,
 )
 
 /**

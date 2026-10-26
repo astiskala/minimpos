@@ -19,7 +19,7 @@ GitHub CI verifies source and builds unsigned APKs. Only the separate release en
 ## 2. Trust Boundaries and Security Zones
 
 - Untrusted inputs include QR payloads, imported catalogs, external payment answers, terminal discovery results,
-  GitHub release metadata, browser form input and pull-request source.
+  GitHub release metadata, browser form input, chosen receipt-logo images and pull-request source.
 - Device storage and application orchestration are trusted only while the device and its operating system are safe.
   Optional admin access and Manager approval protect different actions; approval is rechecked before financial work.
 - Adyen service identities require HTTPS or authenticated terminal encryption and environment-specific validation.
@@ -32,7 +32,8 @@ GitHub CI verifies source and builds unsigned APKs. Only the separate release en
 ## 3. Attack Surface Inventory
 
 There is no public application HTTP server or file-upload endpoint. External interfaces are outbound Adyen HTTPS,
-encrypted Terminal API, Payments app links, SMTP, optional GitHub release checks, QR import and Android file sharing.
+encrypted Terminal API, Payments app links, SMTP, optional GitHub release checks, QR import, receipt-logo image
+selection and Android file sharing.
 Checkout token deletion and Classic Payments `/voidPendingRefund` are explicit outbound mutations. An uncertain token
 deletion is reconciled by listing; an uncertain refund cancellation reuses its stored identity and first-send time.
 The setup helper runs local browser code under a no-network Content Security Policy.
@@ -65,6 +66,10 @@ Threats below describe attack patterns and accepted risks, not confirmed vulnera
 Existing mitigations include typed validation, Long minor-unit money, bounded transfer KDF counts, authenticated
 encryption, Adyen certificate validation, request matching, persisted operation facts, idempotent recovery,
 parameterized Room access, PIN lockouts, narrow file sharing, offline helper CSP, pinned actions and binary checksums.
+Receipt-logo decoding bounds the longest side at 4096 pixels before conversion. Strict logo records validate dimensions,
+length and zero padding; the PNG reader accepts only the bounded 1-bit format written by the app. Only the final
+monochrome bitmap is stored, behind storage-health protection; corrupt files remain intact and block protected work.
+The helper decodes local SVG through a blob image under its CSP; image data and transfer contents are never logged.
 Recovery reads the original message category and rejects conflicting echoed or repeated identities. Approval must hold
 after setup/persistence and before each network stage, including a capture following an adjustment. Active recovery,
 link operations, captures and whole multi-leg returns hold setup and history maintenance steady.
@@ -92,15 +97,17 @@ tool --commit "$COMMIT"
 ```
 
 Authentication bypass patterns include accepting mismatched request identities, probing keys across environments
-or skipping transfer verification before activation. Object-access bypass patterns include refunding a stored
-payment without checking its original context and current permitted actions.
+or skipping connection-transfer verification before activation. Logo-only imports need confirmation and change no
+credentials; their public section is authenticated when included in a sealed connection transfer. Object-access bypass
+patterns include refunding a stored payment without checking its original context and current permitted actions.
 Release spoofing patterns include accepting PR, incomplete or failed runs, or trusting an artifact name without
 commit/version/run-attempt/hash checks. Guard signing behind successful verified CI and keep plugins away from secrets.
 
 ## 7. Security Testing Strategy
 
 Run the complete quality gate and R8 build. Retain architecture deliberate-violation tests, crypto vectors,
-transport fakes, recovery/idempotency tests, browser CSP/transfer tests, coverage thresholds and API-level checks.
+transport fakes, recovery/idempotency tests, bounded image and malformed logo/PNG tests, shared JVM/browser logo
+vectors, browser CSP/transfer tests, coverage thresholds and API-level checks.
 Exercise actual shell reuse logic with fake GitHub commands, including failed API reads, missing and tampered artifacts.
 Verify both CodeQL languages after deployment and compare explicit resolved dependency graphs before disabling duplicates.
 Real Adyen calls require separate explicit authorization and must never be inferred from simulator success.

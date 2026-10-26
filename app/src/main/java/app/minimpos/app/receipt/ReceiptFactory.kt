@@ -18,6 +18,7 @@ import app.minimpos.app.history.RefundablePayment
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.TaxBreakdown
 import app.minimpos.core.codec.RefundQrPayload
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.receipt.CardReceiptLine
@@ -114,13 +115,14 @@ class ReceiptFactory(
 ) {
     private val current: ReceiptTexts get() = texts("")
 
-    /** Reuses [paper] for sharing unless receipt-tip blanks require a distinct electronic document. */
+    /** Reuses [paper] for sharing unless tip blanks require a new document; [logo] is the current logo, or null. */
     fun electronic(
         record: SaleWithLines,
         settings: ReceiptSettings,
         paper: ReceiptDocument,
+        logo: MonoBitmap? = null,
     ): ReceiptDocument =
-        if (ReceiptStanding.of(record.sale).awaitingTip) sale(record, settings, surface = ReceiptSurface.ELECTRONIC) else paper
+        if (ReceiptStanding.of(record.sale).awaitingTip) sale(record, settings, surface = ReceiptSurface.ELECTRONIC, logo = logo) else paper
 
     /** Summary of retained processing-day activity; no payment receipt, QR, or settlement claim. */
     fun dailyReport(
@@ -146,13 +148,14 @@ class ReceiptFactory(
      * tip is entered (only on [ReceiptSurface.PAPER]: an emailed or shared receipt leaves them out), then the tip and the
      * total with it. A sale
      * still awaiting its payment link's payment is an unpaid receipt with the link and when it stops working; one paid
-     * through it says it was paid online.
+     * through it says it was paid online. [logo] is the current receipt logo, or null to omit it.
      */
     fun sale(
         record: SaleWithLines,
         settings: ReceiptSettings,
         copy: ReceiptCopy = ReceiptCopy.CUSTOMER,
         surface: ReceiptSurface = ReceiptSurface.PAPER,
+        logo: MonoBitmap? = null,
     ): ReceiptDocument {
         val sale = record.sale
         val currency = CurrencySpec.of(sale.currency)
@@ -207,7 +210,7 @@ class ReceiptFactory(
                 balanceDueMinor = sale.remainingMinor.takeIf { sale.isPartiallyPaid },
             )
         val branding = if (ReceiptKind.of(standing) == ReceiptKind.CASHOUT) settings.copy(title = resolved.cashoutTitle) else settings
-        return builder(branding, currency, resolved, simulated).sale(receipt, copy)
+        return builder(branding, currency, resolved, simulated, logo).sale(receipt, copy)
     }
 
     // Every approved card's original fields, falling back to the sale body for historical or refused payments.
@@ -228,11 +231,12 @@ class ReceiptFactory(
     /**
      * The receipt of [refund], referring to the original sale by its merchant reference (or, for a payment known only
      * from its QR code without one, its transaction ID). The cancellation of a pre-authorisation is labelled as one; an
-     * unreferenced refund names no original, only that it has none and why it was made.
+     * unreferenced refund names no original, only that it has none and why it was made. [logo] is current, or null.
      */
     fun refund(
         refund: RefundEntity,
         settings: ReceiptSettings,
+        logo: MonoBitmap? = null,
     ): ReceiptDocument {
         val resolved = current
         val receipt =
@@ -253,16 +257,17 @@ class ReceiptFactory(
                 tipMinor = refund.tipMinor,
                 unreferencedNotes = if (refund.unreferenced) resolved.unreferenced(refund) else emptyList(),
             )
-        return builder(settings, CurrencySpec.of(refund.currency), resolved).refund(receipt)
+        return builder(settings, CurrencySpec.of(refund.currency), resolved, logo = logo).refund(receipt)
     }
 
     /**
      * The receipt of stored-value [activity]: never a sale receipt. Lists each completed stage's amount, the card's
-     * last reported balance and Adyen's receipt lines of every answered stage verbatim.
+     * last reported balance and Adyen's receipt lines of every answered stage verbatim. [logo] is current, or null.
      */
     fun giftCard(
         activity: GiftCardActivity,
         settings: ReceiptSettings,
+        logo: MonoBitmap? = null,
     ): ReceiptDocument {
         val resolved = current
         val main = activity.change ?: activity.stages.first()
@@ -284,14 +289,14 @@ class ReceiptFactory(
                 standingNote = resolved.giftCardAttention.takeIf { activity.needsAttention },
                 cardReceipts = activity.stages.map { ReceiptLinesJson.decode(it.customerReceiptJson) }.filter { it.isNotEmpty() },
             )
-        return builder(settings, CurrencySpec.of(activity.currency), resolved).giftCard(receipt)
+        return builder(settings, CurrencySpec.of(activity.currency), resolved, logo = logo).giftCard(receipt)
     }
 
     /**
      * A sample receipt with [settings] in [currency], as Settings previews and test-prints it: two items (one taxed at
      * 10%, one at the configured marked rate or tax-free), totals in tax [mode], a customer reference when
      * [withCustomerReference] (checkout asks for one) and a refund QR code, dated now. Gross amounts are fixed,
-     * whatever the [mode]; the second item demonstrates the configured marker and explanation.
+     * whatever the [mode]; the second item demonstrates the configured marker and explanation. [logo] is current, or null.
      */
     fun sample(
         settings: ReceiptSettings,
@@ -299,6 +304,7 @@ class ReceiptFactory(
         mode: TaxMode,
         withCustomerReference: Boolean,
         languageTag: String = "",
+        logo: MonoBitmap? = null,
     ): ReceiptDocument {
         val resolved = texts(languageTag)
         val sample = resolved.sample
@@ -328,7 +334,7 @@ class ReceiptFactory(
                     RefundQrPayload(SAMPLE_TRANSACTION_ID, SAMPLE_TIMESTAMP, SAMPLE_TOTALS.gross, currency.code, SAMPLE_REFERENCE).encode(),
                 cardSaved = false,
             )
-        return builder(settings, currency, resolved).sale(receipt, ReceiptCopy.CUSTOMER)
+        return builder(settings, currency, resolved, logo = logo).sale(receipt, ReceiptCopy.CUSTOMER)
     }
 
     private fun builder(
@@ -336,10 +342,13 @@ class ReceiptFactory(
         currency: CurrencySpec,
         resolved: ReceiptTexts,
         simulated: Boolean = false,
+        logo: MonoBitmap? = null,
     ) = ReceiptBuilder(
         branding =
             ReceiptBranding(
                 businessName = settings.businessName.trim(),
+                printBusinessName = settings.printBusinessName,
+                logo = logo,
                 addressLines = settings.addressLines.lines().map { it.trim() },
                 taxIdLabel = settings.taxIdLabel.trim(),
                 taxId = settings.taxId.trim(),

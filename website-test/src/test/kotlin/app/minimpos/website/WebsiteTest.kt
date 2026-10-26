@@ -807,7 +807,7 @@ class WebsitePresentationTest {
                     scripts.map {
                         it.attr("src").removePrefix("../")
                     },
-                ).containsExactly("js/qrcodegen.js", "js/setup.js")
+                ).containsExactly("js/qrcodegen.js", "js/logo.js", "js/setup.js")
                 .inOrder()
             scripts.forEach { assertWithMessage(page.name).that(it.hasAttr("defer") && it.data().isBlank()).isTrue() }
             val policy = page.single("meta", "http-equiv" to "Content-Security-Policy").attr("content")

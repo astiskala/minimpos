@@ -109,7 +109,10 @@ class ReceiptBuilder(
         title: String,
     ) {
         val start = out.size
-        branding.businessName.takeIf { it.isNotBlank() }?.let { out += Text(it, Align.CENTER, TextStyle.BOLD) }
+        branding.logo?.let { out += ReceiptElement.Image(it) }
+        branding.businessName
+            .takeIf { it.isNotBlank() && branding.printBusinessName }
+            ?.let { out += Text(it, Align.CENTER, TextStyle.BOLD) }
         branding.addressLines.filter { it.isNotBlank() }.forEach { out += Text(it, Align.CENTER) }
         if (branding.taxId.isNotBlank()) out += Text("${branding.taxIdLabel} ${branding.taxId}".trim(), Align.CENTER)
         branding.phone.takeIf { it.isNotBlank() }?.let { out += Text(it, Align.CENTER) }
@@ -336,7 +339,7 @@ class ReceiptBuilder(
     ) {
         if (lines.isEmpty()) return
         out += Divider
-        val ownHeader = branding.businessName.isNotBlank()
+        val ownHeader = branding.businessName.isNotBlank() || branding.logo != null
         for (line in lines) {
             if (ownHeader && line.key in ADYEN_HEADER_KEYS) continue
             val style = if (line.bold) TextStyle.BOLD else TextStyle.NORMAL

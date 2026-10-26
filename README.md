@@ -37,6 +37,7 @@ Screenshots show an English demo café using the built-in simulator, not live pa
 - **Get paid:** card and wallet payments, merchant-scanned wallet codes, payment links, pre-authorizations for deposits,
   tips on the terminal or receipt, partial payments across cards, and charges to a shopper's saved card tokens.
 - **Deliver receipts:** print on a terminal with a printer, email through your SMTP server, or share from a tablet or phone.
+  Add a receipt logo on the device or through the [setup helper](https://minimpos.app/setup).
 - **Manage payments:** referenced refunds in full, by item or by amount; searchable history, daily totals and terminal
   reconciliation, with offline-payment and unconfirmed-batch warnings.
 - **Run your setup:** admin and Manager PINs, optional shopper references and card saving, and QR transfers of products,

@@ -6,6 +6,7 @@ import app.minimpos.app.payment.AutoDelivery
 import app.minimpos.app.payment.CaptureResult
 import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.ReceiptDelivery
+import app.minimpos.app.payment.ReceiptPrint
 import app.minimpos.app.payment.Recheck
 import app.minimpos.app.payment.SharedReceipt
 import app.minimpos.app.payment.StoredTransaction
@@ -13,6 +14,7 @@ import app.minimpos.app.receipt.ActionResult
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +32,14 @@ import java.time.ZoneId
 sealed interface ActionOutcome {
     /** A receipt (or the test receipt) was printed. */
     data object Printed : ActionOutcome
+
+    /**
+     * Printed successfully after the terminal refused its logo image.
+     * @property fault The image refusal, including any terminal explanation; null when none was retained.
+     */
+    data class PrintedWithoutLogo(
+        val fault: Fault?,
+    ) : ActionOutcome
 
     /**
      * A receipt was emailed.
@@ -184,6 +194,10 @@ data class ActionState(
     fun dismissed(): ActionState = copy(outcome = null)
 }
 
+/** A finished print result, including the first skipped-logo notice and the terminal's explanation. */
+fun ReceiptPrint.toState(): ActionState =
+    result.toState(if (logoSkipped) ActionOutcome.PrintedWithoutLogo(logoFault) else ActionOutcome.Printed)
+
 /** This result as a finished [ActionState]: [success] on success, else why not as an error. */
 fun ActionResult.toState(success: ActionOutcome) =
     when (this) {
@@ -315,7 +329,9 @@ class TransactionActions private constructor(
                     val printed = automatic.printed
                     state.update {
                         it.copy(
-                            print = printed?.result?.toState(ActionOutcome.Printed) ?: ActionState(running = automatic.printing),
+                            print =
+                                printed?.toState()
+                                    ?: ActionState(running = automatic.printing),
                             merchantCopyPending = printed?.merchantCopyDue == true,
                         )
                     }
@@ -338,7 +354,10 @@ class TransactionActions private constructor(
         scope.launch {
             val printed = receipts.print(transaction, copy)
             state.update {
-                it.copy(print = printed.result.toState(ActionOutcome.Printed), merchantCopyPending = printed.merchantCopyDue)
+                it.copy(
+                    print = printed.toState(),
+                    merchantCopyPending = printed.merchantCopyDue,
+                )
             }
         }
     }

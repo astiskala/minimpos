@@ -1,5 +1,6 @@
 package app.minimpos.core.receipt
 
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.receipt.ReceiptElement.Blank
 import app.minimpos.core.receipt.ReceiptElement.Divider
 import app.minimpos.core.receipt.ReceiptElement.Qr
@@ -23,6 +24,24 @@ class ReceiptRenderersTest {
                 Qr("MPR1*y"),
             ),
         )
+
+    @Test
+    fun `image is a separate segment and email references its native size`() {
+        val logo = MonoBitmap(120, 40, ByteArray(15 * 40))
+        val image = ReceiptElement.Image(logo)
+        val receipt = ReceiptDocument(listOf(Text("Before"), image, Text("After")))
+        assertThat(receipt.logo).isEqualTo(logo)
+        assertThat(receipt.segments())
+            .containsExactly(
+                ReceiptSegment.TextBlock(listOf(Text("Before"))),
+                ReceiptSegment.Image(logo),
+                ReceiptSegment.TextBlock(listOf(Text("After"))),
+            ).inOrder()
+        assertThat(HtmlReceiptRenderer().render(receipt, "Receipt"))
+            .contains("<div style=\"text-align:center;\"><img src=\"cid:logo\" width=\"120\" height=\"40\"")
+        assertThat(PlainTextReceiptRenderer().render(receipt)).isEqualTo("Before\nAfter\n")
+        assertThat(document.logo).isNull()
+    }
 
     @Test
     fun `plain text aligns within the width`() {

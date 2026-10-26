@@ -100,6 +100,7 @@ settings.json: app.minimpos.app.data.settings.AppSettings
     markedTaxRateMilliPercent?: int
     markedTaxRateMarker: string
     markedTaxRateNote: string
+    printBusinessName: boolean
   email: app.minimpos.app.data.settings.EmailSettings
     host: string
     port: int
@@ -306,6 +307,7 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
       markedTaxRateMilliPercent?: int
       markedTaxRateMarker: string
       markedTaxRateNote: string
+      printBusinessName: boolean
     email: app.minimpos.app.data.settings.EmailSettings
       host: string
       port: int

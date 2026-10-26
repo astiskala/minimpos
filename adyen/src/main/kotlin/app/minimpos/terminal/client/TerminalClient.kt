@@ -357,17 +357,27 @@ class TerminalClient(
 
     /**
      * Prints on the terminal's own printer. Each job is a separate nexo print request (response mode `PrintEnd`, so the
-     * terminal answers once the paper is out); sending them back to back makes text and QR codes come out on one slip.
-     * Text jobs are printed as `Document`, QR codes as a `CustomerReceipt` bar code with URL-encoded content. Stops at
-     * the first failure.
+     * terminal answers once the paper is out); sending them back to back makes images, text and QR codes share a slip.
+     * Text and XHTML PNG jobs use `Document`; QR codes use a URL-encoded `CustomerReceipt` bar code. Stops at
+     * the first failure, except an image refusal: text still prints. Paper and missing-printer failures stop printing.
      *
      * @param jobs The documents to print, in order.
-     * @return [PrintOutcome.Printed], or the first failure. I/O errors are reported as failures, not thrown.
+     * @return [PrintOutcome.Printed], [PrintOutcome.PrintedWithoutImage], or the first failure. I/O errors are results.
      */
-    suspend fun print(jobs: List<PrintJob>): PrintOutcome = jobs.firstNotNullOfOrNull { printFailure(it) } ?: PrintOutcome.Printed
+    suspend fun print(jobs: List<PrintJob>): PrintOutcome {
+        var skipped: PrintOutcome.PrintedWithoutImage? = null
+        for (job in jobs) {
+            when (val result = printResult(job)) {
+                is PrintOutcome.Failed -> return result
+                is PrintOutcome.PrintedWithoutImage -> if (skipped == null) skipped = result
+                PrintOutcome.Printed, null -> Unit
+            }
+        }
+        return skipped ?: PrintOutcome.Printed
+    }
 
-    /** Prints one job; null when it printed. */
-    private suspend fun printFailure(job: PrintJob): PrintOutcome.Failed? {
+    /** Prints one job; null when it printed, or the image refusal that allows later text to print. */
+    private suspend fun printResult(job: PrintJob): PrintOutcome? {
         val request =
             exchange.message(MessageClassType.DEVICE, MessageCategoryType.PRINT, newServiceId()).apply {
                 printRequest = PrintRequest().apply { printOutput = job.toNexo() }
@@ -381,7 +391,12 @@ class TerminalClient(
         val message = AdditionalResponseParser.parse(response.additionalResponse)[NexoVocabulary.MESSAGE]
         val noPrinter =
             response.errorCondition == ErrorConditionType.UNAVAILABLE_DEVICE || message.orEmpty().contains("no printer", ignoreCase = true)
-        return PrintOutcome.Failed(Fault.TerminalRejected(ExternalText.of(message)), noPrinter)
+        val fault = Fault.TerminalRejected(ExternalText.of(message))
+        return if (job is PrintJob.Image && !noPrinter && response.errorCondition != ErrorConditionType.DEVICE_OUT) {
+            PrintOutcome.PrintedWithoutImage(fault)
+        } else {
+            PrintOutcome.Failed(fault, noPrinter)
+        }
     }
 
     /**

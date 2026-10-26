@@ -12,6 +12,7 @@ import com.adyen.model.nexo.PrintOutput
 import com.adyen.model.nexo.ResponseModeType
 import java.net.URLDecoder
 import java.net.URLEncoder
+import kotlin.io.encoding.Base64
 
 /** Where a [PrintLine.Text] sits on the paper. */
 enum class PrintAlign {
@@ -71,7 +72,7 @@ sealed interface PrintLine {
 
 /**
  * One print request for [TerminalClient.print]. The mapping to nexo stays inside this module: text is printed as a
- * `Document`, a QR code as a `CustomerReceipt` bar code.
+ * `Document`, a QR code as a `CustomerReceipt` bar code, and a PNG as an XHTML `Document`.
  */
 sealed interface PrintJob {
     /**
@@ -82,6 +83,28 @@ sealed interface PrintJob {
     data class Text(
         val lines: List<PrintLine>,
     ) : PrintJob
+
+    /**
+     * A PNG image sent as XHTML. The bytes are copied on construction and access.
+     *
+     * @param png Encoded PNG, at most 256000 bytes; larger inputs throw [IllegalArgumentException].
+     */
+    class Image(
+        png: ByteArray,
+    ) : PrintJob {
+        private val encoded = png.copyOf().also { require(it.size <= MAX_PNG_BYTES) }
+
+        /** A copy of the encoded PNG bytes. */
+        val png: ByteArray get() = encoded.copyOf()
+
+        override fun equals(other: Any?): Boolean = other is Image && encoded.contentEquals(other.encoded)
+
+        override fun hashCode(): Int = encoded.contentHashCode()
+
+        private companion object {
+            const val MAX_PNG_BYTES = 256_000
+        }
+    }
 
     /**
      * A QR code. Adyen requires QR contents other than a plain URL to be URL-encoded; that is done when the request is
@@ -108,6 +131,15 @@ internal fun PrintJob.toNexo(): PrintOutput =
                     }
             }
 
+            is PrintJob.Image -> {
+                documentQualifier = DocumentQualifierType.DOCUMENT
+                outputContent =
+                    OutputContent().apply {
+                        outputFormat = OutputFormatType.XHTML
+                        outputXHTML = "<img src=\"data:image/png;base64, ${Base64.encode(job.png)}\"/>".toByteArray(Charsets.UTF_8)
+                    }
+            }
+
             is PrintJob.QrCode -> {
                 documentQualifier = DocumentQualifierType.CUSTOMER_RECEIPT
                 outputContent =
@@ -130,12 +162,31 @@ internal fun PrintJob.toNexo(): PrintOutput =
 internal fun PrintOutput.toPrintJob(): PrintJob? {
     val barcode = outputContent?.outputBarcode?.barcodeValue
     val texts = outputContent?.outputText
+    val xhtml = outputContent?.outputXHTML
     return when {
         barcode != null -> PrintJob.QrCode(runCatching { URLDecoder.decode(barcode, UTF_8) }.getOrDefault(barcode))
+        xhtml != null -> imageFromXhtml(xhtml)
         texts != null -> PrintJob.Text(lines(texts))
         else -> null
     }
 }
+
+/** Reads the bounded PNG data URI from our image print request; malformed or other XHTML is ignored. */
+private fun imageFromXhtml(xhtml: ByteArray): PrintJob.Image? {
+    val source = xhtml.toString(Charsets.UTF_8)
+    val encoded = PNG_DATA_URI.find(source)?.groupValues?.get(1) ?: return null
+    if (encoded.length > MAX_ENCODED_PNG_LENGTH) return null
+    return try {
+        PrintJob.Image(Base64.decode(encoded))
+    } catch (_: IllegalArgumentException) {
+        null
+    }
+}
+
+private val PNG_DATA_URI = Regex("data:image/png;base64, ?([A-Za-z0-9+/=]+)(?=[\"'])")
+
+// Base64 length of the largest accepted 256000-byte PNG.
+private const val MAX_ENCODED_PNG_LENGTH = 341_336
 
 private fun lines(texts: List<OutputText>): List<PrintLine> {
     val lines = mutableListOf<PrintLine>()

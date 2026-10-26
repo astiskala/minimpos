@@ -4,6 +4,7 @@ import app.minimpos.core.catalogue.Catalogue
 import app.minimpos.core.catalogue.CatalogueCategory
 import app.minimpos.core.catalogue.CatalogueProduct
 import app.minimpos.core.catalogue.CatalogueTaxRate
+import app.minimpos.core.logo.MonoBitmap
 import com.google.common.truth.Truth.assertThat
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -61,8 +62,8 @@ class CodecTest {
     @Test
     fun `the codec accepts only its current format`() {
         val packet = Base45.decode(encodeCatalogue(catalogue))
-        assertThat(packet[0].toInt()).isEqualTo(5)
-        (1..4).forEach { version ->
+        assertThat(packet[0].toInt()).isEqualTo(6)
+        (1..5).forEach { version ->
             val unsupported = packet.copyOf().also { it[0] = version.toByte() }
             assertFormatError("Unsupported transfer version") { TransferCodec.decode(Base45.encode(unsupported)) }
         }
@@ -170,7 +171,7 @@ class CodecTest {
         val secrets = SealedSecrets(byteArrayOf(1, 2, 3, 0, -1))
         val full = Transfer(catalogue, """{"payment":{"currencyCode":"AUD"},"receipt":{"footer":"Ta ☕"}}""", secrets)
         val encoded = TransferCodec.encode(full)
-        assertThat(Base45.decode(encoded)[0].toInt()).isEqualTo(5)
+        assertThat(Base45.decode(encoded)[0].toInt()).isEqualTo(6)
         assertThat(TransferCodec.decode(encoded)).isEqualTo(full)
         val settingsOnly = Transfer(settings = "{}")
         assertThat(TransferCodec.decode(TransferCodec.encode(settingsOnly))).isEqualTo(settingsOnly)
@@ -195,6 +196,32 @@ class CodecTest {
     }
 
     @Test
+    fun `logo-only transfer round trips and authenticates its pixels`() {
+        val logo = MonoBitmap(3, 2, byteArrayOf(0xA0.toByte(), 0x40))
+        val transfer = Transfer(logo = logo)
+        assertThat(TransferCodec.decode(TransferCodec.encode(transfer))).isEqualTo(transfer)
+        assertThat(TransferCodec.authenticationData(transfer))
+            .isEqualTo(varint(16) + varint(4) + byteArrayOf(3, 2, 0xA0.toByte(), 0x40))
+        assertThat(TransferCodec.authenticationData(transfer))
+            .isNotEqualTo(TransferCodec.authenticationData(Transfer(logo = MonoBitmap(3, 2, byteArrayOf(0, 0)))))
+    }
+
+    @Test
+    fun `logo follows the connection and rejects malformed packed pixels`() {
+        val logo = MonoBitmap(3, 1, byteArrayOf(0xA0.toByte()))
+        val transfer = Transfer(connection = "{}", logo = logo)
+        val body = varint(24) + varint(2) + "{}".toByteArray() + varint(3) + logo.toBytes()
+        assertThat(TransferCodec.authenticationData(transfer)).isEqualTo(body)
+        assertThat(TransferCodec.decode(packetFor(body))).isEqualTo(transfer)
+        assertFormatError("Invalid receipt logo") {
+            TransferCodec.decode(packetFor(varint(16) + varint(3) + byteArrayOf(3, 1, 0xB0.toByte())))
+        }
+        assertFormatError("Invalid data") {
+            TransferCodec.decode(packetFor(varint(16) + varint(TransferCodec.MAX_LOGO_BYTES + 1)))
+        }
+    }
+
+    @Test
     fun `sealed secrets compare by content and copy their bytes`() {
         val bytes = byteArrayOf(1, 2)
         val sealed = SealedSecrets(bytes)
@@ -212,22 +239,22 @@ class CodecTest {
 
     @Test
     fun `current decoding validates its sections`() {
-        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(0), version = 5)) }
-        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(16), version = 5)) }
-        assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(2) + varint(70_000), version = 5)) }
-        assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(4) + varint(5) + byteArrayOf(1), version = 5)) }
+        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(0), version = 6)) }
+        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(32), version = 6)) }
+        assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(2) + varint(70_000), version = 6)) }
+        assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(4) + varint(5) + byteArrayOf(1), version = 6)) }
         assertFormatError(
             "trailing",
-        ) { TransferCodec.decode(packetFor(varint(2) + varint(1) + "x".toByteArray() + byteArrayOf(0), version = 5)) }
+        ) { TransferCodec.decode(packetFor(varint(2) + varint(1) + "x".toByteArray() + byteArrayOf(0), version = 6)) }
         assertThat(
             TransferCodec
-                .decode(packetFor(varint(1) + body(), version = 5))
+                .decode(packetFor(varint(1) + body(), version = 6))
                 .catalogue!!
                 .products
                 .single()
                 .name,
         ).isEqualTo("P")
-        assertFormatError("version 6") { TransferCodec.decode(packetFor(varint(1) + body(), version = 6)) }
+        assertFormatError("version 5") { TransferCodec.decode(packetFor(varint(1) + body(), version = 5)) }
     }
 
     @Test
@@ -236,15 +263,15 @@ class CodecTest {
         val connection = """{"destination":"network","host":"192.168.1.20","poiId":"S1F2-000158213605014"}"""
         val setup = Transfer(sealedSecrets = secrets, connection = connection)
         val encoded = TransferCodec.encode(setup)
-        assertThat(Base45.decode(encoded)[0].toInt()).isEqualTo(5)
+        assertThat(Base45.decode(encoded)[0].toInt()).isEqualTo(6)
         assertThat(TransferCodec.decode(encoded)).isEqualTo(setup)
         val everything = Transfer(catalogue, "{}", secrets, connection)
         assertThat(TransferCodec.decode(TransferCodec.encode(everything))).isEqualTo(everything)
         assertThat(TransferCodec.decode(TransferCodec.encode(Transfer(connection = "{}")))).isEqualTo(Transfer(connection = "{}"))
-        assertThat(Base45.decode(TransferCodec.encode(Transfer(settings = "{}")))[0].toInt()).isEqualTo(5)
-        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(16), version = 5)) }
-        assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(8) + varint(5_000), version = 5)) }
-        assertThat(TransferCodec.decode(packetFor(varint(8) + varint(2) + "{}".toByteArray(), version = 5)).connection).isEqualTo("{}")
+        assertThat(Base45.decode(TransferCodec.encode(Transfer(settings = "{}")))[0].toInt()).isEqualTo(6)
+        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(32), version = 6)) }
+        assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(8) + varint(5_000), version = 6)) }
+        assertThat(TransferCodec.decode(packetFor(varint(8) + varint(2) + "{}".toByteArray(), version = 6)).connection).isEqualTo("{}")
         assertThrows(IllegalArgumentException::class.java) {
             TransferCodec.encode(Transfer(connection = "x".repeat(TransferCodec.MAX_CONNECTION_BYTES + 1)))
         }
@@ -396,7 +423,7 @@ class CodecTest {
 
     private fun packetFor(
         body: ByteArray,
-        version: Byte = 5,
+        version: Byte = 6,
     ): String {
         val crc =
             java.util.zip

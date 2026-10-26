@@ -72,7 +72,9 @@ class LatinLanguageWebsiteTest {
             assertWithMessage(language).that(page.select(selector).map(::attributes)).isEqualTo(english.select(selector).map(::attributes))
             assertThat(page.select("meta[http-equiv=Content-Security-Policy]").attr("content"))
                 .isEqualTo(english.select("meta[http-equiv=Content-Security-Policy]").attr("content"))
-            assertThat(page.select("script").map { it.attr("src") }).containsExactly("../js/qrcodegen.js", "../js/setup.js").inOrder()
+            assertThat(
+                page.select("script").map { it.attr("src") },
+            ).containsExactly("../js/qrcodegen.js", "../js/logo.js", "../js/setup.js").inOrder()
             val messages = page.selectFirst("#setup-form")!!.attributes().filter { it.key.startsWith("data-msg-") }
             val originals = english.selectFirst("#setup-form")!!.attributes().associate { it.key to it.value }
             messages.forEach { message ->

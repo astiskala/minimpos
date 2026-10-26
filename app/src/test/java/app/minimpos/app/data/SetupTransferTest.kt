@@ -31,6 +31,7 @@ import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
 import app.minimpos.core.codec.TransferFormatException
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
@@ -65,13 +66,61 @@ class SetupTransferTest {
         )
 
     private fun setup(env: TestEnvironment) =
-        SetupTransfer(env.container.catalog, env.container.settings, env.container.secrets, seal, history = env.container.history)
+        SetupTransfer(
+            env.container.catalog,
+            env.container.settings,
+            env.container.secrets,
+            seal,
+            history = env.container.history,
+            logos = env.container.receiptLogo,
+        )
 
     @After
     fun tearDown() {
         source.close()
         target.close()
     }
+
+    @Test
+    fun `export with settings carries the current logo`() =
+        await {
+            val image = MonoBitmap(3, 1, byteArrayOf(0xA0.toByte()))
+            source.container.receiptLogo.replace(image)
+            val exported = setup(source).export(TransferContents(catalogue = false, secrets = false), "EUR")
+            assertThat(TransferCodec.decode(exported.payload).logo).isEqualTo(image)
+            assertThat(exported.logo).isEqualTo(image)
+        }
+
+    @Test
+    fun `export without a logo has no logo section`() =
+        await {
+            val exported = setup(source).export(TransferContents(catalogue = false, secrets = false), "EUR")
+            assertThat(TransferCodec.decode(exported.payload).logo).isNull()
+        }
+
+    @Test
+    fun `logo-only transfer imports without a code and replaces the logo`() =
+        await {
+            val image = MonoBitmap(3, 1, byteArrayOf(0xA0.toByte()))
+            target.container.receiptLogo.replace(MonoBitmap(1, 1, byteArrayOf(0)))
+            val importer = setup(target)
+            val received = importer.receive(Transfer(logo = image))
+            assertThat(received.accepts("")).isTrue()
+            val outcome = importer.import(received, ImportMode.MERGE)
+            assertThat(outcome).isInstanceOf(ImportOutcome.Imported::class.java)
+            assertThat((outcome as ImportOutcome.Imported).result.logo).isTrue()
+            assertThat(target.container.receiptLogo.current()).isEqualTo(image)
+        }
+
+    @Test
+    fun `transfer without logo leaves the current logo`() =
+        await {
+            val image = MonoBitmap(3, 1, byteArrayOf(0xA0.toByte()))
+            target.container.receiptLogo.replace(image)
+            val received = receive(Transfer(settings = "{}"))
+            assertThat(setup(target).import(received, ImportMode.MERGE, code)).isInstanceOf(ImportOutcome.Imported::class.java)
+            assertThat(target.container.receiptLogo.current()).isEqualTo(image)
+        }
 
     private fun configureSource() {
         val vat =
@@ -177,6 +226,8 @@ class SetupTransferTest {
     @Test
     fun `interrupted commit resumes without replaying catalogue replacement`() {
         configureSource()
+        val image = MonoBitmap(3, 1, byteArrayOf(0xA0.toByte()))
+        await { source.container.receiptLogo.replace(image) }
         val export = await { setup(source).export(TransferContents(), "EUR") }
         val receiving = setup(target)
         val received = receiving.receive(TransferCodec.decode(export.payload))
@@ -189,8 +240,11 @@ class SetupTransferTest {
                 target.container.catalog.products
                     .first()
             }
+        await { target.container.receiptLogo.replace(null) }
         val restarted = setup(target)
         val resumed = checkNotNull(await { restarted.recover() }) as ImportOutcome.Imported
+        assertThat(await { target.container.receiptLogo.current() }).isEqualTo(image)
+        assertThat(resumed.result.logo).isTrue()
         assertThat(resumed.result.catalogue?.productsAdded).isEqualTo(1)
         assertThat(
             await {
@@ -365,7 +419,7 @@ class SetupTransferTest {
         val none = await { setup(source).export(TransferContents(catalogue = true, settings = false), "AUD") }
         assertThat(none.code).isNotEmpty()
         assertThat(none.secrets).isEmpty()
-        assertThat(Base45.decode(none.payload)[0].toInt()).isEqualTo(5)
+        assertThat(Base45.decode(none.payload)[0].toInt()).isEqualTo(6)
         await { source.container.secrets.set(Secret.SMTP_PASSWORD, "pw") }
         val secretsOnly = await { setup(source).export(TransferContents(catalogue = false, settings = false), "AUD") }
         assertThat(secretsOnly.secrets).containsExactly(Secret.SMTP_PASSWORD)
@@ -519,7 +573,7 @@ class SetupTransferTest {
         // Made by docs/js/setup.js (Settings: a terminal on the network), so the page and the app keep one format.
         val chunks =
             listOf(
-                "MPC1:0000:1/3:RV0MK77Y07I28/T3R1X50200SF9000000000000000000000000000000000000000000L-S939+\$5+MP-%14" +
+                "MPC1:0000:1/3:D\$0MK77Y07I28/T3R1X50200SF9000000000000000000000000000000000000000000L-S939+\$5+MP-%14" +
                     "+3UX88BV3CN7\$SXG92L8U0H\$XR:MRQ*JXRM6LS1.EEW5IKGZQDSLC8\$UAWV5CF1H2*F8L66P+MYP92QS\$\$ECQ3PLS:IN" +
                     "827I7AN/62W1ZFV9C6F2QY/OSG22UAT9MZ10DWALC8E-0SM4MDS60E.Q4087F.U**FY2VDERE2HUS8Z7BU8KIG310Q+YTIY4T" +
                     "-8LVSMPF6VC QEZEDIEC EDO-DWF71/DPWE04ELOD3Q51\$CS/E0LE9/D1\$CUUEWF7ITA2OAIE4XF414EUUEWF71A6LF6/96" +

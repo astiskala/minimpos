@@ -778,9 +778,9 @@ pre {
 .setup-summary dd { margin: 2px 0 0; overflow-wrap: anywhere; }
 .setup-codes > h2:focus { outline: 3px solid var(--green); outline-offset: 6px; }
 
-.setup-form > fieldset > legend { position: relative; min-height: 28px; padding: 2px 0 0 40px; }
+.setup-form > fieldset > legend, #complete-fields > fieldset > legend { position: relative; min-height: 28px; padding: 2px 0 0 40px; }
 
-.setup-form > fieldset > legend::before {
+.setup-form > fieldset > legend::before, #complete-fields > fieldset > legend::before {
   counter-increment: step;
   content: counter(step);
   position: absolute;
@@ -803,7 +803,7 @@ pre {
 
 .setup-form label:not(.choice) { display: block; margin: 16px 0 6px; font-weight: 600; }
 
-.setup-form input:not([type="radio"]), .setup-form select, .setup-form textarea {
+.setup-form input:not([type="radio"]):not([type="checkbox"]), .setup-form select, .setup-form textarea {
   width: 100%;
   padding: 11px 12px;
   border: 1px solid #858fa0;
@@ -817,9 +817,9 @@ pre {
 }
 
 /* Keys, IDs and addresses stay monospaced; text printed on receipts or shown to customers does not. */
-.setup-form input:not([type="radio"]):not([spellcheck="false"]), .setup-form textarea:not([spellcheck="false"]) { font-family: var(--font); }
+.setup-form input:not([type="radio"]):not([type="checkbox"]):not([spellcheck="false"]), .setup-form textarea:not([spellcheck="false"]) { font-family: var(--font); }
 
-.setup-form input:not([type="radio"]):hover, .setup-form select:hover, .setup-form textarea:hover { border-color: var(--navy); }
+.setup-form input:not([type="radio"]):not([type="checkbox"]):hover, .setup-form select:hover, .setup-form textarea:hover { border-color: var(--navy); }
 
 .setup-form input:focus, .setup-form select:focus, .setup-form textarea:focus { border-color: var(--green-dark); }
 
@@ -856,7 +856,7 @@ pre {
 .setup-form legend + .choice, .setup-form legend + .hint, .setup-form legend + label:not(.choice) { margin-top: 0; }
 
 /* A destination's prerequisites between steps read like the guides' prerequisite callouts. */
-.setup-form > .hint[data-only] { margin: 0 0 24px; padding: 14px 18px; border-left: 4px solid var(--navy); border-radius: 8px; background: var(--grey-light); color: var(--navy); }
+.setup-form > .hint[data-only], #complete-fields > .hint[data-only] { margin: 0 0 24px; padding: 14px 18px; border-left: 4px solid var(--navy); border-radius: 8px; background: var(--grey-light); color: var(--navy); }
 
 button.button { font: inherit; font-weight: 700; cursor: pointer; }
 
@@ -970,4 +970,14 @@ button.button { font: inherit; font-weight: 700; cursor: pointer; }
   details > :not(summary) { display: block; }
   .manual-setup { border-color: #aaa; }
   .manual-setup > summary { border-bottom: 1px solid #aaa; }
+}
+
+.logo-preview {
+  display: block;
+  width: 100%;
+  max-width: 384px;
+  height: auto;
+  margin: 1rem auto;
+  background: #fff;
+  image-rendering: pixelated;
 }

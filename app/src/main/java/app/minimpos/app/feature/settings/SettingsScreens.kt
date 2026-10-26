@@ -123,6 +123,7 @@ private fun settingsViewModel(): SettingsViewModel {
             sampleReceipt = container::sampleReceipt,
             managerPins = container.managerPin,
             historySwitches = container.historySwitches,
+            logos = container.receiptLogo.logo,
         )
     }
 }

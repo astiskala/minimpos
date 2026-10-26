@@ -7,6 +7,10 @@ import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.Secret
+import app.minimpos.core.codec.QrChunks
+import app.minimpos.core.codec.Transfer
+import app.minimpos.core.codec.TransferCodec
+import app.minimpos.core.logo.MonoBitmap
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -171,6 +175,23 @@ class TransferViewModelsTest {
         val (codes, _) = exportCodes()
         codes.forEach(import::onCode)
         assertThat(settled(import) { it is ImportUiState.Ready }).isInstanceOf(ImportUiState.Ready::class.java)
+    }
+
+    @Test
+    fun `logo only transfer imports after confirmation without a code`() {
+        val bitmap = MonoBitmap(3, 1, byteArrayOf(0xA0.toByte()))
+        val codes = QrChunks.split(TransferCodec.encode(Transfer(logo = bitmap)), "LOGO").map { it.encode() }
+        val import = TransferImportViewModel("AUD", target.container.setupImport)
+        settled(import) { it is ImportUiState.Scanning }
+        codes.forEach(import::onCode)
+        val ready = settled(import) { it is ImportUiState.Ready } as ImportUiState.Ready
+        assertThat(ready.received.hasLogo).isTrue()
+        assertThat(ready.received.accepts("")).isTrue()
+        assertThat(await { target.container.receiptLogo.current() }).isNull()
+        import.import()
+        val done = settled(import) { it is ImportUiState.Done } as ImportUiState.Done
+        assertThat(done.result.logo).isTrue()
+        assertThat(await { target.container.receiptLogo.current() }).isEqualTo(bitmap)
     }
 
     @Test

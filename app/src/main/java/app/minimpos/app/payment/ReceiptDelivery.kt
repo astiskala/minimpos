@@ -12,6 +12,7 @@ import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.EmailCapture
 import app.minimpos.app.data.settings.MerchantCopyPolicy
+import app.minimpos.app.data.settings.ReceiptLogoStore
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.email.ReceiptEmailer
 import app.minimpos.app.history.HistoryAccounting
@@ -31,6 +32,7 @@ import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.terminal.client.PrintOutcome
+import app.minimpos.terminal.transport.Fault
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +51,7 @@ import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * A stored transaction whose receipt is delivered, see [ReceiptDelivery]: a sale (taken on a terminal or through a
@@ -89,10 +92,14 @@ sealed interface StoredTransaction {
  * @property result Whether it printed.
  * @property merchantCopyDue Whether the merchant copy should be printed next: the customer copy of a sale printed and
  *   the merchant copy setting asks for one (always, or when the shopper had to sign); never for a refund.
+ * @property logoSkipped Whether the process first observed a terminal refusing only the logo.
+ * @property logoFault The terminal refusal when it skipped the logo; null when the whole receipt printed.
  */
 data class ReceiptPrint(
     val result: ActionResult,
     val merchantCopyDue: Boolean = false,
+    val logoSkipped: Boolean = false,
+    val logoFault: Fault? = null,
 )
 
 /**
@@ -185,6 +192,7 @@ class ReceiptRecords(
  * @param clock Stamps when a daily summary was generated.
  * @param approval Approval of manual receipt delivery; automatic delivery follows receipt settings.
  * @param cpu Dispatcher for receipt construction outside the UI thread.
+ * @param logos Current receipt logo storage; null omits logos in isolated integrations.
  */
 class ReceiptDelivery(
     private val settings: SettingsRepository,
@@ -197,6 +205,7 @@ class ReceiptDelivery(
     private val clock: Clock = Clock.systemUTC(),
     private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
     private val cpu: CoroutineDispatcher = Dispatchers.Default,
+    private val logos: ReceiptLogoStore? = null,
 ) {
     /** Whether a daily summary can be printed with the current destination and receipt settings. */
     val canPrintReports: Flow<Boolean> = status.state.map { it.printerAvailable }
@@ -219,7 +228,7 @@ class ReceiptDelivery(
                         }.report()
                 receipts.dailyReport(report, current.receipt)
             }
-        return print(document, current)
+        return print(document, current).result
     }
 
     private val armed = mutableSetOf<String>()
@@ -309,8 +318,8 @@ class ReceiptDelivery(
     ): ReceiptPrint =
         when (transaction) {
             is StoredTransaction.Sale -> printSale(transaction.id, copy)
-            is StoredTransaction.Refund -> ReceiptPrint(printRefund(transaction.id))
-            is StoredTransaction.GiftCard -> ReceiptPrint(printGiftCard(transaction.id))
+            is StoredTransaction.Refund -> printRefund(transaction.id)
+            is StoredTransaction.GiftCard -> printGiftCard(transaction.id)
         }
 
     /**
@@ -337,7 +346,10 @@ class ReceiptDelivery(
 
     private fun managerFailure(): ActionResult = ActionResult.Failed(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL))
 
-    private val documentSettings = settings.settings.map { it.receipt to it.languageTag }.distinctUntilChanged()
+    private val documentSettings =
+        combine(settings.settings, logos?.logo ?: flowOf(null)) { current, logo ->
+            Triple(current.receipt, current.languageTag, logo)
+        }.distinctUntilChanged()
     private val emailSettings =
         settings.settings
             .map {
@@ -356,10 +368,10 @@ class ReceiptDelivery(
         fresh: Boolean,
     ): Flow<ReceiptOffer> {
         val documents =
-            combine(records.sales.observe(saleId), documentSettings) { record, (receipt, _) ->
+            combine(records.sales.observe(saleId), documentSettings) { record, (receipt, _, logo) ->
                 record?.let {
-                    val paper = receipts.sale(it, receipt)
-                    SaleDocuments(it.sale, paper, receipts.electronic(it, receipt, paper))
+                    val paper = receipts.sale(it, receipt, logo = logo)
+                    SaleDocuments(it.sale, paper, receipts.electronic(it, receipt, paper, logo))
                 }
             }.flowOn(cpu)
         return combine(documents, emailSettings, capabilities) { documents, (email, capture), (printer, share) ->
@@ -387,8 +399,8 @@ class ReceiptDelivery(
 
     private fun refundOffer(refundId: String): Flow<ReceiptOffer> {
         val documents =
-            combine(records.refunds.observe(refundId), documentSettings) { refund, (receipt, _) ->
-                refund?.let { it to receipts.refund(it, receipt) }
+            combine(records.refunds.observe(refundId), documentSettings) { refund, (receipt, _, logo) ->
+                refund?.let { it to receipts.refund(it, receipt, logo) }
             }.flowOn(cpu)
         return combine(documents, emailSettings, capabilities) { documents, (email, _), (printer, share) ->
             ReceiptOffer(
@@ -407,8 +419,8 @@ class ReceiptDelivery(
     private fun giftCardOffer(groupId: String): Flow<ReceiptOffer> {
         val records = records.giftCards ?: return flowOf(ReceiptOffer(null, canPrint = false, canEmail = false))
         val documents =
-            combine(records.observe(groupId), documentSettings) { activity, (receipt, _) ->
-                activity?.let { it to receipts.giftCard(it, receipt) }
+            combine(records.observe(groupId), documentSettings) { activity, (receipt, _, logo) ->
+                activity?.let { it to receipts.giftCard(it, receipt, logo) }
             }.flowOn(cpu)
         return combine(documents, emailSettings, capabilities) { documents, (email, _), (printer, share) ->
             ReceiptOffer(
@@ -425,10 +437,10 @@ class ReceiptDelivery(
         }
     }
 
-    private suspend fun printGiftCard(groupId: String): ActionResult {
+    private suspend fun printGiftCard(groupId: String): ReceiptPrint {
         val current = settings.current()
-        val activity = records.giftCards?.activity(groupId) ?: return ActionResult.Missing
-        return print(withContext(cpu) { receipts.giftCard(activity, current.receipt) }, current)
+        val activity = records.giftCards?.activity(groupId) ?: return ReceiptPrint(ActionResult.Missing)
+        return print(withContext(cpu) { receipts.giftCard(activity, current.receipt, logos?.current()) }, current)
     }
 
     private suspend fun emailGiftCard(
@@ -436,7 +448,7 @@ class ReceiptDelivery(
         to: String,
     ): ActionResult {
         val activity = records.giftCards?.activity(groupId) ?: return ActionResult.Missing
-        val document = withContext(cpu) { receipts.giftCard(activity, settings.current().receipt) }
+        val document = withContext(cpu) { receipts.giftCard(activity, settings.current().receipt, logos?.current()) }
         val main = activity.change ?: activity.stages.first()
         return emailer.send(to, document, main.merchantReference, ReceiptKind.GIFT_CARD)
     }
@@ -472,20 +484,20 @@ class ReceiptDelivery(
     ): ReceiptPrint {
         val current = settings.current()
         val record = records.sales.get(saleId) ?: return ReceiptPrint(ActionResult.Missing)
-        val document = withContext(cpu) { receipts.sale(record, current.receipt, copy) }
+        val document = withContext(cpu) { receipts.sale(record, current.receipt, copy, logo = logos?.current()) }
         val result = print(document, current)
-        val due = copy == ReceiptCopy.CUSTOMER && result == ActionResult.Success && merchantCopyWanted(record.sale, current)
-        return ReceiptPrint(result, due)
+        val due = copy == ReceiptCopy.CUSTOMER && result.result == ActionResult.Success && merchantCopyWanted(record.sale, current)
+        return result.copy(merchantCopyDue = due)
     }
 
-    private suspend fun printRefund(refundId: String): ActionResult {
+    private suspend fun printRefund(refundId: String): ReceiptPrint {
         val current = settings.current()
-        val refund = records.refunds.get(refundId) ?: return ActionResult.Missing
-        return print(withContext(cpu) { receipts.refund(refund, current.receipt) }, current)
+        val refund = records.refunds.get(refundId) ?: return ReceiptPrint(ActionResult.Missing)
+        return print(withContext(cpu) { receipts.refund(refund, current.receipt, logos?.current()) }, current)
     }
 
-    /** Prints [document], such as the sample receipt Settings prints to check the layout. */
-    suspend fun printDocument(document: ReceiptDocument): ActionResult = print(document, settings.current())
+    /** Prints [document], preserving the first skipped-logo notice for the sample receipt in Settings too. */
+    suspend fun printDocument(document: ReceiptDocument): ReceiptPrint = print(document, settings.current())
 
     private suspend fun emailSale(
         saleId: String,
@@ -493,7 +505,10 @@ class ReceiptDelivery(
     ): ActionResult {
         val record = records.sales.get(saleId) ?: return ActionResult.Missing
         val sale = record.sale
-        val document = withContext(cpu) { receipts.sale(record, settings.current().receipt, surface = ReceiptSurface.ELECTRONIC) }
+        val document =
+            withContext(
+                cpu,
+            ) { receipts.sale(record, settings.current().receipt, surface = ReceiptSurface.ELECTRONIC, logo = logos?.current()) }
         val result = emailer.send(to, document, sale.merchantReference, ReceiptKind.of(ReceiptStanding.of(sale)))
         return result.also { if (it == ActionResult.Success) records.sales.record(saleId, SaleEvent.Emailed(to.trim())) }
     }
@@ -503,7 +518,7 @@ class ReceiptDelivery(
         to: String,
     ): ActionResult {
         val refund = records.refunds.get(refundId) ?: return ActionResult.Missing
-        val document = withContext(cpu) { receipts.refund(refund, settings.current().receipt) }
+        val document = withContext(cpu) { receipts.refund(refund, settings.current().receipt, logos?.current()) }
         return emailer.send(to, document, refund.merchantReference, ReceiptKind.of(refund))
     }
 
@@ -532,17 +547,34 @@ class ReceiptDelivery(
     private suspend fun print(
         document: ReceiptDocument,
         current: AppSettings,
-    ): ActionResult =
+    ): ReceiptPrint =
         when (val attempt = gateway.print(withContext(cpu) { PrintRenderer.jobs(document, current.receipt.charsPerLine) })) {
             is Attempt.NotSetUp -> {
-                ActionResult.Failed(Failure.NotSetUp(attempt.problem))
+                ReceiptPrint(ActionResult.Failed(Failure.NotSetUp(attempt.problem)))
             }
 
             is Attempt.Made -> {
                 when (val outcome = attempt.result) {
-                    PrintOutcome.Printed -> ActionResult.Success
-                    is PrintOutcome.Failed -> ActionResult.Failed(Failure.Remote(outcome.fault))
+                    PrintOutcome.Printed -> {
+                        ReceiptPrint(ActionResult.Success)
+                    }
+
+                    is PrintOutcome.PrintedWithoutImage -> {
+                        ReceiptPrint(
+                            ActionResult.Success,
+                            logoSkipped = logoNotice.compareAndSet(false, true),
+                            logoFault = outcome.fault,
+                        )
+                    }
+
+                    is PrintOutcome.Failed -> {
+                        ReceiptPrint(ActionResult.Failed(Failure.Remote(outcome.fault)))
+                    }
                 }
             }
         }
+
+    private companion object {
+        val logoNotice = AtomicBoolean()
+    }
 }

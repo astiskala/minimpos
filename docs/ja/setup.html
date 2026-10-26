@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self' blob:; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -33,6 +33,7 @@
   <meta content="https://minimpos.app/images/ja/social.png" name="twitter:image">
   <meta content="Adyen 決済端末のイラストに表示した Mini mPOS の日本語のデモ画面。" name="twitter:image:alt">
   <script defer src="../js/qrcodegen.js"></script>
+  <script defer src="../js/logo.js"></script>
   <script defer src="../js/setup.js"></script>
     <link href="https://minimpos.app/setup" hreflang="en" rel="alternate">
     <link href="https://minimpos.app/es-MX/setup" hreflang="es-MX" rel="alternate">
@@ -102,12 +103,21 @@
 <p class="hint" id="setup-loading" role="status">設定フォームを読み込んでいます…</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
+              data-msg-logo-unreadable="この画像を読み取れませんでした。"
+              data-msg-logo-blank="変換後の画像が空白です。"
+              data-msg-logo-required="先に画像を選択してください。"
               data-msg-making="コードを作成しています…"
               data-msg-ready="完了：下に {total} 個のコードがあります。"
               data-msg-code-of="コード {n}／{total}"
               data-msg-pause="一時停止"
               data-msg-play="再生"
               data-msg-unsupported="このブラウザーではコードを作成できません。最新の Chrome、Edge、Firefox、Safari をお使いください。">
+          <fieldset>
+            <legend>作成するもの</legend>
+            <label class="choice"><input type="radio" name="make" value="complete" checked> <span>すべての設定</span></label>
+            <label class="choice"><input type="radio" name="make" value="logo"> <span>レシートのロゴのみ</span></label>
+          </fieldset>
+          <div id="complete-fields">
           <fieldset>
             <legend>Mini mPOS をどこで動かし、決済をどこに送りますか？</legend>
             <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>
@@ -282,6 +292,26 @@
           </fieldset>
 </details>
 
+          </div>
+
+          <fieldset id="logo-fields">
+            <legend>レシートのロゴ（任意）</legend>
+            <label for="logo">画像を選択</label>
+            <input id="logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+            <div id="logo-editor" hidden>
+              <canvas id="logo-preview" class="logo-preview" width="384" height="192" aria-label="ロゴ"></canvas>
+              <label for="logoMode">スタイル</label>
+              <select id="logoMode" name="logoMode"><option value="auto">自動</option><option value="mark">ロゴ</option><option value="photo">写真</option></select>
+              <label for="logoThreshold">濃さ</label>
+              <input id="logoThreshold" name="logoThreshold" type="range" min="0" max="255" value="127">
+              <label class="choice"><input type="checkbox" id="logoInvert" name="logoInvert"> <span>反転</span></label>
+              <label class="choice"><input type="checkbox" id="logoTrim" name="logoTrim" checked> <span>余白を除去</span></label>
+              <label for="logoSize">サイズ</label>
+              <select id="logoSize" name="logoSize"><option value="large">大</option><option value="small">小</option></select>
+              <button class="button button-ghost" id="logo-remove" type="button">ロゴを削除</button>
+            </div>
+            <p id="logo-status" class="hint" role="status"></p>
+          </fieldset>
           <div class="setup-actions">
             <button class="button" type="submit">QRコードを作成</button>
             <button class="button button-ghost" type="reset">クリア</button>

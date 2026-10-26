@@ -590,6 +590,7 @@ enum class MerchantCopyPolicy {
  * @property markedTaxRateMilliPercent Rate whose items are marked, in thousandths of a percent; null disables marking.
  * @property markedTaxRateMarker Text appended to marked item names; blank normalizes to ※.
  * @property markedTaxRateNote Explanation below marked items; blank omits the explanation.
+ * @property printBusinessName Whether to print the business name below the optional receipt logo.
  */
 @Serializable
 data class ReceiptSettings(
@@ -612,6 +613,7 @@ data class ReceiptSettings(
     val markedTaxRateMilliPercent: Int? = null,
     val markedTaxRateMarker: String = "※",
     val markedTaxRateNote: String = "※ Items at the marked tax rate",
+    val printBusinessName: Boolean = true,
 ) {
     /** These settings with line width and the marked rate within their limits, and a nonblank trimmed marker. */
     fun normalized(): ReceiptSettings =

@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
@@ -73,6 +74,7 @@ object ReceiptImage {
             document.segments().flatMap { segment ->
                 when (segment) {
                     is ReceiptSegment.TextBlock -> segment.elements.map(slip::block)
+                    is ReceiptSegment.Image -> listOf(slip.block(ReceiptElement.Image(segment.bitmap)))
                     is ReceiptSegment.QrCode -> listOf(slip.block(ReceiptElement.Qr(segment.content)))
                 }
             }
@@ -130,7 +132,7 @@ object ReceiptImage {
 
     /** The paints and measures of one slip [widthPx] wide, drawn at [scale] times the reference size. */
     private class Slip(
-        widthPx: Int,
+        private val widthPx: Int,
         private val scale: Float,
     ) {
         private val content = (widthPx - PADDING * 2 * scale).roundToInt()
@@ -161,6 +163,7 @@ object ReceiptImage {
                 ReceiptElement.Divider -> Block(lineHeight) { it.drawLine(0f, lineHeight / 2, content.toFloat(), lineHeight / 2, divider) }
                 ReceiptElement.Blank -> Block(lineHeight / 2) {}
                 is ReceiptElement.Qr -> qr(element)
+                is ReceiptElement.Image -> image(element)
                 is ReceiptElement.Link -> text(element.url, Align.CENTER, plain)
             }
 
@@ -208,6 +211,24 @@ object ReceiptImage {
             return Block(maxOf(label.height.toFloat(), lineHeight) + LINE_GAP * scale) {
                 label.draw(it)
                 it.drawText(row.right, (content - valueWidth).toFloat(), -paint.fontMetrics.ascent, paint)
+            }
+        }
+
+        /** Logo dots use nearest-neighbour scaling at their share of the 384-dot printer width. */
+        private fun image(image: ReceiptElement.Image): Block {
+            val mono = image.bitmap
+            val width = mono.width * widthPx / 384f
+            val height = mono.height * widthPx / 384f
+            val bitmap = createBitmap(mono.width, mono.height)
+            val pixels =
+                IntArray(mono.width * mono.height) { index ->
+                    if (mono.isBlack(index % mono.width, index / mono.width)) Color.BLACK else Color.WHITE
+                }
+            bitmap.setPixels(pixels, 0, mono.width, 0, 0, mono.width, mono.height)
+            val paint = Paint().apply { isFilterBitmap = false }
+            return Block(height + LINE_GAP * scale) {
+                val left = (content - width) / 2f
+                it.drawBitmap(bitmap, null, RectF(left, 0f, left + width, height), paint)
             }
         }
 

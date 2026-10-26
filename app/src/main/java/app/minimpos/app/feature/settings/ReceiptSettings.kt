@@ -47,6 +47,7 @@ internal fun ColumnScope.ReceiptsSection(
         events.businessImport,
         receipt.businessName.isNotBlank() || receipt.addressLines.isNotBlank() || receipt.phone.isNotBlank(),
     )
+    ReceiptLogoSettings()
     key(businessImport.revision) { ReceiptTextSettings(receipt, ::update) }
     SectionHeader(stringResource(R.string.settings_content))
     ReceiptTaxSettings(receipt, ::update)
@@ -123,6 +124,13 @@ private fun ColumnScope.ReceiptTextSettings(
     SettingTextField(stringResource(R.string.settings_business_name), receipt.businessName, { value ->
         update { it.copy(businessName = value) }
     }, tag = "businessName")
+    SettingSwitch(
+        stringResource(R.string.settings_print_business_name),
+        receipt.printBusinessName,
+        { value -> update { it.copy(printBusinessName = value) } },
+        subtitle = stringResource(R.string.settings_print_business_name_hint),
+        tag = "printBusinessName",
+    )
     SettingTextField(stringResource(R.string.settings_address), receipt.addressLines, { value ->
         update { it.copy(addressLines = value) }
     }, singleLine = false)

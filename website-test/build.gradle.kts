@@ -63,6 +63,10 @@ tasks.test {
         .file(screenshotSamples)
         .withPathSensitivity(PathSensitivity.RELATIVE)
         .withPropertyName("screenshotSamples")
+    inputs
+        .file(isolated.rootProject.projectDirectory.file("core/src/test/resources/logo/vectors.json"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+        .withPropertyName("logoVectors")
     // Browser paths affect helper integration tests even when the published website has not changed.
     inputs.property("chrome", providers.environmentVariable("MINIMPOS_CHROME").orElse(""))
 }

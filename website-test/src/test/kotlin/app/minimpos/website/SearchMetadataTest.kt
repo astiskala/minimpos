@@ -129,7 +129,7 @@ class SearchMetadataTest {
                 .isEqualTo("'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com")
             assertThat(policy["script-src-attr"]).isEqualTo("'none'")
             assertThat(policy["style-src"]).isEqualTo("'self'")
-            assertThat(policy["img-src"]).isEqualTo("'self'")
+            assertThat(policy["img-src"]).isEqualTo(if (path.fileName.toString() == "setup.html") "'self' blob:" else "'self'")
             assertThat(policy["manifest-src"]).isEqualTo("'self'")
             assertThat(policy["connect-src"])
                 .isEqualTo("https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum")

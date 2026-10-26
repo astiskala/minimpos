@@ -8,6 +8,7 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.receipt.ActionResult
 import app.minimpos.app.receipt.ReceiptKind
+import app.minimpos.core.logo.MonoPng
 import app.minimpos.core.receipt.HtmlReceiptRenderer
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.receipt.ReceiptDocument
@@ -53,7 +54,7 @@ data class EmailTexts(
 )
 
 /**
- * Emails receipts as HTML with a plain-text alternative; the receipt's QR codes are attached as inline PNG images. The
+ * Emails receipts as HTML with a plain-text alternative; the receipt's logo and QR codes are attached as inline PNG images. The
  * SMTP password is read from [SecretStore] for each email. Missing settings, invalid addresses and delivery errors are
  * returned as [ActionResult.Failed] with an [EmailFault] (and the mail server's reply, verbatim).
  */
@@ -124,7 +125,9 @@ class ReceiptEmailer(
         val intro = envelope.intro
         val message =
             withContext(cpu) {
-                val images = document.qrCodes.mapIndexed { index, qr -> InlineImage("qr$index", qrPng(qr.content)) }
+                val images =
+                    listOfNotNull(document.logo?.let { InlineImage(HtmlReceiptRenderer.LOGO_CID, MonoPng.encode(it)) }) +
+                        document.qrCodes.mapIndexed { index, qr -> InlineImage("qr$index", qrPng(qr.content)) }
                 EmailMessage(
                     to = to,
                     subject = subject,

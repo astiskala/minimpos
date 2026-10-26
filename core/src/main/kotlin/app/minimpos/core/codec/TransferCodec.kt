@@ -4,6 +4,8 @@ import app.minimpos.core.catalogue.Catalogue
 import app.minimpos.core.catalogue.CatalogueCategory
 import app.minimpos.core.catalogue.CatalogueProduct
 import app.minimpos.core.catalogue.CatalogueTaxRate
+import app.minimpos.core.logo.LogoFormatException
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.tax.TaxRates
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
@@ -26,14 +28,14 @@ class TransferFormatException(
  * `version(1) | crc32(4) | raw-deflate(body)`, where the body uses unsigned LEB128 varints and length-prefixed
  * UTF-8 strings. The result is Base45-encoded so it fits QR alphanumeric mode.
  *
- * The current format is version 5. The body starts with a varint of sections present (bit 0: catalogue, bit 1:
- * settings, bit 2: sealed secrets, bit 3: connection), followed by those sections in order. Settings, secrets and
- * connection are length-prefixed bytes. Product records end with flags (bit 0: pre-authorisation, bit 1: meal-voucher
- * eligible); other bits are rejected.
+ * The current format is version 6. The body starts with a varint of sections present (bit 0: catalogue, bit 1:
+ * settings, bit 2: sealed secrets, bit 3: connection, bit 4: logo), followed by those sections in order. Settings,
+ * secrets, connection and logo are length-prefixed bytes. Product records end with flags (bit 0: pre-authorisation,
+ * bit 1: meal-voucher eligible); other bits are rejected.
  * The app and setup helper use this one format; any other version is rejected.
  */
 object TransferCodec {
-    private const val VERSION: Int = 5
+    private const val VERSION: Int = 6
     private const val FLAG_PRE_AUTHORISATION = 1L
     private const val FLAG_MEAL_VOUCHER = 2L
     private const val PRODUCT_FLAGS = FLAG_PRE_AUTHORISATION or FLAG_MEAL_VOUCHER
@@ -41,7 +43,8 @@ object TransferCodec {
     private const val SECTION_SETTINGS = 2L
     private const val SECTION_SECRETS = 4L
     private const val SECTION_CONNECTION = 8L
-    private const val ALL_SECTIONS = SECTION_CATALOGUE or SECTION_SETTINGS or SECTION_SECRETS or SECTION_CONNECTION
+    private const val SECTION_LOGO = 16L
+    private const val ALL_SECTIONS = SECTION_CATALOGUE or SECTION_SETTINGS or SECTION_SECRETS or SECTION_CONNECTION or SECTION_LOGO
     private const val HEADER_SIZE = 5
     private const val MAX_BODY_BYTES = 2 * 1024 * 1024
     private const val MAX_STRING_BYTES = 1024
@@ -54,6 +57,9 @@ object TransferCodec {
 
     /** The most connection text a transfer carries, in UTF-8 bytes. */
     const val MAX_CONNECTION_BYTES: Int = 4 * 1024
+
+    /** The most packed logo data a transfer carries, in bytes. */
+    const val MAX_LOGO_BYTES: Int = 10 * 1024
     private const val MAX_ITEMS = 100_000
     private const val BUFFER_BYTES = 4096
 
@@ -72,8 +78,8 @@ object TransferCodec {
      * Encodes [transfer] in the current version, ready to be split into QR codes with [QrChunks].
      *
      * @throws IllegalArgumentException if a name or SKU is longer than 1,024 bytes in UTF-8, a price or rate is
-     *   negative, or the settings, secrets or connection are longer than [MAX_SETTINGS_BYTES], [MAX_SECRETS_BYTES] or
-     *   [MAX_CONNECTION_BYTES].
+     *   negative, or settings, secrets, connection or logo exceed [MAX_SETTINGS_BYTES], [MAX_SECRETS_BYTES],
+     *   [MAX_CONNECTION_BYTES] or [MAX_LOGO_BYTES].
      */
     fun encode(transfer: Transfer): String = pack(VERSION, body(transfer, includeSecrets = true))
 
@@ -81,12 +87,14 @@ object TransferCodec {
      * Settings and connection retain their exact UTF-8 JSON text. A secrets-only transfer has empty public data.
      * The seal is omitted, so it cannot authenticate itself. Size and value limits match [encode].
      */
-    fun authenticationData(transfer: Transfer): ByteArray =
-        if (transfer.catalogue == null && transfer.settings == null && transfer.connection == null) {
+    fun authenticationData(transfer: Transfer): ByteArray {
+        val hasSettings = transfer.catalogue != null || transfer.settings != null
+        return if (!hasSettings && transfer.connection == null && transfer.logo == null) {
             byteArrayOf()
         } else {
             body(transfer, includeSecrets = false)
         }
+    }
 
     private fun body(
         transfer: Transfer,
@@ -98,11 +106,13 @@ object TransferCodec {
         if (transfer.settings != null) sections = sections or SECTION_SETTINGS
         if (includeSecrets && transfer.sealedSecrets != null) sections = sections or SECTION_SECRETS
         if (transfer.connection != null) sections = sections or SECTION_CONNECTION
+        if (transfer.logo != null) sections = sections or SECTION_LOGO
         body.writeVarint(sections)
         transfer.catalogue?.let { writeCatalogue(body, it) }
         transfer.settings?.let { body.writeBytes(it.toByteArray(Charsets.UTF_8), MAX_SETTINGS_BYTES) }
         if (includeSecrets) transfer.sealedSecrets?.let { body.writeBytes(it.toByteArray(), MAX_SECRETS_BYTES) }
         transfer.connection?.let { body.writeBytes(it.toByteArray(Charsets.UTF_8), MAX_CONNECTION_BYTES) }
+        transfer.logo?.let { body.writeBytes(it.toBytes(), MAX_LOGO_BYTES) }
         return body.toByteArray()
     }
 
@@ -197,7 +207,17 @@ object TransferCodec {
         val secrets = if (sections and SECTION_SECRETS != 0L) SealedSecrets(reader.readBytes(MAX_SECRETS_BYTES)) else null
         val connection =
             if (sections and SECTION_CONNECTION != 0L) reader.readBytes(MAX_CONNECTION_BYTES).toString(Charsets.UTF_8) else null
-        return Transfer(catalogue, settings, secrets, connection)
+        val logo =
+            if (sections and SECTION_LOGO != 0L) {
+                try {
+                    MonoBitmap.fromBytes(reader.readBytes(MAX_LOGO_BYTES))
+                } catch (e: LogoFormatException) {
+                    throw TransferFormatException("Invalid receipt logo", e)
+                }
+            } else {
+                null
+            }
+        return Transfer(catalogue, settings, secrets, connection, logo)
     }
 
     private fun readCatalogue(reader: BinaryReader): Catalogue {

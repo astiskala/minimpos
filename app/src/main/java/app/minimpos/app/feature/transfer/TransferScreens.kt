@@ -84,6 +84,7 @@ import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ProcessingContent
 import app.minimpos.app.ui.components.QrImage
+import app.minimpos.app.ui.components.ReceiptLogoPreview
 import app.minimpos.app.ui.components.SharedKeyDialog
 import app.minimpos.app.ui.components.StatusBadge
 import app.minimpos.app.ui.components.StatusKind
@@ -91,6 +92,7 @@ import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.catalogue.Catalogue
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -243,6 +245,7 @@ private fun ExportCodes(
             export.secrets.isNotEmpty(),
             Modifier.widthIn(max = 420.dp),
             secretDetails = secretNames(export.secrets),
+            logo = export.logo,
         )
     }
 }
@@ -531,6 +534,7 @@ private fun TransferSummary(
     secrets: Boolean,
     modifier: Modifier = Modifier,
     connection: Boolean = false,
+    logo: MonoBitmap? = null,
     secretDetails: String? = null,
 ) {
     val none = stringResource(R.string.transfer_not_included)
@@ -548,6 +552,10 @@ private fun TransferSummary(
             TransferDetail(stringResource(R.string.transfer_part_secrets), secretDetails)
         } else {
             LabeledValue(stringResource(R.string.transfer_part_secrets), if (secrets) stringResource(R.string.transfer_included) else none)
+        }
+        logo?.let {
+            LabeledValue(stringResource(R.string.transfer_part_logo), stringResource(R.string.transfer_included))
+            ReceiptLogoPreview(it, Modifier.fillMaxWidth().padding(8.dp))
         }
         if (connection) LabeledValue(stringResource(R.string.transfer_part_connection), stringResource(R.string.transfer_included))
     }
@@ -632,8 +640,14 @@ private fun ImportReady(
             if (received.connectionDestination == ConnectionDestination.TAP_TO_PAY) {
                 Note(stringResource(R.string.transfer_register_phone))
             }
-            TransferSummary(received.catalogue, received.hasSettings, received.hasSecrets, connection = received.hasConnection)
-            TransferCodeField(state.code, state.wrongCode, onCode)
+            TransferSummary(
+                received.catalogue,
+                received.hasSettings,
+                received.hasSecrets,
+                connection = received.hasConnection,
+                logo = received.logo,
+            )
+            if (received.hasSecrets) TransferCodeField(state.code, state.wrongCode, onCode)
             received.catalogue?.let { catalogue ->
                 if (!state.currencyMatches) {
                     Text(
@@ -818,6 +832,9 @@ private fun ImportDone(
                     stringResource(R.string.transfer_part_settings),
                     stringResource(R.string.transfer_imported),
                 )
+            }
+            if (result.logo) {
+                LabeledValue(stringResource(R.string.transfer_part_logo), stringResource(R.string.transfer_included))
             }
             if (result.connection) {
                 LabeledValue(

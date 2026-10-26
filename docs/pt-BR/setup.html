@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self' blob:; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -33,6 +33,7 @@
   <meta content="https://minimpos.app/images/pt-BR/social.png" name="twitter:image">
   <meta content="Mini mPOS em terminais de pagamento Adyen ilustrados, com telas de demonstração em português do Brasil." name="twitter:image:alt">
   <script defer src="../js/qrcodegen.js"></script>
+  <script defer src="../js/logo.js"></script>
   <script defer src="../js/setup.js"></script>
     <link href="https://minimpos.app/setup" hreflang="en" rel="alternate">
     <link href="https://minimpos.app/es-MX/setup" hreflang="es-MX" rel="alternate">
@@ -103,12 +104,21 @@
 <p class="hint" id="setup-loading" role="status">Carregando o formulário…</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
+              data-msg-logo-unreadable="Não foi possível ler esta imagem."
+              data-msg-logo-blank="Esta imagem ficou em branco após a conversão."
+              data-msg-logo-required="Escolha uma imagem primeiro."
               data-msg-making="Fazendo os códigos…"
               data-msg-ready="Pronto: código(s) {total} abaixo."
               data-msg-code-of="Código {n} de {total}"
               data-msg-pause="Pausa"
               data-msg-play="Reproduzir"
               data-msg-unsupported="Este navegador não pode fazer os códigos. Use uma versão atual do Chrome, Edge, Firefox ou Safari.">
+          <fieldset>
+            <legend>O que criar</legend>
+            <label class="choice"><input type="radio" name="make" value="complete" checked> <span>Configuração completa</span></label>
+            <label class="choice"><input type="radio" name="make" value="logo"> <span>Apenas logotipo do recibo</span></label>
+          </fieldset>
+          <div id="complete-fields">
           <fieldset>
             <legend>Onde o Mini mPOS é executado e para onde vão os pagamentos?</legend>
             <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>Em
@@ -298,6 +308,26 @@
           </fieldset>
 </details>
 
+          </div>
+
+          <fieldset id="logo-fields">
+            <legend>Logotipo do recibo, opcional</legend>
+            <label for="logo">Escolher imagem</label>
+            <input id="logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+            <div id="logo-editor" hidden>
+              <canvas id="logo-preview" class="logo-preview" width="384" height="192" aria-label="Logotipo"></canvas>
+              <label for="logoMode">Estilo</label>
+              <select id="logoMode" name="logoMode"><option value="auto">Automático</option><option value="mark">Logotipo</option><option value="photo">Foto</option></select>
+              <label for="logoThreshold">Intensidade</label>
+              <input id="logoThreshold" name="logoThreshold" type="range" min="0" max="255" value="127">
+              <label class="choice"><input type="checkbox" id="logoInvert" name="logoInvert"> <span>Inverter</span></label>
+              <label class="choice"><input type="checkbox" id="logoTrim" name="logoTrim" checked> <span>Recortar margens</span></label>
+              <label for="logoSize">Tamanho</label>
+              <select id="logoSize" name="logoSize"><option value="large">Grande</option><option value="small">Pequeno</option></select>
+              <button class="button button-ghost" id="logo-remove" type="button">Remover logotipo</button>
+            </div>
+            <p id="logo-status" class="hint" role="status"></p>
+          </fieldset>
           <div class="setup-actions">
             <button class="button" type="submit">Fazer códigos QR</button>
             <button class="button button-ghost" type="reset">Limpar</button>

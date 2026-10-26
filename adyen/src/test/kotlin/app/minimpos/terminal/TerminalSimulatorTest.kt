@@ -280,8 +280,9 @@ class TerminalSimulatorTest {
                     ),
                 )
             val qr = PrintJob.QrCode("MPR1*x y")
-            assertThat(client.print(listOf(text, qr))).isEqualTo(PrintOutcome.Printed)
-            assertThat(printed).containsExactly(text, qr).inOrder()
+            val image = PrintJob.Image(byteArrayOf(1, 2, 3))
+            assertThat(client.print(listOf(image, text, qr))).isEqualTo(PrintOutcome.Printed)
+            assertThat(printed).containsExactly(image, text, qr).inOrder()
             assertThat(client.diagnose().hasPrinter).isTrue()
 
             config = config.copy(hasPrinter = false)

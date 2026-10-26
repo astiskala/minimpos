@@ -30,6 +30,8 @@ import app.minimpos.app.data.settings.InstallationText
 import app.minimpos.app.data.settings.JsonDataStoreSerializer
 import app.minimpos.app.data.settings.NewInstallation
 import app.minimpos.app.data.settings.PaymentSettings
+import app.minimpos.app.data.settings.ReceiptLogoSerializer
+import app.minimpos.app.data.settings.ReceiptLogoStore
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.StorageHealth
 import app.minimpos.app.data.settings.TerminalMode
@@ -95,6 +97,7 @@ import app.minimpos.app.update.AppUpdate
 import app.minimpos.app.update.GitHubReleases
 import app.minimpos.app.update.UpdateCheck
 import app.minimpos.core.access.ManagerAction
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.tax.StarterTax
@@ -219,8 +222,20 @@ class AppContainer(
     private val settingsStore = store("settings.json", serializer<AppSettings>(), defaults)
     private val secretsStore = store("secrets.json", serializer<SecretBlob>(), SecretBlob())
 
+    private val logoStore =
+        storage.protect(
+            DataStoreFactory.create(
+                serializer = ReceiptLogoSerializer,
+                scope = CoroutineScope(ioDispatcher + SupervisorJob()),
+                produceFile = { storageDir("receipt-logo.bin") },
+            ),
+        )
+
+    /** Final receipt image (`receipt-logo.bin`), protected by configuration storage health. */
+    val receiptLogo = ReceiptLogoStore(logoStore)
+
     init {
-        appScope.launch { storage.check(settingsStore, secretsStore) }
+        appScope.launch { storage.check(settingsStore, secretsStore, logoStore) }
         // Builds the client and its TLS setup in the background, so a screen's first request never builds it on the main
         // thread.
         appScope.launch { http.value }
@@ -293,7 +308,8 @@ class AppContainer(
     val history = HistoryRepository(database, onRemoved = ::historyRemoved, onPurged = ::historyPurged)
 
     /** Copies the catalogue, settings and secrets to another device by QR code, and imports the setup helper's codes. */
-    val setupTransfer = SetupTransfer(catalog, settings, secrets, onTerminal = device.isAdyenTerminal, history = history)
+    val setupTransfer =
+        SetupTransfer(catalog, settings, secrets, onTerminal = device.isAdyenTerminal, history = history, logos = receiptLogo)
 
     /** Where AUTO sends payments on this device: its own terminal, else the simulator; history environments follow it. */
     private val automaticMode = if (device.isAdyenTerminal) TerminalMode.TERMINAL else TerminalMode.SIMULATOR
@@ -430,14 +446,21 @@ class AppContainer(
     /** A time stamp (epoch milliseconds) in the current app language and device time zone, as receipts print it. */
     fun formatDateTime(epochMillis: Long): String = receiptFactory.formatDateTime(epochMillis)
 
-    /** The sample receipt Settings shows and test-prints with [appSettings], which may not be stored yet. */
-    fun sampleReceipt(appSettings: AppSettings): ReceiptDocument =
+    /**
+     * The sample receipt Settings shows and test-prints with [appSettings], which may not be stored yet, and the
+     * current [logo]; null leaves the image out. Construction runs on the caller's CPU dispatcher.
+     */
+    fun sampleReceipt(
+        appSettings: AppSettings,
+        logo: MonoBitmap? = null,
+    ): ReceiptDocument =
         receiptFactory.sample(
             appSettings.receipt,
             currency(appSettings),
             appSettings.payment.taxMode,
             appSettings.payment.asksCustomerReference,
             appSettings.languageTag,
+            logo,
         )
 
     /** Printing and emailing of stored sales and refunds, including what is delivered automatically. */
@@ -458,6 +481,7 @@ class AppContainer(
                     currentTexts = ::emailTexts,
                 ),
             scope = appScope,
+            logos = receiptLogo,
         )
 
     private val sessions = SaleKind.entries.associateWith { SaleSession(it, ::shopperPromptTexts) }

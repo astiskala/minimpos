@@ -226,6 +226,10 @@ cash-out, girocard and European Visa/Mastercard purchase-linked cashback, issuer
 unknown-result recovery, receipts, terminal totals and purchase-only referenced refunds. Local/cloud simulator tests do
 not establish real support. No real calls were made for this implementation.
 
+Receipt-logo printing remains unverified on real terminals, including V400m and S1F2: XHTML image support, alignment
+with the following text request, and the terminal’s refusal answer when an image is unsupported. Simulator and fake
+coverage do not establish these behaviors.
+
 Unreferenced refund verification remains open: Adyen enablement per store or terminal, the Customer Area limit and
 merchant-category exclusions, the excluded-country error, `PaymentType=Refund` answers on local and cloud terminals
 (`transactionType`, `posAuthAmountValue`, synchronous `acquirerResponseCode` per scheme and country), `Payment`-category

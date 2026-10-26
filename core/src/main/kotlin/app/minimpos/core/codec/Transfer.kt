@@ -1,11 +1,12 @@
 package app.minimpos.core.codec
 
 import app.minimpos.core.catalogue.Catalogue
+import app.minimpos.core.logo.MonoBitmap
 
 /**
  * What one terminal hands another by QR code (see [TransferCodec]) to set it up the same way: the product catalogue,
  * the settings and the secrets, each optional; or what the setup helper web page hands a device: the connection and
- * the secrets. The constructor throws [IllegalArgumentException] when all four are missing.
+ * the secrets. The constructor throws [IllegalArgumentException] when all sections are missing.
  *
  * @property catalogue the products, categories and tax rates, or null when not transferred.
  * @property settings the settings as text the app writes and reads (JSON), opaque here; null when not transferred.
@@ -13,15 +14,17 @@ import app.minimpos.core.catalogue.Catalogue
  *   null when not transferred.
  * @property connection where payments go and how they get there, as text the setup helper writes and the app reads
  *   (JSON), opaque here; null when not transferred.
+ * @property logo the receipt logo, or null when not transferred.
  */
 data class Transfer(
     val catalogue: Catalogue? = null,
     val settings: String? = null,
     val sealedSecrets: SealedSecrets? = null,
     val connection: String? = null,
+    val logo: MonoBitmap? = null,
 ) {
     init {
-        require(catalogue != null || settings != null || sealedSecrets != null || connection != null) {
+        require(catalogue != null || settings != null || sealedSecrets != null || connection != null || logo != null) {
             "A transfer needs something to transfer"
         }
     }

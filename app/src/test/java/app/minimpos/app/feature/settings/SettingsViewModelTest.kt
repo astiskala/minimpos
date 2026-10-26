@@ -26,6 +26,7 @@ import app.minimpos.app.terminal.SetupAccessCheck
 import app.minimpos.app.terminal.SimulatedTerminal
 import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.app.terminal.VirtualPrinter
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.tax.TaxRates
 import app.minimpos.terminal.checkout.CheckoutApi
@@ -95,6 +96,7 @@ class SettingsViewModelTest {
         target.history,
         target.catalog,
         target::sampleReceipt,
+        logos = target.receiptLogo.logo,
     ).also(viewModels::add)
 
     @Test
@@ -338,6 +340,24 @@ class SettingsViewModelTest {
         }
         vm.deleteTaxRate(gst)
         assertThat(await { vm.state.first { it.taxRateUsage.isEmpty() } }.taxRates).containsExactly(gst)
+    }
+
+    @Test
+    fun `sample receipt refreshes when only the logo is replaced or removed`() {
+        val vm = settingsViewModel()
+        await { vm.state.first { it.loaded } }
+        val settingsBefore = vm.state.value.settings
+        val first = MonoBitmap(3, 1, byteArrayOf(0xA0.toByte()))
+        val second = MonoBitmap(2, 1, byteArrayOf(0xC0.toByte()))
+        await {
+            container.receiptLogo.replace(first)
+            vm.state.first { it.sampleReceipt?.logo == first }
+            container.receiptLogo.replace(second)
+            vm.state.first { it.sampleReceipt?.logo == second }
+            container.receiptLogo.replace(null)
+            vm.state.first { it.loaded && it.sampleReceipt?.logo == null }
+        }
+        assertThat(vm.state.value.settings).isEqualTo(settingsBefore)
     }
 
     @Test

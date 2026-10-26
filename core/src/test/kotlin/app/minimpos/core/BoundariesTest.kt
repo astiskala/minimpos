@@ -129,7 +129,7 @@ class BoundariesTest {
         assertThat(fiveBytesWrongVersion.message).isEqualTo("Unsupported transfer version 9")
         val fiveBytes =
             assertThrows(TransferFormatException::class.java) {
-                TransferCodec.decode(Base45.encode(byteArrayOf(5, 0, 0, 0, 0)))
+                TransferCodec.decode(Base45.encode(byteArrayOf(6, 0, 0, 0, 0)))
             }
         assertThat(fiveBytes.message).isEqualTo("Transfer data is truncated")
 
@@ -227,7 +227,7 @@ class BoundariesTest {
         val packet =
             ByteBuffer
                 .allocate(5 + deflated.size)
-                .put(5.toByte())
+                .put(6.toByte())
                 .putInt(crc)
                 .put(deflated)
                 .array()

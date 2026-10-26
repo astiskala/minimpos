@@ -1,5 +1,7 @@
 package app.minimpos.core.receipt
 
+import app.minimpos.core.logo.MonoBitmap
+
 /** Horizontal alignment of a receipt text line. */
 enum class Align {
     /** Flush left, the default for body text. */
@@ -26,6 +28,15 @@ enum class TextStyle {
 
 /** Output-neutral receipt content, rendered to Terminal API print requests, HTML email, plain text or Compose. */
 sealed interface ReceiptElement {
+    /**
+     * A centered monochrome logo at its native pixel size.
+     *
+     * @property bitmap the immutable packed logo pixels.
+     */
+    data class Image(
+        val bitmap: MonoBitmap,
+    ) : ReceiptElement
+
     /**
      * A line of text; renderers wrap it when it is wider than the receipt.
      *
@@ -86,10 +97,19 @@ sealed interface ReceiptElement {
 /** A part of a [ReceiptDocument] that is printed with one Terminal API print request; see [ReceiptDocument.segments]. */
 sealed interface ReceiptSegment {
     /**
+     * A centered image printed as a request of its own.
+     *
+     * @property bitmap the immutable packed logo pixels.
+     */
+    data class Image(
+        val bitmap: MonoBitmap,
+    ) : ReceiptSegment
+
+    /**
      * Consecutive text elements, printed as one text request.
      *
      * @property elements the elements in order, ending with the caption of a QR code that follows; never a
-     *   [ReceiptElement.Qr], and never only blank lines.
+     *   [ReceiptElement.Qr] or [ReceiptElement.Image], and never only blank lines.
      */
     data class TextBlock(
         val elements: List<ReceiptElement>,
@@ -115,7 +135,7 @@ data class ReceiptDocument(
     val elements: List<ReceiptElement>,
 ) {
     /**
-     * Splits the document into consecutive text blocks and QR codes. Adyen terminals print text and QR codes in
+     * Splits the document into consecutive text blocks, images and QR codes. Adyen terminals print these in
      * separate print requests, which come out on one slip when sent back to back. A QR code's caption ends the text
      * block before it, after a blank line and centred, so it prints right above the code. Blocks consisting only of
      * blank lines are dropped.
@@ -129,7 +149,10 @@ data class ReceiptDocument(
             pending.clear()
         }
         for (element in elements) {
-            if (element is ReceiptElement.Qr) {
+            if (element is ReceiptElement.Image) {
+                flush()
+                segments += ReceiptSegment.Image(element.bitmap)
+            } else if (element is ReceiptElement.Qr) {
                 element.caption?.let { pending += listOf(ReceiptElement.Blank, ReceiptElement.Text(it, Align.CENTER)) }
                 flush()
                 segments += ReceiptSegment.QrCode(element.content)
@@ -140,6 +163,9 @@ data class ReceiptDocument(
         flush()
         return segments
     }
+
+    /** The first logo image, or null when absent; email attaches it using the logo content id. */
+    val logo: MonoBitmap? get() = elements.filterIsInstance<ReceiptElement.Image>().firstOrNull()?.bitmap
 
     /** The document's QR codes in order; emailed receipts attach them as images, numbered in this order. */
     val qrCodes: List<ReceiptElement.Qr> get() = elements.filterIsInstance<ReceiptElement.Qr>()

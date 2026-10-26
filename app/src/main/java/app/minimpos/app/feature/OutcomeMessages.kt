@@ -59,6 +59,7 @@ internal fun TapToPayCheck.labels(): TapToPayLabels =
 fun ActionOutcome.text(): String =
     when (this) {
         ActionOutcome.Printed -> stringResource(R.string.result_printed)
+        is ActionOutcome.PrintedWithoutLogo -> logoText()
         is ActionOutcome.Emailed -> stringResource(R.string.result_emailed, to)
         ActionOutcome.AbortSent -> stringResource(R.string.result_abort_sent)
         ActionOutcome.LinkNotPaid -> stringResource(R.string.link_not_paid)
@@ -74,6 +75,11 @@ fun ActionOutcome.text(): String =
         is ActionOutcome.Unconfirmed -> stringResource(R.string.sentences, stringResource(R.string.action_unconfirmed), failure.text())
         is ActionOutcome.Failed -> failure.text()
     }
+
+@Composable
+@ReadOnlyComposable
+private fun ActionOutcome.PrintedWithoutLogo.logoText(): String =
+    noted(stringResource(R.string.receipt_logo_skipped), fault?.details()?.joinToString(", ")?.ifEmpty { null })
 
 /** Local scan failures, containing no scanned data or provider payload. */
 @Composable

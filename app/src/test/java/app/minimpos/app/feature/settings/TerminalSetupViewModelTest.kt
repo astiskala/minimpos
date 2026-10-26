@@ -59,6 +59,7 @@ class TerminalSetupViewModelTest {
             container.history,
             container.catalog,
             container::sampleReceipt,
+            logos = container.receiptLogo.logo,
         ).also(viewModels::add)
 
     private fun awaitTerminalSelection(poiId: String) =

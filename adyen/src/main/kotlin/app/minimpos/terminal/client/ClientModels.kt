@@ -618,6 +618,15 @@ sealed interface PrintOutcome {
     data object Printed : PrintOutcome
 
     /**
+     * The terminal refused an image, and every remaining job printed successfully.
+     *
+     * @property fault The first image rejection. No-printer, paper and delivery failures never produce this result.
+     */
+    data class PrintedWithoutImage(
+        val fault: Fault,
+    ) : PrintOutcome
+
+    /**
      * A job could not be printed; later jobs were not sent.
      *
      * @property fault Why: the delivery's fault, or [Fault.TerminalRejected] with the terminal's message.

@@ -26,14 +26,17 @@ import app.minimpos.app.terminal.HistorySwitches
 import app.minimpos.app.terminal.ReceiptBusinessDetails
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.app.terminal.TerminalStatus
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.receipt.ReceiptDocument
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -156,10 +159,11 @@ class SettingsChecks(
  * @param checks The services behind the test buttons.
  * @param history Cleared from here.
  * @param catalog The tax rates.
- * @param sampleReceipt The sample receipt with the given settings.
+ * @param sampleReceipt Builds the sample receipt with the given settings and current logo.
  * @param managerPins The Manager PIN instance, so resetting it also clears its live lockout.
  * @param historySwitches Owns explicitly confirmed environment-change deletion and recovery.
  * @param cpu Dispatcher for catalogue counts and sample receipt construction.
+ * @param logos Current receipt image, including null after removal; every change rebuilds the preview.
  */
 class SettingsViewModel(
     private val pricingChanges: PricingChangeOperations,
@@ -169,11 +173,12 @@ class SettingsViewModel(
     private val checks: SettingsChecks,
     private val history: HistoryRepository,
     private val catalog: CatalogRepository,
-    sampleReceipt: (AppSettings) -> ReceiptDocument,
+    sampleReceipt: (AppSettings, MonoBitmap?) -> ReceiptDocument,
     private val managerPins: PinManager = PinManager(secrets, verifierSecret = Secret.MANAGER_PIN_VERIFIER),
     /** Confirmed history deletion on LIVE/TEST/simulator changes. */
     historySwitches: HistorySwitches? = null,
     private val cpu: CoroutineDispatcher = Dispatchers.Default,
+    logos: Flow<MonoBitmap?> = flowOf(null),
 ) : ViewModel() {
     private val productCounts = catalog.products.map { products -> products.groupingBy { it.taxRateId }.eachCount() }.distinctUntilChanged()
     private val sample =
@@ -182,7 +187,7 @@ class SettingsViewModel(
                 before.receipt == after.receipt && before.languageTag == after.languageTag &&
                     before.payment.currencyCode == after.payment.currencyCode && before.payment.taxMode == after.payment.taxMode &&
                     before.payment.asksCustomerReference == after.payment.asksCustomerReference
-            }.map(sampleReceipt)
+            }.combine(logos, sampleReceipt)
 
     /** The screen state, updated whenever settings, secrets or the catalogue change. */
     val state: StateFlow<SettingsUiState> =
@@ -423,7 +428,7 @@ class SettingsViewModel(
         actions.update { it.copy(print = ActionState(running = true)) }
         viewModelScope.launch {
             val result = checks.receipts.printDocument(document)
-            actions.update { it.copy(print = result.toState(ActionOutcome.Printed)) }
+            actions.update { it.copy(print = result.toState()) }
         }
     }
 

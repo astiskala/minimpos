@@ -148,6 +148,8 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
   `zh-CN`, `zh-Hant`. A new language goes at its tag's position everywhere.
 - New-install defaults may depend on country/language; never overwrite saved merchant text or imported catalogs.
   Receipt labels are read at delivery, Adyen receipt fields stay verbatim. Keep `StarterTax`'s rates current.
+- Group `strings.xml` by feature with `<!-- ... -->` section comments; keep the same sections and key order in every
+  language; add new strings beside related existing strings instead of appending a new block at the end.
 
 ## Documentation changes
 

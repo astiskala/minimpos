@@ -81,7 +81,7 @@ data class CardChoice(
  * @property externalConfirmed Whether staff confirmed receiving the funds outside the app.
  * @property balance The last balance read; null when none was read for the current card.
  * @property reading Whether a balance is being read.
- * @property managerConfigured Whether a Manager PIN is set, which value changes require (provisional default).
+ * @property managerConfigured Whether a Manager PIN is set, which value changes require.
  * @property blocked Why gift-card requests cannot be sent on this destination now; null when they can.
  * @property activities Recent and unresolved activities, newest first.
  * @property now Epoch milliseconds the undo window is read against.

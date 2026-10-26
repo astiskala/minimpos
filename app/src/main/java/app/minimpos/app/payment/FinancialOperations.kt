@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.combine
  * ([recheck]), sends a refund the way its payment was taken ([refund]) and is the one answer to whether anything is being
  * sent now ([running]). Callers never pick a runner themselves.
  *
- * Payment links are checked again through [PaymentLinks] here too, but do not count as [running]: a link is stored
- * before Adyen is asked for it and its later checks never act on changed credentials.
+ * Payment links, captures and active status recovery also count as [running], holding setup and retained history
+ * steady until each request and its durable answer finish.
  *
  * @param payments Card payments (including scanned wallets) on the terminal.
  * @param refunds Referenced refunds and cancellations on the terminal.
@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.combine
  * @param giftCards Stored-value activities on the terminal, which count as running and route their own status checks.
  * @param unreferenced Unreferenced card refunds on the terminal: refunds in history, sent and checked as payments.
  * @param cancellations Cancellations of delayed unreferenced refunds, which count as running while being sent.
+ * @param captures Captures and adjustments, including approval and persistence between chained API requests.
+ * @param refundRun Current multi-leg return, so its cash legs and gaps between terminal legs also hold history steady.
  */
 class FinancialOperations(
     private val payments: TransactionLifecycle<PaymentStart>,
@@ -40,6 +42,8 @@ class FinancialOperations(
     private val giftCards: GiftCards? = null,
     private val unreferenced: TransactionLifecycle<UnreferencedRefundStart>? = null,
     private val cancellations: RefundCancellations? = null,
+    private val captures: Captures? = null,
+    private val refundRun: () -> RefundRun? = { null },
 ) {
     /** Releases every runner's process-only requests after confirmed complete history deletion. */
     internal fun forgetAll() {
@@ -70,7 +74,19 @@ class FinancialOperations(
      */
     val running: Boolean
         get() =
-            charges.managing || cancellations?.running == true ||
+            listOf(
+                charges.managing,
+                charges.checking,
+                checkoutRefunds.checking,
+                links.active,
+                captures?.active == true,
+                refundRun()?.finished == false,
+                cancellations?.running == true,
+                payments.checking,
+                refunds.checking,
+                giftCards?.checking == true,
+                unreferenced?.checking == true,
+            ).any { it } ||
                 listOfNotNull(payments.state, refunds.state, charges.state, checkoutRefunds.state, giftCards?.state, unreferenced?.state)
                     .any { it.value is TransactionState.Processing }
 

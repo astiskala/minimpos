@@ -14,6 +14,7 @@ import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.SaleToPOIRequest
 import com.adyen.model.nexo.SaleToPOIResponse
 import com.adyen.model.nexo.TransactionStatusRequest
+import com.adyen.model.nexo.TransactionStatusResponse
 import com.adyen.model.terminal.TerminalAPIRequest
 import kotlinx.coroutines.delay
 import kotlin.time.Duration
@@ -111,14 +112,11 @@ internal class TerminalExchange(
                 is TerminalAnswer.Unread -> return StatusCheck.NoAnswer(answer.fault)
                 is TerminalAnswer.Read -> answer.body
             }
+        if (!matchesOriginal(status, serviceId, category)) return StatusCheck.NoAnswer(Fault.UnreadableReply())
         val response = status.response
         return when {
             response?.result == ResultType.SUCCESS -> {
-                val body = status.repeatedMessageResponse?.repeatedResponseMessageBody
-                val details =
-                    body?.paymentResponse?.let { TerminalClient.mapPayment(it, money::minor) }
-                        ?: body?.reversalResponse?.let { TerminalClient.mapReversal(it, null, money::minor) }
-                        ?: body?.storedValueResponse?.let { mapStoredValue(it, null, money::minor) }
+                val details = repeatedDetails(status, category)
                 details?.let { StatusCheck.Settled(TransactionOutcome.Completed(it)) }
                     ?: StatusCheck.NoAnswer(Fault.UnreadableReply())
             }
@@ -135,6 +133,35 @@ internal class TerminalExchange(
                 StatusCheck.NoAnswer(Fault.UnreadableReply())
             }
         }
+    }
+
+    private fun repeatedDetails(
+        status: TransactionStatusResponse,
+        category: MessageCategoryType,
+    ): TransactionDetails? {
+        val body = status.repeatedMessageResponse?.repeatedResponseMessageBody
+        return when {
+            category == MessageCategoryType.PAYMENT -> body?.paymentResponse?.let { TerminalClient.mapPayment(it, money::minor) }
+            category == MessageCategoryType.REVERSAL -> body?.reversalResponse?.let { TerminalClient.mapReversal(it, null, money::minor) }
+            else -> body?.storedValueResponse?.let { mapStoredValue(it, null, money::minor) }
+        }
+    }
+
+    // Some terminals omit echoed identity fields. Any fields supplied must identify the original request.
+    private fun matchesOriginal(
+        status: TransactionStatusResponse,
+        serviceId: String,
+        category: MessageCategoryType,
+    ): Boolean {
+        val reference = status.messageReference
+        val referenced =
+            reference?.let {
+                it.saleID == identity.saleId && it.serviceID == serviceId && it.messageCategory == category
+            }
+        if (referenced == false) return false
+        val header = status.repeatedMessageResponse?.messageHeader ?: return true
+        val addressed = listOf(header.saleID, header.serviceID, header.poiid) == listOf(identity.saleId, serviceId, identity.poiId)
+        return addressed && header.messageCategory == category && header.messageType == MessageType.RESPONSE
     }
 
     private fun statusRequest(

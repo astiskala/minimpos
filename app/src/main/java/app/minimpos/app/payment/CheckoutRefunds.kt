@@ -56,6 +56,9 @@ class CheckoutRefunds(
     /** The refund running now, which the refund screens follow to its result. */
     val state: StateFlow<TransactionState> = operations.state
 
+    /** Whether a stored API request is being checked or resent now. */
+    internal val checking: Boolean get() = operations.checking
+
     /**
      * Sends [request] in the background and returns the new refund's ID straight away; null, with nothing stored or sent,
      * while another refund is running or [request] is not a Checkout refund of a stored sale.

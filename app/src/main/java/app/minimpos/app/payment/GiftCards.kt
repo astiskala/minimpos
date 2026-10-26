@@ -253,8 +253,8 @@ sealed interface GiftCardRequest {
 
 /**
  * Why staff cannot start [operation] now: the destination takes no gift cards or is not set up ([blocked]), no
- * configured provider ([setting]) supports it, or a value change lacks a configured Manager PIN ([managerConfigured],
- * the capabilities plan's provisional default); null when it can start. Pure; the Gift cards screen shows it.
+ * configured provider ([setting]) supports it, or a value change lacks a configured Manager PIN ([managerConfigured]);
+ * null when it can start. Pure; the Gift cards screen shows it.
  */
 fun giftCardStartProblem(
     operation: GiftCardOperation,
@@ -308,8 +308,8 @@ sealed interface GiftCardBalanceResult {
  * automatically.
  *
  * One activity runs at a time, on [scope] so it survives navigation; [state] follows it like other financial
- * operations. Value changes, funding repairs and cash handovers need a configured Manager PIN under the capabilities
- * plan's provisional working default, checked again immediately before sending; balance inquiries need none.
+ * operations. Value changes, funding repairs and cash handovers need a configured Manager PIN, checked again
+ * immediately before sending; balance inquiries need none.
  *
  * @param scope Application scope.
  * @param gateway Sends the requests.
@@ -351,6 +351,9 @@ class GiftCards(
     private val sending = mutableMapOf<String, Pair<String, TransactionKind>>()
     private val current = mutableMapOf<String, String>()
     private val rechecks = Mutex()
+
+    /** Whether an original terminal request is being checked now; setup and history maintenance wait for it. */
+    internal val checking: Boolean get() = rechecks.isLocked
 
     /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
     internal fun forgetAll() = runner.forgetAll()
@@ -589,12 +592,13 @@ class GiftCards(
         val fund = stage(change, GiftCardStage.FUNDING_CARD, funds = change.stage)
         val paid =
             records.open(fund) &&
-                send(fund, grant) { onSending, onContext ->
+                send(fund, grant) { onSending, onContext, authorized ->
                     gateway.pay(
                         PaymentParams(change.amountMinor, change.currency, fund.merchantReference, appPrintsReceipts = true),
                         checkNotNull(fund.serviceId),
                         onContext = onContext,
                         onSending = onSending,
+                        authorized = authorized,
                     )
                 } == GiftCardStatus.SUCCEEDED
         return if (paid) Funded(records.get(fund.id)?.context) else null
@@ -635,13 +639,14 @@ class GiftCards(
         val operation = if (change.stage == GiftCardStage.ACTIVATE) StoredValueOperation.ACTIVATE else StoredValueOperation.LOAD
         // A new activity without funding, or confirmed funding that has delivered no value and is not being repaired.
         return records.open(entity) { it == null || GiftCardAction.CONTINUE in it.attention } &&
-            send(entity, grant) { onSending, onContext ->
+            send(entity, grant) { onSending, onContext, authorized ->
                 gateway.storedValue(
                     StoredValueParams(operation, card.account, change.amountMinor, change.currency, entity.merchantReference),
                     checkNotNull(entity.serviceId),
                     expected,
-                    onContext,
-                    onSending,
+                    authorized = authorized,
+                    onContext = onContext,
+                    onSending = onSending,
                 )
             } == GiftCardStatus.SUCCEEDED
     }
@@ -662,7 +667,7 @@ class GiftCards(
             )
         val original = load.pspReference?.let { ".$it" } ?: checkNotNull(load.poiTransactionId)
         return records.open(entity) { it != null && GiftCardAction.UNDO_LOAD in it.actions(now) } &&
-            send(entity, grant) { onSending, onContext ->
+            send(entity, grant) { onSending, onContext, authorized ->
                 gateway.storedValue(
                     StoredValueParams(
                         StoredValueOperation.UNDO_LOAD,
@@ -675,8 +680,9 @@ class GiftCards(
                     ),
                     checkNotNull(entity.serviceId),
                     load.context,
-                    onContext,
-                    onSending,
+                    authorized = authorized,
+                    onContext = onContext,
+                    onSending = onSending,
                 )
             } == GiftCardStatus.SUCCEEDED
     }
@@ -692,13 +698,14 @@ class GiftCards(
         val serviceId = checkNotNull(entity.serviceId)
         return supported &&
             records.open(entity) &&
-            send(entity, grant) { onSending, onContext ->
+            send(entity, grant) { onSending, onContext, authorized ->
                 if (change.stage == GiftCardStage.DEACTIVATE) {
                     gateway.storedValue(
                         StoredValueParams(StoredValueOperation.DEACTIVATE, card.account, 0, change.currency, entity.merchantReference),
                         serviceId,
                         onContext = onContext,
                         onSending = onSending,
+                        authorized = authorized,
                     )
                 } else {
                     val use = if (change.stage == GiftCardStage.CASH_OUT) GiftCardUse.CASH_OUT else GiftCardUse.REFUND
@@ -714,6 +721,7 @@ class GiftCards(
                         serviceId,
                         onContext = onContext,
                         onSending = onSending,
+                        authorized = authorized,
                     )
                 }
             } == GiftCardStatus.SUCCEEDED
@@ -728,13 +736,14 @@ class GiftCards(
         val entity =
             stage(Change(groupId, null, funding.movedMinor, funding.currency, GiftCardStage.FUNDING_REFUND)).copy(originalId = funding.id)
         return records.open(entity) { GiftCardAction.REFUND_FUNDING in it?.attention.orEmpty() } &&
-            send(entity, grant) { onSending, onContext ->
+            send(entity, grant) { onSending, onContext, authorized ->
                 gateway.refund(
                     RefundParams(checkNotNull(funding.poiTransactionId), checkNotNull(funding.poiTimestamp), entity.merchantReference),
                     checkNotNull(entity.serviceId),
                     funding.context,
-                    onContext,
-                    onSending,
+                    authorized = authorized,
+                    onContext = onContext,
+                    onSending = onSending,
                 )
             } == GiftCardStatus.SUCCEEDED
     }
@@ -763,7 +772,11 @@ class GiftCards(
     private suspend fun send(
         entity: GiftCardOperationEntity,
         grant: ManagerApproval.Grant,
-        call: suspend (onSending: suspend (String) -> Unit, onContext: suspend (PaymentContext) -> Unit) -> Attempt<TransactionOutcome>,
+        call: suspend (
+            onSending: suspend (String) -> Unit,
+            onContext: suspend (PaymentContext) -> Unit,
+            authorized: suspend () -> Boolean,
+        ) -> Attempt<TransactionOutcome>,
     ): GiftCardStatus {
         current[entity.groupId] = entity.id
         val attempt =
@@ -782,6 +795,7 @@ class GiftCards(
                         }
                     },
                     { records.recordContext(entity.id, it) },
+                    { approval.allowsConfigured(grant) },
                 )
             }
         val settlement =

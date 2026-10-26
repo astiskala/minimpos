@@ -20,6 +20,7 @@ import app.minimpos.app.history.cancellable
 import app.minimpos.app.items
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
@@ -312,6 +313,42 @@ class UnreferencedRefundsTest {
         val cancellations = RefundCancellations(container.refundRecords, container.api::target, { true }, approval, clock)
         await { assertThat(cancellations.cancel(id)).isEqualTo(RefundCancelResult.Requested) }
         await { assertThat(cancellations.cancel(id)).isEqualTo(RefundCancelResult.NotAllowed) }
+    }
+
+    @Test
+    fun `approval expiring while the cancellation target is unlocked sends nothing`() {
+        val id = run(request())
+        val accepted = await { checkNotNull(container.refundRecords.get(id)) }
+        val voids = Voids()
+        val target = ApiTarget(ApiSetup.Complete, voids, context = accepted.context)
+        val cancellations =
+            RefundCancellations(container.refundRecords, {
+                time += 60_001L
+                target
+            }, { true }, approval, clock)
+        assertThat(await { cancellations.cancel(id) }).isEqualTo(RefundCancelResult.NotAllowed)
+        assertThat(voids.sent).isEmpty()
+        assertThat(await { container.refundRecords.get(id)?.cancelStatus }).isNull()
+    }
+
+    @Test
+    fun `approval expiring while the terminal context is stored sends no refund`() {
+        val start = request()
+        val delayed =
+            object : TransactionBook<UnreferencedRefundStart> by book {
+                override suspend fun recordContext(
+                    id: String,
+                    context: PaymentContext,
+                ) {
+                    book.recordContext(id, context)
+                    time += 60_001L
+                }
+            }
+        val id = run(start, runner(delayed))
+        val refund = await { checkNotNull(container.refundRecords.get(id)) }
+        assertThat(refund.status).isEqualTo(RefundStatus.FAILED)
+        assertThat(refund.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))
+        assertThat(refund.pspReference).isNull()
     }
 
     /** Records cancellation requests and answers them with [answer]; nothing else is sent. */

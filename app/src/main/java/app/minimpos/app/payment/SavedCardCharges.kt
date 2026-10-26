@@ -138,6 +138,9 @@ class SavedCardCharges(
     /** The charge running now, which the charging screen follows to its result. */
     val state: StateFlow<TransactionState> = operations.state
 
+    /** Whether a stored API request is being checked or resent now. */
+    internal val checking: Boolean get() = operations.checking
+
     /**
      * Makes a memory-only lookup for [checkouts] and [terminal] in [scope]. Null [delay] requires explicit lookup;
      * otherwise each unchanged eligible reference is looked up after that delay.

@@ -1,6 +1,6 @@
 # Mini mPOS threat model
 
-Version: 1.1.0. Updated: 2026-10-24. Method: STRIDE. Local pre-deployment audit context, not a certification.
+Version: 1.2.0. Updated: 2026-10-26. Method: STRIDE. Local pre-deployment audit context, not a certification.
 
 ## 1. System Overview
 
@@ -12,6 +12,8 @@ setup helper. JVM tooling prepares versions, verifies release artifacts and pars
 
 Payments persist their identity and request facts before transmission. The terminal or Payments app takes the card.
 Results flow through validated transports into stored transaction events and receipt delivery.
+Gift-card value changes, split tenders, card cash payouts and unreferenced refunds use the same durable boundaries.
+Gift-card numbers are single-use memory-only inputs; history retains last-four digits and original terminal receipts.
 GitHub CI verifies source and builds unsigned APKs. Only the separate release environment exposes signing material.
 
 ## 2. Trust Boundaries and Security Zones
@@ -31,6 +33,8 @@ GitHub CI verifies source and builds unsigned APKs. Only the separate release en
 
 There is no public application HTTP server or file-upload endpoint. External interfaces are outbound Adyen HTTPS,
 encrypted Terminal API, Payments app links, SMTP, optional GitHub release checks, QR import and Android file sharing.
+Checkout token deletion and Classic Payments `/voidPendingRefund` are explicit outbound mutations. An uncertain token
+deletion is reconciled by listing; an uncertain refund cancellation reuses its stored identity and first-send time.
 The setup helper runs local browser code under a no-network Content Security Policy.
 Repository interfaces include GitHub events, workflow inputs, API run metadata, downloaded artifacts and shell scripts.
 
@@ -61,6 +65,9 @@ Threats below describe attack patterns and accepted risks, not confirmed vulnera
 Existing mitigations include typed validation, Long minor-unit money, bounded transfer KDF counts, authenticated
 encryption, Adyen certificate validation, request matching, persisted operation facts, idempotent recovery,
 parameterized Room access, PIN lockouts, narrow file sharing, offline helper CSP, pinned actions and binary checksums.
+Recovery reads the original message category and rejects conflicting echoed or repeated identities. Approval must hold
+after setup/persistence and before each network stage, including a capture following an adjustment. Active recovery,
+link operations, captures and whole multi-leg returns hold setup and history maintenance steady.
 CI retains lint, coverage, architecture, API-level, browser and release-integrity checks. Workflow expressions enter
 shell scripts through environment variables; verified numeric run identities are never shell-evaluated.
 
@@ -112,3 +119,5 @@ controls remain trusted. Cache writes stay scoped to trusted main builds; forks 
 - 1.1.0: Moved out of the agent-specific `.factory/` directory; reviews follow
   [minimpos-security-review](../.agents/skills/minimpos-security-review/SKILL.md) and report in the change, not a
   committed findings file.
+- 1.2.0: Expanded financial boundaries for the capabilities integration; clarified category/identity checks, approval
+  freshness between request stages, mutation recovery and running-operation protection.

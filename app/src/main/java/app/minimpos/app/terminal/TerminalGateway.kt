@@ -339,7 +339,8 @@ class TerminalGateway(
 
     /**
      * Takes a card payment, see [TerminalClient.pay]. [onSending] is called with the terminal's POIID right before the
-     * request is sent; without complete setup, the Checkout API included, nothing is sent ([Attempt.NotSetUp]), and an
+     * request is sent; [authorized] rechecks approval after setup and persistence. Without complete setup, including
+     * the Checkout API, nothing is sent ([Attempt.NotSetUp]), and an
      * unreachable destination is [TransactionOutcome.NotProcessed]. For audio guidance, [audioGuidancePoiId] names the
      * terminal whose requirements the operator confirmed; changed or unsupported destinations send no payment.
      */
@@ -351,10 +352,11 @@ class TerminalGateway(
         expectedIdentity: String? = null,
         cashbackIdentity: String? = null,
         unreferencedIdentity: String? = null,
+        authorized: suspend () -> Boolean = { true },
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
     ): Attempt<TransactionOutcome> =
-        send(paying = true, serviceId, onSending, onContext, expected, expectedIdentity) {
+        send(paying = true, serviceId, onSending, onContext, expected, expectedIdentity, authorized) {
             val configured =
                 cashbackConfigured(params, it.context(), cashbackIdentity) &&
                     unreferencedConfigured(params, it.destination, it.context(), unreferencedIdentity)
@@ -445,9 +447,13 @@ class TerminalGateway(
         params: RefundParams,
         serviceId: String,
         expected: PaymentContext? = null,
+        authorized: suspend () -> Boolean = { true },
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
-    ): Attempt<TransactionOutcome> = send(paying = false, serviceId, onSending, onContext, expected) { it.client.refund(params, serviceId) }
+    ): Attempt<TransactionOutcome> =
+        send(paying = false, serviceId, onSending, onContext, expected, authorized = authorized) {
+            it.client.refund(params, serviceId)
+        }
 
     /**
      * Activates, loads, undoes a load of or deactivates a gift card, see [TerminalClient.storedValue]; [onSending] and
@@ -459,10 +465,11 @@ class TerminalGateway(
         params: StoredValueParams,
         serviceId: String,
         expected: PaymentContext? = null,
+        authorized: suspend () -> Boolean = { true },
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
     ): Attempt<TransactionOutcome> =
-        send(paying = true, serviceId, onSending, onContext, expected) {
+        send(paying = true, serviceId, onSending, onContext, expected, authorized = authorized) {
             if (it.destination.giftCards) it.client.storedValue(params, serviceId) else TransactionOutcome.NotProcessed(Fault.Unsupported)
         }
 
@@ -657,6 +664,7 @@ class TerminalGateway(
         onContext: suspend (PaymentContext) -> Unit,
         expected: PaymentContext? = null,
         expectedIdentity: String? = null,
+        authorized: suspend () -> Boolean = { true },
         call: suspend (Connection.Open) -> TransactionOutcome,
     ): Attempt<TransactionOutcome> =
         attempt(paying, expectedIdentity, unreachable = { TransactionOutcome.NotProcessed(it) }) { open ->
@@ -665,6 +673,7 @@ class TerminalGateway(
             } else {
                 onContext(open.context())
                 onSending(open.client.identity.poiId)
+                if (!authorized()) return@attempt Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
                 val outcome = call(open)
                 onContext(open.context())
                 Attempt.Made(outcome) { open.acknowledge(serviceId) }

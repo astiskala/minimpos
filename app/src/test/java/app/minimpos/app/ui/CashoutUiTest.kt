@@ -21,6 +21,7 @@ import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.MiniMposTheme
+import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.cancel
 import org.junit.Rule
 import org.junit.Test
@@ -55,7 +56,10 @@ class CashoutUiTest {
     @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
     fun `Traditional Chinese cashout fits AMS1`() = cashout()
 
-    private fun cashout() {
+    @Test
+    fun `cashout initiation rechecks setup after the screen opens`() = cashout(gateBlocked = true)
+
+    private fun cashout(gateBlocked: Boolean = false) {
         val container = env.container
         env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "AUD")) }
         await {
@@ -101,6 +105,11 @@ class CashoutUiTest {
             compose.onNodeWithTag("cashoutCard").performScrollTo().performClick()
             compose.awaitCondition("cashout ready") { vm.state.value.ready }
             compose.onNodeWithTag("startCashout").assertIsDisplayed().assertIsEnabled()
+            if (gateBlocked) {
+                compose.runOnIdle { container.setupGate.follow(true) {} }
+                compose.onNodeWithTag("startCashout").performClick()
+                compose.runOnIdle { assertThat(container.setupGate.explaining).isTrue() }
+            }
         } finally {
             vm.viewModelScope.cancel()
         }

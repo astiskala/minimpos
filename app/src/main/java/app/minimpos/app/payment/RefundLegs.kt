@@ -18,7 +18,7 @@ enum class RefundLegSkip {
     /** An earlier leg was not accepted, so later legs wait for staff review. */
     EARLIER_LEG,
 
-    /** Cash returns need a configured Manager PIN and an unexpired approval (the plan's provisional default). */
+    /** Cash returns need a configured Manager PIN and an unexpired approval. */
     MANAGER_APPROVAL,
 
     /** The sale's balances or returns changed since the review; review the return again. */

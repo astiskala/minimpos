@@ -17,9 +17,12 @@ import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.client.balance
 import app.minimpos.terminal.client.storedValue
+import app.minimpos.terminal.parse.AdditionalResponseParser
+import app.minimpos.terminal.simulator.SimulatedGiftCards
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.TerminalSimulator
+import app.minimpos.terminal.simulator.answerStoredValue
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalTransport
@@ -450,6 +453,17 @@ class GiftCardsTest {
         }
 
     @Test
+    fun `the gift card ledger refuses unsupported and absent operation types without changing value`() {
+        val ledger = SimulatedGiftCards(clock)
+        listOf(StoredValueTransactionType.RESERVE, StoredValueTransactionType.DUPLICATE, null).forEach { type ->
+            val data = StoredValueData().apply { storedValueTransactionType = type }
+            val refusal = ledger.answerStoredValue(data, "PSP") as SimulatedGiftCards.Answer.Refused
+            assertThat(refusal.refusal).isEqualTo("Unsupported stored value operation (simulated)")
+        }
+        assertThat(ledger.answerStoredValue(null, "PSP")).isInstanceOf(SimulatedGiftCards.Answer.Refused::class.java)
+    }
+
+    @Test
     fun `the simulator refuses stored value operations it does not take`() =
         runTest {
             val request =
@@ -467,6 +481,7 @@ class GiftCardsTest {
             val answer = (simulator.send(request, 1.hours) as Delivery.Answered).response
             val result = answer?.saleToPOIResponse?.storedValueResponse?.response
             assertThat(result?.result).isEqualTo(ResultType.FAILURE)
-            assertThat(result?.additionalResponse).isNotEmpty()
+            assertThat(AdditionalResponseParser.parse(result?.additionalResponse)["refusalReason"])
+                .isEqualTo("Unsupported stored value operation (simulated)")
         }
 }

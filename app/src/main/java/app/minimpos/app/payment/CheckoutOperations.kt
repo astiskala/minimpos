@@ -148,6 +148,9 @@ class CheckoutOperations<R, C>(
     /** The operation running now, which its screen follows to the result. */
     val state: StateFlow<TransactionState> = runner.state
 
+    /** Whether a stored request is being sent again under the operation lock. */
+    internal val checking: Boolean get() = mutex.isLocked
+
     /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
     internal fun forgetAll() = runner.forgetAll()
 
@@ -209,6 +212,9 @@ class CheckoutOperations<R, C>(
                 // operation may already have happened, so missing setup or a different context must leave it unchanged.
                 is ApiAccess.Blocked -> return notSent(id, record.pending, access.problem)
             }
+        if (!(if (grant != null) approval.allows(grant) else approval.allowsNow())) {
+            return notSent(id, record.pending, SetupProblem.MANAGER_APPROVAL)
+        }
         return when (val answer = book.send(id, client, clock.millis())) {
             is CheckoutAnswer.Unconfirmed -> {
                 answer.failure

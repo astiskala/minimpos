@@ -84,7 +84,7 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   model eligibility; Checkout still validates pure request facts. Tokens retains its explicit lookup across
   reference/cart/review screens; checkout's automatic lookup stays screen-scoped. Only `SavedCardCharges` deletes tokens,
   serializing with charges/rechecks and invalidating every lookup before sending. Confirmed deletion requires a
-  configured Manager PIN under the capabilities plan's provisional working default; admin unlock never authorizes it.
+  configured Manager PIN; admin unlock never authorizes it.
 - \* Only `CashTenders` records cash tenders and gift-card cash handovers, and only `RefundLegs` records cash handed
   back; cash reaches neither Adyen nor a terminal, so the stored balance, allocation and review checks are its only
   safeguards. `TenderBalance` is the one allocation reading; returns of split sales go to every original tender through
@@ -92,8 +92,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
 - Only `GiftCards` sends stored-value stages, each stored before sending and recovered with its original message
   category; `GiftCardActivity` alone decides what an activity still needs (check, continue, repair, handover, undo).
   Card cashback handovers also belong to `CashTenders`; approval never implies physical cash handover.
-  Gift-card value changes, repairs and handovers require a configured Manager PIN under the capabilities plan's
-  provisional default; balance inquiries and redemption do not. Never store gift-card numbers or PINs.
+  Gift-card value changes, repairs and handovers require a configured Manager PIN; balance
+  inquiries and redemption do not. Never store gift-card numbers or PINs.
 - \* Unreferenced refunds start only through `StoredPaymentActions.refundWithoutReceipt`, which rechecks
   `UnreferencedRefunds` readiness (verified store country, explicit enablement, local limit); the gateway checks the
   confirmed configuration again at send and `TransactionLifecycle` a configured Manager PIN. They are refunds in history

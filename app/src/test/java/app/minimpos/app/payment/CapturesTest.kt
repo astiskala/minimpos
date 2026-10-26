@@ -12,7 +12,9 @@ import app.minimpos.app.data.db.SaleLineEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.Secret
+import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.standing
@@ -143,6 +145,21 @@ class CapturesTest {
         }
 
     private fun sale(id: String = "s1") = await { container.sales.get(id)!!.sale }
+
+    @Test
+    fun `approval expiring during adjustment prevents the subsequent capture`() {
+        store()
+        var time = 1000L
+        val lock = SessionLock { time }.apply { unlock() }
+        val approval = ManagerApproval({ true }, lock) { 60_000L }
+        val protected = Captures(container.sales, { target }, approval)
+        fake.beforeAnswer = { time += 60_001L }
+        assertThat(await { protected.addTip("s1", 600) }).isEqualTo(CaptureResult.NotAllowed)
+        assertThat(fake.adjustments).hasSize(1)
+        assertThat(fake.captures).isEmpty()
+        assertThat(sale().authorisedMinor).isEqualTo(2600)
+        assertThat(sale().captureStatus).isNull()
+    }
 
     @Test
     fun `closing the caller during adjustment still captures and records the answer without continuing the caller`() {

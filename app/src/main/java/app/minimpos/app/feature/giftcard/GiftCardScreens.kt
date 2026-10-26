@@ -89,9 +89,9 @@ import app.minimpos.core.money.AmountEntry as AmountValue
 
 /**
  * Gift cards from Home: choose a configured provider and how its card is presented, then read the balance or start a
- * value change. Value changes are confirmed, then approved with the Manager PIN (required under the capabilities plan's
- * provisional default) before they start; a balance inquiry is an ordinary request. Below, activities that still need
- * a check, a confirmation or a repair, and loads that may still be undone, open their own screen.
+ * value change. Value changes are confirmed, then approved with the Manager PIN before they start; a balance inquiry
+ * is an ordinary request. Below, activities that still need a check, a confirmation or a repair, and loads that may
+ * still be undone, open their own screen.
  */
 @Composable
 fun GiftCardsScreen(

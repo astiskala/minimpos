@@ -98,6 +98,9 @@ class Captures(
 ) {
     private val mutex = Mutex()
 
+    /** Whether a capture or adjustment is using the current API target, including a chained request. */
+    internal val active: Boolean get() = mutex.isLocked
+
     /** Enters the tip of [saleId] ([tipMinor] in minor units, 0 for no tip) and captures the bill plus the tip. */
     suspend fun addTip(
         saleId: String,
@@ -221,6 +224,7 @@ class Captures(
         amount: Long,
         modifications: PaymentModifications,
     ): CaptureResult {
+        if (!approval.allowsNow()) return CaptureResult.NotAllowed
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
         // An unresolved request keeps its identity; a separate renewal or amount change gets a new identity.
         if (sale.adjustmentPending && sale.adjustmentAmountMinor != amount) return CaptureResult.NotAllowed
@@ -257,6 +261,7 @@ class Captures(
         modifications: PaymentModifications,
         tipMinor: Long? = null,
     ): CaptureResult {
+        if (!approval.allowsNow()) return CaptureResult.NotAllowed
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
         val unresolved = sale.standing in setOf(PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN)
         if (sale.capturedMinor == amount) {

@@ -611,6 +611,8 @@ class AppContainer(
             giftCards,
             unreferencedRefunds,
             refundCancellations,
+            captures,
+            refundRun = ::currentRefundRun,
         )
 
     private fun historyPurged() {
@@ -637,6 +639,8 @@ class AppContainer(
 
     /** Returns split across several tenders or including cash, one persisted leg at a time. */
     val refundLegs = RefundLegs(appScope, operations, refundRecords, managerApproval)
+
+    private fun currentRefundRun() = refundLegs.state.value
 
     /**
      * One terminal reconciliation: rechecks unresolved terminal operations, reads or closes the period and compares its

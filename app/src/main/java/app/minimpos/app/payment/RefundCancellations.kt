@@ -72,9 +72,7 @@ class RefundCancellations(
     private val mutex = Mutex()
 
     /** Whether a cancellation is being sent now, so the configuration it is sent with must not be replaced. */
-    @Volatile
-    var running: Boolean = false
-        private set
+    val running: Boolean get() = mutex.isLocked
 
     /** Asks Adyen to cancel refund [id], or sends an unresolved cancellation of it again with its original identity. */
     suspend fun cancel(id: String): RefundCancelResult =
@@ -95,12 +93,8 @@ class RefundCancellations(
                             return@withLock RefundCancelResult.Unconfirmed(Failure.NotSetUp(it))
                         }
                     }
-                    running = true
-                    try {
-                        withContext(NonCancellable) { send(refund, access) }
-                    } finally {
-                        running = false
-                    }
+                    if (!approval.allowsNow()) return@withLock RefundCancelResult.NotAllowed
+                    withContext(NonCancellable) { send(refund, access) }
                 }
             }
         }

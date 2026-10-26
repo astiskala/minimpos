@@ -274,6 +274,9 @@ class TransactionLifecycle<R>(
     private val serviceIds = mutableMapOf<String, String>()
     private val rechecks = Mutex()
 
+    /** Whether an original terminal request is being checked now; setup and history maintenance wait for it. */
+    internal val checking: Boolean get() = rechecks.isLocked
+
     /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
     internal fun forgetAll() = runner.forgetAll()
 
@@ -400,6 +403,7 @@ class TransactionLifecycle<R>(
                             cashbackIdentity = operation.cashbackIdentity,
                             unreferencedIdentity = operation.unreferencedIdentity,
                             onSending = onSending,
+                            authorized = { allowed(operation, grant) },
                             onContext = { book.recordContext(id, it) },
                         )
                     }
@@ -407,7 +411,7 @@ class TransactionLifecycle<R>(
                     is TerminalOperation.Refund -> {
                         gateway.refund(operation.params, serviceId, onSending = onSending, onContext = {
                             book.recordContext(id, it)
-                        }, expected = book.expectedContext(request))
+                        }, expected = book.expectedContext(request), authorized = { allowed(operation, grant) })
                     }
                 }
             }

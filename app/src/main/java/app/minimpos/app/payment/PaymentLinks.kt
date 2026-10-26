@@ -102,6 +102,9 @@ class PaymentLinks(
             mutex = mutex,
         )
 
+    /** Whether creation, recovery, a status check or cancellation is using the current API target. */
+    internal val active: Boolean get() = operations.state.value is TransactionState.Processing || mutex.isLocked
+
     /** Highest accepted revision per payment kind; older starts stay rejected without retaining every checkout. */
     private val linkedRevisions = mutableMapOf<SaleKind, Long>()
 

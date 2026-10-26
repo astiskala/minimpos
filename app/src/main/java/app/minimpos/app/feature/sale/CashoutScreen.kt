@@ -22,6 +22,7 @@ import app.minimpos.app.ui.components.NumericKeypad
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SwitchRow
+import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -35,6 +36,7 @@ internal fun CashoutScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(state.currency)
+    val gate = currentSetupGate()
     var confirm by remember { mutableStateOf(false) }
     var approve by remember { mutableStateOf(false) }
     if (approve) {
@@ -59,7 +61,7 @@ internal fun CashoutScreen(
         BottomActions {
             PrimaryButton(
                 stringResource(R.string.cashout_start, money.format(state.amount.minor)),
-                { confirm = true },
+                { gate.run { confirm = true } },
                 enabled = state.ready,
                 modifier = Modifier.testTag("startCashout"),
             )

@@ -90,7 +90,7 @@ class RefundCancellations(
 
                 is ApiAccess.Ready -> {
                     if (unresolved) {
-                        CheckoutOperations.retryProblem(refund.cancelStartedAt, clock.millis(), refund.cancelReason)?.let {
+                        OperationIdentity.replayProblem(refund.cancelStartedAt, clock.millis(), refund.cancelReason)?.let {
                             return@withLock RefundCancelResult.Unconfirmed(Failure.NotSetUp(it))
                         }
                     }
@@ -124,10 +124,10 @@ class RefundCancellations(
                 is ModificationResult.Failed -> {
                     val failure = Failure.Remote(result.fault)
                     // An earlier unresolved request stays unresolved: this answer cannot say the first one was not received.
-                    if (result.fault.mayHaveTakenEffect || refund.cancelStatus?.unresolved == true) {
-                        RefundCancelStatus.UNKNOWN to RefundCancelResult.Unconfirmed(failure)
-                    } else {
+                    if (OperationIdentity.failed(refund.cancelStatus?.unresolved == true, result.fault) == FailedSend.NOT_DONE) {
                         RefundCancelStatus.FAILED to RefundCancelResult.NotDone(failure)
+                    } else {
+                        RefundCancelStatus.UNKNOWN to RefundCancelResult.Unconfirmed(failure)
                     }
                 }
             }

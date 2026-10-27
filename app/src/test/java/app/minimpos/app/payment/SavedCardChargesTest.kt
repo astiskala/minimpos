@@ -269,7 +269,7 @@ class SavedCardChargesTest {
         target = ApiTarget(ApiSetup.Complete, modifications, context = context, cards = cards)
         assertThat(await { charges.recheck(unknown) }).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))
         manager.unlock()
-        now = now.plus(CheckoutOperations.RECHECK_WINDOW).plusSeconds(1)
+        now = now.plus(OperationIdentity.REPLAY_WINDOW).plusSeconds(1)
         assertThat(await { charges.recheck(unknown) }).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD)))
         assertThat(sent).hasSize(1)
         assertThat(sale(unknown).status).isEqualTo(SaleStatus.UNKNOWN)

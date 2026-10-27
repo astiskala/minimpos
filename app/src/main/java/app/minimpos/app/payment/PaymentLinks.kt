@@ -284,13 +284,19 @@ class PaymentLinks(
             id: String,
             client: PaymentLinkApi,
             now: Long,
-        ): CheckoutAnswer {
-            val record = sales.get(id) ?: return CheckoutAnswer.NotTaken
+        ): CheckoutReply {
+            val record = sales.get(id) ?: return CheckoutReply { CheckoutAnswer.NotTaken }
             val result = client.create(PaymentLinkRequests.request(record), idempotencyKey(id))
-            if (record.sale.status == SaleStatus.UNKNOWN && result is PaymentLinkResult.Failed && !result.fault.mayHaveTakenEffect) {
-                return CheckoutAnswer.Unconfirmed(Failure.Remote(result.fault))
-            }
-            return when (result) {
+            return CheckoutReply((result as? PaymentLinkResult.Failed)?.fault) { failed -> stored(id, result, failed) }
+        }
+
+        /** Stores [result], which [failed] classifies when it failed, and says what it established. */
+        private suspend fun stored(
+            id: String,
+            result: PaymentLinkResult,
+            failed: FailedSend?,
+        ): CheckoutAnswer =
+            when (result) {
                 is PaymentLinkResult.Answered -> {
                     val answered = SaleEvent.LinkAnswered(result.link)
                     sales.record(id, answered)
@@ -301,7 +307,7 @@ class PaymentLinks(
                     }
                 }
 
-                is PaymentLinkResult.Failed if !result.fault.mayHaveTakenEffect -> {
+                is PaymentLinkResult.Failed if failed == FailedSend.NOT_DONE -> {
                     sales.record(id, SaleEvent.NotSent(result.fault))
                     CheckoutAnswer.NotTaken
                 }
@@ -312,7 +318,6 @@ class PaymentLinks(
                     CheckoutAnswer.Unconfirmed(failure)
                 }
             }
-        }
 
         override suspend fun notSent(
             id: String,

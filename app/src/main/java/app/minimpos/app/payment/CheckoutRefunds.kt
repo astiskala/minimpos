@@ -126,39 +126,38 @@ class CheckoutRefunds(
             id: String,
             client: PaymentModifications,
             now: Long,
-        ): CheckoutAnswer {
-            val refund = refunds.get(id) ?: return CheckoutAnswer.NotTaken
-            val psp = pspReference(id) ?: return CheckoutAnswer.NotTaken
+        ): CheckoutReply {
+            val refund = refunds.get(id) ?: return CheckoutReply { CheckoutAnswer.NotTaken }
+            val psp = pspReference(id) ?: return CheckoutReply { CheckoutAnswer.NotTaken }
             val amount = ModificationAmount(refund.currency, refund.amountMinor)
             val result = client.refund(psp, amount, refund.merchantReference, idempotencyKey(id))
-            if (refund.status == RefundStatus.UNKNOWN && result is ModificationResult.Failed && !result.fault.mayHaveTakenEffect) {
-                return CheckoutAnswer.Unconfirmed(Failure.Remote(result.fault))
-            }
-            return when (result) {
-                is ModificationResult.Received -> {
-                    refunds.settle(id, RefundStatus.REQUESTED, null, null, pspReference = result.pspReference)
-                    CheckoutAnswer.Taken
-                }
+            return CheckoutReply((result as? ModificationResult.Failed)?.fault) { failed ->
+                when (result) {
+                    is ModificationResult.Received -> {
+                        refunds.settle(id, RefundStatus.REQUESTED, null, null, pspReference = result.pspReference)
+                        CheckoutAnswer.Taken
+                    }
 
-                is ModificationResult.Authorised -> {
-                    refunds.settle(id, RefundStatus.REQUESTED, null, null, pspReference = result.pspReference)
-                    CheckoutAnswer.Taken
-                }
+                    is ModificationResult.Authorised -> {
+                        refunds.settle(id, RefundStatus.REQUESTED, null, null, pspReference = result.pspReference)
+                        CheckoutAnswer.Taken
+                    }
 
-                is ModificationResult.Refused -> {
-                    refunds.settle(id, RefundStatus.FAILED, result.said?.text, null)
-                    CheckoutAnswer.NotTaken
-                }
+                    is ModificationResult.Refused -> {
+                        refunds.settle(id, RefundStatus.FAILED, result.said?.text, null)
+                        CheckoutAnswer.NotTaken
+                    }
 
-                is ModificationResult.Failed if result.fault.mayHaveTakenEffect -> {
-                    val failure = Failure.Remote(result.fault)
-                    refunds.settle(id, RefundStatus.UNKNOWN, null, null, StoredReason.Unconfirmed(failure))
-                    CheckoutAnswer.Unconfirmed(failure)
-                }
+                    is ModificationResult.Failed if failed == FailedSend.UNCONFIRMED -> {
+                        val failure = Failure.Remote(result.fault)
+                        refunds.settle(id, RefundStatus.UNKNOWN, null, null, StoredReason.Unconfirmed(failure))
+                        CheckoutAnswer.Unconfirmed(failure)
+                    }
 
-                is ModificationResult.Failed -> {
-                    refunds.settle(id, RefundStatus.FAILED, null, null, StoredReason.NotDone(Failure.Remote(result.fault)))
-                    CheckoutAnswer.NotTaken
+                    is ModificationResult.Failed -> {
+                        refunds.settle(id, RefundStatus.FAILED, null, null, StoredReason.NotDone(Failure.Remote(result.fault)))
+                        CheckoutAnswer.NotTaken
+                    }
                 }
             }
         }

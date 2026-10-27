@@ -229,7 +229,7 @@ class Captures(
         // An unresolved request keeps its identity; a separate renewal or amount change gets a new identity.
         if (sale.adjustmentPending && sale.adjustmentAmountMinor != amount) return CaptureResult.NotAllowed
         if (sale.adjustmentPending) {
-            CheckoutOperations.retryProblem(sale.adjustmentStartedAt, clock.millis(), sale.modificationReason)?.let {
+            OperationIdentity.replayProblem(sale.adjustmentStartedAt, clock.millis(), sale.modificationReason)?.let {
                 return CaptureResult.Unconfirmed(Failure.NotSetUp(it))
             }
         }
@@ -243,14 +243,15 @@ class Captures(
                 sale.adjustAuthorisationData,
                 key,
             )
-        return if (sale.adjustmentPending && result is ModificationResult.Failed && !result.fault.mayHaveTakenEffect) {
+        val failed = (result as? ModificationResult.Failed)?.let { OperationIdentity.failed(sale.adjustmentPending, it.fault) }
+        return if (result is ModificationResult.Failed && failed == FailedSend.UNCHANGED) {
             CaptureResult.Unconfirmed(Failure.Remote(result.fault))
         } else {
             sales.record(sale.id, SaleEvent.AdjustmentAnswered(amount, result))
             when (result) {
                 is ModificationResult.Authorised, is ModificationResult.Received -> CaptureResult.Adjusted
                 is ModificationResult.Refused -> CaptureResult.Refused(result.said)
-                is ModificationResult.Failed -> result.fault.captureResult()
+                is ModificationResult.Failed -> result.fault.captureResult(failed)
             }
         }
     }
@@ -265,7 +266,7 @@ class Captures(
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
         val unresolved = sale.standing in setOf(PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN)
         if (sale.capturedMinor == amount) {
-            CheckoutOperations.retryProblem(sale.captureStartedAt, clock.millis(), sale.modificationReason)?.let {
+            OperationIdentity.replayProblem(sale.captureStartedAt, clock.millis(), sale.modificationReason)?.let {
                 return CaptureResult.Unconfirmed(Failure.NotSetUp(it))
             }
         }
@@ -277,19 +278,20 @@ class Captures(
                 sale.merchantReference,
                 "capture-${sale.id}-$amount",
             )
-        return if (unresolved && result is ModificationResult.Failed && !result.fault.mayHaveTakenEffect) {
+        val failed = (result as? ModificationResult.Failed)?.let { OperationIdentity.failed(unresolved, it.fault) }
+        return if (result is ModificationResult.Failed && failed == FailedSend.UNCHANGED) {
             CaptureResult.Unconfirmed(Failure.Remote(result.fault))
         } else {
             sales.record(sale.id, SaleEvent.CaptureAnswered(result))
             when (result) {
                 is ModificationResult.Received, is ModificationResult.Authorised -> CaptureResult.Requested
                 is ModificationResult.Refused -> CaptureResult.Refused(result.said)
-                is ModificationResult.Failed -> result.fault.captureResult()
+                is ModificationResult.Failed -> result.fault.captureResult(failed)
             }
         }
     }
 
-    /** This fault as the result of a capture or adjustment: unconfirmed when it may have taken effect. */
-    private fun Fault.captureResult(): CaptureResult =
-        if (mayHaveTakenEffect) CaptureResult.Unconfirmed(Failure.Remote(this)) else CaptureResult.NotDone(Failure.Remote(this))
+    /** This fault as the result of a capture or adjustment, as [failed] classifies it: not done only when it proved so. */
+    private fun Fault.captureResult(failed: FailedSend?): CaptureResult =
+        if (failed == FailedSend.NOT_DONE) CaptureResult.NotDone(Failure.Remote(this)) else CaptureResult.Unconfirmed(Failure.Remote(this))
 }

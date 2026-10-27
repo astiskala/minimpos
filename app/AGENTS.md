@@ -78,7 +78,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   screens follow `paymentProgress`/`refundProgress` (amount as requested) and leave results through it, never through a
   runner's own state. Saved-card charges,
   Checkout refunds and payment-link creations are sent only by `CheckoutBook`s run by `CheckoutOperations`, which
-  declines a second link per checkout so screens never guard it. Terminal reconciliation (recheck unresolved, read or
+  declines a second link per checkout so screens never guard it. `OperationIdentity` alone decides when a stored
+  request may be sent again and what a failed send establishes; books, captures and refund cancellations ask it. Terminal reconciliation (recheck unresolved, read or
   close totals, compare) is one operation in payment (`TerminalReconciliation`); screens follow its outcome.
 - \* Only `SavedCardLookup` lists and selects saved cards for a charge. It owns reference/model/target freshness and
   model eligibility; Checkout still validates pure request facts. Tokens retains its explicit lookup across

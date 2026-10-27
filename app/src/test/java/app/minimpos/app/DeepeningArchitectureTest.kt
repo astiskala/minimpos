@@ -2,6 +2,7 @@ package app.minimpos.app
 
 import app.minimpos.app.ArchitectureTest.Companion.app
 import app.minimpos.app.ArchitectureTest.Companion.callTo
+import app.minimpos.app.ArchitectureTest.Companion.callToSubtypeOf
 import app.minimpos.app.ArchitectureTest.Companion.within
 import app.minimpos.app.data.security.PinManager
 import app.minimpos.app.data.security.SessionLock
@@ -18,10 +19,13 @@ import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.ReceiptStanding
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.payment.AutoDelivery
+import app.minimpos.app.payment.Captures
 import app.minimpos.app.payment.Checkout
+import app.minimpos.app.payment.CheckoutOperations
 import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.ReceiptDelivery
+import app.minimpos.app.payment.RefundCancellations
 import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.SavedCardLookup
@@ -45,6 +49,7 @@ import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.transport.AdyenLocalTransport
 import app.minimpos.terminal.transport.DiscoveredKey
+import app.minimpos.terminal.transport.Fault
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.lang.ArchRule
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
@@ -86,6 +91,17 @@ class DeepeningArchitectureTest {
 
     private class TerminalSendViolation {
         suspend fun recheck(gateway: TerminalGateway) = gateway.status("service", TransactionKind.PAYMENT)
+    }
+
+    @Test
+    fun `only operation identity decides what a failed send of an identified operation establishes`() = operationIdentity.check(app)
+
+    @Test
+    fun `operation identity rejects an operation reading whether its failure took effect`() =
+        reject(listOf(operationIdentity), OperationIdentityViolation::class.java)
+
+    private class OperationIdentityViolation {
+        fun unchanged(fault: Fault) = !fault.mayHaveTakenEffect
     }
 
     @Test
@@ -275,6 +291,24 @@ class DeepeningArchitectureTest {
                 .haveNameNotMatching(within(TerminalSends::class.java.name))
                 .should()
                 .callMethodWhere(callTo("app.minimpos.app.terminal.Attempt\$Made", "getOnStored"))
+
+        // Each Checkout book, capture and refund cancellation once wrote its own "a resend that provably did nothing leaves
+        // the unknown operation alone" guard; OperationIdentity decides what a failed send establishes, so none can drift.
+        val operationIdentity: ArchRule =
+            noClasses()
+                .that()
+                .haveNameMatching(
+                    within(
+                        "app.minimpos.app.payment.SavedCardCharges\$Book",
+                        "app.minimpos.app.payment.CheckoutRefunds\$Book",
+                        "app.minimpos.app.payment.PaymentLinks\$Book",
+                        CheckoutOperations::class.java.name,
+                        Captures::class.java.name,
+                        RefundCancellations::class.java.name,
+                        OperationIdentityViolation::class.java.name,
+                    ),
+                ).should()
+                .callMethodWhere(callToSubtypeOf(Fault::class.java, "getMayHaveTakenEffect"))
 
         // Gift cards once copied the payment lifecycle's send, abort and status check and dropped the late-answer
         // release; every runner of stored terminal requests now decides only what it stores, never how it is sent.

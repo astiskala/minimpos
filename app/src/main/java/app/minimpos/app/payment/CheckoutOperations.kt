@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Clock
-import java.time.Duration
 import kotlin.uuid.Uuid
 
 /** What sending a stored Checkout operation once found, as its [CheckoutBook] stored it. */
@@ -37,11 +36,24 @@ sealed interface CheckoutAnswer {
 }
 
 /**
+ * Adyen's answer to one send of a stored Checkout operation, not stored yet, see [CheckoutBook.send].
+ *
+ * @property fault Why the send failed; null when Adyen answered or nothing was sent.
+ * @property store Stores the answer and says what it established, given what [fault] establishes about the operation
+ *   ([FailedSend.NOT_DONE] or [FailedSend.UNCONFIRMED]; null without a fault). Never called when the answer must leave
+ *   an unresolved operation unchanged ([FailedSend.UNCHANGED]).
+ */
+class CheckoutReply(
+    val fault: Fault? = null,
+    val store: suspend (failed: FailedSend?) -> CheckoutAnswer,
+)
+
+/**
  * A stored Checkout operation that is still to be sent, see [CheckoutBook.unsent].
  *
  * @property pending Whether it was never sent (PENDING); false for one that was sent and whose outcome is unknown.
  * @property createdAt When it was opened, in epoch milliseconds, which decides whether it may be sent again (see
- *   [CheckoutOperations.RECHECK_WINDOW]).
+ *   [OperationIdentity.replayProblem]).
  * @property context The original payment context the current API target must match; null when none was recorded.
  * @property reason Last unresolved outcome, including Adyen’s persisted retry permission; null when unavailable.
  */
@@ -88,12 +100,15 @@ interface CheckoutBook<R, C> {
         context: PaymentContext?,
     ): ApiAccess<C>
 
-    /** Sends record [id] once with [client] and stores Adyen's answer, received at [now] (epoch ms). */
+    /**
+     * Sends record [id] once with [client] and returns Adyen's answer, received at [now] (epoch ms), to be stored; what
+     * a failed resend may change is [CheckoutOperations]' decision, not the book's.
+     */
     suspend fun send(
         id: String,
         client: C,
         now: Long,
-    ): CheckoutAnswer
+    ): CheckoutReply
 
     /** Stores that the never-sent record [id] was not sent, because [problem] must be resolved first. */
     suspend fun notSent(
@@ -114,8 +129,9 @@ interface CheckoutBook<R, C> {
  * sends and checks run one at a time.
  *
  * Each operation is stored PENDING before Adyen is called and is sent from what was stored with its idempotency key, so
- * a repeat returns Adyen's first answer instead of taking effect twice. Adyen keeps idempotency keys for at least
- * [RECHECK_WINDOW]; an older unknown operation is not sent again and is checked in the Customer Area. Manager approval
+ * a repeat returns Adyen's first answer instead of taking effect twice. Its [OperationIdentity] decides when an unknown
+ * operation may be sent again (an older one is checked in the Customer Area) and keeps a resend whose failure cannot
+ * have taken effect from changing what is stored. Manager approval
  * of kinds that need it is taken when an operation starts and checked again under the operation lock immediately
  * before anything is sent; resending an unknown one checks the approval held now. A never-sent operation that cannot be
  * sent (approval, missing facts or no Checkout API) is stored as not done; an unknown one stays unknown; and one whose
@@ -179,14 +195,14 @@ class CheckoutOperations<R, C>(
     /**
      * Sends record [id], whose outcome is unknown, again with its stored request and idempotency key, and stores Adyen's
      * answer. Anything else has nothing left to check ([Recheck.Settled]); nothing changes while approval, setup or the
-     * original payment context is missing, or once it is older than [RECHECK_WINDOW].
+     * original payment context is missing, or once [OperationIdentity.replayProblem] forbids sending it again.
      */
     suspend fun recheck(id: String): Recheck = mutex.withLock { recheckUnlocked(id) }
 
     /** Runs [recheck] while the caller already holds [mutex]. */
     internal suspend fun recheckUnlocked(id: String): Recheck {
         val record = book.unsent(id)?.takeUnless { it.pending } ?: return Recheck.Settled
-        retryProblem(record.createdAt, clock.millis(), record.reason)?.let {
+        OperationIdentity.replayProblem(record.createdAt, clock.millis(), record.reason)?.let {
             return Recheck.StillUnknown(Failure.NotSetUp(it))
         }
         return send(id, record, grant = null)?.let(Recheck::StillUnknown) ?: Recheck.Settled
@@ -215,7 +231,16 @@ class CheckoutOperations<R, C>(
         if (!(if (grant != null) approval.allows(grant) else approval.allowsNow())) {
             return notSent(id, record.pending, SetupProblem.MANAGER_APPROVAL)
         }
-        return when (val answer = book.send(id, client, clock.millis())) {
+        val reply = book.send(id, client, clock.millis())
+        val fault = reply.fault
+        val failed = fault?.let { OperationIdentity.failed(!record.pending, it) }
+        val answer =
+            if (fault != null && failed == FailedSend.UNCHANGED) {
+                CheckoutAnswer.Unconfirmed(Failure.Remote(fault))
+            } else {
+                reply.store(failed)
+            }
+        return when (answer) {
             is CheckoutAnswer.Unconfirmed -> {
                 answer.failure
             }
@@ -251,28 +276,5 @@ class CheckoutOperations<R, C>(
     ) {
         book.interrupted(id, if (cause is SQLException || cause is IllegalStateException) DeviceFault.DATABASE else DeviceFault.UNEXPECTED)
         if (book.unsent(id) == null) runner.resolved(id)
-    }
-
-    /** Values shared with the operations' kinds and tests. */
-    companion object {
-        /** How long after an operation was opened its unknown outcome may be sent again: Adyen keeps keys at least this long. */
-        val RECHECK_WINDOW: Duration = Duration.ofDays(7)
-
-        /**
-         * Why a stored request must not be replayed: its first-send time is unknown, outside Adyen's guaranteed
-         * retention window or ahead of the device clock, or an HTTP error did not explicitly permit retry.
-         * [reason] is the last unresolved answer; null represents an interrupted exchange without an HTTP answer.
-         */
-        internal fun retryProblem(
-            startedAt: Long?,
-            now: Long,
-            reason: StoredReason?,
-        ): SetupProblem? {
-            if (startedAt == null || now < startedAt || Duration.ofMillis(now - startedAt) >= RECHECK_WINDOW) {
-                return SetupProblem.CHARGE_TOO_OLD
-            }
-            val fault = ((reason as? StoredReason.Unconfirmed)?.failure as? Failure.Remote)?.fault
-            return SetupProblem.OPERATION_RECONCILIATION.takeIf { fault is Fault.AdyenUnavailable && !fault.transientError }
-        }
     }
 }

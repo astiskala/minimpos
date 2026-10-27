@@ -96,7 +96,7 @@ sealed interface CardLookup {
  * sent from the stored sale with the idempotency key [idempotencyKey], so asking again sends the same request and
  * Adyen answers what it did the first time instead of charging twice. [CheckoutOperations] runs them: Manager approval
  * is checked again immediately before anything is sent, an unknown charge is sent again only within
- * [CheckoutOperations.RECHECK_WINDOW], and charges and checks run one at a time.
+ * [OperationIdentity.REPLAY_WINDOW], and charges and checks run one at a time.
  *
  * @param scope Where charges run, so one survives leaving the screen.
  * @param sales Where the sales are stored.
@@ -401,26 +401,25 @@ class SavedCardCharges(
             id: String,
             client: SavedCardApi,
             now: Long,
-        ): CheckoutAnswer {
-            val sale = sales.get(id)?.sale ?: return CheckoutAnswer.NotTaken
+        ): CheckoutReply {
+            val sale = sales.get(id)?.sale ?: return CheckoutReply { CheckoutAnswer.NotTaken }
             val result = client.charge(request(sale), idempotencyKey(id))
-            if (sale.status == SaleStatus.UNKNOWN && result is CardChargeResult.Failed && !result.fault.mayHaveTakenEffect) {
-                return CheckoutAnswer.Unconfirmed(Failure.Remote(result.fault))
-            }
-            sales.record(id, SaleEvent.CardAnswered(result, now))
-            return when {
-                result is CardChargeResult.Authorised -> {
-                    CheckoutAnswer.Taken
-                }
+            return CheckoutReply((result as? CardChargeResult.Failed)?.fault) { failed ->
+                sales.record(id, SaleEvent.CardAnswered(result, now))
+                when {
+                    result is CardChargeResult.Authorised -> {
+                        CheckoutAnswer.Taken
+                    }
 
-                result is CardChargeResult.Failed && result.fault.mayHaveTakenEffect -> {
-                    CheckoutAnswer.Unconfirmed(
-                        Failure.Remote(result.fault),
-                    )
-                }
+                    result is CardChargeResult.Failed && failed == FailedSend.UNCONFIRMED -> {
+                        CheckoutAnswer.Unconfirmed(
+                            Failure.Remote(result.fault),
+                        )
+                    }
 
-                else -> {
-                    CheckoutAnswer.NotTaken
+                    else -> {
+                        CheckoutAnswer.NotTaken
+                    }
                 }
             }
         }

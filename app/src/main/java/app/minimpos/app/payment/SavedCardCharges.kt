@@ -241,7 +241,7 @@ class SavedCardCharges(
                                     )
                                 }
 
-                                !approval.forAction(ManagerAction.TOKEN_DELETE).allowsConfigured(grant) -> {
+                                !approval.forAction(ManagerAction.TOKEN_DELETE).allows(grant) -> {
                                     TokenDeletionState(
                                         card,
                                         reference,

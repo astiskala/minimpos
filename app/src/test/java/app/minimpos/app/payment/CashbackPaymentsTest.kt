@@ -6,7 +6,6 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.cashAwaitingHandover
 import app.minimpos.app.data.repo.retentionEligible
-import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.CashbackCard
 import app.minimpos.app.data.settings.CashbackSettings
@@ -14,6 +13,7 @@ import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.protectedApproval
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.money.CurrencySpec
@@ -38,7 +38,7 @@ class CashbackPaymentsTest {
     private var time = 1000L
     private var configured = true
     private val lock = SessionLock { time }.apply { unlock() }
-    private val approval = ManagerApproval({ configured }, lock) { 60_000 }
+    private val approval = protectedApproval(lock, 60_000) { configured }
 
     private fun start(purchase: Long = 1000): PaymentStart {
         env.useSimulator()
@@ -187,7 +187,9 @@ class CashbackPaymentsTest {
         val cash = CashTenders(container.sales, { "SIMULATOR" }, approval = approval)
         await {
             assertThat(cash.handOverCashback("missing")).isFalse()
-            assertThat(CashTenders(container.sales, { "SIMULATOR" }).handOverCashback(id)).isFalse()
+            configured = false
+            assertThat(cash.handOverCashback(id)).isFalse()
+            configured = true
         }
         time += 61_000
         await { assertThat(cash.handOverCashback(id)).isFalse() }

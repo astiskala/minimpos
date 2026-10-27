@@ -19,6 +19,7 @@ import app.minimpos.app.data.repo.SampleData
 import app.minimpos.app.data.repo.SampleDataFixture
 import app.minimpos.app.data.security.KeystoreSecretCipher
 import app.minimpos.app.data.security.ManagerApproval
+import app.minimpos.app.data.security.ManagerPolicy
 import app.minimpos.app.data.security.PinManager
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretBlob
@@ -96,7 +97,6 @@ import app.minimpos.app.ui.components.SetupGate
 import app.minimpos.app.update.AppUpdate
 import app.minimpos.app.update.GitHubReleases
 import app.minimpos.app.update.UpdateCheck
-import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.ReceiptDocument
@@ -132,7 +132,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -266,28 +265,19 @@ class AppContainer(
     val managerLock = SessionLock()
 
     /**
-     * Manager approval of money-moving operations: taken when one starts, so leaving the screen that approved it cannot
-     * refuse it, and checked again before sending.
+     * Manager approval of money-moving operations under the live admin/Manager PIN policy: what screens offer and ask
+     * PIN entry for, taken when an operation starts, so leaving the screen that approved it cannot refuse it, and checked
+     * again before sending.
      */
     val managerApproval =
         ManagerApproval(
-            configured = { managerPin.pinConfigured.first() },
-            requirement = { pinManager.pinConfigured.first() && settingsState.value.security.requiresManager(it) },
+            policy =
+                combine(settingsState, pinManager.pinConfigured, managerPin.pinConfigured) { current, admin, manager ->
+                    ManagerPolicy(admin, manager, current.security)
+                },
             session = managerLock,
             autoLockMillis = { settingsState.value.security.autoLockMinutes.minutes.inWholeMilliseconds },
         )
-
-    /** Whether any of [actions] requires approval on this device now. */
-    fun managerRequired(actions: Set<ManagerAction>): Flow<Boolean> =
-        combine(settings.settings, pinManager.pinConfigured) { current, admin ->
-            admin && actions.any(current.security::requiresManager)
-        }
-
-    /** Whether [action] can be offered: public, or a Manager PIN exists to approve it. */
-    fun managerAvailable(action: ManagerAction): Flow<Boolean> =
-        combine(settings.settings, pinManager.pinConfigured, managerPin.pinConfigured) { current, admin, manager ->
-            !admin || !current.security.requiresManager(action) || manager
-        }
 
     /** Whether the admin area is unlocked. */
     val sessionLock = SessionLock()

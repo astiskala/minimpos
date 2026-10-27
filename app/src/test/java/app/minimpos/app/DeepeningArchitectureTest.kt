@@ -8,10 +8,12 @@ import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.repo.RefundBalance
 import app.minimpos.app.data.repo.returnsTo
+import app.minimpos.app.data.security.ManagerPolicy
 import app.minimpos.app.data.security.PinManager
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.NewInstallation
+import app.minimpos.app.data.settings.SecuritySettings
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.TransactionActions
@@ -262,6 +264,20 @@ class DeepeningArchitectureTest {
 
     private class ManagerApprovalViolation {
         fun approved(session: SessionLock) = session.allows(0)
+    }
+
+    @Test
+    fun `whether actions need or can get Manager approval is read only from the Manager policy`() = managerPolicy.check(app)
+
+    @Test
+    fun `Manager policy ownership rejects a caller deciding a requirement from the stored choice itself`() =
+        reject(listOf(managerPolicy), ManagerPolicyViolation::class.java)
+
+    private class ManagerPolicyViolation {
+        fun required(
+            admin: Boolean,
+            settings: SecuritySettings,
+        ) = admin && settings.requiresManager(ManagerAction.CAPTURE)
     }
 
     @Test
@@ -532,6 +548,22 @@ class DeepeningArchitectureTest {
                 .should()
                 .dependOnClassesThat()
                 .belongToAnyOf(SessionLock::class.java, PinManager::class.java)
+
+        // The container, PIN entry and a test-only approval mode each decided whether an action needs or can get a Manager
+        // PIN, and the test mode refused what the app allowed; ManagerPolicy is the one reading, so offers, PIN entry and
+        // sends agree. The permission switches show the stored choice, and navigation keeps the Manager session open while
+        // a protected route is stacked; neither decides an approval.
+        val managerPolicy: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(
+                    within(
+                        ManagerPolicy::class.java.name,
+                        "app.minimpos.app.feature.settings.ManagerPermissionsKt",
+                        "app.minimpos.app.ui.navigation.AppNavHostKt",
+                    ),
+                ).should()
+                .callMethodWhere(callTo(SecuritySettings::class.java.name, "requiresManager"))
 
         // A waiting or result screen that picks a runner re-derives where its amount comes from and which runner to leave;
         // FinancialOperations follows payments and refunds whichever way they are sent, with the amount requested.

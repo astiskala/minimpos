@@ -8,13 +8,11 @@ import app.minimpos.core.access.ManagerAction
  *
  * @property needsVerifiedStore Whether it is sent only with the verified store assignment and exact setup it was
  *   offered for.
- * @property configuredApproval Whether its Manager permission needs a configured Manager PIN, never just public access.
  * @property onlyOnTerminal Whether it is chosen at checkout for the terminal card payment and no other tender (payment
  *   link, scanned wallet, token or split) carries it, so those are not offered while it is chosen.
  */
 enum class CardFeature(
     val needsVerifiedStore: Boolean = false,
-    val configuredApproval: Boolean = false,
     val onlyOnTerminal: Boolean = false,
 ) {
     /** The amount is held for a later capture (a pre-authorization, or a sale taken for tipping on the receipt). */
@@ -57,7 +55,7 @@ enum class CardFeature(
     MEXICAN_PLAN(needsVerifiedStore = true, onlyOnTerminal = true),
 
     /** Cash is requested with the card payment. */
-    CASHBACK(needsVerifiedStore = true, configuredApproval = true, onlyOnTerminal = true),
+    CASHBACK(needsVerifiedStore = true, onlyOnTerminal = true),
 
     /** The tender pays a frozen share or the items allocated to it. */
     ALLOCATION,
@@ -66,7 +64,7 @@ enum class CardFeature(
     FURTHER_TENDER,
 
     /** The payment request refunds a card with no original payment. */
-    UNREFERENCED_REFUND(configuredApproval = true),
+    UNREFERENCED_REFUND,
 }
 
 /**

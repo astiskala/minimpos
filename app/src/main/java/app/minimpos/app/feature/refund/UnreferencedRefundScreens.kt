@@ -305,7 +305,7 @@ private fun unreferencedRefundViewModel(): UnreferencedRefundViewModel {
         UnreferencedRefundViewModel(
             container.settingsState,
             container.walletDiscovery.state,
-            container.managerAvailable(ManagerAction.UNREFERENCED_REFUND),
+            container.managerApproval.forAction(ManagerAction.UNREFERENCED_REFUND).available,
             container::currency,
             container.storedPaymentActions,
         )

@@ -12,12 +12,12 @@ import app.minimpos.app.data.db.SaleLineEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
-import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.standing
+import app.minimpos.app.protectedApproval
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiCheck
@@ -151,7 +151,7 @@ class CapturesTest {
         store()
         var time = 1000L
         val lock = SessionLock { time }.apply { unlock() }
-        val approval = ManagerApproval({ true }, lock) { 60_000L }
+        val approval = protectedApproval(lock, 60_000L)
         val protected = Captures(container.sales, { target }, approval)
         fake.beforeAnswer = { time += 60_001L }
         assertThat(await { protected.addTip("s1", 600) }).isEqualTo(CaptureResult.NotAllowed)

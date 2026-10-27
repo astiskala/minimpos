@@ -16,8 +16,11 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.minimpos.app.data.db.AppDatabase
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.app.data.security.ManagerApproval
+import app.minimpos.app.data.security.ManagerPolicy
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretCipher
+import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.NewInstallation
 import app.minimpos.app.data.settings.StorageState
@@ -95,6 +98,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -780,6 +784,16 @@ fun <T> Attempt<T>.made(): T = (this as Attempt.Made).result
 
 /** Starts [request] and returns its record ID; fails the test when another transaction is still in progress. */
 fun <R> TransactionLifecycle<R>.started(request: R): String = checkNotNull(start(request)) { "Another transaction is in progress" }
+
+/**
+ * Manager approval under the production policy once an admin PIN exists, with the baseline protected actions: a
+ * Manager PIN is set while [managerPin] says so, read at every decision, and [session] approves for [autoLockMillis].
+ */
+fun protectedApproval(
+    session: SessionLock,
+    autoLockMillis: Long = 0,
+    managerPin: () -> Boolean = { true },
+): ManagerApproval = ManagerApproval(flow { emit(ManagerPolicy(adminPin = true, managerPin = managerPin())) }, session) { autoLockMillis }
 
 /**
  * Waits until [condition] holds. Saves resume on the main looper, which Robolectric pauses, so each check drains it

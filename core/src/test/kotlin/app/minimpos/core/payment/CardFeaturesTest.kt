@@ -39,8 +39,6 @@ class CardFeaturesTest {
     fun `wallet, routing and cash requests require the verified store they were offered for`() {
         assertThat(CardFeature.entries.filter { it.needsVerifiedStore })
             .containsExactly(CardFeature.SCANNED_WALLET, CardFeature.MEAL_VOUCHER, CardFeature.MEXICAN_PLAN, CardFeature.CASHBACK)
-        assertThat(CardFeature.entries.filter { it.configuredApproval })
-            .containsExactly(CardFeature.CASHBACK, CardFeature.UNREFERENCED_REFUND)
         assertThat(CardFeature.entries.filter { it.onlyOnTerminal })
             .containsExactly(CardFeature.AUDIO_GUIDANCE, CardFeature.MEXICAN_PLAN, CardFeature.CASHBACK)
     }

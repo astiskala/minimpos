@@ -357,15 +357,7 @@ class TransactionLifecycle<R>(
     private suspend fun allowed(
         operation: TerminalOperation,
         grant: ManagerApproval.Grant,
-    ): Boolean {
-        val scoped = approval.forActions(operation.managerActions)
-        val configuredApproval = operation is TerminalOperation.Pay && operation.params.cardFeatures.any { it.configuredApproval }
-        return if (configuredApproval) {
-            scoped.allowsConfigured(grant)
-        } else {
-            scoped.allows(grant)
-        }
-    }
+    ): Boolean = approval.forActions(operation.managerActions).allows(grant)
 
     private suspend fun run(
         id: String,

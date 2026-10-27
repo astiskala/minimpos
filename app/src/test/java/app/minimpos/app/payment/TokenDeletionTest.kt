@@ -4,8 +4,8 @@ import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
-import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.SessionLock
+import app.minimpos.app.protectedApproval
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.app.terminal.TerminalState
@@ -52,7 +52,7 @@ class TokenDeletionTest {
     private var configured = true
     private var now = 1_000L
     private val lock = SessionLock { now }.apply { unlock() }
-    private val approval = ManagerApproval({ configured }, lock) { 60_000L }
+    private val approval = protectedApproval(lock, 60_000L) { configured }
     private val deletes = mutableListOf<Pair<String, String>>()
     private val listings = mutableListOf<String>()
     private var beforeDelete: suspend () -> Unit = {}

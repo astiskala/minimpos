@@ -125,7 +125,7 @@ private fun cashoutViewModel(): CashoutViewModel {
         CashoutViewModel(
             container.settingsState,
             container.walletDiscovery.state,
-            container.managerAvailable(ManagerAction.CASHOUT),
+            container.managerApproval.forAction(ManagerAction.CASHOUT).available,
             container::currency,
             container.payments,
         )
@@ -136,6 +136,11 @@ private fun cashoutViewModel(): CashoutViewModel {
 private fun cashHandoverViewModel(saleId: String): CashHandoverViewModel {
     val container = LocalAppContainer.current
     return viewModel(key = "cash-$saleId") {
-        CashHandoverViewModel(saleId, container.storedPayments, container.cashTenders, container.managerAvailable(ManagerAction.CASHOUT))
+        CashHandoverViewModel(
+            saleId,
+            container.storedPayments,
+            container.cashTenders,
+            container.managerApproval.forAction(ManagerAction.CASHOUT).available,
+        )
     }
 }

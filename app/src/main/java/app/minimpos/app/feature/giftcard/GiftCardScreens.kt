@@ -851,7 +851,7 @@ private fun giftCardsViewModel(): GiftCardsViewModel {
             container.giftCards,
             container.giftCardRecords,
             container.settingsState.map { it.payment to container.currency(it).code },
-            container.managerAvailable(ManagerAction.GIFT_CARD_CHANGE),
+            container.managerApproval.forAction(ManagerAction.GIFT_CARD_CHANGE).available,
             container.terminalStatus.state.map { it.giftCardsBlocked },
         )
     }
@@ -871,7 +871,7 @@ private fun giftCardActivityViewModel(
             container.receipts,
             container.operations,
             container.settingsState.map { it.payment },
-            container.managerAvailable(ManagerAction.GIFT_CARD_CHANGE),
+            container.managerApproval.forAction(ManagerAction.GIFT_CARD_CHANGE).available,
             justStarted = !fromHistory,
         )
     }

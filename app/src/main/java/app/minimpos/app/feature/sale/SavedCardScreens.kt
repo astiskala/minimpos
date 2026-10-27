@@ -81,7 +81,8 @@ fun SavedCardScreen(
     val dimens = LocalDimens.current
     val container = LocalAppContainer.current
     val gate = currentSetupGate()
-    val managerConfigured by container.managerAvailable(ManagerAction.TOKEN_DELETE).collectAsStateWithLifecycle(initialValue = false)
+    val managerAvailable = remember { container.managerApproval.forAction(ManagerAction.TOKEN_DELETE).available }
+    val managerConfigured by managerAvailable.collectAsStateWithLifecycle(initialValue = false)
     var confirmation by remember { mutableStateOf<TokenDeletionOffer?>(null) }
     var approval by remember { mutableStateOf<TokenDeletionOffer?>(null) }
     approval?.let { offer ->

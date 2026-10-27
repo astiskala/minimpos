@@ -105,7 +105,8 @@ fun ManagerApproval(
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
-    val required by remember(actions) { container.managerRequired(actions) }.collectAsStateWithLifecycle(initialValue = null)
+    val approval = remember(actions) { container.managerApproval.forActions(actions) }
+    val required by remember(approval) { approval.required }.collectAsStateWithLifecycle(initialValue = null)
     val configured by container.managerPin.pinConfigured.collectAsStateWithLifecycle(initialValue = null)
     val unlocked by container.managerLock.unlocked.collectAsStateWithLifecycle()
     val approve by rememberUpdatedState(onApprove)
@@ -318,7 +319,8 @@ fun ManagerGate(
     content: @Composable () -> Unit,
 ) {
     val container = LocalAppContainer.current
-    val required by remember(actions) { container.managerRequired(actions) }.collectAsStateWithLifecycle(initialValue = null)
+    val approval = remember(actions) { container.managerApproval.forActions(actions) }
+    val required by remember(approval) { approval.required }.collectAsStateWithLifecycle(initialValue = null)
     val configured by container.managerPin.pinConfigured.collectAsStateWithLifecycle(initialValue = null)
     val unlocked by container.managerLock.unlocked.collectAsStateWithLifecycle()
     val settings by container.settingsState.collectAsStateWithLifecycle()

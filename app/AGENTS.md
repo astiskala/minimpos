@@ -161,10 +161,12 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
 - \* Only PIN-entry UI and `data.security` verify PINs. Financial actions request Manager approval and recheck it before
   sending; admin access is separate. Secrets remain in `SecretStore`. `payment` decides approval only through
   `ManagerApproval`: an operation keeps the grant it started with, so leaving the approving screen cannot refuse it.
+  `ManagerPolicy` alone reads whether actions need or can get a Manager PIN; screens and PIN entry follow the same
+  `ManagerApproval` scope (`required`, `available`) that operations check, and tests use the production policy.
   `Checkout.ceremony` decides per tender what is dropped and confirmed; `Checkout.managerActions` selects the live
   Manager permission scopes. `CardFeatures` (core) alone states which card features exclude each other, need the
-  verified store or a configured Manager PIN, and their Manager actions; `Checkout` offers, `PaymentStart` validates,
-  the gateway checks destinations (`DestinationRules.carries`) and `TerminalOperation` decides approval from it.
+  verified store, and their Manager actions; `Checkout` offers, `PaymentStart` validates, the gateway checks
+  destinations (`DestinationRules.carries`) and `TerminalOperation` decides approval from it.
 - \* `TerminalState.needsSetup` is read only by the container's `SetupGate`, followed by `SetupGateHost` in the nav host.
   Every UI action reaching Adyen or a terminal runs through `currentSetupGate().run`/`GatedButton(requiresSetup = true)`;
   content that only means something once set up shows `SetupRequired`. Setup tools and `StatusCheck` never do, and Home

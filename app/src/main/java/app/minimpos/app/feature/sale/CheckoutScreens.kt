@@ -791,7 +791,7 @@ private fun checkoutViewModel(kind: SaleKind): CheckoutViewModel {
             walletPayments = container.walletPayments,
             discovery = container.walletDiscovery,
             charges = container.savedCardCharges.takeIf { kind == SaleKind.SALE },
-            managerConfigured = container.managerAvailable(ManagerAction.CASHOUT),
+            managerConfigured = container.managerApproval.forAction(ManagerAction.CASHOUT).available,
         )
     }
 }

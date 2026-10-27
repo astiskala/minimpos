@@ -448,7 +448,7 @@ class GiftCards(
      * false, storing nothing, without approval or when nothing is awaiting.
      */
     suspend fun confirmHandover(groupId: String): Boolean {
-        if (!valueApproval.allowsConfigured(approval.grant())) return false
+        if (!valueApproval.allows(approval.grant())) return false
         val stage =
             records.activity(groupId)?.stages?.firstOrNull {
                 it.stage == GiftCardStage.CASH_HANDOVER && it.status == GiftCardStatus.AWAITING
@@ -589,7 +589,7 @@ class GiftCards(
                 approvedMinor = change.amountMinor,
                 environment = environment(),
             )
-        return Funded(null).takeIf { valueApproval.allowsConfigured(grant) && records.open(fund) }
+        return Funded(null).takeIf { valueApproval.allows(grant) && records.open(fund) }
     }
 
     /** Activates or loads again for an activity whose funding is confirmed and whose value was not delivered. */
@@ -712,7 +712,7 @@ class GiftCards(
         grant: ManagerApproval.Grant,
     ): Boolean {
         val funding =
-            records.activity(groupId)?.funding?.takeIf { valueApproval.allowsConfigured(grant) }
+            records.activity(groupId)?.funding?.takeIf { valueApproval.allows(grant) }
                 ?: return false
         val entity =
             stage(Change(groupId, null, funding.movedMinor, funding.currency, GiftCardStage.FUNDING_RETURNED)).copy(
@@ -737,7 +737,7 @@ class GiftCards(
         current[entity.groupId] = entity.id
         val settlement =
             sends.send(entity.groupId, checkNotNull(entity.serviceId), request, record(entity.id)) {
-                valueApproval.allowsConfigured(grant)
+                valueApproval.allows(grant)
             }
         current.remove(entity.groupId)
         return settlement?.status?.let(::statusOf)

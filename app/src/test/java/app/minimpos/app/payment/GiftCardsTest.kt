@@ -16,12 +16,12 @@ import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.GiftCardAction
 import app.minimpos.app.data.repo.GiftCardActivity
 import app.minimpos.app.data.repo.HistoryItem
-import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.GiftCardSetting
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.protectedApproval
 import app.minimpos.core.giftcard.GiftCardEntry
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.giftcard.GiftCardProvider
@@ -47,7 +47,7 @@ class GiftCardsTest {
     private val records = container.giftCardRecords
     private var configured = true
     private val lock = SessionLock { 1_000L }.apply { unlock() }
-    private val approval = ManagerApproval({ configured }, lock) { 60_000L }
+    private val approval = protectedApproval(lock, 60_000L) { configured }
     private val svs = GiftCardSetting(GiftCardProvider.SVS, entries = setOf(GiftCardEntry.SWIPED, GiftCardEntry.SCANNED))
     private val givex = GiftCardSetting(GiftCardProvider.GIVEX, entries = setOf(GiftCardEntry.SWIPED, GiftCardEntry.SCANNED))
     private var busy = false

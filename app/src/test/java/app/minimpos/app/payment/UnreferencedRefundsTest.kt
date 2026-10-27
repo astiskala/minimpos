@@ -10,7 +10,6 @@ import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.UnreferencedRefundReason
 import app.minimpos.app.data.db.unresolved
 import app.minimpos.app.data.repo.HistoryItem
-import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.UnreferencedRefundSettings
 import app.minimpos.app.feature.unreferencedRefundFacts
@@ -18,6 +17,7 @@ import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.approvedSynchronously
 import app.minimpos.app.history.cancellable
 import app.minimpos.app.items
+import app.minimpos.app.protectedApproval
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.core.payment.PaymentContext
@@ -45,7 +45,7 @@ class UnreferencedRefundsTest {
     private var time = 1000L
     private var configured = true
     private val lock = SessionLock { time }.apply { unlock() }
-    private val approval = ManagerApproval({ configured }, lock) { 60_000 }
+    private val approval = protectedApproval(lock, 60_000) { configured }
     internal val book get() = UnreferencedRefundBook(container.refundRecords)
 
     /** Enables unreferenced refunds for the simulator's verified offline demonstration, and returns the request. */

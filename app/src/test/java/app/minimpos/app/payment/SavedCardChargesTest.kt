@@ -8,7 +8,6 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
-import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.RefundChoice
@@ -17,6 +16,7 @@ import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.canCheckAgain
+import app.minimpos.app.protectedApproval
 import app.minimpos.app.simulatedModifications
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.ApiTarget
@@ -98,7 +98,7 @@ class SavedCardChargesTest {
         }
     private var target = ApiTarget(ApiSetup.Complete, modifications, context = context, cards = cards)
     private val manager = SessionLock { 0L }.apply { unlock() }
-    private val approval = ManagerApproval({ true }, manager, { 0L })
+    private val approval = protectedApproval(manager)
     private val charged = mutableListOf<String>()
     private var ids = 0
     private val charges =

@@ -151,7 +151,7 @@ class RefundLegs(
         if (!approval
                 .forAction(
                     ManagerAction.CASH_REFUND,
-                ).allowsConfigured(grant)
+                ).allows(grant)
         ) {
             return Triple(null, null, RefundLegSkip.MANAGER_APPROVAL)
         }

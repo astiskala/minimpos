@@ -1,11 +1,14 @@
 package app.minimpos.app.data
 
 import app.minimpos.app.data.security.ManagerApproval
+import app.minimpos.app.data.security.ManagerPolicy
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.SecuritySettings
 import app.minimpos.core.access.ManagerAction
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
@@ -17,29 +20,23 @@ class ManagerPermissionsTest {
     private var now = 1_000L
     private var settings = SecuritySettings()
     private val session = SessionLock { now }
-    private val approval =
-        ManagerApproval(
-            configured = { manager },
-            session = session,
-            autoLockMillis = { 60_000L },
-            requirement = { admin && settings.requiresManager(it) },
-        )
+    private val approval = ManagerApproval(flow { emit(ManagerPolicy(admin, manager, settings)) }, session) { 60_000L }
 
     @Test
     fun `every action is public without admin and explicit public choices bypass an existing Manager PIN`() =
         runBlocking {
             ManagerAction.entries.forEach { action ->
                 settings = settings.copy(managerRequirements = mapOf(action.name to true))
-                assertThat(approval.forAction(action).allowsConfigured(approval.grant())).isTrue()
+                assertThat(approval.forAction(action).allows(approval.grant())).isTrue()
                 admin = true
-                assertThat(approval.forAction(action).available()).isFalse()
+                assertThat(approval.forAction(action).available.first()).isFalse()
                 assertThat(approval.forAction(action).allows(approval.grant())).isFalse()
                 manager = true
-                assertThat(approval.forAction(action).available()).isTrue()
+                assertThat(approval.forAction(action).available.first()).isTrue()
                 assertThat(approval.forAction(action).allowsNow()).isFalse()
                 settings = settings.copy(managerRequirements = mapOf(action.name to false))
                 assertThat(approval.forAction(action).allowsNow()).isTrue()
-                assertThat(approval.forAction(action).allowsConfigured(approval.grant())).isTrue()
+                assertThat(approval.forAction(action).allows(approval.grant())).isTrue()
                 admin = false
                 manager = false
             }

@@ -26,7 +26,7 @@ import kotlin.uuid.Uuid
  *   complete the session revision it was rung up in.
  * @param newId Generates sale IDs.
  * @param giftCards Where gift-card cash handovers are stored; null where none are recorded.
- * @param approval Configured Manager PIN approval for card cashback handovers.
+ * @param approval Manager approval of cash payments and card cashback handovers.
  */
 class CashTenders(
     private val sales: SaleRepository,
@@ -94,7 +94,7 @@ class CashTenders(
         return mutex.withLock {
             val sale = sales.get(saleId)?.sale ?: return@withLock false
             if (sale.cashHandover?.canRecord != true) return@withLock false
-            if (!approval.forAction(ManagerAction.CASHOUT).allowsConfigured(grant)) return@withLock false
+            if (!approval.forAction(ManagerAction.CASHOUT).allows(grant)) return@withLock false
             sales.recordCashHandover(saleId)
         }
     }

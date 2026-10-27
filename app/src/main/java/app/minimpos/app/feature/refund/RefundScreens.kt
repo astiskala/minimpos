@@ -159,7 +159,8 @@ fun RefundScreen(
     var confirm by rememberSaveable { mutableStateOf(false) }
     val ready = state.load as? Refundability.Refundable
     val gate = currentSetupGate()
-    val managerConfigured by container.managerAvailable(ManagerAction.CASH_REFUND).collectAsStateWithLifecycle(initialValue = false)
+    val managerAvailable = remember { container.managerApproval.forAction(ManagerAction.CASH_REFUND).available }
+    val managerConfigured by managerAvailable.collectAsStateWithLifecycle(initialValue = false)
     val cashBlocked = state.returnsCash && !managerConfigured
     val approveRefund = rememberManagerAction()
 

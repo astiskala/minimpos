@@ -5,6 +5,7 @@ import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
+import app.minimpos.core.payment.CardFeature
 import app.minimpos.terminal.client.RecoveryPolicy
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -59,6 +60,27 @@ sealed interface DestinationRules {
 
     /** Meal vouchers are documented for payment terminals; the mobile support matrix does not list them. */
     val mealVouchers: Boolean get() = supportsTerminalFeatures
+
+    /** Whether a payment with [feature] can be sent here; a feature without a destination capability always can. */
+    fun carries(feature: CardFeature): Boolean =
+        when (feature) {
+            CardFeature.AUDIO_GUIDANCE -> supportsTerminalFeatures
+
+            CardFeature.GIFT_CARD -> giftCards
+
+            CardFeature.MEAL_VOUCHER -> mealVouchers
+
+            CardFeature.MEXICAN_PLAN -> mexicanInstallments
+
+            CardFeature.CASHBACK -> cashback
+
+            CardFeature.UNREFERENCED_REFUND -> unreferencedRefunds
+
+            CardFeature.PRE_AUTHORISATION, CardFeature.TIP_ON_RECEIPT, CardFeature.TERMINAL_TIP, CardFeature.SHOPPER_DISPLAY,
+            CardFeature.GIVING, CardFeature.PARTIAL_AUTHORISATION, CardFeature.TOKENIZATION, CardFeature.SPECIAL_ENTRY,
+            CardFeature.SCANNED_WALLET, CardFeature.ALLOCATION, CardFeature.FURTHER_TENDER,
+            -> true
+        }
 
     /** Whether receipt print requests are supported, independently of printer hardware and local preferences. */
     val supportsPrinting: Boolean get() = true

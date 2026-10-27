@@ -12,8 +12,10 @@ import android.provider.Settings
 import app.minimpos.app.BuildConfig
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.core.payment.CardFeature
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.BarcodeScan
+import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.DiagnosisResult
 import app.minimpos.terminal.client.GiftCardAccount
 import app.minimpos.terminal.client.GiftCardBalance
@@ -359,7 +361,7 @@ class TerminalGateway(
         send(paying = true, serviceId, onSending, onContext, expected, expectedIdentity, authorized) {
             val configured =
                 cashbackConfigured(params, it.context(), cashbackIdentity) &&
-                    unreferencedConfigured(params, it.destination, it.context(), unreferencedIdentity)
+                    unreferencedConfigured(params, it.context(), unreferencedIdentity)
             if (!configured ||
                 unsupported(
                     params,
@@ -388,10 +390,10 @@ class TerminalGateway(
         return current.identity == confirmed && current.permits(cash, params.amountMinor, params.currency, context)
     }
 
-    // An unreferenced refund goes only where it is carried, under the confirmation it was started with, within the limit.
+    // An unreferenced refund goes only under the confirmation it was started with, within the limit; whether the
+    // destination carries it is the card features' reading.
     private suspend fun unreferencedConfigured(
         params: PaymentParams,
-        destination: DestinationRules,
         context: PaymentContext,
         confirmed: String?,
     ): Boolean {
@@ -400,8 +402,7 @@ class TerminalGateway(
             setups
                 .current()
                 .settings.payment.unreferencedRefunds
-        return destination.unreferencedRefunds && current.identity == confirmed &&
-            current.permits(params.amountMinor, params.currency, context)
+        return current.identity == confirmed && current.permits(params.amountMinor, params.currency, context)
     }
 
     // Whether [destination] cannot carry what [params] select: audio guidance for another or unsupported terminal, gift
@@ -422,11 +423,7 @@ class TerminalGateway(
         params: PaymentParams,
         destination: DestinationRules,
         verified: Boolean,
-    ): Boolean =
-        (params.giftCard != null && !destination.giftCards) ||
-            (params.mexicanPayment != null && (!destination.mexicanInstallments || !verified)) ||
-            (params.mealVoucherAccount && (!destination.mealVouchers || !verified)) ||
-            (params.cashBackMinor != null && (!destination.cashback || !verified))
+    ): Boolean = params.cardFeatures.any { !destination.carries(it) || (it.needsVerifiedStore && !verified) }
 
     /** Opens native scanning only for the unchanged [expected] destination and [identity] fingerprint; null when blocked. */
     internal suspend fun nativeScanner(
@@ -689,6 +686,30 @@ class TerminalGateway(
 
 /** Refreshes this device's certificate environment before setup or access checks, preserving the originating settings. */
 internal suspend fun TerminalGateway.refreshEnvironment() = candidates.refreshEnvironment()
+
+/**
+ * The card features this Terminal API payment request carries, as its destination, store verification and Manager
+ * approval read them. A sale taken for tipping on the receipt reads as the hold it is, and meal vouchers show only
+ * where the request selects a voucher account (Brazil's PAT); other voucher markets travel as ordinary card payments.
+ */
+internal val PaymentParams.cardFeatures: Set<CardFeature>
+    get() =
+        buildSet {
+            if (preAuthorisation) add(CardFeature.PRE_AUTHORISATION)
+            if (terminalTip != null) add(CardFeature.TERMINAL_TIP)
+            if (shopperFlow != null) add(CardFeature.SHOPPER_DISPLAY)
+            if (askGiving) add(CardFeature.GIVING)
+            if (audioGuidance) add(CardFeature.AUDIO_GUIDANCE)
+            if (allowPartialAuthorisation) add(CardFeature.PARTIAL_AUTHORISATION)
+            if (recurringProcessingModel != null) add(CardFeature.TOKENIZATION)
+            if (cardEntryOverride != CardEntryOverride.NORMAL) add(CardFeature.SPECIAL_ENTRY)
+            if (scannedPayment != null) add(CardFeature.SCANNED_WALLET)
+            if (giftCard != null) add(CardFeature.GIFT_CARD)
+            if (mealVoucherAccount) add(CardFeature.MEAL_VOUCHER)
+            if (mexicanPayment != null) add(CardFeature.MEXICAN_PLAN)
+            if (cashBackMinor != null) add(CardFeature.CASHBACK)
+            if (unreferencedRefund) add(CardFeature.UNREFERENCED_REFUND)
+        }
 
 /** Why an unreachable diagnosis failed; a terminal that refused without saying why is still a refusal. */
 internal fun DiagnosisResult.failure(): Fault = fault ?: Fault.TerminalRejected(null)

@@ -14,6 +14,8 @@ import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.ids.Ids
 import app.minimpos.core.money.CurrencySpec
+import app.minimpos.core.payment.CardFeature
+import app.minimpos.core.payment.CardFeatures
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.ShopperReferences
@@ -219,7 +221,51 @@ data class Checkout(
             }
 
     /** True when the operator selected MOTO or MKE, requiring a fraud/liability warning and Manager PIN approval. */
-    val requiresSpecialEntryApproval: Boolean get() = effectiveCardEntry.needsManagerApproval
+    val requiresSpecialEntryApproval: Boolean get() = effectiveCardEntry != CardEntryOverride.NORMAL
+
+    /** Whether the issuer may approve less: allowed by the settings for an immediate sale without receipt tipping or audio guidance. */
+    private val allowPartial: Boolean
+        get() = payment.allowPartialAuthorisation && !preAuthorisation && !tipOnReceipt && !form.audioGuidance
+
+    /**
+     * The card features this checkout's terminal payment carries as chosen now, which [CardFeatures] relates. Requested
+     * cash counts even while its entry is invalid. Shopper display is left out: audio guidance drops it, and nothing else
+     * offered here conflicts with it.
+     */
+    private val chosenFeatures: Set<CardFeature>
+        get() =
+            buildSet {
+                if (preAuthorisation) add(CardFeature.PRE_AUTHORISATION)
+                if (tipOnReceipt) add(CardFeature.TIP_ON_RECEIPT)
+                if (askGratuity) add(CardFeature.TERMINAL_TIP)
+                if (askGiving) add(CardFeature.GIVING)
+                if (form.audioGuidance) add(CardFeature.AUDIO_GUIDANCE)
+                if (allowPartial) add(CardFeature.PARTIAL_AUTHORISATION)
+                if (tokenize) add(CardFeature.TOKENIZATION)
+                if (requiresSpecialEntryApproval) add(CardFeature.SPECIAL_ENTRY)
+                if (form.mexicanPayment != null) add(CardFeature.MEXICAN_PLAN)
+                if (form.cashBackMinor != 0L) add(CardFeature.CASHBACK)
+            }
+
+    /**
+     * [chosenFeatures] with every explicit choice that is not in effect now (an unavailable option the operator turned
+     * on, or partial approval enabled in the settings), so a chosen routing or cash request stays blocked until a
+     * conflicting choice is turned off.
+     */
+    private val selectedFeatures: Set<CardFeature>
+        get() =
+            chosenFeatures +
+                buildSet {
+                    if (form.tipOnReceipt == true) add(CardFeature.TIP_ON_RECEIPT)
+                    if (form.askGratuity == true) add(CardFeature.TERMINAL_TIP)
+                    if (form.askGiving == true) add(CardFeature.GIVING)
+                    if (form.tokenize == true) add(CardFeature.TOKENIZATION)
+                    if (form.cardEntryOverride != CardEntryOverride.NORMAL) add(CardFeature.SPECIAL_ENTRY)
+                    if (payment.allowPartialAuthorisation) add(CardFeature.PARTIAL_AUTHORISATION)
+                }
+
+    /** Whether a chosen feature only the terminal card payment carries rules out every other tender. */
+    private val terminalOnly: Boolean get() = selectedFeatures.any { it.onlyOnTerminal }
 
     /** What a tender other than the terminal leaves out of this sale: its tip and its donation invitation, when chosen. */
     private val dropped: Set<DroppedOption>
@@ -318,8 +364,7 @@ data class Checkout(
         get() =
             !form.audioGuidance || (
                 (audioGuidanceSimulated || audioGuidanceMinimumSoftware != null) && audioGuidanceTarget != null &&
-                    form.audioGuidanceConfirmedFor == audioGuidanceTarget &&
-                    !askGratuity && !tipOnReceipt && !askGiving && effectiveCardEntry == CardEntryOverride.NORMAL
+                    form.audioGuidanceConfirmedFor == audioGuidanceTarget && CardFeatures.allows(CardFeature.AUDIO_GUIDANCE, chosenFeatures)
             )
 
     /** Whether explicit configuration and verified store facts permit asking for Mexican card routing. */
@@ -328,44 +373,27 @@ data class Checkout(
     /** Selected routing stays visible and blocks payment when setup or a conflicting choice changes. */
     val mexicanRoutingReady: Boolean get() =
         form.mexicanPayment == null || (
-            offersMexicanRouting && mexicanContext != null && mexicanIdentity != null && !preAuthorisation &&
-                !tipOnReceipt && !askGratuity && !askGiving && !form.audioGuidance &&
-                form.cardEntryOverride == CardEntryOverride.NORMAL && !payment.allowPartialAuthorisation && !tokenize &&
-                listOf(form.tipOnReceipt, form.askGratuity, form.askGiving, form.tokenize).none { it == true }
+            offersMexicanRouting && mexicanContext != null && mexicanIdentity != null &&
+                CardFeatures.allows(CardFeature.MEXICAN_PLAN, selectedFeatures)
         )
 
     /** Permissions for starting [tender], including the sale and its chosen collection method. */
-    fun managerActions(tender: Tender): Set<ManagerAction> =
-        buildSet {
-            add(if (preAuthorisation) ManagerAction.PRE_AUTHORISATION else ManagerAction.SALE)
-            when (tender) {
-                Tender.LINK -> {
-                    add(ManagerAction.LINK_CREATE)
-                }
-
-                Tender.TOKEN -> {
-                    add(ManagerAction.SAVED_CARD_LOOKUP)
-                }
-
-                Tender.TERMINAL -> {
-                    if (form.cashBackMinor > 0) add(ManagerAction.CASHOUT)
-                    if (form.cardEntryOverride.needsManagerApproval) add(ManagerAction.MANUAL_ENTRY)
-                }
-
-                Tender.WALLET -> {}
-            }
+    fun managerActions(tender: Tender): Set<ManagerAction> {
+        val collection = if (preAuthorisation) ManagerAction.PRE_AUTHORISATION else ManagerAction.SALE
+        return when (tender) {
+            Tender.LINK -> setOf(collection, ManagerAction.LINK_CREATE)
+            Tender.TOKEN -> setOf(collection, ManagerAction.SAVED_CARD_LOOKUP)
+            Tender.TERMINAL -> CardFeatures.managerActions(selectedFeatures, collection)
+            Tender.WALLET -> setOf(collection)
         }
+    }
 
     /** Selected cash requires a whole immediate card sale; unavailable choices remain selected and block sending. */
     val cashbackReady: Boolean get() =
         form.cashBackMinor == 0L || (
             managerConfigured && form.cashbackConfirmation == payment.cashback && cashbackAvailable &&
                 form.cashBackMinor in 1..payment.cashback.limitMinor &&
-                !preAuthorisation &&
-                form.cashBackMinor <= Long.MAX_VALUE - totals.amounts.gross && !tipOnReceipt && !askGratuity && !askGiving &&
-                !form.audioGuidance && form.mexicanPayment == null && !tokenize &&
-                form.cardEntryOverride == CardEntryOverride.NORMAL && !payment.allowPartialAuthorisation &&
-                listOf(form.tipOnReceipt, form.askGratuity, form.askGiving, form.tokenize).none { it == true }
+                form.cashBackMinor <= Long.MAX_VALUE - totals.amounts.gross && CardFeatures.allows(CardFeature.CASHBACK, selectedFeatures)
         )
 
     /** Requested card amount in minor units, including selected cash; an invalid cash entry leaves Pay disabled. */
@@ -391,7 +419,6 @@ data class Checkout(
     ): PaymentStart? {
         if (!canPay) return null
         val reference = form.transactionReference.trim().ifEmpty { Ids.transactionReference(payment.referencePrefix, now, zone) }
-        val allowPartial = payment.allowPartialAuthorisation && !preAuthorisation && !tipOnReceipt && !form.audioGuidance
         return PaymentStart(
             totals = totals,
             currency = currency,
@@ -429,9 +456,7 @@ data class Checkout(
     /** Whether a chosen option prevents splitting until the operator turns it off. */
     val splitBlocked: Boolean get() = blocksSplit()
 
-    private fun blocksSplit(): Boolean =
-        form.cashBackMinor != 0L || tipOnReceipt || askGratuity || askGiving || form.audioGuidance || form.mexicanPayment != null ||
-            effectiveCardEntry != CardEntryOverride.NORMAL
+    private fun blocksSplit(): Boolean = terminalOnly || chosenFeatures.any { it in SPLIT_BLOCKERS }
 
     /**
      * The first tender of a split of this sale at [now] in [zone]: [amountMinor] of its total chosen as [allocation]
@@ -464,9 +489,7 @@ data class Checkout(
      * terminal) that [canPay], while links are [linksAvailable].
      */
     val canSendLink: Boolean get() =
-        form.cashBackMinor == 0L && form.mexicanPayment == null && !form.audioGuidance && !preAuthorisation &&
-            linksAvailable &&
-            canPay
+        !terminalOnly && !preAuthorisation && linksAvailable && canPay
 
     /**
      * The payment link to create, or null unless [canSendLink]: the [paymentStart] at [now] in [zone] without tipping on
@@ -503,17 +526,15 @@ data class Checkout(
         fromCheckout: Boolean = false,
     ): SavedCardStart? {
         val model = payment.recurringModel().value
-        if (form.cashBackMinor != 0L || form.audioGuidance || form.mexicanPayment != null) return null
-        if (preAuthorisation || shopperReference == null || !card.supports(model)) return null
+        if (terminalOnly || preAuthorisation) return null
+        if (shopperReference == null || !card.supports(model)) return null
         val start = paymentStart(now, zone)?.forSavedCard() ?: return null
         return SavedCardStart(start, card, model, fromCheckout = fromCheckout)
     }
 
     /** Whether scanned wallets are offered, independently of entered-field validation. */
     val offersScanWallet: Boolean get() =
-        form.cashBackMinor == 0L && form.mexicanPayment == null && !form.audioGuidance &&
-            !preAuthorisation &&
-            wallets.isNotEmpty()
+        !terminalOnly && !preAuthorisation && wallets.isNotEmpty()
 
     /** Whether a configured scanned wallet can pay this checkout now. */
     val canScanWallet: Boolean get() = offersScanWallet && canPay
@@ -664,6 +685,10 @@ data class Checkout(
          * Adyen's cannot ask for more.
          */
         val MAX_LINK_LIFETIME: Duration = Duration.ofDays(70).minusMinutes(5)
+
+        /** Chosen options a split does not carry on every tender, which the operator turns off before splitting. */
+        private val SPLIT_BLOCKERS =
+            setOf(CardFeature.TIP_ON_RECEIPT, CardFeature.TERMINAL_TIP, CardFeature.GIVING, CardFeature.SPECIAL_ENTRY)
     }
 }
 
@@ -763,9 +788,3 @@ data class TenderCeremony(
     val specialEntryWarning: Boolean,
     val managerApproval: Boolean,
 )
-
-/**
- * Whether a payment taken with this card entry needs Manager approval: MOTO and MKE do, ordinary entry does not. The
- * one rule for both the checkout that asks for approval and the payment that checks it again before sending.
- */
-internal val CardEntryOverride.needsManagerApproval: Boolean get() = this != CardEntryOverride.NORMAL

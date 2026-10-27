@@ -5,7 +5,9 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.terminal.TerminalGateway
+import app.minimpos.app.terminal.cardFeatures
 import app.minimpos.core.access.ManagerAction
+import app.minimpos.core.payment.CardFeatures
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.RefundParams
@@ -143,25 +145,14 @@ sealed interface TerminalOperation {
         val collectionAction: ManagerAction? = null,
     ) : TerminalOperation {
         override val managerActions: Set<ManagerAction> get() =
-            buildSet {
+            CardFeatures.managerActions(
+                params.cardFeatures,
                 when {
-                    params.unreferencedRefund -> {
-                        add(ManagerAction.UNREFERENCED_REFUND)
-                    }
-
-                    params.cashBackMinor != null -> {
-                        add(ManagerAction.CASHOUT)
-                        if (params.amountMinor > (params.cashBackMinor ?: 0L)) add(ManagerAction.SALE)
-                    }
-
-                    else -> {
-                        add(
-                            collectionAction ?: if (params.preAuthorisation) ManagerAction.PRE_AUTHORISATION else ManagerAction.SALE,
-                        )
-                    }
-                }
-                if (params.cardEntryOverride.needsManagerApproval) add(ManagerAction.MANUAL_ENTRY)
-            }
+                    params.unreferencedRefund -> null
+                    params.cashBackMinor != null -> ManagerAction.SALE.takeIf { params.amountMinor > (params.cashBackMinor ?: 0L) }
+                    else -> collectionAction ?: if (params.preAuthorisation) ManagerAction.PRE_AUTHORISATION else ManagerAction.SALE
+                },
+            )
         override val amount: OperationAmount get() = OperationAmount(params.amountMinor, params.currency)
         override val kind: TransactionKind get() = TransactionKind.PAYMENT
     }
@@ -373,9 +364,7 @@ class TransactionLifecycle<R>(
         grant: ManagerApproval.Grant,
     ): Boolean {
         val scoped = approval.forActions(operation.managerActions)
-        val configuredApproval =
-            operation is TerminalOperation.Pay &&
-                (operation.params.unreferencedRefund || operation.params.cashBackMinor != null)
+        val configuredApproval = operation is TerminalOperation.Pay && operation.params.cardFeatures.any { it.configuredApproval }
         return if (configuredApproval) {
             scoped.allowsConfigured(grant)
         } else {

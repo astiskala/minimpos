@@ -41,6 +41,7 @@ import app.minimpos.app.terminal.SharedKeySetupOutcome
 import app.minimpos.app.terminal.SimulatedTerminal
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalSetupSource
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.tax.StarterTax
 import app.minimpos.terminal.checkout.CheckoutCredentials
@@ -50,6 +51,8 @@ import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.transport.AdyenLocalTransport
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
+import com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage
+import com.tngtech.archunit.core.domain.JavaClass.Predicates.type
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.lang.ArchRule
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
@@ -102,6 +105,17 @@ class DeepeningArchitectureTest {
 
     private class OperationIdentityViolation {
         fun unchanged(fault: Fault) = !fault.mayHaveTakenEffect
+    }
+
+    @Test
+    fun `card features' Manager permissions come only from the card-feature table`() = cardFeatures.check(app)
+
+    @Test
+    fun `card feature ownership rejects a payment deciding special-entry approval itself`() =
+        reject(listOf(cardFeatures), CardFeatureViolation::class.java)
+
+    private class CardFeatureViolation {
+        fun actions() = setOf(ManagerAction.MANUAL_ENTRY)
     }
 
     @Test
@@ -309,6 +323,18 @@ class DeepeningArchitectureTest {
                     ),
                 ).should()
                 .callMethodWhere(callToSubtypeOf(Fault::class.java, "getMayHaveTakenEffect"))
+
+        // Checkout and the payment request each derived MOTO/MKE and cash permissions, and PaymentStart restated every
+        // feature pair; CardFeatures states them once, so offers, validation, destination checks and approval agree.
+        val cardFeatures: ArchRule =
+            noClasses()
+                .that(
+                    resideInAnyPackage(
+                        "app.minimpos.app.payment..",
+                        "app.minimpos.app.terminal..",
+                    ).or(type(CardFeatureViolation::class.java)),
+                ).should()
+                .accessField(ManagerAction::class.java, ManagerAction.MANUAL_ENTRY.name)
 
         // Gift cards once copied the payment lifecycle's send, abort and status check and dropped the late-answer
         // release; every runner of stored terminal requests now decides only what it stores, never how it is sent.

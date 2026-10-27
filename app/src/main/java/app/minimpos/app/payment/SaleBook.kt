@@ -13,6 +13,8 @@ import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.money.CurrencySpec
+import app.minimpos.core.payment.CardFeature
+import app.minimpos.core.payment.CardFeatures
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.split.AllocatableLine
 import app.minimpos.core.voucher.MealVoucherScheme
@@ -65,8 +67,8 @@ import app.minimpos.terminal.client.TransactionKind
  *   store's [walletContext]; null for other tenders.
  * @property cashBackMinor Cash requested in addition to the purchase, minor units; null for no cash.
  * @property cashbackConfiguration Exact non-secret enablement the operator confirmed; checked again before sending.
- * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
- *   without a [shopperReference].
+ * @throws IllegalArgumentException if two of its card features cannot be combined ([CardFeatures.conflict]), or a
+ *   feature lacks what it needs, such as its verified store or a [shopperReference] to save the card under.
  */
 data class PaymentStart(
     val totals: CartTotals,
@@ -99,65 +101,54 @@ data class PaymentStart(
     val cashBackMinor: Long? = null,
     val cashbackConfiguration: CashbackSettings? = null,
 ) {
+    /** The card features this payment asks for, which [CardFeatures] relates; checked for conflicts on construction. */
+    internal val cardFeatures: Set<CardFeature>
+        get() =
+            buildSet {
+                if (kind == SaleKind.PRE_AUTHORISATION) add(CardFeature.PRE_AUTHORISATION)
+                if (tipOnReceipt) add(CardFeature.TIP_ON_RECEIPT)
+                if (terminalTip != null) add(CardFeature.TERMINAL_TIP)
+                if (shopperFlow != null) add(CardFeature.SHOPPER_DISPLAY)
+                if (askGiving) add(CardFeature.GIVING)
+                if (audioGuidance) add(CardFeature.AUDIO_GUIDANCE)
+                if (allowPartialAuthorisation) add(CardFeature.PARTIAL_AUTHORISATION)
+                if (tokenization != null) add(CardFeature.TOKENIZATION)
+                if (cardEntryOverride != CardEntryOverride.NORMAL) add(CardFeature.SPECIAL_ENTRY)
+                if (scannedPayment != null) add(CardFeature.SCANNED_WALLET)
+                if (giftCard != null) add(CardFeature.GIFT_CARD)
+                if (mealVoucher != null) add(CardFeature.MEAL_VOUCHER)
+                if (mexicanPayment != null) add(CardFeature.MEXICAN_PLAN)
+                if (cashBackMinor != null) add(CardFeature.CASHBACK)
+                if (allocation != null) add(CardFeature.ALLOCATION)
+                if (existingSaleId != null) add(CardFeature.FURTHER_TENDER)
+            }
+
     init {
-        require(
-            cashBackMinor == null || (
-                cashBackMinor > 0 && cashbackConfiguration != null && kind == SaleKind.SALE && !tipOnReceipt && terminalTip == null &&
-                    !askGiving &&
-                    !audioGuidance && !allowPartialAuthorisation && tokenization == null && scannedPayment == null &&
-                    giftCard == null && mealVoucher == null && mexicanPayment == null && existingSaleId == null &&
-                    allocation == null && cardEntryOverride == CardEntryOverride.NORMAL && walletContext != null &&
-                    walletSetupIdentity != null && requestedAmountMinor == Math.addExact(totals.amounts.gross, cashBackMinor)
-            ),
-        ) { "Cashback requires a verified whole immediate card payment without other features" }
-        require(
-            mealVoucher == null || (
-                currency.code == mealVoucher.currency && kind == SaleKind.SALE && !tipOnReceipt && terminalTip == null &&
-                    shopperFlow == null && !askGiving && !audioGuidance && tokenization == null && scannedPayment == null &&
-                    giftCard == null && mexicanPayment == null && cardEntryOverride == CardEntryOverride.NORMAL &&
-                    allocation == null && allowPartialAuthorisation == mealVoucher.partialAuthorisation &&
-                    walletContext != null && walletSetupIdentity != null
-            ),
-        ) { "A meal voucher pays an amount of an immediate sale in its market's currency, without card features" }
-        require(
-            mexicanPayment == null || (
-                currency.code == "MXN" && kind == SaleKind.SALE && !tipOnReceipt && terminalTip == null && !askGiving &&
-                    !audioGuidance && !allowPartialAuthorisation && tokenization == null && scannedPayment == null &&
-                    giftCard == null && cardEntryOverride == CardEntryOverride.NORMAL && walletContext != null &&
-                    walletSetupIdentity != null && existingSaleId == null &&
-                    requestedAmountMinor == totals.amounts.gross && allocation == null
-            ),
-        ) { "Mexican routing requires a verified whole card sale without other card features" }
-        require(
-            giftCard == null || (
-                kind == SaleKind.SALE && !tipOnReceipt && tokenization == null && terminalTip == null && shopperFlow == null &&
-                    !askGiving && !audioGuidance && scannedPayment == null && cardEntryOverride == CardEntryOverride.NORMAL &&
-                    giftCard.setting.provider.supports(GiftCardOperation.REDEEM)
-            ),
-        ) {
-            "Gift cards redeem an immediate sale without card features"
+        require(CardFeatures.conflict(cardFeatures) == null) { "Card features $cardFeatures include two that cannot be combined" }
+        require(cardFeatures.none { it.needsVerifiedStore } || (walletContext != null && walletSetupIdentity != null)) {
+            "Scanned wallets, meal vouchers, Mexican routing and cash need their verified store"
         }
+        require(
+            cashBackMinor == null ||
+                (
+                    cashBackMinor > 0 && cashbackConfiguration != null &&
+                        requestedAmountMinor == Math.addExact(totals.amounts.gross, cashBackMinor)
+                ),
+        ) { "Cash is requested in addition to the whole purchase, under a confirmed configuration" }
+        require(
+            mealVoucher == null || (currency.code == mealVoucher.currency && allowPartialAuthorisation == mealVoucher.partialAuthorisation),
+        ) {
+            "A meal voucher pays in its market's currency, with partial approval only where the market documents it"
+        }
+        require(mexicanPayment == null || (currency.code == "MXN" && requestedAmountMinor == totals.amounts.gross)) {
+            "Mexican routing pays a whole sale in MXN"
+        }
+        require(giftCard == null || giftCard.setting.provider.supports(GiftCardOperation.REDEEM)) { "The gift card provider redeems" }
         require(allocation !is TenderAllocation.Items || !allowPartialAuthorisation) {
             "Item tenders are collected in full so their units are paid exactly once"
         }
-        require(
-            !audioGuidance || (
-                !tipOnReceipt && terminalTip == null && !askGiving && !allowPartialAuthorisation && shopperFlow == null &&
-                    scannedPayment == null && cardEntryOverride == CardEntryOverride.NORMAL && audioGuidancePoiId != null
-            ),
-        ) {
-            "Audio guidance requires a confirmed compatible card flow"
-        }
-        require(!tipOnReceipt || kind == SaleKind.SALE) { "Only a sale can be taken for tipping on the receipt" }
-        require(terminalTip == null || (kind == SaleKind.SALE && !tipOnReceipt && scannedPayment == null)) {
-            "Terminal tipping requires an immediate-charge card sale"
-        }
+        require(!audioGuidance || audioGuidancePoiId != null) { "Audio guidance requires a confirmed terminal" }
         require(tokenization == null || shopperReference != null) { "Saving a card needs a shopper reference" }
-        require(
-            scannedPayment == null || (kind == SaleKind.SALE && !tipOnReceipt && walletContext != null && walletSetupIdentity != null),
-        ) {
-            "Scanned payments require an immediate-charge sale and its checked destination"
-        }
     }
 
     /**

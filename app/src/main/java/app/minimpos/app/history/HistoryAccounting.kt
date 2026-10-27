@@ -3,6 +3,7 @@ package app.minimpos.app.history
 import app.minimpos.app.data.db.GiftCardCategory
 import app.minimpos.app.data.db.GiftCardStage
 import app.minimpos.app.data.db.GiftCardStatus
+import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
@@ -151,6 +152,42 @@ data class CurrencyHistoryTotals(
 ) {
     /** Local sales minus accepted refund requests, in minor units. */
     val netMinor: Long get() = salesMinor - refundsMinor
+
+    /** These totals and [other]'s together, with checked arithmetic: the one way batches, pages and days add up. */
+    operator fun plus(other: CurrencyHistoryTotals): CurrencyHistoryTotals =
+        CurrencyHistoryTotals(
+            salesMinor = Math.addExact(salesMinor, other.salesMinor),
+            saleCount = Math.addExact(saleCount, other.saleCount),
+            tipsMinor = Math.addExact(tipsMinor, other.tipsMinor),
+            refundsMinor = Math.addExact(refundsMinor, other.refundsMinor),
+            refundCount = Math.addExact(refundCount, other.refundCount),
+            heldMinor = Math.addExact(heldMinor, other.heldMinor),
+            holdCount = Math.addExact(holdCount, other.holdCount),
+            unresolvedCount = Math.addExact(unresolvedCount, other.unresolvedCount),
+            surchargesMinor = Math.addExact(surchargesMinor, other.surchargesMinor),
+            unknownSurchargeCount = Math.addExact(unknownSurchargeCount, other.unknownSurchargeCount),
+            purchaseMinor = Math.addExact(purchaseMinor, other.purchaseMinor),
+            refundedSurchargesMinor = Math.addExact(refundedSurchargesMinor, other.refundedSurchargesMinor),
+            unknownRefundSurchargeCount = Math.addExact(unknownRefundSurchargeCount, other.unknownRefundSurchargeCount),
+            cashSalesMinor = Math.addExact(cashSalesMinor, other.cashSalesMinor),
+            cashRefundsMinor = Math.addExact(cashRefundsMinor, other.cashRefundsMinor),
+            giftCards = giftCards + other.giftCards,
+            cashbackMinor = Math.addExact(cashbackMinor, other.cashbackMinor),
+            cashHandedOverMinor = Math.addExact(cashHandedOverMinor, other.cashHandedOverMinor),
+            unreferencedRefundsMinor = Math.addExact(unreferencedRefundsMinor, other.unreferencedRefundsMinor),
+        )
+
+    /** Adding totals by currency. */
+    companion object {
+        /** [left] and [right] added currency by currency ([plus]), sorted by currency code. */
+        fun merged(
+            left: Map<String, CurrencyHistoryTotals>,
+            right: Map<String, CurrencyHistoryTotals>,
+        ): Map<String, CurrencyHistoryTotals> =
+            (left.keys + right.keys).sorted().associateWith { code ->
+                (left[code] ?: CurrencyHistoryTotals()) + (right[code] ?: CurrencyHistoryTotals())
+            }
+    }
 }
 
 /** One environment's dated totals and separately disclosed undated activity. */
@@ -222,33 +259,45 @@ data class TerminalReconciliationReport(
 /**
  * Processing-day totals per currency for the activities the filter shows: approved sales, accepted captures with
  * their tips, accepted refunds and newly authorized holds. Later capture or cancellation does not erase original
- * hold activity. Manual-capture bills count as sales only on dated capture acceptance.
+ * hold activity. Manual-capture bills count as sales only on dated capture acceptance. A day's header reads the same
+ * [CurrencyHistoryTotals] as the daily report, and batches of one day add up with [plus].
  *
- * @property salesMinor Approved sales' amounts (with tips, or what a pre-authorisation captured) by ISO 4217 currency
- *   code, in minor units.
- * @property saleCount Number of approved sales.
- * @property refundsMinor Accepted refunds' amounts by currency code, in minor units.
- * @property refundCount Number of accepted refunds.
- * @property preAuthsMinor Newly authorized manual-capture amounts by currency code, in minor units;
- *   unchanged by later capture or cancellation.
- * @property preAuthCount Number of newly authorized holds.
- * @property tipsMinor The tips included in [salesMinor], by currency code, in minor units; only currencies with tips.
- * @property surchargesMinor Reported surcharges already included in sales, by currency.
- * @property unknownSurchargeCount Sales with unreported surcharge components, by currency.
+ * @property currencies The day's totals by ISO 4217 currency code.
  */
 data class DayTotals(
-    val salesMinor: Map<String, Long>,
-    val saleCount: Int,
-    val refundsMinor: Map<String, Long>,
-    val refundCount: Int,
-    val preAuthsMinor: Map<String, Long> = emptyMap(),
-    val preAuthCount: Int = 0,
-    val tipsMinor: Map<String, Long> = emptyMap(),
-    /** Known surcharges included in sales by currency. */
-    val surchargesMinor: Map<String, Long> = emptyMap(),
-    /** Number of sales with unreported fees, by currency. */
-    val unknownSurchargeCount: Map<String, Int> = emptyMap(),
-)
+    val currencies: Map<String, CurrencyHistoryTotals> = emptyMap(),
+) {
+    /** Approved sales' amounts (with tips, or what a pre-authorisation captured) by currency code, in minor units. */
+    val salesMinor: Map<String, Long> = currencies.filterValues { it.saleCount > 0 }.mapValues { it.value.salesMinor }
+
+    /** Number of approved sales. */
+    val saleCount: Int = currencies.values.sumOf { it.saleCount }
+
+    /** Accepted refunds' amounts by currency code, in minor units. */
+    val refundsMinor: Map<String, Long> = currencies.filterValues { it.refundCount > 0 }.mapValues { it.value.refundsMinor }
+
+    /** Number of accepted refunds. */
+    val refundCount: Int = currencies.values.sumOf { it.refundCount }
+
+    /** Newly authorized manual-capture amounts by currency code, in minor units; unchanged by later capture or cancellation. */
+    val preAuthsMinor: Map<String, Long> = currencies.filterValues { it.holdCount > 0 }.mapValues { it.value.heldMinor }
+
+    /** Number of newly authorized holds. */
+    val preAuthCount: Int = currencies.values.sumOf { it.holdCount }
+
+    /** The tips included in [salesMinor], by currency code, in minor units; only currencies with tips. */
+    val tipsMinor: Map<String, Long> = currencies.filterValues { it.tipsMinor > 0 }.mapValues { it.value.tipsMinor }
+
+    /** Known surcharges included in sales, by currency code, in minor units. */
+    val surchargesMinor: Map<String, Long> = currencies.filterValues { it.saleCount > 0 }.mapValues { it.value.surchargesMinor }
+
+    /** Number of sales with unreported fees, by currency code; only currencies with any. */
+    val unknownSurchargeCount: Map<String, Int> =
+        currencies.filterValues { it.unknownSurchargeCount > 0 }.mapValues { it.value.unknownSurchargeCount }
+
+    /** These totals and [other]'s, from independent batches of one processing day. */
+    operator fun plus(other: DayTotals): DayTotals = DayTotals(CurrencyHistoryTotals.merged(currencies, other.currencies))
+}
 
 /**
  * One day of history, in the time zone it was grouped in (see [HistoryAccounting.days]).
@@ -271,30 +320,6 @@ data class HistoryDay(
 
 /** Pure processing-day accounting shared by filtered History and unfiltered reports; no clock or storage access. */
 object HistoryAccounting {
-    /** Adds independent batches of one processing day's totals without retaining their transaction bodies. */
-    fun merge(
-        left: DayTotals,
-        right: DayTotals,
-    ): DayTotals {
-        fun sum(
-            a: Map<String, Long>,
-            b: Map<String, Long>,
-        ) = (a.keys + b.keys).associateWith { Math.addExact(a[it] ?: 0, b[it] ?: 0) }
-        return DayTotals(
-            sum(left.salesMinor, right.salesMinor),
-            left.saleCount + right.saleCount,
-            sum(left.refundsMinor, right.refundsMinor),
-            left.refundCount + right.refundCount,
-            sum(left.preAuthsMinor, right.preAuthsMinor),
-            left.preAuthCount + right.preAuthCount,
-            sum(left.tipsMinor, right.tipsMinor),
-            sum(left.surchargesMinor, right.surchargesMinor),
-            (left.unknownSurchargeCount.keys + right.unknownSurchargeCount.keys).associateWith {
-                (left.unknownSurchargeCount[it] ?: 0) + (right.unknownSurchargeCount[it] ?: 0)
-            },
-        )
-    }
-
     /**
      * Bounded, pure whole-day report aggregation, including retained online and undated captures across every batch.
      * @param date Local processing date.
@@ -318,9 +343,9 @@ object HistoryAccounting {
                     } else {
                         HistoryReportSection(
                             section.scope,
-                            mergeCurrencies(previous.totals, section.totals),
-                            mergeCurrencies(previous.online, section.online),
-                            mergeCurrencies(previous.undated, section.undated),
+                            CurrencyHistoryTotals.merged(previous.totals, section.totals),
+                            CurrencyHistoryTotals.merged(previous.online, section.online),
+                            CurrencyHistoryTotals.merged(previous.undated, section.undated),
                         )
                     }
             }
@@ -328,35 +353,6 @@ object HistoryAccounting {
 
         /** Current summary; no original records are retained. */
         fun report(): HistoryReport = HistoryReport(date, zone, generatedAt, sections.values.sortedBy { it.scope.ordinal })
-
-        private fun mergeCurrencies(
-            left: Map<String, CurrencyHistoryTotals>,
-            right: Map<String, CurrencyHistoryTotals>,
-        ) = (left.keys + right.keys).sorted().associateWith { code ->
-            val a = left[code] ?: CurrencyHistoryTotals()
-            val b = right[code] ?: CurrencyHistoryTotals()
-            CurrencyHistoryTotals(
-                a.salesMinor + b.salesMinor,
-                a.saleCount + b.saleCount,
-                a.tipsMinor + b.tipsMinor,
-                a.refundsMinor + b.refundsMinor,
-                a.refundCount + b.refundCount,
-                a.heldMinor + b.heldMinor,
-                a.holdCount + b.holdCount,
-                a.unresolvedCount + b.unresolvedCount,
-                Math.addExact(a.surchargesMinor, b.surchargesMinor),
-                a.unknownSurchargeCount + b.unknownSurchargeCount,
-                Math.addExact(a.purchaseMinor, b.purchaseMinor),
-                Math.addExact(a.refundedSurchargesMinor, b.refundedSurchargesMinor),
-                a.unknownRefundSurchargeCount + b.unknownRefundSurchargeCount,
-                Math.addExact(a.cashSalesMinor, b.cashSalesMinor),
-                Math.addExact(a.cashRefundsMinor, b.cashRefundsMinor),
-                a.giftCards + b.giftCards,
-                Math.addExact(a.cashbackMinor, b.cashbackMinor),
-                Math.addExact(a.cashHandedOverMinor, b.cashHandedOverMinor),
-                Math.addExact(a.unreferencedRefundsMinor, b.unreferencedRefundsMinor),
-            )
-        }
     }
 
     /**
@@ -434,7 +430,7 @@ object HistoryAccounting {
 
                     is HistoryItem.Refund -> {
                         val r = item.refund
-                        if (r.status == RefundStatus.REQUESTED && !r.cancellation) refunds.merge(r.currency, r.amountMinor, Long::plus)
+                        if (r.returnsMoney) refunds.merge(r.currency, r.amountMinor, Math::addExact)
                     }
 
                     is HistoryItem.GiftCard -> {
@@ -477,26 +473,10 @@ object HistoryAccounting {
             .filter { it.at != null }
             .groupBy { Instant.ofEpochMilli(checkNotNull(it.at)).atZone(zone).toLocalDate() }
             .map { (date, activities) ->
-                val totals = totals(activities)
                 val sorted = activities.sortedByDescending { it.at }
                 HistoryDay(
                     date = date,
-                    totals =
-                        DayTotals(
-                            salesMinor = totals.filterValues { it.saleCount > 0 }.mapValues { it.value.salesMinor },
-                            saleCount = totals.values.sumOf { it.saleCount },
-                            refundsMinor = totals.filterValues { it.refundCount > 0 }.mapValues { it.value.refundsMinor },
-                            refundCount = totals.values.sumOf { it.refundCount },
-                            preAuthsMinor = totals.filterValues { it.holdCount > 0 }.mapValues { it.value.heldMinor },
-                            preAuthCount = totals.values.sumOf { it.holdCount },
-                            tipsMinor = totals.filterValues { it.tipsMinor > 0 }.mapValues { it.value.tipsMinor },
-                            surchargesMinor = totals.filterValues { it.saleCount > 0 }.mapValues { it.value.surchargesMinor },
-                            unknownSurchargeCount =
-                                totals
-                                    .filterValues {
-                                        it.unknownSurchargeCount > 0
-                                    }.mapValues { it.value.unknownSurchargeCount },
-                        ),
+                    totals = DayTotals(totals(activities)),
                     items = sorted.map { it.item }.distinctBy { it.id },
                     captures = activities.filter { it.kind == HistoryActivityKind.CAPTURE }.map { it.item.id }.toSet(),
                     times = sorted.distinctBy { it.item.id }.associate { it.item.id to checkNotNull(it.at) },
@@ -515,7 +495,7 @@ object HistoryAccounting {
 
                     is HistoryItem.Refund -> {
                         val refund = item.refund
-                        if (refund.status == RefundStatus.REQUESTED && !refund.cancellation) {
+                        if (refund.returnsMoney) {
                             add(
                                 HistoryActivity(
                                     item = item,
@@ -713,9 +693,9 @@ object HistoryAccounting {
             val refunds = entries.filter { it.kind == HistoryActivityKind.REFUND }
             val holds = entries.filter { it.kind == HistoryActivityKind.HELD }
             CurrencyHistoryTotals(
-                salesMinor = sales.sumOf { it.withoutCashback() },
-                cashbackMinor = sales.sumOf { it.cashBackMinor },
-                cashHandedOverMinor = entries.filter { it.kind == HistoryActivityKind.CASH_HANDOVER }.sumOf { it.amountMinor },
+                salesMinor = sales.sumExact { it.withoutCashback() },
+                cashbackMinor = sales.sumExact { it.cashBackMinor },
+                cashHandedOverMinor = entries.filter { it.kind == HistoryActivityKind.CASH_HANDOVER }.sumExact { it.amountMinor },
                 saleCount =
                     sales
                         .filterNot {
@@ -723,34 +703,38 @@ object HistoryAccounting {
                         }.map { it.item.id }
                         .distinct()
                         .size,
-                tipsMinor = sales.sumOf { it.tipMinor },
-                refundsMinor = refunds.sumOf { it.amountMinor },
+                tipsMinor = sales.sumExact { it.tipMinor },
+                refundsMinor = refunds.sumExact { it.amountMinor },
                 refundCount = refunds.size,
-                heldMinor = holds.sumOf { it.amountMinor },
+                heldMinor = holds.sumExact { it.amountMinor },
                 holdCount = holds.size,
                 unresolvedCount = entries.count { it.kind == HistoryActivityKind.ISSUE },
-                surchargesMinor = sales.fold(0L) { sum, sale -> Math.addExact(sum, sale.surchargeMinor ?: 0) },
+                surchargesMinor = sales.sumExact { it.surchargeMinor ?: 0 },
                 unknownSurchargeCount =
                     sales
                         .filter { it.surchargeMinor == null }
                         .map { it.item.id }
                         .distinct()
                         .size,
-                refundedSurchargesMinor = refunds.fold(0L) { sum, refund -> Math.addExact(sum, refund.surchargeMinor ?: 0) },
+                refundedSurchargesMinor = refunds.sumExact { it.surchargeMinor ?: 0 },
                 unknownRefundSurchargeCount = refunds.count { it.surchargeMinor == null },
                 giftCards =
                     entries.filter { it.kind == HistoryActivityKind.GIFT_CARD }.fold(GiftCardActivity.Totals()) { sum, entry ->
                         sum + entry.giftCard
                     },
-                cashSalesMinor = sales.filter { it.cash }.sumOf { it.amountMinor },
-                cashRefundsMinor = refunds.filter { it.cash }.sumOf { it.amountMinor },
-                unreferencedRefundsMinor = refunds.filter { it.unreferenced }.sumOf { it.amountMinor },
+                cashSalesMinor = sales.filter { it.cash }.sumExact { it.amountMinor },
+                cashRefundsMinor = refunds.filter { it.cash }.sumExact { it.amountMinor },
+                unreferencedRefundsMinor = refunds.filter { it.unreferenced }.sumExact { it.amountMinor },
                 purchaseMinor =
-                    sales.filter { it.surchargeMinor != null }.sumOf {
+                    sales.filter { it.surchargeMinor != null }.sumExact {
                         (it.withoutCashback() - it.tipMinor - (it.surchargeMinor ?: 0)).coerceAtLeast(0)
                     },
             )
         }
+
+    /** The sum of [selector] over these elements, with checked arithmetic. */
+    private inline fun <T> Iterable<T>.sumExact(selector: (T) -> Long): Long =
+        fold(0L) { sum, element -> Math.addExact(sum, selector(element)) }
 
     /** Whole-day report from [items]; callers pass all retained records, never History's filtered list. */
     fun report(
@@ -835,3 +819,9 @@ internal fun HistoryActivity.withoutCashback(): Long {
         else -> (amountMinor - cashBackMinor).coerceAtLeast(0)
     }
 }
+
+/**
+ * Whether this refund returned money: accepted and not the cancellation of a hold. The one rule local accounting and the
+ * terminal comparison count refunds by.
+ */
+internal val RefundEntity.returnsMoney: Boolean get() = status == RefundStatus.REQUESTED && !cancellation

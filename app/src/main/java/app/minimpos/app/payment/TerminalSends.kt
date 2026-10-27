@@ -203,7 +203,7 @@ internal class TerminalSends(
 }
 
 /** Classifies a terminal [outcome] as it is stored: the one reading of every stored terminal request's answer. */
-private fun settlementOf(outcome: TransactionOutcome): Settlement =
+internal fun settlementOf(outcome: TransactionOutcome): Settlement =
     when (outcome) {
         is TransactionOutcome.Completed -> {
             val details = outcome.details

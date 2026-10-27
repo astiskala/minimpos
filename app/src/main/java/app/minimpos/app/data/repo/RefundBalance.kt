@@ -67,4 +67,5 @@ class TenderReturns internal constructor(
 internal fun RefundEntity.returnsTo(tender: SaleTenderEntity): Boolean =
     tenderId == tender.id || (tenderId == null && tender.kind == TenderKind.CARD && originalTransactionId == tender.poiTransactionId)
 
-private fun List<RefundEntity>.amount(): Long = fold(0L) { sum, refund -> Math.addExact(sum, refund.amountMinor) }
+/** What these returns add up to, in minor units. */
+internal fun List<RefundEntity>.amount(): Long = fold(0L) { sum, refund -> Math.addExact(sum, refund.amountMinor) }

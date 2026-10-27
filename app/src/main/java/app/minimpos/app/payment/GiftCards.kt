@@ -758,7 +758,8 @@ class GiftCards(
                 records.settle(id, statusOf(settlement.status), settlement.message, settlement.details, settlement.reason)
         }
 
-    private fun statusOf(status: SettlementStatus): GiftCardStatus =
+    /** [status] as a stage stores it. */
+    internal fun statusOf(status: SettlementStatus): GiftCardStatus =
         when (status) {
             SettlementStatus.SUCCEEDED -> GiftCardStatus.SUCCEEDED
             SettlementStatus.CANCELLED -> GiftCardStatus.CANCELLED

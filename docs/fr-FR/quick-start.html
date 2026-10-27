@@ -139,8 +139,7 @@
   Internet ; téléphone NFC compatible</td><td data-label="Reçus">E-mail ou partage ; aucune imprimante</td>
   <td data-label="Limites des fonctions">Ni pourboire sur terminal, écran client, MOTO/MKE, paiement hors ligne ou
   rapprochement du terminal.</td></tr></tbody></table></details><p class="hint">Les fonctions dépendent du terminal, du moyen de
-  paiement et de la configuration Adyen. Testez les opérations nécessaires ; le simulateur ne vérifie pas un terminal
-  réel. <a href="using#capabilities">Vérifier les capacités d&#x27;Adyen</a>.</p>
+  paiement et de la configuration Adyen. Testez les opérations nécessaires. <a href="using#capabilities">Vérifier les capacités d&#x27;Adyen</a>.</p>
           <ul>
             <li>L'impression nécessite un terminal avec une imprimante intégrée. S’il n’y en a pas, vous pouvez envoyer
               ou partager des reçus à la place.</li>
@@ -186,6 +185,7 @@
                 <li><strong>Management API - Terminal settings read and write</strong></li>
                 <li><strong>Management API - Terminal settings Advanced read and write</strong></li>
                 <li><strong>Cloud Device API role</strong></li>
+                <li><strong>API tokenise payment details</strong></li>
               </ul>
               Les mêmes rôles sont requis pour chaque configuration. L'identifiant doit appartenir au compte de votre
                 entreprise et avoir accès au compte marchand de la destination. Voir le
@@ -205,7 +205,7 @@
             </li>
           </ol>
 <details class="role-checklist"><summary>Vérifier tous les rôles requis</summary><p>Conservez les rôles de paiement et
-  Management API attribués par défaut ci-dessous, en plus des quatre rôles supplémentaires indiqués plus haut. Certains
+  Management API attribués par défaut ci-dessous, en plus des cinq rôles supplémentaires indiqués plus haut. Certains
   rôles par défaut peuvent avoir été retirés d’un identifiant existant. L’identifiant principal nécessite les mêmes
   rôles pour toutes les configurations ; seul l’identifiant distinct d’enregistrement du téléphone nécessite Adyen
   Payments App role.</p><ul><li><strong>Merchant PAL webservice role</strong></li><li><strong>Checkout webservice role
@@ -500,8 +500,7 @@
             terminal</a>, <a href="using#terminal-checkout">paiements partiels, invites de l'acheteur, dons et saisie
             manuelle de la carte</a>, <a href="using#offline">traitement hors ligne</a> et
             <a href="using#reconciliation">rapprochement des terminaux</a>. La disponibilité dépend de la configuration
-            d'Adyen et de la destination du paiement ; les résultats du simulateur ne constituent pas une vérification
-            sur un terminal réel.</p>
+            d’Adyen et de la destination du paiement.</p>
           <ol>
             <li>Dans TEST, essayez uniquement les flux de travail facultatifs que vous prévoyez d'utiliser :
               <a href="using#preauth">dépôts</a>, <a href="using#tips">pourboires pour les reçus</a>,
@@ -534,34 +533,31 @@
         </section>
         <section id="try">
           <h2>Essayez le simulateur</h2>
-          <p>Explorez Mini mPOS sans compte ni terminal Adyen. Aucune carte n'est débitée.</p>
-          <p>Pour explorer les avertissements hors ligne, activez <strong>Approbations hors ligne</strong> dans <strong>
-            Paramètres › Simulateur</strong>. Les ventes simulées approuvées n'ont alors aucune référence PSP et
-            signalent un lot non confirmé. Inspectez la vente dans l'historique et essayez
-            <a href="using#reconciliation">rapprochement des terminaux</a>. Il s'agit d'une démo, pas d'un test
-            d'autorisation hors ligne réelle ou d'un téléchargement ultérieur sur Adyen.</p>
+          <p>Explorez Mini mPOS sans compte ni terminal Adyen. Aucune carte n’est débitée.</p>
           <ol>
-            <li><a href="#install">Installez l'application</a> sur un téléphone ou un émulateur Android 9+.</li>
-            <li>Sur l'écran d'accueil, sélectionnez <strong>Essayez une démo</strong> et appuyez sur <strong>Continuer</strong>. Les autres choix sont <strong>Scanner les codes de configuration</strong>, à partir de
-              l'assistant de configuration ou d'un autre appareil, et <strong>Connectez-vous à Adyen</strong>. Les
-              terminaux Adyen sélectionnent initialement la connexion ; d'autres appareils sélectionnent la démo.</li>
-            <li>Dans <strong>Paramètres › Simulateur</strong>, choisissez le résultat du paiement, le délai et si une
-              imprimante est disponible.</li>
+            <li><a href="#install">Installez l’application</a> sur un téléphone ou un émulateur Android 9+.</li>
+            <li>Sur l’écran d’accueil, sélectionnez <strong>Essayez une démo</strong> plutôt que <strong>Scanner les codes
+              de configuration</strong> ou <strong>Connectez-vous à Adyen</strong>, puis touchez
+              <strong>Continuer</strong>.</li>
+            <li>Dans <strong>Paramètres › Simulateur</strong>, choisissez le résultat du paiement, le délai et la présence
+              d’une imprimante. Activez <strong>Approbations hors ligne</strong> pour voir les avertissements hors ligne
+              dans l’historique et le <a href="using#reconciliation">rapprochement du terminal</a>.</li>
           </ol>
-          <p>Les exemples de produits et leur historique sont étiquetés comme des démos. Chaque utilisation de <strong>
-            Ajouter des exemples de données</strong> remplace les détails commerciaux du reçu par des détails fictifs
-            sur le café, même si des échantillons existent déjà ; la présentation du reçu et les paramètres de livraison
-            restent inchangés. Les échantillons comptent dans les totaux et les rapports des jours de démonstration ; ce
-            ne sont pas de vrais paiements. Dans <strong>Paramètres › Données et transfert</strong>, utiliser <strong>
-            Ajouter des exemples de données</strong> ou <strong>Supprimer les exemples de données</strong>; la
-            suppression conserve vos propres produits, votre historique et vos paramètres. Pour les liens de
-            démonstration hors ligne, voir <a href="using#payment-links">liens de paiement</a>.</p>
-          <p>Prêt à vous connecter ? Dans <strong>Paramètres › Simulateur</strong>, appuyez sur <strong>Configurer des
-            paiements réels</strong>. Vérifiez les exemples de données et les raccourcis des reçus, puis appuyez sur
-            <strong>Continuer la configuration</strong>. L'ouverture de la configuration ne modifie aucune donnée. Un
-            passage confirmé à TEST ou LIVE supprime tout l'historique local, y compris les opérations inachevées ; les
-            échantillons de produits et les détails du reçu restent. Supprimez séparément les échantillons indésirables
-            et examinez les détails commerciaux des reçus fictifs avant les paiements réels. Commencez par TEST.</p>
+          <p>Dans <strong>Paramètres › Données et transfert</strong>, utilisez <strong>Ajouter des exemples de
+            données</strong> ou <strong>Supprimer les exemples de données</strong>. Les exemples sont signalés comme des
+            démos et comptent dans les totaux et rapports des jours de démo ; les ajouter remplace les informations
+            commerciales du reçu par un café fictif, et les supprimer conserve vos propres produits, historique et
+            paramètres.</p>
+          <p>Les liens de paiement fonctionnent hors ligne sans identifiants API, et leurs écrans et reçus sont signalés
+            comme des démos. Leurs QR codes ne peuvent pas encaisser de paiement ; touchez <strong>Simuler le
+            paiement</strong> pour en terminer un.</p>
+          <p>Le simulateur montre le comportement de Mini mPOS, pas ce que votre terminal ou votre compte Adyen prend en
+            charge. Des fonctions comme le guidage audio, les approbations hors ligne et les capacités d’Adyen sont
+            imitées : testez-les sur un vrai terminal TEST avant de vous y fier.</p>
+          <p>Prêt à vous connecter ? Dans <strong>Paramètres › Simulateur</strong>, touchez <strong>Configurer des
+            paiements réels</strong>, puis <strong>Continuer la configuration</strong>. Confirmer TEST ou LIVE supprime
+            tout l’historique local ; les exemples de produits et les informations du reçu restent, donc supprimez les
+            exemples et vérifiez les informations commerciales avant de vrais paiements. Commencez par TEST.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
       </div>

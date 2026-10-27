@@ -8,6 +8,8 @@ import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.SavedCardLookup
 import app.minimpos.app.payment.SavedCardLookupState
+import app.minimpos.app.payment.TokenDeletionOffer
+import app.minimpos.app.payment.TokenDeletionState
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.payment.savedCardStart
 import app.minimpos.core.money.CurrencySpec
@@ -29,6 +31,7 @@ import java.time.ZoneId
  * @property charge The charge running or finished; [TransactionState.Idle] before one starts.
  * @property lookup The current lookup: why it is blocked, whether it is running, the cards found or why it failed, and
  *   which of them can be charged.
+ * @property deletion Latest token-management outcome, retained across navigation.
  */
 data class SavedCardUiState(
     val checkout: Checkout = Checkout(),
@@ -36,6 +39,7 @@ data class SavedCardUiState(
     val recurringModel: String = "",
     val charge: TransactionState = TransactionState.Idle,
     val lookup: SavedCardLookupState = SavedCardLookupState(),
+    val deletion: TokenDeletionState = TokenDeletionState(),
 ) {
     /** The shopper reference the typed field makes, as checkout makes it; null while it is not valid. */
     val shopperReference: String? get() = checkout.shopperReference
@@ -67,7 +71,7 @@ class SavedCardViewModel(
 
     /** The screen state, updated as the form, cart, setup, lookup or charge changes. */
     val state: StateFlow<SavedCardUiState> =
-        combine(checkout, lookup.state, progress) { current, found, charge ->
+        combine(checkout, lookup.state, progress, lookup.deletion) { current, found, charge, deletion ->
             val payment = current.payment
             SavedCardUiState(
                 checkout = current,
@@ -75,6 +79,7 @@ class SavedCardViewModel(
                 recurringModel = payment.recurringModel().value,
                 charge = charge,
                 lookup = found,
+                deletion = deletion,
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SavedCardUiState())
 
@@ -86,6 +91,15 @@ class SavedCardViewModel(
 
     /** Lists the cards saved for the typed shopper reference; ignored while one is running, blocked or invalid. */
     fun find() = lookup.find()
+
+    /** Freezes a listed token for the deletion confirmation, independently of charge eligibility. */
+    fun removal(card: StoredCard): TokenDeletionOffer? = lookup.removal(card)
+
+    /** Deletes only the token/context retained by the confirmed [offer]. */
+    fun delete(offer: TokenDeletionOffer) = lookup.delete(offer)
+
+    /** Fresh read-only reconciliation of a deletion whose outcome is unknown. */
+    fun recheckDeletion() = lookup.recheckDeletion()
 
     /**
      * Charges [card] for the rung-up sale; returns whether it started (false while blocked, nothing is rung up, the

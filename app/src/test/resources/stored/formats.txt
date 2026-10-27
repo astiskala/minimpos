@@ -47,6 +47,39 @@ settings.json: app.minimpos.app.data.settings.AppSettings
     askGiving: enum app.minimpos.app.data.settings.ReceiptTipping [DISABLED, DEFAULT_OFF, DEFAULT_ON]
     allowMoto: boolean
     allowMke: boolean
+    giftCards: list of
+      - app.minimpos.app.data.settings.GiftCardSetting
+        provider required: enum app.minimpos.core.giftcard.GiftCardProvider [GIVEX, SVS, FISERV, INTERSOLVE, LOCAL]
+        code: string
+        entries: list of
+          - enum app.minimpos.core.giftcard.GiftCardEntry [SCANNED, SWIPED, KEYED]
+    mexicanInstallments: boolean
+    mealVouchers: boolean
+    mealVoucherAccountSelection: boolean
+    cashback: app.minimpos.app.data.settings.CashbackSettings
+      enabled: boolean
+      standalone: boolean
+      card?: enum app.minimpos.app.data.settings.CashbackCard [EFTPOS, GIROCARD, VISA, MASTERCARD]
+      limitMinor: long
+      context?: app.minimpos.core.payment.PaymentContext
+        destination required: string
+        poiId required: string
+        saleId required: string
+        merchantAccount required: string
+        environment? required: string
+        host?: string
+        simulated: boolean
+      currency?: string
+      storeId?: string
+      storeCountry?: string
+    unreferencedRefunds: app.minimpos.app.data.settings.UnreferencedRefundSettings
+      enabled: boolean
+      limitMinor: long
+      delayed: boolean
+      context?: app.minimpos.core.payment.PaymentContext (as above)
+      currency?: string
+      storeId?: string
+      storeCountry?: string
   receipt: app.minimpos.app.data.settings.ReceiptSettings
     businessName: string
     addressLines: string
@@ -67,6 +100,7 @@ settings.json: app.minimpos.app.data.settings.AppSettings
     markedTaxRateMilliPercent?: int
     markedTaxRateMarker: string
     markedTaxRateNote: string
+    printBusinessName: boolean
   email: app.minimpos.app.data.settings.EmailSettings
     host: string
     port: int
@@ -77,6 +111,9 @@ settings.json: app.minimpos.app.data.settings.AppSettings
     bcc: string
     subject: string
   security: app.minimpos.app.data.settings.SecuritySettings
+    managerRequirements: map
+      key: string
+      value: boolean
     autoLockMinutes: int
   simulator: app.minimpos.app.data.settings.SimulatorSettings
     outcome: enum app.minimpos.terminal.simulator.SimulatedOutcome [APPROVE, DECLINE, CANCEL, BUSY, TIMEOUT, RANDOM]
@@ -138,6 +175,18 @@ Room column: refunded lines: list of
     unitPriceMinor required: long
     grossMinor required: long
     taxRateMilliPercent: int
+
+Room column: tender allocation: sealed app.minimpos.app.data.repo.TenderAllocation
+  items: items
+    lines required: list of
+      - app.minimpos.app.data.repo.AllocatedLine
+        position required: int
+        quantity required: int
+        grossMinor required: long
+  share: share
+    index required: int
+    count required: int
+    baseMinor required: long
 
 Room column: history switch target: app.minimpos.app.data.settings.TerminalSettings
   mode: enum app.minimpos.app.data.settings.TerminalMode [AUTO, TERMINAL, CLOUD, PAYMENTS_APP, SIMULATOR]
@@ -205,6 +254,39 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
       askGiving: enum app.minimpos.app.data.settings.ReceiptTipping [DISABLED, DEFAULT_OFF, DEFAULT_ON]
       allowMoto: boolean
       allowMke: boolean
+      giftCards: list of
+        - app.minimpos.app.data.settings.GiftCardSetting
+          provider required: enum app.minimpos.core.giftcard.GiftCardProvider [GIVEX, SVS, FISERV, INTERSOLVE, LOCAL]
+          code: string
+          entries: list of
+            - enum app.minimpos.core.giftcard.GiftCardEntry [SCANNED, SWIPED, KEYED]
+      mexicanInstallments: boolean
+      mealVouchers: boolean
+      mealVoucherAccountSelection: boolean
+      cashback: app.minimpos.app.data.settings.CashbackSettings
+        enabled: boolean
+        standalone: boolean
+        card?: enum app.minimpos.app.data.settings.CashbackCard [EFTPOS, GIROCARD, VISA, MASTERCARD]
+        limitMinor: long
+        context?: app.minimpos.core.payment.PaymentContext
+          destination required: string
+          poiId required: string
+          saleId required: string
+          merchantAccount required: string
+          environment? required: string
+          host?: string
+          simulated: boolean
+        currency?: string
+        storeId?: string
+        storeCountry?: string
+      unreferencedRefunds: app.minimpos.app.data.settings.UnreferencedRefundSettings
+        enabled: boolean
+        limitMinor: long
+        delayed: boolean
+        context?: app.minimpos.core.payment.PaymentContext (as above)
+        currency?: string
+        storeId?: string
+        storeCountry?: string
     receipt: app.minimpos.app.data.settings.ReceiptSettings
       businessName: string
       addressLines: string
@@ -225,6 +307,7 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
       markedTaxRateMilliPercent?: int
       markedTaxRateMarker: string
       markedTaxRateNote: string
+      printBusinessName: boolean
     email: app.minimpos.app.data.settings.EmailSettings
       host: string
       port: int
@@ -235,6 +318,9 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
       bcc: string
       subject: string
     security: app.minimpos.app.data.settings.SecuritySettings
+      managerRequirements: map
+        key: string
+        value: boolean
       autoLockMinutes: int
     simulator: app.minimpos.app.data.settings.SimulatorSettings
       outcome: enum app.minimpos.terminal.simulator.SimulatedOutcome [APPROVE, DECLINE, CANCEL, BUSY, TIMEOUT, RANDOM]

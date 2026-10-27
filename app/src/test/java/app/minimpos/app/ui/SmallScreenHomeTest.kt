@@ -62,10 +62,38 @@ class SmallScreenHomeTest {
     private fun waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
 
     @Test
+    @Config(qualifiers = "ja-rJP-w320dp-h460dp-hdpi")
+    fun `Japanese final home fits AMS1`() = homeTextsShareSizes()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese final home fits AMS1`() = homeTextsShareSizes()
+
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese final home fits AMS1`() = homeTextsShareSizes()
+
+    @Test
+    fun `final home keeps sale and preauth full width then tokens gift refund cashout history reconciliation`() {
+        compose.setContent { MiniMposApp(container) }
+        waitForTag("newSale")
+        val rows = listOf("savedCard" to "giftCards", "refund" to "cashout", "history" to "reconciliation")
+        var previous = compose.onNodeWithTag("preAuth").getUnclippedBoundsInRoot().bottom
+        rows.forEach { (left, right) ->
+            val a = compose.onNodeWithTag(left).getUnclippedBoundsInRoot()
+            val b = compose.onNodeWithTag(right).getUnclippedBoundsInRoot()
+            assertThat(a.top).isEqualTo(b.top)
+            assertThat(a.left).isLessThan(b.left)
+            assertThat(a.top).isAtLeast(previous)
+            previous = a.bottom
+        }
+    }
+
+    @Test
     fun `home tiles keep their labels and touch size beside the setup card on the smallest terminal`() {
         compose.setContent { MiniMposApp(container) }
         assertHomeTilesUsable()
-        // Home scrolls to its admin buttons here; once payments are set up, every tile fits unscrolled (a sale fits).
+        // Settings stays in the app bar; tile content can scroll when setup needs more room.
     }
 
     @Test
@@ -126,7 +154,7 @@ class SmallScreenHomeTest {
     }
 
     /**
-     * The four half-width tiles show their labels at one size, whatever each label needs alone (Reconciliation needs
+     * The area tiles show their labels at one size, whatever each label needs alone (Reconciliation needs
      * the least), with the icon above the label rather than beside it; the two payment tiles do the same with their
      * titles, which stay on one line.
      */
@@ -137,7 +165,9 @@ class SmallScreenHomeTest {
         val tiles =
             mapOf(
                 "savedCard" to R.string.home_saved_card,
+                "giftCards" to R.string.home_gift_cards,
                 "refund" to R.string.home_refund,
+                "cashout" to R.string.cashout_title,
                 "history" to R.string.home_history,
                 "reconciliation" to R.string.home_reconciliation,
             )
@@ -186,7 +216,9 @@ class SmallScreenHomeTest {
         }
         mapOf(
             "savedCard" to R.string.home_saved_card,
+            "giftCards" to R.string.home_gift_cards,
             "refund" to R.string.home_refund,
+            "cashout" to R.string.cashout_title,
             "history" to R.string.home_history,
             "reconciliation" to R.string.home_reconciliation,
         ).forEach { (tag, label) ->
@@ -198,11 +230,10 @@ class SmallScreenHomeTest {
             // A label squeezed by its tile measures far less than a line.
             assertWithMessage("$tag label height").that(text.height).isAtLeast(14.dp)
         }
-        listOf("products", "settings").forEach {
+        listOf("settings").forEach {
             val button =
                 compose
                     .onNodeWithTag(it)
-                    .performScrollTo()
                     .assertIsDisplayed()
                     .fetchSemanticsNode()
             // Compact buttons draw at 44 dp; Compose expands their effective touch area independently.

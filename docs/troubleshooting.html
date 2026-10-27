@@ -112,9 +112,10 @@
           </ol>
           <p>A crash or restart leaves the interrupted operation in History as unknown. Do not clear the app's data to
             remove it.</p>
-          <p>With Tap to Pay, the Payments app cannot be asked for a status. <strong>Check result again</strong> uses
-            only a late answer that has already arrived. If there is none, check the Customer Area before charging
-            again.</p>
+          <p id="tap-to-pay-recovery">With Tap to Pay, <strong>Check result again</strong> first uses a received late
+            answer, then asks the selected Payments app for the original result. Status checks require version 1.8.0
+            or later; confirm beta access with Adyen. A missing callback or NotFound leaves the result unknown. Check
+            <strong>Customer Area › Payments › Payment list</strong> before charging again.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="declines">
@@ -196,22 +197,17 @@
               the assigned store, current currency and <a href="quick-start#credentials">API key roles</a>. Tap to Pay
               and pre-authorizations do not offer this action.</p></dd></div>
             <div><dt>Wallet discovery reports an error</dt><dd><p>The error appears only in Settings and does not block
-              ordinary payments. Fix credential/environment or read access problems there. A temporary refresh failure
-              keeps the last verified list for unchanged setup; a successful empty check or access failure removes it.
-              Configuration is checked at startup/setup changes and manual refresh, not before every sale.</p></dd>
-              </div>
+              card payments. Fix the credential, environment or read access there, then refresh. A temporary failure
+              keeps the last verified wallets.</p></dd></div>
             <div><dt>The code is invalid or no code arrives</dt><dd><p>Use the shopper’s payment code, not a profile,
-              transfer or receipt QR. Choose the correct wallet. Native scanning ends after 30 seconds: tap <strong>Scan
-              again</strong> or <strong>Use camera</strong>. Allow camera permission when requested. Returning from the
-              background requires a new scan.</p></dd></div>
-            <div><dt>Saving is rejected or no token is created</dt><dd><p>Follow the payment’s result. An approved
-              payment stays approved without a saved token. Only after a conclusive rejection, return to checkout, turn
-              off <strong>Save card</strong> and explicitly start another scan if appropriate. There is no automatic
-              replacement payment. For <strong>Result unknown</strong>, <a href="#unknown">check the original
-              transaction</a> instead.</p></dd></div>
+              transfer or receipt QR, and choose the correct wallet. A terminal scan ends after 30 seconds: tap
+              <strong>Scan again</strong> or <strong>Use camera</strong>.</p></dd></div>
+            <div><dt>Saving is rejected or no token is created</dt><dd><p>An approved payment stays approved without a
+              saved token. After a rejection, turn off <strong>Save card</strong> and scan again if appropriate. For
+              <strong>Result unknown</strong>, <a href="#unknown">check the original transaction</a> instead.</p></dd>
+              </div>
           </dl>
-          <p>See <a href="using#wallets">the wallet payment procedure</a>. History’s requested wallet is intent, not
-            proof that payment succeeded or that Adyen used that method.</p>
+          <p>See <a href="using#wallets">the wallet payment procedure</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="connection">
@@ -282,11 +278,8 @@
                   <a href="https://ca-live.adyen.com/">LIVE Customer Area</a>. See the
                   <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments app
                   requirements</a>.</p>
-                <p>The client key must belong to the same credential used for boarding.</p>
-                <p>Use <strong>Share redacted report</strong> to share exactly the rows shown: app version, API access
-                  and connection results with their UTC check time, integration and environment, account, store,
-                  installation and shared-key identifiers, Android, device and Payments app versions, and for Tap to Pay
-                  the client-key and boarding checks with the verified credential identity.</p></dd></div>
+                <p>The client key must belong to the same credential used for boarding. When asking for help, use
+                  <strong>Share redacted report</strong>.</p></dd></div>
             <div id="key-setup"><dt>“The new key is saved. Update this terminal’s config”</dt>
               <dd>
 <p><span class="fix-label">Fix</span>On the terminal, open <strong>Admin menu › Config › Update</strong>, then return to
@@ -366,7 +359,7 @@
             <div><dt>Checkout has no <strong>Create payment link</strong></dt>
               <dd>
 <p><span class="fix-label">Fix</span>Complete Checkout API setup in <strong>Settings › Terminal</strong>. Links are
-  offered for sales only. For offline demos, see <a href="using#payment-links">payment links</a>.</p>
+  offered for sales only. The <a href="quick-start#try">simulator</a> offers demo links without setup.</p>
   <details class="cause"><summary>Cause</summary><p>Checkout API setup is incomplete, or the checkout is for a
   pre-authorization or a tip on the receipt.</p></details></dd></div>
             <div><dt>A paid link still shows <strong>Awaiting payment</strong></dt>
@@ -407,6 +400,12 @@
             <div><dt>Test emails work, but customers get no receipt</dt>
               <dd><p><span class="fix-label">Fix</span>In <strong>Settings › Email receipts</strong>, check when the
                 email is asked for and whether receipts are sent automatically.</p></dd></div>
+            <div id="receipt-logo-print"><dt>Logo did not print</dt>
+              <dd><p>Check the preview in <strong>Settings › Receipts</strong> and print a test receipt. If the terminal
+                refuses the logo, Mini mPOS can still print the receipt text and shows a notice on the first refusal.
+                Paper problems, a missing printer or an unanswered print request stop printing. See <a
+                href="using#receipt-logo">receipt logo settings</a> to try a simpler image or remove the
+                logo.</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -542,12 +541,11 @@
 <p><span class="fix-label">Fix</span><a href="#unknown">Check the result</a>. Do not charge again until you know it.</p>
   <details class="cause"><summary>Cause</summary><p>The request was sent, but no answer arrived, so its outcome is
   unknown.</p></details></dd></div>
-            <div><dt>“No reply from the Payments app has arrived yet. It cannot be asked for the result, so check the
-              payment in your Customer Area.”</dt>
+            <div><dt>“The Payments app result is still unknown. Update the selected Payments app, confirm status access with
+              Adyen, and check Customer Area before charging again.”</dt>
               <dd>
 <p><span class="fix-label">Fix</span>Find the payment in the Customer Area before charging again.</p>
-  <details class="cause"><summary>Cause</summary><p>With Tap to Pay, the Payments app cannot be asked for a result, and
-  no late answer has arrived.</p></details></dd></div>
+  <details class="cause"><summary>Cause</summary><p><a href="#tap-to-pay-recovery">Tap to Pay result recovery</a>.</p></details></dd></div>
             <div><dt>“The Adyen Payments app could not be opened. Check that it is installed.”</dt>
               <dd>
 <p><span class="fix-label">Fix</span>Install the Payments app for your environment, then try again. See

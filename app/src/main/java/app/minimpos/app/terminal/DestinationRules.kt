@@ -5,6 +5,7 @@ import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
+import app.minimpos.core.payment.CardFeature
 import app.minimpos.terminal.client.RecoveryPolicy
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -39,11 +40,56 @@ sealed interface DestinationRules {
     /** Whether physical-terminal capabilities (terminal tipping, Giving, MOTO/MKE, totals, display) are supported. */
     val supportsTerminalFeatures: Boolean get() = true
 
+    /**
+     * Whether Terminal API gift-card requests (stored value, balance inquiry, gift-card payments) can be sent; the
+     * Payments app documents none. Provider onboarding is the merchant's configuration, never inferred here.
+     */
+    val giftCards: Boolean get() = supportsTerminalFeatures
+
+    /** Mexican POS routing is documented for payment terminals; the Payments app has no documented support. */
+    val mexicanInstallments: Boolean get() = supportsTerminalFeatures
+
+    /** Terminal API cashback; market and card enablement are separate. */
+    val cashback: Boolean get() = supportsTerminalFeatures
+
+    /**
+     * Unreferenced card refunds (`PaymentType=Refund`) on payment terminals. Adyen also documents them for the Payments
+     * app, but its setup verifies no assigned store country here, so the excluded markets could not be enforced.
+     */
+    val unreferencedRefunds: Boolean get() = supportsTerminalFeatures
+
+    /** Meal vouchers are documented for payment terminals; the mobile support matrix does not list them. */
+    val mealVouchers: Boolean get() = supportsTerminalFeatures
+
+    /** Whether a payment with [feature] can be sent here; a feature without a destination capability always can. */
+    fun carries(feature: CardFeature): Boolean =
+        when (feature) {
+            CardFeature.AUDIO_GUIDANCE -> supportsTerminalFeatures
+
+            CardFeature.GIFT_CARD -> giftCards
+
+            CardFeature.MEAL_VOUCHER -> mealVouchers
+
+            CardFeature.MEXICAN_PLAN -> mexicanInstallments
+
+            CardFeature.CASHBACK -> cashback
+
+            CardFeature.UNREFERENCED_REFUND -> unreferencedRefunds
+
+            CardFeature.PRE_AUTHORISATION, CardFeature.TIP_ON_RECEIPT, CardFeature.TERMINAL_TIP, CardFeature.SHOPPER_DISPLAY,
+            CardFeature.GIVING, CardFeature.PARTIAL_AUTHORISATION, CardFeature.TOKENIZATION, CardFeature.SPECIAL_ENTRY,
+            CardFeature.SCANNED_WALLET, CardFeature.ALLOCATION, CardFeature.FURTHER_TENDER,
+            -> true
+        }
+
     /** Whether receipt print requests are supported, independently of printer hardware and local preferences. */
     val supportsPrinting: Boolean get() = true
 
     /** Whether a missing transaction answer can be queried remotely, rather than only recovered from a late reply. */
-    val supportsRemoteStatus: Boolean get() = true
+    fun remoteStatus(
+        device: DeviceInfo,
+        environment: TerminalEnvironment?,
+    ): CapabilityStanding = CapabilityStanding.AVAILABLE
 
     /** Whether local offline EMV and store-and-forward processing are supported on this destination. */
     val supportsOfflinePayments: Boolean get() = false

@@ -2,6 +2,7 @@ package app.minimpos.website
 
 import com.google.common.truth.Truth.assertThat
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.junit.Test
 import java.nio.file.Path
 import kotlin.io.path.readText
@@ -24,6 +25,7 @@ class TapToPayGuideTest {
                 )
             val strings = Jsoup.parse(docs.parent.resolve("app/src/main/res/${resources.getValue(language)}/strings.xml").readText())
             val page = Jsoup.parse(directory.resolve("troubleshooting.html").readText())
+            assertStatusRecovery(page, strings, language)
             val help = checkNotNull(page.getElementById("tap-to-pay-check"))
             val connectionTest = strings.select("string[name=settings_test_connection]").text()
             assertThat(connectionTest).isNotEmpty()
@@ -50,7 +52,7 @@ class TapToPayGuideTest {
                 assertThat(steps.select("strong").eachText()).containsAtLeast(discover, connectionTest)
                 assertThat(steps.select("strong").eachText()).doesNotContain(apiTest)
             }
-            listOf("UnavailableService", "TEST", "LIVE", "UTC").forEach {
+            listOf("UnavailableService", "TEST", "LIVE").forEach {
                 assertThat(help.text()).contains(it)
             }
             listOf("1029_605", "GET /me", "null").forEach {
@@ -62,5 +64,18 @@ class TapToPayGuideTest {
                 "https://ca-live.adyen.com/",
             )
         }
+    }
+
+    private fun assertStatusRecovery(
+        page: Document,
+        strings: Document,
+        language: String,
+    ) {
+        val recovery = checkNotNull(page.getElementById("tap-to-pay-recovery"))
+        assertThat(recovery.text()).contains("1.8.0")
+        assertThat(recovery.text()).contains("NotFound")
+        val (open, close) = if (language == "ja") "「" to "」" else "“" to "”"
+        assertThat(page.select("dt").eachText()).contains("$open${strings.select("string[name=fault_no_late_reply]").text()}$close")
+        assertThat(page.select("a[href=#tap-to-pay-recovery]")).hasSize(1)
     }
 }

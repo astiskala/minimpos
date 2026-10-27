@@ -29,12 +29,13 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   defines captured statuses. `StoredPayment.actions` owns allowed actions and is checked by capture operations too.
   `SaleEntity.issues` is the one issue reading; screens get whole days from `HistoryAccounting.days`.
   `saleResultNext` is the one reading of what a result screen offers next, payment links included.
-- \* Decision rules stay pure: Checkout, PaymentLinkRequests, SaleEvent, PaymentStanding, RefundablePayment,
-  HistorySearch, HistoryAccounting, ReceiptKind, TerminalAssignments, WalletOffers, TerminalSetup, TerminalSetupPlan,
-  DestinationRules, NewInstallation, VerifiedSetup and settings models.
-  No Android, coroutines, repositories or clocks; do not rederive their decisions elsewhere. History filters reuse
-  accounting's issue meaning rather than reading pending/unknown status fields. `ReceiptStanding` owns receipt meaning;
-  only the stored-payment reading interprets the original payment context's simulator flag for demo links.
+- \* Decision rules stay pure: Checkout, Cashback, UnreferencedRefunds, PaymentLinkRequests, SaleEvent, TenderBalance,
+  GiftCardActivity, PaymentStanding, RefundablePayment, HistorySearch, HistoryAccounting, ReceiptKind,
+  TerminalAssignments, WalletOffers, TerminalSetup, TerminalSetupPlan, DestinationRules, NewInstallation, VerifiedSetup
+  and settings models. No Android, coroutines, repositories or clocks; do not rederive their decisions elsewhere.
+  History filters reuse accounting's issue meaning rather than reading pending/unknown status fields. `ReceiptStanding`
+  owns receipt meaning; only the stored-payment reading interprets the original payment context's simulator flag for
+  demo links.
 - \* Work begun on one setup checks it is still stored only through `TerminalSetupSource.SetupFence`, which
   alone compares secret fingerprints. The source takes everything it calls as constructor arguments. `VerifiedSetup`
   alone decides what the verified-setup fingerprint covers; only the source reads `AppSettings.verifiedSetup`.
@@ -60,7 +61,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   Only `CapabilityDiscovery` reads or updates Management capability settings (`capabilities`, `updateCapabilities`).
   Tasks receive `TerminalListingApi`, `SharedKeyApi` or `TerminalCapabilitiesApi`; only the container holds
   `TerminalDetailsApi`.
-  `SetupDiscovery` returns immutable operation outcomes, not ambient problem/key-missing getters.
+  `SetupDiscovery` returns immutable operation outcomes, not ambient problem/key-missing getters. Wallet and capability
+  readings follow their setup only through `SetupReading`, which alone fences them.
 - \* Destination requirements/capabilities belong to adapter companions in `Destinations.kt`; `DestinationRules.of`
   selects rules. Which Settings › Terminal steps a destination asks for (`setupSteps`) and which of its connection
   details are already supplied (`suppliedDetails`) are the rules' too; only `TerminalSetupPlan` reads them to number,
@@ -72,20 +74,50 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   and original payment-context eligibility (`ApiAccess`); ready access and raw adapters cannot be fabricated by callers.
   `Captures` takes a target supplier, not `AdyenApi`; the simulated `CheckoutApi` is injected by the container, and
   the app never builds a Checkout part outside `AdyenCheckout`.
-- \* Only `FinancialOperations` checks stored operations again, routes refunds and says whether any is running; screens
-  offer checks from `PaymentAction.CHECK_AGAIN`/`RefundEntity.canCheckAgain`, never a ServiceID. Waiting and result
-  screens follow `paymentProgress`/`refundProgress` (amount as requested) and leave results through it, never through a
-  runner's own state. Saved-card charges,
-  Checkout refunds and payment-link creations are sent only by `CheckoutBook`s run by `CheckoutOperations`, which
-  declines a second link per checkout so screens never guard it. Terminal reconciliation (recheck unresolved, read or
-  close totals, compare) is one operation in payment (`TerminalReconciliation`); screens follow its outcome.
+- \* Only `FinancialOperations` checks stored operations again, routes refunds and says whether any is running, holding
+  each runner through its one `OperationKind` (busy, history release) and releasing them only itself; screens offer
+  checks from `PaymentAction.CHECK_AGAIN`/`RefundEntity.canCheckAgain`, never a ServiceID. Waiting and result screens
+  follow `paymentProgress`/`refundProgress` (amount as requested) through `FollowProgress` and leave results through it,
+  never through a runner's own state; view-model actions with an `ActionState` run through `runAction`. Saved-card
+  charges, Checkout refunds and payment-link creations are sent only by `CheckoutBook`s run by `CheckoutOperations`,
+  which declines a second link per checkout so screens never guard it. `OperationIdentity.send` alone sends identified
+  Checkout operations (books, captures, adjustments, refund cancellations, link expiry): replay window, approval, setup
+  and original context, approval again, persistence, then what a failed send establishes. Each kind supplies an
+  `IdentifiedSend` and only stores and reports what it found. Payment, history and receipt code read how a stored
+  record was sent from its route (`SaleRoute`, `RefundRoute`), never from its stored link, saved-card, Checkout-refund,
+  unreferenced or cash flags.
+  Terminal reconciliation (recheck unresolved, read or close totals, compare) is one operation in payment
+  (`TerminalReconciliation`); screens follow its outcome.
 - \* Only `SavedCardLookup` lists and selects saved cards for a charge. It owns reference/model/target freshness and
-  model eligibility; Checkout still validates pure request facts. Charge token retains its explicit lookup across
-  reference/cart/review screens; checkout's automatic lookup stays screen-scoped.
+  model eligibility; Checkout still validates pure request facts. Tokens retains its explicit lookup across
+  reference/cart/review screens; checkout's automatic lookup stays screen-scoped. Only `SavedCardCharges` deletes tokens,
+  serializing with charges/rechecks and invalidating every lookup before sending. Confirmed deletion follows its configured
+  Manager permission; admin unlock never authorizes a protected action.
+- \* Only `CashTenders` records cash tenders and gift-card cash handovers, and only `RefundLegs` records cash handed
+  back; cash reaches neither Adyen nor a terminal, so the stored balance, allocation and review checks are its only
+  safeguards. `TenderBalance` is the one allocation reading; returns of split sales go to every original tender through
+  `RefundablePayment.requests`. `RefundBalance` is the one return-balance reading, asked by review and again inside the
+  transaction storing a return.
+- Only `GiftCards` starts stored-value stages, each stored before sending and recovered with its original message
+  category; `GiftCardActivity` alone decides what an activity still needs (check, continue, repair, handover, undo).
+  Card cashback handovers also belong to `CashTenders`; approval never implies physical cash handover.
+  Gift-card value changes, repairs, handovers and balance inquiries follow their configured Manager permissions.
+  Redemption follows the sale permission. Never store gift-card numbers or PINs.
+- \* Unreferenced refunds start only through `StoredPaymentActions.refundWithoutReceipt`, which rechecks
+  `UnreferencedRefunds` readiness (verified store country, explicit enablement, local limit); the gateway checks the
+  confirmed configuration again at send and `TransactionLifecycle` the configured Manager permission. They are
+  refunds in history sent as `Payment`s, so only their own book rechecks them, as payments. Only `RefundCancellations`
+  asks Adyen to cancel a delayed one or records its request status; a received cancellation never means the refund stopped.
+- Meal-voucher markets come only from `WalletAvailability.mealVoucherSchemes` (verified store country; currency only
+  labels an offline demo). `Checkout.mealVoucher` decides what a voucher tender may do and explains blocks before
+  payment; `TenderBalance.acceptsVoucher` checks the eligible amount again where the tender is stored. Voucher value is
+  never returned as cash; Titres-restaurant are never refunded through the app.
 - \* Only container wiring for committed history deletion releases process request/receipt registries and simulator
   identities. Retained unknown operations keep their recovery evidence; simulator period totals survive retention.
-- \* `TransactionLifecycle` alone releases a received late answer, only after durable resolved settlement.
-  It stores only through `TransactionBook`. A stored Busy refusal's ServiceID lives on the
+- \* `TerminalSends` alone sends, aborts and checks again stored terminal requests (`TerminalGateway` payments,
+  refunds, stored value, status, abort) and releases a received late answer, only after durable resolved settlement.
+  `TransactionLifecycle` stores only through `TransactionBook`, `GiftCards` through its stages. A stored Busy
+  refusal's ServiceID lives on the
   sale, written and cleared only by `SaleEvent`; the book is its only reader, and the waiting screen asks
   `TransactionState.Processing.canCancel` rather than a ServiceID. Links reach Adyen/store link answers only through
   `PaymentLinks`, which serializes checks/cancellations and obtains eligible `ApiTarget` access. An unknown creation
@@ -133,7 +165,12 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
 - \* Only PIN-entry UI and `data.security` verify PINs. Financial actions request Manager approval and recheck it before
   sending; admin access is separate. Secrets remain in `SecretStore`. `payment` decides approval only through
   `ManagerApproval`: an operation keeps the grant it started with, so leaving the approving screen cannot refuse it.
-  `Checkout.ceremony` decides per tender what is dropped and confirmed and whether approval is asked.
+  `ManagerPolicy` alone reads whether actions need or can get a Manager PIN; screens and PIN entry follow the same
+  `ManagerApproval` scope (`required`, `available`) that operations check, and tests use the production policy.
+  `Checkout.ceremony` decides per tender what is dropped and confirmed; `Checkout.managerActions` selects the live
+  Manager permission scopes. `CardFeatures` (core) alone states which card features exclude each other, need the
+  verified store, and their Manager actions; `Checkout` offers, `PaymentStart` validates, the gateway checks
+  destinations (`DestinationRules.carries`) and `TerminalOperation` decides approval from it.
 - \* `TerminalState.needsSetup` is read only by the container's `SetupGate`, followed by `SetupGateHost` in the nav host.
   Every UI action reaching Adyen or a terminal runs through `currentSetupGate().run`/`GatedButton(requiresSetup = true)`;
   content that only means something once set up shows `SetupRequired`. Setup tools and `StatusCheck` never do, and Home

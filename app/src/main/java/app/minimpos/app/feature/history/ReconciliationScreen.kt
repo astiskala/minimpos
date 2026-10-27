@@ -52,6 +52,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatters
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.core.access.ManagerAction
 import java.time.LocalDate
 
 /**
@@ -74,6 +75,7 @@ fun ReconciliationScreen(
     var closeApproval by rememberSaveable { mutableStateOf(false) }
     if (closeApproval) {
         return ManagerApproval(
+            actions = setOf(ManagerAction.CLOSE_PERIOD),
             onApprove = {
                 closeApproval = false
                 vm.reconcileTerminal(closePeriod = true)

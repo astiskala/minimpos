@@ -1,5 +1,6 @@
 package app.minimpos.terminal
 
+import app.minimpos.terminal.FakePaymentsApp.Companion.RETURN_URL
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.PrintLine
@@ -8,6 +9,7 @@ import app.minimpos.terminal.client.RecoveryPolicy
 import app.minimpos.terminal.client.RefundParams
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalIdentity
+import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.parse.FormEncoding
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
@@ -22,27 +24,21 @@ import app.minimpos.terminal.paymentsapp.PaymentsAppLinks
 import app.minimpos.terminal.paymentsapp.PaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.PaymentsAppOnboarding
 import app.minimpos.terminal.paymentsapp.PaymentsAppTransport
-import app.minimpos.terminal.simulator.SimulatorConfig
-import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalKey
+import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.MessageCategoryType
-import com.adyen.model.nexo.MessageClassType
 import com.adyen.model.nexo.MessageHeader
-import com.adyen.model.nexo.MessageType
 import com.adyen.model.nexo.PaymentRequest
+import com.adyen.model.nexo.Response
+import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.SaleToPOIRequest
 import com.adyen.model.nexo.SaleToPOIResponse
 import com.adyen.model.terminal.TerminalAPIRequest
-import com.adyen.model.terminal.TerminalAPIResponse
-import com.adyen.model.terminal.TerminalAPISecuredRequest
-import com.adyen.model.terminal.TerminalAPISecuredResponse
-import com.adyen.terminal.security.NexoCrypto
-import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import com.google.common.truth.Truth.assertThat
 import com.google.gson.JsonParser
 import kotlinx.coroutines.runBlocking
@@ -51,7 +47,6 @@ import mockwebserver3.MockWebServer
 import okhttp3.HttpUrl
 import org.junit.Assert.assertThrows
 import org.junit.Test
-import java.net.URLDecoder
 import kotlin.io.encoding.Base64
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -64,7 +59,7 @@ class PaymentsAppTest {
         TerminalClient(
             transport,
             TerminalIdentity("MiniMPOS", "INSTALLATION-1"),
-            recovery = RecoveryPolicy(attempts = 1, intervalMillis = 1, maxInProgressChecks = 1),
+            recovery = RecoveryPolicy(attempts = 1, intervalMillis = 1, maxInProgressChecks = 1, reprintReceipts = false),
             currencyDigits = testCurrencyDigits,
         )
     private val payment = PaymentParams(1250, "EUR", "260930-1")
@@ -111,14 +106,18 @@ class PaymentsAppTest {
     }
 
     @Test
-    fun `only payments and refunds go to the Payments app`() {
+    fun `payments refunds and status go to the Payments app but hardware requests do not`() {
         assertThat(runBlocking { client.diagnose() }.reachable).isFalse()
         assertThat(runBlocking { client.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) })
             .isInstanceOf(PrintOutcome.Failed::class.java)
         runBlocking { client.abort("PAY1") }
-        // Without a late answer, a status check cannot be made, so the outcome stays unknown.
+        // An unconfirmed NotFound cannot establish that another payment is safe.
         assertThat(runBlocking { client.status("PAY1") }).isInstanceOf(TransactionOutcome.Unknown::class.java)
-        assertThat(app.opened).isEmpty()
+        assertThat(
+            app.requests
+                .single()
+                .saleToPOIRequest.transactionStatusRequest,
+        ).isNotNull()
     }
 
     @Test
@@ -135,9 +134,152 @@ class PaymentsAppTest {
         assertThat(app.lateReplies()).hasSize(1)
         transport.acknowledge("PAY2")
         assertThat(app.lateReplies()).isEmpty()
-        assertThat(runBlocking { client.status("PAY2") }).isInstanceOf(TransactionOutcome.Unknown::class.java)
+        assertThat(runBlocking { client.status("PAY2") }).isInstanceOf(TransactionOutcome.Completed::class.java)
         // Answers to other requests do not count.
         assertThat(runBlocking { client.status("OTHER") }).isInstanceOf(TransactionOutcome.Unknown::class.java)
+    }
+
+    @Test
+    fun `missing payment and refund callbacks recover with status without sending another financial request`() {
+        app.loseFinancialReplies = true
+        val paid = runBlocking { client.pay(payment, "LOSTPAY") } as TransactionOutcome.Completed
+        val request = app.requests.last().saleToPOIRequest
+        assertThat(request.messageHeader.poiid).isEqualTo("INSTALLATION-1")
+        assertThat(request.messageHeader.saleID).isEqualTo("MiniMPOS")
+        assertThat(request.messageHeader.serviceID).isNotEqualTo("LOSTPAY")
+        assertThat(request.transactionStatusRequest.messageReference.serviceID).isEqualTo("LOSTPAY")
+        assertThat(request.transactionStatusRequest.messageReference.saleID).isEqualTo("MiniMPOS")
+        assertThat(request.transactionStatusRequest.messageReference.messageCategory).isEqualTo(MessageCategoryType.PAYMENT)
+        assertThat(request.transactionStatusRequest.isReceiptReprintFlag).isFalse()
+        val refund = RefundParams(paid.details.poiTransactionId!!, paid.details.poiTimestamp!!, "REFUND")
+        assertThat(runBlocking { client.refund(refund, "LOSTREF") }).isInstanceOf(TransactionOutcome.Completed::class.java)
+        assertThat(
+            app.requests
+                .last()
+                .saleToPOIRequest.transactionStatusRequest.messageReference.messageCategory,
+        ).isEqualTo(MessageCategoryType.REVERSAL)
+        assertThat(app.requests.count { it.saleToPOIRequest.paymentRequest != null }).isEqualTo(1)
+        assertThat(app.requests.count { it.saleToPOIRequest.reversalRequest != null }).isEqualTo(1)
+    }
+
+    @Test
+    fun `fresh client after process death recovers the persisted original identity through selected environment`() {
+        runBlocking { client.pay(payment, "RESTART") }
+        TerminalEnvironment.entries.forEach { environment ->
+            val restarted =
+                TerminalClient(
+                    PaymentsAppTransport(key, environment, app, RETURN_URL),
+                    TerminalIdentity("MiniMPOS", "INSTALLATION-1"),
+                    currencyDigits = testCurrencyDigits,
+                    recovery = RecoveryPolicy(reprintReceipts = false),
+                )
+            assertThat(runBlocking { restarted.status("RESTART") }).isInstanceOf(TransactionOutcome.Completed::class.java)
+            assertThat(app.opened.last().packageName).isEqualTo(PaymentsAppLinks.packageName(environment))
+            val prefix = if (environment == TerminalEnvironment.TEST) "https://www.adyen.com/test/nexo?" else "https://www.adyen.com/nexo?"
+            assertThat(app.opened.last().link).startsWith(prefix)
+        }
+        assertThat(app.requests.count { it.saleToPOIRequest.paymentRequest != null }).isEqualTo(1)
+    }
+
+    @Test
+    fun `old app versions use validated late replies and can gain status support after update`() {
+        var version = "1.6.0"
+        val old =
+            TerminalClient(
+                PaymentsAppTransport(key, TerminalEnvironment.TEST, app, RETURN_URL) { version },
+                TerminalIdentity("MiniMPOS", "INSTALLATION-1"),
+                currencyDigits = testCurrencyDigits,
+            )
+        assertThat(runBlocking { old.status("OLD") }).isEqualTo(TransactionOutcome.Unknown(Fault.NoLateReply))
+        assertThat(app.opened).isEmpty()
+        app.keepAnswers = true
+        assertThat(runBlocking { client.pay(payment, "OLD") }).isInstanceOf(TransactionOutcome.Completed::class.java)
+        assertThat(runBlocking { old.status("OLD") }).isInstanceOf(TransactionOutcome.Completed::class.java)
+        app.keepAnswers = false
+        version = "1.8.0"
+        assertThat(runBlocking { old.status("MISSING") }).isEqualTo(TransactionOutcome.Unknown(Fault.NoLateReply))
+        assertThat(app.opened).hasSize(2)
+        listOf(null, "unknown", "1.8.0", "1.9.0", "2.0.0").forEach { assertThat(PaymentsAppTransport.supportsStatus(it)).isTrue() }
+        listOf("0.9.0", "1.6.0", "1.7.99").forEach { assertThat(PaymentsAppTransport.supportsStatus(it)).isFalse() }
+    }
+
+    @Test
+    fun `in progress missing callbacks and wrong status context remain unknown`() {
+        runBlocking { client.pay(payment, "ORIGINAL") }
+        app.transform = {
+            it.saleToPOIResponse.transactionStatusResponse.response =
+                Response().apply {
+                    result = ResultType.FAILURE
+                    errorCondition = ErrorConditionType.IN_PROGRESS
+                }
+        }
+        assertThat(runBlocking { client.status("ORIGINAL") }).isEqualTo(TransactionOutcome.Unknown(Fault.StillInProgress))
+        app.transform = { it.saleToPOIResponse.transactionStatusResponse.messageReference.serviceID = "FOREIGN" }
+        assertThat(runBlocking { client.status("ORIGINAL") }).isEqualTo(TransactionOutcome.Unknown(Fault.UnreadableReply()))
+        app.transform = null
+        assertThat(runBlocking { client.status("ORIGINAL", TransactionKind.REFUND) })
+            .isEqualTo(TransactionOutcome.Unknown(Fault.UnreadableReply()))
+        app.unanswered = AppLinkAnswer.TimedOut
+        assertThat(runBlocking { client.status("ORIGINAL") }).isEqualTo(TransactionOutcome.Unknown(Fault.TimedOut))
+    }
+
+    @Test
+    fun `malformed status bodies and mismatched repeated headers never settle the original payment`() {
+        runBlocking { client.pay(payment, "GUARDS") }
+        val mutations: List<(SaleToPOIResponse) -> Unit> =
+            listOf(
+                { it.messageHeader.saleID = "FOREIGN" },
+                { it.messageHeader.poiid = "FOREIGN" },
+                { it.transactionStatusResponse = null },
+                { it.transactionStatusResponse.messageReference = null },
+                { it.transactionStatusResponse.repeatedMessageResponse = null },
+                { it.transactionStatusResponse.repeatedMessageResponse.repeatedResponseMessageBody = null },
+                { it.transactionStatusResponse.repeatedMessageResponse.messageHeader = MessageHeader().apply { poiid = "FOREIGN" } },
+            )
+        mutations.forEach { mutation ->
+            app.transform = { mutation(it.saleToPOIResponse) }
+            assertThat(runBlocking { client.status("GUARDS") }).isEqualTo(TransactionOutcome.Unknown(Fault.UnreadableReply()))
+        }
+        app.transform = null
+        runBlocking { client.status("GUARDS") }
+        val missingReference = app.requests.last()
+        missingReference.saleToPOIRequest.transactionStatusRequest.messageReference = null
+        assertThat(runBlocking { transport.send(missingReference, 1.seconds) }).isEqualTo(Delivery.Failed(Fault.NoLateReply))
+        listOf("999999999999999999999.8.0", "1.999999999999999999999.0").forEach {
+            assertThat(PaymentsAppTransport.supportsStatus(it)).isTrue()
+        }
+    }
+
+    @Test
+    fun `late replies must match original sale terminal and category even when service ID matches`() {
+        app.keepAnswers = true
+        runBlocking { client.pay(payment, "COLLISION") }
+        val lateOnly = PaymentsAppTransport(key, TerminalEnvironment.TEST, app, RETURN_URL) { "1.6.0" }
+        listOf(TerminalIdentity("OTHER", "INSTALLATION-1"), TerminalIdentity("MiniMPOS", "OTHER")).forEach { identity ->
+            val foreign = TerminalClient(lateOnly, identity, currencyDigits = testCurrencyDigits)
+            assertThat(runBlocking { foreign.status("COLLISION") }).isInstanceOf(TransactionOutcome.Unknown::class.java)
+        }
+        val original = TerminalClient(lateOnly, TerminalIdentity("MiniMPOS", "INSTALLATION-1"), currencyDigits = testCurrencyDigits)
+        assertThat(
+            runBlocking { original.status("COLLISION", TransactionKind.REFUND) },
+        ).isInstanceOf(TransactionOutcome.Unknown::class.java)
+        assertThat(app.lateReplies()).hasSize(1)
+        assertThat(runBlocking { client.status("COLLISION") }).isInstanceOf(TransactionOutcome.Completed::class.java)
+    }
+
+    @Test
+    fun `an original answer racing the status callback is retained until durable acknowledgement`() {
+        app.keepAnswers = true
+        runBlocking { client.pay(payment, "RACE") }
+        val original = app.lateReplies().single()
+        transport.acknowledge("RACE")
+        app.reply = { original }
+        assertThat(runBlocking { client.status("RACE") }).isInstanceOf(TransactionOutcome.Completed::class.java)
+        assertThat(app.lateReplies()).containsExactly(original)
+        transport.acknowledge("RACE")
+        assertThat(app.lateReplies()).isEmpty()
+        assertThat(app.requests.count { it.saleToPOIRequest.paymentRequest != null }).isEqualTo(1)
+        assertThat(app.opened).hasSize(2)
     }
 
     @Test
@@ -508,112 +650,6 @@ class PaymentsAppTest {
             assertThat(onboarding.board(BoardingTarget("Merchant"))).isEqualTo(Onboarding.Failed(Fault.Abandoned, unboarded = true))
         }
 
-    /** One link the fake Payments app was asked to open. */
-    private data class Opened(
-        val link: String,
-        val packageName: String,
-    ) {
-        val parameters = FormEncoding.decode(link.substringAfter('?'))
-        val returnUrl: String = URLDecoder.decode(parameters.getValue("returnUrl"), Charsets.UTF_8)
-        val request: String? = parameters["request"]
-    }
-
-    /** Plays the Adyen Payments app: boards, and answers payments and refunds with the simulator. */
-    private class FakePaymentsApp(
-        key: TerminalKey,
-    ) : AppLinkExchange {
-        private val gson = TerminalAPIGsonBuilder.create()
-        private val crypto = NexoCrypto(key.toSecurityKey())
-        private val simulator = TerminalSimulator(config = { SimulatorConfig(delayMillis = 0) })
-        val opened = mutableListOf<Opened>()
-        val boardingTokens = mutableListOf<String>()
-        var boarded = true
-
-        /** Keeps answers as if the app had been restarted, so the exchange times out. */
-        var keepAnswers = false
-        private val late = mutableListOf<String>()
-
-        /** Replaces the answer to the next links. */
-        var reply: ((Opened) -> String)? = null
-
-        /** Brings no answer back from the next links. */
-        var unanswered: AppLinkAnswer.Unanswered? = null
-
-        override suspend fun exchange(
-            link: String,
-            packageName: String,
-            timeout: Duration,
-        ): AppLinkAnswer {
-            val opened = Opened(link, packageName).also { this.opened += it }
-            val answer = unanswered ?: AppLinkAnswer.Returned(reply?.invoke(opened) ?: answer(opened))
-            if (keepAnswers && answer is AppLinkAnswer.Returned) late += answer.url
-            return if (keepAnswers) AppLinkAnswer.TimedOut else answer
-        }
-
-        override fun lateReplies(): List<String> = late
-
-        override fun forgetLateReplies(urls: Set<String>) {
-            late.removeAll(urls)
-        }
-
-        private suspend fun answer(opened: Opened): String =
-            when {
-                opened.link.contains("/boarded?") -> {
-                    if (boarded && !opened.link.contains("reboard=true")) {
-                        "${opened.returnUrl}?boarded=true&installationId=INSTALLATION-1"
-                    } else {
-                        "${opened.returnUrl}?boarded=false&installationId=INSTALLATION-1&boardingRequestToken=BRT-1"
-                    }
-                }
-
-                opened.link.contains("/board?") -> {
-                    boardingTokens += String(Base64.UrlSafe.decode(opened.parameters.getValue("boardingToken")))
-                    boarded = true
-                    "${opened.returnUrl}?boarded=true&installationId=INSTALLATION-1"
-                }
-
-                else -> {
-                    val secured =
-                        gson.fromJson(
-                            String(Base64.UrlSafe.decode(checkNotNull(opened.request))),
-                            TerminalAPISecuredRequest::class.java,
-                        )
-                    val request = gson.fromJson(crypto.decrypt(secured.saleToPOIRequest), TerminalAPIRequest::class.java)
-                    val response = checkNotNull((simulator.send(request, 10.seconds) as Delivery.Answered).response)
-                    "${opened.returnUrl}?response=${encrypt(gson.toJson(response), response.saleToPOIResponse.messageHeader)}"
-                }
-            }
-
-        /** An answer that says it is for [serviceId], encrypted with this app's key. */
-        fun encryptedAnswer(
-            opened: Opened,
-            serviceId: String,
-        ): String {
-            val header =
-                MessageHeader().apply {
-                    this.serviceID = serviceId
-                    messageCategory = MessageCategoryType.PAYMENT
-                    messageClass = MessageClassType.SERVICE
-                    messageType = MessageType.RESPONSE
-                }
-            val response =
-                TerminalAPIResponse().apply {
-                    saleToPOIResponse =
-                        SaleToPOIResponse()
-                            .apply { messageHeader = header }
-                }
-            return "${opened.returnUrl}?response=${encrypt(gson.toJson(response), header)}"
-        }
-
-        private fun encrypt(
-            json: String,
-            header: MessageHeader,
-        ): String {
-            val secured = TerminalAPISecuredResponse().apply { saleToPOIResponse = crypto.encrypt(json, header) }
-            return Base64.UrlSafe.encode(gson.toJson(secured).toByteArray())
-        }
-    }
-
     /** Records boarding token requests and answers with [result]. */
     private class RecordingManagement : PaymentsAppManagement {
         val requests = mutableListOf<Pair<BoardingTarget, String>>()
@@ -645,8 +681,4 @@ class PaymentsAppTest {
                 }
             assertThat(transport.send(unencryptable, 5.seconds)).isEqualTo(Delivery.Failed(Fault.RequestNotEncrypted))
         }
-
-    private companion object {
-        const val RETURN_URL = "minimpos://paymentsapp"
-    }
 }

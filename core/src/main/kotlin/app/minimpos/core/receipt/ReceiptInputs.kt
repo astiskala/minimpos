@@ -2,6 +2,7 @@ package app.minimpos.core.receipt
 
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.TaxBreakdown
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.tax.TaxAmounts
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.core.tax.TaxRates
@@ -36,6 +37,8 @@ data class CardReceiptLine(
  * @property title a heading under the header on sale receipts, e.g. "TAX INVOICE"; refund receipts use
  *   [ReceiptLabels.refundTitle] instead.
  * @property footer free text at the bottom, possibly several lines; lines are trimmed and empty ones dropped.
+ * @property logo the centered receipt logo, or null for none.
+ * @property printBusinessName whether the business name appears below the logo.
  */
 data class ReceiptBranding(
     val businessName: String = "",
@@ -45,6 +48,8 @@ data class ReceiptBranding(
     val phone: String = "",
     val title: String = "",
     val footer: String = "",
+    val logo: MonoBitmap? = null,
+    val printBusinessName: Boolean = true,
 )
 
 /**
@@ -115,6 +120,20 @@ data class ReceiptOptions(
  * @property linkValidFormat the line under the payment link; `%s` is when it stops working, already formatted.
  * @property paidOnline the note on the receipt of a sale paid through a payment link.
  * @property markedTaxRateNote Explanation of marked items, printed after them; blank omits the explanation.
+ * @property surcharge Label of the fee component.
+ * @property unreported Unavailable component, distinct from zero.
+ * @property charged Total charged across original tenders.
+ * @property purchase Purchase component excluding tips, surcharge and cash movement.
+ * @property tenderCard Label of a card tender in the breakdown, followed by its brand and masked number.
+ * @property tenderCash Label of a cash tender in the breakdown.
+ * @property cashReceived Label of the cash received for a cash tender.
+ * @property change Label of the change handed back for a cash tender.
+ * @property balanceDue Label of the purchase balance still due on a partially paid sale.
+ * @property cashReturned Note on the receipt of cash handed back for a cash tender, instead of a request outcome.
+ * @property tenderGiftCard Label of a gift-card tender in the breakdown, followed by its provider and last digits.
+ * @property tenderMealVoucher Label of a meal-voucher tender in the breakdown, followed by its brand and masked number.
+ * @property giftCard Label of the gift card a stored-value receipt is for.
+ * @property balance Label of a gift card's balance as last reported.
  */
 data class ReceiptLabels(
     val date: String = "Date",
@@ -157,6 +176,34 @@ data class ReceiptLabels(
     val linkValidFormat: String = "Link valid until %s",
     val paidOnline: String = "Paid online",
     val markedTaxRateNote: String = "※ Items at the marked tax rate",
+    /** Fee component already included in the charged amount. */
+    val surcharge: String = "Surcharge",
+    /** A fee that was not recorded or reported, distinct from zero. */
+    val unreported: String = "Unreported",
+    /** Total charged across the original tenders. */
+    val charged: String = "CHARGED",
+    /** Purchase component excluding tip, fee and cash movement. */
+    val purchase: String = "Purchase",
+    /** A card tender in the breakdown. */
+    val tenderCard: String = "Card",
+    /** A cash tender in the breakdown. */
+    val tenderCash: String = "Cash",
+    /** Cash the shopper handed over for a cash tender. */
+    val cashReceived: String = "Cash received",
+    /** Change handed back for a cash tender. */
+    val change: String = "Change",
+    /** Purchase balance still to be paid on a partially paid sale. */
+    val balanceDue: String = "BALANCE DUE",
+    /** Note on the receipt of cash handed back for a cash tender. */
+    val cashReturned: String = "Cash returned",
+    /** A gift-card tender in the breakdown. */
+    val tenderGiftCard: String = "Gift card",
+    /** A meal-voucher tender in the breakdown. */
+    val tenderMealVoucher: String = "Meal voucher",
+    /** The gift card a stored-value receipt is for. */
+    val giftCard: String = "Gift card",
+    /** A gift card's balance as last reported. */
+    val balance: String = "Balance",
 )
 
 /**
@@ -243,6 +290,15 @@ enum class ReceiptCopy {
  * @property standingNote Current localized payment standing; null for a normal charged sale.
  * @property holdCancelled The original amount is no longer held.
  * @property notice A warning printed first, in bold, such as a demo receipt's note that no money moved; null for none.
+ * @property surchargeMinor Reported fee in minor units; null when unreported.
+ * @property chargedAmount Total authorized across tenders; null for old or non-terminal receipts.
+ * @property purchaseMinor Known purchase component in minor units; null when unreported.
+ * @property discloseSurcharge Whether the original fee component, including unknown, must be shown.
+ * @property cardPlans Localized requested/returned plan and meal-voucher facts, including unresolved tenders; never proof
+ *   of approval.
+ * @property tenders Approved tenders in payment order, printed as a breakdown when there are several or any is cash.
+ * @property balanceDueMinor Purchase balance still due in minor units, printed as [ReceiptLabels.balanceDue]; null
+ *   when nothing is due.
  */
 data class SaleReceipt(
     val reference: String,
@@ -267,13 +323,57 @@ data class SaleReceipt(
     /** The hold was canceled, so its original amount is no longer shown as held. */
     val holdCancelled: Boolean = false,
     val notice: String? = null,
+    /** Reported fee component, in minor units; null is unknown when [chargedAmount] is present. */
+    val surchargeMinor: Long? = null,
+    /** Authorized total including all components; null when not supplied, preserving historical totals. */
+    val chargedAmount: Long? = null,
+    /** Known purchase component of the charged amount; null when fee breakdown is unavailable. */
+    val purchaseMinor: Long? = null,
+    /** Show an explicit unknown fee for historical terminal payments. */
+    val discloseSurcharge: Boolean = false,
+    val cardPlans: List<String> = emptyList(),
+    val tenders: List<ReceiptTender> = emptyList(),
+    val balanceDueMinor: Long? = null,
+)
+
+/** How one tender of a sale was paid, as its receipt breakdown names it. */
+enum class ReceiptTenderKind {
+    /** A card or wallet on the terminal, whose own Adyen receipt lines follow verbatim. */
+    CARD,
+
+    /** Cash recorded locally, with what was received and the change. */
+    CASH,
+
+    /** A gift card redeemed on the terminal, whose own Adyen receipt lines follow verbatim. */
+    GIFT_CARD,
+
+    /** A meal voucher paid on the terminal, whose own Adyen receipt lines follow verbatim. */
+    MEAL_VOUCHER,
+}
+
+/**
+ * One approved tender in a sale receipt's breakdown.
+ *
+ * @property kind How it was paid.
+ * @property detail Card brand and masked number as the terminal reported them; null for cash or when unreported.
+ * @property amountMinor Amount the tender collected (for a card including its tip and fee), in minor units.
+ * @property receivedMinor Cash received; null for a card.
+ * @property changeMinor Change handed back; null for a card.
+ */
+data class ReceiptTender(
+    val kind: ReceiptTenderKind,
+    val detail: String?,
+    val amountMinor: Long,
+    val receivedMinor: Long? = null,
+    val changeMinor: Long? = null,
 )
 
 /**
  * The data for a refund receipt.
  *
  * @property reference the refund's own merchant reference.
- * @property originalReference the refunded sale's merchant reference (or its transaction id when that is unknown).
+ * @property originalReference the refunded sale's merchant reference (or its transaction id when that is unknown);
+ *   null for an unreferenced refund, which names no original payment and prints [unreferencedNotes] instead.
  * @property dateTime the refund's date and time, already formatted for the locale.
  * @property items the refunded items; empty for a refund of an amount, which prints [ReceiptLabels.partialRefund].
  * @property amount the refunded amount in minor units.
@@ -283,10 +383,14 @@ data class SaleReceipt(
  *   (instead of items) say.
  * @property full Whether the whole local remaining amount was reversed.
  * @property standingNote Current localized request outcome; null for none.
+ * @property surchargeMinor Fee included in the returned amount; null when unknown.
+ * @property tipMinor Tip included in the returned amount; null when unknown.
+ * @property unreferencedNotes Localized lines of an unreferenced refund, such as that it is not linked to an original
+ *   payment and why it was made; empty for referenced refunds.
  */
 data class RefundReceipt(
     val reference: String,
-    val originalReference: String,
+    val originalReference: String?,
     val dateTime: String,
     val items: List<ReceiptItem>,
     val amount: Long,
@@ -296,7 +400,48 @@ data class RefundReceipt(
     val full: Boolean = false,
     /** Current localized request outcome; null for no additional note. */
     val standingNote: String? = null,
+    /** Surcharge included in [amount]; null for unknown historical allocations. */
+    val surchargeMinor: Long? = null,
+    /** Tip included in [amount]; null for unknown historical allocations. */
+    val tipMinor: Long? = null,
+    val unreferencedNotes: List<String> = emptyList(),
 )
 
 /** "GST 10%" - or the name as-is when the merchant already put the rate in it. */
 fun AppliedTax.label(): String = if ('%' in name) name else "$name ${TaxRates.format(rateMilliPercent)}%".trim()
+
+/**
+ * One amount line on a stored-value receipt.
+ *
+ * @property label What it is, already localized, such as the value loaded or the cash handed over.
+ * @property amountMinor In minor units of the receipt's currency.
+ * @property bold Whether it is the receipt's main amount.
+ */
+data class GiftCardReceiptLine(
+    val label: String,
+    val amountMinor: Long,
+    val bold: Boolean = false,
+)
+
+/**
+ * The data for a stored-value (gift-card) receipt: never a sale or refund receipt.
+ *
+ * @property title The activity, already localized, such as "GIFT CARD LOAD".
+ * @property reference The activity's merchant reference.
+ * @property dateTime When it began, already formatted for the locale.
+ * @property card Provider and last digits of the gift card; null when unknown.
+ * @property lines Its amounts in order.
+ * @property balanceMinor The card's balance as last reported, in minor units; null when unreported.
+ * @property standingNote Current localized outcome; null for none.
+ * @property cardReceipts Adyen's receipt lines of each answered stage, printed verbatim in order.
+ */
+data class GiftCardReceipt(
+    val title: String,
+    val reference: String,
+    val dateTime: String,
+    val card: String?,
+    val lines: List<GiftCardReceiptLine>,
+    val balanceMinor: Long?,
+    val standingNote: String?,
+    val cardReceipts: List<List<CardReceiptLine>>,
+)

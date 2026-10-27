@@ -113,7 +113,7 @@
   </td><td data-label="功能限制">支持独立顾客屏幕；云端路由不提供离线处理。</td></tr><tr><th scope="row"><a href="#tap-to-pay">在手机上使用 Tap to Pay
   </a></th><td data-label="连接">互联网；兼容 NFC 手机</td><td data-label="收据">邮件或分享；无打印机</td><td data-label="功能限制">
   不支持终端小费、顾客屏幕、MOTO/MKE、离线处理或终端对账。</td></tr></tbody></table></details><p class="hint">终端功能取决于机型、支付方式及 Adyen
-  配置。请测试所需流程；模拟器无法验证真实终端。 <a href="using#capabilities">检查
+  配置。请测试所需流程。 <a href="using#capabilities">检查
   Adyen 功能</a>.</p>
           <ul>
             <li>打印需要内置打印机的终端。如果没有打印机，可改为发送电子收据或分享收据。</li>
@@ -148,6 +148,7 @@
                 <li><strong>Management API - Terminal settings read and write</strong></li>
                 <li><strong>Management API - Terminal settings Advanced read and write</strong></li>
                 <li><strong>Cloud Device API role</strong></li>
+                <li><strong>API tokenise payment details</strong></li>
               </ul>
               凭据须属于您的 Company 账户，并能访问支付目标的商家账户。参见
                 <a href="https://docs.adyen.com/development-resources/api-credentials/roles">Adyen API 角色指南</a>。</li>
@@ -162,7 +163,7 @@
               </ul>
             </li>
           </ol>
-<details class="role-checklist"><summary>核对完整的凭据要求</summary><p>除上述四个额外角色外，还需保留下列默认支付和 Management API
+<details class="role-checklist"><summary>核对完整的凭据要求</summary><p>除上述五个额外角色外，还需保留下列默认支付和 Management API
   角色。现有凭据可能已移除部分默认角色。所有配置的主凭据要求相同；仅手机注册使用的独立凭据需要 Adyen Payments App role。</p><ul><li><strong>Merchant PAL webservice
   role</strong></li><li><strong>Checkout webservice role</strong></li><li><strong>Management API - API credentials read
   and write</strong></li><li><strong>Management API - Payment methods read</strong></li><li><strong>Management API -
@@ -390,7 +391,7 @@
 </div>
           <p>使用可选终端功能前，请检查 <a href="using#capabilities">Adyen 功能</a>并测试实际收款目标：<a href="using#terminal-tips">终端小费</a>、
             <a href="using#terminal-checkout">部分付款、购物者提示、Giving 和手动输入卡号</a>、<a href="using#offline">离线处理</a>及
-            <a href="using#reconciliation">终端对账</a>。可用性取决于 Adyen 配置和收款目标；模拟器结果不等于真实终端验证。</p>
+            <a href="using#reconciliation">终端对账</a>。可用性取决于 Adyen 配置和收款目标。</p>
           <ol>
             <li>在 TEST 中测试计划使用的可选流程：<a href="using#preauth">订金</a>、<a href="using#tips">收据小费</a>、
               <a href="using#payment-links">付款链接</a>或<a href="using#wallets">扫描钱包</a>。订金和收据小费会冻结资金，直至扣款。请在商户后台确认最终扣款结果。
@@ -412,21 +413,21 @@
         </section>
         <section id="try">
           <h2>试用模拟器</h2>
-          <p>要演示离线警告，请在<strong>设置 › 模拟器</strong>中开启<strong>离线批准</strong>（Store-and-Forward）。获批的模拟销售将没有 PSP
-            识别号，并报告未确认批次。在交易记录中查看销售并尝试<a href="using#reconciliation">终端对账</a>。这只是演示，不会验证真实离线授权或稍后上传 Adyen 的流程。</p>
           <p>无需 Adyen 账户或终端即可体验 Mini mPOS，不会扣款。</p>
           <ol>
             <li>在 Android 9+ 手机或模拟器上<a href="#install">安装应用</a>。</li>
-            <li>在欢迎界面选择<strong>试用演示</strong>，点按<strong>继续</strong>。其他选项为<strong>扫描设置二维码</strong>（来自设置助手或另一台设备）和<strong>
-              连接 Adyen</strong>。Adyen 终端默认选择连接，其他设备默认选择演示。</li>
-            <li>在<strong>设置 › 模拟器</strong>中选择支付结果、延迟以及是否有打印机。</li>
+            <li>在欢迎界面选择<strong>试用演示</strong>（而非<strong>扫描设置二维码</strong>或<strong>连接 Adyen</strong>），然后点按
+              <strong>继续</strong>。</li>
+            <li>在<strong>设置 › 模拟器</strong>中选择支付结果、延迟以及是否有打印机。开启<strong>离线批准</strong>后，可在交易记录和
+              <a href="using#reconciliation">终端对账</a>中查看离线警告。</li>
           </ol>
-          <p>示例商品和交易记录会标为演示。每次<strong>添加示例数据</strong>都会以虚构咖啡店信息替换收据商家信息，即使示例已存在；收据版式和发送设置保持不变。示例计入演示每日合计和报告，并非真实付款。在
-            <strong>设置 › 数据与传输</strong>中可<strong>添加示例数据</strong>或<strong>删除示例数据</strong>；删除会保留您自己的商品、交易记录和设置。离线演示链接请参阅
-            <a href="using#payment-links">付款链接</a>。</p>
-          <p>准备连接时，在<strong>设置 › 模拟器</strong>中点按<strong>设置真实支付</strong>。通过快捷入口检查示例数据和收据，再点按<strong>继续设置</strong>
-            。打开设置不会更改数据。确认切换到 TEST 或 LIVE 后，所有本地交易记录（包括未完成的操作）都会删除；示例商品和收据信息会保留。请单独移除不需要的示例，并在真实支付前检查虚构的收据商户信息。先使用 TEST
-            测试。</p>
+          <p>在<strong>设置 › 数据与传输</strong>中可<strong>添加示例数据</strong>或<strong>删除示例数据</strong>。示例会标为演示。
+            示例计入演示每日合计和报告；添加示例会以虚构咖啡店替换收据商户信息，删除示例会保留您自己的商品、交易记录和设置。</p>
+          <p>付款链接无需 API 凭据即可离线使用，其页面和收据都标为演示。这些二维码无法收款；点按<strong>模拟支付</strong>即可完成演示。</p>
+          <p>模拟器展示的是 Mini mPOS 的行为，而不是您的终端或 Adyen 账户支持什么。语音引导、离线批准和 Adyen 功能等只是模拟，
+            请在真实的 TEST 终端上测试后再使用。</p>
+          <p>准备连接时，在<strong>设置 › 模拟器</strong>中依次点按<strong>设置真实支付</strong>和<strong>继续设置</strong>。确认 TEST
+            或 LIVE 会删除所有本地交易记录；示例商品和收据信息会保留，因此请在真实付款前移除示例并检查商户信息。先使用 TEST 测试。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
       </div>

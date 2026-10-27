@@ -2,24 +2,21 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
-import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.security.ManagerApproval
-import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.TerminalGateway
+import app.minimpos.app.terminal.cardFeatures
+import app.minimpos.core.access.ManagerAction
+import app.minimpos.core.payment.CardFeatures
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.RefundParams
+import app.minimpos.terminal.client.StoredValueParams
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TransactionDetails
 import app.minimpos.terminal.client.TransactionKind
-import app.minimpos.terminal.client.TransactionOutcome
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import kotlin.uuid.Uuid
 
@@ -121,36 +118,77 @@ sealed interface TerminalOperation {
     /** What it charges or refunds, which its waiting screen shows. */
     val amount: OperationAmount
 
-    /** Whether it moves money only with Manager approval, see [ManagerApproval]. */
-    val needsApproval: Boolean
+    /** Actions this request performs, re-evaluated against the live Manager policy before sending. */
+    val managerActions: Set<ManagerAction>
+
+    /** The message category it is sent with, which its abort and status check name. */
+    val kind: TransactionKind
 
     /**
-     * A card payment. MOTO and MKE payments need Manager approval; ordinary card entry does not.
+     * A card payment whose Manager permissions follow its sale kind, cash request and card-entry method.
      *
      * @property params What to charge.
-     * @property expected Original destination for a scanned payment; null for ordinary terminal collection.
-     * @property setupIdentity Exact checked scan setup fingerprint; null for ordinary terminal collection.
+     * @property audioGuidancePoiId Confirmed audio-guidance terminal; null for ordinary payments.
+     * @property expected Checked destination for scanned or Mexican-routed payments; null for ordinary collection.
+     * @property setupIdentity Exact checked store/scan setup fingerprint; null for ordinary collection.
+     * @property cashbackIdentity Non-secret configuration identity confirmed for a cash request; null for ordinary collection.
+     * @property unreferencedIdentity Non-secret configuration identity confirmed for an unreferenced refund; null otherwise.
+     * @property collectionAction Sale or pre-authorization permission; null derives it from the wire request.
      */
     data class Pay(
         val params: PaymentParams,
+        val audioGuidancePoiId: String? = null,
         val expected: PaymentContext? = null,
         val setupIdentity: String? = null,
+        val cashbackIdentity: String? = null,
+        val unreferencedIdentity: String? = null,
+        val collectionAction: ManagerAction? = null,
     ) : TerminalOperation {
+        override val managerActions: Set<ManagerAction> get() =
+            CardFeatures.managerActions(
+                params.cardFeatures,
+                when {
+                    params.unreferencedRefund -> null
+                    params.cashBackMinor != null -> ManagerAction.SALE.takeIf { params.amountMinor > (params.cashBackMinor ?: 0L) }
+                    else -> collectionAction ?: if (params.preAuthorisation) ManagerAction.PRE_AUTHORISATION else ManagerAction.SALE
+                },
+            )
         override val amount: OperationAmount get() = OperationAmount(params.amountMinor, params.currency)
-        override val needsApproval: Boolean get() = params.cardEntryOverride.needsManagerApproval
+        override val kind: TransactionKind get() = TransactionKind.PAYMENT
     }
 
     /**
-     * A referenced refund, which always needs Manager approval.
+     * A referenced refund or hold cancellation, with separate Manager permissions.
      *
      * @property params The payment to refund, and how much.
      * @property amount The amount refunded, the whole original amount for a full one.
+     * @property cancellation Whether this releases a held authorization rather than returning captured funds.
+     * @property expected Original destination the reversal must go to; null for a reviewed foreign receipt.
      */
     data class Refund(
         val params: RefundParams,
         override val amount: OperationAmount,
+        val cancellation: Boolean = false,
+        val expected: PaymentContext? = null,
     ) : TerminalOperation {
-        override val needsApproval: Boolean get() = true
+        override val managerActions: Set<ManagerAction> get() =
+            setOf(if (cancellation) ManagerAction.CANCEL_AUTHORISATION else ManagerAction.REFERENCED_REFUND)
+        override val kind: TransactionKind get() = TransactionKind.REFUND
+    }
+
+    /**
+     * A gift-card value change (activation, load, undo of a load or deactivation), with the gift-card permission.
+     *
+     * @property params What changes on which card.
+     * @property expected Original destination the change must go to; null for a new card's first change.
+     */
+    data class StoredValue(
+        val params: StoredValueParams,
+        val expected: PaymentContext? = null,
+    ) : TerminalOperation {
+        override val amount: OperationAmount get() = OperationAmount(params.amountMinor, params.currency)
+        override val managerActions: Set<ManagerAction> get() = setOf(ManagerAction.GIFT_CARD_CHANGE)
+        override val kind: TransactionKind get() = TransactionKind.STORED_VALUE
     }
 }
 
@@ -166,22 +204,22 @@ interface TransactionBook<R> {
     /** Existing record ID when [request] adds a tender to an already stored sale; null for a new record. */
     fun existingId(request: R): String? = null
 
-    /** Stores [request] as a new PENDING record [id], sent with [serviceId] and started at [createdAt] (epoch ms). */
+    /**
+     * Stores [request] as [id] at [createdAt] (epoch milliseconds) with its original [serviceId] before sending.
+     * False retains a known-not-sent refusal after a stale balance review.
+     */
     suspend fun open(
         id: String,
         request: R,
         serviceId: String,
         createdAt: Long,
-    )
+    ): Boolean
 
     /** The request to send for [request]: pure, so it also says what the waiting screen shows and whether it needs approval. */
     fun operation(request: R): TerminalOperation
 
     /** Erases transient request material after every attempt, including persistence failures; recovery facts remain intact. */
     fun release(request: R) = Unit
-
-    /** Original destination required for a locally referenced refund; null for new payments or reviewed foreign receipts. */
-    fun expectedContext(request: R): PaymentContext? = null
 
     /** Records that record [id] is being sent to the terminal [poiId]; nothing by default. */
     suspend fun sending(
@@ -239,12 +277,12 @@ interface TransactionBook<R> {
  * @param clock Stamps the records.
  * @param newId Generates record IDs.
  * @param newServiceId Generates the ServiceIDs of the requests.
- * @param approval Manager approval of the operations that need it ([TerminalOperation.needsApproval]): taken when one
+ * @param approval Manager approval of the operations that need it ([TerminalOperation.managerActions]): taken when one
  *   starts and checked again immediately before sending.
  */
 class TransactionLifecycle<R>(
-    private val scope: CoroutineScope,
-    private val gateway: TerminalGateway,
+    scope: CoroutineScope,
+    gateway: TerminalGateway,
     private val book: TransactionBook<R>,
     private val onSucceeded: (id: String, request: R) -> Unit = { _, _ -> },
     private val clock: Clock = Clock.systemUTC(),
@@ -257,61 +295,52 @@ class TransactionLifecycle<R>(
     /** The current transaction; the waiting and result screens follow it. */
     val state: StateFlow<TransactionState> = runner.state
 
-    /** The ServiceID of the running transaction, once its request is being sent; how [cancel] addresses its abort. */
-    private val serviceIds = mutableMapOf<String, String>()
-    private val rechecks = Mutex()
+    /** Sends each stored transaction and checks unknown ones again. */
+    private val sends = TerminalSends(scope, gateway, runner.state)
 
-    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
-    internal fun forgetAll() = runner.forgetAll()
-
-    /** Releases process-only requests for records that history has already durably deleted. */
-    internal fun forget(ids: Set<String>) = runner.forget(ids)
+    /** This lifecycle as [FinancialOperations] holds it: busy while a transaction runs or an original request is checked. */
+    internal val operationKind =
+        OperationKind({ sends.checking || runner.state.value is TransactionState.Processing }, runner::forget, runner::forgetAll)
 
     /**
      * Starts [request] in the background and returns the new record's ID straight away; null, with nothing stored or
      * sent, while a transaction is already in progress (such as a second tap on the same action). Call it when the
      * operator starts the transaction: it keeps the Manager approval held now.
      */
-    fun start(request: R): String? {
-        val grant = approval.grant()
-        return runner.start(
+    fun start(request: R): String? = start(request, approval.grant())
+
+    /**
+     * Starts [request] like [start], holding [grant], which a multi-leg operation took when the operator started it, so
+     * each of its later legs keeps the approval the whole operation was given.
+     */
+    fun start(
+        request: R,
+        grant: ManagerApproval.Grant,
+    ): String? =
+        runner.start(
             request,
             id = { book.existingId(request) ?: newId() },
             interrupted = { id, _ ->
                 // The request may already have been sent, so the outcome is unconfirmed rather than failed.
                 val unexpected = Failure.Device(DeviceFault.UNEXPECTED)
-                stored(id, Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(unexpected)))
+                record(id).settle(Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(unexpected)))
             },
             release = { book.release(request) },
-        ) { id ->
-            try {
-                run(id, request, grant)
-            } finally {
-                synchronized(serviceIds) { serviceIds.remove(id) }
-            }
-        }
-    }
+        ) { id -> run(id, request, grant) }
 
     /**
      * Asks the terminal to cancel the running transaction (an AbortRequest). Does nothing before its request is being
      * sent, or once cancelling it was asked for. The outcome still arrives through the transaction itself, usually as
      * cancelled.
      */
-    @Synchronized
-    fun cancel() {
-        val processing = runner.state.value as? TransactionState.Processing ?: return
-        if (processing.cancelling || !processing.canCancel) return
-        val serviceId = synchronized(serviceIds) { serviceIds[processing.id] } ?: return
-        runner.state.value = processing.copy(cancelling = true)
-        scope.launch { gateway.abort(serviceId, book.kind) }
-    }
+    fun cancel() = sends.cancel()
 
     /**
      * Adyen: with Busy, the in-progress transaction can be cancelled with an AbortRequest for its ServiceID, which the
      * stored refusal names and the record keeps until the abort was sent. Returns whether the abort was sent; it can
      * be sent once per refused transaction.
      */
-    suspend fun abortBusyTransaction(id: String): Boolean = book.abortBusy(id) { gateway.abort(it) }
+    suspend fun abortBusyTransaction(id: String): Boolean = book.abortBusy(id) { sends.abort(it) }
 
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next transaction can start. */
     fun acknowledge() = runner.acknowledge()
@@ -321,21 +350,14 @@ class TransactionLifecycle<R>(
      * A record whose outcome is not unknown has nothing left to check ([Recheck.Settled]).
      */
     suspend fun recheck(id: String): Recheck =
-        rechecks.withLock {
-            val serviceId = book.unsettledServiceId(id) ?: return@withLock Recheck.Settled
-            val attempt = gateway.status(serviceId, book.kind, book.context(id))
-            val outcome =
-                when (attempt) {
-                    is Attempt.NotSetUp -> return@withLock Recheck.StillUnknown(Failure.NotSetUp(attempt.problem))
-                    is Attempt.Made -> attempt.result
-                }
-            if (outcome is TransactionOutcome.Unknown) return@withLock Recheck.StillUnknown(Failure.Remote(outcome.fault))
-            val settlement = settle(outcome)
-            if (!stored(id, settlement)) return@withLock Recheck.Settled
-            attempt.onStored()
-            complete(id, settlement)
-            Recheck.Settled
-        }
+        sends.recheck(
+            unresolved = { book.unsettledServiceId(id)?.let { UnresolvedRequest(it, book.kind, book.context(id), record(id)) } },
+        ) { complete(id, it) }
+
+    private suspend fun allowed(
+        operation: TerminalOperation,
+        grant: ManagerApproval.Grant,
+    ): Boolean = approval.forActions(operation.managerActions).allows(grant)
 
     private suspend fun run(
         id: String,
@@ -343,54 +365,12 @@ class TransactionLifecycle<R>(
         grant: ManagerApproval.Grant,
     ) {
         val serviceId = newServiceId()
-        book.open(id, request, serviceId, clock.millis())
-        val onSending: suspend (String) -> Unit = { poiId ->
-            synchronized(serviceIds) { serviceIds[id] = serviceId }
-            book.sending(id, poiId)
-            runner.state.update { current ->
-                (current as? TransactionState.Processing)?.takeIf { it.id == id }?.copy(canCancel = true) ?: current
-            }
+        if (!book.open(id, request, serviceId, clock.millis())) {
+            runner.resolved(id)
+            return
         }
         val operation = book.operation(request)
-        val attempt =
-            if (operation.needsApproval && !approval.allows(grant)) {
-                Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
-            } else {
-                when (operation) {
-                    is TerminalOperation.Pay -> {
-                        gateway.pay(
-                            operation.params,
-                            serviceId,
-                            expected = operation.expected,
-                            expectedIdentity = operation.setupIdentity,
-                            onSending = onSending,
-                            onContext = { book.recordContext(id, it) },
-                        )
-                    }
-
-                    is TerminalOperation.Refund -> {
-                        gateway.refund(operation.params, serviceId, onSending = onSending, onContext = {
-                            book.recordContext(id, it)
-                        }, expected = book.expectedContext(request))
-                    }
-                }
-            }
-        val settlement =
-            when (attempt) {
-                is Attempt.Made -> {
-                    settle(attempt.result)
-                }
-
-                is Attempt.NotSetUp -> {
-                    Settlement(
-                        SettlementStatus.FAILED,
-                        null,
-                        reason = StoredReason.NotDone(Failure.NotSetUp(attempt.problem)),
-                    )
-                }
-            }
-        if (!stored(id, settlement)) return
-        if (settlement.status != SettlementStatus.UNKNOWN && attempt is Attempt.Made) attempt.onStored()
+        val settlement = sends.send(id, serviceId, operation, record(id)) { allowed(operation, grant) } ?: return
         complete(id, settlement)
     }
 
@@ -403,34 +383,13 @@ class TransactionLifecycle<R>(
         if (settlement.status == SettlementStatus.SUCCEEDED) onSucceeded(id, request)
     }
 
-    /** Stores [settlement] for [id]; when the record is gone, releases the process-only request and returns false. */
-    private suspend fun stored(
-        id: String,
-        settlement: Settlement,
-    ): Boolean = book.settle(id, settlement).also { if (!it) runner.resolved(id) }
+    /** Record [id] as its [book] stores it; a record proved gone releases the process-only request. */
+    private fun record(id: String) =
+        object : TerminalRecord {
+            override suspend fun sending(poiId: String) = book.sending(id, poiId)
 
-    /** Classifies [outcome]. */
-    private fun settle(outcome: TransactionOutcome): Settlement =
-        when (outcome) {
-            is TransactionOutcome.Completed -> {
-                val details = outcome.details
-                val decline = details.decline
-                val status =
-                    when {
-                        decline == null -> SettlementStatus.SUCCEEDED
-                        decline.cancelled -> SettlementStatus.CANCELLED
-                        else -> SettlementStatus.DECLINED
-                    }
-                // A decline is worded from its stored ErrorCondition; only the terminal's own text is kept as its message.
-                Settlement(status, details.message?.text?.takeIf { decline != null }, details)
-            }
+            override suspend fun recordContext(context: PaymentContext) = book.recordContext(id, context)
 
-            is TransactionOutcome.NotProcessed -> {
-                Settlement(SettlementStatus.FAILED, null, reason = StoredReason.NotDone(Failure.Remote(outcome.fault)))
-            }
-
-            is TransactionOutcome.Unknown -> {
-                Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(Failure.Remote(outcome.fault)))
-            }
+            override suspend fun settle(settlement: Settlement): Boolean = book.settle(id, settlement).also { if (!it) runner.resolved(id) }
         }
 }

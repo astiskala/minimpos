@@ -1,7 +1,9 @@
 package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.history.RefundStart
@@ -27,9 +29,7 @@ class RefundBook(
         request: RefundStart,
         serviceId: String,
         createdAt: Long,
-    ) {
-        refunds.create(request.pendingRefund(id, createdAt, serviceId = serviceId))
-    }
+    ): Boolean = refunds.create(request.pendingRefund(id, createdAt, serviceId = serviceId), request.reviewedRefunds)
 
     override suspend fun recordContext(
         id: String,
@@ -38,10 +38,13 @@ class RefundBook(
 
     override suspend fun context(id: String) = refunds.get(id)?.context
 
-    override fun expectedContext(request: RefundStart) = request.expectedContext
-
     override fun operation(request: RefundStart): TerminalOperation =
-        TerminalOperation.Refund(request.params(), OperationAmount(request.amountMinor, request.currency))
+        TerminalOperation.Refund(
+            request.params(),
+            OperationAmount(request.amountMinor, request.currency),
+            request.cancellation,
+            request.expectedContext,
+        )
 
     override suspend fun settle(
         id: String,
@@ -56,7 +59,8 @@ class RefundBook(
         return refunds.settle(id, status, settlement.message, settlement.details, settlement.reason)
     }
 
-    override suspend fun unsettledServiceId(id: String): String? = refunds.get(id)?.takeIf { it.status == RefundStatus.UNKNOWN }?.serviceId
+    override suspend fun unsettledServiceId(id: String): String? =
+        refunds.get(id)?.takeIf { it.route == RefundRoute.TERMINAL && it.status == RefundStatus.UNKNOWN }?.serviceId
 }
 
 /**
@@ -87,4 +91,8 @@ internal fun RefundStart.pendingRefund(
         cancellation = cancellation,
         context = expectedContext.takeIf { checkout },
         checkoutRefund = checkout,
+        tenderId = tenderId,
+        surchargeMinor = surchargeMinor,
+        tipMinor = tipMinor,
+        cash = cash,
     )

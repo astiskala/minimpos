@@ -18,6 +18,7 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.BoardingIdentity
 import app.minimpos.app.data.settings.ConnectionDestination
 import app.minimpos.app.data.settings.ConnectionSetup
+import app.minimpos.app.data.settings.ReceiptLogoStore
 import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalSettings
@@ -26,6 +27,7 @@ import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
 import app.minimpos.core.codec.TransferFormatException
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -63,6 +65,7 @@ data class TransferContents(
  * @property catalogue The exported catalogue, for its counts; null when not included.
  * @property settings Whether the settings are included.
  * @property secrets The secrets included.
+ * @property logo Receipt logo included with settings; null when none is stored.
  */
 data class TransferExport(
     val payload: String,
@@ -70,6 +73,7 @@ data class TransferExport(
     val catalogue: Catalogue?,
     val settings: Boolean,
     val secrets: Set<Secret>,
+    val logo: MonoBitmap? = null,
 )
 
 /**
@@ -86,6 +90,12 @@ class ReceivedTransfer internal constructor(
 ) {
     /** The catalogue, or null when it was not transferred. */
     val catalogue: Catalogue? get() = transfer.catalogue
+
+    /** The receipt image, or null when not transferred. */
+    val logo: MonoBitmap? get() = transfer.logo
+
+    /** Whether a receipt logo was transferred. */
+    val hasLogo: Boolean get() = logo != null
 
     /** Whether settings were transferred. */
     val hasSettings: Boolean get() = settings != null
@@ -122,9 +132,10 @@ class ReceivedTransfer internal constructor(
 
     /**
      * Whether [code] has the required 12-character transfer-code format ([TransferSeal.isValidCode]) and this
-     * transfer contains code protection. Authentication still happens before any persisted writes.
+     * transfer contains code protection. A logo-only transfer needs no code. Authentication still happens before writes.
      */
-    fun accepts(code: String): Boolean = hasSecrets && TransferSeal.isValidCode(code)
+    fun accepts(code: String): Boolean =
+        if (hasSecrets) TransferSeal.isValidCode(code) else hasLogo && !hasSettings && !hasConnection && catalogue == null
 }
 
 /** What [SetupTransfer.import] did. */
@@ -226,6 +237,7 @@ private class PendingSetupImport(
  * @property businessWarning Whether a field selected for receipt-business lookup is still blank; existing text remains
  *   unchanged.
  * @property paymentsAppChecked Whether phone registration and supported setup checks passed, without a diagnostic key test.
+ * @property logo Whether a receipt logo was durably replaced.
  */
 data class TransferResult(
     val catalogue: ImportSummary?,
@@ -234,6 +246,7 @@ data class TransferResult(
     val connection: Boolean = false,
     val businessWarning: Boolean = false,
     val paymentsAppChecked: Boolean = false,
+    val logo: Boolean = false,
 )
 
 /**
@@ -254,6 +267,7 @@ data class TransferResult(
  * @param cpu Where the slow key derivation runs.
  * @param onTerminal Whether this device is an Adyen terminal, which decides what a connection's destination does.
  * @param history Owns deletion only when an environment-changing import was explicitly confirmed.
+ * @param logos Receipt image store; null only for callers that do not transfer logos.
  */
 class SetupTransfer(
     private val catalog: CatalogRepository,
@@ -264,6 +278,7 @@ class SetupTransfer(
     private val onTerminal: Boolean = false,
     /** History purge owner; only used by explicitly confirmed environment-changing imports. */
     private val history: HistoryRepository? = null,
+    private val logos: ReceiptLogoStore? = null,
 ) {
     private val importing = Mutex()
     private val journal = secrets.journal(RecoveryJournal.SETUP_IMPORT, serializer<PendingSetupImport>(), TransferJson)
@@ -275,7 +290,7 @@ class SetupTransfer(
         code: String,
     ): PreparedTransfer? {
         if (!received.accepts(code)) return null
-        val incoming = unlock(received, code) ?: return null
+        val incoming = if (received.hasSecrets) unlock(received, code) ?: return null else emptyMap()
         val current = settings.current()
         val existing = secrets.configured.first().associateWith { secrets.get(it) }
         var candidate = received.settings?.let { current.takingOver(it.settings, current.payment.defaultTaxRateId) } ?: current
@@ -315,6 +330,7 @@ class SetupTransfer(
         withContext(cpu) {
             val catalogue = if (contents.catalogue) catalog.export(currencyCode) else null
             val settingsText = if (contents.settings) snapshot(settings.current()) else null
+            val logo = if (contents.settings) logos?.current() else null
             val values =
                 if (contents.secrets) {
                     configuredSecrets().associateWith { secrets.get(it) }.filterValues { it != null }
@@ -330,11 +346,11 @@ class SetupTransfer(
                 ) {
                     byteArrayOf()
                 } else {
-                    TransferCodec.authenticationData(Transfer(catalogue, settingsText))
+                    TransferCodec.authenticationData(Transfer(catalogue, settingsText, logo = logo))
                 }
             val sealed = SealedSecrets(seal.seal(plaintext.toByteArray(), code, publicData))
-            val payload = TransferCodec.encode(Transfer(catalogue, settingsText, sealed))
-            TransferExport(payload, code, catalogue, settingsText != null, values.keys)
+            val payload = TransferCodec.encode(Transfer(catalogue, settingsText, sealed, logo = logo))
+            TransferExport(payload, code, catalogue, settingsText != null, values.keys, logo)
         }
 
     /**
@@ -448,6 +464,7 @@ class SetupTransfer(
         secrets.setAll(imported)
         if (entry.purgeHistory) checkNotNull(history).purgeForEnvironmentSwitch(entry.settings.terminal)
         if (received.settings != null) apply(received.settings, entry.settings) else settings.update { entry.settings }
+        received.logo?.let { checkNotNull(logos).replace(it) }
         if (entry.changesSetup && !verified()) return ImportOutcome.Rejected(SetupProblem.SETUP_CHANGED)
         if (entry.purgeHistory) checkNotNull(history).finishSwitch()
         journal.write(null)
@@ -457,6 +474,7 @@ class SetupTransfer(
                 received.hasSettings,
                 imported.keys,
                 connection = received.hasConnection,
+                logo = received.hasLogo,
                 businessWarning = entry.businessWarning,
                 paymentsAppChecked = entry.paymentsAppChecked,
             ),

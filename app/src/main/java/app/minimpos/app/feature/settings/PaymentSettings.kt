@@ -2,16 +2,28 @@ package app.minimpos.app.feature.settings
 
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.R
+import app.minimpos.app.data.settings.CashbackCard
+import app.minimpos.app.data.settings.GiftCardSetting
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.data.settings.UnreferencedRefundSettings
+import app.minimpos.app.feature.giftcard.entryLabel
+import app.minimpos.app.feature.giftcard.providerName
 import app.minimpos.app.terminal.DestinationCapabilities
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SectionHeader
+import app.minimpos.app.ui.components.rememberMoneyFormatter
+import app.minimpos.core.giftcard.GiftCardEntry
+import app.minimpos.core.giftcard.GiftCardProvider
+import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.shopper.EmailReferenceMode
+import app.minimpos.app.data.settings.CashbackSettings as CashbackConfiguration
 
 /** Stores the payment settings with [transform] applied, through [SettingsEvents.onUpdate]. */
 internal fun SettingsEvents.onPaymentUpdate(transform: (PaymentSettings) -> PaymentSettings) =
@@ -67,11 +79,115 @@ internal fun ColumnScope.PaymentsSection(
         tag = "allowMke",
         blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
     )
+    MarketSettings(payment, update)
+    CashbackSettings(payment, update)
+    UnreferencedRefundSection(payment, update)
     SectionHeader(stringResource(R.string.settings_tokenization))
     ShopperReferenceSettings(payment, update)
     SectionHeader(stringResource(R.string.settings_payment_links))
     PaymentLinkSettings(payment, update)
+    SectionHeader(stringResource(R.string.settings_gift_cards), Modifier.testTag("giftCardsHeader"))
+    GiftCardSettings(payment, update)
 }
+
+/**
+ * Market-specific card workflows the merchant confirmed with Adyen: Mexican installments and meal vouchers, whose market
+ * itself comes from the verified store; Brazilian voucher selection is asked only once vouchers are on.
+ */
+@Composable
+private fun ColumnScope.MarketSettings(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    SettingSwitch(
+        stringResource(R.string.mexican_title),
+        payment.mexicanInstallments,
+        { value -> update { it.copy(mexicanInstallments = value) } },
+        subtitle = stringResource(R.string.mexican_configuration),
+        tag = "mexicanInstallments",
+    )
+    SettingSwitch(
+        stringResource(R.string.voucher_title),
+        payment.mealVouchers,
+        { value -> update { it.copy(mealVouchers = value) } },
+        subtitle = stringResource(R.string.voucher_configuration),
+        tag = "mealVouchers",
+    )
+    if (payment.mealVouchers) {
+        SettingSwitch(
+            stringResource(R.string.voucher_account_title),
+            payment.mealVoucherAccountSelection,
+            { value -> update { it.copy(mealVoucherAccountSelection = value) } },
+            subtitle = stringResource(R.string.voucher_account_description),
+            tag = "mealVoucherAccountSelection",
+        )
+    }
+}
+
+/**
+ * The gift-card providers the merchant completed onboarding with at Adyen, each with its card type where Adyen needs
+ * one and how staff may present its cards; only what a provider supports is offered. Shared merchant configuration, so
+ * it stays editable on a destination without gift cards, whose Gift cards screen explains that instead.
+ */
+@Composable
+private fun ColumnScope.GiftCardSettings(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    SettingNote(stringResource(R.string.settings_gift_cards_hint))
+    GiftCardProvider.entries.forEach { provider ->
+        val setting = payment.giftCards.firstOrNull { it.provider == provider }
+
+        fun change(transform: (GiftCardSetting) -> GiftCardSetting?) =
+            update { current ->
+                val existing = current.giftCards.firstOrNull { it.provider == provider } ?: GiftCardSetting(provider)
+                current.copy(giftCards = current.giftCards.filterNot { it.provider == provider } + listOfNotNull(transform(existing)))
+            }
+        SettingSwitch(
+            providerName(provider),
+            setting != null,
+            { on -> change { if (on) it else null } },
+            subtitle = stringResource(providerHint(provider)),
+            tag = "giftCard_${provider.name}",
+        )
+        if (setting == null) return@forEach
+        if (provider.configuresCode) {
+            SettingTextField(
+                stringResource(R.string.settings_gift_card_code),
+                setting.code,
+                { value -> change { it.copy(code = value.trim().lowercase()) } },
+                supporting = stringResource(R.string.settings_gift_card_code_hint),
+                autoCorrect = false,
+            )
+        }
+        GiftCardEntry.entries.forEach { entry ->
+            SettingSwitch(
+                stringResource(entryLabel(entry)),
+                entry in setting.entries,
+                { on -> change { it.copy(entries = if (on) it.entries + entry else it.entries - entry) } },
+                subtitle = stringResource(entryHint(entry)),
+                tag = "giftCard_${provider.name}_${entry.name}",
+            )
+        }
+        if (!setting.complete) SettingNote(stringResource(R.string.settings_gift_card_incomplete))
+    }
+}
+
+/** How staff present a card by [entry], in one line. */
+private fun entryHint(entry: GiftCardEntry): Int =
+    when (entry) {
+        GiftCardEntry.SCANNED -> R.string.settings_gift_card_scanned_hint
+        GiftCardEntry.SWIPED -> R.string.settings_gift_card_swiped_hint
+        GiftCardEntry.KEYED -> R.string.settings_gift_card_keyed_hint
+    }
+
+/** What Adyen documents for [provider], in one line. */
+private fun providerHint(provider: GiftCardProvider): Int =
+    when (provider) {
+        GiftCardProvider.GIVEX -> R.string.settings_gift_card_givex
+        GiftCardProvider.LOCAL -> R.string.settings_gift_card_local
+        GiftCardProvider.SVS, GiftCardProvider.FISERV, GiftCardProvider.INTERSOLVE -> R.string.settings_gift_card_standard
+    }
 
 /** How long payment links remain payable; API readiness belongs to Terminal settings. */
 @Composable
@@ -209,5 +325,94 @@ private fun ColumnScope.SaveCardDefaults(
         { value -> update { it.copy(preAuthTokenizeDefaultOn = value) } },
         subtitle = stringResource(R.string.settings_pre_auth_tokenize_default_hint),
         tag = "preAuthTokenizeDefault",
+    )
+}
+
+/** Explicit Support/card enablement and local cash limit, separate for purchase-linked and standalone requests. */
+@Composable
+private fun ColumnScope.CashbackSettings(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    val cash = payment.cashback
+    val container = LocalAppContainer.current
+    val verified by container.walletDiscovery.state.collectAsStateWithLifecycle()
+    val currency = container.currency().code
+    val money = rememberMoneyFormatter(currency)
+    val change: ((CashbackConfiguration) -> CashbackConfiguration) -> Unit = { transform ->
+        update { it.copy(cashback = transform(it.cashback)) }
+    }
+    val confirm: (CashbackConfiguration) -> CashbackConfiguration = { value ->
+        value.confirmedFor(verified.context, verified.storeId, verified.storeCountry, currency)
+    }
+    SectionHeader(stringResource(R.string.cashback_title))
+    SettingSwitch(
+        stringResource(R.string.cashback_enable),
+        cash.enabled,
+        { value -> change { if (value) confirm(it).copy(enabled = true) else it.copy(enabled = false) } },
+        subtitle = stringResource(R.string.cashback_configuration),
+    )
+    SettingSwitch(
+        stringResource(R.string.cashout_enable),
+        cash.standalone,
+        { value -> change { if (value) confirm(it).copy(standalone = true) else it.copy(standalone = false) } },
+        subtitle = stringResource(R.string.cashout_configuration),
+    )
+    CashbackCard.entries.forEach { card ->
+        SettingSwitch(
+            card.name,
+            cash.card == card,
+            { checked -> change { it.selecting(card.takeIf { checked }) } },
+            subtitle = stringResource(R.string.cashback_card_hint),
+        )
+    }
+    SettingTextField(
+        stringResource(R.string.cashback_limit),
+        money.formatPlain(cash.limitMinor),
+        { value -> change { it.copy(limitMinor = CurrencySpec.of(currency).parseMinor(value) ?: 0) } },
+        supporting = stringResource(R.string.cashback_limit_hint),
+    )
+}
+
+/**
+ * Explicit Adyen enablement, local limit and refund delay of unreferenced refunds, bound to the verified store when
+ * turned on. The country rule and Adyen's own limit are explained here, never configured.
+ */
+@Composable
+private fun ColumnScope.UnreferencedRefundSection(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    val refunds = payment.unreferencedRefunds
+    val container = LocalAppContainer.current
+    val verified by container.walletDiscovery.state.collectAsStateWithLifecycle()
+    val currency = container.currency().code
+    val money = rememberMoneyFormatter(currency)
+    val change: ((UnreferencedRefundSettings) -> UnreferencedRefundSettings) -> Unit = { transform ->
+        update { it.copy(unreferencedRefunds = transform(it.unreferencedRefunds)) }
+    }
+    val confirm: (UnreferencedRefundSettings) -> UnreferencedRefundSettings = { value ->
+        value.confirmedFor(verified.context, verified.storeId, verified.storeCountry, currency)
+    }
+    SectionHeader(stringResource(R.string.unreferenced_settings_title))
+    SettingSwitch(
+        stringResource(R.string.unreferenced_settings_enable),
+        refunds.enabled,
+        { value -> change { if (value) confirm(it).copy(enabled = true) else it.copy(enabled = false) } },
+        subtitle = stringResource(R.string.unreferenced_settings_enable_hint),
+        tag = "unreferencedEnable",
+    )
+    SettingTextField(
+        stringResource(R.string.unreferenced_settings_limit),
+        money.formatPlain(refunds.limitMinor),
+        { value -> change { it.copy(limitMinor = CurrencySpec.of(currency).parseMinor(value) ?: 0) } },
+        supporting = stringResource(R.string.unreferenced_settings_limit_hint),
+    )
+    SettingSwitch(
+        stringResource(R.string.unreferenced_settings_delay),
+        refunds.delayed,
+        { value -> change { if (value) confirm(it).copy(delayed = true) else it.copy(delayed = false) } },
+        subtitle = stringResource(R.string.unreferenced_settings_delay_hint),
+        tag = "unreferencedDelay",
     )
 }

@@ -2,11 +2,19 @@ package app.minimpos.app
 
 import app.minimpos.app.ArchitectureTest.Companion.app
 import app.minimpos.app.ArchitectureTest.Companion.callTo
+import app.minimpos.app.ArchitectureTest.Companion.callToSubtypeOf
 import app.minimpos.app.ArchitectureTest.Companion.within
+import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.db.SaleTenderEntity
+import app.minimpos.app.data.repo.RefundBalance
+import app.minimpos.app.data.repo.returnsTo
+import app.minimpos.app.data.security.ManagerPolicy
 import app.minimpos.app.data.security.PinManager
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.NewInstallation
+import app.minimpos.app.data.settings.SecuritySettings
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.TransactionActions
@@ -16,32 +24,61 @@ import app.minimpos.app.feature.history.SaleDetailViewModel
 import app.minimpos.app.feature.persisting
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.ReceiptStanding
+import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.payment.AutoDelivery
+import app.minimpos.app.payment.Captures
 import app.minimpos.app.payment.Checkout
+import app.minimpos.app.payment.CheckoutBook
+import app.minimpos.app.payment.CheckoutOperations
 import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.FinancialOperations
+import app.minimpos.app.payment.IdentifiedSend
+import app.minimpos.app.payment.OperationKind
+import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.ReceiptDelivery
+import app.minimpos.app.payment.RefundCancellations
 import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.SavedCardLookup
 import app.minimpos.app.payment.StoredTransaction
+import app.minimpos.app.payment.TerminalSends
 import app.minimpos.app.payment.TransactionLifecycle
+import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.receipt.ReceiptFactory
 import app.minimpos.app.receipt.ReceiptKind
 import app.minimpos.app.terminal.Attempt
+import app.minimpos.app.terminal.CapabilityDiscovery
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.SetupDiscovery
+import app.minimpos.app.terminal.SetupFreshness
 import app.minimpos.app.terminal.SharedKeySetupOutcome
 import app.minimpos.app.terminal.SimulatedTerminal
+import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalSetupSource
+import app.minimpos.app.terminal.UnlockedSetup
+import app.minimpos.app.terminal.WalletDiscovery
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.tax.StarterTax
 import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.CheckoutSavedCards
+import app.minimpos.terminal.checkout.ModificationAmount
+import app.minimpos.terminal.checkout.PaymentLinkApi
+import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
+import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.transport.AdyenLocalTransport
 import app.minimpos.terminal.transport.DiscoveredKey
+import app.minimpos.terminal.transport.Fault
+import com.tngtech.archunit.base.DescribedPredicate
+import com.tngtech.archunit.core.domain.JavaClass
+import com.tngtech.archunit.core.domain.JavaClass.Predicates.belongToAnyOf
+import com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage
+import com.tngtech.archunit.core.domain.JavaClass.Predicates.type
+import com.tngtech.archunit.core.domain.JavaConstructorCall
+import com.tngtech.archunit.core.domain.JavaMethodCall
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.lang.ArchRule
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
@@ -64,7 +101,7 @@ class DeepeningArchitectureTest {
     }
 
     @Test
-    fun `only the durable transaction lifecycle releases late answers`() = lateAnswerLifetime.check(app)
+    fun `only terminal sends release late answers, after durable settlement`() = lateAnswerLifetime.check(app)
 
     @Test
     fun `late answer lifetime rejects premature caller acknowledgement`() =
@@ -72,6 +109,121 @@ class DeepeningArchitectureTest {
 
     private class LateAnswerViolation {
         fun release(attempt: Attempt.Made<*>) = attempt.onStored()
+    }
+
+    @Test
+    fun `stored terminal requests are sent, aborted and checked again only by terminal sends`() = terminalSends.check(app)
+
+    @Test
+    fun `terminal send ownership rejects a runner calling the gateway itself`() =
+        reject(listOf(terminalSends), TerminalSendViolation::class.java)
+
+    private class TerminalSendViolation {
+        suspend fun recheck(gateway: TerminalGateway) = gateway.status("service", TransactionKind.PAYMENT)
+    }
+
+    @Test
+    fun `only operation identity decides what a failed send of an identified operation establishes`() = operationIdentity.check(app)
+
+    @Test
+    fun `operation identity rejects an operation reading whether its failure took effect`() =
+        reject(listOf(operationIdentity), OperationIdentityViolation::class.java)
+
+    private class OperationIdentityViolation {
+        fun unchanged(fault: Fault) = !fault.mayHaveTakenEffect
+    }
+
+    @Test
+    fun `identified Checkout operations are exchanged only inside the operation identity's send`() =
+        identifiedSends.forEach { it.check(app) }
+
+    @Test
+    fun `identified send ownership rejects a capture or book sent outside the protocol`() =
+        reject(identifiedSends, IdentifiedSendViolation::class.java)
+
+    private class IdentifiedSendViolation {
+        suspend fun capture(modifications: PaymentModifications) =
+            modifications.capture("PSP", ModificationAmount("AUD", 1), "R", "capture-s-1")
+
+        suspend fun resend(
+            book: CheckoutBook<RefundStart, PaymentModifications>,
+            modifications: PaymentModifications,
+        ) = book.send("r", modifications, 0)
+    }
+
+    @Test
+    fun `payments, history and receipts read how a stored record was sent only from its route`() = storedRoutes.check(app)
+
+    @Test
+    fun `route ownership rejects a status check routed on the stored flags`() = reject(listOf(storedRoutes), RouteViolation::class.java)
+
+    private class RouteViolation {
+        fun checkout(refund: RefundEntity) = refund.checkoutRefund
+
+        fun link(sale: SaleEntity) = sale.paymentLink
+    }
+
+    @Test
+    fun `card features' Manager permissions come only from the card-feature table`() = cardFeatures.check(app)
+
+    @Test
+    fun `card feature ownership rejects a payment deciding special-entry approval itself`() =
+        reject(listOf(cardFeatures), CardFeatureViolation::class.java)
+
+    private class CardFeatureViolation {
+        fun actions() = setOf(ManagerAction.MANUAL_ENTRY)
+    }
+
+    @Test
+    fun `only the refund balance decides which returns count against a tender`() = refundBalance.check(app)
+
+    @Test
+    fun `refund balance ownership rejects a caller matching returns to tenders itself`() =
+        reject(listOf(refundBalance), RefundBalanceViolation::class.java)
+
+    private class OperationRegistryViolation {
+        fun busy(charges: SavedCardCharges) = charges.managing
+
+        fun release(kind: OperationKind) = kind.forgetAll()
+    }
+
+    @Test
+    fun `financial operations hold every runner through its operation kind`() = operationRegistry.forEach { it.check(app) }
+
+    @Test
+    fun `operation registry rejects reading a runner's own flag or releasing its requests elsewhere`() =
+        reject(operationRegistry, OperationRegistryViolation::class.java)
+
+    @Test
+    fun `wallet and capability readings follow their setup only through the setup reading`() = setupReadings.check(app)
+
+    @Test
+    fun `setup reading ownership rejects a reading fencing its setup itself`() =
+        reject(listOf(setupReadings), SetupReadingViolation::class.java)
+
+    private class SetupReadingViolation {
+        fun fence(
+            setups: TerminalSetupSource,
+            origin: UnlockedSetup,
+        ) = setups.SetupFence(origin, SetupFreshness.SECRETS)
+    }
+
+    @Test
+    fun `waiting screens move on from a finished operation only by following its progress`() = followProgress.check(app)
+
+    @Test
+    fun `progress following rejects a screen reading a finished operation itself`() =
+        reject(listOf(followProgress), FollowProgressViolation::class.java)
+
+    private class FollowProgressViolation {
+        fun result(state: TransactionState.Finished) = state.id
+    }
+
+    private class RefundBalanceViolation {
+        fun reserved(
+            refund: RefundEntity,
+            tender: SaleTenderEntity,
+        ) = refund.returnsTo(tender)
     }
 
     @Test
@@ -151,6 +303,20 @@ class DeepeningArchitectureTest {
 
     private class ManagerApprovalViolation {
         fun approved(session: SessionLock) = session.allows(0)
+    }
+
+    @Test
+    fun `whether actions need or can get Manager approval is read only from the Manager policy`() = managerPolicy.check(app)
+
+    @Test
+    fun `Manager policy ownership rejects a caller deciding a requirement from the stored choice itself`() =
+        reject(listOf(managerPolicy), ManagerPolicyViolation::class.java)
+
+    private class ManagerPolicyViolation {
+        fun required(
+            admin: Boolean,
+            settings: SecuritySettings,
+        ) = admin && settings.requiresManager(ManagerAction.CAPTURE)
     }
 
     @Test
@@ -258,9 +424,146 @@ class DeepeningArchitectureTest {
         val lateAnswerLifetime: ArchRule =
             noClasses()
                 .that()
-                .haveNameNotMatching(within(TransactionLifecycle::class.java.name))
+                .haveNameNotMatching(within(TerminalSends::class.java.name))
                 .should()
                 .callMethodWhere(callTo("app.minimpos.app.terminal.Attempt\$Made", "getOnStored"))
+
+        // Each Checkout book, capture and refund cancellation once wrote its own "a resend that provably did nothing leaves
+        // the unknown operation alone" guard; OperationIdentity decides what a failed send establishes, so none can drift.
+        val operationIdentity: ArchRule =
+            noClasses()
+                .that()
+                .haveNameMatching(
+                    within(
+                        "app.minimpos.app.payment.SavedCardCharges\$Book",
+                        "app.minimpos.app.payment.CheckoutRefunds\$Book",
+                        PaymentLinks::class.java.name,
+                        CheckoutOperations::class.java.name,
+                        Captures::class.java.name,
+                        RefundCancellations::class.java.name,
+                        OperationIdentityViolation::class.java.name,
+                    ),
+                ).should()
+                .callMethodWhere(callToSubtypeOf(Fault::class.java, "getMayHaveTakenEffect"))
+
+        // Captures, adjustments, refund cancellations and link expiry each wrote their own approval, setup, replay-window,
+        // persistence and failure ordering around those decisions, and the copies disagreed; OperationIdentity.send runs
+        // that order once, so money-moving Checkout calls are made only by its adapters and the books they send.
+        val identifiedSends: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that()
+                    .doNotImplement(IdentifiedSend::class.java)
+                    .and()
+                    .doNotImplement(CheckoutBook::class.java)
+                    .should()
+                    .callMethodWhere(
+                        callTo(PaymentModifications::class.java.name, "capture", "updateAmount", "refund", "cancelPendingRefund"),
+                    ).orShould()
+                    .callMethodWhere(callTo(SavedCardApi::class.java.name, "charge"))
+                    .orShould()
+                    .callMethodWhere(callTo(PaymentLinkApi::class.java.name, "create", "expire")),
+                noClasses()
+                    .that()
+                    .doNotImplement(IdentifiedSend::class.java)
+                    .should()
+                    .callMethodWhere(callTo(CheckoutBook::class.java.name, "send")),
+            )
+
+        // Status-check routing, check offers, book selection, terminal totals and receipts each recombined the stored
+        // payment-link, saved-card, Checkout-refund, unreferenced and cash flags, so the check offered and the check routed
+        // had to agree by hand; SaleRoute and RefundRoute read them once and every site switches on the route.
+        val storedRoutes: ArchRule =
+            noClasses()
+                .that()
+                .resideInAnyPackage("app.minimpos.app.payment..", "app.minimpos.app.history..", "app.minimpos.app.receipt..")
+                .or()
+                .haveNameMatching(within(RouteViolation::class.java.name))
+                .should()
+                .callMethodWhere(callTo(SaleEntity::class.java.name, "getPaymentLink", "getSavedCard"))
+                .orShould()
+                .callMethodWhere(callTo(RefundEntity::class.java.name, "getCheckoutRefund", "getUnreferenced", "getCash"))
+
+        // Checkout and the payment request each derived MOTO/MKE and cash permissions, and PaymentStart restated every
+        // feature pair; CardFeatures states them once, so offers, validation, destination checks and approval agree.
+        val cardFeatures: ArchRule =
+            noClasses()
+                .that(
+                    resideInAnyPackage(
+                        "app.minimpos.app.payment..",
+                        "app.minimpos.app.terminal..",
+                    ).or(type(CardFeatureViolation::class.java)),
+                ).should()
+                .accessField(ManagerAction::class.java, ManagerAction.MANUAL_ENTRY.name)
+
+        // Staff review and the storing transaction once computed a tender's remaining balance separately, agreeing only
+        // by accident; both now ask RefundBalance, the one reading of which returns count against a sale or tender.
+        val refundBalance: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within(RefundBalance::class.java.name, "app.minimpos.app.data.repo.RefundBalanceKt"))
+                .should()
+                .callMethodWhere(callTo("app.minimpos.app.data.repo.RefundBalanceKt", "returnsTo"))
+
+        // FinancialOperations once read eleven differently named runner flags and kept three hand-written lists, so a new
+        // runner could be left out of one; every runner now fills one OperationKind, released only by FinancialOperations.
+        val operationRegistry: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that(belongToAnyOf(FinancialOperations::class.java).or(type(OperationRegistryViolation::class.java)))
+                    .should()
+                    .callMethodWhere(
+                        DescribedPredicate.describe<JavaMethodCall>("a runner's own busy flag or request release") { call ->
+                            call.targetOwner.packageName == "app.minimpos.app.payment" &&
+                                call.targetOwner.name != OperationKind::class.java.name &&
+                                call.name.substringBefore('$') in
+                                setOf("getChecking", "getManaging", "getActive", "getRunning", "forget", "forgetAll")
+                        },
+                    ),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(FinancialOperations::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(OperationKind::class.java.name, "forget", "forgetAll")),
+            )
+
+        // Wallet and capability discovery each repeated the same fenced refresh and dropped stale results differently;
+        // SetupReading alone decides reuse for the same setup, fenced publishing and that checking always ends.
+        val setupReadings: ArchRule =
+            noClasses()
+                .that(
+                    belongToAnyOf(WalletDiscovery::class.java, CapabilityDiscovery::class.java).or(type(SetupReadingViolation::class.java)),
+                ).should()
+                .callConstructorWhere(
+                    DescribedPredicate.describe<JavaConstructorCall>("a setup fence") {
+                        it.targetOwner.isEquivalentTo(TerminalSetupSource.SetupFence::class.java)
+                    },
+                )
+
+        // Payment, refund and charge waiting screens each wrote their own Finished/Idle navigation; FollowProgress is the
+        // one reading of how a waiting screen moves on, so they cannot drift apart.
+        val followProgress: ArchRule =
+            noClasses()
+                .that(
+                    resideInAnyPackage("app.minimpos.app.feature..", "app.minimpos.app.ui..")
+                        .and(
+                            DescribedPredicate.not(
+                                DescribedPredicate.describe<JavaClass>("the progress follower") {
+                                    it.name.matches(Regex(within("app.minimpos.app.feature.OperationProgressKt")))
+                                },
+                            ),
+                        ).or(type(FollowProgressViolation::class.java)),
+                ).should()
+                .callMethodWhere(callTo(TransactionState.Finished::class.java.name, "getId"))
+
+        // Gift cards once copied the payment lifecycle's send, abort and status check and dropped the late-answer
+        // release; every runner of stored terminal requests now decides only what it stores, never how it is sent.
+        val terminalSends: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within(TerminalSends::class.java.name, TerminalGateway::class.java.name))
+                .should()
+                .callMethodWhere(callTo(TerminalGateway::class.java.name, "pay", "refund", "storedValue", "status", "abort"))
 
         // Missing fake wiring must fail offline, never turn a unit/UI test into a real network request.
         val offlineFixture: ArchRule =
@@ -322,6 +625,22 @@ class DeepeningArchitectureTest {
                 .should()
                 .dependOnClassesThat()
                 .belongToAnyOf(SessionLock::class.java, PinManager::class.java)
+
+        // The container, PIN entry and a test-only approval mode each decided whether an action needs or can get a Manager
+        // PIN, and the test mode refused what the app allowed; ManagerPolicy is the one reading, so offers, PIN entry and
+        // sends agree. The permission switches show the stored choice, and navigation keeps the Manager session open while
+        // a protected route is stacked; neither decides an approval.
+        val managerPolicy: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(
+                    within(
+                        ManagerPolicy::class.java.name,
+                        "app.minimpos.app.feature.settings.ManagerPermissionsKt",
+                        "app.minimpos.app.ui.navigation.AppNavHostKt",
+                    ),
+                ).should()
+                .callMethodWhere(callTo(SecuritySettings::class.java.name, "requiresManager"))
 
         // A waiting or result screen that picks a runner re-derives where its amount comes from and which runner to leave;
         // FinancialOperations follows payments and refunds whichever way they are sent, with the amount requested.

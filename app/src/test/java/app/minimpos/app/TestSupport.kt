@@ -16,8 +16,11 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.minimpos.app.data.db.AppDatabase
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.app.data.security.ManagerApproval
+import app.minimpos.app.data.security.ManagerPolicy
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretCipher
+import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.NewInstallation
 import app.minimpos.app.data.settings.StorageState
@@ -95,6 +98,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -165,11 +169,14 @@ class FakeDevice(
     override var paymentsApps: Set<TerminalEnvironment> = emptySet(),
     override val hasCamera: Boolean = true,
     override val docsCapture: Boolean = false,
+    val paymentsAppVersions: Map<TerminalEnvironment, String> = emptyMap(),
 ) : DeviceInfo {
     /** Emit to report that a default network became available. */
     val network = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     override val networkAvailable: Flow<Unit> get() = network
+
+    override fun paymentsAppVersion(environment: TerminalEnvironment): String? = paymentsAppVersions[environment]
 }
 
 /** Simulated Checkout modifications that know no payments, so they accept every capture and adjustment. */
@@ -319,6 +326,11 @@ class FakePaymentsApp(
     /** Whether it is boarded, and so answers the boarding check (unless it reboards) with its installation ID. */
     var boarded = false
 
+    var dropFinancialReplies = false
+    var dropStatusReplies = false
+    var financialRequests = 0
+    var statusRequests = 0
+
     override suspend fun exchange(
         link: String,
         packageName: String,
@@ -331,10 +343,23 @@ class FakePaymentsApp(
         val boardedUrl = "$returnUrl?boarded=true&installationId=$INSTALLATION_ID"
         val url =
             when {
-                link.contains("/boarded?") && boarded && "reboard=true" !in link -> boardedUrl
-                link.contains("/boarded?") -> "$returnUrl?boarded=false&installationId=$INSTALLATION_ID&boardingRequestToken=BRT"
-                link.contains("/board?") -> boardedUrl.also { boarded = true }
-                else -> "$returnUrl?response=${answer(parameters.getValue("request"))}"
+                link.contains("/boarded?") && boarded && "reboard=true" !in link -> {
+                    boardedUrl
+                }
+
+                link.contains("/boarded?") -> {
+                    "$returnUrl?boarded=false&installationId=$INSTALLATION_ID&boardingRequestToken=BRT"
+                }
+
+                link.contains("/board?") -> {
+                    boardedUrl.also { boarded = true }
+                }
+
+                else -> {
+                    val (response, drop) = answer(parameters.getValue("request"))
+                    if (drop) return AppLinkAnswer.TimedOut
+                    "$returnUrl?response=$response"
+                }
             }
         return AppLinkAnswer.Returned(url)
     }
@@ -343,16 +368,19 @@ class FakePaymentsApp(
 
     override fun forgetLateReplies(urls: Set<String>) = Unit
 
-    private suspend fun answer(request: String): String {
+    private suspend fun answer(request: String): Pair<String, Boolean> {
         val secured = gson.fromJson(String(Base64.UrlSafe.decode(request)), TerminalAPISecuredRequest::class.java)
-        val delivery = simulator.send(gson.fromJson(crypto.decrypt(secured.saleToPOIRequest), TerminalAPIRequest::class.java), 1.seconds)
+        val decoded = gson.fromJson(crypto.decrypt(secured.saleToPOIRequest), TerminalAPIRequest::class.java)
+        val status = decoded.saleToPOIRequest.transactionStatusRequest != null
+        if (status) statusRequests++ else financialRequests++
+        val delivery = simulator.send(decoded, 1.seconds)
         val response = checkNotNull((delivery as Delivery.Answered).response)
         val encrypted =
             TerminalAPISecuredResponse().apply {
                 saleToPOIResponse =
                     crypto.encrypt(gson.toJson(response), response.saleToPOIResponse.messageHeader)
             }
-        return Base64.UrlSafe.encode(gson.toJson(encrypted).toByteArray())
+        return Base64.UrlSafe.encode(gson.toJson(encrypted).toByteArray()) to if (status) dropStatusReplies else dropFinancialReplies
     }
 
     /** The installation ID it boards with. */
@@ -756,6 +784,16 @@ fun <T> Attempt<T>.made(): T = (this as Attempt.Made).result
 
 /** Starts [request] and returns its record ID; fails the test when another transaction is still in progress. */
 fun <R> TransactionLifecycle<R>.started(request: R): String = checkNotNull(start(request)) { "Another transaction is in progress" }
+
+/**
+ * Manager approval under the production policy once an admin PIN exists, with the baseline protected actions: a
+ * Manager PIN is set while [managerPin] says so, read at every decision, and [session] approves for [autoLockMillis].
+ */
+fun protectedApproval(
+    session: SessionLock,
+    autoLockMillis: Long = 0,
+    managerPin: () -> Boolean = { true },
+): ManagerApproval = ManagerApproval(flow { emit(ManagerPolicy(adminPin = true, managerPin = managerPin())) }, session) { autoLockMillis }
 
 /**
  * Waits until [condition] holds. Saves resume on the main looper, which Robolectric pauses, so each check drains it

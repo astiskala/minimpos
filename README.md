@@ -35,16 +35,20 @@ Screenshots show an English demo café using the built-in simulator, not live pa
 
 - **Sell:** products, categories, barcode scanning and custom amounts, with your own tax rates and any Adyen currency.
 - **Get paid:** card and wallet payments, merchant-scanned wallet codes, payment links, pre-authorizations for deposits,
-  tips on the terminal or receipt, partial payments across cards, and charges to a shopper's saved card tokens.
+  tips on the terminal or receipt, and charges to a shopper's saved card tokens.
+- **Split and mix tenders:** split a bill by amount, shares or items across cards, cash, gift cards and meal vouchers;
+  collect the rest of a partial approval on another card.
 - **Deliver receipts:** print on a terminal with a printer, email through your SMTP server, or share from a tablet or phone.
-- **Manage payments:** referenced refunds in full, by item or by amount; searchable history, daily totals and terminal
-  reconciliation, with offline-payment and unconfirmed-batch warnings.
-- **Run your setup:** admin and Manager PINs, optional shopper references and card saving, and QR transfers of products,
-  settings and encrypted keys to additional devices.
+  Add a receipt logo on the device or through the [setup helper](https://minimpos.app/setup).
+- **Manage payments:** refunds in full, by item or by amount, plus Manager-approved refunds without a receipt;
+  searchable history, daily totals and terminal reconciliation; token and gift card management.
+- **Run your setup:** an admin PIN and a Manager PIN with per-action permissions, optional shopper references and card
+  saving, and QR transfers of products, settings and encrypted keys to additional devices.
 
-For supported terminals, the [operations guide](https://minimpos.app/using#capabilities) also covers Adyen
-capabilities, shopper-facing prompts, Adyen Giving and Manager-approved MOTO / Manual Key Entry. Feature availability
-depends on the payment destination and your Adyen configuration; test the workflows you plan to use.
+The [operations guide](https://minimpos.app/using#terminal-checkout) also covers optional workflows: audio-guided
+payments, surcharges, Mexican installments, cashback and cashout, shopper-facing prompts, Adyen Giving, MOTO / Manual
+Key Entry and offline processing. Availability depends on the payment destination and your Adyen configuration; test
+the workflows you plan to use.
 
 The app supports English, Simplified Chinese, Traditional Chinese, Japanese, Brazilian Portuguese, Spanish and French.
 Products, settings and history stay
@@ -55,7 +59,7 @@ on each device; there is no backend, tracking or automatic synchronization betwe
 **Just exploring?** Install `minimpos-<version>.apk` from the
 [latest release](https://github.com/astiskala/minimpos/releases/latest) on an Android phone (Android 9+) or emulator.
 Away from an Adyen terminal, the default is the simulator: no account, keys or real card needed. Choose outcomes and
-printer behavior in Settings › Simulator. Offline demo links let you try the payment-link workflow too.
+printer behavior in Settings › Simulator.
 
 **Ready to connect to Adyen?** Follow [Quick start](https://minimpos.app/quick-start).
 It covers device, network and credential prerequisites, deployment and all four payment setups. Every real-payment
@@ -65,7 +69,7 @@ on a computer and scan them in.
 | Guide | What it covers |
 | --- | --- |
 | [Quick start](https://minimpos.app/quick-start) | Check prerequisites, install, connect, test and go live. |
-| [Using Mini mPOS](https://minimpos.app/using) | Daily operations: sell, refund, receipts, closing the day, deposits, tips and more devices. |
+| [Using Mini mPOS](https://minimpos.app/using) | Daily operations: sell, refund, receipts, closing the day, optional checkout workflows and more devices. |
 | [Troubleshooting](https://minimpos.app/troubleshooting) | Unknown results, declines, pairing, network, capture, printer and email problems. |
 
 ## Important boundaries

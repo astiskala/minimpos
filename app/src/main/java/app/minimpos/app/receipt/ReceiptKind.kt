@@ -20,6 +20,9 @@ enum class ReceiptKind {
     /** A payment's receipt. */
     SALE,
 
+    /** A standalone card cash-out; no merchandise or taxable sale value. */
+    CASHOUT,
+
     /** A pre-authorisation, which only holds its amount. */
     PRE_AUTHORISATION,
 
@@ -34,6 +37,9 @@ enum class ReceiptKind {
 
     /** A cancelled hold's receipt: the amount was released, nothing refunded. */
     CANCELLATION,
+
+    /** A stored-value (gift-card) activity's receipt; never a sale. */
+    GIFT_CARD,
     ;
 
     /** Reading a stored transaction. */
@@ -41,6 +47,7 @@ enum class ReceiptKind {
         /** The kind of a sale's receipt, from where it stands ([ReceiptStanding.of]). */
         fun of(standing: ReceiptStanding): ReceiptKind =
             when {
+                standing.cashout -> CASHOUT
                 standing.simulatedLink -> DEMO_LINK
                 standing.unpaidLink != null -> UNPAID_LINK
                 standing.preAuthorisation -> PRE_AUTHORISATION

@@ -21,6 +21,7 @@ class PlainTextReceiptRenderer(
         buildString {
             for (element in document.elements) {
                 when (element) {
+                    is ReceiptElement.Image -> Unit
                     is ReceiptElement.Text -> wrap(element.text).forEach { appendLine(align(it, element.align)) }
                     is ReceiptElement.Row -> row(element.left, element.right).forEach { appendLine(it) }
                     ReceiptElement.Divider -> appendLine("-".repeat(width))
@@ -169,6 +170,10 @@ class HtmlReceiptRenderer(
             var qrIndex = 0
             for (element in document.elements) {
                 when (element) {
+                    is ReceiptElement.Image -> {
+                        image(element)
+                    }
+
                     is ReceiptElement.Text -> {
                         append("<div style=\"")
                             .append(textAlign(element.align))
@@ -180,13 +185,7 @@ class HtmlReceiptRenderer(
                     }
 
                     is ReceiptElement.Row -> {
-                        append("<table role=\"presentation\" width=\"100%\" style=\"border-collapse:collapse;table-layout:fixed;")
-                            .append(fontStyle(element.style))
-                            .append("\"><tr><td style=\"width:50%;padding:4px 16px 4px 0;overflow-wrap:anywhere;\">")
-                            .append(escape(element.left))
-                            .append("</td><td style=\"width:50%;padding:4px 0;text-align:right;overflow-wrap:anywhere;\">")
-                            .append(escape(element.right))
-                            .append("</td></tr></table>")
+                        row(element)
                     }
 
                     ReceiptElement.Divider -> {
@@ -221,6 +220,28 @@ class HtmlReceiptRenderer(
             append("</div></body></html>")
         }
 
+    /** A label and amount with a fixed gutter so wrapped labels cannot touch the amount. */
+    private fun StringBuilder.row(element: ReceiptElement.Row) {
+        append("<table role=\"presentation\" width=\"100%\" style=\"border-collapse:collapse;table-layout:fixed;")
+            .append(fontStyle(element.style))
+            .append("\"><tr><td style=\"width:50%;padding:4px 16px 4px 0;overflow-wrap:anywhere;\">")
+            .append(escape(element.left))
+            .append("</td><td style=\"width:50%;padding:4px 0;text-align:right;overflow-wrap:anywhere;\">")
+            .append(escape(element.right))
+            .append("</td></tr></table>")
+    }
+
+    /** A centered logo with native pixel dimensions, attached to the email under [LOGO_CID]. */
+    private fun StringBuilder.image(element: ReceiptElement.Image) {
+        append("<div style=\"text-align:center;\"><img src=\"cid:")
+            .append(LOGO_CID)
+            .append("\" width=\"")
+            .append(element.bitmap.width)
+            .append("\" height=\"")
+            .append(element.bitmap.height)
+            .append("\" alt=\"\"></div>")
+    }
+
     /** A web link as a button with its address under it; anything but an `https`/`http` address is only text. */
     private fun StringBuilder.link(element: ReceiptElement.Link) {
         val url = escape(element.url)
@@ -250,6 +271,9 @@ class HtmlReceiptRenderer(
 
     /** HTML escaping, also used for the app's other HTML emails. */
     companion object {
+        /** Content id of the inline monochrome logo PNG. */
+        const val LOGO_CID = "logo"
+
         /** The addresses a link button may open: web pages only, never `javascript:` or other schemes. */
         private val WEB_ADDRESS = Regex("https?://\\S+", RegexOption.IGNORE_CASE)
 

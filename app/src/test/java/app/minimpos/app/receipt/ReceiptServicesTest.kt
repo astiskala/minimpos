@@ -315,7 +315,11 @@ class ReceiptServicesTest {
         ).isEmpty()
         assertThat(await { receipts.print(StoredTransaction.Sale("missing")) }.result).isEqualTo(ActionResult.Missing)
         assertThat(await { receipts.print(StoredTransaction.Refund("missing")).result }).isEqualTo(ActionResult.Missing)
-        assertThat(await { receipts.printDocument(ReceiptDocument(listOf(ReceiptElement.Text("Test")))) }).isEqualTo(ActionResult.Success)
+        assertThat(
+            await {
+                receipts.printDocument(ReceiptDocument(listOf(ReceiptElement.Text("Test"))))
+            },
+        ).isEqualTo(ReceiptPrint(ActionResult.Success))
 
         env.updateSettings { it.copy(receipt = it.receipt.copy(merchantCopy = MerchantCopyPolicy.NEVER)) }
         assertThat(await { receipts.print(StoredTransaction.Sale("s1")) }.merchantCopyDue).isFalse()

@@ -136,7 +136,7 @@ sealed class Fault(
     /** The destination does not take this kind of request. */
     data object Unsupported : NotSent()
 
-    /** The Payments app cannot be asked for a result, and no late reply to the transaction has arrived. */
+    /** No conclusive Payments app result: no usable late reply, unsupported status, or an unconfirmed NotFound. */
     data object NoLateReply : NotSent()
 
     /** The terminal has no record of the transaction a status check asked about, so it was not processed. */

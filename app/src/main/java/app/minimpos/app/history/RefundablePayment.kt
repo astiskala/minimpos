@@ -1,16 +1,32 @@
 package app.minimpos.app.history
 
+import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
+import app.minimpos.app.data.db.RefundStatus
+import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.db.route
+import app.minimpos.app.data.repo.RefundBalance
 import app.minimpos.app.data.repo.RefundedLine
+import app.minimpos.app.data.repo.TenderAllocation
+import app.minimpos.app.data.repo.TenderAllocationJson
 import app.minimpos.core.codec.RefundQrPayload
+import app.minimpos.core.giftcard.GiftCardOperation
+import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.core.ids.Ids
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.refund.RefundCalculator
 import app.minimpos.core.refund.RefundableLine
+import app.minimpos.core.voucher.MealVoucherScheme
+import app.minimpos.core.voucher.VoucherRefund
 import app.minimpos.terminal.client.RefundParams
 import app.minimpos.terminal.client.TerminalClient
+import java.math.BigInteger
 import java.time.Instant
 import java.time.ZoneId
 
@@ -46,6 +62,12 @@ enum class RefundInvalidReason {
      * device's history has, so it is refunded there or in the Customer Area, never with a terminal reversal.
      */
     CHARGED_ELSEWHERE,
+
+    /**
+     * Only meal vouchers whose network supports no refunds (Titres-restaurant through Conecs) paid what is left, so
+     * nothing can be returned through the app; staff offer store credit or another remedy instead, never cash.
+     */
+    VOUCHER_NOT_REFUNDABLE,
 }
 
 /** What the operator chose to refund of a [RefundablePayment]. */
@@ -112,6 +134,11 @@ sealed interface Refundability {
  * @property expectedContext Original locally recorded destination; null for a reviewed foreign receipt.
  * @property checkout Whether the refund goes through Adyen's Checkout API rather than a terminal (a saved-card charge).
  * @throws IllegalArgumentException if [amountMinor] is not positive.
+ * @property tenderId Original local tender identity; null for legacy, Checkout or foreign payments.
+ * @property surchargeMinor Surcharge included in the returned amount; null for unknown allocations.
+ * @property tipMinor Tip included in the returned amount; null for unknown allocations.
+ * @property reviewedRefunds Prior return identities/statuses used for review; null for foreign receipts or hold cancellations.
+ * @property cash Whether this leg hands cash back for a cash tender ([originalTransactionId] is then the tender's ID).
  */
 data class RefundStart(
     val saleId: String?,
@@ -128,10 +155,29 @@ data class RefundStart(
     val expectedContext: PaymentContext? = null,
     /** True for a saved-card charge ([app.minimpos.app.data.db.SaleEntity.savedCard]), which has no terminal reversal. */
     val checkout: Boolean = false,
+    /** Original tender identity; null for legacy single-tender, Checkout or foreign payments. */
+    val tenderId: String? = null,
+    /** Surcharge included in the refund amount; null for an unknown component. */
+    val surchargeMinor: Long? = null,
+    /** Tip included in the refund amount; null for an unknown component. */
+    val tipMinor: Long? = null,
+    /** Prior returns at review, rechecked atomically before storing this request; never needed to replay a refund. */
+    val reviewedRefunds: Map<String, RefundStatus>? = null,
+    /** Cash handed back locally for a cash tender; never sent to a terminal. */
+    val cash: Boolean = false,
 ) {
     init {
         require(amountMinor > 0) { "Refund amount must be positive" }
     }
+
+    /** How this refund is sent: cash handed back, through the Checkout API for a saved-card charge, else on the terminal. */
+    val route: RefundRoute
+        get() =
+            when {
+                cash -> RefundRoute.CASH
+                checkout -> RefundRoute.CHECKOUT
+                else -> RefundRoute.TERMINAL
+            }
 
     /** The Terminal API reversal: a full one is sent without amount and currency, a partial one in minor units. */
     fun params(): RefundParams =
@@ -164,6 +210,7 @@ data class RefundStart(
  * @property reference Its merchant reference, if known.
  * @property local The sale on this terminal, or null for a payment known only from its QR code (its items and earlier
  *   refunds are then unknown, so it cannot be refunded by item).
+ * @property tender Original tender this reading returns to; null for the whole sale or a legacy single payment.
  */
 class RefundablePayment private constructor(
     val transactionId: String,
@@ -173,12 +220,58 @@ class RefundablePayment private constructor(
     val currency: String,
     val reference: String?,
     val local: SaleWithLines?,
+    val tender: SaleTenderEntity? = null,
 ) {
-    /** Already refunded from this terminal; 0 when the sale is not [local]. */
-    val refundedMinor: Long get() = local?.sale?.refundedMinor ?: 0
+    /** The sale's return balance; null for a payment known only from its QR code. */
+    private val balance = local?.let(::RefundBalance)
 
-    /** What can still be refunded, never negative. */
-    val remainingMinor: Long get() = (amountMinor - refundedMinor).coerceAtLeast(0)
+    /** This tender's share of [balance]; null for the whole sale. */
+    private val tenderReturns = tender?.let { balance?.of(it) }
+
+    private val matchingRefunds: List<RefundEntity> get() = tenderReturns?.returns ?: balance?.returns.orEmpty()
+
+    /**
+     * One reading per original tender that money can be returned to, in payment order: approved cards with a
+     * referenceable transaction and recorded cash. Empty for a legacy single payment, a manual capture, a payment known
+     * only from its QR code, and for a tender's own reading.
+     */
+    val legs: List<RefundablePayment> =
+        if (tender != null || local == null || local.sale.manualCapture) {
+            emptyList()
+        } else {
+            local.tenders
+                .filter { it.approved }
+                .sortedBy { it.sequence }
+                .mapNotNull { fromTender(local, it) }
+        }
+
+    /** Already refunded from this terminal; 0 when the sale is not [local]. */
+    val refundedMinor: Long get() = tenderReturns?.acceptedMinor ?: balance?.acceptedMinor ?: 0
+
+    /** Possibly sent returns reserve their original balance until resolved. */
+    val reservedMinor: Long get() = tenderReturns?.reservedMinor ?: balance?.reservedMinor ?: 0
+
+    /** Original surcharge component; null when unreported or historical. */
+    val surchargeMinor: Long? get() = tender?.surchargeMinor ?: local?.sale?.amountSurchargeMinor.takeIf { tender == null }
+
+    /** Original tip component; null when unknown. */
+    val tipMinor: Long? get() = tender?.tipMinor ?: local?.sale?.tipMinor.takeIf { tender == null }
+
+    /** Original purchase component, excluding reported tip, fee and cashback; null if fee is unknown. */
+    val purchaseMinor: Long? get() = surchargeMinor?.let { (amountMinor - it - (tipMinor ?: 0)).coerceAtLeast(0) }
+
+    /** Whether this reading returns cash handed back locally rather than reversing a card transaction. */
+    val cash: Boolean get() = tender?.kind == TenderKind.CASH
+
+    /** What can still be refunded, never negative; for a split sale also no more than its tenders can return. */
+    val remainingMinor: Long get() = remaining()
+
+    private fun remaining(): Long {
+        val own = (tenderReturns?.remainingMinor ?: (amountMinor - refundedMinor - reservedMinor)).coerceAtLeast(0)
+        val total = balance?.remainingMinor?.coerceAtLeast(0) ?: return own
+        val tenders = if (legs.isEmpty()) total else legs.fold(0L) { sum, leg -> Math.addExact(sum, leg.remaining()) }
+        return minOf(own, total, tenders)
+    }
 
     /** The sale's lines with what is left of each, in cart order; empty when the sale is not [local]. */
     val lines: List<RefundableLine> =
@@ -190,7 +283,7 @@ class RefundablePayment private constructor(
      * Whether items can be chosen, which needs the [local] sale; not for a captured pre-authorisation, whose capture can
      * differ from its item.
      */
-    val itemsKnown: Boolean get() = local?.sale?.kind == SaleKind.SALE
+    val itemsKnown: Boolean get() = local?.sale?.kind == SaleKind.SALE && tender == null
 
     /** How much [choice] refunds, in minor units; items are apportioned by [RefundCalculator.amountFor]. */
     fun amountFor(choice: RefundChoice): Long =
@@ -222,6 +315,8 @@ class RefundablePayment private constructor(
     ): RefundStart? {
         if (!isValid(choice)) return null
         val prefix = referencePrefix.trim().let { if (it.isEmpty()) "R" else "$it-R" }
+        val amount = amountFor(choice)
+        val components = componentsFor(amount)
         return RefundStart(
             saleId = local?.sale?.id,
             originalTransactionId = transactionId,
@@ -229,13 +324,153 @@ class RefundablePayment private constructor(
             originalReference = reference,
             currency = currency,
             amountMinor = amountFor(choice),
-            full = choice == RefundChoice.Everything && refundedMinor == 0L && local != null,
+            full =
+                choice == RefundChoice.Everything && refundedMinor == 0L && reservedMinor == 0L && local != null &&
+                    (tender?.cashBackMinor ?: local.sale.cashBackMinor ?: 0) == 0L && amount == amountMinor,
             merchantReference = Ids.transactionReference(prefix, now, zone),
             lines = (choice as? RefundChoice.Items)?.let(::refundedLines).orEmpty(),
-            expectedContext = local?.sale?.context,
-            checkout = local?.sale?.savedCard == true,
+            expectedContext = if (cash) null else tender?.context ?: local?.sale?.context,
+            checkout = local?.sale?.route == SaleRoute.SAVED_CARD,
+            cash = cash,
+            tenderId = tender?.id,
+            surchargeMinor = components?.first,
+            tipMinor = components?.second,
+            reviewedRefunds = local?.refunds?.filter { it.status != RefundStatus.FAILED }?.associate { it.id to it.status },
         )
     }
+
+    /**
+     * The automatic proposal of what each of [legs] returns of [choice], by leg tender ID: units chosen for return go
+     * first to the tenders that paid for them, and the rest is shared across every leg in proportion to what it can
+     * still return, minor-unit remainders to the earliest legs. Never more than a leg can return; empty without legs.
+     */
+    fun proposal(choice: RefundChoice): Map<String, Long> {
+        if (legs.isEmpty() || !isValid(choice)) return emptyMap()
+        val amount = amountFor(choice)
+        val balances = legs.associate { checkNotNull(it.tender).id to it.remainingMinor }
+        val earmarked = (choice as? RefundChoice.Items)?.let { earmarks(it, balances, amount) }.orEmpty()
+        val left = Math.subtractExact(amount, earmarked.values.sum())
+        val open = balances.mapValues { (id, balance) -> balance - (earmarked[id] ?: 0) }
+        val shared = proportional(left, open)
+        return balances.keys.associateWith { (earmarked[it] ?: 0) + (shared[it] ?: 0) }
+    }
+
+    /** Whether [allocation] returns exactly what [choice] refunds, each leg within what it can still return. */
+    fun allocationValid(
+        choice: RefundChoice,
+        allocation: Map<String, Long>,
+    ): Boolean {
+        if (legs.isEmpty() || !isValid(choice)) return false
+        val known = legs.associateBy { checkNotNull(it.tender).id }
+        if (!known.keys.containsAll(allocation.keys)) return false
+        val total = allocation.values.fold(0L) { sum, minor -> Math.addExact(sum, minor) }
+        return total == amountFor(choice) && allocation.all { (id, minor) -> minor in 0..checkNotNull(known[id]).remainingMinor }
+    }
+
+    /**
+     * The return of [choice] as one request per original tender with a positive amount in [allocation] (a [proposal],
+     * possibly adjusted by staff), in payment order; null unless [allocationValid]. Each card leg reverses its own
+     * transaction in its own original context (fully, when [choice] is everything that tender ever collected); a cash
+     * leg is handed back locally. Returned items travel with the first leg, and every leg carries the same review
+     * snapshot. Without [legs] this is the single [request].
+     */
+    fun requests(
+        choice: RefundChoice,
+        allocation: Map<String, Long>,
+        referencePrefix: String,
+        now: Instant,
+        zone: ZoneId,
+    ): List<RefundStart>? {
+        if (legs.isEmpty()) return request(choice, referencePrefix, now, zone)?.let(::listOf)
+        if (!allocationValid(choice, allocation)) return null
+        val lines = (choice as? RefundChoice.Items)?.let(::refundedLines).orEmpty()
+        val reviewed = local?.refunds?.filter { it.status != RefundStatus.FAILED }?.associate { it.id to it.status }
+        val chosen = legs.filter { (allocation[checkNotNull(it.tender).id] ?: 0) > 0 }
+        return chosen.mapIndexed { index, leg ->
+            val minor = checkNotNull(allocation[checkNotNull(leg.tender).id])
+            val start = checkNotNull(leg.request(RefundChoice.Amount(minor), referencePrefix, now, zone))
+            start.copy(
+                full = !leg.cash && choice == RefundChoice.Everything && leg.whole(minor),
+                lines = if (index == 0) lines else emptyList(),
+                reviewedRefunds = reviewed,
+            )
+        }
+    }
+
+    /** Whether returning [minor] reverses everything this card leg collected, which a full reversal sends. */
+    private fun whole(minor: Long): Boolean = tenderReturns?.whole(minor) == true
+
+    /** Shares of chosen units' gross for the item tenders that paid for them, within balances and [amount]. */
+    private fun earmarks(
+        choice: RefundChoice.Items,
+        balances: Map<String, Long>,
+        amount: Long,
+    ): Map<String, Long> {
+        val record = local ?: return emptyMap()
+        val itemTenders =
+            legs.mapNotNull { leg ->
+                val tender = checkNotNull(leg.tender)
+                (TenderAllocationJson.decode(tender.allocationJson) as? TenderAllocation.Items)?.let { tender.id to it }
+            }
+        val earmarks = mutableMapOf<String, Long>()
+        var left = amount
+        record.sortedLines.forEach { line ->
+            var units = (choice.selection[line.id] ?: 0).coerceIn(0, line.quantity - line.refundedQuantity)
+            var counted = line.refundedQuantity
+            itemTenders.forEach { (id, items) ->
+                val paid = items.lines.filter { it.position == line.position }.sumOf { it.quantity }
+                val taken = minOf(units, paid)
+                if (taken > 0) {
+                    val share = RefundCalculator.lineAmount(RefundableLine(line.id, line.quantity, counted, line.grossMinor), taken)
+                    val granted = minOf(share, left, (balances[id] ?: 0) - (earmarks[id] ?: 0)).coerceAtLeast(0)
+                    earmarks[id] = (earmarks[id] ?: 0) + granted
+                    left -= granted
+                    units -= taken
+                    counted += taken
+                }
+            }
+        }
+        return earmarks
+    }
+
+    /** Return purchase first, then tip, then surcharge; unknown prior allocations keep the breakdown unknown. */
+    private fun componentsFor(amount: Long): Pair<Long, Long>? {
+        val fee = surchargeMinor ?: return null
+        if (matchingRefunds.any { it.surchargeMinor == null || it.tipMinor == null }) return null
+        val feeLeft = (fee - matchingRefunds.fold(0L) { sum, refund -> Math.addExact(sum, refund.surchargeMinor ?: 0) }).coerceAtLeast(0)
+        val tipLeft =
+            (
+                (tipMinor ?: 0) -
+                    matchingRefunds.fold(
+                        0L,
+                    ) { sum, refund -> Math.addExact(sum, refund.tipMinor ?: 0) }
+            ).coerceAtLeast(0)
+        val purchaseLeft = (amountMinor - refundedMinor - reservedMinor - feeLeft - tipLeft).coerceAtLeast(0)
+        val afterPurchase = (amount - purchaseLeft).coerceAtLeast(0)
+        val tip = minOf(afterPurchase, tipLeft)
+        return minOf(afterPurchase - tip, feeLeft) to tip
+    }
+
+    /** Surcharge included in the selected return, or null when its allocation is unknown. */
+    fun surchargeFor(choice: RefundChoice): Long? = componentsFor(amountFor(choice))?.first
+
+    /** Tip included in the selected return, or null when its allocation is unknown. */
+    fun tipFor(choice: RefundChoice): Long? = componentsFor(amountFor(choice))?.second
+
+    /** Surcharge returned across [legs] as [allocation] shares them; null when any leg's breakdown is unknown. */
+    fun surchargeFor(allocation: Map<String, Long>): Long? = legComponents(allocation) { it.first }
+
+    /** Tip returned across [legs] as [allocation] shares them; null when any leg's breakdown is unknown. */
+    fun tipFor(allocation: Map<String, Long>): Long? = legComponents(allocation) { it.second }
+
+    private fun legComponents(
+        allocation: Map<String, Long>,
+        part: (Pair<Long, Long>) -> Long,
+    ): Long? =
+        legs.fold(0L as Long?) { sum, leg ->
+            val minor = allocation[checkNotNull(leg.tender).id] ?: 0
+            if (minor == 0L) sum else leg.componentsFor(minor)?.let { components -> sum?.let { Math.addExact(it, part(components)) } }
+        }
 
     private fun refundedLines(choice: RefundChoice.Items): List<RefundedLine> =
         local?.sortedLines.orEmpty().mapNotNull { line ->
@@ -267,7 +502,13 @@ class RefundablePayment private constructor(
                 }
 
                 else -> {
-                    eligible(record)?.let(::refundable) ?: Refundability.NotRefundable(RefundInvalidReason.NOT_REFUNDABLE)
+                    eligible(record)?.let(::refundable) ?: Refundability.NotRefundable(
+                        if (record.tenders.any { it.approved } && record.tenders.filter { it.approved }.all(::voucherOnly)) {
+                            RefundInvalidReason.VOUCHER_NOT_REFUNDABLE
+                        } else {
+                            RefundInvalidReason.NOT_REFUNDABLE
+                        },
+                    )
                 }
             }
         }
@@ -353,7 +594,9 @@ class RefundablePayment private constructor(
         fun qrCode(record: SaleWithLines): String? {
             val sale = record.sale
             if (!sale.standing.charged) return null
-            val payment = eligible(record) ?: return null
+            val whole = eligible(record) ?: return null
+            // A split sale's code identifies its first card; History returns the others, and cash is never in a code.
+            val payment = if (whole.legs.isEmpty()) whole else whole.legs.firstOrNull { !it.cash } ?: return null
             // Eligibility already requires a time stamp with a time zone, so it is one instant.
             val instant = checkNotNull(TerminalClient.instantOf(payment.timestamp))
             return runCatching {
@@ -367,9 +610,65 @@ class RefundablePayment private constructor(
          */
         fun isCheckoutTransaction(transactionId: String): Boolean = transactionId.startsWith(".")
 
+        /**
+         * Reads one original approved tender: a card (or a gift card whose provider takes refunds, or a meal voucher
+         * whose market supports refunds to the original voucher) with a valid
+         * transaction timestamp, referenced by its transaction, or recorded cash, referenced locally by its tender ID
+         * and recording time; null when it cannot safely be referenced.
+         */
+        internal fun fromTender(
+            record: SaleWithLines,
+            tender: SaleTenderEntity,
+        ): RefundablePayment? {
+            if (record.sale.cashout || tender.status != SaleStatus.APPROVED) return null
+            // Adyen documents payments only for local gift cards: their value is never returned through the app.
+            if (tender.giftCard?.let { GiftCardProvider.valueOf(it) }?.supports(GiftCardOperation.REFUND) == false) return null
+            // Titres-restaurant (Conecs) refunds are not supported; other vouchers return only to the original voucher.
+            if (!refundableCashback(tender.requestedCashBackMinor, tender.cashBackMinor)) return null
+            if (MealVoucherScheme.stored(tender.mealVoucher)?.refund == VoucherRefund.NONE) return null
+            val cash = tender.kind == TenderKind.CASH
+            val transaction = (if (cash) tender.id else tender.poiTransactionId) ?: return null
+            val timestamp =
+                if (cash) {
+                    Instant.ofEpochMilli(tender.createdAt).toString()
+                } else {
+                    tender.poiTimestamp?.takeIf { TerminalClient.instantOf(it) != null } ?: return null
+                }
+            val amount = tender.authorisedMinor ?: return null
+            return RefundablePayment(
+                transaction,
+                timestamp,
+                Instant.ofEpochMilli(tender.createdAt),
+                (amount - (tender.cashBackMinor ?: 0)).coerceAtLeast(0),
+                record.sale.currency,
+                record.sale.merchantReference,
+                record,
+                tender,
+            )
+        }
+
         private fun eligible(record: SaleWithLines): RefundablePayment? {
             val sale = record.sale
-            if (sale.sample) return null
+            if (sale.sample || sale.cashout) return null
+            if (!cashbackRefundKnown(sale)) return null
+            if (sale.status == SaleStatus.APPROVED && !sale.manualCapture && record.tenders.any { it.approved }) {
+                val first =
+                    record.tenders
+                        .filter { it.approved }
+                        .sortedBy { it.sequence }
+                        .firstNotNullOfOrNull { fromTender(record, it) }
+                return first?.let {
+                    RefundablePayment(
+                        it.transactionId,
+                        it.timestamp,
+                        Instant.ofEpochMilli(sale.createdAt),
+                        sale.amountMinor - (sale.cashBackMinor ?: 0),
+                        sale.currency,
+                        sale.merchantReference,
+                        record,
+                    )
+                }
+            }
             val transactionId = sale.poiTransactionId
             val timestamp = sale.poiTimestamp?.takeIf { TerminalClient.instantOf(it) != null }
             if (sale.status != SaleStatus.APPROVED || transactionId == null || timestamp == null) return null
@@ -377,12 +676,18 @@ class RefundablePayment private constructor(
                 transactionId,
                 timestamp,
                 Instant.ofEpochMilli(sale.createdAt),
-                sale.amountMinor,
+                sale.amountMinor - (sale.cashBackMinor ?: 0),
                 sale.currency,
                 sale.merchantReference,
                 record,
             )
         }
+
+        private fun voucherOnly(tender: SaleTenderEntity): Boolean =
+            MealVoucherScheme.stored(tender.mealVoucher)?.refund == VoucherRefund.NONE
+
+        /** Whether [tender] is a meal voucher whose value the app never returns ([VoucherRefund.NONE]). */
+        fun keepsVoucherValue(tender: SaleTenderEntity): Boolean = tender.approved && voucherOnly(tender)
 
         private fun refundable(payment: RefundablePayment): Refundability =
             if (payment.remainingMinor > 0) {
@@ -392,3 +697,45 @@ class RefundablePayment private constructor(
             }
     }
 }
+
+/**
+ * [amount] shared across [weights] (non-negative, by key) in proportion to each weight, rounded down, with the
+ * minor-unit remainders given one each to the earliest keys that can take more; never more than a key's weight.
+ */
+internal fun proportional(
+    amount: Long,
+    weights: Map<String, Long>,
+): Map<String, Long> {
+    val total = weights.values.fold(0L) { sum, weight -> Math.addExact(sum, weight.coerceAtLeast(0)) }
+    if (amount <= 0 || total == 0L) return emptyMap()
+    val target = minOf(amount, total)
+    val shares =
+        weights
+            .mapValues { (_, weight) ->
+                BigInteger
+                    .valueOf(target)
+                    .multiply(BigInteger.valueOf(weight.coerceAtLeast(0)))
+                    .divide(BigInteger.valueOf(total))
+                    .toLong()
+            }.toMutableMap()
+    var left = target - shares.values.sum()
+    for (key in weights.keys) {
+        if (left == 0L) break
+        if (shares.getValue(key) < weights.getValue(key)) {
+            shares[key] = shares.getValue(key) + 1
+            left--
+        }
+    }
+    return shares
+}
+
+// An absent or inconsistent reported cash component cannot establish a merchandise refund balance.
+private fun refundableCashback(
+    requested: Long?,
+    approved: Long?,
+): Boolean = requested == null || (approved != null && approved in 0..requested)
+
+// A cash request also needs the actual card charge before a referenced merchandise return is safe.
+private fun cashbackRefundKnown(sale: SaleEntity): Boolean =
+    refundableCashback(sale.requestedCashBackMinor, sale.cashBackMinor) &&
+        (sale.requestedCashBackMinor == null || sale.terminalPaidMinor != null)

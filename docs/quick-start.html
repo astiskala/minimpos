@@ -134,7 +134,7 @@
   <td data-label="Connection">Internet; compatible NFC phone</td><td data-label="Receipts">Email or share; no printer
   </td><td data-label="Feature limits">No terminal tipping, shopper display, MOTO/MKE, offline processing or terminal
   reconciliation.</td></tr></tbody></table></details><p class="hint">Physical-terminal features depend on the terminal, payment
-  method and Adyen configuration. Test the workflows you need; simulator availability is not verification.
+  method and Adyen configuration. Test the workflows you need.
   <a href="using#capabilities">Check Adyen capabilities</a>.</p>
           <ul>
             <li>Printing needs a terminal with a built-in printer. If there is none, you can email or share receipts
@@ -179,6 +179,7 @@
                 <li><strong>Management API - Terminal settings read and write</strong></li>
                 <li><strong>Management API - Terminal settings Advanced read and write</strong></li>
                 <li><strong>Cloud Device API role</strong></li>
+                <li><strong>API tokenise payment details</strong></li>
               </ul>
               The same roles are required for every setup. The credential must belong to your company account and have
                 access to the destination's merchant account. See the
@@ -198,7 +199,7 @@
             </li>
           </ol>
 <details class="role-checklist"><summary>Check the complete credential requirements</summary><p>Keep the default payment
-  and Management API roles below enabled as well as the four additional roles above. Existing credentials may have had
+  and Management API roles below enabled as well as the five additional roles above. Existing credentials may have had
   defaults removed. The app checks the same primary credential for every destination; the separate phone registration
   credential alone needs Adyen Payments App role.</p><ul><li><strong>Merchant PAL webservice role</strong></li><li>
   <strong>Checkout webservice role</strong></li><li><strong>Management API - API credentials read and write</strong>
@@ -474,8 +475,7 @@
             test your actual destination: <a href="using#terminal-tips">terminal tipping</a>,
             <a href="using#terminal-checkout">partial payments, shopper prompts, Giving and keyed entry</a>,
             <a href="using#offline">offline processing</a> and <a href="using#reconciliation">terminal reconciliation
-            </a>. Availability depends on Adyen configuration and the payment destination; simulator results are not
-            real-terminal verification.</p>
+            </a>. Availability depends on Adyen configuration and the payment destination.</p>
           <ol>
             <li>In TEST, try only the optional workflows you plan to use: <a href="using#preauth">deposits</a>,
               <a href="using#tips">receipt tips</a>, <a href="using#payment-links">payment links</a> or
@@ -504,29 +504,27 @@
         <section id="try">
           <h2>Try the simulator</h2>
           <p>Explore Mini mPOS without an Adyen account or terminal. No card is charged.</p>
-          <p>To explore offline warnings, turn on <strong>Offline approvals</strong> in <strong>Settings › Simulator</strong>. Approved simulated sales then have no PSP reference and report an unconfirmed batch. Inspect the
-            sale in History and try <a href="using#reconciliation">terminal reconciliation</a>. This is a demo, not a
-            test of real offline authorization or later upload to Adyen.</p>
           <ol>
             <li><a href="#install">Install the app</a> on an Android 9+ phone or emulator.</li>
-            <li>On the welcome screen, select <strong>Try a demo</strong> and tap <strong>Continue</strong>. The other
-              choices are <strong>Scan setup codes</strong>, from the setup helper or another device, and <strong>
-              Connect to Adyen</strong>. Adyen terminals initially select connecting; other devices select the demo.
-              </li>
+            <li>On the welcome screen, select <strong>Try a demo</strong> instead of <strong>Scan setup codes</strong> or
+              <strong>Connect to Adyen</strong>, and tap <strong>Continue</strong>.</li>
             <li>In <strong>Settings › Simulator</strong>, choose the payment outcome, the delay and whether a printer is
-              available.</li>
+              available. Turn on <strong>Offline approvals</strong> to see offline warnings in History and
+              <a href="using#reconciliation">terminal reconciliation</a>.</li>
           </ol>
-          <p>Sample products and history are labeled as demos. Each use of <strong>Add sample data</strong> replaces
-            receipt business details with fictional café details, even if samples already exist; receipt layout and
-            delivery settings stay unchanged. Samples count in demo day totals and reports; they are not real payments.
-            In <strong>Settings › Data and transfer</strong>, use <strong>Add sample data</strong> or <strong>Remove
-            sample data</strong>; removal keeps your own products, history and settings. For offline demo links, see
-            <a href="using#payment-links">payment links</a>.</p>
-          <p>Ready to connect? In <strong>Settings › Simulator</strong>, tap <strong>Set up real payments</strong>.
-            Review the sample-data and receipt shortcuts, then tap <strong>Continue to setup</strong>. Opening setup
-            changes no data. A confirmed switch to TEST or LIVE deletes all local history, including unfinished
-            operations; sample products and receipt details stay. Remove unwanted samples separately and review
-            fictional receipt business details before real payments. Start with TEST.</p>
+          <p>In <strong>Settings › Data and transfer</strong>, use <strong>Add sample data</strong> or <strong>Remove
+            sample data</strong>. Samples are labeled as demos. Samples count in demo day totals and reports; adding
+            them replaces receipt business details with a fictional café, and removing them keeps your own products,
+            history and settings.</p>
+          <p>Payment links work offline without API credentials, and their screens and receipts are labeled as demos.
+            Their QR codes cannot take payments; tap <strong>Simulate payment</strong> to complete one.</p>
+          <p>The simulator shows how Mini mPOS behaves, not what your terminal or Adyen account supports. Features such
+            as audio guidance, offline approvals and Adyen capabilities are imitated, so test them on a real TEST
+            terminal before relying on them.</p>
+          <p>Ready to connect? In <strong>Settings › Simulator</strong>, tap <strong>Set up real payments</strong>, then
+            <strong>Continue to setup</strong>. Confirming TEST or LIVE deletes all local history; sample products and
+            receipt details stay, so remove samples and review the receipt business details before real payments. Start
+            with TEST.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
       </div>

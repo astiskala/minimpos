@@ -1,14 +1,21 @@
 package app.minimpos.app.history
 
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.RefundCancelStatus
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.route
+import app.minimpos.app.data.repo.cashAwaitingHandover
+import app.minimpos.app.data.repo.remainingAmountKnown
 import app.minimpos.terminal.client.Decline
 import app.minimpos.terminal.client.RetryAdvice
+import app.minimpos.terminal.client.TerminalClient
 
 /**
  * Where a stored sale stands as a payment, worked out once from its status, kind, capture and cancellation. It is the
@@ -73,6 +80,18 @@ enum class PaymentStanding(
         private const val PERCENT = 100
 
         /**
+         * Whether capturing [amountMinor] requires an authorization change or repeating an unresolved one.
+         * A non-null [tipMinor] applies the receipt-tip overcapture rule; null is an ordinary capture.
+         */
+        fun captureNeedsAdjustment(
+            sale: SaleEntity,
+            amountMinor: Long,
+            tipMinor: Long? = null,
+        ): Boolean =
+            sale.adjustmentPending ||
+                (amountMinor > sale.heldMinor && (tipMinor == null || tipNeedsAdjustment(sale.totalMinor, tipMinor)))
+
+        /**
          * Adyen's rule of thumb for tipping on the receipt: a tip above this percentage of the bill needs an authorisation
          * adjustment before the capture; a smaller one is simply captured with the bill (overcapture).
          */
@@ -86,6 +105,12 @@ enum class PaymentStanding(
                 sale.holdCancelled -> HOLD_CANCELLED
                 else -> captureStanding(sale)
             }
+
+        /** A reported surcharge may not be increased through an adjustment or overcapture. */
+        fun captureAmountAllowed(
+            sale: SaleEntity,
+            amountMinor: Long,
+        ): Boolean = amountMinor > 0 && ((sale.surchargeMinor ?: 0) == 0L || amountMinor <= sale.heldMinor)
 
         /** Whether a tip of [tipMinor] on a bill of [billMinor] is more than [TIP_ADJUSTMENT_PERCENT] of it. */
         fun tipNeedsAdjustment(
@@ -136,11 +161,15 @@ enum class SaleResultNext {
  */
 fun saleResultNext(sale: SaleEntity): SaleResultNext =
     when {
+        sale.isPartiallyPaid && !sale.remainingAmountKnown -> {
+            SaleResultNext.NONE
+        }
+
         sale.isPartiallyPaid -> {
             SaleResultNext.PAY_REMAINING
         }
 
-        sale.paymentLink -> {
+        sale.route == SaleRoute.PAYMENT_LINK -> {
             when (sale.status) {
                 SaleStatus.FAILED -> {
                     SaleResultNext.TRY_AGAIN
@@ -188,6 +217,7 @@ fun saleResultNext(sale: SaleEntity): SaleResultNext =
  * @property paidOnline Whether it was paid through its payment link, which the receipt says.
  * @property simulatedLink Whether this is an offline demo link, including after completion or cancellation.
  * @property standing Full payment standing retained for receipt notes.
+ * @property cashout Whether this is standalone cash-out, with no merchandise.
  */
 data class ReceiptStanding(
     val approved: Boolean,
@@ -202,6 +232,7 @@ data class ReceiptStanding(
     val simulatedLink: Boolean = false,
     /** Current standing retained through receipt rendering. */
     val standing: PaymentStanding = PaymentStanding.CHARGED,
+    val cashout: Boolean = false,
 ) {
     /** Reading a sale. */
     companion object {
@@ -215,42 +246,47 @@ data class ReceiptStanding(
                 preAuthorisation = preAuthorisation,
                 tipMinor = sale.tipMinor?.takeIf { sale.tipOnReceipt || it > 0 },
                 awaitingTip = standing == PaymentStanding.AWAITING_TIP,
-                heldNowMinor = sale.authorisedMinor?.takeIf { preAuthorisation && it != sale.totalMinor },
+                heldNowMinor = sale.heldMinor.takeIf { sale.manualCapture && it != sale.totalMinor },
                 capturedMinor = sale.capturedMinor?.takeIf { preAuthorisation && standing.captured },
                 unpaidLink = unpaidLink,
                 linkExpiresAt = sale.paymentLinkExpiresAt?.takeIf { unpaidLink != null },
                 paidOnline = sale.paidOnline,
                 simulatedLink = sale.simulatedLink,
                 standing = standing,
+                cashout = sale.cashout,
             )
         }
     }
 }
 
 /** Whether this sale's payment link has been created and not paid yet, so the shopper can still pay with it. */
-val SaleEntity.awaitsLinkPayment: Boolean get() = paymentLink && status == SaleStatus.AWAITING_PAYMENT && paymentLinkUrl != null
+val SaleEntity.awaitsLinkPayment: Boolean
+    get() = route == SaleRoute.PAYMENT_LINK && status == SaleStatus.AWAITING_PAYMENT && paymentLinkUrl != null
 
 /**
  * Whether this sale's payment link screen still has something to offer: the link can be paid, or whether it was created
  * is unknown and can be asked about there.
  */
 val SaleEntity.linkUnsettled: Boolean
-    get() = paymentLink && (status == SaleStatus.AWAITING_PAYMENT || status == SaleStatus.UNKNOWN)
+    get() = route == SaleRoute.PAYMENT_LINK && (status == SaleStatus.AWAITING_PAYMENT || status == SaleStatus.UNKNOWN)
 
 /** Whether this sale was paid through its payment link, which its receipt and detail say. */
-val SaleEntity.paidOnline: Boolean get() = paymentLink && standing.charged
+val SaleEntity.paidOnline: Boolean get() = route == SaleRoute.PAYMENT_LINK && standing.charged
 
 /**
  * Whether this sale was sent to a terminal, so terminal totals and reconciliation include it: not seeded sample
  * history, a payment link or a saved-card charge, which go through Adyen's Checkout API instead.
  */
-val SaleEntity.terminalOperation: Boolean get() = !sample && !paymentLink && !savedCard
+val SaleEntity.terminalOperation: Boolean get() = !sample && route == SaleRoute.TERMINAL
 
 /** Whether this refund was sent to a terminal, so terminal totals include it: not a Checkout refund of a saved-card charge. */
-val RefundEntity.terminalOperation: Boolean get() = !checkoutRefund
+val RefundEntity.terminalOperation: Boolean get() = route.onTerminal
 
 /** What about a stored sale still needs attention, see [issues]. */
 enum class PaymentIssue {
+    /** Approved cashback awaits an operator handover, or its returned amount needs investigation. */
+    CASH_HANDOVER,
+
     /** Whether the payment went through is not known yet: it is still pending or its outcome is unknown. */
     OUTCOME,
 
@@ -269,6 +305,7 @@ val SaleEntity.issues: Set<PaymentIssue>
     get() =
         buildSet {
             if (status == SaleStatus.PENDING || status == SaleStatus.UNKNOWN) add(PaymentIssue.OUTCOME)
+            if (cashAwaitingHandover) add(PaymentIssue.CASH_HANDOVER)
             if (adjustmentPending) add(PaymentIssue.ADJUSTMENT)
             if (standing in CAPTURE_ISSUES) add(PaymentIssue.CAPTURE)
         }
@@ -277,7 +314,7 @@ val SaleEntity.issues: Set<PaymentIssue>
 private val CAPTURE_ISSUES = setOf(PaymentStanding.CAPTURE_FAILED, PaymentStanding.CAPTURE_UNKNOWN, PaymentStanding.CAPTURE_SENDING)
 
 /** Whether this sale is an offline demo link, regardless of its status or the device's current destination. */
-val SaleEntity.simulatedLink: Boolean get() = paymentLink && context?.simulated == true
+val SaleEntity.simulatedLink: Boolean get() = route == SaleRoute.PAYMENT_LINK && context?.simulated == true
 
 /** Whether this sale moved no money: seeded sample history, or a payment its original context took with the simulator. */
 val SaleEntity.simulatedSale: Boolean get() = sample || context?.simulated == true
@@ -328,14 +365,30 @@ val SaleWithLines.actions: Set<PaymentAction>
 
 /** Whether this sale's unknown outcome can be asked about again the way it was sent, see [PaymentAction.CHECK_AGAIN]. */
 private val SaleEntity.canCheckAgain: Boolean
-    get() = status == SaleStatus.UNKNOWN && !paymentLink && (savedCard || serviceId != null)
+    get() = status == SaleStatus.UNKNOWN && (route == SaleRoute.SAVED_CARD || (route == SaleRoute.TERMINAL && serviceId != null))
 
 /**
  * Whether this refund's unknown outcome can be asked about again the way it was sent: the terminal's status of its
  * stored ServiceID, or a Checkout refund sent again with its stored idempotency key.
  */
 val RefundEntity.canCheckAgain: Boolean
-    get() = status == RefundStatus.UNKNOWN && (checkoutRefund || serviceId != null)
+    get() = status == RefundStatus.UNKNOWN && (route == RefundRoute.CHECKOUT || serviceId != null)
+
+/**
+ * Whether the delayed unreferenced refund [this] can be asked to be cancelled now, given the merchant confirmed Adyen
+ * Support configured a refund [delayed]: accepted, with a PSP reference, and no cancellation received yet. Adyen
+ * enforces the delay itself, so an expired delay is its rejection, not this reading.
+ */
+fun RefundEntity.cancellable(delayed: Boolean): Boolean =
+    route == RefundRoute.UNREFERENCED && status == RefundStatus.REQUESTED && pspReference != null &&
+        cancelStatus != RefundCancelStatus.REQUESTED && (delayed || cancelStatus?.unresolved == true)
+
+/**
+ * Whether this accepted unreferenced refund was approved synchronously by the acquirer (`acquirerResponseCode=Approved`)
+ * rather than only requested; either way Adyen confirms the refund itself only in the Customer Area.
+ */
+val RefundEntity.approvedSynchronously: Boolean
+    get() = route == RefundRoute.UNREFERENCED && status == RefundStatus.REQUESTED && TerminalClient.refundApproved(acquirerResponseCode)
 
 /** What the Checkout API can do with [sale], which has a PSP reference. */
 private fun captureActions(sale: SaleEntity): Set<PaymentAction> {
@@ -344,7 +397,13 @@ private fun captureActions(sale: SaleEntity): Set<PaymentAction> {
     val retry = standing == PaymentStanding.CAPTURE_UNKNOWN || (standing == PaymentStanding.CAPTURE_FAILED && sale.tipOnReceipt)
     return buildSet {
         if (standing == PaymentStanding.AWAITING_TIP) add(PaymentAction.ENTER_TIP)
-        if (capture) addAll(listOf(PaymentAction.CAPTURE, PaymentAction.ADJUST))
+        if (capture) {
+            add(PaymentAction.CAPTURE)
+            if ((sale.surchargeMinor ?: 0) == 0L) add(PaymentAction.ADJUST)
+        }
         if (retry && sale.capturedMinor != null) add(PaymentAction.RETRY_CAPTURE)
     }
 }
+
+/** Whether this record is a standalone card cash-out, with no merchandise or taxable sale value. */
+val SaleEntity.cashout: Boolean get() = requestedCashBackMinor != null && totalMinor == 0L

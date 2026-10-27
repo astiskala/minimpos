@@ -6,11 +6,11 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.dataStoreFile
 import app.minimpos.app.data.db.AppDatabase
-import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.CatalogRepository
+import app.minimpos.app.data.repo.GiftCardRepository
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.RefundRepository
@@ -19,6 +19,7 @@ import app.minimpos.app.data.repo.SampleData
 import app.minimpos.app.data.repo.SampleDataFixture
 import app.minimpos.app.data.security.KeystoreSecretCipher
 import app.minimpos.app.data.security.ManagerApproval
+import app.minimpos.app.data.security.ManagerPolicy
 import app.minimpos.app.data.security.PinManager
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretBlob
@@ -30,6 +31,8 @@ import app.minimpos.app.data.settings.InstallationText
 import app.minimpos.app.data.settings.JsonDataStoreSerializer
 import app.minimpos.app.data.settings.NewInstallation
 import app.minimpos.app.data.settings.PaymentSettings
+import app.minimpos.app.data.settings.ReceiptLogoSerializer
+import app.minimpos.app.data.settings.ReceiptLogoStore
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.StorageHealth
 import app.minimpos.app.data.settings.TerminalMode
@@ -38,18 +41,22 @@ import app.minimpos.app.email.EmailTexts
 import app.minimpos.app.email.MailTransport
 import app.minimpos.app.email.ReceiptEmailer
 import app.minimpos.app.email.SmtpMailer
-import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.feature.localizedReceiptTexts
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.payment.Captures
+import app.minimpos.app.payment.CashTenders
 import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.FinancialOperations
+import app.minimpos.app.payment.GiftCards
 import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.PricingChanges
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.ReceiptRecords
 import app.minimpos.app.payment.RefundBook
+import app.minimpos.app.payment.RefundCancellations
+import app.minimpos.app.payment.RefundLegs
 import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.SavedCardCharges
@@ -57,12 +64,13 @@ import app.minimpos.app.payment.ShopperPromptTexts
 import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.app.payment.TerminalReconciliation
 import app.minimpos.app.payment.TransactionLifecycle
+import app.minimpos.app.payment.UnreferencedRefundBook
+import app.minimpos.app.payment.UnreferencedRefundStart
 import app.minimpos.app.payment.WalletPayments
 import app.minimpos.app.qr.QrCodes
 import app.minimpos.app.receipt.ReceiptFactory
 import app.minimpos.app.receipt.ReceiptSampleTexts
 import app.minimpos.app.receipt.ReceiptTexts
-import app.minimpos.app.receipt.ReportText
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.AndroidDeviceInfo
 import app.minimpos.app.terminal.CapabilityDiscovery
@@ -89,9 +97,9 @@ import app.minimpos.app.ui.components.SetupGate
 import app.minimpos.app.update.AppUpdate
 import app.minimpos.app.update.GitHubReleases
 import app.minimpos.app.update.UpdateCheck
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.ReceiptDocument
-import app.minimpos.core.receipt.ReceiptLabels
 import app.minimpos.core.tax.StarterTax
 import app.minimpos.terminal.checkout.AdyenCheckout
 import app.minimpos.terminal.checkout.CheckoutApi
@@ -126,6 +134,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -212,8 +221,20 @@ class AppContainer(
     private val settingsStore = store("settings.json", serializer<AppSettings>(), defaults)
     private val secretsStore = store("secrets.json", serializer<SecretBlob>(), SecretBlob())
 
+    private val logoStore =
+        storage.protect(
+            DataStoreFactory.create(
+                serializer = ReceiptLogoSerializer,
+                scope = CoroutineScope(ioDispatcher + SupervisorJob()),
+                produceFile = { storageDir("receipt-logo.bin") },
+            ),
+        )
+
+    /** Final receipt image (`receipt-logo.bin`), protected by configuration storage health. */
+    val receiptLogo = ReceiptLogoStore(logoStore)
+
     init {
-        appScope.launch { storage.check(settingsStore, secretsStore) }
+        appScope.launch { storage.check(settingsStore, secretsStore, logoStore) }
         // Builds the client and its TLS setup in the background, so a screen's first request never builds it on the main
         // thread.
         appScope.launch { http.value }
@@ -244,12 +265,16 @@ class AppContainer(
     val managerLock = SessionLock()
 
     /**
-     * Manager approval of money-moving operations: taken when one starts, so leaving the screen that approved it cannot
-     * refuse it, and checked again before sending.
+     * Manager approval of money-moving operations under the live admin/Manager PIN policy: what screens offer and ask
+     * PIN entry for, taken when an operation starts, so leaving the screen that approved it cannot refuse it, and checked
+     * again before sending.
      */
     val managerApproval =
         ManagerApproval(
-            configured = { managerPin.pinConfigured.first() },
+            policy =
+                combine(settingsState, pinManager.pinConfigured, managerPin.pinConfigured) { current, admin, manager ->
+                    ManagerPolicy(admin, manager, current.security)
+                },
             session = managerLock,
             autoLockMillis = { settingsState.value.security.autoLockMinutes.minutes.inWholeMilliseconds },
         )
@@ -266,23 +291,21 @@ class AppContainer(
     /** Stored refunds. */
     val refundRecords = RefundRepository(database, sales)
 
+    /** Stored stored-value (gift-card) stages. */
+    val giftCardRecords = GiftCardRepository(database)
+
     /** The combined transaction history and its housekeeping. */
     val history = HistoryRepository(database, onRemoved = ::historyRemoved, onPurged = ::historyPurged)
 
     /** Copies the catalogue, settings and secrets to another device by QR code, and imports the setup helper's codes. */
-    val setupTransfer = SetupTransfer(catalog, settings, secrets, onTerminal = device.isAdyenTerminal, history = history)
+    val setupTransfer =
+        SetupTransfer(catalog, settings, secrets, onTerminal = device.isAdyenTerminal, history = history, logos = receiptLogo)
+
+    /** Where AUTO sends payments on this device: its own terminal, else the simulator; history environments follow it. */
+    private val automaticMode = if (device.isAdyenTerminal) TerminalMode.TERMINAL else TerminalMode.SIMULATOR
 
     /** Explicit environment-switch history deletion and recovery; unrelated merchant configuration remains. */
-    val historySwitches =
-        HistorySwitches(
-            settings,
-            history,
-            if (device.isAdyenTerminal) {
-                TerminalMode.TERMINAL
-            } else {
-                TerminalMode.SIMULATOR
-            },
-        )
+    val historySwitches = HistorySwitches(settings, history, automaticMode)
 
     /** What the simulator prints, shown on screen instead of paper. */
     val virtualPrinter = VirtualPrinter()
@@ -322,7 +345,14 @@ class AppContainer(
             setups = terminalSetup,
             simulator = simulator,
             application = application,
-            paymentsApp = { key, environment -> PaymentsAppTransport(key, environment, paymentsAppLinks, PaymentsAppBridge.RETURN_URL) },
+            paymentsApp = { key, environment ->
+                PaymentsAppTransport(
+                    key,
+                    environment,
+                    paymentsAppLinks,
+                    PaymentsAppBridge.RETURN_URL,
+                ) { device.paymentsAppVersion(environment) }
+            },
             connect = terminalTransport,
             cloud = cloudDevices,
             localEnvironment = terminalEnvironment,
@@ -406,21 +436,29 @@ class AppContainer(
     /** A time stamp (epoch milliseconds) in the current app language and device time zone, as receipts print it. */
     fun formatDateTime(epochMillis: Long): String = receiptFactory.formatDateTime(epochMillis)
 
-    /** The sample receipt Settings shows and test-prints with [appSettings], which may not be stored yet. */
-    fun sampleReceipt(appSettings: AppSettings): ReceiptDocument =
+    /**
+     * The sample receipt Settings shows and test-prints with [appSettings], which may not be stored yet, and the
+     * current [logo]; null leaves the image out. Construction runs on the caller's CPU dispatcher.
+     */
+    fun sampleReceipt(
+        appSettings: AppSettings,
+        logo: MonoBitmap? = null,
+    ): ReceiptDocument =
         receiptFactory.sample(
             appSettings.receipt,
             currency(appSettings),
             appSettings.payment.taxMode,
             appSettings.payment.asksCustomerReference,
             appSettings.languageTag,
+            logo,
         )
 
     /** Printing and emailing of stored sales and refunds, including what is delivered automatically. */
     val receipts =
         ReceiptDelivery(
             settings = settings,
-            records = ReceiptRecords(sales, refundRecords, history),
+            records = ReceiptRecords(sales, refundRecords, history, giftCardRecords),
+            approval = managerApproval,
             receipts = receiptFactory,
             gateway = gateway,
             status = terminalStatus,
@@ -433,6 +471,7 @@ class AppContainer(
                     currentTexts = ::emailTexts,
                 ),
             scope = appScope,
+            logos = receiptLogo,
         )
 
     private val sessions = SaleKind.entries.associateWith { SaleSession(it, ::shopperPromptTexts) }
@@ -518,6 +557,25 @@ class AppContainer(
             approval = managerApproval,
         )
 
+    /** Runs unreferenced card refunds, which history keeps as refunds and the terminal answers as payments. */
+    private val unreferencedRefunds: TransactionLifecycle<UnreferencedRefundStart> =
+        TransactionLifecycle(
+            scope = appScope,
+            gateway = gateway,
+            book = UnreferencedRefundBook(refundRecords),
+            onSucceeded = { id, _ -> receipts.arm(id) },
+            approval = managerApproval,
+        )
+
+    /** Asks Adyen to cancel delayed unreferenced refunds, with their own identity and request-status recovery. */
+    val refundCancellations =
+        RefundCancellations(
+            refundRecords,
+            api::target,
+            delayed = { settingsState.value.payment.unreferencedRefunds.delayed },
+            approval = managerApproval,
+        )
+
     /** Charges saved cards through the Checkout API and asks again about unknown charges. */
     val savedCardCharges =
         SavedCardCharges(
@@ -531,7 +589,7 @@ class AppContainer(
             targets = api.targets,
         )
 
-    /** Explicit Charge token lookup, retained across its reference, cart and review screens; never queries on its own. */
+    /** Explicit Tokens lookup, retained across its reference, cart and review screens; never queries on its own. */
     val savedCardLookup =
         savedCardCharges.lookup(
             appScope,
@@ -543,11 +601,45 @@ class AppContainer(
     private val checkoutRefunds =
         CheckoutRefunds(appScope, refundRecords, sales, api::target, onAccepted = { receipts.arm(it) }, approval = managerApproval)
 
+    /** Cash tenders of immediate sales and gift-card cash handovers, recorded locally after confirmation. */
+    val cashTenders =
+        CashTenders(
+            sales,
+            { settingsState.value.terminal.historyEnvironment(automaticMode) },
+            ::completeSale,
+            giftCards = giftCardRecords,
+            approval = managerApproval,
+        )
+
+    /** Every stored-value (gift-card) activity: funding, value changes, cash-outs, repairs and their status checks. */
+    val giftCards: GiftCards =
+        GiftCards(
+            scope = appScope,
+            gateway = gateway,
+            records = giftCardRecords,
+            cash = cashTenders,
+            approval = managerApproval,
+            busy = ::financialOperationRunning,
+            blocked = { terminalStatus.state.value.giftCardsBlocked },
+            environment = { settingsState.value.terminal.historyEnvironment(automaticMode) },
+            onFinished = { receipts.arm(it) },
+            referencePrefix = { settingsState.value.payment.referencePrefix },
+        )
+
     /**
      * Every financial operation, whichever way it is sent: status checks, refund routing and whether anything is being
      * sent now, which setup changes wait for.
      */
-    val operations = FinancialOperations(payments, refunds, savedCardCharges, checkoutRefunds, links, sales, refundRecords)
+    val operations: FinancialOperations =
+        FinancialOperations(
+            payments,
+            FinancialOperations.Refunds(refunds, unreferencedRefunds, checkoutRefunds, refundRecords),
+            savedCardCharges,
+            links,
+            sales,
+            giftCards,
+            holds = listOf(refundCancellations.operationKind, captures.operationKind),
+        )
 
     private fun historyPurged() {
         operations.forgetAll()
@@ -562,14 +654,11 @@ class AppContainer(
         val ids = items.map { it.id }.toSet()
         operations.forget(ids)
         receipts.forget(ids)
-        val chargeKeys =
-            items
-                .filterIsInstance<HistoryItem.Sale>()
-                .filter { it.sale.savedCard }
-                .map { SavedCardCharges.idempotencyKey(it.id) }
-                .toSet()
-        simulator.forget(items, tenders, chargeKeys)
+        simulator.forget(items, tenders)
     }
+
+    /** Returns split across several tenders or including cash, one persisted leg at a time. */
+    val refundLegs = RefundLegs(appScope, operations, refundRecords, managerApproval)
 
     /**
      * One terminal reconciliation: rechecks unresolved terminal operations, reads or closes the period and compares its
@@ -579,7 +668,7 @@ class AppContainer(
         TerminalReconciliation(history, operations, gateway, terminalStatus.state, approval = managerApproval)
 
     /** Refund/cancellation initiation and capture retries, keeping reference facts out of screens. */
-    val storedPaymentActions = StoredPaymentActions(operations, captures, settingsState)
+    val storedPaymentActions = StoredPaymentActions(operations, captures, settingsState, legs = refundLegs)
 
     /** Whether a financial operation is being sent now, see [FinancialOperations.running]. */
     private fun financialOperationRunning(): Boolean = operations.running
@@ -732,62 +821,7 @@ class AppContainer(
 
     private fun receiptTexts(languageTag: String = settingsState.value.languageTag): ReceiptTexts {
         val localized = context.withAppLanguage(languageTag.ifEmpty { settingsState.value.languageTag })
-        return ReceiptTexts(
-            labels = receiptLabels(localized),
-            locale = localized.locale,
-            sample = sampleTexts(localized),
-            simulationNote = localized.getString(R.string.link_simulation_note),
-            demoLink = localized.getString(R.string.link_demo_label),
-            standing = { standing ->
-                when (standing) {
-                    // The receipt builder already warns about payments that were not approved.
-                    PaymentStanding.CHARGED, PaymentStanding.NOT_APPROVED -> null
-
-                    PaymentStanding.AWAITING_TIP -> localized.getString(R.string.detail_tip_awaiting)
-
-                    PaymentStanding.HELD -> localized.getString(R.string.receipt_pre_auth_note)
-
-                    PaymentStanding.CAPTURE_REQUESTED -> localized.getString(R.string.status_capture_requested)
-
-                    PaymentStanding.CAPTURE_FAILED -> localized.getString(R.string.status_capture_failed)
-
-                    PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN -> localized.getString(R.string.status_capture_unknown)
-
-                    PaymentStanding.HOLD_CANCELLED -> localized.getString(R.string.status_cancellation_requested)
-                }
-            },
-            refund = { status ->
-                localized.getString(
-                    when (status) {
-                        RefundStatus.REQUESTED -> R.string.refund_status_requested
-                        RefundStatus.PENDING -> R.string.status_pending
-                        RefundStatus.UNKNOWN -> R.string.status_unknown
-                        RefundStatus.FAILED -> R.string.status_failed
-                    },
-                )
-            },
-            report = { label ->
-                localized.getString(
-                    when (label) {
-                        ReportText.TITLE -> R.string.report_title
-                        ReportText.GENERATED -> R.string.report_generated
-                        ReportText.SALES -> R.string.report_sales
-                        ReportText.TIPS -> R.string.report_tips
-                        ReportText.REFUNDS -> R.string.report_refunds
-                        ReportText.NET -> R.string.report_net
-                        ReportText.HOLDS -> R.string.report_holds
-                        ReportText.UNRESOLVED -> R.string.report_unresolved
-                        ReportText.ONLINE -> R.string.report_online
-                        ReportText.UNDATED -> R.string.report_undated
-                        ReportText.UNDATED_NOTE -> R.string.report_undated_note
-                        ReportText.NOTE -> R.string.report_note
-                        ReportText.ISSUE_NOTE -> R.string.report_issue_note
-                        ReportText.DEMO -> R.string.report_demo
-                        ReportText.UNKNOWN -> R.string.report_unknown
-                    },
-                )
-            },
-        )
+        return localizedReceiptTexts(localized, sampleTexts(localized))
     }
 
     private fun sampleTexts(localizedContext: Context = this.localizedContext) =
@@ -796,49 +830,6 @@ class AppContainer(
             custom = localizedContext.getString(R.string.receipt_sample_item),
             taxed = installation(localizedContext).sampleTaxName,
             zero = localizedContext.getString(R.string.receipt_sample_zero_tax),
-        )
-
-    private fun receiptLabels(localizedContext: Context = this.localizedContext) =
-        ReceiptLabels(
-            date = localizedContext.getString(R.string.receipt_date),
-            reference = localizedContext.getString(R.string.receipt_reference),
-            customer = localizedContext.getString(R.string.receipt_customer),
-            subtotal = localizedContext.getString(R.string.receipt_subtotal),
-            tax = localizedContext.getString(R.string.receipt_tax),
-            total = localizedContext.getString(R.string.receipt_total),
-            includesTaxFormat = localizedContext.getString(R.string.receipt_includes_tax),
-            quantityFormat = localizedContext.getString(R.string.receipt_quantity),
-            refundQrCaption = localizedContext.getString(R.string.receipt_refund_qr_caption),
-            merchantCopy = localizedContext.getString(R.string.receipt_merchant_copy),
-            refundTitle = localizedContext.getString(R.string.receipt_refund_title),
-            originalReference = localizedContext.getString(R.string.receipt_original_sale),
-            refundTotal = localizedContext.getString(R.string.receipt_refund_total),
-            partialRefund = localizedContext.getString(R.string.receipt_partial_refund),
-            fullRefund = localizedContext.getString(R.string.receipt_full_refund),
-            cardSaved = localizedContext.getString(R.string.receipt_card_saved),
-            notCompleted = localizedContext.getString(R.string.receipt_not_completed),
-            preAuthTitle = localizedContext.getString(R.string.receipt_pre_auth_title),
-            amountHeld = localizedContext.getString(R.string.receipt_amount_held),
-            preAuthNote = localizedContext.getString(R.string.receipt_pre_auth_note),
-            cancellationTitle = localizedContext.getString(R.string.receipt_cancellation_title),
-            cancelledReference = localizedContext.getString(R.string.receipt_cancelled_reference),
-            cancellationNote = localizedContext.getString(R.string.receipt_cancellation_note),
-            released = localizedContext.getString(R.string.receipt_released),
-            amount = localizedContext.getString(R.string.receipt_amount),
-            tip = localizedContext.getString(R.string.receipt_tip),
-            tipTotal = localizedContext.getString(R.string.receipt_tip_total),
-            signature = localizedContext.getString(R.string.receipt_signature),
-            heldNow = localizedContext.getString(R.string.receipt_held_now),
-            captured = localizedContext.getString(R.string.receipt_captured),
-            taxableGrossFormat = localizedContext.getString(R.string.receipt_taxable_gross_format),
-            taxableNetFormat = localizedContext.getString(R.string.receipt_taxable_net_format),
-            amountDue = localizedContext.getString(R.string.receipt_amount_due),
-            unpaid = localizedContext.getString(R.string.receipt_unpaid),
-            payLinkCaption = localizedContext.getString(R.string.receipt_pay_link_caption),
-            payLinkIntro = localizedContext.getString(R.string.receipt_pay_link_intro),
-            payNow = localizedContext.getString(R.string.receipt_pay_now),
-            linkValidFormat = localizedContext.getString(R.string.receipt_link_valid),
-            paidOnline = localizedContext.getString(R.string.receipt_paid_online),
         )
 
     // The demo label and note are the receipt's own, so an email's envelope says what its receipt says.
@@ -853,6 +844,8 @@ class AppContainer(
             testBody = localizedContext.getString(R.string.email_test_body),
             preAuthIntro = localizedContext.getString(R.string.email_pre_auth_intro),
             cancellationIntro = localizedContext.getString(R.string.email_cancellation_intro),
+            giftCardIntro = localizedContext.getString(R.string.email_gift_card_intro),
+            cashoutIntro = localizedContext.getString(R.string.email_cashout_intro),
             linkSubject = localizedContext.getString(R.string.email_link_subject),
             linkIntro = localizedContext.getString(R.string.email_link_intro),
         )

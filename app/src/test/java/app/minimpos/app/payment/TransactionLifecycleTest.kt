@@ -133,7 +133,7 @@ class TransactionLifecycleTest {
                     request: PaymentStart,
                     serviceId: String,
                     createdAt: Long,
-                ) {
+                ): Boolean {
                     error("failed before persistence")
                 }
             }
@@ -208,14 +208,31 @@ class TransactionLifecycleTest {
             finished(id)
             payments.acknowledge()
         }
-        val field = TransactionLifecycle::class.java.getDeclaredField("serviceIds").apply { isAccessible = true }
-        assertThat(field.get(payments) as Map<*, *>).isEmpty()
+        val sends =
+            TransactionLifecycle::class.java
+                .getDeclaredField("sends")
+                .apply { isAccessible = true }
+                .get(payments)
+        val field = TerminalSends::class.java.getDeclaredField("sending").apply { isAccessible = true }
+        assertThat(field.get(sends) as Map<*, *>).isEmpty()
+    }
+
+    @Test
+    fun `Manager PIN alone does not protect a direct refund until admin PIN exists`() {
+        env.useSimulator()
+        await { container.managerPin.setPin("2468") }
+        val id = refunds.started(refundStart(null, 100, full = false))
+        await { refunds.state.first { it == TransactionState.Finished(id) } }
+        assertThat(await { container.refundRecords.get(id)!! }.status).isEqualTo(RefundStatus.REQUESTED)
     }
 
     @Test
     fun `a configured Manager PIN also blocks direct refunds until approved`() {
         env.useSimulator()
-        await { container.managerPin.setPin("2468") }
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+        }
         val id = refunds.started(refundStart(null, 100, full = false))
         await { refunds.state.first { it == TransactionState.Finished(id) } }
         val record = await { container.refundRecords.get(id)!! }
@@ -226,7 +243,10 @@ class TransactionLifecycleTest {
     @Test
     fun `an approved MOTO payment keeps its approval when leaving checkout locks the Manager session`() {
         env.useSimulator { it.copy(payment = it.payment.copy(allowMoto = true)) }
-        await { container.managerPin.setPin("2468") }
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+        }
         container.managerLock.unlock()
         val id = payments.started(request().copy(cardEntryOverride = CardEntryOverride.MOTO))
         // The waiting screen needs no Manager approval, so navigating to it locks the session at once.

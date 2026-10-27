@@ -21,8 +21,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SaleTenderEntity::class,
         RefundEntity::class,
         HistorySwitchEntity::class,
+        GiftCardOperationEntity::class,
     ],
-    version = 16,
+    version = 24,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +35,9 @@ abstract class AppDatabase : RoomDatabase() {
 
     /** Refunds. */
     abstract fun refundDao(): RefundDao
+
+    /** Stored-value (gift-card) stages. */
+    abstract fun giftCardDao(): GiftCardDao
 
     /** Opening the current database. */
     companion object {
@@ -121,11 +125,119 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /**
+         * Preserves version-16 history and unfinished identities while adding the current payment facts. Historical
+         * components and tender request facts stay unknown, old tenders stay cards, and no voucher eligibility, cash
+         * handover or unreferenced refund is invented. Refunds are rebuilt once to allow absent original references.
+         */
+        val MIGRATION_16_24: Migration =
+            object : Migration(16, 24) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    addPaymentFacts(db)
+                    createGiftCardOperations(db)
+                    rebuildRefunds(db)
+                }
+
+                private fun addPaymentFacts(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE `sales` ADD COLUMN `audioGuidance` INTEGER NOT NULL DEFAULT 0")
+
+                    listOf("surchargeMinor", "terminalPaidMinor", "cashBackMinor", "tenderRequestedMinor").forEach {
+                        db.execSQL("ALTER TABLE `sales` ADD COLUMN `$it` INTEGER")
+                    }
+                    listOf("tipMinor", "surchargeMinor", "cashBackMinor").forEach {
+                        db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `$it` INTEGER")
+                    }
+                    listOf("serviceId", "context", "poiReconciliationId", "customerReceiptJson", "cashierReceiptJson").forEach {
+                        db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `$it` TEXT")
+                    }
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_sale_tenders_createdAt_saleId` ON `sale_tenders` (`createdAt`, `saleId`)")
+
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `kind` TEXT NOT NULL DEFAULT 'CARD'")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `allocationJson` TEXT")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `cashReceivedMinor` INTEGER")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `changeMinor` INTEGER")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `environment` TEXT")
+
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `giftCard` TEXT")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `mexicanPayment` TEXT")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `returnedPaymentType` TEXT")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `returnedInstallments` TEXT")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `returnedPlanId` TEXT")
+
+                    db.execSQL("ALTER TABLE `products` ADD COLUMN `mealVoucherEligible` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE `sale_lines` ADD COLUMN `mealVoucherEligible` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `mealVoucher` TEXT")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `fundingSource` TEXT")
+                    db.execSQL("ALTER TABLE `sale_tenders` ADD COLUMN `paymentMethodVariant` TEXT")
+
+                    listOf("sales", "sale_tenders").forEach { table ->
+                        db.execSQL("ALTER TABLE `$table` ADD COLUMN `requestedCashBackMinor` INTEGER")
+                        if (table == "sales") db.execSQL("ALTER TABLE `$table` ADD COLUMN `cashHandedOverAt` INTEGER")
+                    }
+                }
+
+                private fun createGiftCardOperations(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS `gift_card_operations` (`id` TEXT NOT NULL, `groupId` TEXT NOT NULL, " +
+                            "`stage` TEXT NOT NULL, `category` TEXT, `createdAt` INTEGER NOT NULL, `processedAt` INTEGER, " +
+                            "`status` TEXT NOT NULL, `provider` TEXT, `providerCode` TEXT, `entry` TEXT, `cardLastFour` TEXT, " +
+                            "`currency` TEXT NOT NULL, `amountMinor` INTEGER NOT NULL, `approvedMinor` INTEGER, " +
+                            "`balanceMinor` INTEGER, `merchantReference` TEXT NOT NULL, `serviceId` TEXT, `poiId` TEXT, " +
+                            "`poiTransactionId` TEXT, `poiTimestamp` TEXT, `pspReference` TEXT, `poiReconciliationId` TEXT, " +
+                            "`funds` TEXT, `originalId` TEXT, `message` TEXT, `errorCondition` TEXT, `reason` TEXT, `context` TEXT, " +
+                            "`environment` TEXT, `customerReceiptJson` TEXT, `cashierReceiptJson` TEXT, PRIMARY KEY(`id`))",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_gift_card_operations_createdAt_id` " +
+                            "ON `gift_card_operations` (`createdAt`, `id`)",
+                    )
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_gift_card_operations_groupId` ON `gift_card_operations` (`groupId`)")
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_gift_card_operations_processedAt_id` " +
+                            "ON `gift_card_operations` (`processedAt`, `id`)",
+                    )
+                }
+
+                private fun rebuildRefunds(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS `refunds_new` (`id` TEXT NOT NULL, `saleId` TEXT, `createdAt` INTEGER NOT NULL, " +
+                            "`merchantReference` TEXT NOT NULL, `originalTransactionId` TEXT, `originalTimestamp` TEXT, " +
+                            "`originalReference` TEXT, `currency` TEXT NOT NULL, `amountMinor` INTEGER NOT NULL, " +
+                            "`full` INTEGER NOT NULL, `status` TEXT NOT NULL, `serviceId` TEXT, `pspReference` TEXT, `message` TEXT, " +
+                            "`customerReceiptJson` TEXT, " +
+                            "`linesJson` TEXT, `cancellation` INTEGER NOT NULL DEFAULT 0, `reason` TEXT, `context` TEXT, " +
+                            "`processedAt` INTEGER, `poiReconciliationId` TEXT, `checkoutRefund` INTEGER NOT NULL DEFAULT 0, " +
+                            "`tenderId` TEXT, `surchargeMinor` INTEGER, `tipMinor` INTEGER, `cash` INTEGER NOT NULL DEFAULT 0, " +
+                            "`unreferenced` INTEGER NOT NULL DEFAULT 0, `unreferencedReason` TEXT, `acquirerResponseCode` TEXT, " +
+                            "`cancelStatus` TEXT, `cancelStartedAt` INTEGER, `cancelReason` TEXT, `cancelPspReference` TEXT, " +
+                            "PRIMARY KEY(`id`))",
+                    )
+                    val columns =
+                        "`id`, `saleId`, `createdAt`, `merchantReference`, `originalTransactionId`, `originalTimestamp`, " +
+                            "`originalReference`, `currency`, `amountMinor`, `full`, `status`, `serviceId`, `pspReference`, " +
+                            "`message`, `customerReceiptJson`, `linesJson`, `cancellation`, `reason`, `context`, `processedAt`, " +
+                            "`poiReconciliationId`, `checkoutRefund`"
+                    db.execSQL("INSERT INTO `refunds_new` ($columns) SELECT $columns FROM `refunds`")
+                    db.execSQL("DROP TABLE `refunds`")
+                    db.execSQL("ALTER TABLE `refunds_new` RENAME TO `refunds`")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_refunds_createdAt_id` ON `refunds` (`createdAt`, `id`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_refunds_saleId` ON `refunds` (`saleId`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_refunds_processedAt_id` ON `refunds` (`processedAt`, `id`)")
+                }
+            }
+
         /** Opens lazily on first query with versioned migrations; no destructive fallback is configured. */
         fun create(context: Context): AppDatabase =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, "minimpos.db")
-                .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
-                .build()
+                .addMigrations(
+                    MIGRATION_10_11,
+                    MIGRATION_11_12,
+                    MIGRATION_12_13,
+                    MIGRATION_13_14,
+                    MIGRATION_14_15,
+                    MIGRATION_15_16,
+                    MIGRATION_16_24,
+                ).build()
     }
 }

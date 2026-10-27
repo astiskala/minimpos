@@ -2,11 +2,14 @@ package app.minimpos.app.history
 
 import app.minimpos.app.data.db.CaptureStatus
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.route
 import app.minimpos.app.history.PaymentAction.ADJUST
 import app.minimpos.app.history.PaymentAction.CANCEL
 import app.minimpos.app.history.PaymentAction.CAPTURE
@@ -54,6 +57,29 @@ class PaymentStandingTest {
     private val tipSale = sale.copy(tipOnReceipt = true)
 
     private fun SaleEntity.actions() = SaleWithLines(this, emptyList()).actions
+
+    @Test
+    fun `a stored record's route decides its status check offer and whether terminal totals count it`() {
+        assertThat(sale.route).isEqualTo(SaleRoute.TERMINAL)
+        assertThat(sale.copy(paymentLink = true).route).isEqualTo(SaleRoute.PAYMENT_LINK)
+        assertThat(sale.copy(savedCard = true).route).isEqualTo(SaleRoute.SAVED_CARD)
+        val unknown = sale.copy(status = SaleStatus.UNKNOWN, pspReference = null)
+        assertThat(unknown.copy(serviceId = "S1").actions()).contains(CHECK_AGAIN)
+        assertThat(unknown.copy(savedCard = true).actions()).contains(CHECK_AGAIN)
+        assertThat(unknown.copy(paymentLink = true, serviceId = "S1").actions()).doesNotContain(CHECK_AGAIN)
+        assertThat(sale.terminalOperation).isTrue()
+        assertThat(sale.copy(sample = true).terminalOperation).isFalse()
+        assertThat(sale.copy(savedCard = true).terminalOperation).isFalse()
+
+        assertThat(refund.route).isEqualTo(RefundRoute.TERMINAL)
+        assertThat(refund.copy(checkoutRefund = true).route).isEqualTo(RefundRoute.CHECKOUT)
+        assertThat(refund.copy(unreferenced = true).route).isEqualTo(RefundRoute.UNREFERENCED)
+        assertThat(refund.copy(cash = true).route).isEqualTo(RefundRoute.CASH)
+        assertThat(RefundRoute.entries.filter { it.onTerminal }).containsExactly(RefundRoute.TERMINAL, RefundRoute.UNREFERENCED)
+        assertThat(refund.copy(checkoutRefund = true).canCheckAgain).isTrue()
+        assertThat(refund.canCheckAgain).isFalse()
+        assertThat(refund.copy(serviceId = "S2").canCheckAgain).isTrue()
+    }
 
     @Test
     fun `payments that were not approved stand nowhere else and allow nothing`() {

@@ -47,6 +47,7 @@ class QuickStartGuideTest {
                     "Management API - Terminal settings read and write",
                     "Management API - Terminal settings Advanced read and write",
                     "Cloud Device API role",
+                    "API tokenise payment details",
                 ).inOrder()
             steps.select("ul.roles li").forEach { role ->
                 assertThat(role.text()).isEqualTo(role.select("strong").single().text())
@@ -60,7 +61,7 @@ class QuickStartGuideTest {
                     it.text()
                 },
             ).contains("Devices › Device settings › Integrations › Terminal API › Encryption key")
-            assertThat(text).doesNotContain("API tokenise payment details")
+            assertThat(text).contains("API tokenise payment details")
             assertThat(text).contains("Management API - API credentials read and write")
             assertThat(steps.children().single { "Adyen Payments App role" in it.text() }.text())
                 .doesNotContain("Management API - API credentials read and write")
@@ -654,7 +655,7 @@ class WebsitePresentationTest {
         LANGUAGES.forEach { language ->
             val page = pages.getValue(language to Kind.USING)
             assertWithMessage(page.name).that(page.ids).contains("language-receipts")
-            (listOf("Android 12", "Android 13") + labels.getValue(language)).forEach {
+            labels.getValue(language).forEach {
                 assertWithMessage(page.name).that(page.text).contains(it)
             }
         }
@@ -806,7 +807,7 @@ class WebsitePresentationTest {
                     scripts.map {
                         it.attr("src").removePrefix("../")
                     },
-                ).containsExactly("js/qrcodegen.js", "js/setup.js")
+                ).containsExactly("js/qrcodegen.js", "js/logo.js", "js/setup.js")
                 .inOrder()
             scripts.forEach { assertWithMessage(page.name).that(it.hasAttr("defer") && it.data().isBlank()).isTrue() }
             val policy = page.single("meta", "http-equiv" to "Content-Security-Policy").attr("content")

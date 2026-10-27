@@ -36,6 +36,20 @@ class CartTest {
     }
 
     @Test
+    fun `voucher eligibility is a line snapshot and custom items never qualify`() {
+        val salad = CartProduct(3, "Salad", null, 890, free, mealVoucherEligible = true)
+        val cart =
+            Cart()
+                .addProduct(salad, ::key)
+                .addProduct(salad, ::key)
+                .addProduct(salad.copy(mealVoucherEligible = false), ::key)
+                .addCustom("Custom", 300, free, "custom")
+        assertThat(cart.lines.map { it.quantity to it.mealVoucherEligible }).containsExactly(2 to true, 1 to false, 1 to false).inOrder()
+        val totals = cart.totals(TaxMode.INCLUSIVE, chargeTax = false)
+        assertThat(totals.lines.map { it.line.mealVoucherEligible }).containsExactly(true, false, false).inOrder()
+    }
+
+    @Test
     fun `custom items are separate lines and need a positive amount`() {
         val cart = Cart().addCustom("Custom", 300, gst, "a").addCustom("Custom", 300, gst, "b")
         assertThat(cart.lines.map { it.productId }).containsExactly(null, null)

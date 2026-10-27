@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -33,7 +34,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +55,7 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.settings.PaymentSettings
+import app.minimpos.app.feature.FollowProgress
 import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.ReceiptActions
@@ -62,10 +63,12 @@ import app.minimpos.app.feature.ResultAction
 import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.lock.ManagerApproval
+import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.SaleResultNext
+import app.minimpos.app.history.cashout
 import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.history.standing
 import app.minimpos.app.payment.Checkout
@@ -94,6 +97,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.payment.PaymentMethods
 import app.minimpos.core.payment.ScanWallet
@@ -116,11 +120,16 @@ fun CheckoutScreen(
     modifier: Modifier = Modifier,
     vm: CheckoutViewModel = checkoutViewModel(kind),
 ) {
+    val approveToken = rememberManagerAction()
     val tokens by vm.tokens.collectAsStateWithLifecycle()
+    val lookup by vm.tokenLookup.collectAsStateWithLifecycle()
+    val needsLookupApproval = lookup.requiresManagerApproval
     var choosingToken by rememberSaveable { mutableStateOf(false) }
-    TokenChoice(choosingToken, tokens, onDismiss = { choosingToken = false }) { card ->
+    TokenChoice(choosingToken, tokens, finding = lookup.finding, onDismiss = { choosingToken = false }) { card ->
         choosingToken = false
-        if (vm.chargeToken(card)) navigator.replace(Route.Payment(SaleKind.SALE))
+        approveToken(setOf(ManagerAction.SALE, ManagerAction.SAVED_CARD_CHARGE)) {
+            if (vm.chargeToken(card)) navigator.replace(Route.Payment(SaleKind.SALE))
+        }
     }
     val state by vm.state.collectAsStateWithLifecycle()
     CheckoutContent(
@@ -128,8 +137,13 @@ fun CheckoutScreen(
         navigator = navigator,
         kind = kind,
         actions = CheckoutCallbacks(vm::pay, vm::scanWallet, vm::sendLink, vm::update),
-        tokens = tokens.isNotEmpty(),
-        onChooseToken = { choosingToken = true },
+        tokens =
+            state.form.cashBackMinor == 0L && (tokens.isNotEmpty() || needsLookupApproval) && !state.form.audioGuidance &&
+                state.form.mexicanPayment == null,
+        onChooseToken = {
+            choosingToken = true
+            if (needsLookupApproval) vm.findTokens()
+        },
         modifier = modifier,
     )
 }
@@ -197,11 +211,15 @@ private fun CheckoutContent(
     ) {
         val ceremony = state.ceremony(tender)
         val next = CeremonyStep.entries.firstOrNull { (done == null || it > done) && it.needed(ceremony) }
-        if (next == null) start(tender) else step = tender to next
+        if (next == null) step = tender to CeremonyStep.APPROVAL else step = tender to next
     }
     val current = step
     if (current?.second == CeremonyStep.APPROVAL) {
-        return ManagerApproval(onApprove = { start(current.first) }, onCancel = { step = null })
+        return ManagerApproval(
+            actions = state.managerActions(current.first),
+            onApprove = { start(current.first) },
+            onCancel = { step = null },
+        )
     }
     current?.let { (tender, shown) ->
         CeremonyDialog(tender, shown, state, onConfirm = { advance(tender, shown) }, onDismiss = { step = null })
@@ -223,7 +241,7 @@ private fun CheckoutContent(
             )
         },
     ) { padding ->
-        CheckoutDetails(state, money, actions.update, Modifier.fillMaxSize().padding(padding))
+        CheckoutDetails(state, money, actions.update, { navigator.push(Route.Split()) }, Modifier.fillMaxSize().padding(padding))
     }
 }
 
@@ -323,11 +341,12 @@ private fun CheckoutDetails(
     state: Checkout,
     money: MoneyFormatter,
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
+    onSplit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
     LazyColumn(
-        modifier,
+        modifier.testTag("checkoutDetails"),
         contentPadding = PaddingValues(dimens.screenPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -375,6 +394,7 @@ private fun CheckoutDetails(
                 CheckoutSwitches(state, onUpdate)
             }
         }
+        if (!state.preAuthorisation) item(key = "split", contentType = "split") { SplitEntry(state, onSplit) }
     }
 }
 
@@ -402,7 +422,7 @@ private fun CheckoutActions(
             text =
                 stringResource(
                     if (state.preAuthorisation) R.string.pre_auth_charge else R.string.checkout_pay,
-                    money.format(state.totals.amounts.gross),
+                    money.format(state.requestedCardMinor),
                 ),
             enabled = state.canPay,
             onClick = pay,
@@ -456,6 +476,7 @@ private fun TokenCheckoutButton(
 private fun TokenChoice(
     visible: Boolean,
     tokens: List<StoredCard>,
+    finding: Boolean,
     onDismiss: () -> Unit,
     onChoose: (StoredCard) -> Unit,
 ) {
@@ -464,6 +485,11 @@ private fun TokenChoice(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.checkout_choose_token)) },
         text = {
+            if (finding) {
+                CircularProgressIndicator()
+            } else if (tokens.isEmpty()) {
+                Text(stringResource(R.string.saved_card_none))
+            }
             LazyColumn(Modifier.heightIn(max = 360.dp)) {
                 items(tokens, key = { it.id }) { card ->
                     ListItem(
@@ -602,6 +628,9 @@ private fun ColumnScope.CheckoutSwitches(
     state: Checkout,
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
 ) {
+    MexicanPaymentChoices(state, onUpdate)
+    CashbackChoices(state, onUpdate)
+    AudioGuidanceSwitches(state, onUpdate)
     if (state.canTokenize) {
         SaveCardSwitch(
             checked = state.tokenize,
@@ -624,6 +653,7 @@ private fun ColumnScope.CheckoutSwitches(
         LabeledSwitch(
             title = stringResource(R.string.checkout_tip_on_receipt),
             hint = stringResource(R.string.checkout_tip_on_receipt_hint),
+            hintMaxLines = 2,
             checked = state.tipOnReceipt,
             onChange = { checked ->
                 onUpdate { it.copy(tipOnReceipt = checked, askGratuity = if (checked) false else it.askGratuity) }
@@ -641,6 +671,54 @@ private fun ColumnScope.CheckoutSwitches(
         )
     }
     SpecialEntrySwitches(state, onUpdate)
+}
+
+@Composable
+private fun ColumnScope.AudioGuidanceSwitches(
+    state: Checkout,
+    onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
+) {
+    val minimumSoftware = state.audioGuidanceMinimumSoftware
+    if (minimumSoftware == null && !state.audioGuidanceSimulated && !state.form.audioGuidance) {
+        Text(stringResource(R.string.checkout_audio_unavailable), style = MaterialTheme.typography.bodySmall)
+        return
+    }
+    LabeledSwitch(
+        title = stringResource(R.string.checkout_audio_guidance),
+        hint = stringResource(R.string.checkout_audio_hint),
+        hintMaxLines = 2,
+        checked = state.form.audioGuidance,
+        onChange = { checked -> onUpdate { it.copy(audioGuidance = checked, audioGuidanceConfirmedFor = null) } },
+        tag = "audioGuidance",
+    )
+    if (state.form.audioGuidance) {
+        if (minimumSoftware != null || state.audioGuidanceSimulated) {
+            LabeledSwitch(
+                title = stringResource(R.string.checkout_audio_confirm),
+                hint =
+                    if (state.audioGuidanceSimulated) {
+                        stringResource(R.string.checkout_audio_demo_requirements)
+                    } else {
+                        stringResource(R.string.checkout_audio_requirements, checkNotNull(minimumSoftware))
+                    },
+                checked = state.form.audioGuidanceConfirmedFor == state.audioGuidanceTarget,
+                onChange = { checked ->
+                    onUpdate { it.copy(audioGuidanceConfirmedFor = state.audioGuidanceTarget.takeIf { checked }) }
+                },
+                tag = "audioGuidanceConfirm",
+            )
+        }
+        Text(
+            stringResource(
+                if (minimumSoftware == null && !state.audioGuidanceSimulated) {
+                    R.string.checkout_audio_unavailable
+                } else {
+                    R.string.checkout_audio_conflicts
+                },
+            ),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
 }
 
 @Composable
@@ -694,8 +772,9 @@ private fun LabeledSwitch(
     checked: Boolean,
     onChange: (Boolean) -> Unit,
     tag: String,
+    hintMaxLines: Int = Int.MAX_VALUE,
 ) {
-    SwitchRow(title, checked, onChange, subtitle = hint, modifier = Modifier.testTag(tag))
+    SwitchRow(title, checked, onChange, subtitle = hint, subtitleMaxLines = hintMaxLines, modifier = Modifier.testTag(tag))
 }
 
 @Composable
@@ -712,6 +791,7 @@ private fun checkoutViewModel(kind: SaleKind): CheckoutViewModel {
             walletPayments = container.walletPayments,
             discovery = container.walletDiscovery,
             charges = container.savedCardCharges.takeIf { kind == SaleKind.SALE },
+            managerConfigured = container.managerApproval.forAction(ManagerAction.CASHOUT).available,
         )
     }
 }
@@ -738,13 +818,7 @@ fun PaymentScreen(
     val scope = rememberCoroutineScope()
     val wait = stringResource(R.string.processing_wait)
 
-    LaunchedEffect(state) {
-        when (val current = state) {
-            is TransactionState.Finished -> navigator.replace(Route.SaleResult(current.id))
-            TransactionState.Idle -> navigator.popTo(Route.ringUp(kind))
-            is TransactionState.Processing -> Unit
-        }
-    }
+    FollowProgress(state, { navigator.replace(Route.SaleResult(it)) }) { navigator.popTo(Route.ringUp(kind)) }
     val processing = state as? TransactionState.Processing
     val cancellable = processing != null && processing.onTerminal && processing.canCancel && !processing.cancelling
     BackHandler(enabled = processing != null) {
@@ -805,7 +879,7 @@ fun SaleResultScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val record = state.record
     val money = rememberMoneyFormatter(record?.sale?.currency ?: PaymentSettings.FALLBACK_CURRENCY)
-    val ringUp = Route.ringUp(state.kind)
+    val ringUp = resultOrigin(state)
     val gate = currentSetupGate()
 
     fun done(route: Route) {
@@ -830,7 +904,7 @@ fun SaleResultScreen(
                             onPayRemaining = { gate.run { if (vm.payRemaining()) navigator.replace(Route.Payment(state.kind)) } },
                         ) {
                             vm.finish()
-                            navigator.replace(Route.Checkout(state.kind))
+                            navigator.replace(if (ringUp == Route.Cashout) Route.Cashout else Route.Checkout(state.kind))
                         },
                 )
             }
@@ -846,7 +920,9 @@ fun SaleResultScreen(
                     Modifier.testTag("paymentTroubleshooting"),
                 )
             }
+            CashbackHandover(record.sale, navigator)
             SalePaymentCard(record.sale)
+            SplitProgress(record, money) { navigator.push(Route.Split(saleId = saleId)) }
             if (state.approved) {
                 if (PaymentAction.ENTER_TIP in state.actions) EnterTipButton({ gate.run { navigator.push(Route.Tip(saleId)) } })
                 ReceiptActions(state.transaction, vm.transaction, MerchantCopy.WHEN_DUE, email = record.sale.shopperEmail.orEmpty())
@@ -909,7 +985,13 @@ private fun saleResultNext(
 
         SaleResultNext.NEW_SALE -> {
             ResultAction(
-                stringResource(if (state.preAuthorisation) R.string.result_new_pre_auth else R.string.result_new_sale),
+                stringResource(
+                    when {
+                        sale.cashout -> R.string.cashout_title
+                        state.preAuthorisation -> R.string.result_new_pre_auth
+                        else -> R.string.result_new_sale
+                    },
+                ),
                 "newSaleAfter",
                 onNewSale,
             )
@@ -1001,3 +1083,8 @@ private fun saleResultViewModel(saleId: String): SaleResultViewModel {
 
 /** The width from which the action bar puts Scan wallet and Create payment link side by side. */
 private val SIDE_BY_SIDE_ACTIONS_WIDTH = 480.dp
+
+private fun resultOrigin(state: SaleResultUiState): Route {
+    val sale = state.record?.sale
+    return if (sale?.cashout == true) Route.Cashout else Route.ringUp(state.kind)
+}

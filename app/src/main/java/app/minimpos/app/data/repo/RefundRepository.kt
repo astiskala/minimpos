@@ -2,9 +2,15 @@ package app.minimpos.app.data.repo
 
 import androidx.room.withTransaction
 import app.minimpos.app.data.db.AppDatabase
+import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.db.RefundCancelStatus
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
+import app.minimpos.app.data.db.SaleTenderEntity
+import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.data.db.TenderKind
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.TransactionDetails
 import kotlinx.coroutines.flow.Flow
@@ -35,10 +41,12 @@ data class RefundedLine(
 )
 
 /**
- * Stored referenced refunds ([RefundEntity]), including cancellations of held payments.
+ * Stored refunds ([RefundEntity]): referenced refunds, cancellations of held payments and unreferenced card refunds,
+ * with any cancellation of a delayed unreferenced refund.
  *
  * A refund is created as PENDING before the terminal is called ([create]) and settled with its outcome afterwards
- * ([settle], see [app.minimpos.app.payment.RefundBook]); there is no other write to a refund. What an accepted refund
+ * ([settle], see [app.minimpos.app.payment.RefundBook]); the only other writes are the cancellation of a delayed
+ * unreferenced refund ([cancelSending], [cancelAnswered]). What an accepted refund
  * does to its local sale is the sale's own transition, [SaleRepository.applyRefund], run in the same transaction. All
  * functions are main-safe (Room runs them on its own executor).
  *
@@ -55,8 +63,117 @@ class RefundRepository(
     private val dao = db.refundDao()
     private val observations = RecordObservations(source = dao::observeRefund)
 
-    /** Inserts a new [refund], normally PENDING. */
-    suspend fun create(refund: RefundEntity) = dao.insert(refund)
+    /**
+     * Inserts a pending [refund] within current balances. A changed [reviewedRefunds] snapshot records a known-not-sent
+     * refusal. Foreign receipts, hold cancellations and recovery without a review snapshot pass null; applicable
+     * balance checks still run. Returns whether it may be sent.
+     */
+    suspend fun create(
+        refund: RefundEntity,
+        reviewedRefunds: Map<String, RefundStatus>? = null,
+    ) = db.withTransaction {
+        val valid = refund.saleId?.let { sales.get(it)?.allows(refund, reviewedRefunds) } ?: (refund.saleId == null)
+        val stored =
+            if (valid) {
+                refund
+            } else {
+                refund.copy(
+                    status = RefundStatus.FAILED,
+                    reason = StoredReason.NotDone(Failure.NotSetUp(SetupProblem.REFUND_BALANCE)),
+                )
+            }
+        dao.insert(stored)
+        stored.status == RefundStatus.PENDING
+    }
+
+    /**
+     * Records cash handed back for a cash tender ([RefundEntity.cash]), confirmed by the operator, without a Terminal
+     * API call: within current balances it is stored accepted at [now] and applied to its sale in one transaction.
+     * A changed [reviewedRefunds] snapshot or balance stores nothing and returns false.
+     */
+    suspend fun recordCashReturn(
+        refund: RefundEntity,
+        reviewedRefunds: Map<String, RefundStatus>?,
+    ): Boolean =
+        db.withTransaction {
+            val saleId = refund.saleId
+            require(refund.cash && saleId != null && refund.tenderId != null) { "Cash returns belong to a cash tender" }
+            val record = sales.get(saleId) ?: return@withTransaction false
+            if (!record.allows(refund, reviewedRefunds)) return@withTransaction false
+            val stored = refund.copy(status = RefundStatus.REQUESTED, processedAt = now())
+            dao.insert(stored)
+            sales.applyRefund(stored)
+            true
+        }
+
+    private fun SaleWithLines.allows(
+        refund: RefundEntity,
+        reviewedRefunds: Map<String, RefundStatus>?,
+    ): Boolean {
+        if (reviewedRefunds != null &&
+            refunds.filter { it.status != RefundStatus.FAILED }.associate { it.id to it.status } != reviewedRefunds
+        ) {
+            return false
+        }
+        if (refund.cancellation) return true
+        val balance = RefundBalance(this)
+        val approved = tenders.filter { it.approved }
+        if (refund.amountMinor !in 1..balance.remainingMinor || (approved.size > 1 && refund.tenderId == null)) return false
+        val id = refund.tenderId ?: return !refund.cash
+        val tender = approved.firstOrNull { it.id == id } ?: return false
+        return tender.allows(refund, balance.of(tender))
+    }
+
+    private fun SaleTenderEntity.allows(
+        refund: RefundEntity,
+        returns: TenderReturns,
+    ): Boolean {
+        val cashTender = kind == TenderKind.CASH
+        if (refund.cash != cashTender) return false
+        if (refund.originalTransactionId != (if (cashTender) id else poiTransactionId)) return false
+        return refund.amountMinor in 1..returns.remainingMinor && (!refund.full || (!cashTender && returns.whole(refund.amountMinor)))
+    }
+
+    /**
+     * Records that cancelling the delayed unreferenced refund [id] is being sent at [startedAt] (epoch ms), before it
+     * is sent; an unresolved cancellation keeps its first time. Returns the refund as stored, or null when it is not an
+     * accepted unreferenced refund whose cancellation may be sent now.
+     */
+    suspend fun cancelSending(
+        id: String,
+        startedAt: Long,
+    ): RefundEntity? =
+        db.withTransaction {
+            val stored = dao.refund(id) ?: return@withTransaction null
+            val cancel = stored.cancelStatus
+            if (!stored.unreferenced || stored.status != RefundStatus.REQUESTED || stored.pspReference == null) return@withTransaction null
+            if (cancel == RefundCancelStatus.REQUESTED) return@withTransaction null
+            val sending =
+                stored.copy(
+                    cancelStatus = RefundCancelStatus.SENDING,
+                    cancelStartedAt = if (cancel?.unresolved == true) stored.cancelStartedAt else startedAt,
+                    cancelReason = null,
+                )
+            dao.update(sending)
+            sending
+        }
+
+    /**
+     * Stores how cancelling refund [id] was answered: [status], the app's [reason] when it was not received and Adyen's
+     * [pspReference] of the cancellation request. A received cancellation is never overwritten.
+     */
+    suspend fun cancelAnswered(
+        id: String,
+        status: RefundCancelStatus,
+        reason: StoredReason?,
+        pspReference: String?,
+    ) = db.withTransaction {
+        val stored = dao.refund(id) ?: return@withTransaction
+        if (stored.cancelStatus == RefundCancelStatus.REQUESTED) return@withTransaction
+        dao.update(
+            stored.copy(cancelStatus = status, cancelReason = reason, cancelPspReference = pspReference ?: stored.cancelPspReference),
+        )
+    }
 
     /** Returns the refund with ID [id], or null if there is none. */
     suspend fun get(id: String): RefundEntity? = dao.refund(id)
@@ -81,7 +198,7 @@ class RefundRepository(
      * [reason]) and, when the terminal answered, its [details] (PSP reference and the customer's card receipt; without
      * an answer the stored ones are kept; a Checkout refund's own [pspReference] is kept too). When it was accepted
      * ([RefundStatus.REQUESTED]) it is applied to its local sale ([SaleRepository.applyRefund]), so the same items or
-     * amount cannot be refunded twice from this terminal. This is the only change to a refund after [create]. Reads and
+     * amount cannot be refunded twice from this terminal. Apart from cancellations, the only change after [create]. Reads and
      * writes in one transaction; returns false only when a healthy read proves the refund no longer exists.
      */
     suspend fun settle(
@@ -115,9 +232,14 @@ class RefundRepository(
                     pspReference = details?.pspReference ?: pspReference ?: stored.pspReference,
                     poiReconciliationId = details?.poiReconciliationId ?: stored.poiReconciliationId,
                     customerReceiptJson = details?.let { ReceiptLinesJson.encodeFields(it.customerReceipt) } ?: stored.customerReceiptJson,
+                    acquirerResponseCode = stored.acquirerAnswer(details),
                 )
             dao.update(refund)
             if (stored.status != RefundStatus.REQUESTED) sales.applyRefund(refund)
             true
         }
 }
+
+/** An unreferenced refund's synchronous acquirer answer from [details], else the stored one; null for referenced refunds. */
+internal fun RefundEntity.acquirerAnswer(details: TransactionDetails?): String? =
+    details?.acquirerResponseCode?.takeIf { unreferenced } ?: acquirerResponseCode

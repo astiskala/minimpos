@@ -2,6 +2,7 @@ package app.minimpos.terminal.checkout
 
 import app.minimpos.terminal.transport.AdyenHttp
 import app.minimpos.terminal.transport.AdyenReply
+import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.adyenField
@@ -65,6 +66,20 @@ sealed interface StoredCardListing {
     data class Failed(
         val fault: Fault,
     ) : StoredCardListing
+}
+
+/** Result of deleting one merchant/shopper token; uncertain failures require a fresh listing, never an automatic resend. */
+sealed interface StoredCardDeletion {
+    /** HTTP 204: the token can no longer be used for payment requests. */
+    data object Deleted : StoredCardDeletion
+
+    /**
+     * No conclusive deletion answer.
+     * @property fault Why; [Fault.mayHaveTakenEffect] distinguishes refusal from uncertainty.
+     */
+    data class Failed(
+        val fault: Fault,
+    ) : StoredCardDeletion
 }
 
 /**
@@ -134,6 +149,12 @@ interface SavedCardApi {
     /** Lists the cards saved under [shopperReference] (`GET /storedPaymentMethods`). */
     suspend fun list(shopperReference: String): StoredCardListing
 
+    /** Deletes only [id] for [shopperReference]; no body or idempotency key. Unsupported adapters refuse without sending. */
+    suspend fun delete(
+        shopperReference: String,
+        id: String,
+    ): StoredCardDeletion = StoredCardDeletion.Failed(Fault.Unsupported)
+
     /**
      * Charges [request] (`POST /payments`) with [idempotencyKey] as `Idempotency-Key`, so repeating a charge whose
      * outcome is unknown cannot charge twice.
@@ -176,16 +197,50 @@ class CheckoutSavedCards(
         return when (val reply = http.get(url, timeout)) {
             is AdyenReply.Failed -> StoredCardListing.Failed(reply.fault)
             is AdyenReply.Answered if !reply.ok -> StoredCardListing.Failed(reply.checkoutFault())
-            is AdyenReply.Answered -> listed(reply.body)
+            is AdyenReply.Answered -> listed(reply.body, shopperReference)
         }
     }
 
-    private fun listed(text: String): StoredCardListing {
+    override suspend fun delete(
+        shopperReference: String,
+        id: String,
+    ): StoredCardDeletion {
+        val url =
+            baseUrl
+                .newBuilder()
+                .addPathSegment("storedPaymentMethods")
+                .addPathSegment(id)
+                .addQueryParameter("merchantAccount", credentials.merchantAccount)
+                .addQueryParameter("shopperReference", shopperReference)
+                .build()
+        return when (val reply = http.delete(url, timeout)) {
+            is AdyenReply.Failed -> StoredCardDeletion.Failed(reply.fault)
+            is AdyenReply.Answered if reply.code == HTTP_DELETED -> StoredCardDeletion.Deleted
+            is AdyenReply.Answered if reply.ok -> StoredCardDeletion.Failed(Fault.UnreadableReply())
+            is AdyenReply.Answered -> StoredCardDeletion.Failed(reply.checkoutFault(AdyenRole.TOKENISE.displayName))
+        }
+    }
+
+    private fun listed(
+        text: String,
+        reference: String,
+    ): StoredCardListing {
         val response =
             decodeAdyenModel(text, ListStoredPaymentMethodsResponse::class.java)
                 ?: return StoredCardListing.Failed(Fault.UnreadableReply())
+        if (response.merchantAccount != null && response.merchantAccount != credentials.merchantAccount) {
+            return StoredCardListing.Failed(Fault.UnreadableReply())
+        }
+        if (response.shopperReference != null && response.shopperReference != reference) {
+            return StoredCardListing.Failed(Fault.UnreadableReply())
+        }
+        val methods =
+            response.storedPaymentMethods
+                ?: return StoredCardListing.Failed(Fault.UnreadableReply())
+        // Dropping malformed entries could falsely confirm that an uncertain deletion removed its token.
+        if (methods.any { it?.id.isNullOrBlank() }) return StoredCardListing.Failed(Fault.UnreadableReply())
         val cards =
-            response.storedPaymentMethods.orEmpty().mapNotNull { method ->
+            methods.mapNotNull { method ->
                 method?.id?.takeIf { it.isNotBlank() }?.let { id ->
                     StoredCard(
                         id = id,
@@ -230,6 +285,10 @@ class CheckoutSavedCards(
             is AdyenReply.Answered if !reply.ok -> CardChargeResult.Failed(reply.checkoutFault())
             is AdyenReply.Answered -> charged(reply.body)
         }
+    }
+
+    private companion object {
+        const val HTTP_DELETED = 204
     }
 
     private fun charged(text: String): CardChargeResult {

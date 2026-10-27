@@ -63,7 +63,7 @@ class SettingsStructureTest {
         env.useCheckoutApi()
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = mode)) }
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         open("help", "tapTroubleshootingDetails")
         compose.onNodeWithTag("shareTapReport").assertDoesNotExist()
         repeat(2) {
@@ -88,7 +88,8 @@ class SettingsStructureTest {
     private fun sectionsFit() {
         env.useSimulator()
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("section_terminal"), 15_000)
         listOf(
             "terminal",
             "capabilities",

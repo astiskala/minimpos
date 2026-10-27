@@ -33,7 +33,7 @@ class NavigationTransitionTest {
             back = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
             MiniMposApp(env.container)
         }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("section_tax"), 15_000)
         compose.onNodeWithTag("section_tax").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("chargeTax"), 15_000)

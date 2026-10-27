@@ -62,6 +62,7 @@ class GuideExperienceTest {
             assertThat(guide.select(".destination-route .route-next a").eachAttr("href"))
                 .containsExactlyElementsIn(List(4) { "#first-payment" })
             assertThat(guide.select(".role-checklist").single().hasAttr("open")).isFalse()
+            assertThat(guide.select(".roles strong").eachText()).contains("API tokenise payment details")
             assertThat(guide.select(".role-checklist strong").eachText()).containsAtLeast(
                 "Checkout webservice role",
                 "Management API - API credentials read and write",
@@ -70,6 +71,18 @@ class GuideExperienceTest {
                 "Management API - Accounts read",
                 "Merchant Recurring role",
             )
+        }
+    }
+
+    @Test
+    fun `every language explains direct Settings navigation and token deletion`() {
+        languages.forEach { language ->
+            val using = page(language, "using.html")
+            assertWithMessage(language).that(using.select("#settings-navigation strong").eachText()).hasSize(2)
+            assertThat(using.select("#token-deletion strong").eachText()).hasSize(2)
+            assertThat(using.select("#token-deletion").text()).contains("Adyen")
+            assertThat(using.select("#token-deletion").text()).contains("Mini mPOS")
+            assertThat(using.select("#token-deletion").text()).contains("PIN")
         }
     }
 

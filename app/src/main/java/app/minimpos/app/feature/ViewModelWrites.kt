@@ -6,6 +6,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -27,3 +29,19 @@ fun <T> ViewModel.launchWrite(
     write: suspend () -> T,
     then: (T) -> Unit = {},
 ): Job = viewModelScope.launch { then(persisting(write)) }
+
+/**
+ * Runs one screen action whose [ActionState] [slot] reads from [state] and [put] writes into it: nothing while it is
+ * already running (such as a second tap), else it shows as running and [action] runs with [launchWrite], so it finishes
+ * if the screen closes; the state it returns is shown only while the view model is in use. Call on the main thread.
+ */
+fun <S> ViewModel.runAction(
+    state: MutableStateFlow<S>,
+    slot: (S) -> ActionState,
+    put: S.(ActionState) -> S,
+    action: suspend () -> ActionState,
+) {
+    if (slot(state.value).running) return
+    state.update { it.put(ActionState(running = true)) }
+    launchWrite(action) { result -> state.update { it.put(result) } }
+}

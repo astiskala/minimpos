@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.PaymentSettings
@@ -124,6 +125,12 @@ private fun ColumnScope.CapabilitiesMatrix(
     payment: PaymentSettings,
     currency: String,
 ) {
+    CapabilityStandingRow(
+        title = stringResource(R.string.checkout_audio_guidance),
+        standing = capabilities.audioGuidanceStanding,
+        detail = stringResource(R.string.capability_audio_detail),
+        tag = "cap_audio_guidance",
+    )
     CapabilityStandingRow(
         title = stringResource(R.string.capability_terminal_tipping),
         standing =
@@ -248,7 +255,7 @@ private fun ColumnScope.InteractionCapabilitiesMatrix(
         standing = capabilities.remoteStatusStanding,
         tag = "cap_remote_status",
     )
-    if (!capabilities.capabilities.supportsRemoteStatus) {
+    if (capabilities.remoteStatusStanding != CapabilityStanding.AVAILABLE) {
         SettingNote(stringResource(R.string.capability_late_reply_hint))
     }
 }
@@ -272,7 +279,13 @@ private fun CapabilityStandingRow(
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.bodyLarge)
                 detail?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
             Spacer(Modifier.width(12.dp))

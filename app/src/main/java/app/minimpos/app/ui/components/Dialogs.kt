@@ -50,7 +50,7 @@ fun ConfirmDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { Text(message) },
+        text = { Text(message, Modifier.verticalScroll(rememberScrollState())) },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,

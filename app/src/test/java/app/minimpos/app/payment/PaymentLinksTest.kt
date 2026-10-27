@@ -282,7 +282,8 @@ class PaymentLinksTest {
         assertThat(pending.reason).isEqualTo(StoredReason.Unconfirmed(Failure.Remote(Fault.TimedOut)))
         assertThat(pending.message).isNull()
         api.createResult = null
-        assertThat(await { links.check(unknown) }).isEqualTo(LinkUpdate.StillOpen)
+        val restored = PaymentLinks(env.scope, container.sales, container.api::target)
+        assertThat(await { restored.check(unknown) }).isEqualTo(LinkUpdate.StillOpen)
         assertThat(
             await {
                 container.sales

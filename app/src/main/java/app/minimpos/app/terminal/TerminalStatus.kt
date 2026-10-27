@@ -2,6 +2,7 @@ package app.minimpos.app.terminal
 
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.CoroutineScope
@@ -71,6 +72,10 @@ data class TerminalState(
     val connectionProblem: SetupProblem? = null,
     val printingStanding: CapabilityStanding = CapabilityStanding.NEEDS_CONFIGURATION,
 ) {
+    /** Minimum software for this model; installed software and Support enablement still need merchant confirmation. */
+    val audioGuidanceMinimumSoftware: String?
+        get() = if (capabilities.supportsTerminalFeatures) TerminalClient.audioGuidanceMinimumSoftware(poiId) else null
+
     /**
      * Why printing cannot be tried now: what the destination still needs, else [SetupProblem.PRINTER] while printing is
      * not offered; null when a print can be sent.
@@ -82,6 +87,9 @@ data class TerminalState(
      * [SetupProblem.TOTALS] where it reports no totals (Tap to Pay); null when they can.
      */
     val totalsBlocked: SetupProblem? get() = connectionProblem ?: SetupProblem.TOTALS.takeUnless { capabilities.supportsTerminalFeatures }
+
+    /** Why gift-card requests cannot be sent now: missing connection setup, or [SetupProblem.GIFT_CARDS] (Tap to Pay). */
+    val giftCardsBlocked: SetupProblem? get() = connectionProblem ?: SetupProblem.GIFT_CARDS.takeUnless { capabilities.giftCards }
 
     /**
      * Whether receipts and payment links can be shared through Android's share sheet: on phones and tablets, not on an
@@ -260,7 +268,7 @@ class TerminalStatus(
                 actual.environment?.let { device.paymentsAppVersion(it) }?.let { put("paymentsAppVersion", it) }
                 put("supportsDiagnosis", actual.capabilities.diagnoses.toString())
                 put("supportsPrinting", actual.capabilities.supportsPrinting.toString())
-                put("supportsRemoteStatus", actual.capabilities.supportsRemoteStatus.toString())
+                put("remoteStatus", actual.capabilities.remoteStatus.name)
                 put("setupProblem", actual.problem?.name.orEmpty())
                 put("connectionProblem", actual.connectionProblem?.name.orEmpty())
             },

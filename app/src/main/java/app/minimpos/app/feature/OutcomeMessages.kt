@@ -9,6 +9,7 @@ import app.minimpos.app.R
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.EmailFault
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.db.GiftCardOperationEntity
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SetupProblem
@@ -58,6 +59,7 @@ internal fun TapToPayCheck.labels(): TapToPayLabels =
 fun ActionOutcome.text(): String =
     when (this) {
         ActionOutcome.Printed -> stringResource(R.string.result_printed)
+        is ActionOutcome.PrintedWithoutLogo -> logoText()
         is ActionOutcome.Emailed -> stringResource(R.string.result_emailed, to)
         ActionOutcome.AbortSent -> stringResource(R.string.result_abort_sent)
         ActionOutcome.LinkNotPaid -> stringResource(R.string.link_not_paid)
@@ -73,6 +75,11 @@ fun ActionOutcome.text(): String =
         is ActionOutcome.Unconfirmed -> stringResource(R.string.sentences, stringResource(R.string.action_unconfirmed), failure.text())
         is ActionOutcome.Failed -> failure.text()
     }
+
+@Composable
+@ReadOnlyComposable
+private fun ActionOutcome.PrintedWithoutLogo.logoText(): String =
+    noted(stringResource(R.string.receipt_logo_skipped), fault?.details()?.joinToString(", ")?.ifEmpty { null })
 
 /** Local scan failures, containing no scanned data or provider payload. */
 @Composable
@@ -135,6 +142,12 @@ fun SaleEntity.modificationNote(): String? =
 @Composable
 @ReadOnlyComposable
 fun RefundEntity.outcomeNote(): String? = note(reason?.text(R.string.refund_unknown_outcome, R.string.payment_interrupted), message)
+
+/** Why this stored-value stage did not succeed, worded as [SaleEntity.outcomeNote]; null when nothing is stored. */
+val GiftCardOperationEntity.outcomeNote: String?
+    @Composable
+    @ReadOnlyComposable
+    get() = note(reason?.text(R.string.gift_card_unknown_outcome, R.string.payment_interrupted), message)
 
 /** The app's [worded] reason, with what Adyen or the terminal said ([said]) in brackets after it. */
 private fun note(
@@ -346,6 +359,7 @@ private val SetupProblem.textRes: Int
             SetupProblem.PAYMENTS_APP_API_KEY -> R.string.setup_payments_app_api_key
             SetupProblem.UNREADABLE_PAYMENTS_APP_KEY -> R.string.setup_unreadable_payments_app_key
             SetupProblem.MANAGER_APPROVAL -> R.string.manager_pin_enter
+            SetupProblem.REFUND_BALANCE -> R.string.surcharge_balance_changed
             SetupProblem.PAYMENT_CONTEXT -> R.string.payment_context_mismatch
             SetupProblem.SETUP_NOT_VERIFIED -> R.string.setup_not_verified
             SetupProblem.TRANSFER_PENDING -> R.string.setup_transfer_pending
@@ -359,8 +373,11 @@ private val SetupProblem.textRes: Int
             SetupProblem.PRINTER -> R.string.setup_printer
             SetupProblem.CHARGE_TOO_OLD -> R.string.setup_charge_too_old
             SetupProblem.OPERATION_RECONCILIATION -> R.string.setup_operation_reconciliation
+            SetupProblem.TOKEN_DELETION_PENDING -> R.string.setup_token_deletion_pending
             SetupProblem.SHOPPER_REFERENCE -> R.string.setup_shopper_reference
             SetupProblem.TOTALS -> R.string.setup_totals
+            SetupProblem.GIFT_CARDS -> R.string.setup_gift_cards
+            SetupProblem.GIFT_CARD_PROVIDER -> R.string.setup_gift_card_provider
         }
 
 /** Why a tip, capture or adjustment did not go through, named after what was sent; a refusal says the amount. */

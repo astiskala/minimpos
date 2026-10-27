@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self' blob:; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="max-image-preview:large">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -33,6 +33,7 @@
   <meta content="https://minimpos.app/images/zh-CN/social.png" name="twitter:image">
   <meta content="Adyen 支付终端示意图上的 Mini mPOS，展示简体中文演示界面。" name="twitter:image:alt">
   <script defer src="../js/qrcodegen.js"></script>
+  <script defer src="../js/logo.js"></script>
   <script defer src="../js/setup.js"></script>
     <link href="https://minimpos.app/setup" hreflang="en" rel="alternate">
     <link href="https://minimpos.app/es-MX/setup" hreflang="es-MX" rel="alternate">
@@ -102,12 +103,21 @@
 <p class="hint" id="setup-loading" role="status">正在加载设置表单…</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
+              data-msg-logo-unreadable="无法读取此图片。"
+              data-msg-logo-blank="此图片转换后为空白。"
+              data-msg-logo-required="请先选择图片。"
               data-msg-making="正在生成二维码…"
               data-msg-ready="已生成 {total} 个二维码，见下方。"
               data-msg-code-of="第 {n} 个，共 {total} 个"
               data-msg-pause="暂停"
               data-msg-play="播放"
               data-msg-unsupported="此浏览器无法生成二维码。请使用最新版本的 Chrome、Edge、Firefox 或 Safari。">
+          <fieldset>
+            <legend>创建内容</legend>
+            <label class="choice"><input type="radio" name="make" value="complete" checked> <span>完整设置</span></label>
+            <label class="choice"><input type="radio" name="make" value="logo"> <span>仅收据标志</span></label>
+          </fieldset>
+          <div id="complete-fields">
           <fieldset>
             <legend>Mini mPOS 在哪里运行，支付发往哪里？</legend>
             <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>在
@@ -278,6 +288,26 @@
           </fieldset>
 </details>
 
+          </div>
+
+          <fieldset id="logo-fields">
+            <legend>收据标志（可选）</legend>
+            <label for="logo">选择图片</label>
+            <input id="logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+            <div id="logo-editor" hidden>
+              <canvas id="logo-preview" class="logo-preview" width="384" height="192" aria-label="标志"></canvas>
+              <label for="logoMode">样式</label>
+              <select id="logoMode" name="logoMode"><option value="auto">自动</option><option value="mark">标志</option><option value="photo">照片</option></select>
+              <label for="logoThreshold">深浅</label>
+              <input id="logoThreshold" name="logoThreshold" type="range" min="0" max="255" value="127">
+              <label class="choice"><input type="checkbox" id="logoInvert" name="logoInvert"> <span>反转</span></label>
+              <label class="choice"><input type="checkbox" id="logoTrim" name="logoTrim" checked> <span>裁剪边距</span></label>
+              <label for="logoSize">尺寸</label>
+              <select id="logoSize" name="logoSize"><option value="large">大</option><option value="small">小</option></select>
+              <button class="button button-ghost" id="logo-remove" type="button">移除标志</button>
+            </div>
+            <p id="logo-status" class="hint" role="status"></p>
+          </fieldset>
           <div class="setup-actions">
             <button class="button" type="submit">生成二维码</button>
             <button class="button button-ghost" type="reset">清空</button>

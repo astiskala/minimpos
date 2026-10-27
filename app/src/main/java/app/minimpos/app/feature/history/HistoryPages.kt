@@ -97,14 +97,14 @@ internal class HistoryPages(
                     .toEpochMilli(),
                 false,
             )
-        var totals = DayTotals(emptyMap(), 0, emptyMap(), 0)
+        var totals = DayTotals()
         while (true) {
             val batch = history.page(cursor, start)
             val matches = BatchMatches(batch, filter, search, zone, accounting)
             if (batch.keys.isEmpty()) return totals
             batch.keys.forEach { key ->
                 matches.find(key)?.takeIf { it.date == date }?.let {
-                    totals = HistoryAccounting.merge(totals, it.totals)
+                    totals += it.totals
                 }
             }
             cursor = batch.keys.last()
@@ -128,6 +128,7 @@ internal class HistoryPages(
                         when (item) {
                             is HistoryItem.Sale -> item.sale
                             is HistoryItem.Refund -> item.refund.saleId?.let(batch.sales::get)
+                            is HistoryItem.GiftCard -> null
                         }
                     val preAuths = sale?.takeIf { it.kind == SaleKind.PRE_AUTHORISATION }?.let { setOf(it.id) }.orEmpty()
                     if (!filter.matches(item, preAuths) || !search.matches(item, sale)) {

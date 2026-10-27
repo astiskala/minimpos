@@ -6,20 +6,25 @@ import app.minimpos.terminal.checkout.CheckoutModifications
 import app.minimpos.terminal.checkout.CheckoutPaymentLinks
 import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.client.Decline
-import app.minimpos.terminal.client.TerminalClient
+import app.minimpos.terminal.client.TerminalExchange
 import app.minimpos.terminal.client.TransactionDetails
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppCredentials
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
+import app.minimpos.terminal.simulator.SimulatedAccount
+import app.minimpos.terminal.simulator.SimulatedLedger
 import app.minimpos.terminal.transport.AdyenCloudDevices
 import app.minimpos.terminal.transport.AdyenHttp
 import app.minimpos.terminal.transport.AdyenStoreDetails
 import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.AdyenWalletMethods
+import app.minimpos.terminal.transport.CompletedTransactions
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.TerminalHttpClient
 import com.adyen.Client
 import com.adyen.model.management.DefaultErrorResponseEntity
+import com.adyen.model.nexo.RepeatedMessageResponse
+import com.adyen.model.nexo.TransactionStatusResponse
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.gson.JsonObject
@@ -229,6 +234,47 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `only CompletedTransactions builds status answers that repeat a transaction`() =
+        repeatedStatusOwnership(
+            resideInAnyPackage("app.minimpos.terminal..")
+                .and(DescribedPredicate.not(type(CompletedTransactions::class.java).or(type(CompletedTransactions.Companion::class.java)))),
+        ).check(terminal)
+
+    @Test
+    fun `repeated status ownership rejects a transport building its own status answer`() {
+        val violation = ClassFileImporter().importClasses(RepeatedStatusViolation::class.java)
+        val rule = repeatedStatusOwnership(type(RepeatedStatusViolation::class.java))
+        assertTrue(rule.description, rule.evaluate(violation).hasViolation())
+    }
+
+    private class RepeatedStatusViolation {
+        fun repeated() = TransactionStatusResponse().apply { repeatedMessageResponse = RepeatedMessageResponse() }
+    }
+
+    @Test
+    fun `only the simulated account releases what simulated Adyen remembers`() =
+        simulatorRetention(
+            resideInAnyPackage("app.minimpos.terminal.simulator..").and(DescribedPredicate.not(type(SimulatedAccount::class.java))),
+        ).check(terminal)
+
+    @Test
+    fun `simulator retention ownership rejects a simulator forgetting history itself`() {
+        val violation = ClassFileImporter().importClasses(SimulatorRetentionViolation::class.java)
+        val rule = simulatorRetention(type(SimulatorRetentionViolation::class.java))
+        assertTrue(rule.description, rule.evaluate(violation).hasViolation())
+    }
+
+    private class SimulatorRetentionViolation {
+        fun purge(
+            completed: CompletedTransactions,
+            ledger: SimulatedLedger,
+        ) {
+            completed.clear()
+            ledger.clear()
+        }
+    }
+
+    @Test
     fun `the Checkout API's parts are made together for one credential`() =
         // AdyenCheckout makes modifications, links and saved cards with one HTTP client and application information.
         // A part's default-argument constructor delegates to its own full constructor.
@@ -288,8 +334,8 @@ class ArchitectureTest {
             resideInAnyPackage("app.minimpos.terminal.client..")
                 .and(
                     DescribedPredicate.not(
-                        DescribedPredicate.describe("TerminalAnswer or TerminalClient.execute") {
-                            it.name.endsWith(".TerminalAnswerKt") || it.name == TerminalClient::class.java.name
+                        DescribedPredicate.describe("TerminalAnswer or TerminalExchange.execute") {
+                            it.name.endsWith(".TerminalAnswerKt") || it.name == TerminalExchange::class.java.name
                         },
                     ),
                 ),
@@ -405,6 +451,30 @@ class ArchitectureTest {
                 .should()
                 .callMethod(ExternalText::class.java, "constructor-impl", String::class.java)
                 .because("Production code outside the simulator wraps nullable remote fields via ExternalText.of")
+
+        // The terminal simulator and its saved cards each held and released their own share of simulated Adyen's memory,
+        // so a purge and a scoped removal listed different subsets; SimulatedAccount owns both releases.
+        fun simulatorRetention(selected: DescribedPredicate<JavaClass>): ArchRule =
+            noClasses()
+                .that(selected)
+                .should()
+                .callMethod(CompletedTransactions::class.java, "clear")
+                .orShould()
+                .callMethod(CompletedTransactions::class.java, "forget", Set::class.java, Set::class.java)
+                .orShould()
+                .callMethod(SimulatedLedger::class.java, "clear")
+                .orShould()
+                .callMethod(SimulatedLedger::class.java, "forget", Set::class.java)
+
+        // The simulator and the Payments app transport both answer status checks themselves; the Payments app once
+        // built its own answer, so the repeated body a client reads back could differ between them.
+        fun repeatedStatusOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
+            noClasses()
+                .that(selected)
+                .should()
+                .callConstructor(TransactionStatusResponse::class.java)
+                .orShould()
+                .callConstructor(RepeatedMessageResponse::class.java)
 
         fun managementFaultOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
             noClasses()

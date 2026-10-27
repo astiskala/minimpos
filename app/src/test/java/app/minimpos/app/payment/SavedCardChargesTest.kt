@@ -8,7 +8,6 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
-import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.RefundChoice
@@ -17,6 +16,7 @@ import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.canCheckAgain
+import app.minimpos.app.protectedApproval
 import app.minimpos.app.simulatedModifications
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.ApiTarget
@@ -98,7 +98,7 @@ class SavedCardChargesTest {
         }
     private var target = ApiTarget(ApiSetup.Complete, modifications, context = context, cards = cards)
     private val manager = SessionLock { 0L }.apply { unlock() }
-    private val approval = ManagerApproval({ true }, manager, { 0L })
+    private val approval = protectedApproval(manager)
     private val charged = mutableListOf<String>()
     private var ids = 0
     private val charges =
@@ -120,12 +120,16 @@ class SavedCardChargesTest {
     private val operations =
         FinancialOperations(
             container.payments,
-            container.refunds,
+            FinancialOperations.Refunds(
+                container.refunds,
+                TransactionLifecycle(container.appScope, container.gateway, UnreferencedRefundBook(container.refundRecords)),
+                refunds,
+                container.refundRecords,
+            ),
             charges,
-            refunds,
             container.links,
             container.sales,
-            container.refundRecords,
+            container.giftCards,
         )
 
     @After
@@ -269,7 +273,7 @@ class SavedCardChargesTest {
         target = ApiTarget(ApiSetup.Complete, modifications, context = context, cards = cards)
         assertThat(await { charges.recheck(unknown) }).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))
         manager.unlock()
-        now = now.plus(CheckoutOperations.RECHECK_WINDOW).plusSeconds(1)
+        now = now.plus(OperationIdentity.REPLAY_WINDOW).plusSeconds(1)
         assertThat(await { charges.recheck(unknown) }).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD)))
         assertThat(sent).hasSize(1)
         assertThat(sale(unknown).status).isEqualTo(SaleStatus.UNKNOWN)
@@ -289,6 +293,27 @@ class SavedCardChargesTest {
     }
 
     @Test
+    fun `a recreated charge owner replays the stored request and key without a new start`() {
+        answers += CardChargeResult.Failed(Fault.TimedOut)
+        val id = charge()
+        val original = sent.single()
+        charges.acknowledge()
+        val restored =
+            SavedCardCharges(
+                container.appScope,
+                container.sales,
+                { target },
+                clock = clock,
+                newId = { error("Recovery must not allocate a new identity") },
+                approval = approval,
+            )
+        answers += CardChargeResult.Authorised("PSP9")
+        assertThat(await { restored.recheck(id) }).isEqualTo(Recheck.Settled)
+        assertThat(sent).containsExactly(original, original).inOrder()
+        assertThat(sale(id).status).isEqualTo(SaleStatus.APPROVED)
+    }
+
+    @Test
     fun `a Checkout refund whose answer is lost is sent again with the same key and a rejected one fails`() {
         answers += CardChargeResult.Authorised("PSP9")
         val id = charge()
@@ -301,10 +326,21 @@ class SavedCardChargesTest {
         assertThat(checkNotNull(await { container.refundRecords.get(refundId) }).status).isEqualTo(RefundStatus.UNKNOWN)
         refunds.acknowledge()
         refundAnswer = ModificationResult.Received("REF2")
-        assertThat(await { refunds.recheck(refundId) }).isEqualTo(Recheck.Settled)
+        val restored =
+            CheckoutRefunds(
+                container.appScope,
+                container.refundRecords,
+                container.sales,
+                { target },
+                clock = clock,
+                newId = { error("Recovery must not allocate a new identity") },
+                approval = approval,
+            )
+        assertThat(await { restored.recheck(refundId) }).isEqualTo(Recheck.Settled)
         assertThat(checkNotNull(await { container.refundRecords.get(refundId) }).status).isEqualTo(RefundStatus.REQUESTED)
-        assertThat(refundsSent.map { it.substringAfterLast(':') }.distinct()).containsExactly(CheckoutRefunds.idempotencyKey(refundId))
-        assertThat(await { refunds.recheck(refundId) }).isEqualTo(Recheck.Settled)
+        assertThat(refundsSent).containsExactly(refundsSent.first(), refundsSent.first()).inOrder()
+        assertThat(refundsSent.first()).endsWith(CheckoutRefunds.idempotencyKey(refundId))
+        assertThat(await { restored.recheck(refundId) }).isEqualTo(Recheck.Settled)
         assertThat(refundsSent).hasSize(2)
     }
 

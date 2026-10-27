@@ -257,6 +257,7 @@ class CatalogRepository(
                         it.categoryId?.let(categoryIndex::get),
                         it.sku,
                         preAuthorisation = it.kind == SaleKind.PRE_AUTHORISATION,
+                        mealVoucherEligible = it.mealVoucherEligible,
                     )
                 },
         )
@@ -367,6 +368,7 @@ class CatalogRepository(
                     sku = product.sku?.trim()?.takeIf { it.isNotEmpty() },
                     sortOrder = match?.sortOrder ?: index,
                     kind = kind,
+                    mealVoucherEligible = product.mealVoucherEligible,
                 )
             if (match == null) {
                 val inserted = entity.copy(id = dao.insert(entity))

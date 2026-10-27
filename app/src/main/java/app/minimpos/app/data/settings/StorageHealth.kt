@@ -11,12 +11,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
 import java.io.IOException
 
-/** Whether both configuration files were read successfully; an unreadable file stays blocked until app restart. */
+/** Whether all configuration files were read successfully; an unreadable file stays blocked until app restart. */
 enum class StorageState {
-    /** Both files have not yet been read. No protected UI or startup work may proceed. */
+    /** The configuration files have not yet been read. No protected UI or startup work may proceed. */
     LOADING,
 
-    /** Settings and encrypted secrets were read successfully. */
+    /** Settings, encrypted secrets and receipt branding were read successfully. */
     READY,
 
     /** A file could not be read or written. Its contents are preserved for recovery. */
@@ -60,17 +60,19 @@ class StorageHealth {
             }
         }
 
-    /** Reads both protected stores before publishing readiness; a failure never becomes an empty installation. */
+    /** Reads every protected configuration store before publishing readiness; a failure never becomes an empty installation. */
     internal suspend fun check(
         settings: DataStore<AppSettings>,
         secrets: DataStore<*>,
+        logo: DataStore<*>? = null,
     ) {
         settings.data.first()
         secrets.data.first()
+        logo?.data?.first()
         state.compareAndSet(StorageState.LOADING, StorageState.READY)
     }
 
-    /** Waits until both files are readable; unavailable storage never permits startup recovery or terminal checks. */
+    /** Waits until all configuration files are readable; unavailable storage never permits startup recovery or terminal checks. */
     suspend fun awaitReady() {
         state.first { it == StorageState.READY }
     }

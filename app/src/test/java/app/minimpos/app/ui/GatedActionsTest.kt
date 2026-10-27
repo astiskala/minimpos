@@ -40,7 +40,7 @@ class GatedActionsTest {
 
     private fun open(section: String) {
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("section_$section"), 15_000)
         compose.onNodeWithTag("section_$section").performScrollTo().performClick()
     }

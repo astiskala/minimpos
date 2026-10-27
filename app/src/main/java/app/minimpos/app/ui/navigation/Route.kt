@@ -65,6 +65,18 @@ sealed interface Route : NavKey {
     ) : Route
 
     /**
+     * Splitting a sale across tenders: the sale being rung up, or the next tender of a stored partially paid sale.
+     * Cash tenders stay local, so it opens before payments are set up; card tenders pass the setup gate.
+     *
+     * @property saleId The stored sale to collect, or null for the sale being rung up.
+     */
+    @Serializable data class Split(
+        val saleId: String? = null,
+    ) : Route {
+        override val requiresSetup get() = false
+    }
+
+    /**
      * The payment link of a sale: its QR code and address to share, email or print, whether it was paid, and cancelling
      * it.
      *
@@ -100,8 +112,18 @@ sealed interface Route : NavKey {
         override val requiresManager get() = true
     }
 
+    /** How to find what to refund: scan a receipt, choose a payment in History, or refund without a receipt. */
+    @Serializable data object RefundStart : Route {
+        override val requiresManager get() = true
+    }
+
     /** Scanning the refund QR code on a receipt. */
     @Serializable data object RefundScan : Route {
+        override val requiresManager get() = true
+    }
+
+    /** An unreferenced card refund: an amount and reason, linked to no original payment. */
+    @Serializable data object UnreferencedRefund : Route {
         override val requiresManager get() = true
     }
 
@@ -123,6 +145,11 @@ sealed interface Route : NavKey {
         override val requiresManager get() = true
     }
 
+    /** A return split across original tenders: each leg as it is sent, then their outcomes. */
+    @Serializable data object RefundLegs : Route {
+        override val requiresManager get() = true
+    }
+
     /**
      * The outcome of a refund just made.
      *
@@ -134,7 +161,7 @@ sealed interface Route : NavKey {
         override val requiresManager get() = true
     }
 
-    /** Finding a shopper's saved cards by their shopper reference and choosing one to charge. */
+    /** Tokens: finding a shopper’s saved cards and choosing one to charge or delete. */
     @Serializable data object SavedCard : Route {
         override val requiresManager get() = true
     }
@@ -160,6 +187,41 @@ sealed interface Route : NavKey {
     ) : Route {
         override val requiresManager get() = true
     }
+
+    /**
+     * Gift cards: balance, activation, load, undoing a load, cash-out, deactivation and refunds onto a card, with the
+     * activities that still need a check, a confirmation or a repair. Value changes ask for the Manager PIN themselves,
+     * so balance inquiries stay an ordinary workflow.
+     */
+    @Serializable data object GiftCards : Route
+
+    /** Standalone card cash-out, with separately verified support and explicit cash handover. */
+    @Serializable data object Cashout : Route
+
+    /** Records the approved cash of [saleId] handed to the shopper once. */
+    @Serializable data class CashbackHandover(
+        val saleId: String,
+    ) : Route {
+        override val requiresSetup get() = false
+    }
+
+    /**
+     * Waiting for a gift-card activity's terminal requests, then its result.
+     *
+     * @property groupId The activity.
+     */
+    @Serializable data class GiftCardActivity(
+        val groupId: String,
+    ) : Route
+
+    /**
+     * A stored-value activity from history.
+     *
+     * @property groupId The activity shown.
+     */
+    @Serializable data class GiftCardDetail(
+        val groupId: String,
+    ) : Route
 
     /** Terminal totals compared with Mini mPOS, closing the terminal's period and today's report. */
     @Serializable data object Reconciliation : Route

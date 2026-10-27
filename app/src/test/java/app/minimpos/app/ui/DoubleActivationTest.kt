@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.isOn
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -19,6 +20,9 @@ import app.minimpos.app.awaitCondition
 import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.data.settings.CashbackCard
+import app.minimpos.app.data.settings.CashbackSettings
+import app.minimpos.app.data.settings.UnreferencedRefundSettings
 import app.minimpos.app.items
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
@@ -114,6 +118,95 @@ class DoubleActivationTest {
     }
 
     @Test
+    fun `cashout and explicit handover double taps each record once`() {
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+            container.walletDiscovery.refresh()
+        }
+        val facts = container.walletDiscovery.state.value
+        env.updateSettings {
+            it.copy(
+                payment =
+                    it.payment.copy(
+                        cashback =
+                            CashbackSettings(
+                                standalone = true,
+                                card = CashbackCard.EFTPOS,
+                                limitMinor = 10_000,
+                                context = facts.context,
+                                currency = "AUD",
+                            ),
+                    ),
+            )
+        }
+        compose.onNodeWithTag("cashout").performScrollTo().performClick()
+        waitForTag("startCashout")
+        listOf(5, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithText("I confirmed the shopper has an eligible eftpos card").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("startCashout") and isEnabled(), 15_000)
+        doubleTap("startCashout")
+        waitForTag("confirm")
+        doubleTap("confirm")
+        waitForTag("pin_2")
+        listOf(2, 4, 6, 8).forEach { compose.onNodeWithTag("pin_$it").performClick() }
+        doubleTap("pin_OK")
+        waitForText("Approved")
+        val record = sales().single()
+        assertThat(record.sale.totalMinor).isEqualTo(0)
+        assertThat(record.sale.cashBackMinor).isEqualTo(500)
+        assertThat(record.sale.cashHandedOverAt).isNull()
+        compose.onNodeWithTag("cashbackHandover").performScrollTo().performClick()
+        waitForTag("confirmCashbackHandover")
+        doubleTap("confirmCashbackHandover")
+        waitForTag("pin_2")
+        listOf(2, 4, 6, 8).forEach { compose.onNodeWithTag("pin_$it").performClick() }
+        doubleTap("pin_OK")
+        waitForText("Cash handed over")
+        val handed = await { checkNotNull(container.sales.get(record.id)).sale.cashHandedOverAt }
+        assertThat(handed).isNotNull()
+        assertThat(await { container.cashTenders.handOverCashback(record.id) }).isFalse()
+        assertThat(await { checkNotNull(container.sales.get(record.id)).sale.cashHandedOverAt }).isEqualTo(handed)
+    }
+
+    @Test
+    fun `a refund without receipt double tapped through confirmation and approval is sent once`() {
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+            container.walletDiscovery.refresh()
+        }
+        val facts = container.walletDiscovery.state.value
+        env.updateSettings {
+            it.copy(
+                payment =
+                    it.payment.copy(
+                        unreferencedRefunds =
+                            UnreferencedRefundSettings(enabled = true, limitMinor = 10_000, context = facts.context, currency = "AUD"),
+                    ),
+            )
+        }
+        compose.onNodeWithTag("refund").performScrollTo().performClick()
+        waitForTag("refundUnreferenced")
+        doubleTap("refundUnreferenced")
+        waitForTag("pin_2")
+        listOf(2, 4, 6, 8).forEach { compose.onNodeWithTag("pin_$it").performClick() }
+        compose.onNodeWithTag("pin_OK").performClick()
+        waitForTag("startUnreferencedRefund")
+        listOf(7, 0, 0).forEach { compose.onNodeWithTag("key_$it").performScrollTo().performClick() }
+        compose.onNodeWithTag("reason_RETURN_WITHOUT_RECEIPT").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("startUnreferencedRefund") and isEnabled(), 15_000)
+        doubleTap("startUnreferencedRefund")
+        waitForTag("confirm")
+        doubleTap("confirm")
+        waitForText("Refund requested")
+        val refund = refunds().single().refund
+        assertThat(refund.unreferenced).isTrue()
+        assertThat(refund.amountMinor).isEqualTo(700)
+        assertThat(refund.originalTransactionId).isNull()
+    }
+
+    @Test
     fun `a double tap on Pay starts one payment`() {
         checkout(1, 2, 5, 0)
         doubleTap("pay")
@@ -124,7 +217,10 @@ class DoubleActivationTest {
     @Test
     fun `double taps through the MOTO warning and Manager approval start one payment`() {
         env.updateSettings { it.copy(payment = it.payment.copy(allowMoto = true)) }
-        await { container.managerPin.setPin("2468") }
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+        }
         checkout(1, 2, 5, 0)
         compose.onNodeWithTag("motoSwitch").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("motoSwitch") and isOn(), 15_000)
@@ -150,6 +246,27 @@ class DoubleActivationTest {
         val record = await { container.sales.get(sale.id)!! }
         assertThat(await { container.database.saleDao().historyTenders(listOf(record.sale.id)) }).hasSize(2)
         assertThat(record.sale.isPartiallyPaid).isFalse()
+    }
+
+    @Test
+    fun `a double tap on the meal-voucher payment collects one voucher tender`() {
+        env.updateSettings {
+            it.copy(payment = it.payment.copy(currencyCode = "BRL", mealVouchers = true, mealVoucherAccountSelection = true))
+        }
+        await { container.walletDiscovery.refresh() }
+        checkout(1, 2, 5, 0)
+        compose.onNodeWithTag("splitPayment").performScrollTo().performClick()
+        waitForTag("splitMealVoucher")
+        compose.onNodeWithTag("splitMealVoucher").performClick()
+        waitForTag("payMealVoucher")
+        compose.awaitCondition("voucher amount offered") {
+            compose.onAllNodes(hasTestTag("payMealVoucher") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        doubleTap("payMealVoucher")
+        waitForText("Approved")
+        val record = await { container.sales.get(sales().single().id)!! }
+        assertThat(record.tenders.single().mealVoucher).isEqualTo("BRAZIL_PAT")
+        assertThat(record.sale.status).isEqualTo(SaleStatus.APPROVED)
     }
 
     @Test

@@ -2,6 +2,7 @@ package app.minimpos.core.receipt
 
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.TaxBreakdown
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.receipt.ReceiptElement.Blank
@@ -58,6 +59,49 @@ class ReceiptBuilderTest {
     )
 
     private fun builder(options: ReceiptOptions = ReceiptOptions()) = ReceiptBuilder(branding, options, ReceiptLabels(), money)
+
+    @Test
+    fun `logo heads the receipt above the business name`() {
+        val logo = MonoBitmap(1, 1, byteArrayOf(0x80.toByte()))
+        val builder = ReceiptBuilder(branding.copy(logo = logo), ReceiptOptions(), ReceiptLabels(), money)
+        assertThat(builder.sale(sale()).elements.take(2))
+            .containsExactly(ReceiptElement.Image(logo), Text("Corner Cafe", Align.CENTER, TextStyle.BOLD))
+            .inOrder()
+    }
+
+    @Test
+    fun `logo also heads refund and gift card receipts`() {
+        val logo = MonoBitmap(1, 1, byteArrayOf(0x80.toByte()))
+        val builder = ReceiptBuilder(branding.copy(logo = logo), ReceiptOptions(), ReceiptLabels(), money)
+        val refund = builder.refund(RefundReceipt("R-1", "MP-1", "date", emptyList(), 500, cardLines))
+        val gift = builder.giftCard(GiftCardReceipt("GIFT CARD", "G-1", "date", null, emptyList(), null, null, listOf(cardLines)))
+        for (receipt in listOf(refund, gift)) {
+            assertThat(receipt.elements.take(2))
+                .containsExactly(
+                    ReceiptElement.Image(logo),
+                    Text("Corner Cafe", Align.CENTER, TextStyle.BOLD),
+                ).inOrder()
+            assertThat(receipt.elements).doesNotContain(Text("ADYEN CAFE", Align.CENTER))
+        }
+    }
+
+    @Test
+    fun `hidden business name and logo still replace Adyen header lines`() {
+        val logo = MonoBitmap(1, 1, byteArrayOf(0x80.toByte()))
+        for (name in listOf("", "Corner Cafe")) {
+            val builder =
+                ReceiptBuilder(
+                    branding.copy(businessName = name, logo = logo, printBusinessName = false),
+                    ReceiptOptions(),
+                    ReceiptLabels(),
+                    money,
+                )
+            val elements = builder.sale(sale()).elements
+            assertThat(elements.first()).isEqualTo(ReceiptElement.Image(logo))
+            assertThat(elements).doesNotContain(Text("Corner Cafe", Align.CENTER, TextStyle.BOLD))
+            assertThat(elements).doesNotContain(Text("ADYEN CAFE", Align.CENTER))
+        }
+    }
 
     @Test
     fun `customer copy has header, items, inclusive tax, card data, footer and QR`() {
@@ -391,6 +435,34 @@ class ReceiptBuilderTest {
             ReceiptBuilder(branding, ReceiptOptions(), ReceiptLabels(refundTitle = ""), money)
                 .refund(refund.copy(items = emptyList(), full = true))
         assertThat(brandedUntitledRefund.elements.first()).isEqualTo(Text("Corner Cafe", Align.CENTER, TextStyle.BOLD))
+    }
+
+    @Test
+    fun `unreferenced refund receipts name no original and claim no returned surcharge or tip`() {
+        val doc =
+            builder().refund(
+                RefundReceipt(
+                    reference = "MP-R2",
+                    originalReference = null,
+                    dateTime = "30/09/2026 10:00",
+                    items = emptyList(),
+                    amount = 900,
+                    cardReceipt = cardLines,
+                    standingNote = "Refund requested",
+                    unreferencedNotes = listOf("Unreferenced refund", "Reason: Return without receipt"),
+                ),
+            )
+        assertThat(doc.elements)
+            .containsAtLeast(
+                Row("Reference", "MP-R2"),
+                Text("Unreferenced refund"),
+                Text("Reason: Return without receipt"),
+                Row("REFUND TOTAL", "$9.00", TextStyle.BOLD),
+                Row("Card", "**** 9999"),
+            ).inOrder()
+        val rows = doc.elements.filterIsInstance<Row>().map { it.left }
+        assertThat(rows).containsNoneOf("Original sale", "Surcharge", "Tip")
+        assertThat(doc.elements).doesNotContain(Text("Partial refund"))
     }
 
     @Test

@@ -93,6 +93,23 @@ class TerminalSimulatorTest {
     private fun pay(params: PaymentParams = tokenizing) = runBlocking { client.pay(params) as TransactionOutcome.Completed }.details
 
     @Test
+    fun `accessible simulator exits guidance on cancellation recovery and signature refusal`() =
+        runBlocking {
+            config = config.copy(delayMillis = 60_000)
+            val pending = async { client.pay(tokenizing.copy(audioGuidance = true), "AUDIOCAN1") }
+            while (client.status("AUDIOCAN1") != TransactionOutcome.Unknown(Fault.StillInProgress)) delay(1)
+            client.abort("AUDIOCAN1")
+            assertThat((pending.await() as TransactionOutcome.Completed).details.success).isFalse()
+            config = config.copy(delayMillis = 0, signatureRequired = true)
+            assertThat(pay(tokenizing.copy(audioGuidance = true)).success).isFalse()
+            assertThat(pay().signatureRequired).isTrue()
+            config = config.copy(signatureRequired = false, outcome = SimulatedOutcome.TIMEOUT)
+            assertThat(pay(tokenizing.copy(audioGuidance = true)).success).isTrue()
+            config = config.copy(outcome = SimulatedOutcome.APPROVE)
+            assertThat(pay().success).isTrue()
+        }
+
+    @Test
     fun `scanned wallet demos report the wallet without inventing a card or successful tokenization`() {
         val details = pay(tokenizing.copy(scannedPayment = ScannedPayment("wechatpay_pos", "133341022926803846")))
         assertThat(details.success).isTrue()
@@ -263,8 +280,9 @@ class TerminalSimulatorTest {
                     ),
                 )
             val qr = PrintJob.QrCode("MPR1*x y")
-            assertThat(client.print(listOf(text, qr))).isEqualTo(PrintOutcome.Printed)
-            assertThat(printed).containsExactly(text, qr).inOrder()
+            val image = PrintJob.Image(byteArrayOf(1, 2, 3))
+            assertThat(client.print(listOf(image, text, qr))).isEqualTo(PrintOutcome.Printed)
+            assertThat(printed).containsExactly(image, text, qr).inOrder()
             assertThat(client.diagnose().hasPrinter).isTrue()
 
             config = config.copy(hasPrinter = false)

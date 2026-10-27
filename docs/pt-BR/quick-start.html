@@ -138,7 +138,7 @@
   NFC compatível</td><td data-label="Recibos">E-mail ou compartilhamento; sem impressora</td>
   <td data-label="Limites dos recursos">Sem gorjetas no terminal, tela do cliente, MOTO/MKE, processamento offline ou
   reconciliação do terminal.</td></tr></tbody></table></details><p class="hint">Os recursos dependem do terminal, da forma de
-  pagamento e da configuração da Adyen. Teste os fluxos necessários; o simulador não verifica um terminal real.
+  pagamento e da configuração da Adyen. Teste os fluxos necessários.
   <a href="using#capabilities">Verifique as capacidades da Adyen</a>.</p>
           <ul>
             <li>A impressão necessita de um terminal com impressora integrada. Se não houver nenhum, você pode enviar
@@ -183,6 +183,7 @@
                 <li><strong>Management API - Terminal settings read and write</strong></li>
                 <li><strong>Management API - Terminal settings Advanced read and write</strong></li>
                 <li><strong>Cloud Device API role</strong></li>
+                <li><strong>API tokenise payment details</strong></li>
               </ul>
               As mesmas funções são necessárias para cada configuração. A credencial deve pertencer à conta da sua
                 empresa e ter acesso à conta do comerciante do destino. Veja o
@@ -203,7 +204,7 @@
             </li>
           </ol>
 <details class="role-checklist"><summary>Confira todos os requisitos da credencial</summary><p>Mantenha os papéis padrão
-  de pagamentos e Management API abaixo, além dos quatro papéis adicionais acima. Credenciais existentes podem ter
+  de pagamentos e Management API abaixo, além dos cinco papéis adicionais acima. Credenciais existentes podem ter
   perdido papéis padrão. A credencial principal exige os mesmos papéis para todas as configurações; só a credencial
   separada de registro do celular exige Adyen Payments App role.</p><ul><li><strong>Merchant PAL webservice role
   </strong></li><li><strong>Checkout webservice role</strong></li><li><strong>Management API - API credentials read and
@@ -488,8 +489,8 @@
             e teste seu destino real: <a href="using#terminal-tips">gorjetas no terminal</a>,
             <a href="using#terminal-checkout">pagamentos parciais, avisos do comprador, doações e digitação manual do
             cartão</a>, <a href="using#offline">processamento off-line</a> e <a href="using#reconciliation">
-            reconciliação terminal</a>. A disponibilidade depende da configuração da Adyen e do destino do pagamento; os
-            resultados do simulador não são verificação de terminal real.</p>
+            reconciliação terminal</a>. A disponibilidade depende da configuração da Adyen e do destino do
+            pagamento.</p>
           <ol>
             <li>Em TEST, experimente apenas os fluxos de trabalho opcionais que você planeja usar:
               <a href="using#preauth">depósitos</a>, <a href="using#tips">gorjetas de recebimento</a>,
@@ -521,33 +522,30 @@
         </section>
         <section id="try">
           <h2>Experimente o simulador</h2>
-          <p>Explore Mini mPOS sem uma conta ou terminal Adyen. Nenhum cartão é cobrado.</p>
-          <p>Para explorar avisos offline, ative <strong>Aprovações off-line</strong> em <strong>Configurações ›
-            Simulador</strong>. As vendas simuladas aprovadas não têm referência PSP e reportam um lote não confirmado.
-            Inspecione a venda no Histórico e experimente <a href="using#reconciliation">reconciliação terminal</a>.
-            Esta é uma demonstração, não um teste de autorização offline real ou upload posterior para a Adyen.</p>
+          <p>Explore o Mini mPOS sem conta nem terminal Adyen. Nenhum cartão é cobrado.</p>
           <ol>
-            <li><a href="#install">Instale o aplicativo</a> em um telefone ou emulador Android 9+.</li>
-            <li>Na tela de boas-vindas, selecione <strong>Experimente uma demonstração</strong> e toque em <strong>
-              Continuar</strong>. As outras opções são <strong>Digitalizar códigos de configuração</strong>, do auxiliar
-              de configuração ou de outro dispositivo, e <strong>Conectar-se à Adyen</strong>. Os terminais Adyen
-              selecionam inicialmente a conexão; outros dispositivos selecionam a demonstração.</li>
-            <li>Em <strong>Configurações › Simulador</strong>, escolha o resultado do pagamento, o prazo e se há
-              impressora disponível.</li>
+            <li><a href="#install">Instale o aplicativo</a> em um celular ou emulador Android 9+.</li>
+            <li>Na tela de boas-vindas, selecione <strong>Experimente uma demonstração</strong> em vez de
+              <strong>Digitalizar códigos de configuração</strong> ou <strong>Conectar-se à Adyen</strong> e toque em
+              <strong>Continuar</strong>.</li>
+            <li>Em <strong>Configurações › Simulador</strong>, escolha o resultado do pagamento, o atraso e se há
+              impressora. Ative <strong>Aprovações off-line</strong> para ver os avisos off-line no histórico e na
+              <a href="using#reconciliation">conciliação do terminal</a>.</li>
           </ol>
-          <p>Os produtos de amostra e o histórico são rotulados como demonstrações. Cada uso de <strong>Adicionar dados
-            de amostra</strong> substitui os detalhes comerciais do recibo por detalhes fictícios do café, mesmo que já
-            existam amostras; o layout do recibo e as configurações de entrega permanecem inalterados. Contagem de
-            amostras em totais e relatórios de dias de demonstração; eles não são pagamentos reais. Em <strong>
-            Configurações › Dados e transferência</strong>, usar <strong>Adicionar dados de amostra</strong> ou <strong>
-            Remover dados de amostra</strong>; a remoção mantém seus próprios produtos, histórico e configurações. Para
-            links de demonstração off-line, consulte <a href="using#payment-links">links de pagamento</a>.</p>
+          <p>Em <strong>Configurações › Dados e transferência</strong>, use <strong>Adicionar dados de amostra</strong> ou
+            <strong>Remover dados de amostra</strong>. As amostras são marcadas como demonstração e entram nos totais e
+            relatórios dos dias de demonstração; adicioná-las substitui os dados do estabelecimento no recibo por um café
+            fictício, e removê-las mantém seus próprios produtos, histórico e configurações.</p>
+          <p>Os links de pagamento funcionam off-line sem credenciais de API, e suas telas e recibos são marcados como
+            demonstração. Os QR codes deles não recebem pagamentos; toque em <strong>Simular pagamento</strong> para
+            concluir um.</p>
+          <p>O simulador mostra como o Mini mPOS se comporta, não o que seu terminal ou sua conta Adyen aceitam. Recursos
+            como orientação por áudio, aprovações off-line e capacidades da Adyen são imitados, então teste-os em um
+            terminal TEST real antes de depender deles.</p>
           <p>Pronto para conectar? Em <strong>Configurações › Simulador</strong>, toque em <strong>Configurar pagamentos
-            reais</strong>. Revise os dados de amostra e os atalhos de recibo e toque em <strong>Continuar com a
-            configuração</strong>. Abrir a configuração não altera nenhum dado. Uma mudança confirmada para TEST ou LIVE
-            exclui todo o histórico local, incluindo operações inacabadas; produtos de amostra e detalhes do recibo
-            ficam. Remova amostras indesejadas separadamente e revise detalhes comerciais de recibos fictícios antes de
-            pagamentos reais. Comece com TEST.</p>
+            reais</strong> e depois em <strong>Continuar com a configuração</strong>. Confirmar TEST ou LIVE exclui todo o
+            histórico local; produtos de amostra e dados do recibo permanecem, então remova as amostras e revise os dados
+            do estabelecimento antes de pagamentos reais. Comece com TEST.</p>
           <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
         </section>
       </div>

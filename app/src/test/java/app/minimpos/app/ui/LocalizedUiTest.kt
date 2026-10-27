@@ -5,6 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
@@ -30,6 +32,7 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.app.data.settings.GiftCardSetting
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.CaptureStep
 import app.minimpos.app.feature.modificationNote
@@ -38,6 +41,8 @@ import app.minimpos.app.feature.stillUnconfirmed
 import app.minimpos.app.feature.text
 import app.minimpos.app.feature.walletCheckFailed
 import app.minimpos.app.payment.WalletScanProblem
+import app.minimpos.core.giftcard.GiftCardEntry
+import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
@@ -48,6 +53,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
@@ -74,6 +80,35 @@ class LocalizedUiTest {
         env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = currency)) }
         await { env.container.catalog.seedDefaults(env.container.starterTaxRates()) }
     }
+
+    @Test
+    @Config(qualifiers = "en-rUS-w320dp-h460dp-hdpi")
+    fun `English Mexican installments fit an AMS1 with large text`() {
+        RuntimeEnvironment.setFontScale(1.5f)
+        saleFits(mexican = true)
+    }
+
+    @Test
+    fun `Japanese Mexican installments fit an AMS1`() = saleFits(mexican = true)
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese Mexican installments fit an AMS1`() = saleFits(mexican = true)
+
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese Mexican installments fit an AMS1`() = saleFits(mexican = true)
+
+    @Test
+    fun `Japanese audio guidance confirmation fits an AMS1`() = saleFits(audioGuidance = true)
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese audio guidance confirmation fits an AMS1`() = saleFits(audioGuidance = true)
+
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese audio guidance confirmation fits an AMS1`() = saleFits(audioGuidance = true)
 
     @Test
     fun `Japanese sale primary actions fit an AMS1`() = saleFits()
@@ -218,6 +253,17 @@ class LocalizedUiTest {
     fun `Japanese wallet checkout and demo scan fit AMS1`() = walletFits()
 
     @Test
+    fun `Japanese gift card load fits AMS1`() = giftCardsFit()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese gift card load fits AMS1`() = giftCardsFit()
+
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese gift card load fits AMS1`() = giftCardsFit()
+
+    @Test
     @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
     fun `Chinese wallet checkout and demo scan fit AMS1`() = walletFits()
 
@@ -235,7 +281,7 @@ class LocalizedUiTest {
         await { env.container.session(SaleKind.SALE).addCustom("Merchant item", 1_200, TaxRateEntity(1, "No tax", 0)) }
         val original = await { env.container.settings.current() }
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("appLanguage"), 15_000)
         compose.onNodeWithTag("appLanguage").performScrollTo().performClick()
         compose
@@ -248,7 +294,7 @@ class LocalizedUiTest {
             15_000,
         )
         compose.onNodeWithTag("back").performClick()
-        compose.onNodeWithTag("settings").assertTextContains("設定")
+        compose.onNodeWithTag("settings").assertContentDescriptionEquals("設定")
         assertThat(
             env.container
                 .session(SaleKind.SALE)
@@ -256,7 +302,7 @@ class LocalizedUiTest {
                 .single()
                 .name,
         ).isEqualTo("Merchant item")
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.onNodeWithTag("appLanguage").performScrollTo().performClick()
         compose.onNodeWithText("跟隨裝置").performClick()
         compose.waitUntilAtLeastOneExists(
@@ -264,8 +310,43 @@ class LocalizedUiTest {
             15_000,
         )
         compose.onNodeWithTag("back").performClick()
-        compose.onNodeWithTag("settings").assertTextContains("Settings")
+        compose.onNodeWithTag("settings").assertContentDescriptionEquals("Settings")
         assertThat(await { env.container.settings.current() }).isEqualTo(original)
+    }
+
+    /** The Home tile and the gift-card load screen keep their label, choices and pinned action on an AMS1. */
+    private fun giftCardsFit() {
+        val context = env.context
+        env.useSimulator {
+            it.copy(
+                payment =
+                    it.payment.copy(
+                        giftCards =
+                            listOf(
+                                GiftCardSetting(GiftCardProvider.GIVEX),
+                                GiftCardSetting(GiftCardProvider.SVS, entries = setOf(GiftCardEntry.SWIPED, GiftCardEntry.KEYED)),
+                            ),
+                    ),
+            )
+        }
+        compose.setContent { MiniMposApp(env.container) }
+        compose.waitUntilAtLeastOneExists(hasTestTag("giftCards"), 15_000)
+        compose
+            .onNodeWithTag("giftCards")
+            .performScrollTo()
+            .assertTextContains(context.getString(R.string.home_gift_cards))
+            .performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("giftCardOperation_LOAD"), 15_000)
+        compose.onNodeWithTag("giftCardProvider_1").performScrollTo().performClick()
+        compose.onNodeWithTag("giftCardOperation_LOAD").performScrollTo().performClick()
+        compose.onNodeWithTag("key_5").performScrollTo().performClick()
+        compose
+            .onNodeWithTag("giftCardFunding_1")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+        compose.onNodeWithTag("giftCardExternalConfirmed").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("giftCardStart").assertIsDisplayed()
     }
 
     private fun walletFits() {
@@ -285,13 +366,19 @@ class LocalizedUiTest {
         compose.onNodeWithText(env.context.getString(R.string.wallet_demo_note)).assertIsDisplayed()
     }
 
-    private fun saleFits() {
+    private fun saleFits(
+        audioGuidance: Boolean = false,
+        mexican: Boolean = false,
+    ) {
+        if (mexican) configureMexicanCheckout()
         val context = env.context
         compose.setContent { MiniMposApp(env.container) }
-        listOf("newSale", "refund", "history", "products", "settings").forEach {
-            compose.onNodeWithTag(it).assertIsDisplayed()
-        }
-        compose.onNodeWithTag("newSale").assertTextContains(context.getString(R.string.home_new_sale)).performClick()
+        assertHomeAreas()
+        compose
+            .onNodeWithTag("newSale")
+            .performScrollTo()
+            .assertTextContains(context.getString(R.string.home_new_sale))
+            .performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("addCustom"), 15_000)
         compose.onNodeWithText(context.getString(R.string.sale_custom_description)).performClick()
         compose.onNodeWithText(context.getString(R.string.sale_custom_default_name)).assertIsDisplayed()
@@ -308,10 +395,49 @@ class LocalizedUiTest {
         compose.onNodeWithTag("charge").assertIsDisplayed()
         compose.clickWhenEnabled("charge")
         compose.waitUntilAtLeastOneExists(hasTestTag("pay"), 15_000)
-        compose.onNodeWithTag("pay").assertIsDisplayed().performClick()
+        if (mexican) {
+            compose.onNodeWithTag("checkoutDetails").performScrollToNode(hasTestTag("mexican_MONTHS_6"))
+            compose
+                .onNodeWithTag("mexican_MONTHS_6")
+                .performScrollTo()
+                .assertIsDisplayed()
+                .performClick()
+        }
+        if (audioGuidance) {
+            compose.onNodeWithTag("audioGuidance").performScrollTo().performClick()
+            compose.waitUntilAtLeastOneExists(hasTestTag("audioGuidanceConfirm"), 15_000)
+            compose
+                .onNodeWithTag("audioGuidanceConfirm")
+                .performScrollTo()
+                .assertIsDisplayed()
+                .performClick()
+        }
+        compose.onNodeWithTag("pay").assertIsDisplayed()
+        compose.clickWhenEnabled("pay")
         compose.waitUntilAtLeastOneExists(hasTestTag("newSaleAfter"), 15_000)
         compose.onNodeWithTag("resultStatus").assertTextContains(context.getString(R.string.status_approved))
         compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()
         compose.onNodeWithTag("home").assertIsDisplayed()
+    }
+
+    private fun configureMexicanCheckout() {
+        env.updateSettings {
+            it.copy(
+                payment =
+                    it.payment.copy(
+                        currencyCode = "MXN",
+                        mexicanInstallments = true,
+                        allowPartialAuthorisation = false,
+                    ),
+            )
+        }
+        await { env.container.walletDiscovery.refresh() }
+    }
+
+    private fun assertHomeAreas() {
+        listOf("newSale", "refund", "cashout", "history").forEach {
+            compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed()
+        }
+        compose.onNodeWithTag("settings").assertIsDisplayed()
     }
 }

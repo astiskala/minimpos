@@ -74,19 +74,34 @@ class ReceiptBuilder(
         if (out.isNotEmpty() && out.last() != Blank) out += Blank
         out += Row(labels.date, receipt.dateTime)
         if (options.showReferences) out += Row(labels.reference, receipt.reference)
-        out += Row(if (cancellation) labels.cancelledReference else labels.originalReference, receipt.originalReference)
+        val original = receipt.originalReference
+        original?.let { out += Row(if (cancellation) labels.cancelledReference else labels.originalReference, it) }
         out += Divider
-        when {
-            cancellation -> out += Text(labels.cancellationNote)
-            receipt.items.isEmpty() -> out += Text(if (receipt.full) labels.fullRefund else labels.partialRefund)
-            else -> items(out, receipt.items)
-        }
+        refundBody(out, receipt)
         out += Divider
         out += Row(if (cancellation) labels.released else labels.refundTotal, money.format(receipt.amount), TextStyle.BOLD)
+        // An unreferenced refund returns no recorded payment's surcharge or tip.
+        if (!cancellation && original != null) {
+            out += Row(labels.surcharge, receipt.surchargeMinor?.let(money::format) ?: labels.unreported)
+            receipt.tipMinor?.let { out += Row(labels.tip, money.format(it)) }
+        }
         receipt.standingNote?.let { note(out, it) }
         cardReceipt(out, receipt.cardReceipt)
         footer(out)
         return ReceiptDocument(out)
+    }
+
+    // What was returned: the cancellation note, an unreferenced refund's notes, its items, or a full or partial refund.
+    private fun refundBody(
+        out: MutableList<ReceiptElement>,
+        receipt: RefundReceipt,
+    ) {
+        when {
+            receipt.cancellation -> out += Text(labels.cancellationNote)
+            receipt.originalReference == null -> receipt.unreferencedNotes.forEach { out += Text(it) }
+            receipt.items.isEmpty() -> out += Text(if (receipt.full) labels.fullRefund else labels.partialRefund)
+            else -> items(out, receipt.items)
+        }
     }
 
     private fun header(
@@ -94,7 +109,10 @@ class ReceiptBuilder(
         title: String,
     ) {
         val start = out.size
-        branding.businessName.takeIf { it.isNotBlank() }?.let { out += Text(it, Align.CENTER, TextStyle.BOLD) }
+        branding.logo?.let { out += ReceiptElement.Image(it) }
+        branding.businessName
+            .takeIf { it.isNotBlank() && branding.printBusinessName }
+            ?.let { out += Text(it, Align.CENTER, TextStyle.BOLD) }
         branding.addressLines.filter { it.isNotBlank() }.forEach { out += Text(it, Align.CENTER) }
         if (branding.taxId.isNotBlank()) out += Text("${branding.taxIdLabel} ${branding.taxId}".trim(), Align.CENTER)
         branding.phone.takeIf { it.isNotBlank() }?.let { out += Text(it, Align.CENTER) }
@@ -186,6 +204,10 @@ class ReceiptBuilder(
         receipt: SaleReceipt,
         copy: ReceiptCopy,
     ) {
+        if (receipt.discloseSurcharge) {
+            receipt.purchaseMinor?.let { out += Row(labels.purchase, money.format(it)) }
+            out += Row(labels.surcharge, receipt.surchargeMinor?.let(money::format) ?: labels.unreported)
+        }
         receipt.heldNow?.let { out += Row(labels.heldNow, money.format(it)) }
         receipt.captured?.let { out += Row(labels.captured, money.format(it), TextStyle.BOLD) }
         when (val tip = receipt.tip) {
@@ -206,9 +228,37 @@ class ReceiptBuilder(
 
             is TipLines.Entered -> {
                 out += Row(labels.tip, money.format(tip.tip))
-                out += Row(labels.tipTotal, money.format(receipt.amounts.gross + tip.tip), TextStyle.BOLD)
+                if (receipt.chargedAmount == null) {
+                    out += Row(labels.tipTotal, money.format(Math.addExact(receipt.amounts.gross, tip.tip)), TextStyle.BOLD)
+                }
             }
         }
+        receipt.chargedAmount?.let { out += Row(labels.charged, money.format(it), TextStyle.BOLD) }
+        tenders(out, receipt)
+    }
+
+    /** The tender breakdown of a split or cash sale, and any balance still due. */
+    private fun tenders(
+        out: MutableList<ReceiptElement>,
+        receipt: SaleReceipt,
+    ) {
+        val tenders = receipt.tenders
+        if (tenders.size > 1 || tenders.any { it.kind != ReceiptTenderKind.CARD }) {
+            tenders.forEach { tender ->
+                val label =
+                    when (tender.kind) {
+                        ReceiptTenderKind.CARD -> listOfNotNull(labels.tenderCard, tender.detail).joinToString(" ")
+                        ReceiptTenderKind.CASH -> labels.tenderCash
+                        ReceiptTenderKind.GIFT_CARD -> listOfNotNull(labels.tenderGiftCard, tender.detail).joinToString(" ")
+                        ReceiptTenderKind.MEAL_VOUCHER -> listOfNotNull(labels.tenderMealVoucher, tender.detail).joinToString(" ")
+                    }
+                out += Row(label, money.format(tender.amountMinor))
+                tender.receivedMinor?.let { out += Row(labels.cashReceived, money.format(it)) }
+                tender.changeMinor?.let { out += Row(labels.change, money.format(it)) }
+            }
+        }
+        receipt.cardPlans.forEach { out += Text(it) }
+        receipt.balanceDueMinor?.takeIf { it > 0 }?.let { out += Row(labels.balanceDue, money.format(it), TextStyle.BOLD) }
     }
 
     /**
@@ -266,13 +316,30 @@ class ReceiptBuilder(
         link.validUntil?.let { out += Text(labels.linkValidFormat.format(money.locale, it), Align.CENTER) }
     }
 
+    /** A stored-value receipt: the activity, its card and amounts, the balance, its outcome and Adyen's receipts. */
+    fun giftCard(receipt: GiftCardReceipt): ReceiptDocument {
+        val out = mutableListOf<ReceiptElement>()
+        header(out, title = receipt.title)
+        if (out.isNotEmpty() && out.last() != Blank) out += Blank
+        out += Row(labels.date, receipt.dateTime)
+        if (options.showReferences) out += Row(labels.reference, receipt.reference)
+        receipt.card?.let { out += Row(labels.giftCard, it) }
+        out += Divider
+        receipt.lines.forEach { out += Row(it.label, money.format(it.amountMinor), if (it.bold) TextStyle.BOLD else TextStyle.NORMAL) }
+        receipt.balanceMinor?.let { out += Row(labels.balance, money.format(it)) }
+        receipt.standingNote?.let { note(out, it, blankBefore = true) }
+        receipt.cardReceipts.forEach { cardReceipt(out, it) }
+        footer(out)
+        return ReceiptDocument(out)
+    }
+
     private fun cardReceipt(
         out: MutableList<ReceiptElement>,
         lines: List<CardReceiptLine>,
     ) {
         if (lines.isEmpty()) return
         out += Divider
-        val ownHeader = branding.businessName.isNotBlank()
+        val ownHeader = branding.businessName.isNotBlank() || branding.logo != null
         for (line in lines) {
             if (ownHeader && line.key in ADYEN_HEADER_KEYS) continue
             val style = if (line.bold) TextStyle.BOLD else TextStyle.NORMAL

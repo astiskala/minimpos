@@ -13,9 +13,11 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.security.Secret
+import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.standing
+import app.minimpos.app.protectedApproval
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiCheck
@@ -143,6 +145,21 @@ class CapturesTest {
         }
 
     private fun sale(id: String = "s1") = await { container.sales.get(id)!!.sale }
+
+    @Test
+    fun `approval expiring during adjustment prevents the subsequent capture`() {
+        store()
+        var time = 1000L
+        val lock = SessionLock { time }.apply { unlock() }
+        val approval = protectedApproval(lock, 60_000L)
+        val protected = Captures(container.sales, { target }, approval)
+        fake.beforeAnswer = { time += 60_001L }
+        assertThat(await { protected.addTip("s1", 600) }).isEqualTo(CaptureResult.NotAllowed)
+        assertThat(fake.adjustments).hasSize(1)
+        assertThat(fake.captures).isEmpty()
+        assertThat(sale().authorisedMinor).isEqualTo(2600)
+        assertThat(sale().captureStatus).isNull()
+    }
 
     @Test
     fun `closing the caller during adjustment still captures and records the answer without continuing the caller`() {
@@ -323,6 +340,34 @@ class CapturesTest {
         assertThat(p2.capturedMinor).isEqualTo(2_500)
         assertThat(fake.adjustments.single()).isEqualTo(ModificationAmount("AUD", 2_500) to null)
         assertThat(await { captures.capture("p2", 0) }).isEqualTo(CaptureResult.NotAllowed)
+    }
+
+    @Test
+    fun `recreated capture and adjustment owners replay stored facts but a separate renewal gets a new key`() {
+        store(bill.copy(id = "p1", tipOnReceipt = false, kind = SaleKind.PRE_AUTHORISATION))
+        fake.adjustResult = ModificationResult.Failed(Fault.TimedOut)
+        assertThat(await { captures.adjust("p1", 2_500) }).isInstanceOf(CaptureResult.Unconfirmed::class.java)
+        val adjustmentKey = fake.keys.single()
+        val original = fake.adjustments.single()
+        val restored = Captures(container.sales, { target })
+        fake.adjustResult = ModificationResult.Authorised("ADJ", "BQABAQnext")
+        assertThat(await { restored.adjust("p1", 2_500) }).isEqualTo(CaptureResult.Adjusted)
+        assertThat(fake.keys).containsExactly(adjustmentKey, adjustmentKey).inOrder()
+        assertThat(fake.adjustments).containsExactly(original, original).inOrder()
+        val renewed = Captures(container.sales, { target })
+        assertThat(await { renewed.adjust("p1", 2_500) }).isEqualTo(CaptureResult.Adjusted)
+        assertThat(fake.keys.last()).isNotEqualTo(adjustmentKey)
+        assertThat(fake.adjustments.last()).isEqualTo(ModificationAmount("AUD", 2_500) to "BQABAQnext")
+
+        fake.captureResult = ModificationResult.Failed(Fault.TimedOut)
+        assertThat(await { renewed.capture("p1", 2_000) }).isInstanceOf(CaptureResult.Unconfirmed::class.java)
+        val captureKey = fake.keys.last()
+        val captureRequest = fake.captures.single()
+        fake.captureResult = ModificationResult.Received("CAP")
+        val recovering = Captures(container.sales, { target })
+        assertThat(await { recovering.retryCapture("p1") }).isEqualTo(CaptureResult.Requested)
+        assertThat(fake.keys.takeLast(2)).containsExactly(captureKey, captureKey).inOrder()
+        assertThat(fake.captures).containsExactly(captureRequest, captureRequest).inOrder()
     }
 
     @Test

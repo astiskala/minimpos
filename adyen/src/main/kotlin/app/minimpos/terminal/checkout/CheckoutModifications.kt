@@ -15,6 +15,7 @@ import com.adyen.model.checkout.PaymentCaptureResponse
 import com.adyen.model.checkout.PaymentMethodsRequest
 import com.adyen.model.checkout.PaymentRefundRequest
 import com.adyen.model.checkout.PaymentRefundResponse
+import com.adyen.model.payment.VoidPendingRefundRequest
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
@@ -22,6 +23,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import com.adyen.model.payment.ModificationResult as PalModificationResult
 
 /**
  * [PaymentModifications] over HTTPS with OkHttp, using the Adyen library's typed Checkout request models and JSON
@@ -36,6 +38,8 @@ class CheckoutModifications(
     private val credentials: CheckoutCredentials,
     /** Where the API lives; tests point it at a local server. */
     private val baseUrl: HttpUrl = credentials.baseUrl.toHttpUrl(),
+    /** Where the Classic Payments API lives, for cancelling delayed refunds; tests point it at a local server. */
+    private val paymentUrl: HttpUrl = credentials.paymentBaseUrl.toHttpUrl(),
     /** The client to derive from, so an app can share one connection pool. */
     baseClient: OkHttpClient = OkHttpClient(),
     /** The limit for each whole request. */
@@ -113,6 +117,33 @@ class CheckoutModifications(
         }
     }
 
+    override suspend fun cancelPendingRefund(
+        refundPspReference: String,
+        idempotencyKey: String,
+    ): ModificationResult {
+        val body =
+            VoidPendingRefundRequest()
+                .merchantAccount(credentials.merchantAccount)
+                .originalReference(refundPspReference)
+                .toJson()
+        val url = paymentUrl.newBuilder().addPathSegment("voidPendingRefund").build()
+        return when (val reply = http.post(url, body, timeout, idempotencyKey)) {
+            is AdyenReply.Failed -> ModificationResult.Failed(reply.fault)
+            is AdyenReply.Answered if reply.ok -> cancellationReceived(reply.body)
+            is AdyenReply.Answered -> ModificationResult.Failed(reply.checkoutFault(PAL_ROLE))
+        }
+    }
+
+    private fun cancellationReceived(text: String): ModificationResult {
+        val response =
+            decodeAdyenModel(text, PalModificationResult::class.java)
+                ?: return ModificationResult.Failed(Fault.UnreadableReply())
+        return when (response.response) {
+            PalModificationResult.ResponseEnum._VOIDPENDINGREFUND_RECEIVED_ -> ModificationResult.Received(response.pspReference)
+            else -> ModificationResult.Failed(Fault.UnreadableReply(ExternalText.of(adyenField(text, "response"))))
+        }
+    }
+
     override suspend fun verify(): Fault? {
         val body = PaymentMethodsRequest().merchantAccount(credentials.merchantAccount).toJson()
         return post(listOf("paymentMethods"), body, idempotencyKey = null).failure()
@@ -161,6 +192,11 @@ class CheckoutModifications(
                 ModificationResult.Failed(unexpectedStatus(text))
             }
         }
+    }
+
+    private companion object {
+        /** The Classic Payments API role `/voidPendingRefund` needs, named when Adyen answers 403. */
+        const val PAL_ROLE = "Merchant PAL Webservice role"
     }
 
     private fun ModificationAmount.checkoutAmount(): Amount = Amount().currency(currency).value(value)

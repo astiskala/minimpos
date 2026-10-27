@@ -16,7 +16,7 @@ private const val SALE_HISTORY_COLUMNS = """
     tokenizationRequested, storedPaymentMethodId, serviceId, poiId, poiTransactionId, poiTimestamp,
     pspReference, paymentBrand, maskedPan, entryMode, authCode, message, NULL AS customerReceiptJson,
     NULL AS cashierReceiptJson, signatureRequired, refundedMinor, emailedTo, errorCondition,
-    refusalReason, kind, tipOnReceipt, tipMinor, authorisedMinor, adjustment, NULL AS
+    refusalReason, kind, tipOnReceipt, audioGuidance, tipMinor, surchargeMinor, terminalPaidMinor, cashBackMinor, requestedCashBackMinor, cashHandedOverAt, tenderRequestedMinor, authorisedMinor, adjustment, NULL AS
     adjustAuthorisationData, capturedMinor, captureStatus, modificationMessage, paymentMethodVariant,
     holdCancelled, paymentLink, paymentLinkId, paymentLinkUrl, paymentLinkExpiresAt, reason,
     modificationReason, context, linkLocale, linkCountry, linkRecurringModel, adjustmentKey,
@@ -28,9 +28,18 @@ private const val SALE_HISTORY_COLUMNS = """
 /** Every [RefundEntity] column for history and maintenance reads, with receipt and line payloads left null. */
 private const val REFUND_HISTORY_COLUMNS = """
     id, saleId, createdAt, merchantReference, originalTransactionId, originalTimestamp,
-    originalReference, currency, amountMinor, full, status, serviceId, pspReference, message, NULL AS
+    originalReference, currency, amountMinor, full, tenderId, surchargeMinor, tipMinor, status, serviceId, pspReference, message, NULL AS
     customerReceiptJson, NULL AS linesJson, cancellation, reason, context, processedAt,
-    poiReconciliationId, checkoutRefund
+    poiReconciliationId, checkoutRefund, cash, unreferenced, unreferencedReason, acquirerResponseCode, cancelStatus,
+    cancelStartedAt, cancelReason, cancelPspReference
+"""
+
+/** Every [GiftCardOperationEntity] column for history and maintenance reads, with receipt payloads left null. */
+private const val GIFT_CARD_HISTORY_COLUMNS = """
+    id, groupId, stage, category, createdAt, processedAt, status, provider, providerCode, entry, cardLastFour, currency,
+    amountMinor, approvedMinor, balanceMinor, merchantReference, serviceId, poiId, poiTransactionId, poiTimestamp,
+    pspReference, poiReconciliationId, funds, originalId, message, errorCondition, reason, context, environment,
+    NULL AS customerReceiptJson, NULL AS cashierReceiptJson
 """
 
 /**
@@ -193,29 +202,41 @@ interface SaleDao {
     /** Indexed candidate activity times, newest first, bounded by [limit]; accounting owns their meaning. */
     @Query(
         """
-        SELECT id, createdAt AS at, 0 AS refund FROM sales
+        SELECT id, createdAt AS at, 0 AS refund, 0 AS giftCard FROM sales
         WHERE createdAt >= :afterAt AND createdAt <= :beforeAt
         AND (createdAt < :beforeAt OR id < :beforeId)
         UNION ALL
-        SELECT id, processedAt AS at, 0 AS refund FROM sales
+        SELECT id, processedAt AS at, 0 AS refund, 0 AS giftCard FROM sales
         WHERE processedAt >= :afterAt AND processedAt <= :beforeAt
         AND (processedAt < :beforeAt OR id < :beforeId)
         UNION ALL
-        SELECT id, captureProcessedAt AS at, 0 AS refund FROM sales
+        SELECT id, captureProcessedAt AS at, 0 AS refund, 0 AS giftCard FROM sales
         WHERE captureProcessedAt >= :afterAt AND captureProcessedAt <= :beforeAt
         AND (captureProcessedAt < :beforeAt OR id < :beforeId)
         UNION ALL
-        SELECT id, captureStartedAt AS at, 0 AS refund FROM sales
+        SELECT id, captureStartedAt AS at, 0 AS refund, 0 AS giftCard FROM sales
         WHERE captureStartedAt >= :afterAt AND captureStartedAt <= :beforeAt
         AND (captureStartedAt < :beforeAt OR id < :beforeId)
         UNION ALL
-        SELECT id, createdAt AS at, 1 AS refund FROM refunds
+        SELECT saleId AS id, createdAt AS at, 0 AS refund, 0 AS giftCard FROM sale_tenders
+        WHERE createdAt >= :afterAt AND createdAt <= :beforeAt
+        AND (createdAt < :beforeAt OR saleId < :beforeId)
+        UNION ALL
+        SELECT id, createdAt AS at, 1 AS refund, 0 AS giftCard FROM refunds
         WHERE createdAt >= :afterAt AND createdAt <= :beforeAt
         AND (createdAt < :beforeAt OR id < :beforeId)
         UNION ALL
-        SELECT id, processedAt AS at, 1 AS refund FROM refunds
+        SELECT id, processedAt AS at, 1 AS refund, 0 AS giftCard FROM refunds
         WHERE processedAt >= :afterAt AND processedAt <= :beforeAt
         AND (processedAt < :beforeAt OR id < :beforeId)
+        UNION ALL
+        SELECT groupId AS id, createdAt AS at, 0 AS refund, 1 AS giftCard FROM gift_card_operations
+        WHERE createdAt >= :afterAt AND createdAt <= :beforeAt
+        AND (createdAt < :beforeAt OR groupId < :beforeId)
+        UNION ALL
+        SELECT groupId AS id, processedAt AS at, 0 AS refund, 1 AS giftCard FROM gift_card_operations
+        WHERE processedAt >= :afterAt AND processedAt <= :beforeAt
+        AND (processedAt < :beforeAt OR groupId < :beforeId)
         ORDER BY at DESC, id DESC LIMIT :limit
         """,
     )
@@ -227,7 +248,13 @@ interface SaleDao {
     ): List<HistoryKey>
 
     /** All split tenders belonging to a bounded history-deletion batch. */
-    @Query("SELECT * FROM sale_tenders WHERE saleId IN (:ids)")
+    @Query(
+        """SELECT id, saleId, sequence, requestedMinor, authorisedMinor, status, poiTransactionId, poiTimestamp,
+        pspReference, paymentBrand, maskedPan, createdAt, tipMinor, surchargeMinor, cashBackMinor, serviceId, context,
+        poiReconciliationId, NULL AS customerReceiptJson, NULL AS cashierReceiptJson, kind, allocationJson,
+        cashReceivedMinor, changeMinor, environment, giftCard, mexicanPayment, returnedPaymentType, returnedInstallments, returnedPlanId,
+        mealVoucher, fundingSource, paymentMethodVariant, requestedCashBackMinor FROM sale_tenders WHERE saleId IN (:ids)""",
+    )
     suspend fun historyTenders(ids: List<String>): List<SaleTenderEntity>
 
     /** One representative per distinct method; the covering index avoids materializing the full sales table. */
@@ -263,7 +290,9 @@ interface SaleDao {
      * Whether any sale or refund exists, re-emitted after every write to either table, so history readers refresh once
      * per transaction without loading transaction bodies.
      */
-    @Query("SELECT EXISTS(SELECT 1 FROM sales) OR EXISTS(SELECT 1 FROM refunds)")
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM sales) OR EXISTS(SELECT 1 FROM refunds) OR EXISTS(SELECT 1 FROM gift_card_operations)",
+    )
     fun historyChanges(): Flow<Boolean>
 
     /** Lightweight records after [afterId] in primary-key order, at most [limit]; receipt payloads are omitted. */
@@ -326,7 +355,10 @@ interface SaleDao {
 
     /** Returns the sale with the terminal's POITransactionID [transactionId] and its lines, or null. */
     @Transaction
-    @Query("SELECT * FROM sales WHERE poiTransactionId = :transactionId LIMIT 1")
+    @Query(
+        """SELECT * FROM sales WHERE poiTransactionId = :transactionId
+            OR id IN (SELECT saleId FROM sale_tenders WHERE poiTransactionId = :transactionId) LIMIT 1""",
+    )
     suspend fun saleByTransactionId(transactionId: String): SaleWithLines?
 
     /** Whether any tracked sample history remains, without loading sales or receipts. */
@@ -345,6 +377,28 @@ interface SaleDao {
     /** One sale header without loading its lines or tenders. */
     @Query("SELECT * FROM sales WHERE id = :id")
     suspend fun header(id: String): SaleEntity?
+
+    /** Identity-only check for an approved duplicate; settlement never loads full sale relations. */
+    @Query(
+        """SELECT EXISTS(SELECT 1 FROM sale_tenders WHERE saleId = :saleId AND status = 'APPROVED'
+            AND (serviceId = :serviceId OR poiTransactionId = :transactionId))""",
+    )
+    suspend fun tenderRecorded(
+        saleId: String,
+        serviceId: String?,
+        transactionId: String?,
+    ): Boolean
+
+    /** The unsettled tender row of the attempt sent with [serviceId], if one was opened before sending. */
+    @Query("SELECT * FROM sale_tenders WHERE saleId = :saleId AND serviceId = :serviceId AND status != 'APPROVED' LIMIT 1")
+    suspend fun openTender(
+        saleId: String,
+        serviceId: String,
+    ): SaleTenderEntity?
+
+    /** Marks tenders still being sent at the last stop as possibly sent; their sales recover through status checks. */
+    @Query("UPDATE sale_tenders SET status = 'UNKNOWN' WHERE status = 'PENDING'")
+    suspend fun interruptPendingTenders(): Int
 
     /** Number of retained tenders, read inside the settlement transaction before appending one. */
     @Query("SELECT COUNT(*) FROM sale_tenders WHERE saleId = :saleId")
@@ -441,4 +495,96 @@ interface RefundDao {
     /** Deletes every refund. */
     @Query("DELETE FROM refunds")
     suspend fun deleteAllRefunds()
+}
+
+/**
+ * Room access to stored-value stages ([GiftCardOperationEntity]), read and written by `GiftCardRepository` and history
+ * housekeeping. Suspending functions are main-safe; [Flow] queries re-emit after every change to the table.
+ */
+@Dao
+interface GiftCardDao {
+    /** Stores a new stage. */
+    @Insert
+    suspend fun insert(stage: GiftCardOperationEntity)
+
+    /** Replaces a stored stage. */
+    @Update
+    suspend fun update(stage: GiftCardOperationEntity)
+
+    /** The stage [id], or null. */
+    @Query("SELECT * FROM gift_card_operations WHERE id = :id")
+    suspend fun stage(id: String): GiftCardOperationEntity?
+
+    /** Every stage of activity [groupId], oldest first, in the order stored within one millisecond. */
+    @Query("SELECT * FROM gift_card_operations WHERE groupId = :groupId ORDER BY createdAt, rowid")
+    suspend fun group(groupId: String): List<GiftCardOperationEntity>
+
+    /** Observes every stage of activity [groupId], oldest first. */
+    @Query("SELECT * FROM gift_card_operations WHERE groupId = :groupId ORDER BY createdAt, rowid")
+    fun observeGroup(groupId: String): Flow<List<GiftCardOperationEntity>>
+
+    /**
+     * Observes the stages of activities begun since [since] (epoch milliseconds) or with a stage still unresolved,
+     * newest activity first, without receipt payloads, at most [limit] stages.
+     */
+    @Query(
+        """
+        SELECT $GIFT_CARD_HISTORY_COLUMNS FROM gift_card_operations WHERE groupId IN (
+            SELECT groupId FROM gift_card_operations WHERE createdAt >= :since OR status IN ('PENDING', 'UNKNOWN', 'AWAITING')
+        ) ORDER BY createdAt DESC, rowid DESC LIMIT :limit
+        """,
+    )
+    fun observeRecent(
+        since: Long,
+        limit: Int,
+    ): Flow<List<GiftCardOperationEntity>>
+
+    /** [observeRecent] once. */
+    @Query(
+        """
+        SELECT $GIFT_CARD_HISTORY_COLUMNS FROM gift_card_operations WHERE groupId IN (
+            SELECT groupId FROM gift_card_operations WHERE createdAt >= :since OR status IN ('PENDING', 'UNKNOWN', 'AWAITING')
+        ) ORDER BY createdAt DESC, rowid DESC LIMIT :limit
+        """,
+    )
+    suspend fun recentStages(
+        since: Long,
+        limit: Int,
+    ): List<GiftCardOperationEntity>
+
+    /** Stages stored before sending that never settled. */
+    @Query("SELECT * FROM gift_card_operations WHERE status = 'PENDING'")
+    suspend fun pending(): List<GiftCardOperationEntity>
+
+    /** Lightweight stages of activities [groupIds], oldest first. */
+    @Query("SELECT $GIFT_CARD_HISTORY_COLUMNS FROM gift_card_operations WHERE groupId IN (:groupIds) ORDER BY createdAt, rowid")
+    suspend fun historyGroups(groupIds: List<String>): List<GiftCardOperationEntity>
+
+    /** Activity IDs after [afterGroupId] in order, at most [limit]. */
+    @Query("SELECT DISTINCT groupId FROM gift_card_operations WHERE groupId > :afterGroupId ORDER BY groupId LIMIT :limit")
+    suspend fun groupIds(
+        afterGroupId: String,
+        limit: Int,
+    ): List<String>
+
+    /** Activities after [afterGroupId] whose newest stage is older than [before], at most [limit], in order. */
+    @Query(
+        """
+        SELECT groupId FROM gift_card_operations WHERE groupId > :afterGroupId GROUP BY groupId
+        HAVING MAX(createdAt) < :before ORDER BY groupId LIMIT :limit
+        """,
+    )
+    suspend fun retentionGroups(
+        afterGroupId: String,
+        before: Long,
+        limit: Int,
+    ): List<String>
+
+    /** Deletes every stage of activities [groupIds], returning the deleted stage count. */
+    @Query("DELETE FROM gift_card_operations WHERE groupId IN (:groupIds)")
+    suspend fun deleteGroups(groupIds: List<String>): Int
+
+    /** Deletes every stage, only for a confirmed history environment switch. */
+    @Query("DELETE FROM gift_card_operations")
+    suspend fun deleteAll()
 }

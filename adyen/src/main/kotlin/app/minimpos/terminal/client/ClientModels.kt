@@ -7,6 +7,7 @@ import com.adyen.model.applicationinfo.ApplicationInfo
 import com.adyen.model.applicationinfo.CommonField
 import com.adyen.model.applicationinfo.ExternalPlatform
 import com.adyen.model.applicationinfo.MerchantDevice
+import com.adyen.model.terminal.SaleToAcquirerData
 import java.util.concurrent.atomic.AtomicReference
 
 private const val MAX_SCANNED_CODE_LENGTH = 128
@@ -29,8 +30,9 @@ data class TerminalIdentity(
 )
 
 /**
- * The POS software, sent to Adyen as `SaleToAcquirerData.applicationInfo` on every payment and refund (see "Pass
- * application information"), so transactions can be traced to it. The Adyen library adds `adyenLibrary` itself.
+ * The POS software, sent to Adyen as `SaleToAcquirerData.applicationInfo` on every payment, refund and stored-value
+ * request (see "Pass application information"), so transactions can be traced to it. The Adyen library adds
+ * `adyenLibrary` itself.
  *
  * Values are passed through [clean] only when converted by [toApplicationInfo], so the same input always produces the
  * same request; Adyen asks for identical formatting across requests.
@@ -117,6 +119,12 @@ data class PosApplication(
     }
 }
 
+/** Fresh acquirer data with the same POS identification for every transaction; null keeps the SDK's library-only info. */
+internal fun PosApplication?.acquirerData(): SaleToAcquirerData =
+    SaleToAcquirerData().apply {
+        this@acquirerData?.let { applicationInfo = it.toApplicationInfo() }
+    }
+
 /**
  * The application info of a [PosApplication] as Adyen receives it, each value formatted for display.
  *
@@ -156,6 +164,9 @@ enum class TransactionKind {
 
     /** A referenced refund (nexo message category `Reversal`). */
     REFUND,
+
+    /** A gift-card activation, load, undone load or deactivation (nexo message category `StoredValue`). */
+    STORED_VALUE,
 }
 
 /** Card entry mode override for a terminal payment. */
@@ -235,10 +246,79 @@ data class PaymentParams(
     val saleReferenceId: String? = null,
     /** Sends `AskGiving` in `SaleToAcquirerData.tenderOption` to prompt for a charity donation after purchase. */
     val askGiving: Boolean = false,
+    /** Requests audio guidance for this payment; caller confirms software, enablement and no signature requirement. */
+    val audioGuidance: Boolean = false,
     /** Overrides how the card is entered on the terminal (`MOTO` tender option or `ForceEntryMode=Keyed`). */
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
+    /**
+     * Pays with, pays out or refunds onto a gift card (`PaymentInstrumentType=StoredValue`); null for card payments.
+     * Only redemption may allow partial approval; no terminal card features apply.
+     */
+    val giftCard: GiftCardPayment? = null,
+    /** Explicit Mexican card routing and monthly count; null leaves routing to the terminal. */
+    val mexicanPayment: MexicanPayment? = null,
+    /**
+     * Sends `selectedAccountType` `MEAL_VOUCHER` in Base64 `SaleData.SaleToPOIData`, so the terminal takes a Brazilian
+     * meal or food voucher (app-controlled selection); false leaves the account to the card or the terminal's own screen.
+     */
+    val mealVoucherAccount: Boolean = false,
+    /** Cash requested within [amountMinor], in minor units; null for payments without cash. */
+    val cashBackMinor: Long? = null,
+    /**
+     * Sends `PaymentData.PaymentType=Refund`: an unreferenced refund of [amountMinor] to the card the shopper presents,
+     * linked to no original payment. Adyen enables it per store or terminal; it carries no other card feature.
+     */
+    val unreferencedRefund: Boolean = false,
 ) {
     init {
+        require(
+            !unreferencedRefund || (
+                amountMinor > 0 && cashBackMinor == null && !preAuthorisation && scannedPayment == null &&
+                    giftCard == null && mexicanPayment == null && !mealVoucherAccount && terminalTip == null &&
+                    shopperFlow == null && !askGiving && !audioGuidance && !allowPartialAuthorisation &&
+                    cardEntryOverride == CardEntryOverride.NORMAL && recurringProcessingModel == null &&
+                    !requestCardAlias && shopperReference == null && saleReferenceId == null
+            ),
+        ) { "An unreferenced refund is a card refund without other card features" }
+        require(
+            cashBackMinor == null || (
+                cashBackMinor > 0 && cashBackMinor <= amountMinor && !preAuthorisation && scannedPayment == null &&
+                    giftCard == null && mexicanPayment == null && !mealVoucherAccount && terminalTip == null &&
+                    !askGiving && !audioGuidance && !allowPartialAuthorisation &&
+                    cardEntryOverride == CardEntryOverride.NORMAL && recurringProcessingModel == null && !requestCardAlias
+            ),
+        ) { "Cashback requires an immediate card payment without other card features" }
+        require(
+            !mealVoucherAccount || (
+                currency == "BRL" && !preAuthorisation && scannedPayment == null && giftCard == null && terminalTip == null &&
+                    !askGiving && !audioGuidance && !allowPartialAuthorisation && mexicanPayment == null &&
+                    cardEntryOverride == CardEntryOverride.NORMAL && recurringProcessingModel == null && !requestCardAlias
+            ),
+        ) { "A Brazilian meal voucher is an immediate BRL payment without other card features" }
+        require(
+            mexicanPayment == null || (
+                currency == "MXN" && !preAuthorisation && scannedPayment == null && giftCard == null &&
+                    terminalTip == null && !askGiving && !audioGuidance && !allowPartialAuthorisation &&
+                    cardEntryOverride == CardEntryOverride.NORMAL && recurringProcessingModel == null && !requestCardAlias
+            ),
+        ) { "Mexican routing requires an immediate MXN card sale without other card features" }
+        require(
+            giftCard == null || (
+                !preAuthorisation && scannedPayment == null && terminalTip == null && shopperFlow == null && !askGiving &&
+                    !audioGuidance && cardEntryOverride == CardEntryOverride.NORMAL && recurringProcessingModel == null &&
+                    !requestCardAlias && (giftCard.use == GiftCardUse.REDEEM || !allowPartialAuthorisation)
+            ),
+        ) {
+            "Gift card requests are immediate, without card features, and only redemption allows partial approval"
+        }
+        require(
+            !audioGuidance || (
+                terminalTip == null && !askGiving && scannedPayment == null &&
+                    shopperFlow == null && cardEntryOverride == CardEntryOverride.NORMAL
+            ),
+        ) {
+            "Audio guidance requires a card payment without tipping, Giving, special entry or shopper prompts"
+        }
         require(scannedPayment == null || !preAuthorisation) { "Scanned wallets require an immediate-charge sale" }
         require(terminalTip == null || (!preAuthorisation && scannedPayment == null)) {
             "Terminal tipping requires an immediate-charge card sale"
@@ -390,7 +470,7 @@ data class Tokenization(
 
 /**
  * The terminal's answer to a payment or reversal, flattened for the app. Fields the terminal did not send are null (or
- * empty); the card fields and [tokenization] are only filled for payments. Amounts are in major units, as in nexo.
+ * empty); the card fields and [tokenization] are only filled for payments. Amounts are in minor units, using Adyen currency precision.
  */
 data class TransactionDetails(
     /** True when `Response.Result` is `Success` or `Partial`: the payment was approved or the refund accepted. */
@@ -423,12 +503,21 @@ data class TransactionDetails(
     /** The merchant reference the terminal reports: the payment's `SaleTransactionID`, or a refund's `merchantReference`. */
     val merchantReference: String?,
     /**
-     * The authorised amount of a payment, or the reversed amount of a refund, in minor units of [currency]; null if the
-     * terminal omitted it or named a currency without Adyen decimals.
+     * Authorized total, including tip, surcharge and cashback, or the reversed refund amount, in minor units of
+     * [currency]; null when omitted or the currency has no Adyen decimals. Components are never added to this again.
      */
     val amountMinor: Long?,
     /** The tip added on the terminal (`PaymentResult.AmountsResp.TipAmount`), in minor units; null when none was added. */
     val tipMinor: Long? = null,
+    /** Surcharge included in [amountMinor] (`TotalFeesAmount`), in minor units; null when unreported, including old history. */
+    val surchargeMinor: Long? = null,
+    /** Cash returned to the shopper, included in [amountMinor]; null when unreported. Never merchandise. */
+    val cashBackMinor: Long? = null,
+    /**
+     * A gift card's balance after a stored-value operation (`CurrentBalance`, else the value `ItemAmount` reports), in
+     * minor units of [currency]; null when unreported and for card payments.
+     */
+    val balanceMinor: Long? = null,
     /** The ISO 4217 currency code of a payment's [amountMinor]. */
     val currency: String?,
     /** The card scheme, e.g. `mc` or `visa`. */
@@ -438,6 +527,11 @@ data class TransactionDetails(
      * wallet, `visa_applepay`, `mc_googlepay` or `amex_samsungpay`; null when the terminal did not send it.
      */
     val paymentMethodVariant: String? = null,
+    /**
+     * Adyen's `fundingSource` from the `AdditionalResponse`, verbatim, e.g. `PREPAID` for a Brazilian meal voucher; null
+     * when the terminal did not send it.
+     */
+    val fundingSource: String? = null,
     /** The card number with most digits hidden, e.g. `541333 **** 9999`. */
     val maskedPan: String?,
     /** How the card was read: the nexo entry mode (e.g. `Contactless`) or Adyen's `posEntryMode` (e.g. `CLESS_CHIP`). */
@@ -459,6 +553,12 @@ data class TransactionDetails(
     val tokenization: Tokenization?,
     /** Email collected from the shopper on the terminal before payment (`InputRequest` `GetText`), if any. */
     val collectedEmail: String? = null,
+    /** Explicit returned installment PaymentType; null for missing/default Normal. Never inferred from the request. */
+    val returnedPaymentType: String? = null,
+    /** Returned Instalment.TotalNbOfPayments as a decimal integer; null when omitted. */
+    val returnedInstallments: String? = null,
+    /** Returned Instalment.PlanID, verbatim; null when omitted. */
+    val returnedPlanId: String? = null,
     /** 0–10 rating collected from the shopper on the terminal after payment (`InputRequest` `GetRating`), if any. */
     val shopperRating: Int? = null,
     /** ServiceID of the two-step Adyen Giving donation (`adyen_giving_service_id`), when the shopper donated. */
@@ -478,6 +578,12 @@ data class TransactionDetails(
      * when "return adjust authorisation data" is enabled in the Customer Area; null otherwise.
      */
     val adjustAuthorisationData: String? get() = additionalData[ADJUST_AUTHORISATION_DATA]
+
+    /**
+     * `acquirerResponseCode` of an unreferenced refund, verbatim; Adyen sends it only when the card scheme and country
+     * process the refund synchronously. Null when omitted, which leaves the refund requested.
+     */
+    val acquirerResponseCode: String? get() = additionalData[NexoVocabulary.ACQUIRER_RESPONSE_CODE]?.trim()?.ifEmpty { null }
 
     /** `AdditionalResponse` keys read by the typed properties. */
     companion object {
@@ -518,6 +624,15 @@ sealed interface TransactionOutcome {
 sealed interface PrintOutcome {
     /** Every job was printed. */
     data object Printed : PrintOutcome
+
+    /**
+     * The terminal refused an image, and every remaining job printed successfully.
+     *
+     * @property fault The first image rejection. No-printer, paper and delivery failures never produce this result.
+     */
+    data class PrintedWithoutImage(
+        val fault: Fault,
+    ) : PrintOutcome
 
     /**
      * A job could not be printed; later jobs were not sent.
@@ -603,9 +718,11 @@ data class DiagnosisResult(
  * @property attempts How many status checks may go unanswered (connection errors or no usable reply).
  * @property intervalMillis The pause before each status check; Adyen advises every 5 seconds.
  * @property maxInProgressChecks How many InProgress replies to accept before giving up.
+ * @property reprintReceipts Whether status may request terminal receipt reprinting; unsupported by the Payments app.
  */
 data class RecoveryPolicy(
     val attempts: Int = 12,
     val intervalMillis: Long = 5_000,
     val maxInProgressChecks: Int = 120,
+    val reprintReceipts: Boolean = true,
 )

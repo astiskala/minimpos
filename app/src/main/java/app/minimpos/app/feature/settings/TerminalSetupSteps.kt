@@ -564,7 +564,7 @@ private fun ColumnScope.ApiKeyRoles() {
     SettingNote(stringResource(R.string.settings_adyen_roles_hint))
     SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
     SettingNote("• " + stringResource(R.string.settings_adyen_role_terminals), Modifier.testTag("roleTerminals"))
-    listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key).forEach {
+    listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key, R.string.settings_adyen_role_tokens).forEach {
         SettingNote("• " + stringResource(it))
     }
 }

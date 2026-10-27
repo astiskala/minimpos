@@ -11,6 +11,7 @@ import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.isOn
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -25,6 +26,7 @@ import app.minimpos.app.FakeDevice
 import app.minimpos.app.FakeTerminal
 import app.minimpos.app.GST_RATES
 import app.minimpos.app.MiniMposApp
+import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
@@ -89,6 +91,27 @@ class SmallScreenTest {
     }
 
     @Test
+    fun `physical AMS1 audio requirements can be read and confirmed with Pay still visible`() {
+        configureKey()
+        container.session(SaleKind.SALE).addCustom("Item", 1200, TaxRateEntity(name = "No tax", rateMilliPercent = 0))
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("newSale").performClick()
+        waitForTag("charge")
+        compose.clickWhenEnabled("charge")
+        waitForTag("pay")
+        compose.onNodeWithTag("audioGuidance").performScrollTo().performClick()
+        waitForTag("audioGuidanceConfirm")
+        compose
+            .onNodeWithTag("audioGuidanceConfirm")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertTextContains(env.context.getString(R.string.checkout_audio_requirements, "1.117"))
+            .performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("pay") and isEnabled(), 15_000)
+        compose.onNodeWithTag("pay").assertIsDisplayed().assert(isEnabled())
+    }
+
+    @Test
     fun `hundreds of checkout lines stay lazy and Pay remains visible on AMS1`() {
         configureKey()
         val session = container.session(SaleKind.SALE)
@@ -109,7 +132,7 @@ class SmallScreenTest {
     @Test
     fun `receipt tax display and item marks are configurable on the smallest terminal`() {
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_receipts")
         compose.onNodeWithTag("section_receipts").performScrollTo().performClick()
         waitForTag("showTaxAmounts")
@@ -167,7 +190,7 @@ class SmallScreenTest {
     fun `configured payments do not show quick setup`() {
         configureKey()
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("terminalMode")
@@ -178,12 +201,17 @@ class SmallScreenTest {
     fun `home guides terminal setup through the Adyen API test before the shared key`() {
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.TEST)) }
         compose.setContent { MiniMposApp(container) }
-        // Beside the setup card, the tiles keep their icons above their labels, so the admin buttons are a scroll away.
-        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation").forEach {
-            compose.onNodeWithTag(it).assertIsDisplayed()
+        // Beside the setup card, the tiles keep their icons above their labels, scrolling rather than shrinking below their
+        // own minimum, and Settings remains in the top-right corner.
+        listOf("newSale", "preAuth", "savedCard", "giftCards", "refund", "history", "reconciliation").forEach {
+            compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed()
         }
-        listOf("products", "settings").forEach { compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed() }
-        compose.onNodeWithTag("terminalSetup").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("settings").assertIsDisplayed()
+        compose
+            .onNodeWithTag("terminalSetup")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         waitForTag("apiKey")
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("HarbourCoffeeCOM")
@@ -237,7 +265,7 @@ class SmallScreenTest {
         configureKey()
         env.updateSettings { it.copy(payment = it.payment.copy(currencyCode = "")) }
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("testApi")
@@ -299,7 +327,7 @@ class SmallScreenTest {
         await { container.pinManager.setPin("1357") }
         RuntimeEnvironment.setFontScale(2f)
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("pin_1")
         listOf(1, 3, 5, 7).forEach {
             compose
@@ -398,7 +426,7 @@ class SmallScreenTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.TEST)) }
         await { container.terminalStatus.state.first { it.environment == TerminalEnvironment.TEST } }
         compose.setContent { MiniMposApp(container) }
-        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "products", "settings").forEach {
+        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "settings").forEach {
             compose.onNodeWithTag(it).assertIsDisplayed()
         }
         compose.onNodeWithTag("terminalSetup").assertDoesNotExist()
@@ -495,7 +523,7 @@ class SmallScreenTest {
         compose.setContent { MiniMposApp(container) }
         // Both payment tiles and every other tile fit.
         waitForTag("preAuth")
-        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "products", "settings").forEach {
+        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "settings").forEach {
             compose.onNodeWithTag(it).assertIsDisplayed()
         }
 
@@ -549,7 +577,9 @@ class SmallScreenTest {
         compose.clickWhenEnabled("charge")
         waitForTag("pay")
         compose.onNodeWithTag("tipOnReceipt").performScrollTo().performClick()
-        compose.onNodeWithTag("pay").assertIsDisplayed().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("tipOnReceipt") and isOn(), 15_000)
+        compose.onNodeWithTag("pay").assertIsDisplayed()
+        compose.clickWhenEnabled("pay")
         compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Awaiting tip"), 15_000)
         compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()
 
@@ -572,7 +602,7 @@ class SmallScreenTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "mini-key")) }
         await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("step_1")
@@ -620,7 +650,7 @@ class SmallScreenTest {
         configureKey()
         await { container.pinManager.setPin("1357") }
         compose.setContent { MiniMposApp(container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         waitForTag("pin_OK")
         listOf("pin_1", "pin_0", "pin_<", "pin_OK", "pinMessage").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
         listOf(1, 3, 5, 7).forEach { compose.onNodeWithTag("pin_$it").performClick() }

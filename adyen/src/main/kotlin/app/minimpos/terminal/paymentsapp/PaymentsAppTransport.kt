@@ -10,9 +10,17 @@ import app.minimpos.terminal.transport.TerminalKey
 import app.minimpos.terminal.transport.TerminalTransport
 import app.minimpos.terminal.transport.nexoGson
 import app.minimpos.terminal.transport.responseText
+import com.adyen.model.nexo.ErrorConditionType
+import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.MessageHeader
+import com.adyen.model.nexo.MessageReference
+import com.adyen.model.nexo.MessageType
+import com.adyen.model.nexo.RepeatedResponseMessageBody
+import com.adyen.model.nexo.ResultType
+import com.adyen.model.nexo.SaleToPOIRequest
 import com.adyen.model.nexo.SaleToPOIResponse
 import com.adyen.model.nexo.TransactionStatusRequest
+import com.adyen.model.nexo.TransactionStatusResponse
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
 import com.adyen.model.terminal.TerminalAPISecuredRequest
@@ -67,12 +75,14 @@ interface AppLinkExchange {
     ): AppLinkAnswer
 
     /**
-     * The return URLs that arrived while no exchange was waiting, oldest first: the app was restarted while the
-     * Payments app was in front, so its answer had nobody to go to.
+     * Unacknowledged return URLs, oldest first. This includes callbacks after restart and financial callbacks retained
+     * while an exchange waits, because an original response can race a status callback. Verified financial results
+     * may be forgotten only after durable storage. Verified inconclusive status callbacks with no
+     * financial evidence may be discarded immediately.
      */
     fun lateReplies(): List<String>
 
-    /** Removes exactly [urls] after their verified financial answers were durably stored; unresolved replies remain. */
+    /** Removes exactly [urls] after durable financial storage, or verification that they contain only inconclusive status. */
     fun forgetLateReplies(urls: Set<String>)
 }
 
@@ -195,9 +205,10 @@ internal class PaymentsAppCrypto(
  * travel in App Links, encrypted with the shared key, and the Payments app answers through [returnUrl]
  * (`<returnUrl>/nexo`).
  *
- * The Payments app takes only payments and reversals. A transaction status request is answered from
- * [AppLinkExchange.lateReplies] (an answer that arrived after the app was restarted), as a terminal would repeat it;
- * without one it fails with [Fault.NoLateReply], and every other request (abort, print, diagnosis) with
+ * Payments, reversals and transaction status travel through the encrypted `/nexo` App Link. Status first uses a
+ * validated [AppLinkExchange.lateReplies] answer, then queries installations whose version may support it. Version
+ * 1.8.0 introduced status; version alone does not establish beta enablement. NotFound remains inconclusive on this
+ * destination, so recovery never authorizes another payment. Other requests (abort, print, diagnosis) fail with
  * [Fault.Unsupported]. A request that cannot be encrypted, a Payments app that could not be started and an answer with
  * only an `error` (the Payments app did not take the payment) took no effect. Not calling back in time, coming back
  * without a result, and an answer that cannot be verified or belongs to another request may have.
@@ -206,22 +217,28 @@ internal class PaymentsAppCrypto(
  * @param environment Which Payments app to use.
  * @param exchange Opens the links.
  * @param returnUrl Where the Payments app calls back, without a trailing slash, e.g. `minimpos://paymentsapp`.
+ * @param version Reads the installed version of the selected environment's app; null when unreadable. Unknown versions may be
+ *   queried, but versions known to predate status support use only late answers.
  */
 class PaymentsAppTransport(
     key: TerminalKey,
     environment: TerminalEnvironment,
     private val exchange: AppLinkExchange,
     private val returnUrl: String,
+    private val version: () -> String? = { null },
 ) : TerminalTransport {
     private val crypto = PaymentsAppCrypto(key)
     private val links = PaymentsAppLinks(environment)
     private val decoded = mutableMapOf<String, TerminalAPIResponse?>()
+    private val recovered = mutableMapOf<String, MutableSet<String>>()
+    private val completed = CompletedTransactions()
 
     override fun acknowledge(serviceId: String) {
         synchronized(decoded) {
-            val urls = decoded.filterValues { it?.saleToPOIResponse?.messageHeader?.serviceID == serviceId }.keys.toSet()
+            val urls = recovered.remove(serviceId).orEmpty().toSet()
             exchange.forgetLateReplies(urls)
             urls.forEach(decoded::remove)
+            completed.forget(setOf(serviceId), emptySet())
         }
     }
 
@@ -237,7 +254,11 @@ class PaymentsAppTransport(
             }
 
             status != null -> {
-                repeat(status)?.let(Delivery::Answered) ?: Delivery.Failed(Fault.NoLateReply)
+                repeat(request)?.let(Delivery::Answered) ?: run {
+                    val answer = if (supportsStatus(version())) transact(request, timeout) else Delivery.Failed(Fault.NoLateReply)
+                    // A late original answer may have arrived while the status exchange was waiting.
+                    repeat(request)?.let(Delivery::Answered) ?: answer
+                }
             }
 
             else -> {
@@ -252,11 +273,12 @@ class PaymentsAppTransport(
     ): Delivery {
         val encryptedRequest = crypto.encrypt(request) ?: return Delivery.Failed(Fault.RequestNotEncrypted)
         val link = links.nexo(encryptedRequest, "$returnUrl/$NEXO")
-        val answer =
+        val returned =
             when (val returned = exchange.exchange(link, links.packageName, timeout)) {
-                is AppLinkAnswer.Returned -> PaymentsAppLinks.answer(returned.url)
+                is AppLinkAnswer.Returned -> returned
                 is AppLinkAnswer.Unanswered -> return Delivery.Failed(returned.fault)
             }
+        val answer = PaymentsAppLinks.answer(returned.url)
         val encrypted =
             answer["response"]?.takeIf { it.isNotEmpty() }
                 ?: return Delivery.Failed(
@@ -272,41 +294,233 @@ class PaymentsAppTransport(
         val response =
             crypto.decrypt(encrypted)
                 ?: return Delivery.Failed(crypto.shortError(encrypted)?.let(Fault::UnreadableReply) ?: Fault.ReplyUnverified)
-        if (response.saleToPOIResponse?.messageHeader?.serviceID != request.saleToPOIRequest.messageHeader.serviceID) {
-            return Delivery.Failed(Fault.UnreadableReply())
+        val sent = request.saleToPOIRequest
+        val received = response.saleToPOIResponse
+        if (received != null && matches(received.messageHeader, sent.messageHeader) && discardStatus(returned.url, received, sent)) {
+            return validate(received, sent)?.let(Delivery::Failed) ?: Delivery.Answered(response)
+        }
+        validate(received, sent)?.let { return Delivery.Failed(it) }
+        val serviceId = sent.transactionStatusRequest?.messageReference?.serviceID ?: sent.messageHeader.serviceID
+        synchronized(decoded) {
+            decoded[returned.url] = response
+            recovered.getOrPut(serviceId) { mutableSetOf() }.add(returned.url)
         }
         return Delivery.Answered(response)
     }
 
-    /** The late answer to the transaction [request] asks about, as a status response that repeats it; null without one. */
-    private fun repeat(request: TransactionStatusRequest): TerminalAPIResponse? {
-        val late = CompletedTransactions()
-        exchange
-            .lateReplies()
-            .mapNotNull { url ->
-                synchronized(decoded) {
-                    if (decoded.containsKey(url)) {
-                        decoded[url]
-                    } else {
-                        val response = PaymentsAppLinks.answer(url)["response"]?.let(crypto::decrypt)
-                        decoded[url] = response
-                        response
-                    }
-                }
-            }.mapNotNull { it.saleToPOIResponse }
-            .forEach { late.remember(it.messageHeader?.serviceID.orEmpty(), it.paymentResponse, it.reversalResponse) }
-        val repeated = late.repeat(request) ?: return null
-        return TerminalAPIResponse().apply {
-            saleToPOIResponse =
-                SaleToPOIResponse().apply {
-                    messageHeader = MessageHeader()
-                    transactionStatusResponse = repeated
-                }
+    private fun validate(
+        response: SaleToPOIResponse?,
+        request: SaleToPOIRequest,
+    ): Fault? {
+        if (!matches(response?.messageHeader, request.messageHeader)) return Fault.UnreadableReply()
+        val status = request.transactionStatusRequest ?: return null
+        val result = response?.transactionStatusResponse ?: return Fault.UnreadableReply()
+        return when {
+            result.messageReference != null && !sameReference(result.messageReference, status.messageReference) -> Fault.UnreadableReply()
+            result.response?.errorCondition == ErrorConditionType.NOT_FOUND -> Fault.NoLateReply
+            result.response?.result == ResultType.SUCCESS && !repeats(result, status, request.messageHeader) -> Fault.UnreadableReply()
+            else -> null
         }
     }
 
-    private companion object {
-        /** The path of the return URL the Payments app answers transactions on. */
-        const val NEXO = "nexo"
+    /**
+     * The late answer to the transaction [request] asks about, as a status response that repeats it; null without one.
+     * The validated answer is remembered in [CompletedTransactions], which builds the status response as for the simulator.
+     */
+    private fun repeat(request: TerminalAPIRequest): TerminalAPIResponse? {
+        val sent = request.saleToPOIRequest
+        val status = sent.transactionStatusRequest
+        val serviceId = status.messageReference?.serviceID ?: return null
+        val url =
+            exchange.lateReplies().toList().firstOrNull { url ->
+                val body =
+                    decodeLate(url)?.saleToPOIResponse?.let {
+                        if (discardStatus(url, it, sent)) null else lateBody(it, sent)
+                    }
+                body?.let {
+                    completed.remember(
+                        serviceId,
+                        it.paymentResponse,
+                        it.reversalResponse,
+                        storedValue = it.storedValueResponse,
+                    )
+                } !=
+                    null
+            } ?: return null
+        synchronized(decoded) { recovered.getOrPut(serviceId) { mutableSetOf() }.add(url) }
+        return completed.repeat(status)?.let { statusAnswer(sent.messageHeader, it) }
+    }
+
+    private fun decodeLate(url: String): TerminalAPIResponse? =
+        synchronized(decoded) {
+            if (!decoded.containsKey(url)) decoded[url] = PaymentsAppLinks.answer(url)["response"]?.let(crypto::decrypt)
+            decoded[url]
+        }
+
+    /** Drops only authenticated, addressed status-only uncertainty, never an original or repeated financial answer. */
+    private fun discardStatus(
+        url: String,
+        received: SaleToPOIResponse,
+        request: SaleToPOIRequest,
+    ): Boolean {
+        val status = request.transactionStatusRequest ?: return false
+        val result = received.transactionStatusResponse ?: return false
+        val condition = result.response?.errorCondition
+        if (!sameStatusContext(received.messageHeader, request.messageHeader)) return false
+        if (result.messageReference != null && !sameReference(result.messageReference, status.messageReference)) return false
+        if (result.response?.result != ResultType.FAILURE ||
+            (condition != ErrorConditionType.NOT_FOUND && condition != ErrorConditionType.IN_PROGRESS)
+        ) {
+            return false
+        }
+        return discardStatusOnly(url, received, request)
+    }
+
+    /** Discards status-only uncertainty, retaining financial evidence until its exact original is stored. */
+    private fun discardStatusOnly(
+        url: String,
+        received: SaleToPOIResponse,
+        request: SaleToPOIRequest,
+    ): Boolean {
+        val status = request.transactionStatusRequest ?: return false
+        val result = received.transactionStatusResponse ?: return false
+        val financial =
+            received.paymentResponse != null || received.reversalResponse != null || received.storedValueResponse != null
+        if (result.repeatedMessageResponse != null || financial) {
+            // Only a repeated body tied to this exact original can be released when that original is stored.
+            if (!financial && repeatsRequest(result, status, request.messageHeader)) {
+                synchronized(decoded) {
+                    status.messageReference?.serviceID?.let { recovered.getOrPut(it) { mutableSetOf() }.add(url) }
+                }
+            }
+            return false
+        }
+        synchronized(decoded) {
+            exchange.forgetLateReplies(setOf(url))
+            decoded.remove(url)
+        }
+        return true
+    }
+
+    /**
+     * The validated body of [received], a late answer to the transaction [request] asks about: the original response
+     * itself, or an earlier status answer that repeats it; null for anything else.
+     */
+    private fun lateBody(
+        received: SaleToPOIResponse,
+        request: SaleToPOIRequest,
+    ): RepeatedResponseMessageBody? {
+        val status = request.transactionStatusRequest
+        val reference = status.messageReference ?: return null
+        val body =
+            if (matches(received.messageHeader, originalHeader(reference, request.messageHeader))) {
+                RepeatedResponseMessageBody().apply {
+                    paymentResponse = received.paymentResponse
+                    reversalResponse = received.reversalResponse
+                }
+            } else {
+                received.transactionStatusResponse
+                    ?.takeIf {
+                        sameStatusContext(received.messageHeader, request.messageHeader) &&
+                            repeats(it, status, request.messageHeader)
+                    }?.repeatedMessageResponse
+                    ?.repeatedResponseMessageBody
+            }
+        return body?.takeIf { bodyMatches(it, reference.messageCategory) }
+    }
+
+    private fun sameStatusContext(
+        answer: MessageHeader?,
+        request: MessageHeader,
+    ): Boolean =
+        answer != null && answer.saleID == request.saleID && answer.poiid == request.poiid &&
+            answer.messageCategory == MessageCategoryType.TRANSACTION_STATUS && answer.messageClass == request.messageClass &&
+            answer.messageType == MessageType.RESPONSE
+
+    private fun originalHeader(
+        reference: MessageReference,
+        header: MessageHeader,
+    ) = MessageHeader().apply {
+        saleID = reference.saleID
+        serviceID = reference.serviceID
+        poiid = header.poiid
+        messageCategory = reference.messageCategory
+        messageClass = header.messageClass
+    }
+
+    private fun statusAnswer(
+        header: MessageHeader,
+        status: TransactionStatusResponse,
+    ) = TerminalAPIResponse().apply {
+        saleToPOIResponse =
+            SaleToPOIResponse().apply {
+                messageHeader =
+                    MessageHeader().apply {
+                        saleID = header.saleID
+                        serviceID = header.serviceID
+                        poiid = header.poiid
+                        messageCategory = header.messageCategory
+                        messageClass = header.messageClass
+                        messageType = MessageType.RESPONSE
+                    }
+                transactionStatusResponse = status
+            }
+    }
+
+    private fun repeats(
+        response: TransactionStatusResponse,
+        request: TransactionStatusRequest,
+        header: MessageHeader,
+    ): Boolean = response.response?.result == ResultType.SUCCESS && repeatsRequest(response, request, header)
+
+    /** Whether the reference, repeated header and body all identify the requested original, regardless of status outcome. */
+    private fun repeatsRequest(
+        response: TransactionStatusResponse,
+        request: TransactionStatusRequest,
+        header: MessageHeader,
+    ): Boolean {
+        if (!sameReference(response.messageReference, request.messageReference)) return false
+        val repeated = response.repeatedMessageResponse ?: return false
+        val original = originalHeader(request.messageReference, header)
+        return (repeated.messageHeader == null || matches(repeated.messageHeader, original)) &&
+            bodyMatches(repeated.repeatedResponseMessageBody, request.messageReference.messageCategory)
+    }
+
+    private fun bodyMatches(
+        body: RepeatedResponseMessageBody?,
+        category: MessageCategoryType?,
+    ): Boolean =
+        body != null && (
+            (category == MessageCategoryType.PAYMENT && body.paymentResponse != null && body.reversalResponse == null) ||
+                (category == MessageCategoryType.REVERSAL && body.reversalResponse != null && body.paymentResponse == null)
+        )
+
+    private fun sameReference(
+        answer: MessageReference?,
+        request: MessageReference?,
+    ): Boolean =
+        answer != null && request != null && answer.saleID == request.saleID && answer.serviceID == request.serviceID &&
+            answer.messageCategory == request.messageCategory
+
+    private fun matches(
+        answer: MessageHeader?,
+        request: MessageHeader,
+    ): Boolean =
+        answer != null && answer.serviceID == request.serviceID && answer.saleID == request.saleID &&
+            answer.poiid == request.poiid && answer.messageCategory == request.messageCategory &&
+            answer.messageClass == request.messageClass && answer.messageType == MessageType.RESPONSE
+
+    /** Version eligibility does not establish account or beta enablement. */
+    companion object {
+        private const val NEXO = "nexo"
+        private const val STATUS_MINOR_VERSION = 8
+
+        /** Whether [version] may support status; unreadable versions remain unverified and can be queried safely. */
+        fun supportsStatus(version: String?): Boolean {
+            val parts = version?.let { Regex("^(\\d+)\\.(\\d+)\\.(\\d+)$").matchEntire(it) }?.groupValues ?: return true
+            val major = parts[1].toIntOrNull() ?: return true
+            val minor = parts[2].toIntOrNull() ?: return true
+            return major > 1 || (major == 1 && minor >= STATUS_MINOR_VERSION)
+        }
     }
 }

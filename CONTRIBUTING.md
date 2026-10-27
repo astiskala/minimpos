@@ -171,6 +171,8 @@ standalone release builds retain release lint by default. R8, signing and packag
 
 There is no real Adyen test account in CI. Still needing real-device/API verification: cloud offline/busy event
 notifications; Payments app dual-install TEST/LIVE routing and separate boarding on physical phones;
+Payments app v1.8.0+ transaction-status beta enablement, missing-callback/process-death recovery, InProgress and
+NotFound behavior on physical phones (automated encrypted App Link/simulator tests do not establish enablement);
 Payments app return-URL encoding, error answers and size limits, boarding-credential `/me` permissions
 and client-key propagation on physical phones; Management v3 Payments app role assignment, credential creation,
 interrupted-creation listing/API-key recovery and propagation before boarding; TEST payment-link paid/PATCH answers
@@ -178,6 +180,8 @@ and line-item validation; whether a shopper reference without `recurringProcessi
 the role name `GET /me` reports for `Merchant Recurring role`;
 `GET /storedPaymentMethods` listing terminal-saved tokens, shopper-not-present (`ContAuth`) token payments for each
 recurring processing model, and Checkout refunds (`/payments/{pspReference}/refunds`) of those payments;
+`API tokenise payment details` role reporting, scoped token DELETE HTTP 204/refusals, token visibility after deletion
+and timeout reconciliation through fresh listings;
 Management single-store/merchant receipt details, read permissions and missing-store answers; terminal discovery,
 reported network addresses and shared-key settings (including inherited settings, sensitive-field permissions,
 targeted POIID search, full-object PATCH preservation and propagation of newly created keys to terminals); POS-wallet
@@ -186,6 +190,25 @@ model reporting, single-scan/end behavior on local/network/cloud terminals, and 
 merchant scanning is intentionally best-effort: Adyen's published wallet guide excludes it, and simulator success does
 not establish support. Also needing real-terminal verification: scoped Management `terminalSettings` updates for
 gratuities, DCC, MOTO and offline limits; `AskGratuity` with `SaleToPOIData` `TipOptions`/`AmountToTipOn`;
+audio-guided `EnableAccessibilityMode` payments on AMS1/S1F2/S1F2L/S1E2L/S1U2 (1.117+) and M450/P630/SFO1 (1.124+),
+Support enablement, terminal language/card eligibility, signature refusals, long PIN entry, cancellation and status recovery;
+configuration-based surcharge `TotalFeesAmount`/`AuthorizedAmount` with tips, partial approvals and referenced refunds,
+receipt disclosure and DCC/adjustment restrictions;
+split tenders with operator amounts, equal shares and item units, including issuer partial approvals of a share,
+`SaleReferenceID` linking in the Customer Area, terminal totals beside locally recorded cash, and multi-leg referenced
+refunds of split sales;
+gift cards for Givex, SVS, Fiserv ValueLink, Intersolve card types and local gift cards: provider onboarding, swiped,
+keyed and scanned entry (including the scanned expiry format), `StoredValue` activation/load/`Reverse`/`Unload`
+answers and balances, `BalanceInquiry`, redemption partial approvals (and whether `TotalFeesAmount` is reported),
+`redemptionType=cashback` cash-out, `PaymentType=Refund` gift-card refunds, referenced refunds of redemptions,
+`TransactionStatus` recovery with message category `StoredValue`, the most-recent-load/24-hour undo rule, and whether
+terminal totals include stored-value management;
+Mexican debit/credit routing and installment issuer agreements, counts, refusal/partial answers, receipt `productType`,
+status recovery and referenced full/partial refunds on local and cloud terminals;
+meal vouchers: Brazilian PAT `selectedAccountType` `MEAL_VOUCHER` requests and the Support-enabled terminal selection
+screen, returned `fundingSource`/`paymentMethodVariant`, short-balance refusals and referenced refunds; European
+Mastercard/Visa voucher recognition, partial approvals and refunds; Titres-restaurant (Conecs) routing, the EUR 25 daily
+limit and Sunday/public-holiday declines; issuer MID/MCC registration declines and status recovery of voucher payments;
 `GetTotalsRequest` and `ReconciliationRequest` (`SaleReconciliation`); chained `AdminRequest` waiting-screen sessions with
 `DisplayRequest` and `InputRequest`; `AllowPartialAuthorisation` (`Result=Partial`); `AskGiving` two-step
 `TransactionStatus` (`SaleID=AdyenGiving`) lookups; `MOTO` and `ForceEntryMode=Keyed` (MKE); and offline EMV /
@@ -197,6 +220,30 @@ check token-created and no-token results, and refund the original confirmed paym
 accepted code formats before LIVE use; do not execute real calls without separate explicit approval.
 Do not describe simulator coverage as proof of these behaviors. Mobile SDK card readers are intentionally absent:
 they require a backend for certificates, a private Maven repository, PCI MPoC and six-monthly updates.
+
+Cashback/cash-out verification remains open: Support enablement for each store/card program, Australian eftpos standalone
+cash-out, girocard and European Visa/Mastercard purchase-linked cashback, issuer limits, purchase-only partial answers,
+unknown-result recovery, receipts, terminal totals and purchase-only referenced refunds. Local/cloud simulator tests do
+not establish real support. No real calls were made for this implementation.
+
+Receipt-logo printing remains unverified on real terminals, including V400m and S1F2: XHTML image support, alignment
+with the following text request, and the terminal’s refusal answer when an image is unsupported. Simulator and fake
+coverage do not establish these behaviors.
+
+Unreferenced refund verification remains open: Adyen enablement per store or terminal, the Customer Area limit and
+merchant-category exclusions, the excluded-country error, `PaymentType=Refund` answers on local and cloud terminals
+(`transactionType`, `posAuthAmountValue`, synchronous `acquirerResponseCode` per scheme and country), `Payment`-category
+status recovery, receipts with `transaction_type_refund`, terminal totals, Payments app support, and `/voidPendingRefund`
+with a Support-configured refund delay, its credential role and `VOID_PENDING_REFUND` outcome. No real calls were made.
+
+Idempotency verification remains open for Classic `/voidPendingRefund` and Management/Payments app credential creation,
+key generation, boarding-token creation and revocation. Adyen's [general idempotency guidance](https://docs.adyen.com/development-resources/api-idempotency/)
+describes POST requests, but these endpoint references do not explicitly document `Idempotency-Key` support.
+Confirm endpoint-specific support and retention with Adyen before relying on it; a fake server receiving a header does
+not prove deduplication. Keep the existing provisioning journal and lookup recovery. `/voidPendingRefund` already sends
+a stable key, but its response-header echo and duplicate-request behavior still need verification in TEST.
+Automated recovery tests recreate operation owners over stored records; they do not simulate Android process death or
+establish Adyen's retention and deduplication behavior.
 
 ## Make changes that fit
 
@@ -254,7 +301,7 @@ All Adyen integrations live in `:adyen` and use the pinned Adyen Java library's 
 
 | API | Model coverage |
 | --- | --- |
-| Checkout | Payment-method verification, captures, amount updates, refunds, payment links, stored-card listing and charges, plus errors. |
+| Checkout | Payment-method verification, captures, amount updates, refunds, payment links, stored-card listing and charges, plus errors; token deletion has no body and returns HTTP 204. |
 | Terminal | Payments, reversals, status, abort, diagnosis, printing, totals, reconciliation, admin, display and input; encrypted local and Payments app envelopes. |
 | Cloud device | Connected-device listing and errors; forwarded Terminal API messages use the same Terminal models. |
 | Management | Credential introspection, terminals, shared keys, capability settings, merchants, stores, payment methods and errors. |
@@ -265,7 +312,8 @@ Gson builder. HTTP paths, query parameters, authentication, idempotency and time
 not SDK service clients, except the local Terminal service with our Android-compatible HTTP client installed.
 
 Not every wire field has an SDK type. `AdminRequest.ServiceIdentification` (shopper sessions and barcode scans) and
-`SaleData.SaleToPOIData` (tip options) contain Base64 JSON in SDK string fields. `AdditionalData`, `AdditionalResponse`,
+`SaleData.SaleToPOIData` (tip options and audio-guidance operations) contain Base64 JSON in SDK string
+fields. `AdditionalData`, `AdditionalResponse`,
 metadata and string-valued tender options remain extensible. Payments app App Links and unstructured short errors are
 also hand-mapped. Raw response reads are limited to these extensions, unmodeled amount-update `refusalReason` and
 unknown-enum diagnostics; modeled saved-card refusal reasons use `PaymentResponse.refusalReason`.

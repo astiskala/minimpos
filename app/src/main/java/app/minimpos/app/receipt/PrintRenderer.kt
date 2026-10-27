@@ -1,6 +1,7 @@
 package app.minimpos.app.receipt
 
 import app.minimpos.app.data.db.Failure
+import app.minimpos.core.logo.MonoPng
 import app.minimpos.core.receipt.Align
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.receipt.ReceiptElement
@@ -11,7 +12,7 @@ import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.PrintLine
 import app.minimpos.terminal.client.PrintStyle
 
-/** Maps receipt documents to print jobs: one text job per block ([ReceiptDocument.segments]), one job per QR code. */
+/** Maps receipt documents to print jobs: one text job per block ([ReceiptDocument.segments]), one job per QR code or logo image. */
 object PrintRenderer {
     /** The print jobs for [document], in order; a divider is [dividerWidth] dashes, centred. */
     fun jobs(
@@ -21,6 +22,7 @@ object PrintRenderer {
         document.segments().map { segment ->
             when (segment) {
                 is ReceiptSegment.TextBlock -> PrintJob.Text(segment.elements.mapNotNull { line(it, dividerWidth) })
+                is ReceiptSegment.Image -> PrintJob.Image(MonoPng.encode(segment.bitmap))
                 is ReceiptSegment.QrCode -> PrintJob.QrCode(segment.content)
             }
         }
@@ -35,7 +37,7 @@ object PrintRenderer {
             ReceiptElement.Divider -> PrintLine.Text("-".repeat(dividerWidth), PrintAlign.CENTER)
             ReceiptElement.Blank -> PrintLine.Text("")
             is ReceiptElement.Link -> PrintLine.Text(element.url, PrintAlign.CENTER)
-            is ReceiptElement.Qr -> null
+            is ReceiptElement.Qr, is ReceiptElement.Image -> null
         }
 
     private fun style(style: TextStyle): PrintStyle =

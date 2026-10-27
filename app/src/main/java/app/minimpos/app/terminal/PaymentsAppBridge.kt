@@ -43,6 +43,7 @@ class PaymentsAppBridge : AppLinkExchange {
 
     private class Pending(
         val id: Long,
+        val path: String,
         val reply: CompletableDeferred<AppLinkAnswer> = CompletableDeferred(),
     ) {
         @Volatile var opened = false
@@ -57,7 +58,7 @@ class PaymentsAppBridge : AppLinkExchange {
         timeout: Duration,
     ): AppLinkAnswer =
         mutex.withLock {
-            val waiting = Pending(++nextId)
+            val waiting = Pending(++nextId, link.substringBefore('?').substringAfterLast('/'))
             pending = waiting
             launches.value = Launch(waiting.id, link, packageName)
             try {
@@ -87,11 +88,16 @@ class PaymentsAppBridge : AppLinkExchange {
 
     /**
      * The activity was started with [url]. A return URL of the Payments app answers the waiting exchange, or is kept in
-     * [lateReplies] when none waits (the app was restarted meanwhile). Returns whether [url] was a return URL.
+     * [lateReplies]. Financial callbacks are retained even while an exchange waits: a late original response can race
+     * a status response. Only durable settlement releases them. Returns whether [url] was a return URL.
      */
     fun deliver(url: String): Boolean {
         if (!url.startsWith("$RETURN_URL/")) return false
-        if (pending?.reply?.complete(AppLinkAnswer.Returned(url)) != true) late += url
+        val path = url.substringBefore('?')
+        val financial = path == "$RETURN_URL/nexo"
+        if (financial) late += url
+        val waiting = pending?.takeIf { path == "$RETURN_URL/${it.path}" }
+        if (waiting?.reply?.complete(AppLinkAnswer.Returned(url)) != true && !financial) late += url
         return true
     }
 

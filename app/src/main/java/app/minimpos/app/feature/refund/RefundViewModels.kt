@@ -12,15 +12,22 @@ import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.canCheckAgain
+import app.minimpos.app.history.cancellable
 import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.ReceiptDelivery
+import app.minimpos.app.payment.RefundCancelResult
+import app.minimpos.app.payment.RefundCancellations
+import app.minimpos.app.payment.RefundStarted
 import app.minimpos.app.payment.StoredPaymentActions
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.money.AmountEntry
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -45,6 +52,8 @@ enum class RefundOption {
  * @property selection Units to refund per sale line ID, for [RefundOption.ITEMS].
  * @property amount The amount typed in, for [RefundOption.AMOUNT].
  * @property remoteReviewed Explicit staff review of an independently verified foreign receipt.
+ * @property adjusted Staff changes to the proposed amount per original tender ID; null follows the proposal.
+ * @property editingLeg The original tender whose amount the keypad edits; null while none is.
  */
 data class RefundUiState(
     val load: Refundability? = null,
@@ -53,6 +62,8 @@ data class RefundUiState(
     val amount: AmountEntry = AmountEntry(),
     /** Staff independently checked the payment, remaining amount and destination when no local sale is known. */
     val remoteReviewed: Boolean = false,
+    val adjusted: Map<String, Long>? = null,
+    val editingLeg: String? = null,
 ) {
     /** The payment, when it can be refunded. */
     val original: RefundablePayment? get() = (load as? Refundability.Refundable)?.payment
@@ -69,8 +80,32 @@ data class RefundUiState(
     /** The amount the chosen [option] refunds, in minor units; 0 before the payment is known. */
     val refundMinor: Long get() = original?.amountFor(choice) ?: 0
 
-    /** Whether [refundMinor] can be refunded: more than 0 and no more than what is left. */
-    val amountValid: Boolean get() = original?.isValid(choice) == true && (original?.local != null || remoteReviewed)
+    /** What each original tender returns: staff adjustments, else the automatic proposal; empty without tenders. */
+    val allocation: Map<String, Long> get() = adjusted ?: original?.proposal(choice).orEmpty()
+
+    /** Whether any card tender is refunded, including a foreign receipt with no stored legs. */
+    val returnsCard: Boolean get() =
+        original?.let { payment ->
+            payment.legs.isEmpty() || payment.legs.any { !it.cash && (allocation[it.tender?.id] ?: 0) > 0 }
+        } == true
+
+    /** Whether any cash is handed back, which follows the cash-refund Manager permission. */
+    val returnsCash: Boolean get() = original?.legs.orEmpty().any { it.cash && (allocation[it.tender?.id] ?: 0) > 0 }
+
+    /** Manager permissions for the currently allocated card and cash return legs. */
+    val managerActions: Set<ManagerAction> get() =
+        buildSet {
+            if (returnsCard) add(ManagerAction.REFERENCED_REFUND)
+            if (returnsCash) add(ManagerAction.CASH_REFUND)
+        }
+
+    /** Whether [refundMinor] can be refunded: more than 0, no more than what is left, and fully allocated to tenders. */
+    val amountValid: Boolean
+        get() {
+            val payment = original ?: return false
+            val allocated = payment.legs.isEmpty() || payment.allocationValid(choice, allocation)
+            return payment.isValid(choice) && allocated && (payment.local != null || remoteReviewed)
+        }
 }
 
 /**
@@ -102,8 +137,26 @@ class RefundViewModel(
     /** Records explicit staff review of a receipt without local payment context. */
     fun reviewRemote(reviewed: Boolean) = state.update { it.copy(remoteReviewed = reviewed) }
 
+    /** Opens the keypad on original tender [id]'s amount, starting from what it returns now; null closes it. */
+    fun editLeg(id: String?) =
+        state.update { current ->
+            current.copy(editingLeg = id, adjusted = if (id == null) current.adjusted else current.allocation)
+        }
+
+    /** Changes the amount the edited tender returns with a keypad step; never above what that tender can return. */
+    fun updateLeg(transform: (AmountEntry) -> AmountEntry) =
+        state.update { current ->
+            val id = current.editingLeg ?: return@update current
+            val leg = current.original?.legs?.firstOrNull { it.tender?.id == id } ?: return@update current
+            val entry = transform(AmountEntry(current.allocation[id] ?: 0))
+            current.copy(adjusted = current.allocation + (id to entry.minor.coerceIn(0, leg.remainingMinor)))
+        }
+
+    /** Returns to the automatic proposal for the chosen refund. */
+    fun resetAllocation() = state.update { it.copy(adjusted = null, editingLeg = null) }
+
     /** Chooses what to refund. */
-    fun selectOption(option: RefundOption) = state.update { it.copy(option = option) }
+    fun selectOption(option: RefundOption) = state.update { it.copy(option = option, adjusted = null, editingLeg = null) }
 
     /** Sets the units of line [lineId] to refund, capped at what is left of it; ignored for an unknown line. */
     fun setQuantity(
@@ -111,20 +164,22 @@ class RefundViewModel(
         quantity: Int,
     ) {
         val capped = state.value.original?.cappedQuantity(lineId, quantity) ?: return
-        state.update { it.copy(selection = it.selection + (lineId to capped)) }
+        state.update { it.copy(selection = it.selection + (lineId to capped), adjusted = null, editingLeg = null) }
     }
 
     /** Updates the typed amount with a keypad step such as [AmountEntry.append]. */
-    fun updateAmount(transform: (AmountEntry) -> AmountEntry) = state.update { it.copy(amount = transform(it.amount)) }
+    fun updateAmount(transform: (AmountEntry) -> AmountEntry) =
+        state.update { it.copy(amount = transform(it.amount), adjusted = null, editingLeg = null) }
 
     /**
-     * Starts the refund; returns false when the amount is invalid or a refund is already running. Its merchant
-     * reference is generated with "R" after the configured prefix.
+     * Starts the refund as allocated to its original tenders; [RefundStarted.NONE] when the amount or allocation is
+     * invalid or a refund is already running. Its merchant references are generated with "R" after the configured prefix.
      */
-    fun refund(): Boolean {
+    fun refund(): RefundStarted {
         val current = state.value
-        if (!current.amountValid) return false
-        return current.original?.let { operations.refund(it, current.choice) } == true
+        if (!current.amountValid) return RefundStarted.NONE
+        val payment = current.original ?: return RefundStarted.NONE
+        return operations.refund(payment, current.choice, current.allocation)
     }
 }
 
@@ -133,11 +188,20 @@ class RefundViewModel(
  *
  * @property refund The refund, or null until loaded.
  * @property transaction The receipt, printing and emailing it, and re-checking an unknown outcome.
+ * @property delayed Whether the merchant confirmed Adyen Support configured a refund delay for unreferenced refunds.
+ * @property cancel What the last cancellation request on this screen found; null before one.
+ * @property cancelling Whether a cancellation request is being sent.
  */
 data class RefundResultUiState(
     val refund: RefundEntity? = null,
     val transaction: TransactionActionsState = TransactionActionsState(),
+    val delayed: Boolean = false,
+    val cancel: RefundCancelResult? = null,
+    val cancelling: Boolean = false,
 ) {
+    /** Whether Adyen can be asked to cancel this delayed unreferenced refund, or to receive an unresolved request again. */
+    val canCancel: Boolean get() = refund?.cancellable(delayed) == true && !cancelling
+
     /** Whether the terminal accepted the refund (Adyen confirms it later). */
     val accepted: Boolean get() = refund?.status == RefundStatus.REQUESTED
 
@@ -158,21 +222,44 @@ data class RefundResultUiState(
  * @param receipts Prints and emails its receipt.
  * @param operations Asks again about an unknown outcome the way the refund was sent, and leaves the result.
  * @param justMade False when opened from history: leaving acknowledges nothing.
+ * @param cancellations Asks Adyen to cancel a delayed unreferenced refund; null offers none.
+ * @param delayed Whether the merchant confirmed Adyen Support configured a refund delay.
  */
 class RefundResultViewModel(
-    refundId: String,
+    private val refundId: String,
     refunds: RefundRepository,
     receipts: ReceiptDelivery,
     private val operations: FinancialOperations,
     private val justMade: Boolean = true,
+    private val cancellations: RefundCancellations? = null,
+    delayed: Flow<Boolean> = flowOf(false),
 ) : ViewModel() {
     /** The receipt, printing and emailing it, and re-checking an unknown outcome. */
     val transaction = TransactionActions.forRefund(viewModelScope, refundId, receipts, operations)
 
+    private val cancelling = MutableStateFlow<Pair<Boolean, RefundCancelResult?>>(false to null)
+
     /** The screen state, updated whenever the refund, settings, printer or an action changes. */
     val state: StateFlow<RefundResultUiState> =
-        combine(refunds.observe(refundId), transaction.state) { refund, actions -> RefundResultUiState(refund, actions) }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, RefundResultUiState())
+        combine(refunds.observe(refundId), transaction.state, delayed, cancelling) { refund, actions, delay, cancel ->
+            RefundResultUiState(refund, actions, delay, cancel.second, cancel.first)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, RefundResultUiState())
+
+    /**
+     * Asks Adyen to cancel this delayed unreferenced refund, or sends an unresolved request again with its identity;
+     * once sent, it finishes even when the screen closes. Ignored while one is being sent.
+     */
+    fun cancelRefund() {
+        val owner = cancellations ?: return
+        if (cancelling.value.first) return
+        cancelling.value = true to null
+        viewModelScope.launch { cancelling.value = false to owner.cancel(refundId) }
+    }
+
+    /** Dismisses the last cancellation result. */
+    fun dismissCancel() {
+        cancelling.update { it.copy(second = null) }
+    }
 
     /** Leaves the result, so the next refund can start. */
     fun finish() {

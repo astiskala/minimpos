@@ -56,6 +56,8 @@ import app.minimpos.app.qr.QrShapes
 import app.minimpos.app.share.ReceiptImage
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.core.logo.LogoFormatException
+import app.minimpos.core.logo.MonoPng
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.receipt.Align
@@ -286,7 +288,7 @@ fun ReceiptPreview(
                             is ReceiptElement.Row -> listOf(element.left, element.right)
                             is ReceiptElement.Link -> listOf(element.url)
                             is ReceiptElement.Qr -> listOfNotNull(element.caption)
-                            ReceiptElement.Blank, ReceiptElement.Divider -> emptyList()
+                            ReceiptElement.Blank, ReceiptElement.Divider, is ReceiptElement.Image -> emptyList()
                         }.map(::AnnotatedString)
                     }
                 ReceiptImage.measure(document) to text
@@ -336,6 +338,14 @@ fun PrintJobsPreview(
             ReceiptDocument(
                 jobs.flatMap { job ->
                     when (job) {
+                        is PrintJob.Image -> {
+                            try {
+                                listOf(ReceiptElement.Image(MonoPng.decode(job.png)))
+                            } catch (ignored: LogoFormatException) {
+                                emptyList()
+                            }
+                        }
+
                         is PrintJob.QrCode -> {
                             listOf(ReceiptElement.Qr(job.content))
                         }

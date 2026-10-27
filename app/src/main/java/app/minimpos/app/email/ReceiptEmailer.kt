@@ -8,6 +8,7 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.receipt.ActionResult
 import app.minimpos.app.receipt.ReceiptKind
+import app.minimpos.core.logo.MonoPng
 import app.minimpos.core.receipt.HtmlReceiptRenderer
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.receipt.ReceiptDocument
@@ -28,11 +29,13 @@ import javax.mail.MessagingException
  * @property testBody Body of the test email.
  * @property preAuthIntro Paragraph above a pre-authorisation receipt.
  * @property cancellationIntro Paragraph above the receipt of a cancelled payment that only held its amount.
+ * @property giftCardIntro Paragraph above a stored-value (gift-card) receipt.
  * @property linkSubject Subject of a payment link email, with the `{business}` and `{reference}` placeholders of
  *   [app.minimpos.app.data.settings.EmailSettings.subject].
  * @property linkIntro Paragraph above the unpaid receipt in a payment link email.
  * @property demoSubject Subject of an offline demo link or its receipt.
  * @property simulationNote Intro identifying a simulated link as non-payable.
+ * @property cashoutIntro Paragraph above a cash-out receipt, without describing a merchandise purchase.
  */
 data class EmailTexts(
     val appName: String,
@@ -42,14 +45,16 @@ data class EmailTexts(
     val testBody: String,
     val preAuthIntro: String,
     val cancellationIntro: String,
+    val giftCardIntro: String = "Here is your gift card receipt.",
     val linkSubject: String = "Payment request from {business}",
     val linkIntro: String = "Pay securely online with the link or the QR code below.",
     val demoSubject: String = "Demo link",
     val simulationNote: String = "Simulation only. No money moved.",
+    val cashoutIntro: String = "Here is your cashout receipt.",
 )
 
 /**
- * Emails receipts as HTML with a plain-text alternative; the receipt's QR codes are attached as inline PNG images. The
+ * Emails receipts as HTML with a plain-text alternative; the receipt's logo and QR codes are attached as inline PNG images. The
  * SMTP password is read from [SecretStore] for each email. Missing settings, invalid addresses and delivery errors are
  * returned as [ActionResult.Failed] with an [EmailFault] (and the mail server's reply, verbatim).
  */
@@ -81,12 +86,14 @@ class ReceiptEmailer(
         val words = texts
         val envelope =
             when (kind) {
+                ReceiptKind.CASHOUT -> Envelope(words.cashoutIntro, current.email.subject)
                 ReceiptKind.SALE -> Envelope(words.intro, current.email.subject)
                 ReceiptKind.PRE_AUTHORISATION -> Envelope(words.preAuthIntro, current.email.subject)
                 ReceiptKind.UNPAID_LINK -> Envelope(words.linkIntro, words.linkSubject)
                 ReceiptKind.DEMO_LINK -> Envelope(words.simulationNote, words.demoSubject)
                 ReceiptKind.REFUND -> Envelope(words.refundIntro, current.email.subject)
                 ReceiptKind.CANCELLATION -> Envelope(words.cancellationIntro, current.email.subject)
+                ReceiptKind.GIFT_CARD -> Envelope(words.giftCardIntro, current.email.subject)
             }
         return send(current, to, document, reference, envelope)
     }
@@ -118,7 +125,9 @@ class ReceiptEmailer(
         val intro = envelope.intro
         val message =
             withContext(cpu) {
-                val images = document.qrCodes.mapIndexed { index, qr -> InlineImage("qr$index", qrPng(qr.content)) }
+                val images =
+                    listOfNotNull(document.logo?.let { InlineImage(HtmlReceiptRenderer.LOGO_CID, MonoPng.encode(it)) }) +
+                        document.qrCodes.mapIndexed { index, qr -> InlineImage("qr$index", qrPng(qr.content)) }
                 EmailMessage(
                     to = to,
                     subject = subject,

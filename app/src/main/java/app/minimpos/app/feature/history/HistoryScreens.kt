@@ -1,5 +1,6 @@
 package app.minimpos.app.feature.history
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
+import app.minimpos.app.data.db.GiftCardStatus
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
@@ -61,20 +63,28 @@ import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.ReceiptActions
 import app.minimpos.app.feature.StatusCheck
-import app.minimpos.app.feature.lock.ManagerApproval
+import app.minimpos.app.feature.cashbackFacts
+import app.minimpos.app.feature.giftcard.giftCardStageLabel
+import app.minimpos.app.feature.giftcard.statusLabel
+import app.minimpos.app.feature.lock.rememberManagerAction
+import app.minimpos.app.feature.mealVoucherFacts
+import app.minimpos.app.feature.mexicanPlan
 import app.minimpos.app.feature.modificationNote
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.refund.RefundResultScreen
 import app.minimpos.app.feature.refund.refundStatusKind
 import app.minimpos.app.feature.refund.refundStatusTitle
+import app.minimpos.app.feature.sale.CashbackHandover
 import app.minimpos.app.feature.sale.EnterTipButton
 import app.minimpos.app.feature.sale.HoldNotes
+import app.minimpos.app.feature.sale.SplitProgress
 import app.minimpos.app.feature.sale.adviceText
 import app.minimpos.app.feature.sale.statusKind
 import app.minimpos.app.feature.sale.statusTitle
 import app.minimpos.app.history.DayTotals
 import app.minimpos.app.history.HistoryDay
 import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.cashout
 import app.minimpos.app.history.decline
 import app.minimpos.app.history.linkUnsettled
 import app.minimpos.app.history.methodCode
@@ -105,6 +115,7 @@ import app.minimpos.app.ui.components.rememberSearchControl
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.payment.PaymentMethods
 import app.minimpos.core.payment.ScanWallet
@@ -187,6 +198,7 @@ private fun ColumnScope.HistoryBody(
                 when (item) {
                     is HistoryItem.Sale -> navigator.openFrom(Route.History, Route.SaleDetail(item.sale.id))
                     is HistoryItem.Refund -> navigator.openFrom(Route.History, Route.RefundDetail(item.refund.id))
+                    is HistoryItem.GiftCard -> navigator.openFrom(Route.History, Route.GiftCardDetail(item.activity.groupId))
                 }
             }
         }
@@ -361,6 +373,8 @@ private fun DaySummary(
         buildList {
             if (day.saleCount > 0) add(stringResource(R.string.history_day_sales, totals(day.salesMinor), day.saleCount))
             if (day.tipsMinor.isNotEmpty()) add(stringResource(R.string.history_day_tips, totals(day.tipsMinor)))
+            if (day.surchargesMinor.isNotEmpty()) add(stringResource(R.string.surcharge_label) + ": " + totals(day.surchargesMinor))
+            if (day.unknownSurchargeCount.isNotEmpty()) add(stringResource(R.string.surcharge_unknown))
             if (day.refundCount > 0) add(stringResource(R.string.history_day_refunds, totals(day.refundsMinor), day.refundCount))
             if (day.preAuthCount > 0) add(stringResource(R.string.history_day_pre_auths, totals(day.preAuthsMinor), day.preAuthCount))
         }
@@ -416,6 +430,17 @@ private fun historyRowText(
                     stringResource(R.string.history_offline_label).takeIf { sale.offlineMode != null },
                     paymentMethodText(sale),
                     sale.customerReference,
+                    androidx.compose.ui.platform.LocalContext.current
+                        .cashbackFacts(sale)
+                        .joinToString(" · ")
+                        .ifBlank { null },
+                    item.tenders
+                        .sortedBy { it.sequence }
+                        .flatMap {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            context.mexicanPlan(it) + context.mealVoucherFacts(it)
+                        }.joinToString(" · ")
+                        .ifBlank { null },
                 ).joinToString(" · "),
                 money[sale.currency].format(sale.amountMinor),
                 statusTitle(sale),
@@ -427,12 +452,33 @@ private fun historyRowText(
             val refund = item.refund
             val amount = money[refund.currency].format(refund.amountMinor)
             HistoryRowText(
-                stringResource(if (refund.cancellation) R.string.history_cancellation else R.string.history_refund),
-                listOf(time, refund.originalReference ?: refund.originalTransactionId).joinToString(" · "),
+                stringResource(refundRowTitle(refund)),
+                "$time · ${refund.originalReference ?: refund.originalTransactionId ?: refund.merchantReference}",
                 // A cancellation releases a hold rather than paying money back.
                 if (refund.cancellation) amount else "−$amount",
                 refundStatusTitle(refund.status, refund.cancellation),
                 refundStatusKind(refund.status),
+            )
+        }
+
+        is HistoryItem.GiftCard -> {
+            val activity = item.activity
+            val main = activity.change ?: activity.funding ?: activity.stages.first()
+            HistoryRowText(
+                stringResource(R.string.history_gift_card, stringResource(giftCardStageLabel(activity.kind))),
+                listOfNotNull(time, activity.cardLastFour?.let { "**** $it" }, main.merchantReference).joinToString(" · "),
+                money[activity.currency].format(main.amountMinor),
+                stringResource(
+                    when {
+                        activity.needsAttention -> R.string.gift_card_needs_attention
+                        else -> statusLabel(main.status)
+                    },
+                ),
+                when {
+                    activity.needsAttention -> StatusKind.WARNING
+                    main.status == GiftCardStatus.SUCCEEDED -> StatusKind.SUCCESS
+                    else -> StatusKind.ERROR
+                },
             )
         }
     }
@@ -462,17 +508,10 @@ fun SaleDetailScreen(
     val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
     var cancelling by rememberSaveable { mutableStateOf(false) }
-    var approval by remember { mutableStateOf<(() -> Unit)?>(null) }
-    if (approval != null) {
-        return ManagerApproval(onApprove = {
-            approval?.invoke()
-            approval = null
-        }, onCancel = { approval = null })
-    }
+    val approve = rememberManagerAction()
     val gate = currentSetupGate()
-    val preAuth = state.record?.sale?.kind == SaleKind.PRE_AUTHORISATION
     MiniScaffold(
-        title = stringResource(if (preAuth) R.string.detail_pre_auth_title else R.string.detail_title),
+        title = stringResource(saleDetailTitle(state.record?.sale)),
         onBack = navigator::back,
         modifier = modifier,
     ) { padding ->
@@ -482,25 +521,35 @@ fun SaleDetailScreen(
         // The outcome and actions come first, as on the result screen, so they show without scrolling past every detail.
         ScreenColumn(padding) {
             SaleDetailOutcome(state, money, container::formatDateTime)
+            CashbackHandover(sale, navigator)
             HoldActions(
                 state = state,
                 onEnterTip = { gate.run { navigator.push(Route.Tip(sale.id)) } },
                 onCapture = { gate.run { navigator.push(Route.Capture(sale.id)) } },
                 onAdjust = { gate.run { navigator.push(Route.Capture(sale.id, adjustOnly = true)) } },
-                onRetryCapture = { gate.run { approval = vm::retryCapture } },
+                onRetryCapture = {
+                    gate.run {
+                        approve(setOf(ManagerAction.CAPTURE), vm::retryCapture)
+                    }
+                },
             )
             SaleDetailActions(
                 state = state,
                 onRecheck = vm.transaction::recheck,
                 onCheckDismiss = vm.transaction::dismissCheckResult,
                 onRefund = { gate.run { navigator.push(Route.Refund(saleId = sale.id)) } },
-                onCancel = { gate.run { approval = { cancelling = true } } },
+                onCancel = {
+                    gate.run {
+                        approve(setOf(ManagerAction.CANCEL_AUTHORISATION)) { cancelling = true }
+                    }
+                },
                 onShowLink = { navigator.push(Route.PaymentLink(sale.id)) },
             )
+            SplitProgress(record, money) { navigator.push(Route.Split(saleId = sale.id)) }
             if (sale.approved) {
                 ReceiptActions(state.transaction, vm.transaction, MerchantCopy.ALWAYS, email = sale.shopperEmail.orEmpty())
             }
-            SaleRefunds(state.refunds, money, preAuth, container::formatDateTime) {
+            SaleRefunds(state.refunds, money, sale.kind == SaleKind.PRE_AUTHORISATION, container::formatDateTime) {
                 navigator.push(Route.RefundDetail(it))
             }
             PaymentDetailsCard(sale)
@@ -767,3 +816,19 @@ fun RefundDetailScreen(
     refundId: String,
     navigator: Navigator,
 ) = RefundResultScreen(refundId, navigator, fromHistory = true)
+
+private fun saleDetailTitle(sale: SaleEntity?): Int =
+    when {
+        sale?.kind == SaleKind.PRE_AUTHORISATION -> R.string.detail_pre_auth_title
+        sale?.cashout == true -> R.string.cashout_title
+        else -> R.string.detail_title
+    }
+
+/** A refund row's title: a cancellation, a refund without receipt, or a referenced refund. */
+@StringRes
+private fun refundRowTitle(refund: RefundEntity): Int =
+    when {
+        refund.cancellation -> R.string.history_cancellation
+        refund.unreferenced -> R.string.unreferenced_title
+        else -> R.string.history_refund
+    }

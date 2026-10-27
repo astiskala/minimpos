@@ -18,6 +18,7 @@ import app.minimpos.terminal.client.RecoveryPolicy
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalIdentity
 import app.minimpos.terminal.paymentsapp.PaymentsAppLinks
+import app.minimpos.terminal.paymentsapp.PaymentsAppTransport
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.SimulatorRemoval
 import app.minimpos.terminal.simulator.TerminalSimulator
@@ -194,16 +195,19 @@ class SimulatedTerminal(
     internal fun forget(
         items: List<HistoryItem>,
         tenders: List<SaleTenderEntity>,
-        chargeKeys: Set<String>,
     ) {
         val sales = items.filterIsInstance<HistoryItem.Sale>().map { it.sale }
         val refunds = items.filterIsInstance<HistoryItem.Refund>().map { it.refund }
+        val stages = items.filterIsInstance<HistoryItem.GiftCard>().flatMap { it.activity.stages }
         simulator.forget(
             SimulatorRemoval(
-                (sales.mapNotNull { it.serviceId } + refunds.mapNotNull { it.serviceId }).toSet(),
-                (sales.mapNotNull { it.poiTransactionId } + tenders.mapNotNull { it.poiTransactionId }).toSet(),
+                (sales.mapNotNull { it.serviceId } + refunds.mapNotNull { it.serviceId } + stages.mapNotNull { it.serviceId }).toSet(),
+                (
+                    sales.mapNotNull { it.poiTransactionId } + tenders.mapNotNull { it.poiTransactionId } +
+                        stages.mapNotNull { it.poiTransactionId }
+                ).toSet(),
                 (sales.mapNotNull { it.pspReference } + tenders.mapNotNull { it.pspReference }).toSet(),
-                chargeKeys,
+                sales.map { it.merchantReference }.toSet(),
             ),
         )
     }
@@ -478,17 +482,27 @@ internal class PaymentsAppDestination(
      * The rules of the Payments app ([TerminalMode.PAYMENTS_APP]): a selected environment, its app installed on a phone,
      * boarding (for the merchant account), whose installation ID is the POIID, then the shared key, in
      * the order Settings › Terminal asks for them. It takes only payments and refunds: no abort (it has its own Cancel),
-     * no diagnosis and no printer, and it cannot be asked for a transaction's status, only answer from a late reply, so a
-     * payment whose answer is missing is checked once, shortly after, before it is reported unknown.
+     * no diagnosis and no printer. Status recovery uses encrypted App Links on versions that may support it, with beta
+     * enablement still unverified. One automatic check avoids repeatedly switching apps; staff can check again later.
      */
     companion object : DestinationRules {
-        private val RECOVERY = RecoveryPolicy(attempts = 1, intervalMillis = 2_000, maxInProgressChecks = 1)
+        private val RECOVERY = RecoveryPolicy(attempts = 1, intervalMillis = 2_000, maxInProgressChecks = 1, reprintReceipts = false)
 
         override val mode: TerminalMode get() = TerminalMode.PAYMENTS_APP
         override val secrets: Set<Secret> get() = setOf(Secret.TERMINAL_PASSPHRASE)
         override val supportsTerminalFeatures: Boolean get() = false
         override val supportsPrinting: Boolean get() = false
-        override val supportsRemoteStatus: Boolean get() = false
+
+        override fun remoteStatus(
+            device: DeviceInfo,
+            environment: TerminalEnvironment?,
+        ): CapabilityStanding =
+            if (PaymentsAppTransport.supportsStatus(environment?.let(device::paymentsAppVersion))) {
+                CapabilityStanding.NEEDS_CONFIGURATION
+            } else {
+                CapabilityStanding.UNSUPPORTED
+            }
+
         override val boardsPhone: Boolean get() = true
 
         override fun selectsEnvironment(onTerminal: Boolean): Boolean = true

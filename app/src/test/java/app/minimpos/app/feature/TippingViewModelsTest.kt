@@ -1,7 +1,9 @@
 package app.minimpos.app.feature
 
+import androidx.lifecycle.ViewModel
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.closeViewModels
 import app.minimpos.app.data.db.CaptureStatus
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
@@ -48,6 +50,7 @@ import org.robolectric.RobolectricTestRunner
 class TippingViewModelsTest {
     private val env = TestEnvironment()
     private val container = env.container
+    private val viewModels = mutableListOf<ViewModel>()
 
     @Before
     fun setUp() {
@@ -57,8 +60,9 @@ class TippingViewModelsTest {
 
     @After
     fun tearDown() {
-        Dispatchers.resetMain()
+        closeViewModels(viewModels)
         env.close()
+        Dispatchers.resetMain()
     }
 
     private fun seed(): Pair<TaxRateEntity, ProductEntity> =
@@ -75,7 +79,7 @@ class TippingViewModelsTest {
             container.settingsState,
             container.terminalStatus.state,
             container::currency,
-        )
+        ).also(viewModels::add)
 
     /** Takes a sale of the dinner for a tip on the receipt and returns its ID. */
     private fun tipSale(): String {
@@ -98,7 +102,7 @@ class TippingViewModelsTest {
             container.receipts,
             container.storedPaymentActions,
             container.operations,
-        )
+        ).also(viewModels::add)
 
     @Test
     fun `checkout offers a tip on the receipt for sales with a printer, from the settings default`() {
@@ -126,7 +130,7 @@ class TippingViewModelsTest {
         assertThat(awaiting.actions).doesNotContain(PaymentAction.REFUND)
         assertThat(awaiting.actions).contains(PaymentAction.CANCEL)
 
-        val tip = TipViewModel(id, container.storedPayments, container.captures)
+        val tip = TipViewModel(id, container.storedPayments, container.captures).also(viewModels::add)
         assertThat(await { tip.state.first { it.sale != null } }.billMinor).isEqualTo(2_000)
         tip.setInput(TipInput.TOTAL)
         listOf(1, 5).forEach { digit -> tip.updateEntry { it.append(digit) } }
@@ -167,7 +171,7 @@ class TippingViewModelsTest {
     @Test
     fun `history lists sales awaiting a tip and totals tips`() {
         val id = tipSale()
-        val history = HistoryViewModel(container.history)
+        val history = HistoryViewModel(container.history).also(viewModels::add)
         history.setFilter(HistoryFilter.AWAITING_TIP)
         assertThat(
             await { history.state.first { it.filter == HistoryFilter.AWAITING_TIP && it.days.isNotEmpty() } }.days.single().items,
@@ -208,7 +212,7 @@ class TippingViewModelsTest {
         val cancellationId = vm.cancel()!!
         await { container.refunds.state.first { it == TransactionState.Finished(cancellationId) } }
         container.refunds.acknowledge()
-        val history = HistoryViewModel(container.history)
+        val history = HistoryViewModel(container.history).also(viewModels::add)
         val day =
             await {
                 history.state.first {
@@ -279,7 +283,7 @@ class TippingViewModelsTest {
         assertThat(shown.actions).contains(PaymentAction.CAPTURE)
         assertThat(shown.actions).contains(PaymentAction.ADJUST)
 
-        val adjust = CaptureViewModel(id, adjustOnly = true, container.storedPayments, container.captures)
+        val adjust = CaptureViewModel(id, adjustOnly = true, container.storedPayments, container.captures).also(viewModels::add)
         // The amount held is proposed; the first key starts a new amount.
         assertThat(await { adjust.state.first { it.sale != null } }.amountMinor).isEqualTo(20_000)
         listOf(2, 5, 0, 0, 0).forEach { digit -> adjust.updateEntry { it.append(digit) } }
@@ -288,7 +292,7 @@ class TippingViewModelsTest {
         await { adjust.state.first { it.submission.done } }
         assertThat(await { container.sales.get(id)!! }.sale.heldMinor).isEqualTo(25_000)
 
-        val capture = CaptureViewModel(id, adjustOnly = false, container.storedPayments, container.captures)
+        val capture = CaptureViewModel(id, adjustOnly = false, container.storedPayments, container.captures).also(viewModels::add)
         assertThat(await { capture.state.first { it.sale?.heldMinor == 25_000L } }.amountMinor).isEqualTo(25_000)
         listOf(2, 4, 0, 0, 0).forEach { digit -> capture.updateEntry { it.append(digit) } }
         await { capture.state.first { it.amountMinor == 24_000L } }
@@ -313,7 +317,7 @@ class TippingViewModelsTest {
                     .copy(pspReference = null),
             )
         }
-        val tip = TipViewModel(id, container.storedPayments, container.captures)
+        val tip = TipViewModel(id, container.storedPayments, container.captures).also(viewModels::add)
         // Without the PSP reference a capture cannot refer to the payment, so the tip cannot be entered.
         assertThat(await { tip.state.first { it.sale != null } }.canSubmit).isFalse()
         await {
@@ -352,7 +356,7 @@ class TippingViewModelsTest {
                 container.history,
                 container.catalog,
                 container::sampleReceipt,
-            )
+            ).also(viewModels::add)
         // The simulator stands in for the API.
         vm.saveAndTest(Secret.ADYEN_API_KEY)
         assertThat(await { vm.actions.first { it.api.done } }.api.outcome).isEqualTo(ActionOutcome.ApiWorks)

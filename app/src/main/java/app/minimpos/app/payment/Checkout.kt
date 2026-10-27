@@ -2,16 +2,26 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.repo.TenderAllocation
+import app.minimpos.app.data.repo.TenderBalance
+import app.minimpos.app.data.repo.acceptsTender
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.terminal.WalletAvailability
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.ids.Ids
 import app.minimpos.core.money.CurrencySpec
+import app.minimpos.core.payment.CardFeature
+import app.minimpos.core.payment.CardFeatures
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.core.tax.TaxMode
+import app.minimpos.core.voucher.MealVoucherScheme
+import app.minimpos.core.voucher.VoucherSelection
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.ShopperSessionFlow
@@ -21,7 +31,9 @@ import app.minimpos.terminal.client.VirtualReceipt
 import app.minimpos.terminal.client.VirtualReceiptLine
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZonedDateTime
 
 /**
  * App-localized text for the optional shopper-facing terminal session.
@@ -64,6 +76,14 @@ data class ShopperPromptTexts(
  * @property shopperTexts App-localized terminal prompts; required when [shopperDisplayAvailable].
  * @property emailOnTerminal Whether the terminal asks for an email when none was entered
  *   ([app.minimpos.app.data.settings.AppSettings.asksEmailOnTerminal]).
+ * @property audioGuidanceMinimumSoftware Minimum supported software for the resolved model; null when unsupported or unknown.
+ * @property audioGuidanceSimulated Whether the choice demonstrates the flow without physical terminal requirements.
+ * @property audioGuidanceTarget Resolved terminal POIID; binds the per-shopper confirmation to that terminal.
+ * @property mexicanRoutingAvailable Verified Mexican store assignment on a supported destination, or explicit offline demo.
+ * @property cashbackAvailable Verified purchase-linked market and explicit merchant configuration.
+ * @property managerConfigured Whether cashback is public or a Manager PIN is configured to approve it.
+ * @property mexicanContext Original context of the verified assignment; null before discovery.
+ * @property mexicanIdentity Setup fingerprint for that assignment; null before discovery.
  */
 data class Checkout(
     val form: CheckoutForm = CheckoutForm(),
@@ -79,6 +99,14 @@ data class Checkout(
     val shopperDisplayAvailable: Boolean = false,
     val shopperTexts: ShopperPromptTexts? = null,
     val emailOnTerminal: Boolean = false,
+    val audioGuidanceMinimumSoftware: String? = null,
+    val audioGuidanceSimulated: Boolean = false,
+    val audioGuidanceTarget: String? = null,
+    val mexicanRoutingAvailable: Boolean = false,
+    val cashbackAvailable: Boolean = false,
+    val managerConfigured: Boolean = false,
+    val mexicanContext: PaymentContext? = null,
+    val mexicanIdentity: String? = null,
 ) {
     /** Whether the amount is only held (a pre-authorisation) rather than charged. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
@@ -193,7 +221,51 @@ data class Checkout(
             }
 
     /** True when the operator selected MOTO or MKE, requiring a fraud/liability warning and Manager PIN approval. */
-    val requiresSpecialEntryApproval: Boolean get() = effectiveCardEntry.needsManagerApproval
+    val requiresSpecialEntryApproval: Boolean get() = effectiveCardEntry != CardEntryOverride.NORMAL
+
+    /** Whether the issuer may approve less: allowed by the settings for an immediate sale without receipt tipping or audio guidance. */
+    private val allowPartial: Boolean
+        get() = payment.allowPartialAuthorisation && !preAuthorisation && !tipOnReceipt && !form.audioGuidance
+
+    /**
+     * The card features this checkout's terminal payment carries as chosen now, which [CardFeatures] relates. Requested
+     * cash counts even while its entry is invalid. Shopper display is left out: audio guidance drops it, and nothing else
+     * offered here conflicts with it.
+     */
+    private val chosenFeatures: Set<CardFeature>
+        get() =
+            buildSet {
+                if (preAuthorisation) add(CardFeature.PRE_AUTHORISATION)
+                if (tipOnReceipt) add(CardFeature.TIP_ON_RECEIPT)
+                if (askGratuity) add(CardFeature.TERMINAL_TIP)
+                if (askGiving) add(CardFeature.GIVING)
+                if (form.audioGuidance) add(CardFeature.AUDIO_GUIDANCE)
+                if (allowPartial) add(CardFeature.PARTIAL_AUTHORISATION)
+                if (tokenize) add(CardFeature.TOKENIZATION)
+                if (requiresSpecialEntryApproval) add(CardFeature.SPECIAL_ENTRY)
+                if (form.mexicanPayment != null) add(CardFeature.MEXICAN_PLAN)
+                if (form.cashBackMinor != 0L) add(CardFeature.CASHBACK)
+            }
+
+    /**
+     * [chosenFeatures] with every explicit choice that is not in effect now (an unavailable option the operator turned
+     * on, or partial approval enabled in the settings), so a chosen routing or cash request stays blocked until a
+     * conflicting choice is turned off.
+     */
+    private val selectedFeatures: Set<CardFeature>
+        get() =
+            chosenFeatures +
+                buildSet {
+                    if (form.tipOnReceipt == true) add(CardFeature.TIP_ON_RECEIPT)
+                    if (form.askGratuity == true) add(CardFeature.TERMINAL_TIP)
+                    if (form.askGiving == true) add(CardFeature.GIVING)
+                    if (form.tokenize == true) add(CardFeature.TOKENIZATION)
+                    if (form.cardEntryOverride != CardEntryOverride.NORMAL) add(CardFeature.SPECIAL_ENTRY)
+                    if (payment.allowPartialAuthorisation) add(CardFeature.PARTIAL_AUTHORISATION)
+                }
+
+    /** Whether a chosen feature only the terminal card payment carries rules out every other tender. */
+    private val terminalOnly: Boolean get() = selectedFeatures.any { it.onlyOnTerminal }
 
     /** What a tender other than the terminal leaves out of this sale: its tip and its donation invitation, when chosen. */
     private val dropped: Set<DroppedOption>
@@ -215,7 +287,7 @@ data class Checkout(
                 TenderCeremony(
                     emptySet(),
                     specialEntryWarning = requiresSpecialEntryApproval,
-                    managerApproval = requiresSpecialEntryApproval,
+                    managerApproval = requiresSpecialEntryApproval || form.cashBackMinor > 0,
                 )
             }
 
@@ -287,8 +359,55 @@ data class Checkout(
         )
     }
 
+    /** Whether this shopper's accessible flow is compatible and its setup was explicitly confirmed for this terminal. */
+    val audioGuidanceReady: Boolean
+        get() =
+            !form.audioGuidance || (
+                (audioGuidanceSimulated || audioGuidanceMinimumSoftware != null) && audioGuidanceTarget != null &&
+                    form.audioGuidanceConfirmedFor == audioGuidanceTarget && CardFeatures.allows(CardFeature.AUDIO_GUIDANCE, chosenFeatures)
+            )
+
+    /** Whether explicit configuration and verified store facts permit asking for Mexican card routing. */
+    val offersMexicanRouting: Boolean get() = payment.mexicanInstallments && mexicanRoutingAvailable && currency.code == "MXN"
+
+    /** Selected routing stays visible and blocks payment when setup or a conflicting choice changes. */
+    val mexicanRoutingReady: Boolean get() =
+        form.mexicanPayment == null || (
+            offersMexicanRouting && mexicanContext != null && mexicanIdentity != null &&
+                CardFeatures.allows(CardFeature.MEXICAN_PLAN, selectedFeatures)
+        )
+
+    /** Permissions for starting [tender], including the sale and its chosen collection method. */
+    fun managerActions(tender: Tender): Set<ManagerAction> {
+        val collection = if (preAuthorisation) ManagerAction.PRE_AUTHORISATION else ManagerAction.SALE
+        return when (tender) {
+            Tender.LINK -> setOf(collection, ManagerAction.LINK_CREATE)
+            Tender.TOKEN -> setOf(collection, ManagerAction.SAVED_CARD_LOOKUP)
+            Tender.TERMINAL -> CardFeatures.managerActions(selectedFeatures, collection)
+            Tender.WALLET -> setOf(collection)
+        }
+    }
+
+    /** Selected cash requires a whole immediate card sale; unavailable choices remain selected and block sending. */
+    val cashbackReady: Boolean get() =
+        form.cashBackMinor == 0L || (
+            managerConfigured && form.cashbackConfirmation == payment.cashback && cashbackAvailable &&
+                form.cashBackMinor in 1..payment.cashback.limitMinor &&
+                form.cashBackMinor <= Long.MAX_VALUE - totals.amounts.gross && CardFeatures.allows(CardFeature.CASHBACK, selectedFeatures)
+        )
+
+    /** Requested card amount in minor units, including selected cash; an invalid cash entry leaves Pay disabled. */
+    val requestedCardMinor: Long get() =
+        if (form.cashBackMinor in 0..(Long.MAX_VALUE - totals.amounts.gross)) {
+            Math.addExact(totals.amounts.gross, form.cashBackMinor)
+        } else {
+            totals.amounts.gross
+        }
+
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */
-    val canPay: Boolean get() = !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid
+    val canPay: Boolean get() =
+        !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid &&
+            audioGuidanceReady && mexicanRoutingReady && cashbackReady
 
     /**
      * The payment to start, or null unless [canPay]. A blank merchant reference is generated from [now] in [zone] with
@@ -300,7 +419,6 @@ data class Checkout(
     ): PaymentStart? {
         if (!canPay) return null
         val reference = form.transactionReference.trim().ifEmpty { Ids.transactionReference(payment.referencePrefix, now, zone) }
-        val allowPartial = payment.allowPartialAuthorisation && !preAuthorisation && !tipOnReceipt
         return PaymentStart(
             totals = totals,
             currency = currency,
@@ -313,18 +431,65 @@ data class Checkout(
             shopperReference = shopperReference,
             sessionRevision = sessionRevision,
             terminalTip = terminalTipOptions(),
-            shopperFlow = shopperSessionFlow(reference),
+            shopperFlow = if (form.audioGuidance) null else shopperSessionFlow(reference),
             allowPartialAuthorisation = allowPartial,
             askGiving = askGiving,
             cardEntryOverride = effectiveCardEntry,
+            mexicanPayment = form.mexicanPayment,
+            walletContext = mexicanContext.takeIf { form.mexicanPayment != null || form.cashBackMinor > 0 },
+            walletSetupIdentity = mexicanIdentity.takeIf { form.mexicanPayment != null || form.cashBackMinor > 0 },
+            cashBackMinor = form.cashBackMinor.takeIf { it > 0 },
+            cashbackConfiguration = payment.cashback.takeIf { form.cashBackMinor > 0 },
+            requestedAmountMinor = requestedCardMinor,
+            audioGuidance = form.audioGuidance,
+            audioGuidancePoiId = audioGuidanceTarget.takeIf { form.audioGuidance },
         )
+    }
+
+    /**
+     * Whether this sale can be split across tenders now: an immediate-charge sale that [canPay] and asks for nothing a
+     * split cannot carry on every tender. Tipping, donations, audio guidance and MOTO/MKE entry must be turned off
+     * first ([splitBlocked]), so no selected option is dropped silently.
+     */
+    val canSplit: Boolean get() = !preAuthorisation && canPay && !blocksSplit()
+
+    /** Whether a chosen option prevents splitting until the operator turns it off. */
+    val splitBlocked: Boolean get() = blocksSplit()
+
+    private fun blocksSplit(): Boolean = terminalOnly || chosenFeatures.any { it in SPLIT_BLOCKERS }
+
+    /**
+     * The first tender of a split of this sale at [now] in [zone]: [amountMinor] of its total chosen as [allocation]
+     * (null for an amount), or null unless [canSplit] and the allocation is acceptable. It keeps the references and any
+     * card-saving consent, asks no tip or donation, and allows the issuer's partial approval when the settings do,
+     * except for items, which are collected in full.
+     */
+    fun splitStart(
+        now: Instant,
+        zone: ZoneId,
+        amountMinor: Long,
+        allocation: TenderAllocation?,
+    ): PaymentStart? {
+        if (!canSplit) return null
+        val payment = paymentStart(now, zone) ?: return null
+        val start =
+            payment.copy(
+                terminalTip = null,
+                shopperFlow = null,
+                askGiving = false,
+                requestedAmountMinor = amountMinor,
+                allocation = allocation,
+                allowPartialAuthorisation = payment.allowPartialAuthorisation && allocation !is TenderAllocation.Items,
+            )
+        return start.takeIf { SaleBook.splitBalance(it).accepts(amountMinor, allocation) }
     }
 
     /**
      * Whether a payment link is offered instead of the terminal: for a sale (a pre-authorisation always goes to the
      * terminal) that [canPay], while links are [linksAvailable].
      */
-    val canSendLink: Boolean get() = !preAuthorisation && linksAvailable && canPay
+    val canSendLink: Boolean get() =
+        !terminalOnly && !preAuthorisation && linksAvailable && canPay
 
     /**
      * The payment link to create, or null unless [canSendLink]: the [paymentStart] at [now] in [zone] without tipping on
@@ -361,13 +526,15 @@ data class Checkout(
         fromCheckout: Boolean = false,
     ): SavedCardStart? {
         val model = payment.recurringModel().value
-        if (preAuthorisation || shopperReference == null || !card.supports(model)) return null
+        if (terminalOnly || preAuthorisation) return null
+        if (shopperReference == null || !card.supports(model)) return null
         val start = paymentStart(now, zone)?.forSavedCard() ?: return null
         return SavedCardStart(start, card, model, fromCheckout = fromCheckout)
     }
 
     /** Whether scanned wallets are offered, independently of entered-field validation. */
-    val offersScanWallet: Boolean get() = !preAuthorisation && wallets.isNotEmpty()
+    val offersScanWallet: Boolean get() =
+        !terminalOnly && !preAuthorisation && wallets.isNotEmpty()
 
     /** Whether a configured scanned wallet can pay this checkout now. */
     val canScanWallet: Boolean get() = offersScanWallet && canPay
@@ -401,12 +568,49 @@ data class Checkout(
     /** Checkout limits and continuation of stored partially paid sales. */
     companion object {
         /**
-         * Next card tender for a stored partially paid [sale], or null when no balance can be collected.
-         * Reuses its references and currency, without repeating consent, tips or shopper-display prompts.
+         * Standalone cash-out from explicitly configured and verified [availability], in [currency], for [cashMinor]
+         * minor units at [now], including its time zone. No merchandise, tax or unrelated checkout session is attached. Manager PIN
+         * and unchanged configuration are checked again by the sending owners.
          */
-        fun remainingPayment(sale: SaleEntity): PaymentStart? {
-            val remaining = sale.remainingMinor
-            if (remaining <= 0) return null
+        fun cashoutStart(
+            availability: WalletAvailability,
+            payment: PaymentSettings,
+            currency: CurrencySpec,
+            cashMinor: Long,
+            now: ZonedDateTime,
+        ): PaymentStart? {
+            if (!Cashback.ready(payment.cashback, availability, currency.code, true) ||
+                cashMinor !in 1..payment.cashback.limitMinor
+            ) {
+                return null
+            }
+            return PaymentStart(
+                totals = Cart().totals(TaxMode.INCLUSIVE),
+                currency = currency,
+                merchantReference = Ids.transactionReference(payment.referencePrefix, now.toInstant(), now.zone),
+                customerReference = null,
+                shopperEmail = null,
+                tokenization = null,
+                requestedAmountMinor = cashMinor,
+                cashBackMinor = cashMinor,
+                cashbackConfiguration = payment.cashback,
+                walletContext = availability.context,
+                walletSetupIdentity = availability.identity,
+            )
+        }
+
+        /**
+         * Next card tender for a stored partially paid [sale], or null when no balance can be collected: [amountMinor] of
+         * its unpaid balance chosen as [allocation] (the whole balance by default). Reuses its references and currency,
+         * without repeating consent, tips or shopper-display prompts; items are collected in full, other amounts allow
+         * the issuer's partial approval. The paid amount it was reviewed with makes a later change refuse it as stale.
+         */
+        fun remainingPayment(
+            sale: SaleEntity,
+            amountMinor: Long = sale.remainingMinor,
+            allocation: TenderAllocation? = null,
+        ): PaymentStart? {
+            if (!sale.acceptsTender(amountMinor, sale.paidMinor)) return null
             return PaymentStart(
                 totals = Cart().totals(TaxMode.INCLUSIVE),
                 currency = CurrencySpec.of(sale.currency),
@@ -417,10 +621,60 @@ data class Checkout(
                 kind = sale.kind,
                 tipOnReceipt = false,
                 shopperReference = sale.shopperReference,
-                allowPartialAuthorisation = true,
-                requestedAmountMinor = remaining,
+                allowPartialAuthorisation = allocation !is TenderAllocation.Items,
+                requestedAmountMinor = amountMinor,
                 existingSaleId = sale.id,
+                walletContext = sale.context,
+                allocation = allocation,
+                reviewedPaidMinor = sale.paidMinor,
             )
+        }
+
+        /**
+         * What a meal-voucher tender may do now for a sale whose undivided purchase is [balance], on the store's local
+         * [date]: the market ([chosen] among an offline demo's), the most it may collect and, when it cannot be used,
+         * why — checked in order so the first fix is explained before payment and nothing is dropped silently. A stored
+         * sale's [saleContext] must be the verified store's context the voucher is sent on.
+         */
+        fun mealVoucher(
+            availability: MealVoucherAvailability,
+            chosen: MealVoucherScheme?,
+            balance: TenderBalance,
+            date: LocalDate,
+            saleContext: PaymentContext?,
+        ): MealVoucherReading {
+            val schemes = availability.schemes
+            val scheme = chosen?.takeIf { it in schemes } ?: schemes.firstOrNull()
+            val blocked =
+                when {
+                    !availability.configured -> MealVoucherBlock.NOT_CONFIGURED
+                    scheme == null || availability.context == null || availability.identity == null -> MealVoucherBlock.NO_MARKET
+                    scheme.selection == VoucherSelection.ACCOUNT_TYPE && !availability.accountSelection -> MealVoucherBlock.TERMINAL_SELECTS
+                    !scheme.openOn(date) -> MealVoucherBlock.CLOSED_TODAY
+                    saleContext != null && saleContext != availability.context -> MealVoucherBlock.CHANGED_SETUP
+                    balance.unresolved -> MealVoucherBlock.UNRESOLVED
+                    balance.voucherLimitMinor(scheme) == 0L -> MealVoucherBlock.NOTHING_ELIGIBLE
+                    else -> null
+                }
+            return MealVoucherReading(scheme, schemes, scheme?.let(balance::voucherLimitMinor) ?: 0, blocked)
+        }
+
+        /**
+         * [base] (a split or remaining-balance tender of [amountMinor]) paid from the [reading]'s voucher on the verified
+         * store of [availability]; null unless the voucher can be used and the amount is within its limit.
+         */
+        fun mealVoucherStart(
+            base: PaymentStart?,
+            reading: MealVoucherReading,
+            availability: MealVoucherAvailability,
+            amountMinor: Long,
+        ): PaymentStart? {
+            val scheme = reading.scheme ?: return null
+            val context = availability.context ?: return null
+            val identity = availability.identity ?: return null
+            if (base == null || reading.blocked != null || amountMinor !in 1..reading.limitMinor) return null
+            if (base.requestedAmountMinor != amountMinor || base.allocation != null || base.currency.code != scheme.currency) return null
+            return base.withMealVoucher(scheme, context, identity)
         }
 
         /** Longest merchant reference accepted, in characters (Adyen's limit for `merchantReference`). */
@@ -431,8 +685,72 @@ data class Checkout(
          * Adyen's cannot ask for more.
          */
         val MAX_LINK_LIFETIME: Duration = Duration.ofDays(70).minusMinutes(5)
+
+        /** Chosen options a split does not carry on every tender, which the operator turns off before splitting. */
+        private val SPLIT_BLOCKERS =
+            setOf(CardFeature.TIP_ON_RECEIPT, CardFeature.TERMINAL_TIP, CardFeature.GIVING, CardFeature.SPECIAL_ENTRY)
     }
 }
+
+/**
+ * Whether meal-voucher tenders can be offered, from settings and verified discovery
+ * ([app.minimpos.app.terminal.WalletAvailability.mealVoucherSchemes]).
+ *
+ * @property configured Whether the merchant confirmed voucher onboarding ([PaymentSettings.mealVouchers]).
+ * @property schemes The verified store's market for the sale currency, or an offline demo's choices; empty when none.
+ * @property context The verified destination/account the voucher is sent on; null before discovery.
+ * @property identity Fingerprint of that checked setup; null before discovery.
+ * @property simulated Whether this is an offline simulator demonstration, which establishes no eligibility.
+ * @property accountSelection Whether the app selects the Brazilian voucher account
+ *   ([PaymentSettings.mealVoucherAccountSelection]).
+ */
+data class MealVoucherAvailability(
+    val configured: Boolean = false,
+    val schemes: List<MealVoucherScheme> = emptyList(),
+    val context: PaymentContext? = null,
+    val identity: String? = null,
+    val simulated: Boolean = false,
+    val accountSelection: Boolean = false,
+)
+
+/** Why a meal-voucher tender cannot be used now, in the order [Checkout.mealVoucher] checks. */
+enum class MealVoucherBlock {
+    /** The merchant has not confirmed voucher onboarding. */
+    NOT_CONFIGURED,
+
+    /** No verified store market on a supporting destination for this currency. */
+    NO_MARKET,
+
+    /** Brazilian vouchers are chosen on the terminal's own screen: pay by card and let the shopper choose there. */
+    TERMINAL_SELECTS,
+
+    /** The market's vouchers cannot be used today (Titres-restaurant on Sundays). */
+    CLOSED_TODAY,
+
+    /** The sale was paid on another setup than the verified store's. */
+    CHANGED_SETUP,
+
+    /** An earlier tender is unresolved; check it first. */
+    UNRESOLVED,
+
+    /** Nothing a voucher may pay is left: no eligible items, or the market's limit was reached. */
+    NOTHING_ELIGIBLE,
+}
+
+/**
+ * What a meal-voucher tender may do now ([Checkout.mealVoucher]).
+ *
+ * @property scheme The market used; null when none is available.
+ * @property schemes Markets the operator may choose between (several only for an offline demo).
+ * @property limitMinor Most the voucher may collect, in minor units; 0 when it cannot be used.
+ * @property blocked Why it cannot be used; null when it can.
+ */
+data class MealVoucherReading(
+    val scheme: MealVoucherScheme?,
+    val schemes: List<MealVoucherScheme>,
+    val limitMinor: Long,
+    val blocked: MealVoucherBlock?,
+)
 
 /** A way to pay a checkout: on the terminal, by payment link, with a scanned wallet code, or with a saved card (Charge token). */
 enum class Tender {
@@ -470,9 +788,3 @@ data class TenderCeremony(
     val specialEntryWarning: Boolean,
     val managerApproval: Boolean,
 )
-
-/**
- * Whether a payment taken with this card entry needs Manager approval: MOTO and MKE do, ordinary entry does not. The
- * one rule for both the checkout that asks for approval and the payment that checks it again before sending.
- */
-internal val CardEntryOverride.needsManagerApproval: Boolean get() = this != CardEntryOverride.NORMAL

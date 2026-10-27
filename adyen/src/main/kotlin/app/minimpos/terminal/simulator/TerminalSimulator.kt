@@ -1,6 +1,5 @@
 package app.minimpos.terminal.simulator
 
-import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.NexoVocabulary
@@ -19,16 +18,12 @@ import app.minimpos.terminal.transport.nexoGson
 import com.adyen.model.nexo.AdminResponse
 import com.adyen.model.nexo.AmountsResp
 import com.adyen.model.nexo.CardData
-import com.adyen.model.nexo.CharacterStyleType
 import com.adyen.model.nexo.DocumentQualifierType
 import com.adyen.model.nexo.EntryModeType
 import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.GetTotalsResponse
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.MessageType
-import com.adyen.model.nexo.OutputContent
-import com.adyen.model.nexo.OutputFormatType
-import com.adyen.model.nexo.OutputText
 import com.adyen.model.nexo.POIData
 import com.adyen.model.nexo.PaymentAcquirerData
 import com.adyen.model.nexo.PaymentInstrumentData
@@ -55,16 +50,17 @@ import com.adyen.model.nexo.TransactionStatusRequest
 import com.adyen.model.nexo.TransactionStatusResponse
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
+import com.google.gson.JsonParser
 import kotlinx.coroutines.delay
 import java.io.IOException
 import java.math.BigDecimal
 import java.net.SocketTimeoutException
-import java.net.URLEncoder
 import java.time.Clock
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.time.Duration
 
@@ -111,6 +107,9 @@ enum class SimulatedOutcome {
  * @property givingDonationAmount Simulated charity donation amount in major units when `AskGiving` is present; zero skips donation.
  * @property offlineMode Whether payments are approved online or simulated offline (`OFFLINE_EMV` or `STORE_AND_FORWARD`).
  * @property unconfirmedBatchCount Simulated `unconfirmedBatchCount` returned when [offlineMode] is not `ONLINE`.
+ * @property surchargeAmount Fixed surcharge in major units, rounded to the requested precision; simulation only.
+ * @property refundsProcessedSynchronously Whether approved unreferenced refunds report `acquirerResponseCode=Approved`,
+ *   as when the card scheme and country process them synchronously; false answers Adyen's usual asynchronous request.
  */
 data class SimulatorConfig(
     val outcome: SimulatedOutcome = SimulatedOutcome.APPROVE,
@@ -124,6 +123,9 @@ data class SimulatorConfig(
     val givingDonationAmount: BigDecimal = BigDecimal.ONE,
     val offlineMode: OfflineProcessingMode = OfflineProcessingMode.ONLINE,
     val unconfirmedBatchCount: Int = 1,
+    /** Fixed surcharge in major units, rounded to the request precision; simulation only, never a pricing engine. */
+    val surchargeAmount: BigDecimal = BigDecimal.ZERO,
+    val refundsProcessedSynchronously: Boolean = false,
 ) {
     private companion object {
         const val DEFAULT_SIMULATED_RATING = 9
@@ -155,14 +157,17 @@ class TerminalSimulator(
     /** Receives every print request that succeeds, read back the way a terminal prints it, e.g. to show it on screen. */
     private val onPrint: (PrintJob) -> Unit = {},
 ) : TerminalTransport {
-    private val completed = CompletedTransactions()
-    private val chargeAnswers = ConcurrentHashMap<String, CardChargeResult>()
-    private val aborted = ConcurrentHashMap.newKeySet<String>()
+    private val account = SimulatedAccount()
+    private val completed = account.completed
+    private val aborted = account.aborted
     private val inProgress = ConcurrentHashMap.newKeySet<String>()
-    private val ledger = SimulatedLedger()
+    private val ledger = account.ledger
     private val reconciliationId = AtomicInteger(INITIAL_RECONCILIATION_ID)
     private val periodTotals = ConcurrentHashMap<String, SimulatedPeriodTotals>()
-    private val paymentAmountsByTransactionId = ConcurrentHashMap<String, Pair<String, BigDecimal>>()
+    private val paymentAmountsByTransactionId = account.paymentAmounts
+    private val giftCards = SimulatedGiftCards(clock)
+    private val giftCardTerminal =
+        SimulatedGiftCardTerminal(giftCards, completed, ::giftCardIds, ::waitForShopper, ::recordGiftCardPayment)
 
     /** Adyen's Checkout API for the payments this simulator takes, answering from what happened to them. */
     val modifications: SimulatedModifications = SimulatedModifications(random, ledger)
@@ -172,25 +177,13 @@ class TerminalSimulator(
      * simulator's outcome and remembered in the ledger [modifications] shares.
      */
     fun savedCards(cards: suspend (shopperReference: String) -> List<StoredCard>): SimulatedSavedCards =
-        SimulatedSavedCards(random, ledger, cards, chargeAnswers) { config().outcome }
+        SimulatedSavedCards(random, account, cards) { config().outcome }
 
     /** Forgets all history identities after confirmed purge, retaining independent reconciliation period totals. */
-    fun forgetHistory() {
-        completed.clear()
-        aborted.clear()
-        paymentAmountsByTransactionId.clear()
-        chargeAnswers.clear()
-        ledger.clear()
-    }
+    fun forgetHistory() = account.forgetHistory()
 
     /** Releases only durably deleted history identities, preserving unfinished retries and terminal period totals. */
-    fun forget(removed: SimulatorRemoval) {
-        completed.forget(removed.serviceIds, removed.transactionIds)
-        removed.serviceIds.forEach(aborted::remove)
-        removed.transactionIds.forEach(paymentAmountsByTransactionId::remove)
-        removed.chargeKeys.forEach(chargeAnswers::remove)
-        ledger.forget(removed.pspReferences)
-    }
+    fun forget(removed: SimulatorRemoval) = account.forget(removed)
 
     override suspend fun send(
         request: TerminalAPIRequest,
@@ -211,6 +204,10 @@ class TerminalSimulator(
         val header = message.messageHeader
         val settings = config()
         return when {
+            message.isGiftCardRequest -> {
+                handleGiftCards(header, message, settings)
+            }
+
             message.paymentRequest != null -> {
                 payment(header, message.paymentRequest, settings)
             }
@@ -291,12 +288,12 @@ class TerminalSimulator(
             }
         }
 
-    private suspend fun payment(
-        header: MessageHeader,
-        request: PaymentRequest,
+    /** Waits for the simulated shopper, ending early on an abort; the configured outcome, or null when aborted. */
+    private suspend fun waitForShopper(
+        serviceId: String,
         settings: SimulatorConfig,
-    ): TerminalAPIResponse {
-        val serviceId = header.serviceID.orEmpty()
+        refuse: Boolean = false,
+    ): SimulatedOutcome? {
         inProgress += serviceId
         var waited = 0L
         try {
@@ -307,14 +304,25 @@ class TerminalSimulator(
         } finally {
             inProgress -= serviceId
         }
-        val outcome =
-            if (aborted.remove(serviceId)) {
-                null
-            } else if (settings.outcome == SimulatedOutcome.RANDOM) {
-                if (random.nextInt(PERCENT) < RANDOM_APPROVAL_PERCENT) SimulatedOutcome.APPROVE else SimulatedOutcome.DECLINE
-            } else {
-                settings.outcome
-            }
+        return if (aborted.remove(serviceId)) {
+            null
+        } else if (refuse) {
+            SimulatedOutcome.DECLINE
+        } else if (settings.outcome == SimulatedOutcome.RANDOM) {
+            if (random.nextInt(PERCENT) < RANDOM_APPROVAL_PERCENT) SimulatedOutcome.APPROVE else SimulatedOutcome.DECLINE
+        } else {
+            settings.outcome
+        }
+    }
+
+    private suspend fun payment(
+        header: MessageHeader,
+        request: PaymentRequest,
+        settings: SimulatorConfig,
+    ): TerminalAPIResponse {
+        val serviceId = header.serviceID.orEmpty()
+        val accessible = simulatedAudioGuidance(request.saleData)
+        val outcome = waitForShopper(serviceId, settings, refuse = accessible && settings.signatureRequired)
         val response = paymentResponse(request, outcome, settings)
         completed.remember(serviceId, payment = response)
         if (outcome == SimulatedOutcome.TIMEOUT) throw SocketTimeoutException("Simulated timeout")
@@ -334,7 +342,7 @@ class TerminalSimulator(
         val additional =
             buildPaymentAdditional(payment, request.saleData?.saleToAcquirerData, refusal, random) {
                 randomString(TOKEN_LENGTH, DIGITS)
-            }
+            } + refundAdditional(payment, authorizedAmount, settings)
         return PaymentResponse().apply {
             response =
                 Response().apply {
@@ -349,7 +357,14 @@ class TerminalSimulator(
                 }
             saleData = SaleData().apply { saleTransactionID = request.saleData?.saleTransactionID }
             poiData = poiData(payment.tender, payment.psp.takeUnless { payment.isOffline })
-            paymentResult = paymentResult(payment, amount.currency, authorizedAmount)
+            paymentResult =
+                paymentResult(payment, amount.currency, authorizedAmount).apply {
+                    amountsResp.cashBackAmount = if (payment.approved) amount.cashBackAmount else null
+                    request.paymentData?.instalment?.let {
+                        paymentType = PaymentType.INSTALMENT
+                        instalment = it
+                    }
+                }
             paymentReceipt +=
                 listOf(
                     receipt(DocumentQualifierType.CUSTOMER_RECEIPT, "CARDHOLDER COPY", payment, signature = false),
@@ -365,6 +380,18 @@ class TerminalSimulator(
         }
     }
 
+    // A scanned wallet's brand, Adyen's Elo voucher test card for an app-selected Brazilian voucher, else a random card.
+    private fun presentedCard(
+        request: PaymentRequest,
+        wallet: Boolean,
+        brand: String,
+    ): SimulatedCard =
+        when {
+            wallet -> SimulatedCard(brand, brand, brand.uppercase(), "", "", "")
+            mealVoucherRequested(request.saleData) -> MEAL_VOUCHER
+            else -> CARDS[random.nextInt(CARDS.size)]
+        }
+
     private fun buildSimulatedPayment(
         request: PaymentRequest,
         outcome: SimulatedOutcome?,
@@ -378,13 +405,13 @@ class TerminalSimulator(
                 ?.singleOrNull()
                 .orEmpty()
         val approved = outcome == SimulatedOutcome.APPROVE || outcome == SimulatedOutcome.TIMEOUT
-        val partialBase = if (approved) simulatedPartialAmount(request.saleData, amount.requestedAmount, settings) else null
+        val refund = request.unreferencedRefund
+        val (partialBase, tipAmount, surcharge) = simulatedAmounts(request, approved, settings)
         val baseApproved = partialBase ?: amount.requestedAmount
-        val tipAmount = if (approved && partialBase == null) simulatedTipAmount(request.saleData, baseApproved) else null
-        val authorizedAmount = if (approved) baseApproved + (tipAmount ?: BigDecimal.ZERO) else BigDecimal.ZERO
+        val authorizedAmount = if (approved) baseApproved + (tipAmount ?: BigDecimal.ZERO) + surcharge else BigDecimal.ZERO
         val payment =
             SimulatedPayment(
-                card = if (wallet) SimulatedCard(brand, brand, brand.uppercase(), "", "", "") else CARDS[random.nextInt(CARDS.size)],
+                card = presentedCard(request, wallet, brand),
                 wallet = wallet,
                 psp = SimulatedModifications.pspReference(random),
                 tender = randomString(TENDER_PREFIX_LENGTH, ALNUM) + randomString(TENDER_DIGITS, DIGITS),
@@ -398,11 +425,13 @@ class TerminalSimulator(
                 approved = approved,
                 preAuthorisation = request.saleData?.saleToAcquirerData?.authorisationType == TerminalClient.PRE_AUTH,
                 tipAmount = tipAmount,
+                surchargeAmount = surcharge,
                 partial = partialBase != null,
                 givingServiceId = simulatedGivingServiceId(request.saleData, approved, partialBase != null, settings),
                 entryOverride = simulatedCardEntryOverride(request),
-                offlineMode = settings.offlineMode,
+                offlineMode = if (refund) OfflineProcessingMode.ONLINE else settings.offlineMode,
                 unconfirmedBatchCount = settings.unconfirmedBatchCount,
+                refund = refund,
             )
         payment.givingServiceId?.let { givingId ->
             completed.remember(
@@ -430,15 +459,11 @@ class TerminalSimulator(
         currency: String,
         authorizedAmount: BigDecimal,
     ) {
-        ledger.approved(payment.psp, manualCapture = payment.preAuthorisation)
-        if (!payment.preAuthorisation) {
-            val key = payment.transactionId
-            paymentAmountsByTransactionId[key] = currency to authorizedAmount
-            periodTotals.compute(currency) { _, current ->
-                val base = current ?: SimulatedPeriodTotals(currency)
-                base.copy(debitAmount = base.debitAmount + authorizedAmount, debitCount = base.debitCount + 1)
-            }
-        }
+        if (payment.refund) ledger.refunded(payment.psp) else ledger.approved(payment.psp, manualCapture = payment.preAuthorisation)
+        if (payment.preAuthorisation) return
+        // An unreferenced refund is a credit with no payment a later reversal could refer to.
+        if (!payment.refund) paymentAmountsByTransactionId[payment.transactionId] = currency to authorizedAmount
+        periodTotals.compute(currency) { _, current -> (current ?: SimulatedPeriodTotals(currency)).plus(authorizedAmount, payment.refund) }
     }
 
     private fun paymentResult(
@@ -446,13 +471,14 @@ class TerminalSimulator(
         requestedCurrency: String,
         authorized: BigDecimal,
     ) = PaymentResult().apply {
-        paymentType = PaymentType.NORMAL
+        paymentType = if (payment.refund) PaymentType.REFUND else PaymentType.NORMAL
         paymentInstrumentData = paymentInstrument(payment)
         amountsResp =
             AmountsResp().apply {
                 currency = requestedCurrency
                 authorizedAmount = authorized
                 tipAmount = payment.tipAmount
+                totalFeesAmount = payment.surchargeAmount
             }
         setOnlineFlag(!payment.isOffline)
         paymentAcquirerData =
@@ -525,6 +551,10 @@ class TerminalSimulator(
                     ?.substringAfter('.')
                     ?.let(ledger::cancel) == true
         if (!cancels) recordApprovedReversal(request)
+        request.originalPOITransaction
+            ?.poiTransactionID
+            ?.transactionID
+            ?.let { giftCards.reverseRedemption(it, amount) }
         val response =
             ReversalResponse().apply {
                 response =
@@ -539,18 +569,18 @@ class TerminalSimulator(
                     PaymentReceipt().apply {
                         documentQualifier = DocumentQualifierType.CUSTOMER_RECEIPT
                         outputContent =
-                            text(
+                            receiptText(
                                 listOf(
-                                    line("filler"),
-                                    line("txtype", if (cancels) "CANCELLATION" else "REFUND", bold = true),
-                                    line("mref", "Reference", merchantReference),
-                                    line(
+                                    receiptLine("filler"),
+                                    receiptLine("txtype", if (cancels) "CANCELLATION" else "REFUND", bold = true),
+                                    receiptLine("mref", "Reference", merchantReference),
+                                    receiptLine(
                                         "totalAmount",
                                         if (cancels) "Released" else "Refund",
                                         amount?.toPlainString() ?: "Full amount",
                                     ),
-                                    line("filler"),
-                                    line("approved", if (cancels) "CANCELLATION REQUESTED" else "REFUND REQUESTED", bold = true),
+                                    receiptLine("filler"),
+                                    receiptLine("approved", if (cancels) "CANCELLATION REQUESTED" else "REFUND REQUESTED", bold = true),
                                 ),
                             )
                     }
@@ -572,10 +602,34 @@ class TerminalSimulator(
         val reversed = request.reversedAmount ?: original?.second ?: BigDecimal.ZERO
         if (reversed > BigDecimal.ZERO) {
             periodTotals.compute(currency) { _, current ->
-                val base = current ?: SimulatedPeriodTotals(currency)
-                base.copy(creditAmount = base.creditAmount + reversed, creditCount = base.creditCount + 1)
+                (current ?: SimulatedPeriodTotals(currency)).plus(reversed, credit = true)
             }
         }
+    }
+
+    private suspend fun handleGiftCards(
+        header: MessageHeader,
+        message: SaleToPOIRequest,
+        settings: SimulatorConfig,
+    ): TerminalAPIResponse = respond(header, giftCardTerminal.answer(header.serviceID.orEmpty(), message, settings))
+
+    /** Counts an approved gift-card payment in the period totals: a refund onto the card as a credit. */
+    private fun recordGiftCardPayment(
+        request: PaymentRequest,
+        transactionId: String,
+        approved: SimulatedGiftCards.Answer.Approved,
+    ) {
+        val currency = request.paymentTransaction.amountsReq.currency
+        periodTotals.compute(currency) { _, current ->
+            (current ?: SimulatedPeriodTotals(currency)).plus(approved.approved, credit = request.giftCardRefund)
+        }
+        if (!request.giftCardRefund) paymentAmountsByTransactionId[transactionId] = currency to approved.approved
+    }
+
+    private fun giftCardIds(): SimulatedGiftCardIds {
+        val tender = randomString(TENDER_PREFIX_LENGTH, ALNUM) + randomString(TENDER_DIGITS, DIGITS)
+        val psp = SimulatedModifications.pspReference(random)
+        return SimulatedGiftCardIds(tender, psp, poiData(tender, psp), clock.instant().atZone(zone))
     }
 
     private fun print(
@@ -647,64 +701,40 @@ class TerminalSimulator(
         val now = clock.instant().atZone(zone)
         val lines =
             buildList {
-                add(line("header1", "Mini mPOS Simulator"))
-                add(line("filler"))
-                add(line("txdate", "Date", DateTimeFormatter.ofPattern("dd/MM/yyyy").format(now)))
-                add(line("txtime", "Time", DateTimeFormatter.ofPattern("HH:mm:ss").format(now)))
-                add(line("filler"))
-                add(line("txtype", if (payment.preAuthorisation) "Pre-authorization" else "Payment", bold = true))
-                add(line("totalAmount", "TOTAL", payment.amountText, bold = true))
-                add(line("filler"))
-                add(line("cardholderHeader", copyLabel))
-                add(line("paymentMethod", card.label))
-                if (!payment.wallet) add(line("pan", "Card", card.maskedPan.takeLast(9)))
-                add(line("posEntryMode", "Entry", if (payment.wallet) "Scanned" else "Contactless"))
-                if (!payment.wallet) add(line("aid", "AID", card.aid))
-                add(line("mid", "MID", "SIMULATOR"))
-                add(line("tid", "TID", "00000001"))
-                add(line("txRef", "Tender", payment.tender))
-                add(line("mref", "Reference", payment.merchantReference))
-                add(line("filler"))
-                add(line(if (approved) "approved" else "refused", if (approved) "APPROVED" else "DECLINED", bold = true))
+                add(receiptLine("header1", "Mini mPOS Simulator"))
+                add(receiptLine("filler"))
+                add(receiptLine("txdate", "Date", DateTimeFormatter.ofPattern("dd/MM/yyyy").format(now)))
+                add(receiptLine("txtime", "Time", DateTimeFormatter.ofPattern("HH:mm:ss").format(now)))
+                add(receiptLine("filler"))
+                add(receiptLine("txtype", payment.typeLabel, bold = true))
+                add(receiptLine("surcharge", "Surcharge", payment.surchargeAmount.toPlainString()))
+                add(receiptLine("totalAmount", "TOTAL", payment.amountText, bold = true))
+                add(receiptLine("filler"))
+                add(receiptLine("cardholderHeader", copyLabel))
+                add(receiptLine("paymentMethod", card.label))
+                if (!payment.wallet) add(receiptLine("pan", "Card", card.maskedPan.takeLast(9)))
+                add(receiptLine("posEntryMode", "Entry", if (payment.wallet) "Scanned" else "Contactless"))
+                if (!payment.wallet) add(receiptLine("aid", "AID", card.aid))
+                add(receiptLine("mid", "MID", "SIMULATOR"))
+                add(receiptLine("tid", "TID", "00000001"))
+                add(receiptLine("txRef", "Tender", payment.tender))
+                add(receiptLine("mref", "Reference", payment.merchantReference))
+                add(receiptLine("filler"))
+                add(receiptLine(if (approved) "approved" else "refused", if (approved) "APPROVED" else "DECLINED", bold = true))
                 if (signature) {
-                    add(line("filler"))
-                    add(line("sigline", "Signature"))
-                    add(line("signature", "______________________"))
+                    add(receiptLine("filler"))
+                    add(receiptLine("sigline", "Signature"))
+                    add(receiptLine("signature", "______________________"))
                 }
-                add(line("filler"))
-                add(line("thanks", "Please retain for your records"))
+                add(receiptLine("filler"))
+                add(receiptLine("thanks", "Please retain for your records"))
             }
         return PaymentReceipt().apply {
             documentQualifier = qualifier
             setRequiredSignatureFlag(signature)
-            outputContent = text(lines)
+            outputContent = receiptText(lines)
         }
     }
-
-    private fun text(lines: List<OutputText>) =
-        OutputContent().apply {
-            outputFormat = OutputFormatType.TEXT
-            outputText = lines
-        }
-
-    private fun line(
-        key: String,
-        name: String? = null,
-        value: String? = null,
-        bold: Boolean = false,
-    ): OutputText {
-        val fields = listOfNotNull("key" to key, name?.let { "name" to it }, value?.let { "value" to it })
-        return OutputText().apply {
-            text = formEncode(fields.toMap())
-            if (bold) characterStyle = CharacterStyleType.BOLD
-            setEndOfLineFlag(true)
-        }
-    }
-
-    private fun formEncode(values: Map<String, String>): String =
-        values.entries.joinToString("&") { (k, v) -> "${urlEncode(k)}=${urlEncode(v)}" }
-
-    private fun urlEncode(value: String): String = URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
     private fun randomString(
         length: Int,
@@ -752,5 +782,20 @@ class TerminalSimulator(
                 SimulatedCard("visa", "visa_applepay", "Visa", "476173 **** 0119", "A0000000031010", "K421000000000002"),
                 SimulatedCard("mc", "mc_googlepay", "MasterCard", "555555 **** 4444", "A0000000041010", "M469509594859803"),
             )
+
+        // Adyen's Elo voucher test card: an app-selected Brazilian voucher answers with its documented PAT facts.
+        private val MEAL_VOUCHER = SimulatedCard("elo", "elo_voucher_br", "Elo", "506723 **** 0002", "A0000004941010", "E469509594859804")
     }
 }
+
+/** Reads the actual wire account: an app-selected Brazilian meal or food voucher. */
+internal fun mealVoucherRequested(saleData: SaleData?): Boolean =
+    saleData?.saleToPOIData?.let { encoded ->
+        runCatching {
+            JsonParser
+                .parseString(String(Base64.decode(encoded), Charsets.UTF_8))
+                .asJsonObject
+                .get(NexoVocabulary.SELECTED_ACCOUNT_TYPE)
+                ?.asString == NexoVocabulary.MEAL_VOUCHER
+        }.getOrDefault(false)
+    } == true

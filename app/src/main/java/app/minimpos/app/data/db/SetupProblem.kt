@@ -109,9 +109,21 @@ enum class SetupProblem {
     /** Adyen did not permit this HTTP error to be retried; reconcile the original operation externally. */
     OPERATION_RECONCILIATION,
 
+    /** A token deletion must be reconciled before another token can be charged or deleted. */
+    TOKEN_DELETION_PENDING,
+
     /** No shopper reference is configured (Settings › Payments), so no saved card can be found or charged. */
     SHOPPER_REFERENCE,
 
     /** The destination cannot report terminal totals or close a reconciliation period (Tap to Pay). */
     TOTALS,
+
+    /** The destination takes no gift cards (Tap to Pay). */
+    GIFT_CARDS,
+
+    /** No gift-card provider that supports the action is set up in Settings › Payments. */
+    GIFT_CARD_PROVIDER,
+
+    /** Original sale/card balance changed after refund review; the request was not sent. */
+    REFUND_BALANCE,
 }

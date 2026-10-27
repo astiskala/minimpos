@@ -162,10 +162,12 @@ class DestinationSettingsTest {
             "cap_terminal_scanner",
             "cap_abort",
             "cap_diagnosis",
-            "cap_remote_status",
         ).forEach { tag ->
             compose.onNodeWithTag(tag).performScrollTo().assert(hasAnyDescendant(hasText(unsupported)))
         }
+        compose.onNodeWithTag("cap_remote_status").performScrollTo().assert(
+            hasAnyDescendant(hasText(context.getString(R.string.capability_status_needs_config))),
+        )
         val available = context.getString(R.string.capability_status_available)
         listOf("cap_partial_auth", "cap_camera_scanning", "cap_receipt_sharing").forEach { tag ->
             compose.onNodeWithTag(tag).performScrollTo().assert(hasAnyDescendant(hasText(available)))
@@ -178,7 +180,7 @@ class DestinationSettingsTest {
         readyTag: String,
     ) {
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.awaitCondition("settings list opens") {
             compose.onAllNodesWithTag("section_$section").fetchSemanticsNodes().isNotEmpty()
         }

@@ -1266,9 +1266,16 @@ class ArchitectureTest {
 
         val pureDecisions: DescribedPredicate<JavaClass> =
             declaredIn("app.minimpos.app.payment", "Checkout.kt")
+                .or(declaredIn("app.minimpos.app.data.repo", "TenderBalance.kt"))
+                .or(declaredIn("app.minimpos.app.data.repo", "GiftCardActivity.kt"))
+                .or(declaredIn("app.minimpos.app.data.repo", "CashHandover.kt"))
+                .or(declaredIn("app.minimpos.app.payment", "Cashback.kt"))
+                .or(declaredIn("app.minimpos.app.payment", "UnreferencedRefunds.kt"))
+                .or(declaredIn("app.minimpos.app.data.settings", "UnreferencedRefundSettings.kt"))
                 .or(declaredIn("app.minimpos.app.payment", "PaymentLinkRequests.kt"))
                 .or(declaredIn("app.minimpos.app.data.repo", "SaleEvent.kt"))
                 .or(declaredIn("app.minimpos.app.data.settings", "AppSettings.kt"))
+                .or(declaredIn("app.minimpos.app.data.settings", "CashbackSettings.kt"))
                 .or(declaredIn("app.minimpos.app.data.settings", "ConnectionSetup.kt"))
                 .or(declaredIn("app.minimpos.app.data.settings", "PricingChange.kt"))
                 .or(declaredIn("app.minimpos.app.data.settings", "NewInstallation.kt"))

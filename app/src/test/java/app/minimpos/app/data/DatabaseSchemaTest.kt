@@ -2,79 +2,181 @@ package app.minimpos.app.data
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.minimpos.app.data.db.AppDatabase
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.db.GiftCardCategory
+import app.minimpos.app.data.db.GiftCardOperationEntity
+import app.minimpos.app.data.db.GiftCardStage
+import app.minimpos.app.data.db.GiftCardStatus
 import app.minimpos.app.data.db.ProductEntity
+import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.app.data.db.TenderKind
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.File
 import kotlin.uuid.Uuid
 
 @RunWith(RobolectricTestRunner::class)
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun exportedSchema(version: Int = 16): JSONObject =
-        listOf("schemas", "app/schemas")
-            .map { File(it, "app.minimpos.app.data.db.AppDatabase/$version.json") }
-            .first { it.exists() }
-            .let { JSONObject(it.readText()).getJSONObject("database") }
+    private fun assertHistoricalTenders(tenders: List<SaleTenderEntity>) {
+        val (approved, unknown) = tenders.sortedBy { it.sequence }
+        assertThat(approved.authorisedMinor).isEqualTo(600)
+        assertThat(approved.requestedMinor).isEqualTo(1000)
+        assertThat(approved.status).isEqualTo(SaleStatus.APPROVED)
+        assertThat(approved.poiTransactionId).isEqualTo("T.P")
+        assertThat(approved.poiTimestamp).isEqualTo("2026-10-01T00:00:00Z")
+        assertThat(unknown.id).isEqualTo("old-2")
+        assertThat(unknown.requestedMinor).isEqualTo(500)
+        assertThat(unknown.authorisedMinor).isNull()
+        assertThat(unknown.status).isEqualTo(SaleStatus.UNKNOWN)
+        tenders.forEach { tender ->
+            assertThat(tender.kind).isEqualTo(TenderKind.CARD)
+            listOf(
+                tender.tipMinor,
+                tender.surchargeMinor,
+                tender.cashBackMinor,
+                tender.requestedCashBackMinor,
+                tender.cashReceivedMinor,
+                tender.changeMinor,
+            ).forEach { assertThat(it).isNull() }
+            listOf(
+                tender.serviceId,
+                tender.context,
+                tender.poiReconciliationId,
+                tender.customerReceiptJson,
+                tender.cashierReceiptJson,
+                tender.allocationJson,
+                tender.environment,
+                tender.giftCard,
+                tender.mexicanPayment,
+                tender.returnedPaymentType,
+                tender.returnedInstallments,
+                tender.returnedPlanId,
+                tender.mealVoucher,
+                tender.fundingSource,
+                tender.paymentMethodVariant,
+            ).forEach { assertThat(it).isNull() }
+        }
+    }
+
+    private fun exportedSchema(version: Int = 24): JSONObject = schemaJson(version)
 
     private fun createExportedDatabase(
         name: String,
-        version: Int = 16,
-    ) {
-        val schema = exportedSchema(version)
-        val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
-        SQLiteDatabase.openOrCreateDatabase(file, null).use { db ->
-            val entities = schema.getJSONArray("entities")
-            for (index in 0..<entities.length()) {
-                val entity = entities.getJSONObject(index)
-                db.execSQL(entity.getString("createSql").replace("\${TABLE_NAME}", entity.getString("tableName")))
-                val indices = entity.optJSONArray("indices") ?: continue
-                for (position in 0..<indices.length()) {
-                    db.execSQL(
-                        indices.getJSONObject(position).getString("createSql").replace("\${TABLE_NAME}", entity.getString("tableName")),
-                    )
-                }
-            }
-            val queries = schema.getJSONArray("setupQueries")
-            for (index in 0..<queries.length()) db.execSQL(queries.getString(index))
-            db.version = schema.getInt("version")
-        }
-    }
+        version: Int = 24,
+    ) = createSchemaDatabase(context, name, version)
 
     private fun <T> withDatabase(
         name: String,
         block: (AppDatabase) -> T,
-    ): T {
-        val db =
-            Room
-                .databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(
-                    AppDatabase.MIGRATION_10_11,
-                    AppDatabase.MIGRATION_11_12,
-                    AppDatabase.MIGRATION_12_13,
-                    AppDatabase.MIGRATION_13_14,
-                    AppDatabase.MIGRATION_14_15,
-                    AppDatabase.MIGRATION_15_16,
-                ).allowMainThreadQueries()
-                .build()
+    ): T = withMigratedDatabase(context, name, block)
+
+    @Test
+    fun `version 16 preserves partial tender amounts and unfinished returns without inventing new facts`() {
+        val name = "schema-v16-components-${Uuid.random()}"
+        createExportedDatabase(name, 16)
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
+            raw.execSQL(
+                "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
+                    "serviceId, tipMinor, paidMinor, tokenizationRequested, " +
+                    "signatureRequired, refundedMinor, adjustmentPending) VALUES " +
+                    "('old', 100, 'AUD', 'INCLUSIVE', 1000, 0, 1000, 'UNKNOWN', 'MP-16', 'PAY16', 100, 500, 0, 0, 0, 0)",
+            )
+            raw.execSQL(
+                "INSERT INTO sale_tenders (id, saleId, sequence, requestedMinor, authorisedMinor, status, poiTransactionId, " +
+                    "poiTimestamp, createdAt) VALUES ('old-1', 'old', 1, 1000, 600, 'APPROVED', 'T.P', '2026-10-01T00:00:00Z', 100)",
+            )
+            raw.execSQL(
+                "INSERT INTO sale_tenders (id, saleId, sequence, requestedMinor, status, createdAt) " +
+                    "VALUES ('old-2', 'old', 2, 500, 'UNKNOWN', 150)",
+            )
+            raw.execSQL(
+                "INSERT INTO refunds (id, saleId, createdAt, merchantReference, originalTransactionId, originalTimestamp, currency, " +
+                    "amountMinor, full, status, serviceId) VALUES " +
+                    "('refund', 'old', 200, 'R-16', 'T.P', '2026-10-01T00:00:00Z', 'AUD', 100, 0, 'UNKNOWN', 'REF16')",
+            )
+        }
         try {
-            return block(db)
+            withDatabase(name) { db ->
+                runBlocking {
+                    val record = checkNotNull(db.saleDao().sale("old"))
+                    val sale = record.sale
+                    assertThat(sale.amountMinor).isEqualTo(1100)
+                    assertThat(sale.paidMinor).isEqualTo(500)
+                    assertThat(sale.tipMinor).isEqualTo(100)
+                    assertThat(sale.audioGuidance).isFalse()
+                    assertThat(sale.status).isEqualTo(SaleStatus.UNKNOWN)
+                    assertThat(sale.serviceId).isEqualTo("PAY16")
+                    listOf(
+                        sale.surchargeMinor,
+                        sale.terminalPaidMinor,
+                        sale.cashBackMinor,
+                        sale.tenderRequestedMinor,
+                        sale.requestedCashBackMinor,
+                        sale.cashHandedOverAt,
+                    ).forEach { assertThat(it).isNull() }
+                    assertHistoricalTenders(record.tenders)
+                    val refund = record.refunds.single()
+                    assertThat(refund.surchargeMinor).isNull()
+                    assertThat(refund.tipMinor).isNull()
+                    assertThat(refund.tenderId).isNull()
+                    assertThat(refund.cash).isFalse()
+                    assertThat(refund.serviceId).isEqualTo("REF16")
+                    assertThat(refund.status).isEqualTo(RefundStatus.UNKNOWN)
+                    assertThat(refund.originalTransactionId).isEqualTo("T.P")
+                    assertThat(db.giftCardDao().pending()).isEmpty()
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
+                }
+            }
         } finally {
-            db.close()
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test
+    fun `version 16 migration preserves unknown payment identity and stores the next audio request`() {
+        val name = "schema-v16-${Uuid.random()}"
+        createExportedDatabase(name, 16)
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
+            raw.execSQL(
+                "INSERT INTO sales (id, sample, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, " +
+                    "status, merchantReference, tokenizationRequested, signatureRequired, refundedMinor, kind, " +
+                    "tipOnReceipt, holdCancelled, paymentLink, adjustmentPending, serviceId, customerReceiptJson) " +
+                    "VALUES ('unknown', 0, 100, 'AUD', 'INCLUSIVE', 100, 0, 100, 'UNKNOWN', 'MP-16', " +
+                    "0, 0, 0, 'SALE', 0, 0, 0, 0, 'original-service', '[original-receipt]')",
+            )
+        }
+        try {
+            withDatabase(name) { db ->
+                runBlocking {
+                    val original = checkNotNull(db.saleDao().sale("unknown")).sale
+                    assertThat(original.audioGuidance).isFalse()
+                    assertThat(original.status).isEqualTo(SaleStatus.UNKNOWN)
+                    assertThat(original.serviceId).isEqualTo("original-service")
+                    assertThat(original.customerReceiptJson).isEqualTo("[original-receipt]")
+                    db.saleDao().insert(original.copy(id = "audio", audioGuidance = true))
+                    assertThat(
+                        db
+                            .saleDao()
+                            .sale("audio")!!
+                            .sale.audioGuidance,
+                    ).isTrue()
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
         }
     }
 
@@ -170,6 +272,46 @@ class DatabaseSchemaTest {
     }
 
     @Test
+    fun `the exported current schema keeps stored-value stages with their category and reason`() {
+        val name = "schema-gift-${Uuid.random()}"
+        createExportedDatabase(name)
+        try {
+            withDatabase(name) { db ->
+                runBlocking {
+                    db.giftCardDao().insert(
+                        GiftCardOperationEntity(
+                            id = "stage",
+                            groupId = "stage",
+                            stage = GiftCardStage.LOAD,
+                            category = GiftCardStage.LOAD.category,
+                            createdAt = 40,
+                            status = GiftCardStatus.UNKNOWN,
+                            provider = "SVS",
+                            cardLastFour = "0042",
+                            currency = "AUD",
+                            amountMinor = 500,
+                            merchantReference = "G-schema",
+                            serviceId = "SV1",
+                            funds = null,
+                            reason = StoredReason.Interrupted,
+                        ),
+                    )
+                }
+            }
+            withDatabase(name) { db ->
+                runBlocking {
+                    val stage = checkNotNull(db.giftCardDao().stage("stage"))
+                    assertThat(stage.category).isEqualTo(GiftCardCategory.STORED_VALUE)
+                    assertThat(stage.reason).isEqualTo(StoredReason.Interrupted)
+                    assertThat(stage.serviceId).isEqualTo("SV1")
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test
     fun `the exported current schema opens and retains catalogue and typed sale outcomes`() {
         val name = "schema-${Uuid.random()}"
         createExportedDatabase(name)
@@ -243,7 +385,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.merchantReference).isEqualTo("MP-10")
                     assertThat(sale.poiReconciliationId).isNull()
                     assertThat(sale.savedCard).isFalse()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {
@@ -290,7 +432,7 @@ class DatabaseSchemaTest {
                             .single()
                             .name,
                     ).isEqualTo("GST")
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {
@@ -321,7 +463,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.status).isEqualTo(SaleStatus.DECLINED)
                     assertThat(sale.errorCondition).isEqualTo("Busy")
                     assertThat(sale.busyServiceId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {
@@ -354,7 +496,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.captureStartedAt).isEqualTo(200)
                     assertThat(sale.captureStatus?.name).isEqualTo("UNKNOWN")
                     assertThat(sale.totalMinor).isEqualTo(1000)
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(16)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {

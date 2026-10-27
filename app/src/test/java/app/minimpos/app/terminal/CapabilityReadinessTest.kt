@@ -1,9 +1,12 @@
 package app.minimpos.app.terminal
 
 import app.minimpos.app.FakeDevice
+import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.core.payment.PaymentContext
+import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.WalletMethod
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -20,6 +23,27 @@ class CapabilityReadinessTest {
         )
 
     @Test
+    fun `audio guidance distinguishes model eligibility from software and Support enablement`() {
+        val physical = TerminalState(poiId = "AMS1-123", apiSetup = ApiSetup.Incomplete(SetupProblem.API_KEY))
+        assertThat(physical.audioGuidanceMinimumSoftware).isEqualTo("1.117")
+        assertThat(physical.copy(poiId = "P630-123").audioGuidanceMinimumSoftware).isEqualTo("1.124")
+        assertThat(physical.copy(poiId = "S1E-123").audioGuidanceMinimumSoftware).isNull()
+        assertThat(
+            physical
+                .copy(capabilities = DestinationCapabilities(supportsTerminalFeatures = false))
+                .audioGuidanceMinimumSoftware,
+        ).isNull()
+        assertThat(
+            AdyenCapabilitiesState(
+                context =
+                    PaymentContext("TERMINAL", "AMS1-123", "POS1", "merchant", "TEST", null),
+            ).audioGuidanceStanding,
+        ).isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
+        assertThat(AdyenCapabilitiesState(simulated = true).audioGuidanceStanding).isEqualTo(CapabilityStanding.AVAILABLE)
+        assertThat(AdyenCapabilitiesState().audioGuidanceStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
+    }
+
+    @Test
     fun `Tap to Pay leaves device camera usable but blocks terminal-only features`() {
         val setup = resolve(defaults.copy(terminal = defaults.terminal.copy(mode = TerminalMode.PAYMENTS_APP)))
         val state = AdyenCapabilitiesState(capabilities = setup.capabilities, cameraAvailable = true, nativeScanner = true)
@@ -28,7 +52,7 @@ class CapabilityReadinessTest {
         assertThat(state.scannedWalletStanding("AUD")).isEqualTo(CapabilityStanding.UNSUPPORTED)
         assertThat(state.abortStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
         assertThat(state.diagnosisStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(state.remoteStatusStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
+        assertThat(state.remoteStatusStanding).isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
         assertThat(state.receiptTippingStanding(true, CapabilityStanding.AVAILABLE)).isEqualTo(CapabilityStanding.UNSUPPORTED)
         assertThat(state.partialAuthStanding(true)).isEqualTo(CapabilityStanding.AVAILABLE)
         assertThat(state.partialAuthStanding(false)).isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
@@ -97,4 +121,22 @@ class CapabilityReadinessTest {
 
     private fun resolve(settings: AppSettings) =
         TerminalSetup.resolve(settings, emptySet(), FakeDevice(), verified = true, pendingImport = false)
+
+    @Test
+    fun `Payments app version eligibility uses only the selected environment and never claims beta readiness`() {
+        val device = FakeDevice(paymentsAppVersions = mapOf(TerminalEnvironment.TEST to "1.8.0", TerminalEnvironment.LIVE to "1.6.0"))
+        val settings = defaults.copy(terminal = defaults.terminal.copy(mode = TerminalMode.PAYMENTS_APP))
+
+        fun standing(environment: TerminalEnvironment) =
+            TerminalSetup
+                .resolve(
+                    settings.copy(terminal = settings.terminal.copy(environment = environment)),
+                    emptySet(),
+                    device,
+                    true,
+                    false,
+                ).capabilities.remoteStatus
+        assertThat(standing(TerminalEnvironment.TEST)).isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
+        assertThat(standing(TerminalEnvironment.LIVE)).isEqualTo(CapabilityStanding.UNSUPPORTED)
+    }
 }

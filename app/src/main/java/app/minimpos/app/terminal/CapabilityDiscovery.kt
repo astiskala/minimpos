@@ -3,6 +3,7 @@ package app.minimpos.app.terminal
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.core.payment.PaymentContext
+import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.RemoteTerminalCapabilities
 import app.minimpos.terminal.transport.TerminalCapabilitiesApi
@@ -17,10 +18,7 @@ import app.minimpos.terminal.transport.WalletMethod
 import app.minimpos.terminal.transport.WalletMethodListing
 import app.minimpos.terminal.transport.WalletMethodsApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /** Progressive readiness of one Adyen capability on the current destination. */
 enum class CapabilityStanding {
@@ -115,6 +113,16 @@ data class AdyenCapabilitiesState(
     val cameraAvailable: Boolean = false,
     val nativeScanner: Boolean? = null,
 ) {
+    /** Model support is advisory: Management does not verify accessibility software or Support enablement. */
+    val audioGuidanceStanding: CapabilityStanding
+        get() =
+            when {
+                !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
+                simulated -> CapabilityStanding.AVAILABLE
+                TerminalClient.audioGuidanceMinimumSoftware(context?.poiId) != null -> CapabilityStanding.NEEDS_CONFIGURATION
+                else -> CapabilityStanding.UNSUPPORTED
+            }
+
     /** Why a refresh cannot run now: the setup [problem] it would only report again; null when it can. */
     val refreshBlocked: Failure? get() = problem?.let(Failure::NotSetUp)
 
@@ -220,7 +228,7 @@ data class AdyenCapabilitiesState(
 
     /** Whether transaction status is queried remotely, not merely recovered from an already received late reply. */
     val remoteStatusStanding: CapabilityStanding
-        get() = if (capabilities.supportsRemoteStatus) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
+        get() = capabilities.remoteStatus
 
     /** Device-camera scanning for products, refunds and setup; camera permission is requested only when scanning. */
     val cameraScanningStanding: CapabilityStanding
@@ -307,7 +315,8 @@ class CapabilityDiscovery(
     private val terminals: (String) -> TerminalCapabilitiesApi,
     private val walletMethods: (String, TerminalEnvironment) -> WalletMethodsApi,
 ) {
-    private val mutex = Mutex()
+    private val reading =
+        SetupReading(setups, AdyenCapabilitiesState(), { it.identity }, { it.context }) { it.copy(checking = false) }
     private var simulatedCapabilities =
         RemoteTerminalCapabilities(
             gratuities = listOf(TerminalGratuity("EUR", true, listOf("10%", "15%", "20%"), true)),
@@ -318,21 +327,15 @@ class CapabilityDiscovery(
         )
 
     /** Current non-secret capability state. */
-    val state: StateFlow<AdyenCapabilitiesState>
-        field = MutableStateFlow(AdyenCapabilitiesState())
+    val state: StateFlow<AdyenCapabilitiesState> get() = reading.state
 
     /** Distinct setup-identity changes that require a capability refresh. */
     val changes: Flow<*> get() = setups.discoveryChanges
 
     /** Refreshes capability state for the current setup. */
     suspend fun refresh(): AdyenCapabilitiesState =
-        mutex.withLock {
-            val origin = setups.unlocked()
-            val setup = origin.setup
-            val context = setup.paymentContext()
-            val identity = setups.SetupFence(origin, SetupFreshness.SECRETS).identity
-            val old = state.value.takeIf { it.identity == identity && it.context == context } ?: AdyenCapabilitiesState()
-            val initial =
+        reading.refresh(
+            begin = { old ->
                 old.copy(
                     context = context,
                     identity = identity,
@@ -342,38 +345,25 @@ class CapabilityDiscovery(
                     nativeScanner = if (setup.apiSetup == ApiSetup.Simulated) false else old.nativeScanner,
                     checking = true,
                 )
-            state.value = initial
-            try {
-                when {
-                    setup.apiSetup == ApiSetup.Simulated -> {
-                        publish(
-                            origin,
-                            initial
-                                .withRemote(simulatedCapabilities)
-                                .copy(checking = false, problem = null, failure = null),
-                        )
-                    }
-
-                    !setup.capabilities.discoversTerminals -> {
-                        publish(
-                            origin,
-                            initial.copy(checking = false, problem = setup.problem, failure = null),
-                        )
-                    }
-
-                    setup.problem != null -> {
-                        publish(origin, initial.copy(checking = false, problem = setup.problem, failure = null))
-                    }
-
-                    else -> {
-                        discoverRemote(origin, initial)
-                    }
+            },
+        ) { initial ->
+            when {
+                setup.apiSetup == ApiSetup.Simulated -> {
+                    publish(initial.withRemote(simulatedCapabilities).copy(checking = false, problem = null, failure = null))
                 }
-            } finally {
-                // This mutex still owns the reading, including when its caller is cancelled or its setup changes.
-                state.value = state.value.copy(checking = false)
+
+                !setup.capabilities.discoversTerminals -> {
+                    publish(initial.copy(checking = false, problem = setup.problem, failure = null))
+                }
+
+                setup.problem != null -> {
+                    publish(initial.copy(checking = false, problem = setup.problem, failure = null))
+                }
+
+                else -> {
+                    discoverRemote(origin, initial)
+                }
             }
-            state.value
         }
 
     /** Updates the terminal's gratuity configuration for [currency]. */
@@ -420,7 +410,7 @@ class CapabilityDiscovery(
         )
 
     private suspend fun patch(patch: TerminalCapabilitiesPatch): CapabilityPatchResult =
-        mutex.withLock {
+        reading.locked {
             val origin = setups.unlocked()
             val setup = origin.setup
             if (setup.apiSetup == ApiSetup.Simulated) {
@@ -429,22 +419,22 @@ class CapabilityDiscovery(
                     state.value
                         .copy(
                             context = setup.paymentContext(),
-                            identity = setups.SetupFence(origin, SetupFreshness.SECRETS).identity,
+                            identity = reading.identity(origin),
                             capabilities = setup.capabilities,
                             simulated = true,
                             checking = false,
                             problem = null,
                             failure = null,
                         ).withRemote(simulatedCapabilities)
-                state.value = next
-                return@withLock CapabilityPatchResult.Updated
+                reading.publish(origin, next)
+                return@locked CapabilityPatchResult.Updated
             }
             if (!setup.capabilities.discoversTerminals) {
-                return@withLock CapabilityPatchResult.NotDone(Failure.Remote(Fault.Unsupported))
+                return@locked CapabilityPatchResult.NotDone(Failure.Remote(Fault.Unsupported))
             }
             val problem = setup.problem
             if (problem != null) {
-                return@withLock CapabilityPatchResult.NotDone(Failure.NotSetUp(problem))
+                return@locked CapabilityPatchResult.NotDone(Failure.NotSetUp(problem))
             }
             val key = checkNotNull(origin.apiKey)
             val environment = checkNotNull(setup.environment)
@@ -452,10 +442,10 @@ class CapabilityDiscovery(
             val api = terminals(key)
             val unchangedFailure = TerminalAssignments.verifyUnchanged(api, environment, poiId, setup.settings.terminal)
             if (unchangedFailure != null) {
-                return@withLock CapabilityPatchResult.NotDone(unchangedFailure)
+                return@locked CapabilityPatchResult.NotDone(unchangedFailure)
             }
-            setups.SetupFence(origin, SetupFreshness.SECRETS).changed()?.let {
-                return@withLock CapabilityPatchResult.NotDone(Failure.NotSetUp(it))
+            reading.changed(origin)?.let {
+                return@locked CapabilityPatchResult.NotDone(Failure.NotSetUp(it))
             }
             when (val result = api.updateCapabilities(poiId, environment, patch)) {
                 is TerminalCapabilitiesUpdate.Ready -> {
@@ -589,7 +579,5 @@ class CapabilityDiscovery(
     private suspend fun publish(
         origin: UnlockedSetup,
         result: AdyenCapabilitiesState,
-    ) {
-        if (setups.SetupFence(origin, SetupFreshness.SECRETS).stillCurrent()) state.value = result
-    }
+    ) = reading.publish(origin, result)
 }

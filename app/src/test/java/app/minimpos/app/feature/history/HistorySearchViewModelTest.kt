@@ -17,6 +17,7 @@ import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.HistoryActivityKind
 import app.minimpos.app.payment.TerminalReconciliation
+import app.minimpos.app.protectedApproval
 import app.minimpos.app.terminal.TerminalSetup
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.payment.Wallet
@@ -354,7 +355,7 @@ class HistorySearchViewModelTest {
                 ),
             )
             val manager = SessionLock { 0L }
-            val vm = reconciliationViewModel(ManagerApproval({ true }, manager, { 0L }))
+            val vm = reconciliationViewModel(protectedApproval(manager))
 
             val initial = vm.state.first { it.loaded && it.canPrint }
             assertThat(initial.reconciliation).isNull()

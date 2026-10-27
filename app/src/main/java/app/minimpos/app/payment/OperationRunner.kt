@@ -10,8 +10,8 @@ import kotlinx.coroutines.launch
  * The single-flight skeleton every financial-operation runner shares: [TransactionLifecycle] on the terminal,
  * [CheckoutOperations] through the Checkout API, and [PaymentLinks] creations. At most one operation runs at a time,
  * on [scope] so it survives screen changes, and it always ends [TransactionState.Finished], even when something
- * unexpected fails, after its runner has stored it as unknown. Requests started in this process are kept until their
- * outcome is known, so a runner can report a success once with the original request.
+ * unexpected fails, after its runner has stored it as unknown and released transient request material. Requests started
+ * in this process are kept until their outcome is known, so a runner can report a success once with the original request.
  *
  * @param R What the screen collected for one operation.
  * @param scope Where operations run.
@@ -53,7 +53,6 @@ internal class OperationRunner<R>(
         scope.launch {
             try {
                 run(started)
-                state.value = TransactionState.Finished(started)
             } catch (e: CancellationException) {
                 throw e
             } catch (
@@ -69,9 +68,12 @@ internal class OperationRunner<R>(
                 } catch (ignored: IllegalStateException) {
                     // The database is closed; it stays PENDING, which the next start turns into UNKNOWN.
                 }
-                state.value = TransactionState.Finished(started)
             } finally {
-                release()
+                try {
+                    release()
+                } finally {
+                    state.value = TransactionState.Finished(started)
+                }
             }
         }
         return started

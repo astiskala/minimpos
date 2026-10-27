@@ -15,7 +15,7 @@ import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.TransactionActionsState
-import app.minimpos.app.feature.launchWrite
+import app.minimpos.app.feature.runAction
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.StoredPayments
@@ -31,6 +31,7 @@ import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.SavedCardCharges
+import app.minimpos.app.payment.SavedCardLookupState
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.payment.WalletPayments
 import app.minimpos.app.payment.savedCardStart
@@ -47,6 +48,7 @@ import app.minimpos.terminal.client.RetryAdvice
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -305,6 +307,7 @@ class SaleViewModel(
  * @param charges Looks up and charges the shopper's saved tokens; null offers no token charge.
  * @param lookupDelay How long the shopper reference must stay unchanged before its tokens are looked up.
  * @param cpu Dispatcher for checkout calculation shared with saved-card lookup.
+ * @param managerConfigured Whether cashback is public or a Manager PIN is configured to approve it.
  */
 class CheckoutViewModel(
     private val session: SaleSession,
@@ -320,12 +323,14 @@ class CheckoutViewModel(
     charges: SavedCardCharges? = null,
     lookupDelay: Duration = 700.milliseconds,
     private val cpu: CoroutineDispatcher = Dispatchers.Default,
+    managerConfigured: Flow<Boolean> = flowOf(false),
 ) : ViewModel() {
     private val checkout =
         session.checkout(
             settings = settings,
             terminal = terminal,
             wallets = discovery?.state ?: flowOf(WalletAvailability()),
+            managerConfigured = managerConfigured,
             offersLinks = links != null,
             currency = currency,
         )
@@ -340,6 +345,14 @@ class CheckoutViewModel(
      */
     private val cardLookup = charges?.lookup(viewModelScope, state, terminal, lookupDelay)
 
+    /** Current lookup progress and failure, including an approval requirement for an explicit retry. */
+    val tokenLookup: StateFlow<SavedCardLookupState> = cardLookup?.state ?: MutableStateFlow(SavedCardLookupState())
+
+    /** Explicitly repeats the current lookup after Manager approval, without changing its shopper reference. */
+    fun findTokens() {
+        cardLookup?.find()
+    }
+
     /** Current chargeable cards; freshness and recurring-model eligibility belong to the saved-card lookup. */
     val tokens: StateFlow<List<StoredCard>> =
         cardLookup
@@ -349,12 +362,16 @@ class CheckoutViewModel(
             ?: MutableStateFlow(emptyList())
 
     /** Updates the form (kept in the [SaleSession] so it survives going back to the cart). */
-    fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateForm(transform)
+    fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateForm(transform = transform)
 
     /** Starts the payment ([Checkout.paymentStart]); returns false when the form is not ready or a payment is running. */
     fun pay(): Boolean {
         val start = session.paymentStart(state.value, clock.instant(), zone()) ?: return false
-        return payments.start(start) != null
+        if (payments.start(start) != null) return true
+        if (start.audioGuidance) {
+            session.updateForm(start) { it.copy(audioGuidance = true, audioGuidanceConfirmedFor = start.audioGuidancePoiId) }
+        }
+        return false
     }
 
     /** Prepares the unchanged sale for wallet scanning; false when unavailable or already busy. */
@@ -468,10 +485,8 @@ class PaymentLinkViewModel(
     }
 
     /** Asks Adyen now whether the link was paid (or, after an unknown outcome, creates it again). */
-    fun check() {
-        if (local.value.check.running) return
-        local.update { it.copy(check = ActionState(running = true)) }
-        launchWrite({
+    fun check() =
+        runAction(local, { it.check }, { copy(check = it) }) {
             val update = links.check(saleId)
             if (update == LinkUpdate.Settled) {
                 val sale = payments.get(saleId)?.sale
@@ -483,8 +498,7 @@ class PaymentLinkViewModel(
             } else {
                 update.toState(stillOpen = true)
             }
-        }) { checked -> local.update { it.copy(check = checked) } }
-    }
+        }
 
     /** Closes the manual check's popup without changing the stored payment or background polling. */
     fun dismissCheckResult() {
@@ -492,20 +506,10 @@ class PaymentLinkViewModel(
     }
 
     /** Expires the link, so the shopper can no longer pay with it. */
-    fun cancel() {
-        if (local.value.cancel.running) return
-        local.update { it.copy(cancel = ActionState(running = true)) }
-        launchWrite({ links.cancel(saleId) }) { update -> local.update { it.copy(cancel = update.toState(stillOpen = false)) } }
-    }
+    fun cancel() = runAction(local, { it.cancel }, { copy(cancel = it) }) { links.cancel(saleId).toState(stillOpen = false) }
 
     /** Completes a demo link after the screen's Manager approval; the operation checks approval again before writing. */
-    fun simulate() {
-        if (local.value.simulation.running) return
-        local.update { it.copy(simulation = ActionState(running = true)) }
-        launchWrite({ links.simulate(saleId) }) { update ->
-            local.update { it.copy(simulation = update.toState(stillOpen = false)) }
-        }
-    }
+    fun simulate() = runAction(local, { it.simulation }, { copy(simulation = it) }) { links.simulate(saleId).toState(stillOpen = false) }
 
     /** This update as a finished action: done once settled, a note that it is not paid yet, or the failure. */
     private fun LinkUpdate.toState(stillOpen: Boolean): ActionState =
@@ -588,16 +592,18 @@ class SaleResultViewModel(
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SaleResultUiState())
 
     /** Cancels the transaction a busy terminal is working on, so the payment can be retried. */
-    fun abortBusyTransaction() {
-        if (local.value.abort.running) return
-        local.update { it.copy(abort = ActionState(running = true)) }
-        launchWrite({ lifecycle.abortBusyTransaction(saleId) }) { sent ->
+    fun abortBusyTransaction() =
+        runAction(local, { it.abort }, { copy(abort = it) }) {
             // Once sent, the stored refusal no longer names the busy transaction, so the action disappears on its own.
-            local.update {
-                it.copy(abort = if (sent) ActionState(outcome = ActionOutcome.AbortSent, done = true) else ActionState(isError = true))
+            if (lifecycle.abortBusyTransaction(
+                    saleId,
+                )
+            ) {
+                ActionState(outcome = ActionOutcome.AbortSent, done = true)
+            } else {
+                ActionState(isError = true)
             }
         }
-    }
 
     /** Leaves the result, so the next payment can start, whichever way this one was sent. */
     fun finish() = operations.acknowledgePayment()

@@ -788,6 +788,9 @@ enum class AdyenRole(
     /** Lists a shopper's saved cards. Granted to new credentials by default. */
     MERCHANT_RECURRING("Merchant Recurring role"),
 
+    /** Lists and deletes stored payment tokens through Checkout. */
+    TOKENISE("API tokenise payment details"),
+
     /** Reaches cloud terminals. */
     CLOUD_DEVICE("Cloud Device API role"),
     ;

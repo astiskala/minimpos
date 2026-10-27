@@ -4,8 +4,11 @@ import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.ManagerApproval
@@ -13,6 +16,7 @@ import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkApi
@@ -47,8 +51,8 @@ sealed interface LinkUpdate {
     ) : LinkUpdate
 
     /**
-     * Adyen did not confirm a creation or expiry that may have taken effect; the stored sale says so, and checking again
-     * establishes it.
+     * Adyen did not confirm a creation or expiry that may have taken effect; checking again establishes it. An unknown
+     * creation is stored as unknown; an unconfirmed expiry leaves the stored sale awaiting its payment.
      *
      * @property failure What prevented the confirmation.
      */
@@ -85,7 +89,7 @@ class PaymentLinks(
     private val sales: SaleRepository,
     private val target: suspend () -> ApiTarget,
     onCreated: (id: String, start: PaymentLinkStart) -> Unit = { _, _ -> },
-    clock: Clock = Clock.systemUTC(),
+    private val clock: Clock = Clock.systemUTC(),
     newId: () -> String = { Uuid.random().toString() },
     locale: () -> Locale = { Locale.getDefault() },
     private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
@@ -100,6 +104,18 @@ class PaymentLinks(
             clock = clock,
             newId = newId,
             mutex = mutex,
+            approval = approval.forActions(setOf(ManagerAction.SALE, ManagerAction.LINK_CREATE)),
+        )
+
+    /**
+     * Payment links as [FinancialOperations] holds them: busy while creation, recovery, a status check or cancellation
+     * is using the current API target.
+     */
+    internal val operationKind =
+        OperationKind(
+            { operations.state.value is TransactionState.Processing || mutex.isLocked },
+            operations::forget,
+            operations::forgetAll,
         )
 
     /** Highest accepted revision per payment kind; older starts stay rejected without retaining every checkout. */
@@ -122,12 +138,6 @@ class PaymentLinks(
 
     private fun started(link: PaymentLinkStart): String? = operations.start(link)
 
-    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
-    internal fun forgetAll() = operations.forgetAll()
-
-    /** Releases process-only requests for records that history has already durably deleted. */
-    internal fun forget(ids: Set<String>) = operations.forget(ids)
-
     /**
      * Asks Adyen where the link of sale [saleId] stands and stores it: paid, expired or still open. A sale whose link
      * may not have been created ([SaleStatus.UNKNOWN]) has it created again (same idempotency key). Anything else is
@@ -135,7 +145,7 @@ class PaymentLinks(
      */
     suspend fun check(saleId: String): LinkUpdate =
         mutex.withLock {
-            val record = sales.get(saleId)?.takeIf { it.sale.paymentLink } ?: return@withLock LinkUpdate.Settled
+            val record = sales.get(saleId)?.takeIf { it.sale.route == SaleRoute.PAYMENT_LINK } ?: return@withLock LinkUpdate.Settled
             val sale = record.sale
             val linkId = sale.paymentLinkId
             when {
@@ -153,8 +163,45 @@ class PaymentLinks(
         mutex.withLock {
             val sale = sales.get(saleId)?.sale?.takeIf { it.status == SaleStatus.AWAITING_PAYMENT }
             val linkId = sale?.paymentLinkId ?: return@withLock LinkUpdate.Settled
-            if (!approval.allowsNow()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
-            withApi(sale) { stored(saleId, it.expire(linkId), cancelling = true) }
+            val approval = approval.forAction(ManagerAction.LINK_CHANGE)
+            val target = target()
+            val expiry =
+                object : IdentifiedSend<PaymentLinkApi, PaymentLinkResult> {
+                    override val unresolved = false
+                    override val firstSentAt: Long? = null
+                    override val reason: StoredReason? = null
+
+                    override suspend fun approved() = approval.allowsNow()
+
+                    override suspend fun access() = target.links(sale.context)
+
+                    override suspend fun exchange(client: PaymentLinkApi) = client.expire(linkId)
+
+                    override fun fault(answer: PaymentLinkResult) = (answer as? PaymentLinkResult.Failed)?.fault
+                }
+            when (val sent = OperationIdentity.send(expiry, clock.millis())) {
+                Sent.Unapproved -> notSetUp(SetupProblem.MANAGER_APPROVAL)
+                is Sent.Blocked -> notSetUp(sent.problem)
+                is Sent.Expired -> LinkUpdate.NotDone(sent.failure)
+                Sent.Withdrawn -> LinkUpdate.Settled
+                is Sent.Unchanged -> LinkUpdate.Unconfirmed(sent.failure)
+                is Sent.Answered -> expired(saleId, sent.answer, sent.failed)
+            }
+        }
+
+    /**
+     * Stores the answer [result] to expiring the link of sale [id], which [failed] classifies when it failed: an expiry
+     * that may have taken effect is unconfirmed, and checking again establishes it.
+     */
+    private suspend fun expired(
+        id: String,
+        result: PaymentLinkResult,
+        failed: FailedSend?,
+    ): LinkUpdate =
+        when (result) {
+            is PaymentLinkResult.Answered -> applied(id, result.link, cancelling = true)
+            is PaymentLinkResult.Failed if failed == FailedSend.UNCONFIRMED -> LinkUpdate.Unconfirmed(Failure.Remote(result.fault))
+            is PaymentLinkResult.Failed -> LinkUpdate.NotDone(Failure.Remote(result.fault))
         }
 
     /**
@@ -168,7 +215,7 @@ class PaymentLinks(
             if (!sale.simulatedLink) return@withLock notSetUp(SetupProblem.PAYMENT_CONTEXT)
             if (sale.status != SaleStatus.AWAITING_PAYMENT) return@withLock LinkUpdate.Settled
             val linkId = sale.paymentLinkId ?: return@withLock LinkUpdate.Settled
-            if (!approval.allowsNow()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
+            if (!approval.forAction(ManagerAction.LINK_CHANGE).allowsNow()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
             withApi(sale) { api ->
                 when (val result = api.status(linkId)) {
                     is PaymentLinkResult.Answered -> {
@@ -210,29 +257,14 @@ class PaymentLinks(
             is ApiAccess.Blocked -> notSetUp(access.problem)
         }
 
-    /**
-     * Stores Adyen's answer [result] about the link of sale [id], which was being expired when [cancelling]. A question
-     * about where it stands that got no answer changed nothing; an expiry that may have taken effect is unconfirmed.
-     */
+    /** Stores Adyen's answer [result] about where the link of sale [id] stands; a question that got no answer changed nothing. */
     private suspend fun stored(
         id: String,
         result: PaymentLinkResult,
-        cancelling: Boolean = false,
     ): LinkUpdate =
         when (result) {
-            is PaymentLinkResult.Answered -> {
-                applied(id, result.link, cancelling)
-            }
-
-            is PaymentLinkResult.Failed if cancelling && result.fault.mayHaveTakenEffect -> {
-                LinkUpdate.Unconfirmed(
-                    Failure.Remote(result.fault),
-                )
-            }
-
-            is PaymentLinkResult.Failed -> {
-                LinkUpdate.NotDone(Failure.Remote(result.fault))
-            }
+            is PaymentLinkResult.Answered -> applied(id, result.link)
+            is PaymentLinkResult.Failed -> LinkUpdate.NotDone(Failure.Remote(result.fault))
         }
 
     private fun notSetUp(problem: SetupProblem): LinkUpdate = LinkUpdate.NotDone(Failure.NotSetUp(problem))
@@ -267,7 +299,8 @@ class PaymentLinks(
                 .get(id)
                 ?.sale
                 ?.takeIf {
-                    it.paymentLink && it.paymentLinkId == null && (it.status == SaleStatus.PENDING || it.status == SaleStatus.UNKNOWN)
+                    it.route == SaleRoute.PAYMENT_LINK && it.paymentLinkId == null &&
+                        (it.status == SaleStatus.PENDING || it.status == SaleStatus.UNKNOWN)
                 }?.let { CheckoutRecord(it.status == SaleStatus.PENDING, it.createdAt, it.context, it.reason) }
 
         override fun access(
@@ -279,13 +312,19 @@ class PaymentLinks(
             id: String,
             client: PaymentLinkApi,
             now: Long,
-        ): CheckoutAnswer {
-            val record = sales.get(id) ?: return CheckoutAnswer.NotTaken
+        ): CheckoutReply {
+            val record = sales.get(id) ?: return CheckoutReply { CheckoutAnswer.NotTaken }
             val result = client.create(PaymentLinkRequests.request(record), idempotencyKey(id))
-            if (record.sale.status == SaleStatus.UNKNOWN && result is PaymentLinkResult.Failed && !result.fault.mayHaveTakenEffect) {
-                return CheckoutAnswer.Unconfirmed(Failure.Remote(result.fault))
-            }
-            return when (result) {
+            return CheckoutReply((result as? PaymentLinkResult.Failed)?.fault) { failed -> stored(id, result, failed) }
+        }
+
+        /** Stores [result], which [failed] classifies when it failed, and says what it established. */
+        private suspend fun stored(
+            id: String,
+            result: PaymentLinkResult,
+            failed: FailedSend?,
+        ): CheckoutAnswer =
+            when (result) {
                 is PaymentLinkResult.Answered -> {
                     val answered = SaleEvent.LinkAnswered(result.link)
                     sales.record(id, answered)
@@ -296,7 +335,7 @@ class PaymentLinks(
                     }
                 }
 
-                is PaymentLinkResult.Failed if !result.fault.mayHaveTakenEffect -> {
+                is PaymentLinkResult.Failed if failed == FailedSend.NOT_DONE -> {
                     sales.record(id, SaleEvent.NotSent(result.fault))
                     CheckoutAnswer.NotTaken
                 }
@@ -307,7 +346,6 @@ class PaymentLinks(
                     CheckoutAnswer.Unconfirmed(failure)
                 }
             }
-        }
 
         override suspend fun notSent(
             id: String,

@@ -1,6 +1,9 @@
 package app.minimpos.app.data.settings
 
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.core.access.ManagerAction
+import app.minimpos.core.giftcard.GiftCardEntry
+import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.core.money.AdyenCurrencies
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.shopper.EmailReferenceMode
@@ -25,7 +28,7 @@ import kotlinx.serialization.Serializable
  * @property payment Currency, tax, references and what checkout asks for.
  * @property receipt Receipt content and printing.
  * @property email SMTP settings for emailed receipts.
- * @property security Admin area locking.
+ * @property security Admin area locking and Manager permissions.
  * @property simulator How the built-in terminal simulator behaves.
  * @property history How long sales and refunds are kept.
  * @property pricingChange Local recoverable pricing journal; null when stable, never shared.
@@ -134,6 +137,27 @@ data class AppSettings(
     companion object {
         internal val LANGUAGE_TAGS = listOf("", "en", "es-MX", "fr-FR", "ja", "pt-BR", "zh-CN", "zh-Hant")
     }
+}
+
+/**
+ * One gift-card provider the merchant completed onboarding with.
+ *
+ * @property provider The provider.
+ * @property code The configured card type (`StoredValueProvider`) for providers that need one
+ *   ([GiftCardProvider.configuresCode]); ignored otherwise.
+ * @property entries How staff may present its cards; at least one.
+ */
+@Serializable
+data class GiftCardSetting(
+    val provider: GiftCardProvider,
+    val code: String = "",
+    val entries: Set<GiftCardEntry> = setOf(GiftCardEntry.SWIPED),
+) {
+    /** The `StoredValueProvider` its requests are sent with. */
+    val wireCode: String get() = provider.wireCode ?: code.trim()
+
+    /** Whether it can be offered: a well-formed card type where one is needed, and at least one entry method. */
+    val complete: Boolean get() = entries.isNotEmpty() && GiftCardProvider.validCode(wireCode)
 }
 
 /** Where payments go ("Payments go to" in Settings › Terminal). */
@@ -369,6 +393,17 @@ enum class ReceiptTipping {
  * @property askGiving Whether immediate-charge sales offer Adyen Giving charity donations (`AskGiving`), and its default choice.
  * @property allowMoto Whether checkout offers Mail Order / Telephone Order (`MOTO`) card entry, guarded by Manager PIN.
  * @property allowMke Whether checkout offers Manual Key Entry (`ForceEntryMode=Keyed`), guarded by Manager PIN.
+ * @property giftCards Gift-card providers the merchant completed onboarding with, each with its entry methods; empty
+ *   offers no gift-card actions, and only [GiftCardSetting.complete] ones are offered. Shared by the merchant account's
+ *   terminals.
+ * @property mexicanInstallments Merchant confirms Mexican issuer-program agreements and installment fees with Adyen.
+ * @property mealVouchers Merchant confirms meal-voucher onboarding for the verified store's market (issuer contracts,
+ *   registered MIDs, Adyen enablement); the market itself comes only from the verified store country.
+ * @property mealVoucherAccountSelection For Brazilian PAT vouchers: the app asks for the voucher account
+ *   (`selectedAccountType`); false leaves the choice to the terminal's own screen, which Adyen Support enables.
+ * @property cashback Explicit Support enablement, card program and local cash limit; disabled by default.
+ * @property unreferencedRefunds Explicit Adyen enablement, local limit and refund delay of unreferenced refunds;
+ *   disabled by default.
  */
 @Serializable
 data class PaymentSettings(
@@ -405,10 +440,23 @@ data class PaymentSettings(
     val askGiving: ReceiptTipping = ReceiptTipping.DISABLED,
     val allowMoto: Boolean = false,
     val allowMke: Boolean = false,
+    val giftCards: List<GiftCardSetting> = emptyList(),
+    val mexicanInstallments: Boolean = false,
+    val mealVouchers: Boolean = false,
+    val mealVoucherAccountSelection: Boolean = false,
+    val cashback: CashbackSettings = CashbackSettings(),
+    val unreferencedRefunds: UnreferencedRefundSettings = UnreferencedRefundSettings(),
 ) {
-    /** These settings with [linkExpiryHours] and terminal tipping numbers within their valid ranges. */
+    /**
+     * These settings with [linkExpiryHours] and terminal tipping numbers within their valid ranges, and one entry per
+     * gift-card provider; incomplete providers are kept while being entered and offered only once
+     * [GiftCardSetting.complete].
+     */
     fun normalized(): PaymentSettings =
         copy(
+            cashback = cashback.copy(limitMinor = cashback.limitMinor.coerceAtLeast(0)),
+            unreferencedRefunds = unreferencedRefunds.copy(limitMinor = unreferencedRefunds.limitMinor.coerceAtLeast(0)),
+            giftCards = giftCards.distinctBy { it.provider },
             linkExpiryHours = linkExpiryHours.coerceIn(LINK_EXPIRY_HOURS),
             lowBasketThresholdMinor = lowBasketThresholdMinor.coerceAtLeast(0),
             fixedTipAmountsMinor =
@@ -448,6 +496,9 @@ data class PaymentSettings(
      * that device's database (another terminal finds its own row by name and rate, see `SetupTransfer`).
      */
     fun withDeviceFieldsOf(device: PaymentSettings): PaymentSettings = copy(defaultTaxRateId = device.defaultTaxRateId)
+
+    /** The configured gift-card providers that can be offered. */
+    val offeredGiftCards: List<GiftCardSetting> get() = giftCards.filter { it.complete }
 
     /** The currency in effect: the chosen one, else the device [country]'s own currency if Adyen supports it, else EUR. */
     fun resolvedCurrency(country: String): String =
@@ -539,6 +590,7 @@ enum class MerchantCopyPolicy {
  * @property markedTaxRateMilliPercent Rate whose items are marked, in thousandths of a percent; null disables marking.
  * @property markedTaxRateMarker Text appended to marked item names; blank normalizes to ※.
  * @property markedTaxRateNote Explanation below marked items; blank omits the explanation.
+ * @property printBusinessName Whether to print the business name below the optional receipt logo.
  */
 @Serializable
 data class ReceiptSettings(
@@ -561,6 +613,7 @@ data class ReceiptSettings(
     val markedTaxRateMilliPercent: Int? = null,
     val markedTaxRateMarker: String = "※",
     val markedTaxRateNote: String = "※ Items at the marked tax rate",
+    val printBusinessName: Boolean = true,
 ) {
     /** These settings with line width and the marked rate within their limits, and a nonblank trimmed marker. */
     fun normalized(): ReceiptSettings =
@@ -632,15 +685,20 @@ data class EmailSettings(
 }
 
 /**
- * Admin area locking. The admin PIN itself is in [app.minimpos.app.data.security.PinManager].
+ * Admin area locking and per-action Manager permissions. The admin PIN itself is in [app.minimpos.app.data.security.PinManager].
  *
+ * @property managerRequirements Overrides keyed by [ManagerAction] names; omitted actions retain their defaults.
  * @property autoLockMinutes Minutes without activity after which the admin area locks again; 0 locks it only when the
  *   admin area is left. Never negative.
  */
 @Serializable
 data class SecuritySettings(
+    val managerRequirements: Map<String, Boolean> = emptyMap(),
     val autoLockMinutes: Int = 2,
 ) {
+    /** Whether [action] needs Manager approval once an admin PIN exists. */
+    fun requiresManager(action: ManagerAction): Boolean = managerRequirements[action.name] ?: action.defaultRequired
+
     /** These settings with [autoLockMinutes] not negative. */
     fun normalized(): SecuritySettings = copy(autoLockMinutes = autoLockMinutes.coerceAtLeast(0))
 }

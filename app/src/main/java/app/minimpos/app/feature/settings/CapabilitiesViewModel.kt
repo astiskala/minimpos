@@ -50,9 +50,11 @@ enum class CapabilityResult {
 /**
  * ViewModel for Adyen capabilities, following setup-identity changes from [CapabilityDiscovery.changes].
  * @param discovery Reads and updates Management terminal capabilities.
+ * @param refreshAssignments Refreshes store-dependent checkout offers after an explicit capability refresh.
  */
 class CapabilitiesViewModel(
     private val discovery: CapabilityDiscovery,
+    private val refreshAssignments: suspend () -> Unit = {},
 ) : ViewModel() {
     /** Current non-secret capability state. */
     val state: StateFlow<AdyenCapabilitiesState> = discovery.state
@@ -75,7 +77,7 @@ class CapabilitiesViewModel(
     /** Refreshes Management capability inspection; ignored while a refresh is checking. */
     fun refresh() {
         if (state.value.checking) return
-        launchWrite({ discovery.refresh() }) { _ ->
+        launchWrite({ discovery.refresh().also { refreshAssignments() } }) { _ ->
             actions.update { it.copy(revision = it.revision + 1) }
         }
     }

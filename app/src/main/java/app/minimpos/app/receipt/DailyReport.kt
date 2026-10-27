@@ -17,6 +17,12 @@ import java.util.Locale
 
 /** Localized daily-summary labels, read at printing rather than retained in financial records. */
 enum class ReportText {
+    /** Cash approved by card issuers, excluded from sales. */
+    CASHBACK,
+
+    /** Card cash physically handed over by staff. */
+    CASH_HANDED_OVER,
+
     /** Local-summary document title. */
     TITLE,
 
@@ -29,8 +35,32 @@ enum class ReportText {
     /** Tips already included in sales. */
     TIPS,
 
+    /** Reported surcharges already included in sales. */
+    SURCHARGES,
+
+    /** Purchase components known from reported surcharges. */
+    PURCHASE,
+
+    /** Count of sales with unreported surcharge components. */
+    UNKNOWN_SURCHARGES,
+
     /** Accepted refund requests. */
     REFUNDS,
+
+    /** Cash tenders included in sales, recorded locally and never in terminal totals. */
+    CASH_SALES,
+
+    /** Cash handed back, included in refunds. */
+    CASH_REFUNDS,
+
+    /** Unreferenced card refunds, included in refunds. */
+    UNREFERENCED_REFUNDS,
+
+    /** Surcharge already included in accepted refunds. */
+    REFUND_SURCHARGES,
+
+    /** Refunds whose fee component is unknown. */
+    UNKNOWN_REFUND_SURCHARGES,
 
     /** Sales minus refunds. */
     NET,
@@ -61,6 +91,24 @@ enum class ReportText {
 
     /** Original environment unavailable. */
     UNKNOWN,
+
+    /** Gift-card value activated, loaded or refunded onto cards, less loads undone; never sales. */
+    GIFT_VALUE_ADDED,
+
+    /** Gift-card value paid out by cash-out. */
+    GIFT_VALUE_REMOVED,
+
+    /** Card payments collecting gift-card value. */
+    GIFT_FUNDING_CARD,
+
+    /** Gift-card value funds staff confirmed were received outside the app. */
+    GIFT_FUNDING_EXTERNAL,
+
+    /** Gift-card funding refunded or given back because no value was delivered. */
+    GIFT_FUNDING_RETURNED,
+
+    /** Cash handed over for gift-card cash-outs, never in terminal totals. */
+    GIFT_CASH_HANDED_OVER,
 }
 
 internal object DailyReport {
@@ -133,13 +181,47 @@ internal object DailyReport {
             val money = MoneyFormatter(CurrencySpec.of(code), locale)
             add(ReceiptElement.Text(code, style = TextStyle.BOLD))
             add(ReceiptElement.Row("${text(ReportText.SALES)} (${total.saleCount})", money.format(total.salesMinor)))
+            add(ReceiptElement.Row(text(ReportText.CASHBACK), money.format(total.cashbackMinor)))
+            add(ReceiptElement.Row(text(ReportText.CASH_HANDED_OVER), money.format(total.cashHandedOverMinor)))
             add(ReceiptElement.Row(text(ReportText.TIPS), money.format(total.tipsMinor)))
+            add(ReceiptElement.Row(text(ReportText.PURCHASE), money.format(total.purchaseMinor)))
+            add(ReceiptElement.Row(text(ReportText.SURCHARGES), money.format(total.surchargesMinor)))
+            add(ReceiptElement.Row(text(ReportText.UNKNOWN_SURCHARGES), total.unknownSurchargeCount.toString()))
+            if (total.cashSalesMinor != 0L) add(ReceiptElement.Row(text(ReportText.CASH_SALES), money.format(total.cashSalesMinor)))
             if (dated) {
                 add(ReceiptElement.Row("${text(ReportText.REFUNDS)} (${total.refundCount})", money.format(total.refundsMinor)))
+                if (total.cashRefundsMinor !=
+                    0L
+                ) {
+                    add(ReceiptElement.Row(text(ReportText.CASH_REFUNDS), money.format(total.cashRefundsMinor)))
+                }
+                if (total.unreferencedRefundsMinor != 0L) {
+                    add(ReceiptElement.Row(text(ReportText.UNREFERENCED_REFUNDS), money.format(total.unreferencedRefundsMinor)))
+                }
+                add(ReceiptElement.Row(text(ReportText.REFUND_SURCHARGES), money.format(total.refundedSurchargesMinor)))
+                add(ReceiptElement.Row(text(ReportText.UNKNOWN_REFUND_SURCHARGES), total.unknownRefundSurchargeCount.toString()))
                 add(ReceiptElement.Row(text(ReportText.NET), money.format(total.netMinor), TextStyle.BOLD))
                 add(ReceiptElement.Row("${text(ReportText.HOLDS)} (${total.holdCount})", money.format(total.heldMinor)))
                 add(ReceiptElement.Row(text(ReportText.UNRESOLVED), total.unresolvedCount.toString()))
+                giftCardRows(total, money, text).forEach(::add)
             }
         }
+    }
+
+    /** Stored-value movements, only when any moved; separate from sales, refunds and their net. */
+    private fun giftCardRows(
+        total: CurrencyHistoryTotals,
+        money: MoneyFormatter,
+        text: (ReportText) -> String,
+    ) = buildList {
+        val gift = total.giftCards
+        listOf(
+            ReportText.GIFT_VALUE_ADDED to gift.valueAddedMinor,
+            ReportText.GIFT_VALUE_REMOVED to gift.valueRemovedMinor,
+            ReportText.GIFT_FUNDING_CARD to gift.cardFundingMinor,
+            ReportText.GIFT_FUNDING_EXTERNAL to gift.externalFundingMinor,
+            ReportText.GIFT_FUNDING_RETURNED to gift.fundingReturnedMinor,
+            ReportText.GIFT_CASH_HANDED_OVER to gift.cashHandedOverMinor,
+        ).filter { it.second != 0L }.forEach { (label, amount) -> add(ReceiptElement.Row(text(label), money.format(amount))) }
     }
 }

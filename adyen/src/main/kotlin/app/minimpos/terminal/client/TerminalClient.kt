@@ -18,11 +18,10 @@ import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.ForceEntryModeType
 import com.adyen.model.nexo.GetTotalsRequest
 import com.adyen.model.nexo.IdentificationType
+import com.adyen.model.nexo.Instalment
 import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.MessageClassType
-import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.MessageReference
-import com.adyen.model.nexo.MessageType
 import com.adyen.model.nexo.OriginalPOITransaction
 import com.adyen.model.nexo.POIData
 import com.adyen.model.nexo.PaymentData
@@ -32,6 +31,7 @@ import com.adyen.model.nexo.PaymentReceipt
 import com.adyen.model.nexo.PaymentRequest
 import com.adyen.model.nexo.PaymentResponse
 import com.adyen.model.nexo.PaymentTransaction
+import com.adyen.model.nexo.PaymentType
 import com.adyen.model.nexo.PrintRequest
 import com.adyen.model.nexo.ReconciliationRequest
 import com.adyen.model.nexo.ReconciliationType
@@ -42,20 +42,16 @@ import com.adyen.model.nexo.ReversalRequest
 import com.adyen.model.nexo.ReversalResponse
 import com.adyen.model.nexo.SaleData
 import com.adyen.model.nexo.SaleToPOIRequest
-import com.adyen.model.nexo.SaleToPOIResponse
 import com.adyen.model.nexo.StoredValueAccountID
 import com.adyen.model.nexo.StoredValueAccountType
 import com.adyen.model.nexo.TokenRequestedType
 import com.adyen.model.nexo.TotalFilter
 import com.adyen.model.nexo.TransactionConditions
 import com.adyen.model.nexo.TransactionIdentification
-import com.adyen.model.nexo.TransactionStatusRequest
 import com.adyen.model.nexo.TransactionTotals
 import com.adyen.model.nexo.TransactionType
-import com.adyen.model.terminal.SaleToAcquirerData
 import com.adyen.model.terminal.SaleToAcquirerData.RecurringProcessingModelEnum
 import com.adyen.model.terminal.TerminalAPIRequest
-import kotlinx.coroutines.delay
 import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
@@ -85,14 +81,14 @@ class TerminalClient(
     private val transport: TerminalTransport,
     /** The SaleID and POIID put in every message header. */
     val identity: TerminalIdentity,
-    /** Sent as application info on payments and refunds; null only in tests. */
-    private val application: PosApplication? = null,
+    /** Sent as application info on payments, refunds and stored-value requests; null only in tests. */
+    internal val application: PosApplication? = null,
     /** Stamps the `SaleTransactionID` of payments and refunds. */
-    private val clock: Clock = Clock.systemUTC(),
+    internal val clock: Clock = Clock.systemUTC(),
     /** Makes the ServiceIDs of requests the caller does not name itself (aborts, prints, diagnoses, status checks). */
-    private val newServiceId: () -> String = ::randomServiceId,
+    internal val newServiceId: () -> String = ::randomServiceId,
     /** How long and how often to check the status of a payment or refund whose response went missing. */
-    private val recovery: RecoveryPolicy = RecoveryPolicy(),
+    recovery: RecoveryPolicy = RecoveryPolicy(),
     /** Adyen: check the transaction status if a local payment response has not arrived after 120 seconds. */
     private val transactionTimeout: Duration = DEFAULT_TRANSACTION_TIMEOUT,
     /** The timeout for requests the terminal answers without the shopper: abort, print, diagnosis and status checks. */
@@ -106,6 +102,9 @@ class TerminalClient(
     /** Converts amounts between this client's minor units and nexo's major units. */
     internal val money = TerminalMoney(currencyDigits)
 
+    /** Builds, sends and recovers this client's messages; shared with the stored-value requests. */
+    internal val exchange = TerminalExchange(transport, identity, newServiceId, recovery, transactionTimeout, shortTimeout, money)
+
     /**
      * Takes a card payment: the terminal asks the shopper to present a card and the call returns when the payment is
      * approved, declined or cancelled, or once the transaction timeout (by default [DEFAULT_TRANSACTION_TIMEOUT]) has
@@ -116,6 +115,9 @@ class TerminalClient(
      * [TransactionOutcome.NotProcessed]. If the request was sent but the answer went missing (timeout, broken connection,
      * unreadable reply), the payment's status is checked as the [RecoveryPolicy] says until the terminal gives a result;
      * a payment that stays unconfirmed is [TransactionOutcome.Unknown].
+     *
+     * Audio guidance allows [ACCESSIBLE_TRANSACTION_TIMEOUT] before recovery, covering the default extended payment
+     * and PIN screens. Longer Support-configured screens can still yield an unknown result; no timeout aborts a payment.
      *
      * Callers that persist the [serviceId] before sending can later reconcile the payment with [status].
      *
@@ -131,7 +133,7 @@ class TerminalClient(
     ): TransactionOutcome =
         executeShopperFlow(params) { effectiveParams ->
             val request =
-                message(MessageClassType.SERVICE, MessageCategoryType.PAYMENT, serviceId).apply {
+                exchange.message(MessageClassType.SERVICE, MessageCategoryType.PAYMENT, serviceId).apply {
                     paymentRequest =
                         PaymentRequest().apply {
                             saleData =
@@ -139,7 +141,7 @@ class TerminalClient(
                                     saleTransactionID = transaction(effectiveParams.merchantReference, clock.instant())
                                     saleReferenceID = effectiveParams.saleReferenceId
                                     saleToAcquirerData =
-                                        acquirerData().apply {
+                                        application.acquirerData().apply {
                                             shopperReference = effectiveParams.shopperReference
                                             shopperEmail = effectiveParams.shopperEmail
                                             recurringProcessingModel =
@@ -149,29 +151,28 @@ class TerminalClient(
                                                     )
                                                 }
                                             tenderOption = effectiveParams.tenderOption()
+                                            if (effectiveParams.giftCard?.use == GiftCardUse.CASH_OUT) redemptionType = CASHBACK
                                             metadata = effectiveParams.metadata.takeIf { it.isNotEmpty() }
                                             if (effectiveParams.preAuthorisation) {
                                                 authorisationType = PRE_AUTH
                                                 additionalData = mapOf(MANUAL_CAPTURE to "true")
                                             }
                                         }
-                                    effectiveParams.terminalTip?.let { tip ->
-                                        tip.suggestions?.let { suggestions ->
-                                            saleToPOIData =
-                                                encodeTipOperation(
-                                                    tip.amountToTipOnMinor?.let { money.major(it, effectiveParams.currency) },
-                                                    suggestions,
-                                                )
-                                        }
-                                    }
+                                    saleToPOIData = paymentOperations(effectiveParams)
                                     if (effectiveParams.requestCardAlias) tokenRequestedType = TokenRequestedType.CUSTOMER
                                 }
-                            paymentData = effectiveParams.scannedPayment?.let(::scannedInstrument)
+                            paymentData =
+                                paymentInstrumentChoice(effectiveParams)
                             paymentTransaction = paymentAmounts(effectiveParams)
                         }
                 }
             onStarted(serviceId)
-            execute(serviceId, MessageCategoryType.PAYMENT, request) {
+            exchange.execute(
+                serviceId,
+                MessageCategoryType.PAYMENT,
+                request,
+                timeout = if (params.audioGuidance) maxOf(transactionTimeout, ACCESSIBLE_TRANSACTION_TIMEOUT) else transactionTimeout,
+            ) {
                 it.paymentResponse?.let { answer ->
                     mapPayment(answer, money::minor)
                 }
@@ -214,11 +215,22 @@ class TerminalClient(
                 put("Session", mapOf("Id" to sessionId, "Type" to if (once) "Once" else "End"))
                 if (once) put("Operation", listOf(mapOf("Type" to "ScanBarcode", "TimeoutMs" to 30_000)))
             }
-        return message(MessageClassType.SERVICE, MessageCategoryType.ADMIN, newServiceId())
+        return exchange
+            .message(MessageClassType.SERVICE, MessageCategoryType.ADMIN, newServiceId())
             .apply {
                 adminRequest = AdminRequest().apply { serviceIdentification = base64Json(service) }
             }.let { TerminalAPIRequest().apply { saleToPOIRequest = it } }
     }
+
+    private fun paymentInstrumentChoice(params: PaymentParams): PaymentData? =
+        params.scannedPayment?.let(::scannedInstrument) ?: params.giftCard?.paymentData()
+            ?: PaymentData().apply { paymentType = PaymentType.REFUND }.takeIf { params.unreferencedRefund }
+            ?: params.mexicanPayment?.count?.let { count ->
+                PaymentData().apply {
+                    paymentType = PaymentType.INSTALMENT
+                    instalment = Instalment().apply { totalNbOfPayments = count.toBigInteger() }
+                }
+            }
 
     private fun paymentAmounts(params: PaymentParams): PaymentTransaction =
         PaymentTransaction().apply {
@@ -226,6 +238,10 @@ class TerminalClient(
                 when {
                     params.scannedPayment != null -> {
                         walletConditions(params.scannedPayment)
+                    }
+
+                    params.mexicanPayment != null -> {
+                        TransactionConditions().apply { isDebitPreferredFlag = params.mexicanPayment.debit }
                     }
 
                     params.cardEntryOverride == CardEntryOverride.MKE -> {
@@ -240,6 +256,7 @@ class TerminalClient(
                 AmountsReq().apply {
                     currency = params.currency
                     requestedAmount = money.major(params.amountMinor, params.currency)
+                    cashBackAmount = params.cashBackMinor?.let { money.major(it, params.currency) }
                 }
         }
 
@@ -278,7 +295,7 @@ class TerminalClient(
         serviceId: String = newServiceId(),
     ): TransactionOutcome {
         val request =
-            message(MessageClassType.SERVICE, MessageCategoryType.REVERSAL, serviceId).apply {
+            exchange.message(MessageClassType.SERVICE, MessageCategoryType.REVERSAL, serviceId).apply {
                 reversalRequest =
                     ReversalRequest().apply {
                         originalPOITransaction =
@@ -296,13 +313,13 @@ class TerminalClient(
                                 saleTransactionID = transaction(params.merchantReference, clock.instant())
                                 // Partial refunds must state the original currency.
                                 saleToAcquirerData =
-                                    acquirerData().apply {
+                                    application.acquirerData().apply {
                                         currency = params.currency?.takeIf { params.amountMinor != null }
                                     }
                             }
                     }
             }
-        return execute(serviceId, MessageCategoryType.REVERSAL, request) {
+        return exchange.execute(serviceId, MessageCategoryType.REVERSAL, request) {
             it.reversalResponse?.let { answer -> mapReversal(answer, params.currency, money::minor) }
         }
     }
@@ -320,7 +337,7 @@ class TerminalClient(
         kind: TransactionKind = TransactionKind.PAYMENT,
     ) {
         val request =
-            message(MessageClassType.SERVICE, MessageCategoryType.ABORT, newServiceId()).apply {
+            exchange.message(MessageClassType.SERVICE, MessageCategoryType.ABORT, newServiceId()).apply {
                 abortRequest =
                     AbortRequest().apply {
                         abortReason = "MerchantAbort"
@@ -334,28 +351,38 @@ class TerminalClient(
                     }
             }
         // Whatever the delivery, the payment result (aborted or not) still arrives on the original request.
-        transport.send(wrap(request), shortTimeout)
+        transport.send(exchange.wrap(request), shortTimeout)
     }
 
     /**
      * Prints on the terminal's own printer. Each job is a separate nexo print request (response mode `PrintEnd`, so the
-     * terminal answers once the paper is out); sending them back to back makes text and QR codes come out on one slip.
-     * Text jobs are printed as `Document`, QR codes as a `CustomerReceipt` bar code with URL-encoded content. Stops at
-     * the first failure.
+     * terminal answers once the paper is out); sending them back to back makes images, text and QR codes share a slip.
+     * Text and XHTML PNG jobs use `Document`; QR codes use a URL-encoded `CustomerReceipt` bar code. Stops at
+     * the first failure, except an image refusal: text still prints. Paper and missing-printer failures stop printing.
      *
      * @param jobs The documents to print, in order.
-     * @return [PrintOutcome.Printed], or the first failure. I/O errors are reported as failures, not thrown.
+     * @return [PrintOutcome.Printed], [PrintOutcome.PrintedWithoutImage], or the first failure. I/O errors are results.
      */
-    suspend fun print(jobs: List<PrintJob>): PrintOutcome = jobs.firstNotNullOfOrNull { printFailure(it) } ?: PrintOutcome.Printed
+    suspend fun print(jobs: List<PrintJob>): PrintOutcome {
+        var skipped: PrintOutcome.PrintedWithoutImage? = null
+        for (job in jobs) {
+            when (val result = printResult(job)) {
+                is PrintOutcome.Failed -> return result
+                is PrintOutcome.PrintedWithoutImage -> if (skipped == null) skipped = result
+                PrintOutcome.Printed, null -> Unit
+            }
+        }
+        return skipped ?: PrintOutcome.Printed
+    }
 
-    /** Prints one job; null when it printed. */
-    private suspend fun printFailure(job: PrintJob): PrintOutcome.Failed? {
+    /** Prints one job; null when it printed, or the image refusal that allows later text to print. */
+    private suspend fun printResult(job: PrintJob): PrintOutcome? {
         val request =
-            message(MessageClassType.DEVICE, MessageCategoryType.PRINT, newServiceId()).apply {
+            exchange.message(MessageClassType.DEVICE, MessageCategoryType.PRINT, newServiceId()).apply {
                 printRequest = PrintRequest().apply { printOutput = job.toNexo() }
             }
         val response =
-            when (val answer = readTerminalAnswer(transport.send(wrap(request), shortTimeout)) { it.printResponse?.response }) {
+            when (val answer = readTerminalAnswer(transport.send(exchange.wrap(request), shortTimeout)) { it.printResponse?.response }) {
                 is TerminalAnswer.Unread -> return PrintOutcome.Failed(answer.fault, noPrinter = false)
                 is TerminalAnswer.Read -> answer.body
             }
@@ -363,7 +390,12 @@ class TerminalClient(
         val message = AdditionalResponseParser.parse(response.additionalResponse)[NexoVocabulary.MESSAGE]
         val noPrinter =
             response.errorCondition == ErrorConditionType.UNAVAILABLE_DEVICE || message.orEmpty().contains("no printer", ignoreCase = true)
-        return PrintOutcome.Failed(Fault.TerminalRejected(ExternalText.of(message)), noPrinter)
+        val fault = Fault.TerminalRejected(ExternalText.of(message))
+        return if (job is PrintJob.Image && !noPrinter && response.errorCondition != ErrorConditionType.DEVICE_OUT) {
+            PrintOutcome.PrintedWithoutImage(fault)
+        } else {
+            PrintOutcome.Failed(fault, noPrinter)
+        }
     }
 
     /**
@@ -375,11 +407,11 @@ class TerminalClient(
      */
     suspend fun diagnose(): DiagnosisResult {
         val request =
-            message(MessageClassType.SERVICE, MessageCategoryType.DIAGNOSIS, newServiceId()).apply {
+            exchange.message(MessageClassType.SERVICE, MessageCategoryType.DIAGNOSIS, newServiceId()).apply {
                 diagnosisRequest = DiagnosisRequest().apply { setHostDiagnosisFlag(false) }
             }
         val response =
-            when (val answer = readTerminalAnswer(transport.send(wrap(request), shortTimeout)) { it.diagnosisResponse }) {
+            when (val answer = readTerminalAnswer(transport.send(exchange.wrap(request), shortTimeout)) { it.diagnosisResponse }) {
                 is TerminalAnswer.Unread -> return DiagnosisResult(reachable = false, fault = answer.fault)
                 is TerminalAnswer.Read -> answer.body
             }
@@ -406,14 +438,14 @@ class TerminalClient(
     suspend fun reconcile(closePeriod: Boolean = true): TerminalTotalsOutcome {
         val request =
             if (closePeriod) {
-                message(MessageClassType.SERVICE, MessageCategoryType.RECONCILIATION, newServiceId()).apply {
+                exchange.message(MessageClassType.SERVICE, MessageCategoryType.RECONCILIATION, newServiceId()).apply {
                     reconciliationRequest =
                         ReconciliationRequest().apply {
                             reconciliationType = ReconciliationType.SALE_RECONCILIATION
                         }
                 }
             } else {
-                message(MessageClassType.SERVICE, MessageCategoryType.GET_TOTALS, newServiceId()).apply {
+                exchange.message(MessageClassType.SERVICE, MessageCategoryType.GET_TOTALS, newServiceId()).apply {
                     getTotalsRequest =
                         GetTotalsRequest().apply {
                             totalFilter = TotalFilter().apply { poiid = identity.poiId }
@@ -422,7 +454,7 @@ class TerminalClient(
             }
         return when (
             val answer =
-                readTerminalAnswer(transport.send(wrap(request), shortTimeout)) { response ->
+                readTerminalAnswer(transport.send(exchange.wrap(request), shortTimeout)) { response ->
                     when {
                         closePeriod -> {
                             response.reconciliationResponse?.let {
@@ -530,152 +562,45 @@ class TerminalClient(
         serviceId: String,
         kind: TransactionKind = TransactionKind.PAYMENT,
     ): TransactionOutcome =
-        when (val check = checkStatus(serviceId, kind.category())) {
-            is StatusCheck.Settled -> check.outcome
-            StatusCheck.InProgress -> TransactionOutcome.Unknown(Fault.StillInProgress)
-            is StatusCheck.NoAnswer -> TransactionOutcome.Unknown(check.fault)
+        when (val check = exchange.checkStatus(serviceId, kind.category())) {
+            is TerminalExchange.StatusCheck.Settled -> check.outcome
+            TerminalExchange.StatusCheck.InProgress -> TransactionOutcome.Unknown(Fault.StillInProgress)
+            is TerminalExchange.StatusCheck.NoAnswer -> TransactionOutcome.Unknown(check.fault)
         }
-
-    private suspend fun execute(
-        serviceId: String,
-        category: MessageCategoryType,
-        request: SaleToPOIRequest,
-        extract: (SaleToPOIResponse) -> TransactionDetails?,
-    ): TransactionOutcome {
-        val response =
-            when (val delivery = transport.send(wrap(request), transactionTimeout)) {
-                is Delivery.Answered -> delivery.response
-                is Delivery.Failed if !delivery.fault.mayHaveTakenEffect -> return TransactionOutcome.NotProcessed(delivery.fault)
-                is Delivery.Failed -> return recover(serviceId, category, delivery.fault)
-            }
-        val details =
-            response?.saleToPOIResponse?.let(extract) ?: return recover(serviceId, category, Fault.UnreadableReply())
-        return TransactionOutcome.Completed(details)
-    }
-
-    /**
-     * Checks the status of the transaction whose answer went missing because of [fault]; while it stays unconfirmed the
-     * outcome is unknown, for [fault] or, when the terminal kept reporting it in progress, [Fault.StillInProgress].
-     */
-    private suspend fun recover(
-        serviceId: String,
-        category: MessageCategoryType,
-        fault: Fault,
-    ): TransactionOutcome {
-        var unanswered = 0
-        var inProgress = 0
-        while (unanswered < recovery.attempts && inProgress < recovery.maxInProgressChecks) {
-            delay(recovery.intervalMillis)
-            when (val check = checkStatus(serviceId, category)) {
-                is StatusCheck.Settled -> return check.outcome
-                StatusCheck.InProgress -> inProgress++
-                is StatusCheck.NoAnswer -> unanswered++
-            }
-        }
-        return TransactionOutcome.Unknown(if (inProgress >= recovery.maxInProgressChecks) Fault.StillInProgress else fault)
-    }
-
-    private sealed interface StatusCheck {
-        data class Settled(
-            val outcome: TransactionOutcome,
-        ) : StatusCheck
-
-        /** The terminal is still waiting for the shopper or the issuer. */
-        data object InProgress : StatusCheck
-
-        /** No usable status came back, because of [fault]. */
-        data class NoAnswer(
-            val fault: Fault,
-        ) : StatusCheck
-    }
-
-    private suspend fun checkStatus(
-        serviceId: String,
-        category: MessageCategoryType,
-    ): StatusCheck {
-        val sent = transport.send(wrap(statusRequest(serviceId, category)), shortTimeout)
-        val status =
-            when (val answer = readTerminalAnswer(sent) { it.transactionStatusResponse }) {
-                is TerminalAnswer.Unread -> return StatusCheck.NoAnswer(answer.fault)
-                is TerminalAnswer.Read -> answer.body
-            }
-        val response = status.response
-        return when {
-            response?.result == ResultType.SUCCESS -> {
-                val body = status.repeatedMessageResponse?.repeatedResponseMessageBody
-                val details =
-                    body?.paymentResponse?.let { mapPayment(it, money::minor) }
-                        ?: body?.reversalResponse?.let { mapReversal(it, null, money::minor) }
-                details?.let { StatusCheck.Settled(TransactionOutcome.Completed(it)) }
-                    ?: StatusCheck.NoAnswer(Fault.UnreadableReply())
-            }
-
-            response?.errorCondition == ErrorConditionType.NOT_FOUND -> {
-                StatusCheck.Settled(TransactionOutcome.NotProcessed(Fault.NoRecord))
-            }
-
-            response?.errorCondition == ErrorConditionType.IN_PROGRESS -> {
-                StatusCheck.InProgress
-            }
-
-            else -> {
-                StatusCheck.NoAnswer(Fault.UnreadableReply())
-            }
-        }
-    }
-
-    private fun statusRequest(
-        serviceId: String,
-        category: MessageCategoryType,
-    ) = message(MessageClassType.SERVICE, MessageCategoryType.TRANSACTION_STATUS, newServiceId()).apply {
-        transactionStatusRequest =
-            TransactionStatusRequest().apply {
-                // Ask for the receipts again, so a recovered payment can be printed like any other.
-                setReceiptReprintFlag(true)
-                documentQualifier += listOf(DocumentQualifierType.CASHIER_RECEIPT, DocumentQualifierType.CUSTOMER_RECEIPT)
-                messageReference =
-                    MessageReference().apply {
-                        messageCategory = category
-                        saleID = identity.saleId
-                        serviceID = serviceId
-                    }
-            }
-    }
-
-    private fun acquirerData(): SaleToAcquirerData =
-        SaleToAcquirerData().apply {
-            application?.let { applicationInfo = it.toApplicationInfo() }
-        }
-
-    private fun message(
-        messageClass: MessageClassType,
-        category: MessageCategoryType,
-        serviceId: String,
-    ) = SaleToPOIRequest().apply {
-        messageHeader =
-            MessageHeader().apply {
-                protocolVersion = PROTOCOL_VERSION
-                this.messageClass = messageClass
-                messageCategory = category
-                messageType = MessageType.REQUEST
-                serviceID = serviceId
-                saleID = identity.saleId
-                poiid = identity.poiId
-            }
-    }
 
     internal suspend fun sendShortMessage(
         messageClass: MessageClassType,
         category: MessageCategoryType,
         configure: SaleToPOIRequest.() -> Unit,
-    ): Delivery = transport.send(wrap(message(messageClass, category, newServiceId()).apply(configure)), shortTimeout)
+    ): Delivery = transport.send(exchange.wrap(exchange.message(messageClass, category, newServiceId()).apply(configure)), shortTimeout)
 
-    private fun wrap(request: SaleToPOIRequest) = TerminalAPIRequest().apply { saleToPOIRequest = request }
+    // One owner composes the whole SaleToPOIData blob, so adding a variant or account cannot overwrite tip overrides.
+    private fun paymentOperations(params: PaymentParams): String? {
+        val operation =
+            buildMap<String, Any> {
+                put("Type", "Payment")
+                if (params.audioGuidance) put(NexoVocabulary.VARIANT, NexoVocabulary.ENABLE_ACCESSIBILITY)
+                params.terminalTip?.let { tip ->
+                    tip.suggestions?.let { suggestions ->
+                        put(
+                            NexoVocabulary.TIP_OPTIONS,
+                            tipOptions(tip.amountToTipOnMinor?.let { money.major(it, params.currency) }, suggestions),
+                        )
+                    }
+                }
+            }
+        val data =
+            buildMap<String, Any> {
+                if (operation.size > 1) put(NexoVocabulary.OPERATION, listOf(operation))
+                if (params.mealVoucherAccount) put(NexoVocabulary.SELECTED_ACCOUNT_TYPE, NexoVocabulary.MEAL_VOUCHER)
+            }
+        return if (data.isEmpty()) null else base64Json(data)
+    }
 
-    private fun encodeTipOperation(
+    private fun tipOptions(
         amountToTipOn: BigDecimal?,
         configured: TerminalTipSuggestions,
-    ): String {
+    ): Map<String, Any> {
         val suggestions =
             when (configured) {
                 is TerminalTipSuggestions.Percentages -> {
@@ -696,19 +621,17 @@ class TerminalClient(
                     }
                 }
             }
-        val tipOptions =
-            buildMap<String, Any> {
-                amountToTipOn?.let { put(NexoVocabulary.AMOUNT_TO_TIP_ON, it) }
-                put(NexoVocabulary.TIP_SUGGESTIONS, suggestions)
-            }
-        val operation = mapOf(NexoVocabulary.OPERATION to listOf(mapOf("Type" to "Payment", NexoVocabulary.TIP_OPTIONS to tipOptions)))
-        return base64Json(operation)
+        return buildMap<String, Any> {
+            amountToTipOn?.let { put(NexoVocabulary.AMOUNT_TO_TIP_ON, it) }
+            put(NexoVocabulary.TIP_SUGGESTIONS, suggestions)
+        }
     }
 
     private fun TransactionKind.category(): MessageCategoryType =
         when (this) {
             TransactionKind.PAYMENT -> MessageCategoryType.PAYMENT
             TransactionKind.REFUND -> MessageCategoryType.REVERSAL
+            TransactionKind.STORED_VALUE -> MessageCategoryType.STORED_VALUE
         }
 
     /** Terminal API formats and the mapping of nexo responses to [TransactionDetails]. */
@@ -718,6 +641,27 @@ class TerminalClient(
 
         /** How long to wait for a payment or refund response before checking its status, as Adyen advises. */
         val DEFAULT_TRANSACTION_TIMEOUT: Duration = 120.seconds
+
+        /** Covers the default two-minute payment and five-minute PIN screens, plus transitions; timeout still means unknown. */
+        val ACCESSIBLE_TRANSACTION_TIMEOUT: Duration = 600.seconds
+
+        /**
+         * Minimum Adyen software for POS-requested audio guidance on [poiId], or null for an unlisted/unknown model.
+         * Model eligibility alone does not establish installed software or Support enablement (checked October 24, 2026).
+         */
+        fun audioGuidanceMinimumSoftware(poiId: String?): String? =
+            when (poiId?.substringBefore('-')?.uppercase()) {
+                "AMS1", "S1F2", "S1F2L", "S1E2L", "S1U2" -> "1.117"
+                "M450", "P630", "SFO1" -> "1.124"
+                else -> null
+            }
+
+        /**
+         * Whether a stored unreferenced refund's verbatim `acquirerResponseCode` says the acquirer approved it
+         * synchronously (`Approved`); Adyen still confirms the refund with its `REFUND_WITH_DATA` webhook.
+         */
+        fun refundApproved(acquirerResponseCode: String?): Boolean = acquirerResponseCode?.trim() == NexoVocabulary.APPROVED
+
         private val TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
 
         /**
@@ -743,6 +687,9 @@ class TerminalClient(
 
         /** Tender option for Mail Order / Telephone Order card entry on the terminal. */
         const val MOTO = "MOTO"
+
+        /** `SaleToAcquirerData.redemptionType` that pays a gift card's value out to the shopper. */
+        internal const val CASHBACK = "cashback"
 
         /** The `additionalData` key that leaves a payment uncaptured until it is captured manually. */
         private const val MANUAL_CAPTURE = "manualCapture"
@@ -823,11 +770,27 @@ class TerminalClient(
                 receipts = response.paymentReceipt,
             ).copy(
                 merchantReference = response.saleData?.saleTransactionID?.transactionID,
+                // SDK getPaymentType defaults missing fields to Normal. Only explicit installment types are evidence.
+                returnedPaymentType =
+                    response.paymentResult
+                        ?.paymentType
+                        ?.takeIf {
+                            it == PaymentType.INSTALMENT || it == PaymentType.ISSUER_INSTALMENT
+                        }?.value(),
+                returnedInstallments =
+                    response.paymentResult
+                        ?.instalment
+                        ?.totalNbOfPayments
+                        ?.toString(),
+                returnedPlanId = response.paymentResult?.instalment?.planID,
                 amountMinor = minor(response.paymentResult?.amountsResp?.authorizedAmount, response.paymentResult?.amountsResp?.currency),
                 tipMinor = minor(response.paymentResult?.amountsResp?.tipAmount, response.paymentResult?.amountsResp?.currency),
+                surchargeMinor = minor(response.paymentResult?.amountsResp?.totalFeesAmount, response.paymentResult?.amountsResp?.currency),
+                cashBackMinor = minor(response.paymentResult?.amountsResp?.cashBackAmount, response.paymentResult?.amountsResp?.currency),
                 currency = response.paymentResult?.amountsResp?.currency,
                 paymentBrand = card?.paymentBrand ?: additional[NexoVocabulary.PAYMENT_METHOD],
                 paymentMethodVariant = additional[NexoVocabulary.PAYMENT_METHOD_VARIANT],
+                fundingSource = additional[NexoVocabulary.FUNDING_SOURCE]?.trim()?.ifEmpty { null },
                 maskedPan = card?.maskedPAN,
                 entryMode = card?.entryMode?.firstOrNull()?.value() ?: additional[NexoVocabulary.POS_ENTRY_MODE],
                 approvalCode =
@@ -866,7 +829,7 @@ class TerminalClient(
             )
         }
 
-        private fun details(
+        internal fun details(
             response: Response?,
             additional: Map<String, String>,
             poiData: POIData?,

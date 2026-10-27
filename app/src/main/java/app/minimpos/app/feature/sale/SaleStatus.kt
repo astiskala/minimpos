@@ -13,8 +13,10 @@ import app.minimpos.app.data.db.AdjustmentStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.repo.remainingAmountKnown
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.standing
+import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.StatusKind
@@ -167,6 +169,7 @@ internal fun ColumnScope.HoldNotes(
 ) {
     val standing = sale.standing
     if (standing == PaymentStanding.NOT_APPROVED || standing == PaymentStanding.HOLD_CANCELLED) return
+    SurchargeNotes(sale, money)
     ExtraSaleNotes(sale, money)
     if (standing == PaymentStanding.AWAITING_TIP) {
         OutcomeNote(stringResource(if (afterPayment) R.string.result_tip_note else R.string.detail_tip_awaiting))
@@ -185,18 +188,43 @@ internal fun ColumnScope.HoldNotes(
     OutcomeNote(stringResource(note, money.format(sale.capturedMinor ?: return)), Modifier.testTag("captureNote"))
 }
 
+/** Purchase and surcharge are components of the header amount, never additions to that amount. */
+@Composable
+private fun ColumnScope.SurchargeNotes(
+    sale: SaleEntity,
+    money: MoneyFormatter,
+) {
+    if ((sale.surchargeMinor ?: 0) <= 0) return
+    LabeledValue(
+        stringResource(R.string.surcharge_purchase),
+        sale.amountSurchargeMinor?.let {
+            money.format((sale.amountMinor - it - (sale.tipMinor ?: 0) - (sale.cashBackMinor ?: 0)).coerceAtLeast(0))
+        } ?: stringResource(R.string.surcharge_unknown),
+    )
+    LabeledValue(
+        stringResource(R.string.surcharge_label),
+        sale.amountSurchargeMinor?.let(money::format) ?: stringResource(R.string.surcharge_unknown),
+    )
+    if (sale.manualCapture && (sale.surchargeMinor ?: 0) > 0) OutcomeNote(stringResource(R.string.surcharge_hold_limit))
+}
+
 @Composable
 private fun ColumnScope.ExtraSaleNotes(
     sale: SaleEntity,
     money: MoneyFormatter,
 ) {
-    if (sale.isPartiallyPaid) {
+    if (sale.isPartiallyPaid && !sale.remainingAmountKnown) OutcomeNote(stringResource(R.string.surcharge_remaining_unknown))
+    if (sale.isPartiallyPaid && sale.remainingAmountKnown) {
         OutcomeNote(
             stringResource(R.string.detail_partially_paid, money.format(sale.paidMinor), money.format(sale.remainingMinor)),
             Modifier.testTag("partialNote"),
         )
     }
-    sale.tipMinor?.let { OutcomeNote(stringResource(R.string.detail_tip, money.format(sale.totalMinor), money.format(it))) }
+    sale.tipMinor?.takeIf { it > 0 }?.let {
+        OutcomeNote(
+            stringResource(R.string.detail_tip, money.format(sale.totalMinor), money.format(it)),
+        )
+    }
     sale.donationMinor?.let { OutcomeNote(stringResource(R.string.detail_donation, money.format(it)), Modifier.testTag("donationNote")) }
     sale.offlineMode?.let { mode ->
         val label =

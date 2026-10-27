@@ -355,7 +355,7 @@ class CapabilityDiscoveryTest {
     fun `capabilities screen displays standing matrix and saves simulator updates`() {
         env.useSimulator()
         compose.setContent { MiniMposApp(env.container) }
-        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        compose.onNodeWithTag("settings").performClick()
         compose.onNodeWithTag("section_capabilities").performScrollTo().performClick()
         compose.awaitCondition("capabilities loaded") {
             env.container.capabilityDiscovery.state.value

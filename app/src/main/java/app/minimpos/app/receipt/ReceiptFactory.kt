@@ -1,8 +1,17 @@
 package app.minimpos.app.receipt
 
+import app.minimpos.app.data.db.GiftCardStage
+import app.minimpos.app.data.db.GiftCardStatus
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
+import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.db.SaleRoute
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.db.route
+import app.minimpos.app.data.repo.GiftCardActivity
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.history.HistoryReport
@@ -12,8 +21,12 @@ import app.minimpos.app.history.RefundablePayment
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.TaxBreakdown
 import app.minimpos.core.codec.RefundQrPayload
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
+import app.minimpos.core.receipt.CardReceiptLine
+import app.minimpos.core.receipt.GiftCardReceipt
+import app.minimpos.core.receipt.GiftCardReceiptLine
 import app.minimpos.core.receipt.ReceiptBranding
 import app.minimpos.core.receipt.ReceiptBuilder
 import app.minimpos.core.receipt.ReceiptCopy
@@ -21,6 +34,8 @@ import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.receipt.ReceiptItem
 import app.minimpos.core.receipt.ReceiptLabels
 import app.minimpos.core.receipt.ReceiptOptions
+import app.minimpos.core.receipt.ReceiptTender
+import app.minimpos.core.receipt.ReceiptTenderKind
 import app.minimpos.core.receipt.RefundReceipt
 import app.minimpos.core.receipt.SaleReceipt
 import app.minimpos.core.receipt.TipLines
@@ -61,6 +76,15 @@ data class ReceiptSampleTexts(
  *   approved, whose warning the receipt builder prints itself.
  * @property refund Localised refund-request status note.
  * @property report Localised daily-report heading and row labels.
+ * @property giftCardStage Localised name of a stored-value stage, such as "Load".
+ * @property giftCardTitle Localised stored-value receipt title.
+ * @property cashoutTitle Localized title for standalone card cash-out receipts.
+ * @property giftCardAttention Localised note on an activity that still needs a check, confirmation or repair.
+ * @property mexicanPlan Localized requested and returned plan text for a tender, empty for ordinary history.
+ * @property cashback Requested and approved cash, card charge and recorded handover, localized at delivery.
+ * @property mealVoucher Localized requested market and returned voucher facts for a tender, empty for other tenders.
+ * @property unreferenced Localized lines of an unreferenced refund: no original payment, its reason, any synchronous
+ *   acquirer answer and any cancellation request; empty for referenced refunds.
  */
 data class ReceiptTexts(
     val labels: ReceiptLabels = ReceiptLabels(),
@@ -71,6 +95,14 @@ data class ReceiptTexts(
     val standing: (PaymentStanding) -> String?,
     val refund: (RefundStatus) -> String?,
     val report: (ReportText) -> String,
+    val giftCardStage: (GiftCardStage) -> String = { it.name },
+    val giftCardTitle: String = "GIFT CARD",
+    val cashoutTitle: String = "CASHOUT",
+    val giftCardAttention: String = "Needs attention",
+    val mexicanPlan: (SaleTenderEntity) -> List<String> = { emptyList() },
+    val cashback: (SaleEntity) -> List<String> = { emptyList() },
+    val mealVoucher: (SaleTenderEntity) -> List<String> = { emptyList() },
+    val unreferenced: (RefundEntity) -> List<String> = { emptyList() },
 )
 
 /**
@@ -86,13 +118,14 @@ class ReceiptFactory(
 ) {
     private val current: ReceiptTexts get() = texts("")
 
-    /** Reuses [paper] for sharing unless receipt-tip blanks require a distinct electronic document. */
+    /** Reuses [paper] for sharing unless tip blanks require a new document; [logo] is the current logo, or null. */
     fun electronic(
         record: SaleWithLines,
         settings: ReceiptSettings,
         paper: ReceiptDocument,
+        logo: MonoBitmap? = null,
     ): ReceiptDocument =
-        if (ReceiptStanding.of(record.sale).awaitingTip) sale(record, settings, surface = ReceiptSurface.ELECTRONIC) else paper
+        if (ReceiptStanding.of(record.sale).awaitingTip) sale(record, settings, surface = ReceiptSurface.ELECTRONIC, logo = logo) else paper
 
     /** Summary of retained processing-day activity; no payment receipt, QR, or settlement claim. */
     fun dailyReport(
@@ -118,13 +151,14 @@ class ReceiptFactory(
      * tip is entered (only on [ReceiptSurface.PAPER]: an emailed or shared receipt leaves them out), then the tip and the
      * total with it. A sale
      * still awaiting its payment link's payment is an unpaid receipt with the link and when it stops working; one paid
-     * through it says it was paid online.
+     * through it says it was paid online. [logo] is the current receipt logo, or null to omit it.
      */
     fun sale(
         record: SaleWithLines,
         settings: ReceiptSettings,
         copy: ReceiptCopy = ReceiptCopy.CUSTOMER,
         surface: ReceiptSurface = ReceiptSurface.PAPER,
+        logo: MonoBitmap? = null,
     ): ReceiptDocument {
         val sale = record.sale
         val currency = CurrencySpec.of(sale.currency)
@@ -148,14 +182,7 @@ class ReceiptFactory(
                 amounts = TaxAmounts(sale.netMinor, sale.taxMinor, sale.totalMinor),
                 breakdown = breakdown,
                 approved = standing.approved,
-                cardReceipt =
-                    ReceiptLinesJson.decode(
-                        if (copy == ReceiptCopy.CUSTOMER) {
-                            sale.customerReceiptJson
-                        } else {
-                            sale.cashierReceiptJson
-                        },
-                    ),
+                cardReceipt = cardReceipt(record, copy),
                 refundQr = RefundablePayment.qrCode(record),
                 cardSaved = sale.storedPaymentMethodId != null,
                 preAuthorisation = standing.preAuthorisation,
@@ -172,23 +199,54 @@ class ReceiptFactory(
                 standingNote = resolved.standing(standing.standing),
                 holdCancelled = standing.standing == PaymentStanding.HOLD_CANCELLED,
                 notice = resolved.simulationNote.takeIf { simulated },
+                surchargeMinor = sale.amountSurchargeMinor,
+                chargedAmount = sale.amountMinor.takeIf { sale.terminalPaidMinor != null && standing.standing.charged },
+                purchaseMinor =
+                    sale.amountSurchargeMinor?.let {
+                        (sale.amountMinor - it - (sale.tipMinor ?: 0) - (sale.cashBackMinor ?: 0)).coerceAtLeast(0)
+                    },
+                discloseSurcharge = standing.approved && sale.route == SaleRoute.TERMINAL,
+                cardPlans =
+                    resolved.cashback(sale) +
+                        record.tenders.sortedBy { it.sequence }.flatMap { resolved.mexicanPlan(it) + resolved.mealVoucher(it) },
+                tenders = receiptTenders(record),
+                balanceDueMinor = sale.remainingMinor.takeIf { sale.isPartiallyPaid },
             )
-        return builder(settings, currency, resolved, simulated).sale(receipt, copy)
+        val branding = if (ReceiptKind.of(standing) == ReceiptKind.CASHOUT) settings.copy(title = resolved.cashoutTitle) else settings
+        return builder(branding, currency, resolved, simulated, logo).sale(receipt, copy)
     }
+
+    // Every approved card's original fields, falling back to the sale body for historical or refused payments.
+    private fun cardReceipt(
+        record: SaleWithLines,
+        copy: ReceiptCopy,
+    ): List<CardReceiptLine> =
+        record.tenders
+            .filter { it.approved && it.kind == TenderKind.CARD }
+            .sortedBy { it.sequence }
+            .flatMap {
+                ReceiptLinesJson.decode(if (copy == ReceiptCopy.CUSTOMER) it.customerReceiptJson else it.cashierReceiptJson)
+            }.ifEmpty {
+                val sale = record.sale
+                ReceiptLinesJson.decode(if (copy == ReceiptCopy.CUSTOMER) sale.customerReceiptJson else sale.cashierReceiptJson)
+            }
 
     /**
      * The receipt of [refund], referring to the original sale by its merchant reference (or, for a payment known only
-     * from its QR code without one, its transaction ID). The cancellation of a pre-authorisation is labelled as one.
+     * from its QR code without one, its transaction ID). The cancellation of a pre-authorisation is labelled as one; an
+     * unreferenced refund names no original, only that it has none and why it was made. [logo] is current, or null.
      */
     fun refund(
         refund: RefundEntity,
         settings: ReceiptSettings,
+        logo: MonoBitmap? = null,
     ): ReceiptDocument {
         val resolved = current
         val receipt =
             RefundReceipt(
                 reference = refund.merchantReference,
-                originalReference = refund.originalReference ?: refund.originalTransactionId,
+                originalReference =
+                    (refund.originalReference ?: refund.originalTransactionId).takeUnless { refund.route == RefundRoute.UNREFERENCED },
                 dateTime = formatDateTime(refund.createdAt),
                 items =
                     ReceiptLinesJson.decodeRefunded(refund.linesJson).map {
@@ -198,16 +256,51 @@ class ReceiptFactory(
                 cardReceipt = ReceiptLinesJson.decode(refund.customerReceiptJson),
                 cancellation = refund.cancellation,
                 full = refund.full,
-                standingNote = resolved.refund(refund.status),
+                standingNote = if (refund.route == RefundRoute.CASH) resolved.labels.cashReturned else resolved.refund(refund.status),
+                surchargeMinor = refund.surchargeMinor,
+                tipMinor = refund.tipMinor,
+                unreferencedNotes = if (refund.route == RefundRoute.UNREFERENCED) resolved.unreferenced(refund) else emptyList(),
             )
-        return builder(settings, CurrencySpec.of(refund.currency), resolved).refund(receipt)
+        return builder(settings, CurrencySpec.of(refund.currency), resolved, logo = logo).refund(receipt)
+    }
+
+    /**
+     * The receipt of stored-value [activity]: never a sale receipt. Lists each completed stage's amount, the card's
+     * last reported balance and Adyen's receipt lines of every answered stage verbatim. [logo] is current, or null.
+     */
+    fun giftCard(
+        activity: GiftCardActivity,
+        settings: ReceiptSettings,
+        logo: MonoBitmap? = null,
+    ): ReceiptDocument {
+        val resolved = current
+        val main = activity.change ?: activity.stages.first()
+        val receipt =
+            GiftCardReceipt(
+                title = "${resolved.giftCardTitle} · ${resolved.giftCardStage(activity.kind)}",
+                reference = main.merchantReference,
+                dateTime = formatDateTime(activity.createdAt),
+                card =
+                    listOfNotNull(
+                        activity.stages.firstNotNullOfOrNull { it.providerCode }?.uppercase(),
+                        activity.cardLastFour?.let { "**** $it" },
+                    ).joinToString(" ").ifBlank { null },
+                lines =
+                    activity.stages.filter { it.status == GiftCardStatus.SUCCEEDED }.map {
+                        GiftCardReceiptLine(resolved.giftCardStage(it.stage), it.movedMinor, bold = it.id == main.id)
+                    },
+                balanceMinor = activity.balanceMinor,
+                standingNote = resolved.giftCardAttention.takeIf { activity.needsAttention },
+                cardReceipts = activity.stages.map { ReceiptLinesJson.decode(it.customerReceiptJson) }.filter { it.isNotEmpty() },
+            )
+        return builder(settings, CurrencySpec.of(activity.currency), resolved, logo = logo).giftCard(receipt)
     }
 
     /**
      * A sample receipt with [settings] in [currency], as Settings previews and test-prints it: two items (one taxed at
      * 10%, one at the configured marked rate or tax-free), totals in tax [mode], a customer reference when
      * [withCustomerReference] (checkout asks for one) and a refund QR code, dated now. Gross amounts are fixed,
-     * whatever the [mode]; the second item demonstrates the configured marker and explanation.
+     * whatever the [mode]; the second item demonstrates the configured marker and explanation. [logo] is current, or null.
      */
     fun sample(
         settings: ReceiptSettings,
@@ -215,6 +308,7 @@ class ReceiptFactory(
         mode: TaxMode,
         withCustomerReference: Boolean,
         languageTag: String = "",
+        logo: MonoBitmap? = null,
     ): ReceiptDocument {
         val resolved = texts(languageTag)
         val sample = resolved.sample
@@ -244,7 +338,7 @@ class ReceiptFactory(
                     RefundQrPayload(SAMPLE_TRANSACTION_ID, SAMPLE_TIMESTAMP, SAMPLE_TOTALS.gross, currency.code, SAMPLE_REFERENCE).encode(),
                 cardSaved = false,
             )
-        return builder(settings, currency, resolved).sale(receipt, ReceiptCopy.CUSTOMER)
+        return builder(settings, currency, resolved, logo = logo).sale(receipt, ReceiptCopy.CUSTOMER)
     }
 
     private fun builder(
@@ -252,10 +346,13 @@ class ReceiptFactory(
         currency: CurrencySpec,
         resolved: ReceiptTexts,
         simulated: Boolean = false,
+        logo: MonoBitmap? = null,
     ) = ReceiptBuilder(
         branding =
             ReceiptBranding(
                 businessName = settings.businessName.trim(),
+                printBusinessName = settings.printBusinessName,
+                logo = logo,
                 addressLines = settings.addressLines.lines().map { it.trim() },
                 taxIdLabel = settings.taxIdLabel.trim(),
                 taxId = settings.taxId.trim(),
@@ -297,3 +394,20 @@ class ReceiptFactory(
         val SAMPLE_TOTALS = TaxAmounts(1_118, 82, 1_200)
     }
 }
+
+/** [record]'s approved tenders in payment order, as its receipt breakdown lists them. */
+internal fun receiptTenders(record: SaleWithLines): List<ReceiptTender> =
+    record.tenders.filter { it.approved }.sortedBy { it.sequence }.map { tender ->
+        if (tender.kind == TenderKind.CASH) {
+            ReceiptTender(ReceiptTenderKind.CASH, null, tender.requestedMinor, tender.cashReceivedMinor, tender.changeMinor)
+        } else {
+            val detail = listOfNotNull(tender.paymentBrand?.uppercase(), tender.maskedPan).joinToString(" ").ifBlank { null }
+            val kind =
+                when {
+                    tender.giftCard != null -> ReceiptTenderKind.GIFT_CARD
+                    tender.mealVoucher != null -> ReceiptTenderKind.MEAL_VOUCHER
+                    else -> ReceiptTenderKind.CARD
+                }
+            ReceiptTender(kind, detail, tender.authorisedMinor ?: tender.requestedMinor)
+        }
+    }

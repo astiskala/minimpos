@@ -5,6 +5,7 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.cashout
 import app.minimpos.app.history.methodCode
 import app.minimpos.app.history.standing
 import app.minimpos.core.money.CurrencySpec
@@ -98,11 +99,48 @@ class HistorySearch(
     ): Boolean {
         if (method != null && (sale == null || !method.matches(sale))) return false
         if (terms.isEmpty()) return true
-        val texts = sale?.let(::saleTexts).orEmpty() + if (item is HistoryItem.Refund) refundTexts(item) else emptyList()
+        val texts =
+            sale?.let(::saleTexts).orEmpty() +
+                when (item) {
+                    is HistoryItem.Refund -> {
+                        refundTexts(item)
+                    }
+
+                    is HistoryItem.GiftCard -> {
+                        giftCardTexts(item)
+                    }
+
+                    is HistoryItem.Sale -> {
+                        item.tenders.flatMap {
+                            listOfNotNull(
+                                it.mexicanPayment,
+                                it.returnedPaymentType,
+                                it.returnedInstallments,
+                                it.returnedPlanId,
+                                it.mealVoucher,
+                                it.paymentMethodVariant,
+                                it.fundingSource,
+                            )
+                        }
+                    }
+                }
         val (currency, amounts) =
             when (item) {
-                is HistoryItem.Sale -> item.sale.currency to setOf(item.sale.amountMinor, item.sale.totalMinor)
-                is HistoryItem.Refund -> item.refund.currency to setOf(item.refund.amountMinor)
+                is HistoryItem.Sale -> {
+                    item.sale.currency to
+                        setOfNotNull(item.sale.amountMinor, item.sale.totalMinor, item.sale.requestedCashBackMinor, item.sale.cashBackMinor)
+                }
+
+                is HistoryItem.Refund -> {
+                    item.refund.currency to setOf(item.refund.amountMinor)
+                }
+
+                is HistoryItem.GiftCard -> {
+                    item.activity.currency to
+                        item.activity.stages
+                            .map { it.amountMinor }
+                            .toSet()
+                }
             }
         val parsed =
             amountsByCurrency.getOrPut(currency) {
@@ -114,8 +152,13 @@ class HistorySearch(
         }
     }
 
+    private fun giftCardTexts(item: HistoryItem.GiftCard): List<String> =
+        item.activity.stages.flatMap { listOfNotNull(it.merchantReference, it.pspReference, it.cardLastFour, it.providerCode) }
+
     private fun saleTexts(sale: SaleEntity): List<String> =
         listOfNotNull(
+            "cashback".takeIf { sale.requestedCashBackMinor != null },
+            "cashout".takeIf { sale.cashout },
             sale.merchantReference,
             sale.pspReference,
             sale.authCode,
@@ -182,7 +225,7 @@ enum class HistoryFilter {
             }
 
             SALES -> {
-                item is HistoryItem.Sale && item.sale.kind == SaleKind.SALE
+                item is HistoryItem.Sale && item.sale.kind == SaleKind.SALE && !item.sale.cashout
             }
 
             AWAITING_TIP -> {
@@ -193,6 +236,7 @@ enum class HistoryFilter {
                 when (item) {
                     is HistoryItem.Sale -> item.sale.kind == SaleKind.PRE_AUTHORISATION
                     is HistoryItem.Refund -> item.refund.cancellation && item.refund.saleId in preAuths
+                    is HistoryItem.GiftCard -> false
                 }
             }
 

@@ -7,10 +7,20 @@ import app.minimpos.app.FakePaymentsApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.made
+import app.minimpos.app.payment.PaymentStart
+import app.minimpos.app.payment.Recheck
+import app.minimpos.app.payment.SaleBook
+import app.minimpos.app.payment.TransactionLifecycle
+import app.minimpos.app.payment.TransactionState
+import app.minimpos.core.cart.AppliedTax
+import app.minimpos.core.cart.Cart
+import app.minimpos.core.money.CurrencySpec
+import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.PrintLine
@@ -29,6 +39,7 @@ import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -222,6 +233,48 @@ class RemoteTerminalTest {
     }
 
     @Test
+    fun `Tap to Pay recovery uses stored facts after runner recreation and refuses changed accounts`() =
+        runTest(StandardTestDispatcher(dispatcher.scheduler)) {
+            useTapToPay()
+            container.secrets.set(Secret.ADYEN_API_KEY, "key")
+            container.tapToPay.board()
+            container.terminalStatus.check()
+            val originalSetup = container.settings.current()
+            paymentsApp.dropFinancialReplies = true
+            paymentsApp.dropStatusReplies = true
+            val request =
+                PaymentStart(
+                    totals = Cart().addCustom("Tea", 100, AppliedTax("Zero", 0), "item").totals(TaxMode.INCLUSIVE),
+                    currency = CurrencySpec.of("AUD"),
+                    merchantReference = "RECOVERY",
+                    customerReference = "",
+                    shopperEmail = null,
+                    tokenization = null,
+                )
+            val id = checkNotNull(container.payments.start(request))
+            container.payments.state.first { it == TransactionState.Finished(id) }
+            val unknown = container.sales.get(id)!!.sale
+            assertThat(unknown.status).isEqualTo(SaleStatus.UNKNOWN)
+            assertThat(unknown.context?.poiId).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
+            val restarted = TransactionLifecycle(env.scope, gateway, SaleBook(container.sales))
+            env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Other")) }
+            val checks = paymentsApp.statusRequests
+            assertThat(restarted.recheck(id)).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.PAYMENT_CONTEXT)))
+            assertThat(paymentsApp.statusRequests).isEqualTo(checks)
+            env.updateSettings { originalSetup }
+            paymentsApp.dropStatusReplies = false
+            assertThat(restarted.recheck(id)).isEqualTo(Recheck.Settled)
+            val recovered = container.sales.get(id)!!.sale
+            assertThat(recovered.status).isEqualTo(SaleStatus.APPROVED)
+            assertThat(recovered.serviceId).isEqualTo(unknown.serviceId)
+            assertThat(recovered.context).isEqualTo(unknown.context)
+            assertThat(recovered.pspReference).isNotNull()
+            assertThat(paymentsApp.financialRequests).isEqualTo(1)
+            assertThat(restarted.recheck(id)).isEqualTo(Recheck.Settled)
+            assertThat(paymentsApp.statusRequests).isEqualTo(checks + 1)
+        }
+
+    @Test
     fun `Tap to Pay is set up by boarding the Payments app, then takes payments through it`() {
         useTapToPay()
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
@@ -245,7 +298,7 @@ class RemoteTerminalTest {
         assertThat(paid.details.success).isTrue()
         assertThat(sending).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
         assertThat(paymentsApp.opened.last()).startsWith("https://www.adyen.com/test/nexo?request=")
-        // It has no printer, and cannot be asked for a transaction's status.
+        // It has no printer; status repeats the original transaction through the encrypted App Link.
         assertThat(await { container.terminalStatus.state.first { it.loaded } }.printerAvailable).isFalse()
         assertThat(
             await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) }.made(),
@@ -254,7 +307,7 @@ class RemoteTerminalTest {
             await {
                 gateway.status("PAY1", TransactionKind.PAYMENT)
             }.made(),
-        ).isEqualTo(TransactionOutcome.Unknown(Fault.NoLateReply))
+        ).isInstanceOf(TransactionOutcome.Completed::class.java)
         assertThat(await { gateway.abort("PAY1") }).isFalse()
     }
 

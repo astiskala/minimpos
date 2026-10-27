@@ -119,13 +119,14 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
   lost recovery again when any exist. Ordinary history clearing still preserves unfinished operations.
 - No backend by design. Refund/capture requests and asynchronous adjustments are not final confirmation; the Customer
   Area is authoritative. Paid links have no PSP reference available to the app and are refunded there.
-- Tap to Pay uses an encrypted shared key too. The Payments app has no printer, abort, diagnosis or remote status
-  lookup; only an already received late reply can resolve a missing answer. Simulated payment links stay offline and
-  clearly label their screen and delivered receipts as demos; their QR codes cannot take payments.
+- Tap to Pay uses an encrypted shared key too. The Payments app has no printer, abort or diagnosis. Status recovery
+  needs a supporting app version and Adyen enablement; inconclusive checks keep the result unknown. Simulated payment
+  links stay offline and clearly label their screen and delivered receipts as demos; their QR codes cannot take payments.
 - Optional Manager PIN approval is separate from admin access and must be checked again before financial operations.
 - Keep deliberate UI choices: no TEST banner (only simulator), no Home terminal-status line or unprotected-settings
-  warning. Home keeps both full-width sale/pre-authorization tiles, half-width Charge token/Refund and
-  History/Reconciliation, slim Products/Settings. Gated tiles stay pressable and explain; only the setup card is shown.
+  warning. Home keeps both full-width sale/pre-authorization tiles, then Tokens/Gift cards, Refund/Cashout and
+  History/Reconciliation, in row-major order. The top-right Settings icon opens main Settings
+  under the admin lock; Products lives there. Gated tiles stay pressable and explain; only the setup card is shown.
 - Ask the shopper's email on the terminal only once emailed receipts are ready (SMTP set up, capture not Never); a
   terminal email is sent automatically like a checkout one.
 - Every product has a tax rate; use 0% for untaxed items. Turning tax off keeps rates. The last rate cannot be deleted.
@@ -147,6 +148,8 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
   `zh-CN`, `zh-Hant`. A new language goes at its tag's position everywhere.
 - New-install defaults may depend on country/language; never overwrite saved merchant text or imported catalogs.
   Receipt labels are read at delivery, Adyen receipt fields stay verbatim. Keep `StarterTax`'s rates current.
+- Group `strings.xml` by feature with `<!-- ... -->` section comments; keep the same sections and key order in every
+  language; add new strings beside related existing strings instead of appending a new block at the end.
 
 ## Documentation changes
 

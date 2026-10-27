@@ -37,6 +37,7 @@ import com.adyen.model.management.SupportedCardTypes
 import com.adyen.model.management.Surcharge
 import com.adyen.model.management.Terminal
 import com.adyen.model.management.TerminalSettings
+import com.adyen.model.payment.VoidPendingRefundRequest
 import com.adyen.model.paymentsapp.BoardingTokenRequest
 import com.android.tools.r8.ClassFileConsumer
 import com.android.tools.r8.CompilationMode
@@ -56,6 +57,7 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.net.URLClassLoader
 import java.util.jar.JarFile
+import com.adyen.model.payment.ModificationResult as PalModificationResult
 
 class AdyenModelR8Test {
     @get:Rule
@@ -105,6 +107,8 @@ class AdyenModelR8Test {
                 """{"merchantAccount":"HarbourCoffeeCOM","amount":{"currency":"AUD","value":3900},""" +
                 """"lineItems":[{"id":"coffee","quantity":1}]}""",
             UpdatePaymentLinkRequest::class.java to """{"status":"expired"}""",
+            VoidPendingRefundRequest::class.java to """{"merchantAccount":"HarbourCoffeeCOM","originalReference":"PSPR1"}""",
+            PalModificationResult::class.java to """{"pspReference":"VOID1","response":"[voidPendingRefund-received]"}""",
             TerminalSettings::class.java to
                 """{"dcc":{"enableDcc":true},"gratuities":[{"allowCustomAmount":true,""" +
                 """"currency":"AUD","predefinedTipEntries":["10%"],"usePredefinedTipEntries":true}],""" +

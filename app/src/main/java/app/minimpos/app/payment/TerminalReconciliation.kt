@@ -9,6 +9,7 @@ import app.minimpos.app.history.TerminalReconciliationReport
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalState
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.terminal.client.TerminalTotalsOutcome
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -73,7 +74,12 @@ class TerminalReconciliation(
                 ids.apply { addAll(HistoryAccounting.unresolvedTerminalItems(batch, poiId).map { it.storedTransaction() }) }
             }
         unresolved.forEach { operations.recheck(it) }
-        return when (val attempt = gateway.totals(closePeriod) { approval.allows(grant) }) {
+        return when (
+            val attempt =
+                gateway.totals(closePeriod) {
+                    approval.forAction(if (closePeriod) ManagerAction.CLOSE_PERIOD else ManagerAction.TOTALS).allows(grant)
+                }
+        ) {
             is Attempt.NotSetUp -> {
                 ReconciliationOutcome.Failed(Failure.NotSetUp(attempt.problem))
             }
@@ -101,5 +107,6 @@ class TerminalReconciliation(
         when (this) {
             is HistoryItem.Sale -> StoredTransaction.Sale(id)
             is HistoryItem.Refund -> StoredTransaction.Refund(id)
+            is HistoryItem.GiftCard -> StoredTransaction.GiftCard(id)
         }
 }

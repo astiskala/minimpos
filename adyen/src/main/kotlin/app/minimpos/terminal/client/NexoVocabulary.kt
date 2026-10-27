@@ -1,7 +1,7 @@
 package app.minimpos.terminal.client
 
 /**
- * The string vocabulary of the nexo `AdditionalResponse`/`AdditionalData` fields and the Base64 tip-operation blob, in
+ * The string vocabulary of the nexo `AdditionalResponse`/`AdditionalData` fields and the Base64 payment-operation blob, in
  * one place for everyone that writes or reads it: [TerminalClient]'s request building and answer mapping, [Decline]'s
  * busy-transaction reading, the shopper display and the simulator that stands in for a terminal. The simulator reads
  * what the client writes rather than a copy, so a key renamed on one side no longer compiles on the other.
@@ -49,11 +49,26 @@ internal object NexoVocabulary {
     /** With ErrorCondition `Busy`, the ServiceID of the transaction the terminal is busy with. */
     const val BUSY_SERVICE_ID = "serviceId"
 
+    /** An unreferenced refund's acquirer answer, sent only when it is processed synchronously, e.g. `Approved`. */
+    const val ACQUIRER_RESPONSE_CODE = "acquirerResponseCode"
+
+    /** The [ACQUIRER_RESPONSE_CODE] of an approved synchronous refund. */
+    const val APPROVED = "Approved"
+
+    /** The kind of transaction the terminal processed, e.g. `REFUND` for an unreferenced refund. */
+    const val TRANSACTION_TYPE = "transactionType"
+
+    /** An unreferenced refund's amount in minor units, as the terminal reports it. */
+    const val POS_AUTH_AMOUNT_VALUE = "posAuthAmountValue"
+
     /** The payment method, e.g. `visa`. */
     const val PAYMENT_METHOD = "paymentMethod"
 
     /** The payment method variant, e.g. `visa`. */
     const val PAYMENT_METHOD_VARIANT = "paymentMethodVariant"
+
+    /** The funding source of the card, e.g. `PREPAID` for a Brazilian meal voucher. */
+    const val FUNDING_SOURCE = "fundingSource"
 
     /** How the card was entered, e.g. `CLESS_CHIP` or `Scanned`. */
     const val POS_ENTRY_MODE = "posEntryMode"
@@ -97,8 +112,20 @@ internal object NexoVocabulary {
     /** The decoded scanned value of a native barcode scan answer. */
     const val BARCODE_DATA = "Barcode.Data"
 
-    /** Tip-operation blob: the list of operations the payment request carries. */
+    /** Payment-operation blob: the list of operations the payment request carries. */
     const val OPERATION = "Operation"
+
+    /** Sale-to-POI blob: the shopper's account (`CREDIT`, `CHEQUE` or `MEAL_VOUCHER`) in Brazil. */
+    const val SELECTED_ACCOUNT_TYPE = "selectedAccountType"
+
+    /** The [SELECTED_ACCOUNT_TYPE] of a Brazilian meal or food voucher. */
+    const val MEAL_VOUCHER = "MEAL_VOUCHER"
+
+    /** Payment operation variant key. */
+    const val VARIANT = "Variant"
+
+    /** Per-payment audio guidance on enabled Android terminals. */
+    const val ENABLE_ACCESSIBILITY = "EnableAccessibilityMode"
 
     /** Tip-operation blob: the tip options of the payment operation. */
     const val TIP_OPTIONS = "TipOptions"

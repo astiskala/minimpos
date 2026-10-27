@@ -65,6 +65,8 @@ data class CatalogueCategory(
  * @property sku the barcode or SKU used to find the product by scanning, or null when it has none.
  * @property preAuthorisation true for a product taken as a pre-authorisation (sold on its own, with the amount only
  *   held on the card) rather than in a sale.
+ * @property mealVoucherEligible true for a product a meal voucher may pay for where the market requires product
+ *   eligibility; never changes its text or tax.
  */
 data class CatalogueProduct(
     val name: String,
@@ -73,4 +75,5 @@ data class CatalogueProduct(
     val categoryIndex: Int?,
     val sku: String?,
     val preAuthorisation: Boolean = false,
+    val mealVoucherEligible: Boolean = false,
 )

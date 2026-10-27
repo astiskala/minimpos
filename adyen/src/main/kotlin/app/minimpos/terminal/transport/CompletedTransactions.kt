@@ -7,6 +7,7 @@ import com.adyen.model.nexo.RepeatedResponseMessageBody
 import com.adyen.model.nexo.Response
 import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.ReversalResponse
+import com.adyen.model.nexo.StoredValueResponse
 import com.adyen.model.nexo.TransactionStatusRequest
 import com.adyen.model.nexo.TransactionStatusResponse
 import java.util.concurrent.ConcurrentHashMap
@@ -45,9 +46,10 @@ internal class CompletedTransactions {
     }
 
     /**
-     * Remembers the response of the transaction sent with [serviceId]: a [payment] or a [reversal]; with neither, nothing
-     * is remembered. A later response for the same ServiceID replaces the earlier one. [ownerTransactionId] ties a
-     * related Giving reply to its payment's durable retention identity without altering that reply's protocol fields.
+     * Remembers the response of the transaction sent with [serviceId]: a [payment], a [reversal] or a gift-card
+     * [storedValue] operation; with none, nothing is remembered. A later response for the same ServiceID replaces the
+     * earlier one. [ownerTransactionId] ties a related Giving reply to its payment's durable retention identity without
+     * altering that reply's protocol fields.
      */
     @Synchronized
     fun remember(
@@ -55,8 +57,9 @@ internal class CompletedTransactions {
         payment: PaymentResponse? = null,
         reversal: ReversalResponse? = null,
         ownerTransactionId: String? = null,
+        storedValue: StoredValueResponse? = null,
     ) {
-        if (payment == null && reversal == null) return
+        if (payment == null && reversal == null && storedValue == null) return
         forget(setOf(serviceId), emptySet())
         val transactionId = ownerTransactionId ?: payment?.poiData?.poiTransactionID?.transactionID
         transactionId?.let {
@@ -66,6 +69,7 @@ internal class CompletedTransactions {
             RepeatedResponseMessageBody().apply {
                 paymentResponse = payment
                 reversalResponse = reversal
+                storedValueResponse = storedValue
             }
         bodies[serviceId] = Entry(body, transactionId)
     }

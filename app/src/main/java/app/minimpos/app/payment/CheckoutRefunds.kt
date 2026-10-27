@@ -3,15 +3,18 @@ package app.minimpos.app.payment
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
@@ -51,22 +54,27 @@ class CheckoutRefunds(
     approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
 ) {
     private val operations =
-        CheckoutOperations(scope, Book(refunds, sales), target, { id, _ -> onAccepted(id) }, clock, newId, approval)
+        CheckoutOperations(
+            scope,
+            Book(refunds, sales),
+            target,
+            { id, _ -> onAccepted(id) },
+            clock,
+            newId,
+            approval.forAction(ManagerAction.REFERENCED_REFUND),
+        )
 
     /** The refund running now, which the refund screens follow to its result. */
     val state: StateFlow<TransactionState> = operations.state
+
+    /** Checkout refunds as [FinancialOperations] holds them. */
+    internal val operationKind: OperationKind get() = operations.operationKind
 
     /**
      * Sends [request] in the background and returns the new refund's ID straight away; null, with nothing stored or sent,
      * while another refund is running or [request] is not a Checkout refund of a stored sale.
      */
     fun start(request: RefundStart): String? = if (request.checkout && request.saleId != null) operations.start(request) else null
-
-    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
-    internal fun forgetAll() = operations.forgetAll()
-
-    /** Releases process-only requests for records that history has already durably deleted. */
-    internal fun forget(ids: Set<String>) = operations.forget(ids)
 
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next refund can start. */
     fun acknowledge() = operations.acknowledge()
@@ -90,12 +98,14 @@ class CheckoutRefunds(
             request: RefundStart,
             createdAt: Long,
             current: PaymentContext?,
-        ) = refunds.create(request.pendingRefund(id, createdAt, checkout = true))
+        ) {
+            refunds.create(request.pendingRefund(id, createdAt, checkout = true), request.reviewedRefunds)
+        }
 
         override suspend fun unsent(id: String): CheckoutRecord? {
             val refund =
                 refunds.get(id)?.takeIf {
-                    it.checkoutRefund && (it.status == RefundStatus.PENDING || it.status == RefundStatus.UNKNOWN)
+                    it.route == RefundRoute.CHECKOUT && (it.status == RefundStatus.PENDING || it.status == RefundStatus.UNKNOWN)
                 } ?: return null
             val saleId = refund.saleId ?: return null
             return CheckoutRecord(refund.status == RefundStatus.PENDING, refund.createdAt, sales.get(saleId)?.sale?.context, refund.reason)
@@ -112,39 +122,38 @@ class CheckoutRefunds(
             id: String,
             client: PaymentModifications,
             now: Long,
-        ): CheckoutAnswer {
-            val refund = refunds.get(id) ?: return CheckoutAnswer.NotTaken
-            val psp = pspReference(id) ?: return CheckoutAnswer.NotTaken
+        ): CheckoutReply {
+            val refund = refunds.get(id) ?: return CheckoutReply { CheckoutAnswer.NotTaken }
+            val psp = pspReference(id) ?: return CheckoutReply { CheckoutAnswer.NotTaken }
             val amount = ModificationAmount(refund.currency, refund.amountMinor)
             val result = client.refund(psp, amount, refund.merchantReference, idempotencyKey(id))
-            if (refund.status == RefundStatus.UNKNOWN && result is ModificationResult.Failed && !result.fault.mayHaveTakenEffect) {
-                return CheckoutAnswer.Unconfirmed(Failure.Remote(result.fault))
-            }
-            return when (result) {
-                is ModificationResult.Received -> {
-                    refunds.settle(id, RefundStatus.REQUESTED, null, null, pspReference = result.pspReference)
-                    CheckoutAnswer.Taken
-                }
+            return CheckoutReply((result as? ModificationResult.Failed)?.fault) { failed ->
+                when (result) {
+                    is ModificationResult.Received -> {
+                        refunds.settle(id, RefundStatus.REQUESTED, null, null, pspReference = result.pspReference)
+                        CheckoutAnswer.Taken
+                    }
 
-                is ModificationResult.Authorised -> {
-                    refunds.settle(id, RefundStatus.REQUESTED, null, null, pspReference = result.pspReference)
-                    CheckoutAnswer.Taken
-                }
+                    is ModificationResult.Authorised -> {
+                        refunds.settle(id, RefundStatus.REQUESTED, null, null, pspReference = result.pspReference)
+                        CheckoutAnswer.Taken
+                    }
 
-                is ModificationResult.Refused -> {
-                    refunds.settle(id, RefundStatus.FAILED, result.said?.text, null)
-                    CheckoutAnswer.NotTaken
-                }
+                    is ModificationResult.Refused -> {
+                        refunds.settle(id, RefundStatus.FAILED, result.said?.text, null)
+                        CheckoutAnswer.NotTaken
+                    }
 
-                is ModificationResult.Failed if result.fault.mayHaveTakenEffect -> {
-                    val failure = Failure.Remote(result.fault)
-                    refunds.settle(id, RefundStatus.UNKNOWN, null, null, StoredReason.Unconfirmed(failure))
-                    CheckoutAnswer.Unconfirmed(failure)
-                }
+                    is ModificationResult.Failed if failed == FailedSend.UNCONFIRMED -> {
+                        val failure = Failure.Remote(result.fault)
+                        refunds.settle(id, RefundStatus.UNKNOWN, null, null, StoredReason.Unconfirmed(failure))
+                        CheckoutAnswer.Unconfirmed(failure)
+                    }
 
-                is ModificationResult.Failed -> {
-                    refunds.settle(id, RefundStatus.FAILED, null, null, StoredReason.NotDone(Failure.Remote(result.fault)))
-                    CheckoutAnswer.NotTaken
+                    is ModificationResult.Failed -> {
+                        refunds.settle(id, RefundStatus.FAILED, null, null, StoredReason.NotDone(Failure.Remote(result.fault)))
+                        CheckoutAnswer.NotTaken
+                    }
                 }
             }
         }

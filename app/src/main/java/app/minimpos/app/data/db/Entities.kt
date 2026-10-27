@@ -7,6 +7,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
+import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.payment.PaymentContext
 
 /** Confirmed history purge awaiting its non-secret destination settings write; singleton recovery journal. */
@@ -96,6 +97,8 @@ enum class SaleKind {
  * @property kind Whether the product is sold in a sale or taken as a pre-authorisation; each kind is only offered on its
  * own screen (New sale or Pre-authorise).
  * @property sample Whether this product was added as removable sample data, including after edits.
+ * @property mealVoucherEligible Whether a meal voucher may pay for it where the market requires product eligibility;
+ * its text and tax are unchanged.
  */
 @Entity(
     tableName = "products",
@@ -115,6 +118,7 @@ data class ProductEntity(
     val sortOrder: Int = 0,
     @ColumnInfo(defaultValue = "SALE") val kind: SaleKind = SaleKind.SALE,
     @ColumnInfo(defaultValue = "0") val sample: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val mealVoucherEligible: Boolean = false,
 )
 
 /** Latest catalog import receipt, written in the same transaction as the imported rows.
@@ -284,8 +288,22 @@ data class SaleEntity(
      * printed with lines for a tip, and captured with the tip once it is entered. Added in database version 6.
      */
     @ColumnInfo(defaultValue = "0") val tipOnReceipt: Boolean = false,
+    /** Frozen per-payment audio-guidance request; status recovery never replays the payment. Added in version 17. */
+    @ColumnInfo(defaultValue = "0") val audioGuidance: Boolean = false,
     /** The tip written on the receipt; null while it is awaited (or for other sales), 0 for no tip. Added in version 6. */
     val tipMinor: Long? = null,
+    /** Reported surcharge included in the terminal total; null if any tender is unreported. Added in version 18. */
+    val surchargeMinor: Long? = null,
+    /** Total collected across tenders (cards with their tips, surcharge and cashback, and cash); null for historical data. */
+    val terminalPaidMinor: Long? = null,
+    /** Frozen amount of the active terminal attempt, excluding terminal-added components; null for old history. */
+    val tenderRequestedMinor: Long? = null,
+    /** Cashback included in the terminal total; null when unreported. Added in version 18. */
+    val cashBackMinor: Long? = null,
+    /** Frozen cash requested beyond merchandise; null for earlier or ordinary payments. */
+    val requestedCashBackMinor: Long? = null,
+    /** Operator-confirmed handover time, epoch milliseconds; null until explicitly recorded through CashTenders. */
+    val cashHandedOverAt: Long? = null,
     /**
      * What the payment holds after authorisation adjustments; null while it was never adjusted, when [totalMinor] is
      * held. Added in database version 6.
@@ -399,8 +417,8 @@ data class SaleEntity(
     /** Whether it has not been answered yet, so it may still be waiting to be sent or settled. */
     val pending: Boolean get() = status == SaleStatus.PENDING
 
-    /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
-    val heldMinor: Long get() = authorisedMinor ?: totalMinor
+    /** Held amount after adjustment, else the inclusive terminal authorization, else the historical bill amount. */
+    val heldMinor: Long get() = authorisedMinor ?: terminalPaidMinor ?: totalMinor
 
     /**
      * Whether the payment was taken with manual capture, so it only held its amount until captured: a
@@ -415,6 +433,14 @@ data class SaleEntity(
     /** Remaining unpaid balance in minor units when [isPartiallyPaid], else 0. */
     val remainingMinor: Long get() = if (isPartiallyPaid) (totalMinor - paidMinor).coerceAtLeast(0) else 0
 
+    /** Surcharge within the current amount; changed captures cannot infer positive fees, while reported zero stays zero. */
+    val amountSurchargeMinor: Long? get() =
+        when {
+            surchargeMinor == 0L -> 0L
+            captureStatus?.captured == true && capturedMinor != terminalPaidMinor -> null
+            else -> surchargeMinor
+        }
+
     /**
      * The payment's amount as it stands: the capture's once captured ([CaptureStatus.captured]), else the partially
      * paid amount when [isPartiallyPaid], else the bill plus any tip entered, else what a pre-authorisation holds, else [totalMinor].
@@ -423,9 +449,10 @@ data class SaleEntity(
         get() =
             when {
                 captureStatus?.captured == true -> capturedMinor ?: totalMinor
-                isPartiallyPaid -> paidMinor + (tipMinor ?: 0)
-                tipMinor != null -> totalMinor + tipMinor
                 kind == SaleKind.PRE_AUTHORISATION -> heldMinor
+                terminalPaidMinor != null -> terminalPaidMinor
+                isPartiallyPaid -> Math.addExact(paidMinor, tipMinor ?: 0)
+                tipMinor != null -> Math.addExact(totalMinor, tipMinor)
                 else -> totalMinor
             }
 }
@@ -482,6 +509,8 @@ enum class CaptureStatus {
  * @property taxMinor Tax on the line.
  * @property grossMinor Line total including tax.
  * @property refundedQuantity Units already refunded from this terminal, never more than [quantity].
+ * @property mealVoucherEligible Whether a meal voucher could pay for the line as sold; false for custom items and for
+ *   sales stored before eligibility existed.
  */
 @Entity(
     tableName = "sale_lines",
@@ -510,6 +539,7 @@ data class SaleLineEntity(
     val taxMinor: Long,
     val grossMinor: Long,
     val refundedQuantity: Int = 0,
+    @ColumnInfo(defaultValue = "0") val mealVoucherEligible: Boolean = false,
 )
 
 /** Where a refund is in its lifecycle; stored by name in `refunds.status`. */
@@ -537,12 +567,51 @@ enum class RefundStatus {
     val unresolved: Boolean get() = this == PENDING || this == UNKNOWN
 }
 
+/** Why staff made an unreferenced refund; stored by name in `refunds.unreferencedReason`. Added in version 24. */
+enum class UnreferencedRefundReason {
+    /** Goods returned without a receipt or payment record. */
+    RETURN_WITHOUT_RECEIPT,
+
+    /** The original payment was taken elsewhere, such as another system or device. */
+    PAID_ELSEWHERE,
+
+    /** A price adjustment or goodwill payment to the shopper's card. */
+    PRICE_ADJUSTMENT,
+
+    /** Another operational reason. */
+    OTHER,
+}
+
 /**
- * A referenced refund (table `refunds`): a Terminal API reversal of an earlier payment.
+ * Where asking Adyen to cancel a delayed unreferenced refund stands; stored by name in `refunds.cancelStatus`. Adyen
+ * reports whether the refund was actually cancelled only in a webhook, so [REQUESTED] is never a cancelled refund.
+ * Added in database version 24.
+ */
+enum class RefundCancelStatus {
+    /** Stored before the request is sent; still SENDING later means its answer went missing. */
+    SENDING,
+
+    /** Adyen received the cancellation request (`[voidPendingRefund-received]`); the Customer Area confirms it. */
+    REQUESTED,
+
+    /** Adyen rejected it, or it was never sent; the refund stands. */
+    FAILED,
+
+    /** Whether Adyen received it is not known; only the same request may be sent again. */
+    UNKNOWN,
+    ;
+
+    /** Whether the request may have reached Adyen without an answer, so only the same request may be sent again. */
+    val unresolved: Boolean get() = this == SENDING || this == UNKNOWN
+}
+
+/**
+ * A refund (table `refunds`): a referenced Terminal API reversal of an earlier payment, or an [unreferenced] card refund
+ * that names no original payment at all.
  *
- * The payment can have been taken on this terminal (then [saleId] links it) or be identified only by the refund QR
- * code printed on its receipt. The row is inserted as [RefundStatus.PENDING] before the terminal is called. Amounts are
- * in minor units of [currency].
+ * A referenced refund's payment can have been taken on this terminal (then [saleId] links it) or be identified only by
+ * the refund QR code printed on its receipt. The row is inserted as [RefundStatus.PENDING] before the terminal is
+ * called. Amounts are in minor units of [currency].
  */
 @Entity(tableName = "refunds", indices = [Index(value = ["createdAt", "id"]), Index("saleId"), Index(value = ["processedAt", "id"])])
 data class RefundEntity(
@@ -557,10 +626,13 @@ data class RefundEntity(
     val createdAt: Long,
     /** The refund's own merchant reference, such as `R-260930-145811-VQ45`. */
     val merchantReference: String,
-    /** POITransactionID of the payment being refunded. */
-    val originalTransactionId: String,
-    /** The original payment's POITransactionID time stamp, exactly as sent in the reversal request. */
-    val originalTimestamp: String,
+    /** POITransactionID of the payment being refunded; null for an [unreferenced] refund, which has none. */
+    val originalTransactionId: String?,
+    /**
+     * The original payment's POITransactionID time stamp, exactly as sent in the reversal request; null for an
+     * [unreferenced] refund.
+     */
+    val originalTimestamp: String?,
     /** Merchant reference of the original payment, shown on the refund receipt; null if unknown. */
     val originalReference: String?,
     /** ISO 4217 code of the original payment's currency. */
@@ -612,16 +684,66 @@ data class RefundEntity(
      * [id]) because its payment was a saved-card charge, rather than as a terminal reversal. Added in database version 12.
      */
     @ColumnInfo(defaultValue = "0") val checkoutRefund: Boolean = false,
+    /** Original local tender, frozen before sending; null for historical or foreign payments. */
+    val tenderId: String? = null,
+    /** Surcharge returned within [amountMinor]; null if original or prior refund components are unknown. */
+    val surchargeMinor: Long? = null,
+    /** Tip returned within [amountMinor]; null if original or prior refund components are unknown. */
+    val tipMinor: Long? = null,
+    /**
+     * Cash handed back for a cash tender, recorded locally after explicit confirmation without a Terminal API call:
+     * [originalTransactionId] is then the local tender ID and [originalTimestamp] its recording time. Added in version 19.
+     */
+    @ColumnInfo(defaultValue = "0") val cash: Boolean = false,
+    /**
+     * Whether this is an unreferenced card refund: a Terminal API `Payment` with `PaymentType=Refund` to the card the
+     * shopper presents, sent with [serviceId] and recovered as a payment. It has no original payment, so [saleId],
+     * [originalTransactionId], [originalTimestamp] and [originalReference] are null. Added in database version 24.
+     */
+    @ColumnInfo(defaultValue = "0") val unreferenced: Boolean = false,
+    /** Why staff made an [unreferenced] refund, frozen before sending; null for referenced refunds. */
+    val unreferencedReason: UnreferencedRefundReason? = null,
+    /**
+     * `acquirerResponseCode` reported for an [unreferenced] refund, verbatim: Adyen sends it only when the card scheme
+     * and country process the refund synchronously. Null when omitted, which leaves the refund only requested.
+     */
+    val acquirerResponseCode: String? = null,
+    /** Where cancelling this delayed [unreferenced] refund stands; null when no cancellation was asked for. */
+    val cancelStatus: RefundCancelStatus? = null,
+    /** When the cancellation was first sent, in epoch milliseconds, for its idempotency retention; null without one. */
+    val cancelStartedAt: Long? = null,
+    /** Why the cancellation was not received when the app says so; null otherwise. */
+    val cancelReason: StoredReason? = null,
+    /** Adyen's PSP reference of the cancellation request, when it sent one. */
+    val cancelPspReference: String? = null,
 )
 
 /**
- * One payment tender of a sale (table `sale_tenders`), allowing a single sale to be paid across multiple cards or
- * partial authorizations. Deleted with its sale (foreign key `CASCADE`).
+ * Whether this refund still needs attention: its own outcome is open ([RefundStatus.unresolved]) or a cancellation of it
+ * may have reached Adyen unanswered ([RefundCancelStatus.unresolved]). The one rule behind History issues, retention and
+ * environment-switch warnings for refunds.
+ */
+val RefundEntity.unresolved: Boolean get() = status.unresolved || cancelStatus?.unresolved == true
+
+/** How one tender of a sale was paid; stored by name in `sale_tenders.kind`. Added in database version 19. */
+enum class TenderKind {
+    /** A card or wallet on the terminal, sent as a Terminal API payment. */
+    CARD,
+
+    /** Cash recorded locally after explicit confirmation; no Terminal API call and no terminal totals. */
+    CASH,
+}
+
+/**
+ * One payment tender of a sale (table `sale_tenders`), allowing a single sale to be paid across multiple cards, cash or
+ * partial authorizations. A card tender is inserted PENDING with its ServiceID, frozen requested amount and allocation
+ * before it is sent, and settled in place; a cash tender is recorded approved once its handover was confirmed. Deleted
+ * with its sale (foreign key `CASCADE`).
  *
  * @property id Deterministic tender ID (`<saleId>-<sequence>`).
  * @property saleId The [SaleEntity] this tender belongs to.
  * @property sequence One-based sequence number of the tender within the sale.
- * @property requestedMinor Amount requested from the terminal for this tender, in minor units.
+ * @property requestedMinor Frozen purchase amount this tender asked for (or cash applied), in minor units.
  * @property authorisedMinor Amount approved by the terminal for this tender, in minor units; null when not approved.
  * @property status Outcome status of this tender ([SaleStatus]).
  * @property poiTransactionId Terminal `POITransactionID.TransactionID` for this tender.
@@ -630,6 +752,32 @@ data class RefundEntity(
  * @property paymentBrand Card scheme or wallet brand for this tender.
  * @property maskedPan Masked PAN for this tender.
  * @property createdAt Epoch milliseconds when this tender was recorded.
+ * @property tipMinor Reported tip included in the authorized total; null when unreported.
+ * @property surchargeMinor Reported fee included in the authorized total; null when unreported.
+ * @property cashBackMinor Cash returned within the authorized total; null when unreported.
+ * @property requestedCashBackMinor Frozen requested cash beyond merchandise; null for ordinary/earlier tenders.
+ * @property serviceId Original request identity; null for historical rows.
+ * @property context Original destination/account; null for historical rows.
+ * @property poiReconciliationId Original terminal reconciliation period; null when unavailable.
+ * @property customerReceiptJson Original customer receipt fields; null for historical rows.
+ * @property cashierReceiptJson Original merchant receipt fields; null for historical rows.
+ * @property kind Card on the terminal or locally recorded cash.
+ * @property allocationJson Frozen equal-share or item allocation as JSON
+ *   ([app.minimpos.app.data.repo.TenderAllocationJson]); null for an amount or the whole balance.
+ * @property cashReceivedMinor Cash received from the shopper for a cash tender; null for cards.
+ * @property changeMinor Change handed back for a cash tender; null for cards.
+ * @property environment History environment (LIVE, TEST or SIMULATOR) a cash tender was recorded in; null for cards,
+ *   whose [context] says it, or while unestablished.
+ * @property giftCard For a gift-card redemption (a [TenderKind.CARD] terminal tender paid from a gift card), the
+ *   [app.minimpos.core.giftcard.GiftCardProvider] name; null for other tenders.
+ * @property mexicanPayment Frozen MexicanPayment name; null for ordinary/historical requests.
+ * @property returnedPaymentType Explicit returned installment type; null for missing/default Normal.
+ * @property returnedInstallments Returned monthly count; null when unreported.
+ * @property returnedPlanId Returned issuer PlanID; null when unreported.
+ * @property mealVoucher Frozen [app.minimpos.core.voucher.MealVoucherScheme] name of a meal-voucher tender, stored
+ *   before sending; null for other and historical tenders.
+ * @property fundingSource Returned `fundingSource`, verbatim; null when unreported.
+ * @property paymentMethodVariant Returned `paymentMethodVariant`, verbatim; null when unreported.
  */
 @Entity(
     tableName = "sale_tenders",
@@ -641,7 +789,7 @@ data class RefundEntity(
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("saleId"), Index("poiTransactionId")],
+    indices = [Index("saleId"), Index("poiTransactionId"), Index(value = ["createdAt", "saleId"])],
 )
 data class SaleTenderEntity(
     @PrimaryKey val id: String,
@@ -656,18 +804,264 @@ data class SaleTenderEntity(
     val paymentBrand: String? = null,
     val maskedPan: String? = null,
     val createdAt: Long = 0,
-)
+    /** Reported tip included in [authorisedMinor]; null when absent or historical. */
+    val tipMinor: Long? = null,
+    /** Reported surcharge included in [authorisedMinor]; null means unknown, not zero. */
+    val surchargeMinor: Long? = null,
+    /** Reported cashback included in [authorisedMinor]; never refundable merchandise. */
+    val cashBackMinor: Long? = null,
+    /** Frozen cash requested beyond merchandise; null for earlier or ordinary payments. */
+    val requestedCashBackMinor: Long? = null,
+    /** Original payment request ServiceID; null for historical tenders. */
+    val serviceId: String? = null,
+    /** Original destination/account for this tender; null for historical rows. */
+    val context: PaymentContext? = null,
+    /** Terminal reconciliation period for this tender; null when unavailable or historical. */
+    val poiReconciliationId: String? = null,
+    /** Original customer receipt fields, preserved verbatim; null for historical tenders. */
+    val customerReceiptJson: String? = null,
+    /** Original merchant receipt fields, preserved verbatim; null for historical tenders. */
+    val cashierReceiptJson: String? = null,
+    @ColumnInfo(defaultValue = "CARD") val kind: TenderKind = TenderKind.CARD,
+    val allocationJson: String? = null,
+    val cashReceivedMinor: Long? = null,
+    val changeMinor: Long? = null,
+    val environment: String? = null,
+    val giftCard: String? = null,
+    /** Frozen MexicanPayment enum name selected before sending; null for historical/ordinary tenders. */
+    val mexicanPayment: String? = null,
+    /** Returned PaymentResult.PaymentType, never inferred from the request; null when absent. */
+    val returnedPaymentType: String? = null,
+    /** Returned Instalment.TotalNbOfPayments; null means unreported. */
+    val returnedInstallments: String? = null,
+    /** Returned Instalment.PlanID, verbatim; null means unreported. */
+    val returnedPlanId: String? = null,
+    /** Frozen meal-voucher market of this tender's request; null for other and historical tenders. */
+    val mealVoucher: String? = null,
+    /** Returned `fundingSource`, never inferred from the request; null when unreported. */
+    val fundingSource: String? = null,
+    /** Returned `paymentMethodVariant`, such as `elo_voucher_br`; null when unreported. */
+    val paymentMethodVariant: String? = null,
+) {
+    /** Whether this tender collected money: an approved card or recorded cash. */
+    val approved: Boolean get() = status == SaleStatus.APPROVED
+
+    /** Whether it may still have collected money: sent or being sent without a known outcome. */
+    val unresolved: Boolean get() = status == SaleStatus.PENDING || status == SaleStatus.UNKNOWN
+}
 
 /**
  * A sale with its lines, loaded together by Room (the DAO queries run in a transaction).
  *
  * @property sale The sale row.
  * @property lines Its lines in no particular order; use [sortedLines] for receipt order.
+ * @property tenders Original card tenders with their independent amount components.
+ * @property refunds Return attempts, including reservations for pending and unknown outcomes.
  */
 data class SaleWithLines(
     @Embedded val sale: SaleEntity,
     @Relation(parentColumn = "id", entityColumn = "saleId") val lines: List<SaleLineEntity>,
+    /** Original card tenders, including their independent charged amounts and fee disclosure. */
+    @Relation(parentColumn = "id", entityColumn = "saleId") val tenders: List<SaleTenderEntity> = emptyList(),
+    /** Refund attempts, including pending/unknown reservations against each original tender. */
+    @Relation(parentColumn = "id", entityColumn = "saleId") val refunds: List<RefundEntity> = emptyList(),
 ) {
     /** [lines] in cart order (by [SaleLineEntity.position]). */
     val sortedLines: List<SaleLineEntity> by lazy { lines.sortedBy { it.position } }
+}
+
+/**
+ * What one stored-value stage does for its business intent; the wire message category it is sent and recovered with is
+ * [category], decided here once.
+ *
+ * @property category The Terminal API message category, or null for a stage recorded locally without any request.
+ */
+enum class GiftCardStage(
+    val category: GiftCardCategory?,
+) {
+    /** A card payment collecting the value to activate or load (`Payment`). */
+    FUNDING_CARD(GiftCardCategory.PAYMENT),
+
+    /** Staff confirmed the value was received outside the app; local. */
+    FUNDING_EXTERNAL(null),
+
+    /** Activates a card, with or without an initial amount (`StoredValue`). */
+    ACTIVATE(GiftCardCategory.STORED_VALUE),
+
+    /** Loads value onto a card (`StoredValue`). */
+    LOAD(GiftCardCategory.STORED_VALUE),
+
+    /** Undoes a card's most recent load (`StoredValue`, `Reverse`). */
+    UNDO_LOAD(GiftCardCategory.STORED_VALUE),
+
+    /** Deactivates a card (`StoredValue`, `Unload`). */
+    DEACTIVATE(GiftCardCategory.STORED_VALUE),
+
+    /** Pays a card's value out (`Payment`, `redemptionType=cashback`). */
+    CASH_OUT(GiftCardCategory.PAYMENT),
+
+    /** Cash handed to the shopper for an approved cash-out, awaiting or confirmed by staff; local. */
+    CASH_HANDOVER(null),
+
+    /** Unreferenced refund onto a card (`Payment`, `PaymentType=Refund`). */
+    REFUND(GiftCardCategory.PAYMENT),
+
+    /** Referenced refund of the funding card payment (`Reversal`). */
+    FUNDING_REFUND(GiftCardCategory.REVERSAL),
+
+    /** Staff confirmed externally received funds were given back; local. */
+    FUNDING_RETURNED(null),
+    ;
+
+    /** Whether the stage is sent to a terminal rather than recorded locally. */
+    val sent: Boolean get() = category != null
+
+    /** The provider operation it needs; null for funding, repairs and cash handovers, which use no gift card. */
+    val operation: GiftCardOperation?
+        get() =
+            when (this) {
+                ACTIVATE -> GiftCardOperation.ACTIVATE
+                LOAD -> GiftCardOperation.LOAD
+                UNDO_LOAD -> GiftCardOperation.UNDO_LOAD
+                DEACTIVATE -> GiftCardOperation.DEACTIVATE
+                CASH_OUT -> GiftCardOperation.CASH_OUT
+                REFUND -> GiftCardOperation.REFUND
+                FUNDING_CARD, FUNDING_EXTERNAL, CASH_HANDOVER, FUNDING_REFUND, FUNDING_RETURNED -> null
+            }
+
+    /** Whether it changes a card's value: activation, load, undo, deactivation, cash-out or refund. */
+    val changesValue: Boolean get() = operation != null
+}
+
+/** The Terminal API message category a gift-card stage was sent with; status checks ask for the same. */
+enum class GiftCardCategory {
+    /** `Payment`. */
+    PAYMENT,
+
+    /** `StoredValue`. */
+    STORED_VALUE,
+
+    /** `Reversal`. */
+    REVERSAL,
+}
+
+/** Where a gift-card stage stands. */
+enum class GiftCardStatus {
+    /** Stored before sending; at startup an interrupted one becomes [UNKNOWN]. */
+    PENDING,
+
+    /** Done: approved, accepted, or confirmed by staff. */
+    SUCCEEDED,
+
+    /** Refused by the terminal or provider. */
+    DECLINED,
+
+    /** Cancelled on the terminal. */
+    CANCELLED,
+
+    /** Never took effect. */
+    FAILED,
+
+    /** May have taken effect; checked again with the original message category. */
+    UNKNOWN,
+
+    /** A local stage awaiting staff confirmation, such as cash still to hand over. */
+    AWAITING,
+    ;
+
+    /** Whether it still needs a check or a confirmation. */
+    val unresolved: Boolean get() = this == PENDING || this == UNKNOWN || this == AWAITING
+
+    /** Whether it conclusively did not take effect. */
+    val notDone: Boolean get() = this == DECLINED || this == CANCELLED || this == FAILED
+}
+
+/**
+ * One stage of a stored-value activity (table `gift_card_operations`): funding, a value change, a cash handover or a
+ * repair, linked by [groupId]. Stored before anything is sent, settled in place; never a merchandise sale. Only safe
+ * display identifiers are kept: never a gift card's number or PIN.
+ *
+ * @property id Random UUID.
+ * @property groupId The activity it belongs to: the first stage's ID.
+ * @property stage What it does.
+ * @property category The message category it was sent with ([GiftCardStage.category] when stored); null when local.
+ * @property createdAt When it was stored, epoch milliseconds.
+ * @property processedAt When it was answered or confirmed, epoch milliseconds; null while unresolved.
+ * @property status Where it stands.
+ * @property provider The [app.minimpos.core.giftcard.GiftCardProvider] name; null for funding card payments.
+ * @property providerCode The `StoredValueProvider` sent; null for card funding and local stages.
+ * @property entry The [app.minimpos.core.giftcard.GiftCardEntry] name it was presented with; null when no card was
+ *   read.
+ * @property cardLastFour Last four digits of the gift card, from the scan or the terminal; null when unknown.
+ * @property currency ISO 4217 code.
+ * @property amountMinor What it requested or recorded, in minor units.
+ * @property approvedMinor What was approved, in minor units; null until known.
+ * @property balanceMinor The card's balance the answer reported, in minor units; null when unreported.
+ * @property merchantReference Its `SaleTransactionID`.
+ * @property serviceId Its ServiceID; null for local stages.
+ * @property poiId The terminal it was sent to.
+ * @property poiTransactionId The terminal's transaction ID; identifies a load for undo and a funding payment for
+ *   refund.
+ * @property poiTimestamp The terminal's transaction timestamp exactly as received.
+ * @property pspReference Adyen's reference.
+ * @property poiReconciliationId The terminal's reconciliation period.
+ * @property funds For a funding stage, the value stage it pays for ([GiftCardStage.ACTIVATE] or [GiftCardStage.LOAD]);
+ *   null otherwise.
+ * @property originalId The stage it refers to: an undo's load, a funding refund's or return's funding stage, a
+ *   handover's cash-out; null otherwise.
+ * @property message The terminal's own words when it did not succeed, verbatim.
+ * @property errorCondition The answer's ErrorCondition.
+ * @property reason Why it did not succeed without an answer to tell, worded at the UI.
+ * @property context The original payment context it was sent in.
+ * @property environment The history environment a local stage was recorded in.
+ * @property customerReceiptJson Adyen's shopper receipt fields, verbatim.
+ * @property cashierReceiptJson Adyen's merchant receipt fields, verbatim.
+ */
+@Entity(
+    tableName = "gift_card_operations",
+    indices = [Index(value = ["createdAt", "id"]), Index("groupId"), Index(value = ["processedAt", "id"])],
+)
+data class GiftCardOperationEntity(
+    @PrimaryKey val id: String,
+    val groupId: String,
+    val stage: GiftCardStage,
+    val category: GiftCardCategory?,
+    val createdAt: Long,
+    val processedAt: Long? = null,
+    val status: GiftCardStatus,
+    val provider: String? = null,
+    val providerCode: String? = null,
+    val entry: String? = null,
+    val cardLastFour: String? = null,
+    val currency: String,
+    val amountMinor: Long,
+    val approvedMinor: Long? = null,
+    val balanceMinor: Long? = null,
+    val merchantReference: String,
+    val serviceId: String? = null,
+    val poiId: String? = null,
+    val poiTransactionId: String? = null,
+    val poiTimestamp: String? = null,
+    val pspReference: String? = null,
+    val poiReconciliationId: String? = null,
+    val funds: GiftCardStage? = null,
+    val originalId: String? = null,
+    val message: String? = null,
+    val errorCondition: String? = null,
+    val reason: StoredReason? = null,
+    val context: PaymentContext? = null,
+    val environment: String? = null,
+    val customerReceiptJson: String? = null,
+    val cashierReceiptJson: String? = null,
+) {
+    /**
+     * What it moved, in minor units: a cash-out needs a reported amount within its request; other confirmed stages use
+     * the approved amount or what was requested/recorded. Zero before success or for an unknown/inconsistent cash-out.
+     */
+    val movedMinor: Long get() =
+        when {
+            status != GiftCardStatus.SUCCEEDED -> 0
+            stage == GiftCardStage.CASH_OUT -> approvedMinor?.takeIf { it in 0..amountMinor } ?: 0
+            else -> approvedMinor ?: amountMinor
+        }
 }

@@ -1,6 +1,7 @@
 package app.minimpos.terminal.paymentsapp
 
 import app.minimpos.terminal.parse.FormEncoding
+import app.minimpos.terminal.transport.CompletedTransactions
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
@@ -14,9 +15,7 @@ import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.MessageReference
 import com.adyen.model.nexo.MessageType
-import com.adyen.model.nexo.RepeatedMessageResponse
 import com.adyen.model.nexo.RepeatedResponseMessageBody
-import com.adyen.model.nexo.Response
 import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.SaleToPOIRequest
 import com.adyen.model.nexo.SaleToPOIResponse
@@ -231,12 +230,14 @@ class PaymentsAppTransport(
     private val links = PaymentsAppLinks(environment)
     private val decoded = mutableMapOf<String, TerminalAPIResponse?>()
     private val recovered = mutableMapOf<String, MutableSet<String>>()
+    private val completed = CompletedTransactions()
 
     override fun acknowledge(serviceId: String) {
         synchronized(decoded) {
             val urls = recovered.remove(serviceId).orEmpty().toSet()
             exchange.forgetLateReplies(urls)
             urls.forEach(decoded::remove)
+            completed.forget(setOf(serviceId), emptySet())
         }
     }
 
@@ -318,17 +319,29 @@ class PaymentsAppTransport(
         }
     }
 
-    /** The late answer to the transaction [request] asks about, as a status response that repeats it; null without one. */
+    /**
+     * The late answer to the transaction [request] asks about, as a status response that repeats it; null without one.
+     * The validated answer is remembered in [CompletedTransactions], which builds the status response as for the simulator.
+     */
     private fun repeat(request: TerminalAPIRequest): TerminalAPIResponse? {
         val sent = request.saleToPOIRequest
-        return exchange.lateReplies().firstNotNullOfOrNull { url ->
-            val received = decodeLate(url)?.saleToPOIResponse ?: return@firstNotNullOfOrNull null
-            val repeated = repeated(received, sent) ?: return@firstNotNullOfOrNull null
-            synchronized(
-                decoded,
-            ) { recovered.getOrPut(sent.transactionStatusRequest.messageReference.serviceID) { mutableSetOf() }.add(url) }
-            statusAnswer(sent.messageHeader, repeated)
-        }
+        val status = sent.transactionStatusRequest
+        val serviceId = status.messageReference?.serviceID ?: return null
+        val url =
+            exchange.lateReplies().firstOrNull { url ->
+                val body = decodeLate(url)?.saleToPOIResponse?.let { lateBody(it, sent) }
+                body?.let {
+                    completed.remember(
+                        serviceId,
+                        it.paymentResponse,
+                        it.reversalResponse,
+                        storedValue = it.storedValueResponse,
+                    )
+                } !=
+                    null
+            } ?: return null
+        synchronized(decoded) { recovered.getOrPut(serviceId) { mutableSetOf() }.add(url) }
+        return completed.repeat(status)?.let { statusAnswer(sent.messageHeader, it) }
     }
 
     private fun decodeLate(url: String): TerminalAPIResponse? =
@@ -337,32 +350,31 @@ class PaymentsAppTransport(
             decoded[url]
         }
 
-    private fun repeated(
+    /**
+     * The validated body of [received], a late answer to the transaction [request] asks about: the original response
+     * itself, or an earlier status answer that repeats it; null for anything else.
+     */
+    private fun lateBody(
         received: SaleToPOIResponse,
         request: SaleToPOIRequest,
-    ): TransactionStatusResponse? {
+    ): RepeatedResponseMessageBody? {
         val status = request.transactionStatusRequest
         val reference = status.messageReference ?: return null
-        val original = originalHeader(reference, request.messageHeader)
-        val repeated =
-            if (matches(received.messageHeader, original)) {
-                TransactionStatusResponse().apply {
-                    response = Response().apply { result = ResultType.SUCCESS }
-                    messageReference = reference
-                    repeatedMessageResponse =
-                        RepeatedMessageResponse().apply {
-                            messageHeader = received.messageHeader
-                            repeatedResponseMessageBody =
-                                RepeatedResponseMessageBody().apply {
-                                    paymentResponse = received.paymentResponse
-                                    reversalResponse = received.reversalResponse
-                                }
-                        }
+        val body =
+            if (matches(received.messageHeader, originalHeader(reference, request.messageHeader))) {
+                RepeatedResponseMessageBody().apply {
+                    paymentResponse = received.paymentResponse
+                    reversalResponse = received.reversalResponse
                 }
             } else {
-                received.transactionStatusResponse.takeIf { sameStatusContext(received.messageHeader, request.messageHeader) }
+                received.transactionStatusResponse
+                    ?.takeIf {
+                        sameStatusContext(received.messageHeader, request.messageHeader) &&
+                            repeats(it, status, request.messageHeader)
+                    }?.repeatedMessageResponse
+                    ?.repeatedResponseMessageBody
             }
-        return repeated?.takeIf { repeats(it, status, request.messageHeader) }
+        return body?.takeIf { bodyMatches(it, reference.messageCategory) }
     }
 
     private fun sameStatusContext(

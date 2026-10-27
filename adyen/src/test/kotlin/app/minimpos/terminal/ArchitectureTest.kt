@@ -15,11 +15,14 @@ import app.minimpos.terminal.transport.AdyenHttp
 import app.minimpos.terminal.transport.AdyenStoreDetails
 import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.AdyenWalletMethods
+import app.minimpos.terminal.transport.CompletedTransactions
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.TerminalHttpClient
 import com.adyen.Client
 import com.adyen.model.management.DefaultErrorResponseEntity
+import com.adyen.model.nexo.RepeatedMessageResponse
+import com.adyen.model.nexo.TransactionStatusResponse
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.gson.JsonObject
@@ -229,6 +232,24 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `only CompletedTransactions builds status answers that repeat a transaction`() =
+        repeatedStatusOwnership(
+            resideInAnyPackage("app.minimpos.terminal..")
+                .and(DescribedPredicate.not(type(CompletedTransactions::class.java).or(type(CompletedTransactions.Companion::class.java)))),
+        ).check(terminal)
+
+    @Test
+    fun `repeated status ownership rejects a transport building its own status answer`() {
+        val violation = ClassFileImporter().importClasses(RepeatedStatusViolation::class.java)
+        val rule = repeatedStatusOwnership(type(RepeatedStatusViolation::class.java))
+        assertTrue(rule.description, rule.evaluate(violation).hasViolation())
+    }
+
+    private class RepeatedStatusViolation {
+        fun repeated() = TransactionStatusResponse().apply { repeatedMessageResponse = RepeatedMessageResponse() }
+    }
+
+    @Test
     fun `the Checkout API's parts are made together for one credential`() =
         // AdyenCheckout makes modifications, links and saved cards with one HTTP client and application information.
         // A part's default-argument constructor delegates to its own full constructor.
@@ -405,6 +426,16 @@ class ArchitectureTest {
                 .should()
                 .callMethod(ExternalText::class.java, "constructor-impl", String::class.java)
                 .because("Production code outside the simulator wraps nullable remote fields via ExternalText.of")
+
+        // The simulator and the Payments app transport both answer status checks themselves; the Payments app once
+        // built its own answer, so the repeated body a client reads back could differ between them.
+        fun repeatedStatusOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
+            noClasses()
+                .that(selected)
+                .should()
+                .callConstructor(TransactionStatusResponse::class.java)
+                .orShould()
+                .callConstructor(RepeatedMessageResponse::class.java)
 
         fun managementFaultOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
             noClasses()

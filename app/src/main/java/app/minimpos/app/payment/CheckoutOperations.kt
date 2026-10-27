@@ -164,8 +164,9 @@ class CheckoutOperations<R, C>(
     /** The operation running now, which its screen follows to the result. */
     val state: StateFlow<TransactionState> = runner.state
 
-    /** Whether a stored request is being sent again under the operation lock. */
-    internal val checking: Boolean get() = mutex.isLocked
+    /** These operations as [FinancialOperations] holds them: busy while one runs or a stored request is sent again. */
+    internal val operationKind =
+        OperationKind({ mutex.isLocked || runner.state.value is TransactionState.Processing }, runner::forget, runner::forgetAll)
 
     /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
     internal fun forgetAll() = runner.forgetAll()

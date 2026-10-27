@@ -99,8 +99,11 @@ class Captures(
 ) {
     private val mutex = Mutex()
 
-    /** Whether a capture or adjustment is using the current API target, including a chained request. */
-    internal val active: Boolean get() = mutex.isLocked
+    /**
+     * Captures as [FinancialOperations] holds them: busy while a capture or adjustment, chained ones included, uses the
+     * current API target.
+     */
+    internal val operationKind = OperationKind({ mutex.isLocked })
 
     /** Enters the tip of [saleId] ([tipMinor] in minor units, 0 for no tip) and captures the bill plus the tip. */
     suspend fun addTip(

@@ -75,6 +75,9 @@ class RefundCancellations(
     /** Whether a cancellation is being sent now, so the configuration it is sent with must not be replaced. */
     val running: Boolean get() = mutex.isLocked
 
+    /** Refund cancellations as [FinancialOperations] holds them: busy while one is being sent. */
+    internal val operationKind = OperationKind({ running })
+
     /** Asks Adyen to cancel refund [id], or sends an unresolved cancellation of it again with its original identity. */
     suspend fun cancel(id: String): RefundCancelResult =
         mutex.withLock {

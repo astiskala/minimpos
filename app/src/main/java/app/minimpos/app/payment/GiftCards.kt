@@ -349,14 +349,9 @@ class GiftCards(
     private val sends = TerminalSends(scope, gateway, runner.state)
     private val current = mutableMapOf<String, String>()
 
-    /** Whether an original terminal request is being checked now; setup and history maintenance wait for it. */
-    internal val checking: Boolean get() = sends.checking
-
-    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
-    internal fun forgetAll() = runner.forgetAll()
-
-    /** Releases process-only requests of activities history has durably deleted. */
-    internal fun forget(ids: Set<String>) = runner.forget(ids)
+    /** Gift cards as [FinancialOperations] holds them: busy while an activity runs or an original request is checked. */
+    internal val operationKind =
+        OperationKind({ sends.checking || runner.state.value is TransactionState.Processing }, runner::forget, runner::forgetAll)
 
     /**
      * Starts [request] in the background and returns its activity's group ID; null, with nothing stored or sent, while

@@ -28,6 +28,7 @@ import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutOperations
 import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.FinancialOperations
+import app.minimpos.app.payment.OperationKind
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.RefundCancellations
 import app.minimpos.app.payment.SaleBook
@@ -55,8 +56,11 @@ import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.transport.AdyenLocalTransport
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
+import com.tngtech.archunit.base.DescribedPredicate
+import com.tngtech.archunit.core.domain.JavaClass.Predicates.belongToAnyOf
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.type
+import com.tngtech.archunit.core.domain.JavaMethodCall
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.lang.ArchRule
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
@@ -128,6 +132,19 @@ class DeepeningArchitectureTest {
     @Test
     fun `refund balance ownership rejects a caller matching returns to tenders itself`() =
         reject(listOf(refundBalance), RefundBalanceViolation::class.java)
+
+    private class OperationRegistryViolation {
+        fun busy(charges: SavedCardCharges) = charges.managing
+
+        fun release(kind: OperationKind) = kind.forgetAll()
+    }
+
+    @Test
+    fun `financial operations hold every runner through its operation kind`() = operationRegistry.forEach { it.check(app) }
+
+    @Test
+    fun `operation registry rejects reading a runner's own flag or releasing its requests elsewhere`() =
+        reject(operationRegistry, OperationRegistryViolation::class.java)
 
     private class RefundBalanceViolation {
         fun reserved(
@@ -362,6 +379,28 @@ class DeepeningArchitectureTest {
                 .haveNameNotMatching(within(RefundBalance::class.java.name, "app.minimpos.app.data.repo.RefundBalanceKt"))
                 .should()
                 .callMethodWhere(callTo("app.minimpos.app.data.repo.RefundBalanceKt", "returnsTo"))
+
+        // FinancialOperations once read eleven differently named runner flags and kept three hand-written lists, so a new
+        // runner could be left out of one; every runner now fills one OperationKind, released only by FinancialOperations.
+        val operationRegistry: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that(belongToAnyOf(FinancialOperations::class.java).or(type(OperationRegistryViolation::class.java)))
+                    .should()
+                    .callMethodWhere(
+                        DescribedPredicate.describe<JavaMethodCall>("a runner's own busy flag or request release") { call ->
+                            call.targetOwner.packageName == "app.minimpos.app.payment" &&
+                                call.targetOwner.name != OperationKind::class.java.name &&
+                                call.name.substringBefore('$') in
+                                setOf("getChecking", "getManaging", "getActive", "getRunning", "forget", "forgetAll")
+                        },
+                    ),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(FinancialOperations::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(OperationKind::class.java.name, "forget", "forgetAll")),
+            )
 
         // Gift cards once copied the payment lifecycle's send, abort and status check and dropped the late-answer
         // release; every runner of stored terminal requests now decides only what it stores, never how it is sent.

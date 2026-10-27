@@ -149,8 +149,8 @@ class SavedCardCharges(
     /** The charge running now, which the charging screen follows to its result. */
     val state: StateFlow<TransactionState> = operations.state
 
-    /** Whether a stored API request is being checked or resent now. */
-    internal val checking: Boolean get() = operations.checking
+    /** Saved-card charges as [FinancialOperations] holds them: busy while a charge runs or token management is sending. */
+    internal val operationKind = OperationKind({ managing || operations.operationKind.running }, operations::forget, ::forgetAll)
 
     /**
      * Makes a memory-only lookup for [checkouts] and [terminal] in [scope]. Null [delay] requires explicit lookup;
@@ -355,9 +355,6 @@ class SavedCardCharges(
             deletion.value = TokenDeletionState()
             tokenRevision.value++
         }
-
-    /** Releases process-only requests for records that history has already durably deleted. */
-    internal fun forget(ids: Set<String>) = operations.forget(ids)
 
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next charge can start. */
     fun acknowledge() = operations.acknowledge()

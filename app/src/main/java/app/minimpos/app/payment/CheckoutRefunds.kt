@@ -65,20 +65,14 @@ class CheckoutRefunds(
     /** The refund running now, which the refund screens follow to its result. */
     val state: StateFlow<TransactionState> = operations.state
 
-    /** Whether a stored API request is being checked or resent now. */
-    internal val checking: Boolean get() = operations.checking
+    /** Checkout refunds as [FinancialOperations] holds them. */
+    internal val operationKind: OperationKind get() = operations.operationKind
 
     /**
      * Sends [request] in the background and returns the new refund's ID straight away; null, with nothing stored or sent,
      * while another refund is running or [request] is not a Checkout refund of a stored sale.
      */
     fun start(request: RefundStart): String? = if (request.checkout && request.saleId != null) operations.start(request) else null
-
-    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
-    internal fun forgetAll() = operations.forgetAll()
-
-    /** Releases process-only requests for records that history has already durably deleted. */
-    internal fun forget(ids: Set<String>) = operations.forget(ids)
 
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next refund can start. */
     fun acknowledge() = operations.acknowledge()

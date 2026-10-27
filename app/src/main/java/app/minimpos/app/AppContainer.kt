@@ -651,9 +651,7 @@ class AppContainer(
             refundRecords,
             giftCards,
             unreferencedRefunds,
-            refundCancellations,
-            captures,
-            refundRun = ::currentRefundRun,
+            holds = listOf(refundCancellations.operationKind, captures.operationKind),
         )
 
     private fun historyPurged() {
@@ -669,19 +667,11 @@ class AppContainer(
         val ids = items.map { it.id }.toSet()
         operations.forget(ids)
         receipts.forget(ids)
-        val chargeKeys =
-            items
-                .filterIsInstance<HistoryItem.Sale>()
-                .filter { it.sale.savedCard }
-                .map { SavedCardCharges.idempotencyKey(it.id) }
-                .toSet()
-        simulator.forget(items, tenders, chargeKeys)
+        simulator.forget(items, tenders, operations.idempotencyKeys(items))
     }
 
     /** Returns split across several tenders or including cash, one persisted leg at a time. */
     val refundLegs = RefundLegs(appScope, operations, refundRecords, managerApproval)
-
-    private fun currentRefundRun() = refundLegs.state.value
 
     /**
      * One terminal reconciliation: rechecks unresolved terminal operations, reads or closes the period and compares its

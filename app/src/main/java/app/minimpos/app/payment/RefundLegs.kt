@@ -85,6 +85,11 @@ class RefundLegs(
     val state: StateFlow<RefundRun?>
         field = MutableStateFlow<RefundRun?>(null)
 
+    init {
+        // Cash legs and the gaps between terminal legs hold history and setup steady until the whole run finishes.
+        operations.include(OperationKind({ state.value?.finished == false }))
+    }
+
     /**
      * Starts returning [legs] (requests from one review) in the background; false, with nothing stored or sent, when a
      * run or another refund is already in progress or there is nothing to return.

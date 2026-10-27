@@ -1,5 +1,6 @@
 package app.minimpos.app.payment
 
+import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.ManagerApproval
@@ -16,7 +17,8 @@ import kotlinx.coroutines.flow.combine
  * sent now ([running]). Callers never pick a runner themselves.
  *
  * Payment links, captures and active status recovery also count as [running], holding setup and retained history
- * steady until each request and its durable answer finish.
+ * steady until each request and its durable answer finish. Every runner counts through its own [OperationKind], so
+ * running and history deletion iterate one list rather than naming each runner's flags.
  *
  * @param payments Card payments (including scanned wallets) on the terminal.
  * @param refunds Referenced refunds and cancellations on the terminal.
@@ -27,9 +29,7 @@ import kotlinx.coroutines.flow.combine
  * @param refundRecords Where refunds are stored, read to route a refund's status check.
  * @param giftCards Stored-value activities on the terminal, which count as running and route their own status checks.
  * @param unreferenced Unreferenced card refunds on the terminal: refunds in history, sent and checked as payments.
- * @param cancellations Cancellations of delayed unreferenced refunds, which count as running while being sent.
- * @param captures Captures and adjustments, including approval and persistence between chained API requests.
- * @param refundRun Current multi-leg return, so its cash legs and gaps between terminal legs also hold history steady.
+ * @param holds Runners that only count as running, such as captures and refund cancellations.
  */
 class FinancialOperations(
     private val payments: TransactionLifecycle<PaymentStart>,
@@ -41,54 +41,48 @@ class FinancialOperations(
     private val refundRecords: RefundRepository,
     private val giftCards: GiftCards? = null,
     private val unreferenced: TransactionLifecycle<UnreferencedRefundStart>? = null,
-    private val cancellations: RefundCancellations? = null,
-    private val captures: Captures? = null,
-    private val refundRun: () -> RefundRun? = { null },
+    holds: List<OperationKind> = emptyList(),
 ) {
-    /** Releases every runner's process-only requests after confirmed complete history deletion. */
-    internal fun forgetAll() {
-        payments.forgetAll()
-        refunds.forgetAll()
-        charges.forgetAll()
-        checkoutRefunds.forgetAll()
-        links.forgetAll()
-        giftCards?.forgetAll()
-        unreferenced?.forgetAll()
+    private val kinds =
+        listOfNotNull(
+            payments.operationKind,
+            refunds.operationKind,
+            charges.operationKind,
+            checkoutRefunds.operationKind,
+            links.operationKind,
+            giftCards?.operationKind,
+            unreferenced?.operationKind,
+        ).plus(holds)
+            .toMutableList()
+
+    /** Every runner held now. */
+    private fun kinds(): List<OperationKind> = synchronized(kinds) { kinds.toList() }
+
+    /** Holds [kind] too: a runner made after these operations, such as a multi-leg return that sends through them. */
+    internal fun include(kind: OperationKind) {
+        synchronized(kinds) { kinds += kind }
     }
 
+    /** Releases every runner's process-only requests after confirmed complete history deletion. */
+    internal fun forgetAll() = kinds().forEach(OperationKind::forgetAll)
+
     /** Releases process-only request material after durable history deletion, routed to every runner. */
-    internal fun forget(ids: Set<String>) {
-        payments.forget(ids)
-        refunds.forget(ids)
-        charges.forget(ids)
-        checkoutRefunds.forget(ids)
-        links.forget(ids)
-        giftCards?.forget(ids)
-        unreferenced?.forget(ids)
-    }
+    internal fun forget(ids: Set<String>) = kinds().forEach { it.forget(ids) }
+
+    /** The idempotency keys the operations of removed history [items] were sent with, which simulated Adyen keeps too. */
+    internal fun idempotencyKeys(items: List<HistoryItem>): Set<String> =
+        items
+            .filterIsInstance<HistoryItem.Sale>()
+            .filter { it.sale.savedCard }
+            .map { SavedCardCharges.idempotencyKey(it.id) }
+            .toSet()
 
     /**
      * Whether a card payment, refund, saved-card charge or Checkout refund is being sent now, so the configuration it
      * is sent with must not be replaced. Token deletion and its active reconciliation, stored-value activities,
      * unreferenced refunds and their cancellations also hold credentials steady. Unfinished history alone does not count.
      */
-    val running: Boolean
-        get() =
-            listOf(
-                charges.managing,
-                charges.checking,
-                checkoutRefunds.checking,
-                links.active,
-                captures?.active == true,
-                refundRun()?.finished == false,
-                cancellations?.running == true,
-                payments.checking,
-                refunds.checking,
-                giftCards?.checking == true,
-                unreferenced?.checking == true,
-            ).any { it } ||
-                listOfNotNull(payments.state, refunds.state, charges.state, checkoutRefunds.state, giftCards?.state, unreferenced?.state)
-                    .any { it.value is TransactionState.Processing }
+    val running: Boolean get() = kinds().any { it.running }
 
     /**
      * The payment running or just finished, whichever way it is sent: on the terminal (scanned wallets included) or as a

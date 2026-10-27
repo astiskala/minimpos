@@ -18,8 +18,7 @@ class FinancialOperationsTest {
 
     private fun operations(
         payments: TransactionLifecycle<PaymentStart> = container.payments,
-        captures: Captures? = null,
-        refundRun: () -> RefundRun? = { null },
+        holds: List<OperationKind> = emptyList(),
     ) = FinancialOperations(
         payments,
         container.refunds,
@@ -28,8 +27,7 @@ class FinancialOperationsTest {
         container.links,
         container.sales,
         container.refundRecords,
-        captures = captures,
-        refundRun = refundRun,
+        holds = holds,
     )
 
     @Test
@@ -63,7 +61,7 @@ class FinancialOperationsTest {
                     assertThat(checkNotNull(operations).running).isTrue()
                     ApiTarget(ApiSetup.Incomplete(SetupProblem.API_KEY))
                 })
-            operations = operations(captures = captures)
+            operations = operations(holds = listOf(captures.operationKind))
             assertThat(captures.capture("missing", 100)).isEqualTo(CaptureResult.NotAllowed)
             assertThat(operations.running).isFalse()
         }
@@ -71,7 +69,9 @@ class FinancialOperationsTest {
     @Test
     fun `multi-leg returns hold the running guard between legs until the whole run finishes`() {
         var run: RefundRun? = null
-        val operations = operations(refundRun = { run })
+        val operations = operations()
+        // A multi-leg return is made after the operations it sends through, so it includes itself.
+        operations.include(OperationKind({ run?.finished == false }))
         assertThat(operations.running).isFalse()
         run = RefundRun(listOf(RefundLegState(OperationAmount(100, "EUR"), cash = true)))
         assertThat(operations.running).isTrue()

@@ -298,14 +298,9 @@ class TransactionLifecycle<R>(
     /** Sends each stored transaction and checks unknown ones again. */
     private val sends = TerminalSends(scope, gateway, runner.state)
 
-    /** Whether an original terminal request is being checked now; setup and history maintenance wait for it. */
-    internal val checking: Boolean get() = sends.checking
-
-    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
-    internal fun forgetAll() = runner.forgetAll()
-
-    /** Releases process-only requests for records that history has already durably deleted. */
-    internal fun forget(ids: Set<String>) = runner.forget(ids)
+    /** This lifecycle as [FinancialOperations] holds it: busy while a transaction runs or an original request is checked. */
+    internal val operationKind =
+        OperationKind({ sends.checking || runner.state.value is TransactionState.Processing }, runner::forget, runner::forgetAll)
 
     /**
      * Starts [request] in the background and returns the new record's ID straight away; null, with nothing stored or

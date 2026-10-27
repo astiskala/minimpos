@@ -73,7 +73,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   and original payment-context eligibility (`ApiAccess`); ready access and raw adapters cannot be fabricated by callers.
   `Captures` takes a target supplier, not `AdyenApi`; the simulated `CheckoutApi` is injected by the container, and
   the app never builds a Checkout part outside `AdyenCheckout`.
-- \* Only `FinancialOperations` checks stored operations again, routes refunds and says whether any is running; screens
+- \* Only `FinancialOperations` checks stored operations again, routes refunds and says whether any is running, holding
+  each runner through its one `OperationKind` (busy, history release) and releasing them only itself; screens
   offer checks from `PaymentAction.CHECK_AGAIN`/`RefundEntity.canCheckAgain`, never a ServiceID. Waiting and result
   screens follow `paymentProgress`/`refundProgress` (amount as requested) and leave results through it, never through a
   runner's own state. Saved-card charges,

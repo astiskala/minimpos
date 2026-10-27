@@ -104,8 +104,16 @@ class PaymentLinks(
             approval = approval.forActions(setOf(ManagerAction.SALE, ManagerAction.LINK_CREATE)),
         )
 
-    /** Whether creation, recovery, a status check or cancellation is using the current API target. */
-    internal val active: Boolean get() = operations.state.value is TransactionState.Processing || mutex.isLocked
+    /**
+     * Payment links as [FinancialOperations] holds them: busy while creation, recovery, a status check or cancellation
+     * is using the current API target.
+     */
+    internal val operationKind =
+        OperationKind(
+            { operations.state.value is TransactionState.Processing || mutex.isLocked },
+            operations::forget,
+            operations::forgetAll,
+        )
 
     /** Highest accepted revision per payment kind; older starts stay rejected without retaining every checkout. */
     private val linkedRevisions = mutableMapOf<SaleKind, Long>()
@@ -126,12 +134,6 @@ class PaymentLinks(
     }
 
     private fun started(link: PaymentLinkStart): String? = operations.start(link)
-
-    /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
-    internal fun forgetAll() = operations.forgetAll()
-
-    /** Releases process-only requests for records that history has already durably deleted. */
-    internal fun forget(ids: Set<String>) = operations.forget(ids)
 
     /**
      * Asks Adyen where the link of sale [saleId] stands and stores it: paid, expired or still open. A sale whose link

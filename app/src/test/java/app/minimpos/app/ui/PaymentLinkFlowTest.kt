@@ -136,6 +136,8 @@ class PaymentLinkFlowTest {
         compose.onNodeWithTag("linksNeedApi").assertDoesNotExist()
         compose.onNodeWithText("In simulator mode, try a demo link", substring = true).assertExists()
         compose.onNodeWithTag("back").performClick()
+        // Leave Settings only once Payments has closed, so the second press is not lost.
+        compose.waitUntilDoesNotExist(hasTestTag("linkExpiry"), 15_000)
         compose.onNodeWithTag("back").performClick()
         ringUpCustomAmount(5, 0, 0)
         compose.clickWhenEnabled("charge")

@@ -321,6 +321,8 @@ class AppFlowTest {
         // The PIN is saved by work that resumes on the main looper, so blocking the main thread (await) would starve it.
         compose.awaitCondition("the PIN is saved") { runBlocking { container.pinManager.pinConfigured.first() } }
         compose.onNodeWithTag("back").performClick()
+        // Leave Settings only once Security has closed, so the second press is not lost.
+        compose.waitUntilDoesNotExist(hasTestTag("setPin"), 15_000)
         compose.onNodeWithTag("back").performClick()
 
         compose.waitForTag("settings")

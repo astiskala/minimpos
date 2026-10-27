@@ -3,11 +3,14 @@ package app.minimpos.app.history
 import app.minimpos.app.data.db.GiftCardCategory
 import app.minimpos.app.data.db.GiftCardStage
 import app.minimpos.app.data.db.GiftCardStatus
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.db.unresolved
 import app.minimpos.app.data.repo.GiftCardActivity
 import app.minimpos.app.data.repo.HistoryItem
@@ -521,8 +524,8 @@ object HistoryAccounting {
                                     amountMinor = refund.amountMinor,
                                     tipMinor = refund.tipMinor ?: 0,
                                     surchargeMinor = refund.surchargeMinor,
-                                    cash = refund.cash,
-                                    unreferenced = refund.unreferenced,
+                                    cash = refund.route == RefundRoute.CASH,
+                                    unreferenced = refund.route == RefundRoute.UNREFERENCED,
                                 ),
                             )
                         }
@@ -655,7 +658,7 @@ object HistoryAccounting {
         return buildList {
             if (sale.status == SaleStatus.APPROVED) {
                 when {
-                    sale.paymentLink -> {
+                    sale.route == SaleRoute.PAYMENT_LINK -> {
                         add(HistoryActivity(item, null, HistoryActivityKind.ONLINE, sale.amountMinor))
                     }
 

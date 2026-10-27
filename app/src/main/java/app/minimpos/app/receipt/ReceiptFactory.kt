@@ -3,11 +3,14 @@ package app.minimpos.app.receipt
 import app.minimpos.app.data.db.GiftCardStage
 import app.minimpos.app.data.db.GiftCardStatus
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.GiftCardActivity
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.settings.ReceiptSettings
@@ -202,7 +205,7 @@ class ReceiptFactory(
                     sale.amountSurchargeMinor?.let {
                         (sale.amountMinor - it - (sale.tipMinor ?: 0) - (sale.cashBackMinor ?: 0)).coerceAtLeast(0)
                     },
-                discloseSurcharge = standing.approved && !sale.paymentLink && !sale.savedCard,
+                discloseSurcharge = standing.approved && sale.route == SaleRoute.TERMINAL,
                 cardPlans =
                     resolved.cashback(sale) +
                         record.tenders.sortedBy { it.sequence }.flatMap { resolved.mexicanPlan(it) + resolved.mealVoucher(it) },
@@ -242,7 +245,8 @@ class ReceiptFactory(
         val receipt =
             RefundReceipt(
                 reference = refund.merchantReference,
-                originalReference = (refund.originalReference ?: refund.originalTransactionId).takeUnless { refund.unreferenced },
+                originalReference =
+                    (refund.originalReference ?: refund.originalTransactionId).takeUnless { refund.route == RefundRoute.UNREFERENCED },
                 dateTime = formatDateTime(refund.createdAt),
                 items =
                     ReceiptLinesJson.decodeRefunded(refund.linesJson).map {
@@ -252,10 +256,10 @@ class ReceiptFactory(
                 cardReceipt = ReceiptLinesJson.decode(refund.customerReceiptJson),
                 cancellation = refund.cancellation,
                 full = refund.full,
-                standingNote = if (refund.cash) resolved.labels.cashReturned else resolved.refund(refund.status),
+                standingNote = if (refund.route == RefundRoute.CASH) resolved.labels.cashReturned else resolved.refund(refund.status),
                 surchargeMinor = refund.surchargeMinor,
                 tipMinor = refund.tipMinor,
-                unreferencedNotes = if (refund.unreferenced) resolved.unreferenced(refund) else emptyList(),
+                unreferencedNotes = if (refund.route == RefundRoute.UNREFERENCED) resolved.unreferenced(refund) else emptyList(),
             )
         return builder(settings, CurrencySpec.of(refund.currency), resolved, logo = logo).refund(receipt)
     }

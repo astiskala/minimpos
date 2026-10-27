@@ -1,5 +1,8 @@
 package app.minimpos.app.payment
 
+import app.minimpos.app.data.db.RefundRoute
+import app.minimpos.app.data.db.SaleRoute
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
@@ -73,7 +76,7 @@ class FinancialOperations(
     internal fun idempotencyKeys(items: List<HistoryItem>): Set<String> =
         items
             .filterIsInstance<HistoryItem.Sale>()
-            .filter { it.sale.savedCard }
+            .filter { it.sale.route == SaleRoute.SAVED_CARD }
             .map { SavedCardCharges.idempotencyKey(it.id) }
             .toSet()
 
@@ -133,10 +136,14 @@ class FinancialOperations(
      * the terminal. Returns the refund's ID; null, with nothing stored or sent, while a refund of either kind is running.
      */
     fun refund(request: RefundStart): String? =
-        when {
-            currentRefund is TransactionState.Processing || request.cash -> null
-            request.checkout -> checkoutRefunds.start(request)
-            else -> refunds.start(request)
+        if (currentRefund is TransactionState.Processing) {
+            null
+        } else {
+            when (request.route) {
+                RefundRoute.CHECKOUT -> checkoutRefunds.start(request)
+                RefundRoute.TERMINAL -> refunds.start(request)
+                RefundRoute.CASH, RefundRoute.UNREFERENCED -> null
+            }
         }
 
     /**
@@ -147,10 +154,7 @@ class FinancialOperations(
         request: RefundStart,
         grant: ManagerApproval.Grant,
     ): String? =
-        when {
-            currentRefund is TransactionState.Processing || request.cash || request.checkout -> null
-            else -> refunds.start(request, grant)
-        }
+        if (currentRefund is TransactionState.Processing || request.route != RefundRoute.TERMINAL) null else refunds.start(request, grant)
 
     /** Leaves a finished refund, whichever way it was sent, so the next one can start. */
     fun acknowledgeRefund() {
@@ -167,22 +171,20 @@ class FinancialOperations(
     suspend fun recheck(transaction: StoredTransaction): Recheck =
         when (transaction) {
             is StoredTransaction.Sale -> {
-                val sale = sales.get(transaction.id)?.sale
-                when {
-                    sale == null -> Recheck.Settled
-                    sale.paymentLink -> links.check(sale.id).recheck()
-                    sale.savedCard -> charges.recheck(sale.id)
-                    else -> payments.recheck(sale.id)
+                when (sales.get(transaction.id)?.sale?.route) {
+                    null -> Recheck.Settled
+                    SaleRoute.PAYMENT_LINK -> links.check(transaction.id).recheck()
+                    SaleRoute.SAVED_CARD -> charges.recheck(transaction.id)
+                    SaleRoute.TERMINAL -> payments.recheck(transaction.id)
                 }
             }
 
             is StoredTransaction.Refund -> {
-                val refund = refundRecords.get(transaction.id)
-                when {
-                    refund == null -> Recheck.Settled
-                    refund.checkoutRefund -> checkoutRefunds.recheck(refund.id)
-                    refund.unreferenced -> unreferenced?.recheck(refund.id) ?: Recheck.Settled
-                    else -> refunds.recheck(refund.id)
+                when (refundRecords.get(transaction.id)?.route) {
+                    null, RefundRoute.CASH -> Recheck.Settled
+                    RefundRoute.CHECKOUT -> checkoutRefunds.recheck(transaction.id)
+                    RefundRoute.UNREFERENCED -> unreferenced?.recheck(transaction.id) ?: Recheck.Settled
+                    RefundRoute.TERMINAL -> refunds.recheck(transaction.id)
                 }
             }
 

@@ -2,7 +2,9 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleLineEntity
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.route
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.PaymentLinkLineItem
@@ -56,7 +58,8 @@ object PaymentLinkRequests {
      */
     fun request(record: SaleWithLines): PaymentLinkRequest {
         val sale = record.sale
-        val expiresAt = requireNotNull(sale.paymentLinkExpiresAt?.takeIf { sale.paymentLink }) { "Not a payment link sale" }
+        val linkExpiry = sale.paymentLinkExpiresAt?.takeIf { sale.route == SaleRoute.PAYMENT_LINK }
+        val expiresAt = requireNotNull(linkExpiry) { "Not a payment link sale" }
         return PaymentLinkRequest(
             reference = sale.merchantReference,
             amount = ModificationAmount(sale.currency, sale.totalMinor),

@@ -1,13 +1,16 @@
 package app.minimpos.app.history
 
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.RefundBalance
 import app.minimpos.app.data.repo.RefundedLine
 import app.minimpos.app.data.repo.TenderAllocation
@@ -167,6 +170,15 @@ data class RefundStart(
         require(amountMinor > 0) { "Refund amount must be positive" }
     }
 
+    /** How this refund is sent: cash handed back, through the Checkout API for a saved-card charge, else on the terminal. */
+    val route: RefundRoute
+        get() =
+            when {
+                cash -> RefundRoute.CASH
+                checkout -> RefundRoute.CHECKOUT
+                else -> RefundRoute.TERMINAL
+            }
+
     /** The Terminal API reversal: a full one is sent without amount and currency, a partial one in minor units. */
     fun params(): RefundParams =
         RefundParams(
@@ -318,7 +330,7 @@ class RefundablePayment private constructor(
             merchantReference = Ids.transactionReference(prefix, now, zone),
             lines = (choice as? RefundChoice.Items)?.let(::refundedLines).orEmpty(),
             expectedContext = if (cash) null else tender?.context ?: local?.sale?.context,
-            checkout = local?.sale?.savedCard == true,
+            checkout = local?.sale?.route == SaleRoute.SAVED_CARD,
             cash = cash,
             tenderId = tender?.id,
             surchargeMinor = components?.first,

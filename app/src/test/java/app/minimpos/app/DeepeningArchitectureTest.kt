@@ -5,6 +5,7 @@ import app.minimpos.app.ArchitectureTest.Companion.callTo
 import app.minimpos.app.ArchitectureTest.Companion.callToSubtypeOf
 import app.minimpos.app.ArchitectureTest.Companion.within
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.repo.RefundBalance
 import app.minimpos.app.data.repo.returnsTo
@@ -148,6 +149,18 @@ class DeepeningArchitectureTest {
             book: CheckoutBook<RefundStart, PaymentModifications>,
             modifications: PaymentModifications,
         ) = book.send("r", modifications, 0)
+    }
+
+    @Test
+    fun `payments, history and receipts read how a stored record was sent only from its route`() = storedRoutes.check(app)
+
+    @Test
+    fun `route ownership rejects a status check routed on the stored flags`() = reject(listOf(storedRoutes), RouteViolation::class.java)
+
+    private class RouteViolation {
+        fun checkout(refund: RefundEntity) = refund.checkoutRefund
+
+        fun link(sale: SaleEntity) = sale.paymentLink
     }
 
     @Test
@@ -456,6 +469,20 @@ class DeepeningArchitectureTest {
                     .should()
                     .callMethodWhere(callTo(CheckoutBook::class.java.name, "send")),
             )
+
+        // Status-check routing, check offers, book selection, terminal totals and receipts each recombined the stored
+        // payment-link, saved-card, Checkout-refund, unreferenced and cash flags, so the check offered and the check routed
+        // had to agree by hand; SaleRoute and RefundRoute read them once and every site switches on the route.
+        val storedRoutes: ArchRule =
+            noClasses()
+                .that()
+                .resideInAnyPackage("app.minimpos.app.payment..", "app.minimpos.app.history..", "app.minimpos.app.receipt..")
+                .or()
+                .haveNameMatching(within(RouteViolation::class.java.name))
+                .should()
+                .callMethodWhere(callTo(SaleEntity::class.java.name, "getPaymentLink", "getSavedCard"))
+                .orShould()
+                .callMethodWhere(callTo(RefundEntity::class.java.name, "getCheckoutRefund", "getUnreferenced", "getCash"))
 
         // Checkout and the payment request each derived MOTO/MKE and cash permissions, and PaymentStart restated every
         // feature pair; CardFeatures states them once, so offers, validation, destination checks and approval agree.

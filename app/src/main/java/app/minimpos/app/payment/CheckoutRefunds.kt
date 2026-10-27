@@ -3,9 +3,11 @@ package app.minimpos.app.payment
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.ManagerApproval
@@ -103,7 +105,7 @@ class CheckoutRefunds(
         override suspend fun unsent(id: String): CheckoutRecord? {
             val refund =
                 refunds.get(id)?.takeIf {
-                    it.checkoutRefund && (it.status == RefundStatus.PENDING || it.status == RefundStatus.UNKNOWN)
+                    it.route == RefundRoute.CHECKOUT && (it.status == RefundStatus.PENDING || it.status == RefundStatus.UNKNOWN)
                 } ?: return null
             val saleId = refund.saleId ?: return null
             return CheckoutRecord(refund.status == RefundStatus.PENDING, refund.createdAt, sales.get(saleId)?.sale?.context, refund.reason)

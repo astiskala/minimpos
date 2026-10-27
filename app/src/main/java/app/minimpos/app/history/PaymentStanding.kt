@@ -3,11 +3,14 @@ package app.minimpos.app.history
 import app.minimpos.app.data.db.CaptureStatus
 import app.minimpos.app.data.db.RefundCancelStatus
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.cashAwaitingHandover
 import app.minimpos.app.data.repo.remainingAmountKnown
 import app.minimpos.terminal.client.Decline
@@ -166,7 +169,7 @@ fun saleResultNext(sale: SaleEntity): SaleResultNext =
             SaleResultNext.PAY_REMAINING
         }
 
-        sale.paymentLink -> {
+        sale.route == SaleRoute.PAYMENT_LINK -> {
             when (sale.status) {
                 SaleStatus.FAILED -> {
                     SaleResultNext.TRY_AGAIN
@@ -257,26 +260,27 @@ data class ReceiptStanding(
 }
 
 /** Whether this sale's payment link has been created and not paid yet, so the shopper can still pay with it. */
-val SaleEntity.awaitsLinkPayment: Boolean get() = paymentLink && status == SaleStatus.AWAITING_PAYMENT && paymentLinkUrl != null
+val SaleEntity.awaitsLinkPayment: Boolean
+    get() = route == SaleRoute.PAYMENT_LINK && status == SaleStatus.AWAITING_PAYMENT && paymentLinkUrl != null
 
 /**
  * Whether this sale's payment link screen still has something to offer: the link can be paid, or whether it was created
  * is unknown and can be asked about there.
  */
 val SaleEntity.linkUnsettled: Boolean
-    get() = paymentLink && (status == SaleStatus.AWAITING_PAYMENT || status == SaleStatus.UNKNOWN)
+    get() = route == SaleRoute.PAYMENT_LINK && (status == SaleStatus.AWAITING_PAYMENT || status == SaleStatus.UNKNOWN)
 
 /** Whether this sale was paid through its payment link, which its receipt and detail say. */
-val SaleEntity.paidOnline: Boolean get() = paymentLink && standing.charged
+val SaleEntity.paidOnline: Boolean get() = route == SaleRoute.PAYMENT_LINK && standing.charged
 
 /**
  * Whether this sale was sent to a terminal, so terminal totals and reconciliation include it: not seeded sample
  * history, a payment link or a saved-card charge, which go through Adyen's Checkout API instead.
  */
-val SaleEntity.terminalOperation: Boolean get() = !sample && !paymentLink && !savedCard
+val SaleEntity.terminalOperation: Boolean get() = !sample && route == SaleRoute.TERMINAL
 
 /** Whether this refund was sent to a terminal, so terminal totals include it: not a Checkout refund of a saved-card charge. */
-val RefundEntity.terminalOperation: Boolean get() = !checkoutRefund && !cash
+val RefundEntity.terminalOperation: Boolean get() = route.onTerminal
 
 /** What about a stored sale still needs attention, see [issues]. */
 enum class PaymentIssue {
@@ -310,7 +314,7 @@ val SaleEntity.issues: Set<PaymentIssue>
 private val CAPTURE_ISSUES = setOf(PaymentStanding.CAPTURE_FAILED, PaymentStanding.CAPTURE_UNKNOWN, PaymentStanding.CAPTURE_SENDING)
 
 /** Whether this sale is an offline demo link, regardless of its status or the device's current destination. */
-val SaleEntity.simulatedLink: Boolean get() = paymentLink && context?.simulated == true
+val SaleEntity.simulatedLink: Boolean get() = route == SaleRoute.PAYMENT_LINK && context?.simulated == true
 
 /** Whether this sale moved no money: seeded sample history, or a payment its original context took with the simulator. */
 val SaleEntity.simulatedSale: Boolean get() = sample || context?.simulated == true
@@ -361,14 +365,14 @@ val SaleWithLines.actions: Set<PaymentAction>
 
 /** Whether this sale's unknown outcome can be asked about again the way it was sent, see [PaymentAction.CHECK_AGAIN]. */
 private val SaleEntity.canCheckAgain: Boolean
-    get() = status == SaleStatus.UNKNOWN && !paymentLink && (savedCard || serviceId != null)
+    get() = status == SaleStatus.UNKNOWN && (route == SaleRoute.SAVED_CARD || (route == SaleRoute.TERMINAL && serviceId != null))
 
 /**
  * Whether this refund's unknown outcome can be asked about again the way it was sent: the terminal's status of its
  * stored ServiceID, or a Checkout refund sent again with its stored idempotency key.
  */
 val RefundEntity.canCheckAgain: Boolean
-    get() = status == RefundStatus.UNKNOWN && (checkoutRefund || serviceId != null)
+    get() = status == RefundStatus.UNKNOWN && (route == RefundRoute.CHECKOUT || serviceId != null)
 
 /**
  * Whether the delayed unreferenced refund [this] can be asked to be cancelled now, given the merchant confirmed Adyen
@@ -376,15 +380,15 @@ val RefundEntity.canCheckAgain: Boolean
  * enforces the delay itself, so an expired delay is its rejection, not this reading.
  */
 fun RefundEntity.cancellable(delayed: Boolean): Boolean =
-    unreferenced && status == RefundStatus.REQUESTED && pspReference != null && cancelStatus != RefundCancelStatus.REQUESTED &&
-        (delayed || cancelStatus?.unresolved == true)
+    route == RefundRoute.UNREFERENCED && status == RefundStatus.REQUESTED && pspReference != null &&
+        cancelStatus != RefundCancelStatus.REQUESTED && (delayed || cancelStatus?.unresolved == true)
 
 /**
  * Whether this accepted unreferenced refund was approved synchronously by the acquirer (`acquirerResponseCode=Approved`)
  * rather than only requested; either way Adyen confirms the refund itself only in the Customer Area.
  */
 val RefundEntity.approvedSynchronously: Boolean
-    get() = unreferenced && status == RefundStatus.REQUESTED && TerminalClient.refundApproved(acquirerResponseCode)
+    get() = route == RefundRoute.UNREFERENCED && status == RefundStatus.REQUESTED && TerminalClient.refundApproved(acquirerResponseCode)
 
 /** What the Checkout API can do with [sale], which has a PSP reference. */
 private fun captureActions(sale: SaleEntity): Set<PaymentAction> {

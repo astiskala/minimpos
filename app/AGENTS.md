@@ -83,7 +83,9 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   which declines a second link per checkout so screens never guard it. `OperationIdentity.send` alone sends identified
   Checkout operations (books, captures, adjustments, refund cancellations, link expiry): replay window, approval, setup
   and original context, approval again, persistence, then what a failed send establishes. Each kind supplies an
-  `IdentifiedSend` and only stores and reports what it found.
+  `IdentifiedSend` and only stores and reports what it found. Payment, history and receipt code read how a stored
+  record was sent from its route (`SaleRoute`, `RefundRoute`), never from its stored link, saved-card, Checkout-refund,
+  unreferenced or cash flags.
   Terminal reconciliation (recheck unresolved, read or close totals, compare) is one operation in payment
   (`TerminalReconciliation`); screens follow its outcome.
 - \* Only `SavedCardLookup` lists and selects saved cards for a charge. It owns reference/model/target freshness and

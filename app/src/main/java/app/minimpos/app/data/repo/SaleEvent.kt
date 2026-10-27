@@ -5,10 +5,12 @@ import app.minimpos.app.data.db.CaptureStatus
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.data.db.route
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.split.CashPayment
 import app.minimpos.terminal.checkout.CardChargeResult
@@ -585,7 +587,7 @@ private fun SaleEntity.settledAmounts(
     val terminalTipMinor = details.tipMinor?.takeIf { it > 0 }
     val reportedMinor = details.amountMinor
     val remaining = totalMinor - paidMinor
-    val chosen = tenderRequestedMinor?.takeIf { it in 1..<remaining && !paymentLink && !savedCard }
+    val chosen = tenderRequestedMinor?.takeIf { it in 1..<remaining && route == SaleRoute.TERMINAL }
     val baseTenderMinor =
         if (reportedMinor != null && (chosen != null || isPartialOrSplitTender(details.partial, reportedMinor, remaining, paidMinor))) {
             (reportedMinor - (terminalTipMinor ?: 0L) - (details.surchargeMinor ?: 0L) - (details.cashBackMinor ?: 0L))

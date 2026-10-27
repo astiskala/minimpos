@@ -2,7 +2,9 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.GiftCardRepository
 import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.RefundRepository
@@ -378,7 +380,7 @@ class ReceiptDelivery(
             ReceiptOffer(
                 receipt = documents?.paper,
                 canPrint = printer,
-                canEmail = email && (!fresh || documents?.sale?.paymentLink == true || capture != EmailCapture.OFF),
+                canEmail = email && (!fresh || documents?.sale?.route == SaleRoute.PAYMENT_LINK || capture != EmailCapture.OFF),
                 canShare = share,
                 share =
                     documents?.takeIf { share }?.let {

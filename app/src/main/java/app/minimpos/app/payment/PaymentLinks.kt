@@ -4,9 +4,11 @@ import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.ManagerApproval
@@ -143,7 +145,7 @@ class PaymentLinks(
      */
     suspend fun check(saleId: String): LinkUpdate =
         mutex.withLock {
-            val record = sales.get(saleId)?.takeIf { it.sale.paymentLink } ?: return@withLock LinkUpdate.Settled
+            val record = sales.get(saleId)?.takeIf { it.sale.route == SaleRoute.PAYMENT_LINK } ?: return@withLock LinkUpdate.Settled
             val sale = record.sale
             val linkId = sale.paymentLinkId
             when {
@@ -297,7 +299,8 @@ class PaymentLinks(
                 .get(id)
                 ?.sale
                 ?.takeIf {
-                    it.paymentLink && it.paymentLinkId == null && (it.status == SaleStatus.PENDING || it.status == SaleStatus.UNKNOWN)
+                    it.route == SaleRoute.PAYMENT_LINK && it.paymentLinkId == null &&
+                        (it.status == SaleStatus.PENDING || it.status == SaleStatus.UNKNOWN)
                 }?.let { CheckoutRecord(it.status == SaleStatus.PENDING, it.createdAt, it.context, it.reason) }
 
         override fun access(

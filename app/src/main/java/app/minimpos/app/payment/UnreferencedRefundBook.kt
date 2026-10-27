@@ -1,8 +1,10 @@
 package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.UnreferencedRefundReason
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.settings.UnreferencedRefundSettings
 import app.minimpos.core.payment.PaymentContext
@@ -113,5 +115,5 @@ class UnreferencedRefundBook(
     }
 
     override suspend fun unsettledServiceId(id: String): String? =
-        refunds.get(id)?.takeIf { it.unreferenced && it.status == RefundStatus.UNKNOWN }?.serviceId
+        refunds.get(id)?.takeIf { it.route == RefundRoute.UNREFERENCED && it.status == RefundStatus.UNKNOWN }?.serviceId
 }

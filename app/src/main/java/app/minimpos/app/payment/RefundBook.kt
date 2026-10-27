@@ -1,7 +1,9 @@
 package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.RefundStatus
+import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.history.RefundStart
@@ -58,7 +60,7 @@ class RefundBook(
     }
 
     override suspend fun unsettledServiceId(id: String): String? =
-        refunds.get(id)?.takeIf { !it.unreferenced && it.status == RefundStatus.UNKNOWN }?.serviceId
+        refunds.get(id)?.takeIf { it.route == RefundRoute.TERMINAL && it.status == RefundStatus.UNKNOWN }?.serviceId
 }
 
 /**

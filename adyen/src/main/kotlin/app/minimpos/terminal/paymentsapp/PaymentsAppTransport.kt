@@ -76,12 +76,13 @@ interface AppLinkExchange {
 
     /**
      * Unacknowledged return URLs, oldest first. This includes callbacks after restart and financial callbacks retained
-     * while an exchange waits, because an original response can race a status callback. Only verified, durably stored
-     * results may be forgotten.
+     * while an exchange waits, because an original response can race a status callback. Verified financial results
+     * may be forgotten only after durable storage. Verified inconclusive status callbacks with no
+     * financial evidence may be discarded immediately.
      */
     fun lateReplies(): List<String>
 
-    /** Removes exactly [urls] after their verified financial answers were durably stored; unresolved replies remain. */
+    /** Removes exactly [urls] after durable financial storage, or verification that they contain only inconclusive status. */
     fun forgetLateReplies(urls: Set<String>)
 }
 
@@ -295,6 +296,9 @@ class PaymentsAppTransport(
                 ?: return Delivery.Failed(crypto.shortError(encrypted)?.let(Fault::UnreadableReply) ?: Fault.ReplyUnverified)
         val sent = request.saleToPOIRequest
         val received = response.saleToPOIResponse
+        if (received != null && matches(received.messageHeader, sent.messageHeader) && discardStatus(returned.url, received, sent)) {
+            return validate(received, sent)?.let(Delivery::Failed) ?: Delivery.Answered(response)
+        }
         validate(received, sent)?.let { return Delivery.Failed(it) }
         val serviceId = sent.transactionStatusRequest?.messageReference?.serviceID ?: sent.messageHeader.serviceID
         synchronized(decoded) {
@@ -328,8 +332,11 @@ class PaymentsAppTransport(
         val status = sent.transactionStatusRequest
         val serviceId = status.messageReference?.serviceID ?: return null
         val url =
-            exchange.lateReplies().firstOrNull { url ->
-                val body = decodeLate(url)?.saleToPOIResponse?.let { lateBody(it, sent) }
+            exchange.lateReplies().toList().firstOrNull { url ->
+                val body =
+                    decodeLate(url)?.saleToPOIResponse?.let {
+                        if (discardStatus(url, it, sent)) null else lateBody(it, sent)
+                    }
                 body?.let {
                     completed.remember(
                         serviceId,
@@ -349,6 +356,51 @@ class PaymentsAppTransport(
             if (!decoded.containsKey(url)) decoded[url] = PaymentsAppLinks.answer(url)["response"]?.let(crypto::decrypt)
             decoded[url]
         }
+
+    /** Drops only authenticated, addressed status-only uncertainty, never an original or repeated financial answer. */
+    private fun discardStatus(
+        url: String,
+        received: SaleToPOIResponse,
+        request: SaleToPOIRequest,
+    ): Boolean {
+        val status = request.transactionStatusRequest ?: return false
+        val result = received.transactionStatusResponse ?: return false
+        val condition = result.response?.errorCondition
+        if (!sameStatusContext(received.messageHeader, request.messageHeader)) return false
+        if (result.messageReference != null && !sameReference(result.messageReference, status.messageReference)) return false
+        if (result.response?.result != ResultType.FAILURE ||
+            (condition != ErrorConditionType.NOT_FOUND && condition != ErrorConditionType.IN_PROGRESS)
+        ) {
+            return false
+        }
+        return discardStatusOnly(url, received, request)
+    }
+
+    /** Discards status-only uncertainty, retaining financial evidence until its exact original is stored. */
+    private fun discardStatusOnly(
+        url: String,
+        received: SaleToPOIResponse,
+        request: SaleToPOIRequest,
+    ): Boolean {
+        val status = request.transactionStatusRequest ?: return false
+        val result = received.transactionStatusResponse ?: return false
+        val financial =
+            received.paymentResponse != null || received.reversalResponse != null || received.storedValueResponse != null
+        if (result.repeatedMessageResponse != null || financial) {
+            // Only a repeated body tied to this exact original can be released when that original is stored.
+            if (!financial && repeatsRequest(result, status, request.messageHeader)) {
+                synchronized(decoded) {
+                    status.messageReference?.serviceID?.let { recovered.getOrPut(it) { mutableSetOf() }.add(url) }
+                }
+            }
+            return false
+        }
+        synchronized(decoded) {
+            exchange.forgetLateReplies(setOf(url))
+            decoded.remove(url)
+        }
+        return true
+    }
 
     /**
      * The validated body of [received], a late answer to the transaction [request] asks about: the original response
@@ -419,12 +471,15 @@ class PaymentsAppTransport(
         response: TransactionStatusResponse,
         request: TransactionStatusRequest,
         header: MessageHeader,
+    ): Boolean = response.response?.result == ResultType.SUCCESS && repeatsRequest(response, request, header)
+
+    /** Whether the reference, repeated header and body all identify the requested original, regardless of status outcome. */
+    private fun repeatsRequest(
+        response: TransactionStatusResponse,
+        request: TransactionStatusRequest,
+        header: MessageHeader,
     ): Boolean {
-        if (response.response?.result != ResultType.SUCCESS ||
-            !sameReference(response.messageReference, request.messageReference)
-        ) {
-            return false
-        }
+        if (!sameReference(response.messageReference, request.messageReference)) return false
         val repeated = response.repeatedMessageResponse ?: return false
         val original = originalHeader(request.messageReference, header)
         return (repeated.messageHeader == null || matches(repeated.messageHeader, original)) &&

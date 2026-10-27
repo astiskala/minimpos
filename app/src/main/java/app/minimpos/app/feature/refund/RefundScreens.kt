@@ -164,12 +164,7 @@ fun RefundScreen(
     val cashBlocked = state.returnsCash && !managerConfigured
     val approveRefund = rememberManagerAction()
 
-    val permissions =
-        buildSet {
-            if (state.returnsCard) add(ManagerAction.REFERENCED_REFUND)
-            if (state.returnsCash) add(ManagerAction.CASH_REFUND)
-        }
-    ManagerGate(permissions, navigator) {
+    ManagerGate(state.managerActions, navigator) {
         MiniScaffold(
             title = stringResource(R.string.refund_title),
             onBack = navigator::back,

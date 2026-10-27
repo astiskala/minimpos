@@ -281,18 +281,30 @@
   let logoSource = null;
   let convertedLogo = null;
   let logoRevision = 0;
+  let logoPrepared = null;
+  let logoFrame = null;
+  let logoResetThreshold = false;
+  const cancelLogoConversion = () => {
+    if (logoFrame !== null) cancelAnimationFrame(logoFrame);
+    logoFrame = null;
+    logoResetThreshold = false;
+  };
   const logoStatus = document.getElementById("logo-status");
   const preview = document.getElementById("logo-preview");
   const logoRecord = () => convertedLogo && concat(varint(convertedLogo.width), varint(convertedLogo.height), convertedLogo.bits);
   const reconvert = (resetThreshold = false, detectInvert = false) => {
     clear();
     if (!logoSource) return;
-    convertedLogo = MiniMposLogo.convert(logoSource.width, logoSource.height, logoSource.data, {
+    const invert = detectInvert ? null : form.elements.logoInvert.checked;
+    const trim = form.elements.logoTrim.checked, size = form.elements.logoSize.value;
+    if (!logoPrepared || logoPrepared.source !== logoSource || logoPrepared.invert !== invert ||
+        logoPrepared.trim !== trim || logoPrepared.size !== size) {
+      const value = MiniMposLogo.prepare(logoSource.width, logoSource.height, logoSource.data, {invert, trim, size});
+      logoPrepared = {source: logoSource, invert: value.inverted ?? invert, trim, size, value};
+    }
+    convertedLogo = MiniMposLogo.quantize(logoPrepared.value, {
       mode: form.elements.logoMode.value,
       threshold: resetThreshold ? null : Number(form.elements.logoThreshold.value),
-      invert: detectInvert ? null : form.elements.logoInvert.checked,
-      trim: form.elements.logoTrim.checked,
-      size: form.elements.logoSize.value,
     });
     const ctx = preview.getContext("2d");
     ctx.fillStyle = "white"; ctx.fillRect(0, 0, preview.width, preview.height);
@@ -310,8 +322,16 @@
       if (convertedLogo.bits[y * stride + (x >> 3)] & (128 >> (x & 7))) ctx.fillRect(offset + x, y, 1, 1);
     }
   };
+  const flushLogoConversion = () => {
+    if (logoFrame === null) return;
+    const resetThreshold = logoResetThreshold;
+    cancelLogoConversion();
+    reconvert(resetThreshold);
+  };
   const removeLogo = () => {
     logoRevision++;
+    cancelLogoConversion();
+    logoPrepared = null;
     logoSource = null; convertedLogo = null;
     form.elements.logo.value = "";
     logoStatus.textContent = "";
@@ -321,7 +341,14 @@
   document.getElementById("logo-remove").addEventListener("click", removeLogo);
   form.addEventListener("reset", removeLogo);
   for (const name of ["logoMode", "logoThreshold", "logoInvert", "logoTrim", "logoSize"]) {
-    form.elements[name].addEventListener("input", () => reconvert(name === "logoMode"));
+    form.elements[name].addEventListener("input", () => {
+      clear();
+      convertedLogo = null;
+      if (!logoSource) return;
+      if (name === "logoThreshold") logoResetThreshold = false;
+      else if (name === "logoMode") logoResetThreshold = true;
+      if (logoFrame === null) logoFrame = requestAnimationFrame(flushLogoConversion);
+    });
   }
   /** Read bounded raster metadata before asking the platform for a bitmap; never buffer the whole source file. */
   const rasterDimensions = async (file) => {
@@ -449,6 +476,8 @@
     clear();
     logoStatus.textContent = "";
     const revision = ++logoRevision;
+    cancelLogoConversion();
+    logoPrepared = null;
     logoSource = null; convertedLogo = null;
     document.getElementById("logo-editor").hidden = true;
     const file = form.elements.logo.files[0];
@@ -496,6 +525,7 @@
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    flushLogoConversion();
     if (!window.crypto?.subtle || typeof qrcodegen === "undefined") {
       status.textContent = message("msgUnsupported");
       return;

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -29,10 +30,12 @@ import app.minimpos.app.feature.refund.RefundScreen
 import app.minimpos.app.feature.refund.RefundViewModel
 import app.minimpos.app.feature.sale.SplitMode
 import app.minimpos.app.feature.sale.SplitScreen
+import app.minimpos.app.feature.sale.SplitStage
 import app.minimpos.app.feature.sale.SplitViewModel
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.GiftCardFunding
 import app.minimpos.app.payment.GiftCardRequest
+import app.minimpos.app.payment.MealVoucherAvailability
 import app.minimpos.app.payment.PresentedGiftCard
 import app.minimpos.app.payment.RefundStarted
 import app.minimpos.app.payment.TransactionState
@@ -44,9 +47,12 @@ import app.minimpos.app.ui.theme.MiniMposTheme
 import app.minimpos.core.giftcard.GiftCardEntry
 import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.core.money.AmountEntry
+import app.minimpos.core.split.TenderSplit
+import app.minimpos.core.voucher.MealVoucherScheme
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
@@ -77,6 +83,82 @@ class SplitPaymentUiTest {
     @Test
     @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
     fun `Traditional Chinese split and cash confirmation fit AMS1`() = split()
+
+    @Test
+    fun `tender entry has one stage and Back closes the displayed stage`() {
+        ringUp()
+        val container = env.container
+        val session = container.session(SaleKind.SALE)
+        val vouchers =
+            MutableStateFlow<(String) -> MealVoucherAvailability> {
+                MealVoucherAvailability(configured = true, schemes = listOf(MealVoucherScheme.EUROPE_CARD_SCHEME), simulated = true)
+            }
+        val vm =
+            SplitViewModel(
+                null,
+                session,
+                session.checkout(container.settingsState, container.terminalStatus.state, currency = container::currency),
+                container.storedPayments,
+                container.payments,
+                container.cashTenders,
+                flowOf(listOf(GiftCardSetting(GiftCardProvider.SVS))),
+                vouchers,
+            )
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.Checkout(), Route.Split()))
+        try {
+            show { SplitScreen(null, navigator, vm = vm) }
+            compose.awaitCondition("split loaded") { vm.state.value.balance != null }
+            vm.updateAmount { AmountEntry(450) }
+            compose.awaitCondition("amount chosen") { vm.state.value.valid }
+            vm.enterGiftCard(true)
+            compose.awaitCondition("gift card stage") { vm.state.value.stage == SplitStage.GIFT_CARD }
+            vm.enterCash(true)
+            compose.awaitCondition("cash replaces gift card") {
+                vm.state.value.stage == SplitStage.CASH && !vm.state.value.giftCardStage
+            }
+            compose.onNodeWithTag("confirmCash").assertIsDisplayed()
+            compose.onNodeWithTag("back").performClick()
+            compose.awaitCondition("cash closed") { vm.state.value.stage == SplitStage.CHOOSE }
+            assertThat(navigator.current).isEqualTo(Route.Split())
+            vm.enterCash(true)
+            vm.enterVoucher(true)
+            compose.awaitCondition("voucher replaces cash") { vm.state.value.voucherStage && !vm.state.value.cashStage }
+            compose.onNodeWithTag("payMealVoucher").assertIsDisplayed()
+            compose.onNodeWithTag("back").performClick()
+            compose.awaitCondition("voucher closed") { vm.state.value.stage == SplitStage.CHOOSE }
+            vm.enterVoucher(true)
+            vm.enterGiftCard(true)
+            compose.awaitCondition("gift card replaces voucher") { vm.state.value.giftCardStage && !vm.state.value.voucherStage }
+            compose.onNodeWithTag("payGiftCard").assertIsDisplayed()
+            compose.onNodeWithTag("back").performClick()
+            compose.awaitCondition("gift card closed") { vm.state.value.stage == SplitStage.CHOOSE }
+            vm.enterVoucher(true)
+            compose.awaitCondition("voucher reopened") { vm.state.value.voucherStage }
+            vouchers.value = { MealVoucherAvailability() }
+            compose.awaitCondition("unavailable voucher closed") { vm.state.value.stage == SplitStage.CHOOSE }
+        } finally {
+            close(listOf(vm))
+        }
+    }
+
+    @Test
+    fun `share selector stops at the domain share limit`() {
+        ringUp()
+        val vm = splitViewModel(null)
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.Checkout(), Route.Split()))
+        try {
+            show { SplitScreen(null, navigator, vm = vm) }
+            compose.awaitCondition("split loaded") { vm.state.value.balance != null }
+            vm.selectMode(SplitMode.SHARES)
+            vm.setShares(TenderSplit.MAX_SHARES - 1)
+            compose.awaitCondition("share count set") { vm.state.value.shares == TenderSplit.MAX_SHARES - 1 }
+            compose.onNodeWithTag("splitMoreShares").performScrollTo().performClick()
+            compose.awaitCondition("share limit reached") { vm.state.value.shares == TenderSplit.MAX_SHARES }
+            compose.onNodeWithTag("splitMoreShares").assertIsNotEnabled()
+        } finally {
+            close(listOf(vm))
+        }
+    }
 
     @Test
     fun `returning cash waits for a Manager PIN and each leg is shown`() {

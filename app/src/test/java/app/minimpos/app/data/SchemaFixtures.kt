@@ -14,7 +14,7 @@ internal fun schemaJson(version: Int): JSONObject =
         .first { it.exists() }
         .let { JSONObject(it.readText()).getJSONObject("database") }
 
-/** Creates database [name] exactly as released schema [version] defined it, with its tables, indices and version. */
+/** Creates database [name] exactly as exported schema [version] defined it, with its tables, indices and version. */
 internal fun createSchemaDatabase(
     context: Context,
     name: String,
@@ -56,14 +56,7 @@ internal fun <T> withMigratedDatabase(
                 AppDatabase.MIGRATION_13_14,
                 AppDatabase.MIGRATION_14_15,
                 AppDatabase.MIGRATION_15_16,
-                AppDatabase.MIGRATION_16_17,
-                AppDatabase.MIGRATION_17_18,
-                AppDatabase.MIGRATION_18_19,
-                AppDatabase.MIGRATION_19_20,
-                AppDatabase.MIGRATION_20_21,
-                AppDatabase.MIGRATION_21_22,
-                AppDatabase.MIGRATION_22_23,
-                AppDatabase.MIGRATION_23_24,
+                AppDatabase.MIGRATION_16_24,
             ).allowMainThreadQueries()
             .build()
     try {

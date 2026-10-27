@@ -13,6 +13,7 @@ import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.TaxRateEntity
@@ -29,6 +30,47 @@ import kotlin.uuid.Uuid
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
+    private fun assertHistoricalTenders(tenders: List<SaleTenderEntity>) {
+        val (approved, unknown) = tenders.sortedBy { it.sequence }
+        assertThat(approved.authorisedMinor).isEqualTo(600)
+        assertThat(approved.requestedMinor).isEqualTo(1000)
+        assertThat(approved.status).isEqualTo(SaleStatus.APPROVED)
+        assertThat(approved.poiTransactionId).isEqualTo("T.P")
+        assertThat(approved.poiTimestamp).isEqualTo("2026-10-01T00:00:00Z")
+        assertThat(unknown.id).isEqualTo("old-2")
+        assertThat(unknown.requestedMinor).isEqualTo(500)
+        assertThat(unknown.authorisedMinor).isNull()
+        assertThat(unknown.status).isEqualTo(SaleStatus.UNKNOWN)
+        tenders.forEach { tender ->
+            assertThat(tender.kind).isEqualTo(TenderKind.CARD)
+            listOf(
+                tender.tipMinor,
+                tender.surchargeMinor,
+                tender.cashBackMinor,
+                tender.requestedCashBackMinor,
+                tender.cashReceivedMinor,
+                tender.changeMinor,
+            ).forEach { assertThat(it).isNull() }
+            listOf(
+                tender.serviceId,
+                tender.context,
+                tender.poiReconciliationId,
+                tender.customerReceiptJson,
+                tender.cashierReceiptJson,
+                tender.allocationJson,
+                tender.environment,
+                tender.giftCard,
+                tender.mexicanPayment,
+                tender.returnedPaymentType,
+                tender.returnedInstallments,
+                tender.returnedPlanId,
+                tender.mealVoucher,
+                tender.fundingSource,
+                tender.paymentMethodVariant,
+            ).forEach { assertThat(it).isNull() }
+        }
+    }
+
     private fun exportedSchema(version: Int = 24): JSONObject = schemaJson(version)
 
     private fun createExportedDatabase(
@@ -42,172 +84,60 @@ class DatabaseSchemaTest {
     ): T = withMigratedDatabase(context, name, block)
 
     @Test
-    fun `version 20 preserves unknown card and gift tenders without inventing installment facts`() {
-        val name = "schema-v20-${Uuid.random()}"
-        createExportedDatabase(name, 20)
+    fun `version 16 preserves partial tender amounts and unfinished returns without inventing new facts`() {
+        val name = "schema-v16-components-${Uuid.random()}"
+        createExportedDatabase(name, 16)
         SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
             raw.execSQL(
                 "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
-                    "tokenizationRequested, signatureRequired, refundedMinor, adjustmentPending) VALUES " +
-                    "('s20', 100, 'MXN', 'INCLUSIVE', 1000, 0, 1000, 'UNKNOWN', 'MP-20', 0, 0, 0, 0)",
-            )
-            raw.execSQL(
-                "INSERT INTO sale_tenders (id, saleId, sequence, requestedMinor, status, createdAt, kind, serviceId, giftCard) VALUES " +
-                    "('t20', 's20', 1, 1000, 'UNKNOWN', 100, 'CARD', 'PAY20', 'SVS')",
-            )
-        }
-        try {
-            withDatabase(name) { db ->
-                runBlocking {
-                    val record = checkNotNull(db.saleDao().sale("s20"))
-                    val tender = record.tenders.single()
-                    assertThat(record.sale.status).isEqualTo(SaleStatus.UNKNOWN)
-                    assertThat(tender.serviceId).isEqualTo("PAY20")
-                    assertThat(tender.giftCard).isEqualTo("SVS")
-                    assertThat(tender.mexicanPayment).isNull()
-                    assertThat(tender.returnedPaymentType).isNull()
-                    assertThat(tender.returnedInstallments).isNull()
-                    assertThat(tender.returnedPlanId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
-                }
-            }
-        } finally {
-            context.deleteDatabase(name)
-        }
-    }
-
-    @Test
-    fun `version 19 keeps split tenders and unfinished returns and starts without gift card activity`() {
-        val name = "schema-v19-${Uuid.random()}"
-        createExportedDatabase(name, 19)
-        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
-            raw.execSQL(
-                "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
-                    "serviceId, paidMinor, terminalPaidMinor, surchargeMinor, tenderRequestedMinor, audioGuidance, " +
-                    "tokenizationRequested, signatureRequired, refundedMinor, adjustmentPending) VALUES " +
-                    "('split', 100, 'AUD', 'INCLUSIVE', 1000, 0, 1000, 'APPROVED', 'MP-19', 'PAY19', 600, 600, 0, 400, 0, 0, 0, 0, 0)",
-            )
-            raw.execSQL(
-                "INSERT INTO sale_tenders (id, saleId, sequence, requestedMinor, authorisedMinor, status, createdAt, kind, " +
-                    "cashReceivedMinor, changeMinor, environment) VALUES " +
-                    "('split-1', 'split', 1, 600, 600, 'APPROVED', 100, 'CASH', 1000, 400, 'TEST')",
-            )
-            raw.execSQL(
-                "INSERT INTO sale_tenders (id, saleId, sequence, requestedMinor, status, createdAt, kind, serviceId) VALUES " +
-                    "('split-2', 'split', 2, 400, 'UNKNOWN', 200, 'CARD', 'PAY19')",
-            )
-            raw.execSQL(
-                "INSERT INTO refunds (id, saleId, createdAt, merchantReference, originalTransactionId, originalTimestamp, currency, " +
-                    "amountMinor, full, status, tenderId, cash) VALUES " +
-                    "('refund', 'split', 300, 'R-19', 'split-1', '1970-01-01T00:00:00.100Z', 'AUD', 100, 0, 'PENDING', 'split-1', 1)",
-            )
-        }
-        try {
-            withDatabase(name) { db ->
-                runBlocking {
-                    val record = checkNotNull(db.saleDao().sale("split"))
-                    assertThat(record.sale.paidMinor).isEqualTo(600)
-                    val (cash, card) = record.tenders.sortedBy { it.sequence }
-                    assertThat(cash.kind).isEqualTo(TenderKind.CASH)
-                    assertThat(cash.changeMinor).isEqualTo(400)
-                    assertThat(cash.giftCard).isNull()
-                    assertThat(card.status).isEqualTo(SaleStatus.UNKNOWN)
-                    assertThat(card.serviceId).isEqualTo("PAY19")
-                    assertThat(card.giftCard).isNull()
-                    assertThat(record.refunds.single().cash).isTrue()
-                    assertThat(record.refunds.single().status).isEqualTo(RefundStatus.PENDING)
-                    assertThat(db.giftCardDao().pending()).isEmpty()
-                }
-            }
-        } finally {
-            context.deleteDatabase(name)
-        }
-    }
-
-    @Test
-    fun `version 18 keeps tenders as approved cards and unfinished refunds as card returns`() {
-        val name = "schema-v18-${Uuid.random()}"
-        createExportedDatabase(name, 18)
-        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
-            raw.execSQL(
-                "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
-                    "serviceId, paidMinor, terminalPaidMinor, surchargeMinor, tenderRequestedMinor, audioGuidance, " +
-                    "tokenizationRequested, signatureRequired, refundedMinor, adjustmentPending) VALUES " +
-                    "('split', 100, 'AUD', 'INCLUSIVE', 1000, 0, 1000, 'UNKNOWN', 'MP-18', 'PAY18', 600, 650, 50, 400, 0, 0, 0, 0, 0)",
-            )
-            raw.execSQL(
-                "INSERT INTO sale_tenders (id, saleId, sequence, requestedMinor, authorisedMinor, status, poiTransactionId, " +
-                    "poiTimestamp, createdAt, surchargeMinor, serviceId) VALUES " +
-                    "('split-1', 'split', 1, 1000, 650, 'APPROVED', 'T.P1', '2026-10-01T00:00:00Z', 100, 50, 'PAY17')",
-            )
-            raw.execSQL(
-                "INSERT INTO refunds (id, saleId, createdAt, merchantReference, originalTransactionId, originalTimestamp, currency, " +
-                    "amountMinor, full, status, serviceId, tenderId) VALUES " +
-                    "('refund', 'split', 200, 'R-18', 'T.P1', '2026-10-01T00:00:00Z', 'AUD', 100, 0, 'UNKNOWN', 'REF18', 'split-1')",
-            )
-        }
-        try {
-            withDatabase(name) { db ->
-                runBlocking {
-                    val record = checkNotNull(db.saleDao().sale("split"))
-                    assertThat(record.sale.serviceId).isEqualTo("PAY18")
-                    assertThat(record.sale.paidMinor).isEqualTo(600)
-                    assertThat(record.sale.tenderRequestedMinor).isEqualTo(400)
-                    val tender = record.tenders.single()
-                    assertThat(tender.kind).isEqualTo(TenderKind.CARD)
-                    assertThat(tender.allocationJson).isNull()
-                    assertThat(tender.cashReceivedMinor).isNull()
-                    assertThat(tender.environment).isNull()
-                    assertThat(tender.authorisedMinor).isEqualTo(650)
-                    assertThat(tender.serviceId).isEqualTo("PAY17")
-                    val refund = record.refunds.single()
-                    assertThat(refund.cash).isFalse()
-                    assertThat(refund.status).isEqualTo(RefundStatus.UNKNOWN)
-                    assertThat(refund.serviceId).isEqualTo("REF18")
-                    assertThat(refund.tenderId).isEqualTo("split-1")
-                }
-            }
-        } finally {
-            context.deleteDatabase(name)
-        }
-    }
-
-    @Test
-    fun `version 17 keeps amounts unknown surcharges tender identities and unfinished returns`() {
-        val name = "schema-v17-${Uuid.random()}"
-        createExportedDatabase(name, 17)
-        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
-            raw.execSQL(
-                "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
-                    "serviceId, tipMinor, paidMinor, audioGuidance, tokenizationRequested, " +
+                    "serviceId, tipMinor, paidMinor, tokenizationRequested, " +
                     "signatureRequired, refundedMinor, adjustmentPending) VALUES " +
-                    "('old', 100, 'AUD', 'INCLUSIVE', 1000, 0, 1000, 'UNKNOWN', 'MP-17', 'PAY17', 100, 500, 1, 0, 0, 0, 0)",
+                    "('old', 100, 'AUD', 'INCLUSIVE', 1000, 0, 1000, 'UNKNOWN', 'MP-16', 'PAY16', 100, 500, 0, 0, 0, 0)",
             )
             raw.execSQL(
                 "INSERT INTO sale_tenders (id, saleId, sequence, requestedMinor, authorisedMinor, status, poiTransactionId, " +
                     "poiTimestamp, createdAt) VALUES ('old-1', 'old', 1, 1000, 600, 'APPROVED', 'T.P', '2026-10-01T00:00:00Z', 100)",
             )
             raw.execSQL(
+                "INSERT INTO sale_tenders (id, saleId, sequence, requestedMinor, status, createdAt) " +
+                    "VALUES ('old-2', 'old', 2, 500, 'UNKNOWN', 150)",
+            )
+            raw.execSQL(
                 "INSERT INTO refunds (id, saleId, createdAt, merchantReference, originalTransactionId, originalTimestamp, currency, " +
                     "amountMinor, full, status, serviceId) VALUES " +
-                    "('refund', 'old', 200, 'R-17', 'T.P', '2026-10-01T00:00:00Z', 'AUD', 100, 0, 'UNKNOWN', 'REF17')",
+                    "('refund', 'old', 200, 'R-16', 'T.P', '2026-10-01T00:00:00Z', 'AUD', 100, 0, 'UNKNOWN', 'REF16')",
             )
         }
         try {
             withDatabase(name) { db ->
                 runBlocking {
                     val record = checkNotNull(db.saleDao().sale("old"))
-                    assertThat(record.sale.surchargeMinor).isNull()
-                    assertThat(record.sale.terminalPaidMinor).isNull()
-                    assertThat(record.sale.amountMinor).isEqualTo(1100)
-                    assertThat(record.sale.paidMinor).isEqualTo(500)
-                    assertThat(record.sale.audioGuidance).isTrue()
-                    assertThat(record.sale.serviceId).isEqualTo("PAY17")
-                    assertThat(record.tenders.single().surchargeMinor).isNull()
-                    assertThat(record.tenders.single().authorisedMinor).isEqualTo(600)
-                    assertThat(record.refunds.single().surchargeMinor).isNull()
-                    assertThat(record.refunds.single().serviceId).isEqualTo("REF17")
-                    assertThat(record.refunds.single().status).isEqualTo(RefundStatus.UNKNOWN)
+                    val sale = record.sale
+                    assertThat(sale.amountMinor).isEqualTo(1100)
+                    assertThat(sale.paidMinor).isEqualTo(500)
+                    assertThat(sale.tipMinor).isEqualTo(100)
+                    assertThat(sale.audioGuidance).isFalse()
+                    assertThat(sale.status).isEqualTo(SaleStatus.UNKNOWN)
+                    assertThat(sale.serviceId).isEqualTo("PAY16")
+                    listOf(
+                        sale.surchargeMinor,
+                        sale.terminalPaidMinor,
+                        sale.cashBackMinor,
+                        sale.tenderRequestedMinor,
+                        sale.requestedCashBackMinor,
+                        sale.cashHandedOverAt,
+                    ).forEach { assertThat(it).isNull() }
+                    assertHistoricalTenders(record.tenders)
+                    val refund = record.refunds.single()
+                    assertThat(refund.surchargeMinor).isNull()
+                    assertThat(refund.tipMinor).isNull()
+                    assertThat(refund.tenderId).isNull()
+                    assertThat(refund.cash).isFalse()
+                    assertThat(refund.serviceId).isEqualTo("REF16")
+                    assertThat(refund.status).isEqualTo(RefundStatus.UNKNOWN)
+                    assertThat(refund.originalTransactionId).isEqualTo("T.P")
+                    assertThat(db.giftCardDao().pending()).isEmpty()
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(24)
                 }
             }
         } finally {

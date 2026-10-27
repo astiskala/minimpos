@@ -633,14 +633,11 @@ class AppContainer(
     val operations: FinancialOperations =
         FinancialOperations(
             payments,
-            refunds,
+            FinancialOperations.Refunds(refunds, unreferencedRefunds, checkoutRefunds, refundRecords),
             savedCardCharges,
-            checkoutRefunds,
             links,
             sales,
-            refundRecords,
             giftCards,
-            unreferencedRefunds,
             holds = listOf(refundCancellations.operationKind, captures.operationKind),
         )
 

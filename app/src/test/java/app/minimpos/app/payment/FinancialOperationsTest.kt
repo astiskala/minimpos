@@ -2,7 +2,9 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.db.UnreferencedRefundReason
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.ApiTarget
 import com.google.common.truth.Truth.assertThat
@@ -19,14 +21,20 @@ class FinancialOperationsTest {
     private fun operations(
         payments: TransactionLifecycle<PaymentStart> = container.payments,
         holds: List<OperationKind> = emptyList(),
+        unreferenced: TransactionLifecycle<UnreferencedRefundStart> =
+            TransactionLifecycle(env.scope, container.gateway, UnreferencedRefundBook(container.refundRecords)),
     ) = FinancialOperations(
         payments,
-        container.refunds,
+        FinancialOperations.Refunds(
+            container.refunds,
+            unreferenced,
+            CheckoutRefunds(env.scope, container.refundRecords, container.sales, container.api::target),
+            container.refundRecords,
+        ),
         container.savedCardCharges,
-        CheckoutRefunds(env.scope, container.refundRecords, container.sales, container.api::target),
         container.links,
         container.sales,
-        container.refundRecords,
+        container.giftCards,
         holds = holds,
     )
 
@@ -49,6 +57,32 @@ class FinancialOperationsTest {
             val lifecycle = TransactionLifecycle(env.scope, container.gateway, book)
             operations = operations(lifecycle)
             lifecycle.recheck("unknown")
+            assertThat(operations.running).isFalse()
+        }
+
+    @Test
+    fun `an unreferenced refund recovery reaches its required runner and holds the running guard`() =
+        await {
+            var operations: FinancialOperations? = null
+            var checked = false
+            val refunds = UnreferencedRefundBook(container.refundRecords)
+            val book =
+                object : TransactionBook<UnreferencedRefundStart> by refunds {
+                    override suspend fun unsettledServiceId(id: String): String? {
+                        assertThat(id).isEqualTo("unreferenced")
+                        assertThat(checkNotNull(operations).running).isTrue()
+                        checked = true
+                        return null
+                    }
+                }
+            operations = operations(unreferenced = TransactionLifecycle(env.scope, container.gateway, book))
+            container.refundRecords.create(
+                UnreferencedRefundStart(100, "EUR", "R-test", UnreferencedRefundReason.PAID_ELSEWHERE, "reviewed")
+                    .pendingRefund("unreferenced", 100, "PAY-test")
+                    .copy(status = RefundStatus.UNKNOWN),
+            )
+            assertThat(operations.recheck(StoredTransaction.Refund("unreferenced"))).isEqualTo(Recheck.Settled)
+            assertThat(checked).isTrue()
             assertThat(operations.running).isFalse()
         }
 

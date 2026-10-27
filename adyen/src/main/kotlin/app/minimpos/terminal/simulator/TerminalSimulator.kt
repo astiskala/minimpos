@@ -602,8 +602,7 @@ class TerminalSimulator(
         val reversed = request.reversedAmount ?: original?.second ?: BigDecimal.ZERO
         if (reversed > BigDecimal.ZERO) {
             periodTotals.compute(currency) { _, current ->
-                val base = current ?: SimulatedPeriodTotals(currency)
-                base.copy(creditAmount = base.creditAmount + reversed, creditCount = base.creditCount + 1)
+                (current ?: SimulatedPeriodTotals(currency)).plus(reversed, credit = true)
             }
         }
     }
@@ -622,12 +621,7 @@ class TerminalSimulator(
     ) {
         val currency = request.paymentTransaction.amountsReq.currency
         periodTotals.compute(currency) { _, current ->
-            val base = current ?: SimulatedPeriodTotals(currency)
-            if (request.giftCardRefund) {
-                base.copy(creditAmount = base.creditAmount + approved.approved, creditCount = base.creditCount + 1)
-            } else {
-                base.copy(debitAmount = base.debitAmount + approved.approved, debitCount = base.debitCount + 1)
-            }
+            (current ?: SimulatedPeriodTotals(currency)).plus(approved.approved, credit = request.giftCardRefund)
         }
         if (!request.giftCardRefund) paymentAmountsByTransactionId[transactionId] = currency to approved.approved
     }

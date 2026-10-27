@@ -8,7 +8,6 @@ import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.RefundStart
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 
 /**
@@ -23,38 +22,30 @@ import kotlinx.coroutines.flow.combine
  * running and history deletion iterate one list rather than naming each runner's flags.
  *
  * @param payments Card payments (including scanned wallets) on the terminal.
- * @param refunds Referenced refunds and cancellations on the terminal.
+ * @param refunds Refund routing, progress and recovery across the terminal and Checkout API.
  * @param charges Saved-card charges through the Checkout API.
- * @param checkoutRefunds Refunds of saved-card charges through the Checkout API.
  * @param links Payment links, whose status check asks Adyen about the link.
  * @param sales Where sales are stored, read to route a sale's status check.
- * @param refundRecords Where refunds are stored, read to route a refund's status check.
  * @param giftCards Stored-value activities on the terminal, which count as running and route their own status checks.
- * @param unreferenced Unreferenced card refunds on the terminal: refunds in history, sent and checked as payments.
  * @param holds Runners that only count as running, such as captures and refund cancellations.
  */
 class FinancialOperations(
     private val payments: TransactionLifecycle<PaymentStart>,
-    private val refunds: TransactionLifecycle<RefundStart>,
+    private val refunds: Refunds,
     private val charges: SavedCardCharges,
-    private val checkoutRefunds: CheckoutRefunds,
     private val links: PaymentLinks,
     private val sales: SaleRepository,
-    private val refundRecords: RefundRepository,
-    private val giftCards: GiftCards? = null,
-    private val unreferenced: TransactionLifecycle<UnreferencedRefundStart>? = null,
+    private val giftCards: GiftCards,
     holds: List<OperationKind> = emptyList(),
 ) {
     private val kinds =
-        listOfNotNull(
+        listOf(
             payments.operationKind,
-            refunds.operationKind,
             charges.operationKind,
-            checkoutRefunds.operationKind,
             links.operationKind,
-            giftCards?.operationKind,
-            unreferenced?.operationKind,
-        ).plus(holds)
+            giftCards.operationKind,
+        ).plus(refunds.kinds)
+            .plus(holds)
             .toMutableList()
 
     /** Every runner held now. */
@@ -100,42 +91,26 @@ class FinancialOperations(
         charges.acknowledge()
     }
 
-    private val unreferencedState = unreferenced?.state ?: MutableStateFlow(TransactionState.Idle)
-
     /**
      * The refund (or cancellation) running or just finished, whichever way it is sent, unreferenced refunds included;
      * the refund screens follow it to its result. [currentRefund] is its value now.
      */
-    val refundProgress: Flow<TransactionState> =
-        combine(refunds.state, unreferencedState, checkoutRefunds.state) { referenced, unreferenced, checkout ->
-            following(following(referenced, unreferenced), checkout)
-        }
+    val refundProgress: Flow<TransactionState> = refunds.refundProgress
 
     /** [refundProgress] now, for a screen's first frame. */
-    val currentRefund: TransactionState
-        get() = following(following(refunds.state.value, unreferencedState.value), checkoutRefunds.state.value)
+    val currentRefund: TransactionState get() = refunds.currentRefund
 
     /**
      * Starts the unreferenced card refund [request] on the terminal, holding the Manager approval held now. Returns the
      * refund's ID; null, with nothing stored or sent, while any refund is running or none can be sent here.
      */
-    fun unreferencedRefund(request: UnreferencedRefundStart): String? =
-        if (currentRefund is TransactionState.Processing) null else unreferenced?.start(request)
+    fun unreferencedRefund(request: UnreferencedRefundStart): String? = refunds.unreferencedRefund(request)
 
     /**
      * Starts [request] the way its payment was taken: a saved-card charge's refund through the Checkout API, others on
      * the terminal. Returns the refund's ID; null, with nothing stored or sent, while a refund of either kind is running.
      */
-    fun refund(request: RefundStart): String? =
-        if (currentRefund is TransactionState.Processing) {
-            null
-        } else {
-            when (request.route) {
-                RefundRoute.CHECKOUT -> checkoutRefunds.start(request)
-                RefundRoute.TERMINAL -> refunds.start(request)
-                RefundRoute.CASH, RefundRoute.UNREFERENCED -> null
-            }
-        }
+    fun refund(request: RefundStart): String? = refunds.refund(request)
 
     /**
      * Starts one card leg [request] of a multi-leg return on the terminal with the [grant] the whole return started
@@ -144,15 +119,10 @@ class FinancialOperations(
     internal fun refundLeg(
         request: RefundStart,
         grant: ManagerApproval.Grant,
-    ): String? =
-        if (currentRefund is TransactionState.Processing || request.route != RefundRoute.TERMINAL) null else refunds.start(request, grant)
+    ): String? = refunds.refundLeg(request, grant)
 
     /** Leaves a finished refund, whichever way it was sent, so the next one can start. */
-    fun acknowledgeRefund() {
-        refunds.acknowledge()
-        unreferenced?.acknowledge()
-        checkoutRefunds.acknowledge()
-    }
+    fun acknowledgeRefund() = refunds.acknowledgeRefund()
 
     /**
      * Asks again about [transaction] whose outcome is unknown, the way it was sent: the terminal's TransactionStatus, the
@@ -171,28 +141,12 @@ class FinancialOperations(
             }
 
             is StoredTransaction.Refund -> {
-                when (refundRecords.get(transaction.id)?.route) {
-                    null, RefundRoute.CASH -> Recheck.Settled
-                    RefundRoute.CHECKOUT -> checkoutRefunds.recheck(transaction.id)
-                    RefundRoute.UNREFERENCED -> unreferenced?.recheck(transaction.id) ?: Recheck.Settled
-                    RefundRoute.TERMINAL -> refunds.recheck(transaction.id)
-                }
+                refunds.recheck(transaction.id)
             }
 
             is StoredTransaction.GiftCard -> {
-                giftCards?.recheck(transaction.id) ?: Recheck.Settled
+                giftCards.recheck(transaction.id)
             }
-        }
-
-    /** The operation a screen follows: [first] while it runs, else [second] unless idle, else [first]. */
-    private fun following(
-        first: TransactionState,
-        second: TransactionState,
-    ): TransactionState =
-        when {
-            first is TransactionState.Processing -> first
-            second != TransactionState.Idle -> second
-            else -> first
         }
 
     /** This link answer as a status check: settled once the link exists or ended, else still unknown for why. */
@@ -202,4 +156,100 @@ class FinancialOperations(
             is LinkUpdate.NotDone -> Recheck.StillUnknown(failure)
             is LinkUpdate.Unconfirmed -> Recheck.StillUnknown(failure)
         }
+
+    /**
+     * The refund part of [FinancialOperations]: follows all refund runners, refuses overlapping starts and routes
+     * starts and recovery by each refund's stored route. Screens still use the enclosing owner's API.
+     *
+     * @param referenced Referenced refunds and held-payment cancellations on the terminal.
+     * @param unreferenced Unreferenced refunds, sent and checked as terminal payments.
+     * @param checkout Refunds of saved-card charges through the Checkout API.
+     * @param records Stored refunds, read afresh when routing a status check.
+     */
+    class Refunds(
+        private val referenced: TransactionLifecycle<RefundStart>,
+        private val unreferenced: TransactionLifecycle<UnreferencedRefundStart>,
+        private val checkout: CheckoutRefunds,
+        private val records: RefundRepository,
+    ) {
+        /** Every refund runner's busy and history-release contract, held by the enclosing operations owner. */
+        internal val kinds: List<OperationKind> =
+            listOf(referenced.operationKind, unreferenced.operationKind, checkout.operationKind)
+
+        /**
+         * The refund (or cancellation) running or just finished, whichever way it is sent, unreferenced refunds included;
+         * the refund screens follow it to its result. [currentRefund] is its value now.
+         */
+        internal val refundProgress: Flow<TransactionState> =
+            combine(referenced.state, unreferenced.state, checkout.state) { referenced, unreferenced, checkout ->
+                following(following(referenced, unreferenced), checkout)
+            }
+
+        /** [refundProgress] now, for a screen's first frame. */
+        internal val currentRefund: TransactionState
+            get() = following(following(referenced.state.value, unreferenced.state.value), checkout.state.value)
+
+        /**
+         * Starts the unreferenced card refund [request] on the terminal, holding the Manager approval held now. Returns the
+         * refund's ID; null, with nothing stored or sent, while any refund is running or none can be sent here.
+         */
+        internal fun unreferencedRefund(request: UnreferencedRefundStart): String? =
+            if (currentRefund is TransactionState.Processing) null else unreferenced.start(request)
+
+        /**
+         * Starts [request] the way its payment was taken: a saved-card charge's refund through the Checkout API, others on
+         * the terminal. Returns the refund's ID; null, with nothing stored or sent, while a refund of either kind is running.
+         */
+        internal fun refund(request: RefundStart): String? =
+            if (currentRefund is TransactionState.Processing) {
+                null
+            } else {
+                when (request.route) {
+                    RefundRoute.CHECKOUT -> checkout.start(request)
+                    RefundRoute.TERMINAL -> referenced.start(request)
+                    RefundRoute.CASH, RefundRoute.UNREFERENCED -> null
+                }
+            }
+
+        /**
+         * Starts one card leg [request] of a multi-leg return on the terminal with the [grant] the whole return started
+         * with; null while a refund is running, or for a cash or Checkout leg, which are not terminal reversals.
+         */
+        internal fun refundLeg(
+            request: RefundStart,
+            grant: ManagerApproval.Grant,
+        ): String? =
+            if (currentRefund is TransactionState.Processing || request.route != RefundRoute.TERMINAL) {
+                null
+            } else {
+                referenced.start(request, grant)
+            }
+
+        /** Leaves a finished refund, whichever way it was sent, so the next one can start. */
+        internal fun acknowledgeRefund() {
+            referenced.acknowledge()
+            unreferenced.acknowledge()
+            checkout.acknowledge()
+        }
+
+        /** Checks refund [id] through its stored route; cash refunds and absent records are already settled. */
+        internal suspend fun recheck(id: String): Recheck =
+            when (records.get(id)?.route) {
+                null, RefundRoute.CASH -> Recheck.Settled
+                RefundRoute.CHECKOUT -> checkout.recheck(id)
+                RefundRoute.UNREFERENCED -> unreferenced.recheck(id)
+                RefundRoute.TERMINAL -> referenced.recheck(id)
+            }
+    }
 }
+
+/** The operation a screen follows: [first] while it runs, else [second] unless idle, else [first]. */
+internal fun following(
+    first: TransactionState,
+    second: TransactionState,
+): TransactionState =
+    when {
+        first is TransactionState.Processing -> first
+        second != TransactionState.Idle -> second
+        else -> first
+    }

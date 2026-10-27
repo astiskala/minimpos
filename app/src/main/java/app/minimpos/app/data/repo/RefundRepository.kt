@@ -65,7 +65,8 @@ class RefundRepository(
 
     /**
      * Inserts a pending [refund] within current balances. A changed [reviewedRefunds] snapshot records a known-not-sent
-     * refusal; null is for legacy/foreign callers, which still receive balance checks. Returns whether it may be sent.
+     * refusal. Foreign receipts, hold cancellations and recovery without a review snapshot pass null; applicable
+     * balance checks still run. Returns whether it may be sent.
      */
     suspend fun create(
         refund: RefundEntity,

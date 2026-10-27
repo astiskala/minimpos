@@ -47,6 +47,21 @@ enum class SplitMode {
     ITEMS,
 }
 
+/** The single tender-entry step shown after choosing a split amount. */
+enum class SplitStage {
+    /** Choose the amount and how to pay it. */
+    CHOOSE,
+
+    /** Enter cash received and confirm change. */
+    CASH,
+
+    /** Present a gift card. */
+    GIFT_CARD,
+
+    /** Review a meal voucher and its eligible amount. */
+    VOUCHER,
+}
+
 /**
  * One sold line offered for item allocation.
  *
@@ -74,16 +89,14 @@ data class SplitItem(
  * @property amount The amount typed in, for [SplitMode.AMOUNT].
  * @property shares How many equal shares a split begun now divides the balance into.
  * @property selection Units chosen per line position, for [SplitMode.ITEMS].
- * @property cashStage Whether the cash received is being entered for this tender.
+ * @property stage The tender-entry step currently shown.
  * @property received Cash received, entered on the keypad during [cashStage].
  * @property rejected Whether the last start was refused because the sale changed; review and try again.
  * @property recording Whether a cash tender is being recorded.
  * @property giftCards Configured gift-card providers that take payments; empty offers no gift-card tender.
- * @property giftCardStage Whether the gift card for this tender is being presented.
  * @property card The gift card being presented.
  * @property voucher What a meal-voucher tender may do now; null when vouchers are not configured.
  * @property voucherAvailability Settings and verified discovery behind [voucher].
- * @property voucherStage Whether the next tender is being paid from a meal voucher.
  * @property voucherChoice The market chosen for an offline demo; null uses the only one.
  */
 data class SplitUiState(
@@ -96,18 +109,25 @@ data class SplitUiState(
     val amount: AmountEntry = AmountEntry(),
     val shares: Int = 2,
     val selection: Map<Int, Int> = emptyMap(),
-    val cashStage: Boolean = false,
+    val stage: SplitStage = SplitStage.CHOOSE,
     val received: AmountEntry = AmountEntry(),
     val rejected: Boolean = false,
     val recording: Boolean = false,
     val giftCards: List<GiftCardSetting> = emptyList(),
-    val giftCardStage: Boolean = false,
     val card: CardChoice = CardChoice(),
     val voucher: MealVoucherReading? = null,
     val voucherAvailability: MealVoucherAvailability = MealVoucherAvailability(),
-    val voucherStage: Boolean = false,
     val voucherChoice: MealVoucherScheme? = null,
 ) {
+    /** Whether the cash received is being entered for this tender. */
+    val cashStage: Boolean get() = stage == SplitStage.CASH
+
+    /** Whether the gift card for this tender is being presented. */
+    val giftCardStage: Boolean get() = stage == SplitStage.GIFT_CARD
+
+    /** Whether the next tender is being paid from a meal voucher. */
+    val voucherStage: Boolean get() = stage == SplitStage.VOUCHER
+
     /** Whether shares of a split already begun are fixed, so their count can no longer change. */
     val sharesFixed: Boolean get() = balance?.nextShare != null
 
@@ -250,12 +270,12 @@ class SplitViewModel(
                 items = loaded.items,
                 voucher = voucher,
                 voucherAvailability = availability,
-                voucherStage = choices.voucherStage && voucher != null,
+                stage = if (choices.voucherStage && voucher == null) SplitStage.CHOOSE else choices.stage,
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SplitUiState())
 
     /** Chooses how the next tender is allocated. */
-    fun selectMode(mode: SplitMode) = local.update { it.copy(mode = mode, cashStage = false, rejected = false) }
+    fun selectMode(mode: SplitMode) = local.update { it.copy(mode = mode, stage = SplitStage.CHOOSE, rejected = false) }
 
     /** Updates the typed amount with a keypad step; the cash received while entering cash. */
     fun updateAmount(transform: (AmountEntry) -> AmountEntry) =
@@ -293,7 +313,7 @@ class SplitViewModel(
             if (!current.voucherReady) return false
             val start =
                 Checkout.mealVoucherStart(start(current), reading, current.voucherAvailability, current.amountMinor) ?: return reject()
-            local.update { it.copy(voucherStage = false) }
+            local.update { it.copy(stage = SplitStage.CHOOSE) }
             return lifecycle.start(start) != null
         }
         if (!current.valid) return false
@@ -304,7 +324,11 @@ class SplitViewModel(
     /** Opens or closes gift-card presentation for the chosen tender. */
     fun enterGiftCard(open: Boolean) =
         local.update {
-            it.copy(giftCardStage = open && state.value.valid, cashStage = false, card = it.card.copy(scanned = null), rejected = false)
+            it.copy(
+                stage = if (open && state.value.valid) SplitStage.GIFT_CARD else SplitStage.CHOOSE,
+                card = it.card.copy(scanned = null),
+                rejected = false,
+            )
         }
 
     /** Updates the gift card being presented. */
@@ -316,7 +340,7 @@ class SplitViewModel(
         if (!current.giftCardReady) return false
         val card = current.card.present(current.giftCards) ?: return false
         val start = start(current)?.withGiftCard(card) ?: return reject().also { card.discard() }
-        local.update { it.copy(giftCardStage = false, card = it.card.copy(scanned = null)) }
+        local.update { it.copy(stage = SplitStage.CHOOSE, card = it.card.copy(scanned = null)) }
         return lifecycle.start(start) != null ||
             run {
                 card.discard()
@@ -340,12 +364,10 @@ class SplitViewModel(
                 ?.let { Checkout.mealVoucher(current.voucherAvailability, choice, it, today(), latestSale?.context).limitMinor } ?: 0
         local.update {
             it.copy(
-                voucherStage = open && current.voucher != null,
+                stage = if (open && current.voucher != null) SplitStage.VOUCHER else SplitStage.CHOOSE,
                 voucherChoice = choice,
                 mode = if (open) SplitMode.AMOUNT else it.mode,
                 amount = if (limit > 0) AmountEntry(limit) else it.amount,
-                cashStage = false,
-                giftCardStage = false,
                 rejected = false,
             )
         }
@@ -353,7 +375,13 @@ class SplitViewModel(
 
     /** Opens or closes cash entry for the chosen tender, starting with the exact amount received. */
     fun enterCash(open: Boolean) =
-        local.update { it.copy(cashStage = open && state.value.valid, received = AmountEntry(state.value.amountMinor), rejected = false) }
+        local.update {
+            it.copy(
+                stage = if (open && state.value.valid) SplitStage.CASH else SplitStage.CHOOSE,
+                received = AmountEntry(state.value.amountMinor),
+                rejected = false,
+            )
+        }
 
     /**
      * Records the chosen tender as cash once the operator confirmed the cash received and the change handed back, then

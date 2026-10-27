@@ -47,6 +47,12 @@ class SetupLogoTest {
                         }
                         const options = {...vector.options, mode: vector.options.mode.toLowerCase(), size: vector.options.size.toLowerCase()};
                         const result = MiniMposLogo.convert(vector.width, vector.height, rgba, options);
+                        const prepared = MiniMposLogo.prepare(vector.width, vector.height, rgba, options);
+                        const first = MiniMposLogo.quantize(prepared, options);
+                        first.bits.fill(0);
+                        MiniMposLogo.quantize(prepared, {mode: 'photo', threshold: 200});
+                        const repeated = MiniMposLogo.quantize(prepared, options);
+                        if (JSON.stringify(result) !== JSON.stringify(repeated)) throw new Error('Prepared pixels were mutated');
                         delete result.kind;
                         result.mode = result.mode.toUpperCase();
                         result.bits = Array.from(result.bits, value => value.toString(16).padStart(2, '0')).join('');
@@ -143,7 +149,110 @@ class SetupLogoTest {
             """.trimIndent(),
         )
         assertThat(browser.executeScript("return document.getElementById('logoInvert').checked")).isEqualTo(true)
+        browser.await { browser.executeScript("return document.getElementById('logoThreshold').value") == "127" }
         assertThat(browser.executeScript("return document.getElementById('logoThreshold').value")).isEqualTo("127")
+    }
+
+    @Test
+    fun `threshold edits coalesce without preparing the source again and submit flushes the latest edit`() {
+        chooseLogoOnly()
+        uploadLogo()
+        browser.executeScript("document.getElementById('setup-form').requestSubmit();")
+        browser.await { browser.executeScript("return !document.getElementById('setup-codes').hidden") == true }
+        instrumentLogo()
+        browser.executeScript(
+            """
+            const input = document.getElementById('logoThreshold');
+            for (const value of [10, 30, 60]) {
+              input.value = value;
+              input.dispatchEvent(new Event('input'));
+            }
+            """.trimIndent(),
+        )
+        assertThat(browser.executeScript("return document.getElementById('setup-codes').hidden")).isEqualTo(true)
+        assertThat(browser.executeScript("return window.__prepares")).isEqualTo(0L)
+        assertThat(browser.executeScript("return window.__quantizations.length")).isEqualTo(0L)
+        assertThat(browser.executeScript("return window.__logoFrames.length")).isEqualTo(1L)
+        browser.executeScript("window.__logoFrames[0]();")
+        assertThat(browser.executeScript("return window.__quantizations")).isEqualTo(listOf(60L))
+        browser.executeScript(
+            """
+            const input = document.getElementById('logoThreshold');
+            input.value = 80; input.dispatchEvent(new Event('input'));
+            document.getElementById('setup-form').requestSubmit();
+            """.trimIndent(),
+        )
+        assertThat(browser.executeScript("return window.__quantizations")).isEqualTo(listOf(60L, 80L))
+        assertThat(browser.executeScript("return window.__prepares")).isEqualTo(0L)
+        browser.await { browser.executeScript("return !document.getElementById('setup-codes').hidden") == true }
+    }
+
+    @Test
+    fun `preparation cache changes with inversion trim size and source while removal cancels queued edits`() {
+        chooseLogoOnly()
+        uploadLogo()
+        instrumentLogo()
+        for (name in listOf("logoInvert", "logoTrim", "logoSize")) {
+            browser.executeScript(
+                """
+                const input = document.getElementById(arguments[0]);
+                if (input.type === 'checkbox') input.checked = !input.checked; else input.value = 'small';
+                input.dispatchEvent(new Event('input'));
+                window.__logoFrames.at(-1)();
+                """.trimIndent(),
+                name,
+            )
+        }
+        assertThat(browser.executeScript("return window.__prepares")).isEqualTo(3L)
+        browser.executeScript(
+            """
+            document.getElementById('logoThreshold').dispatchEvent(new Event('input'));
+            document.getElementById('logo-remove').click();
+            window.__logoFrames.at(-1)();
+            """.trimIndent(),
+        )
+        assertThat(browser.executeScript("return window.__quantizations.length")).isEqualTo(3L)
+        assertThat(browser.executeScript("return document.getElementById('logo-editor').hidden")).isEqualTo(true)
+        uploadLogo()
+        assertThat(browser.executeScript("return window.__prepares")).isEqualTo(4L)
+        browser.executeScript(
+            """
+            document.getElementById('logoThreshold').dispatchEvent(new Event('input'));
+            window.__staleLogoFrame = window.__logoFrames.at(-1);
+            """.trimIndent(),
+        )
+        uploadLogo()
+        browser.executeScript("window.__staleLogoFrame();")
+        assertThat(browser.executeScript("return window.__prepares")).isEqualTo(5L)
+        assertThat(browser.executeScript("return window.__quantizations.length")).isEqualTo(5L)
+        browser.executeScript(
+            """
+            document.getElementById('logoThreshold').dispatchEvent(new Event('input'));
+            document.getElementById('setup-form').reset();
+            window.__logoFrames.at(-1)();
+            """.trimIndent(),
+        )
+        assertThat(browser.executeScript("return window.__quantizations.length")).isEqualTo(5L)
+        assertThat(browser.executeScript("return document.getElementById('logo-editor').hidden")).isEqualTo(true)
+    }
+
+    private fun instrumentLogo() {
+        browser.executeScript(
+            """
+            const original = window.MiniMposLogo;
+            window.__prepares = 0; window.__quantizations = []; window.__logoFrames = [];
+            window.MiniMposLogo = {
+              ...original,
+              prepare: (...args) => { window.__prepares++; return original.prepare(...args); },
+              quantize: (prepared, options) => {
+                window.__quantizations.push(options.threshold);
+                return original.quantize(prepared, options);
+              },
+            };
+            window.requestAnimationFrame = callback => window.__logoFrames.push(callback);
+            window.cancelAnimationFrame = () => {};
+            """.trimIndent(),
+        )
     }
 
     @Test

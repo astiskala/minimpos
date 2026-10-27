@@ -11,7 +11,9 @@ import app.minimpos.terminal.client.RefundParams
 import app.minimpos.terminal.client.StoredValueOperation
 import app.minimpos.terminal.client.StoredValueParams
 import app.minimpos.terminal.client.TerminalClient
+import app.minimpos.terminal.client.TerminalCurrencyTotals
 import app.minimpos.terminal.client.TerminalIdentity
+import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.client.TransactionDetails
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
@@ -369,6 +371,30 @@ class GiftCardsTest {
                 )
             assertThat(details(refund).success).isTrue()
             assertThat(client.balance(swiped())).isEqualTo(GiftCardBalance.Read(600, "EUR", "0042"))
+        }
+
+    @Test
+    fun `gift card payments and referenced reversals share period totals without counting refusals`() =
+        runTest {
+            stored(StoredValueOperation.ACTIVATE, 1000)
+            val payment = pay(GiftCardUse.REDEEM, 600)
+            assertThat(payment.success).isTrue()
+            assertThat(pay(GiftCardUse.REFUND, 250).success).isTrue()
+            assertThat(
+                details(
+                    client.refund(
+                        RefundParams(checkNotNull(payment.poiTransactionId), checkNotNull(payment.poiTimestamp), "R-1", 200, "EUR"),
+                    ),
+                ).success,
+            ).isTrue()
+            assertThat(pay(GiftCardUse.REDEEM, 1000).success).isFalse()
+            config = config.copy(outcome = SimulatedOutcome.DECLINE)
+            assertThat(pay(GiftCardUse.REFUND, 100).success).isFalse()
+            config = config.copy(outcome = SimulatedOutcome.APPROVE)
+            val totals = client.getTotals() as TerminalTotalsOutcome.Answered
+            assertThat(totals.totals).containsExactly(
+                TerminalCurrencyTotals(currency = "EUR", debitMinor = 600, debitCount = 1, creditMinor = 450, creditCount = 2),
+            )
         }
 
     @Test

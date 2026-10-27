@@ -120,12 +120,16 @@ class SavedCardChargesTest {
     private val operations =
         FinancialOperations(
             container.payments,
-            container.refunds,
+            FinancialOperations.Refunds(
+                container.refunds,
+                TransactionLifecycle(container.appScope, container.gateway, UnreferencedRefundBook(container.refundRecords)),
+                refunds,
+                container.refundRecords,
+            ),
             charges,
-            refunds,
             container.links,
             container.sales,
-            container.refundRecords,
+            container.giftCards,
         )
 
     @After

@@ -73,6 +73,7 @@ import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.money.AmountEntry
 import app.minimpos.core.money.MoneyFormatter
+import app.minimpos.core.split.TenderSplit
 import app.minimpos.core.voucher.MealVoucherScheme
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
@@ -442,7 +443,7 @@ private fun ColumnScope.Shares(
                 stringResource(R.string.split_share_count),
                 onShares,
                 min = 2,
-                max = 20,
+                max = TenderSplit.MAX_SHARES,
                 increaseTag = "splitMoreShares",
             )
         }

@@ -137,7 +137,7 @@ sealed interface Refundability {
  * @property tenderId Original local tender identity; null for legacy, Checkout or foreign payments.
  * @property surchargeMinor Surcharge included in the returned amount; null for unknown allocations.
  * @property tipMinor Tip included in the returned amount; null for unknown allocations.
- * @property reviewedRefunds Prior return identities/statuses used for review; null for legacy or foreign callers.
+ * @property reviewedRefunds Prior return identities/statuses used for review; null for foreign receipts or hold cancellations.
  * @property cash Whether this leg hands cash back for a cash tender ([originalTransactionId] is then the tender's ID).
  */
 data class RefundStart(

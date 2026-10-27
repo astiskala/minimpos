@@ -63,6 +63,7 @@ class CheckResultDialogTest {
         compose.onNodeWithTag("settings").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("section_email"), 15_000)
         compose.onNodeWithTag("section_email").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("sendTestEmail"), 15_000)
         compose.onNodeWithTag("sendTestEmail").performScrollTo().performClick()
         compose.onNodeWithTag("dialogInput").performTextInput("shopper@example.com")
         compose.onNodeWithTag("dialogConfirm").performClick()

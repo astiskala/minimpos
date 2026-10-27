@@ -117,12 +117,16 @@ class StoredPaymentActionsTest {
             val operations =
                 FinancialOperations(
                     container.payments,
-                    lifecycle,
+                    FinancialOperations.Refunds(
+                        lifecycle,
+                        TransactionLifecycle(backgroundScope, container.gateway, UnreferencedRefundBook(container.refundRecords)),
+                        checkout,
+                        container.refundRecords,
+                    ),
                     container.savedCardCharges,
-                    checkout,
                     container.links,
                     container.sales,
-                    container.refundRecords,
+                    container.giftCards,
                 )
             val actions = StoredPaymentActions(operations, container.captures, container.settingsState, clock)
             val payment = refundable(sale)

@@ -28,7 +28,7 @@ internal class SimulatedGiftCards(
         var active: Boolean = false,
         var currency: String? = null,
         var balance: BigDecimal = BigDecimal.ZERO,
-        val loads: MutableList<Load> = mutableListOf(),
+        var latestLoad: Load? = null,
     )
 
     /** What one simulated operation did. */
@@ -94,7 +94,7 @@ internal class SimulatedGiftCards(
         val card = active(key) ?: return Answer.Refused(NOT_ACTIVE)
         if (card.currency != currency) return Answer.Refused(CURRENCY)
         card.balance += amount
-        card.loads += Load(psp, clock.instant(), amount)
+        card.latestLoad = Load(psp, clock.instant(), amount)
         return Answer.Approved(amount, card.balance, currency)
     }
 
@@ -102,10 +102,10 @@ internal class SimulatedGiftCards(
     @Synchronized
     fun undo(originalTransactionId: String): Answer {
         val psp = originalTransactionId.substringAfter('.')
-        val card = cards.values.firstOrNull { card -> card.loads.any { it.psp == psp } } ?: return Answer.Refused(NOT_UNDOABLE)
-        val load = card.loads.last()
+        val card = cards.values.firstOrNull { it.latestLoad?.psp == psp } ?: return Answer.Refused(NOT_UNDOABLE)
+        val load = checkNotNull(card.latestLoad)
         val fresh = Duration.between(load.at, clock.instant()) <= UNDO_WINDOW
-        val undoable = load.psp == psp && !load.undone && fresh && card.active
+        val undoable = !load.undone && fresh && card.active
         if (!undoable) return Answer.Refused(NOT_UNDOABLE)
         if (card.balance < load.amount) return Answer.Refused(NOT_ENOUGH)
         load.undone = true

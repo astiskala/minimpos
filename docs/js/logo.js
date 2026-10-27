@@ -3,7 +3,10 @@
 (() => {
   const luma = (r, g, b) => (54 * r + 183 * g + 19 * b + 128) >> 8;
   const composite = (c, a, white) => Math.trunc((c * a + (white ? 255 * (255 - a) : 0) + 127) / 255);
-  const grey = (rgba, offset, white) => luma(...[0, 1, 2].map(c => composite(rgba[offset + c], rgba[offset + 3], white)));
+  const grey = (rgba, offset, white) => {
+    const alpha = rgba[offset + 3];
+    return luma(composite(rgba[offset], alpha, white), composite(rgba[offset + 1], alpha, white), composite(rgba[offset + 2], alpha, white));
+  };
   const otsu = pixels => {
     const histogram = new Int32Array(256);
     let sum = 0;
@@ -19,17 +22,22 @@
     }
     return threshold;
   };
-  const convert = (width, height, rgba, options = {}) => {
+  // Prepared handles expose no mutable pixels; quantization always works on its own copy.
+  const preparedPixels = new WeakMap();
+  const prepare = (width, height, rgba, options = {}) => {
     if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 4096 || height > 4096 || rgba.length !== width * height * 4) throw new RangeError("Invalid image dimensions");
     const total = width * height;
-    let transparent = 0, opaque = 0, ink = 0, border = 0, borderCount = 0;
-    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
-      const offset = (y * width + x) * 4;
-      if (rgba[offset + 3] < 128) transparent++;
-      else { opaque++; ink += grey(rgba, offset, true); }
-      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) { border += grey(rgba, offset, true); borderCount++; }
+    let inverted = options.invert;
+    if (inverted == null) {
+      let transparent = 0, opaque = 0, ink = 0, border = 0, borderCount = 0;
+      for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+        const offset = (y * width + x) * 4;
+        if (rgba[offset + 3] < 128) transparent++;
+        else { opaque++; ink += grey(rgba, offset, true); }
+        if (x === 0 || y === 0 || x === width - 1 || y === height - 1) { border += grey(rgba, offset, true); borderCount++; }
+      }
+      inverted = transparent * 10 >= total ? opaque > 0 && Math.trunc(ink / opaque) >= 160 : Math.trunc(border / borderCount) < 96;
     }
-    const inverted = options.invert ?? (transparent * 10 >= total ? opaque > 0 && Math.trunc(ink / opaque) >= 160 : Math.trunc(border / borderCount) < 96);
     const source = new Uint8Array(total);
     let left = width, top = height, right = -1, bottom = -1;
     for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
@@ -38,7 +46,7 @@
       source[index] = inverted ? 255 - value : value;
       if (source[index] < 240) { left = Math.min(left, x); right = Math.max(right, x); top = Math.min(top, y); bottom = Math.max(bottom, y); }
     }
-    if (right < 0) return {kind: "blank"};
+    if (right < 0) return Object.freeze({kind: "blank"});
     if (options.trim === false) { left = 0; top = 0; right = width - 1; bottom = height - 1; }
     const w = right - left + 1, h = bottom - top + 1;
     const maxHeight = options.size === "small" ? 96 : 192;
@@ -60,8 +68,18 @@
       pixels[y * tw + x] = Math.trunc((sum + Math.trunc(w * h / 2)) / (w * h));
     }
     const mid = pixels.reduce((count, value) => count + (value > 32 && value < 224 ? 1 : 0), 0);
-    const mode = !options.mode || options.mode === "auto" ? (mid * 100 > pixels.length * 20 ? "photo" : "mark") : options.mode;
-    const threshold = options.threshold ?? (mode === "mark" ? otsu(pixels) : 127);
+    const prepared = Object.freeze({kind: "prepared", width: tw, height: th, inverted});
+    preparedPixels.set(prepared, {pixels, mode: mid * 100 > pixels.length * 20 ? "photo" : "mark", threshold: otsu(pixels)});
+    return prepared;
+  };
+  const quantize = (prepared, options = {}) => {
+    if (prepared.kind === "blank") return {kind: "blank"};
+    const source = preparedPixels.get(prepared);
+    if (!source) throw new TypeError("Invalid prepared logo");
+    const {width: tw, height: th, inverted} = prepared;
+    const pixels = source.pixels.slice();
+    const mode = !options.mode || options.mode === "auto" ? source.mode : options.mode;
+    const threshold = options.threshold ?? (mode === "mark" ? source.threshold : 127);
     if (!Number.isInteger(threshold) || threshold < 0 || threshold > 255 || !["mark", "photo"].includes(mode)) throw new RangeError("Invalid logo options");
     const stride = Math.trunc((tw + 7) / 8), bits = new Uint8Array(stride * th);
     for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
@@ -74,5 +92,6 @@
     }
     return {kind: "converted", width: tw, height: th, mode, threshold, inverted, bits};
   };
-  window.MiniMposLogo = Object.freeze({convert});
+  const convert = (width, height, rgba, options = {}) => quantize(prepare(width, height, rgba, options), options);
+  window.MiniMposLogo = Object.freeze({prepare, quantize, convert});
 })();

@@ -2,6 +2,7 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.GiftCardCategory
 import app.minimpos.app.data.db.GiftCardOperationEntity
@@ -264,6 +265,93 @@ class GiftCardsTest {
         val settled = activity(groupId)
         assertThat(settled.funding?.status).isEqualTo(GiftCardStatus.FAILED)
         assertThat(settled.needsAttention).isFalse()
+    }
+
+    @Test
+    fun `an unexpected failure keeps its stored stage recoverable before request cleanup`() {
+        simulator()
+        val presented = card(number = "6006491234567890")
+        presented.discard()
+        val interrupted = run(GiftCardRequest.Activate(presented, 0, "AUD", null))
+
+        assertThat(interrupted.stages.single().status).isEqualTo(GiftCardStatus.UNKNOWN)
+        assertThat(interrupted.stages.single().reason)
+            .isEqualTo(StoredReason.Unconfirmed(Failure.Device(DeviceFault.UNEXPECTED)))
+        assertThat(interrupted.attention).containsExactly(GiftCardAction.CHECK_AGAIN)
+        await { container.history.clear() }
+        assertThat(await { records.activity(interrupted.groupId) }).isNotNull()
+    }
+
+    @Test
+    fun `a receipt callback failure cannot downgrade an already stored gift card approval`() {
+        simulator()
+        val notifying =
+            GiftCards(
+                scope = env.scope,
+                gateway = container.gateway,
+                records = records,
+                cash = container.cashTenders,
+                approval = approval,
+                onFinished = { throw IllegalStateException("Receipt callback failed") },
+            )
+        val id = checkNotNull(notifying.start(GiftCardRequest.Activate(card(), 0, "AUD", null)))
+        await { notifying.state.first { it == TransactionState.Finished(id) } }
+        assertThat(activity(id).stages.single().status).isEqualTo(GiftCardStatus.SUCCEEDED)
+    }
+
+    @Test
+    fun `history clearing retains a pending gift card stage without waiting for startup recovery`() {
+        simulator()
+        val pending =
+            GiftCardOperationEntity(
+                id = "pending-load",
+                groupId = "pending-activity",
+                stage = GiftCardStage.LOAD,
+                category = GiftCardCategory.STORED_VALUE,
+                createdAt = 1,
+                status = GiftCardStatus.PENDING,
+                provider = "SVS",
+                currency = "AUD",
+                amountMinor = 400,
+                merchantReference = "G-pending",
+                serviceId = "PENDING01",
+            )
+        await {
+            records.open(pending)
+            container.history.clear()
+        }
+        assertThat(await { records.get(pending.id) }).isEqualTo(pending)
+    }
+
+    @Test
+    fun `cash out with an unreported amount keeps the payout unknown and cannot authorize a handover`() {
+        simulator()
+        val cashOut =
+            GiftCardOperationEntity(
+                id = "unreported-cash",
+                groupId = "unreported-payout",
+                stage = GiftCardStage.CASH_OUT,
+                category = GiftCardCategory.PAYMENT,
+                createdAt = 1,
+                status = GiftCardStatus.PENDING,
+                provider = "SVS",
+                currency = "AUD",
+                amountMinor = 400,
+                merchantReference = "G-cash",
+                serviceId = "CASH01",
+            )
+        await {
+            records.open(cashOut)
+            records.settle(cashOut.id, GiftCardStatus.SUCCEEDED, null, null, null)
+        }
+        val payout = activity(cashOut.groupId)
+        assertThat(payout.change?.approvedMinor).isNull()
+        assertThat(payout.cashHandover?.needsAttention).isTrue()
+        assertThat(payout.cashHandover?.canRecord).isFalse()
+        assertThat(payout.totals.valueRemovedMinor).isEqualTo(0)
+        assertThat(await { giftCards.confirmHandover(cashOut.groupId) }).isFalse()
+        await { container.history.clear() }
+        assertThat(await { records.activity(cashOut.groupId) }).isNotNull()
     }
 
     @Test

@@ -64,19 +64,16 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlin.time.Duration.Companion.seconds
 
-/** Shows [content] when the selected PIN is absent or unlocked; [manager] selects Manager rather than admin access. */
+/** Shows [content] when the admin PIN is absent or unlocked. Manager permissions use [ManagerGate]. */
 @Composable
 fun PinGate(
     navigator: Navigator,
     modifier: Modifier = Modifier,
-    manager: Boolean = false,
-    action: ManagerAction = ManagerAction.REFERENCED_REFUND,
     content: @Composable () -> Unit,
 ) {
     val container = LocalAppContainer.current
-    if (manager) return ManagerGate(setOf(action), navigator, content)
     val pins = container.pinManager
-    val lock = if (manager) container.managerLock else container.sessionLock
+    val lock = container.sessionLock
     val pinSet by pins.pinConfigured.collectAsStateWithLifecycle(initialValue = null)
     val unlocked by lock.unlocked.collectAsStateWithLifecycle()
     val settings by container.settingsState.collectAsStateWithLifecycle()
@@ -91,7 +88,7 @@ fun PinGate(
         when {
             pinSet == null -> Box(Modifier.fillMaxSize())
             pinSet == false || unlocked -> content()
-            else -> UnlockScreen(onUnlock = lock::unlock, onCancel = navigator::back, manager = manager)
+            else -> UnlockScreen(onUnlock = lock::unlock, onCancel = navigator::back)
         }
     }
 }

@@ -75,6 +75,24 @@ class GiftCardActivityTest {
     }
 
     @Test
+    fun `a continued value uses the latest attempt for its details and receipt`() {
+        for (kind in listOf(GiftCardStage.ACTIVATE, GiftCardStage.LOAD)) {
+            val funding = stage(GiftCardStage.FUNDING_EXTERNAL).copy(funds = kind)
+            val refused = stage(kind, GiftCardStatus.DECLINED)
+            val succeeded = stage(kind)
+            val continued = activity(funding, refused, succeeded)
+
+            assertThat(continued.change).isEqualTo(succeeded)
+            assertThat(continued.value).isEqualTo(succeeded)
+            assertThat(continued.delivered).isTrue()
+            assertThat(continued.needsAttention).isFalse()
+
+            val undone = activity(funding, refused, succeeded, stage(GiftCardStage.UNDO_LOAD))
+            assertThat(undone.change).isEqualTo(succeeded)
+        }
+    }
+
+    @Test
     fun `unknown sent stages are checked again while local awaiting stages are confirmed`() {
         val unknown = activity(stage(GiftCardStage.ACTIVATE, GiftCardStatus.UNKNOWN))
         assertThat(unknown.attention).containsExactly(GiftCardAction.CHECK_AGAIN)
@@ -85,6 +103,22 @@ class GiftCardActivityTest {
         assertThat(handover.needsAttention).isTrue()
         val done = activity(stage(GiftCardStage.CASH_OUT), stage(GiftCardStage.CASH_HANDOVER))
         assertThat(done.needsAttention).isFalse()
+    }
+
+    @Test
+    fun `cash handover uses the actual cash out approval within the original request`() {
+        val payout = stage(GiftCardStage.CASH_OUT, amountMinor = 500).copy(approvedMinor = 200)
+        // Earlier handover stages stored the known cash only as amountMinor; approval stays on their original payout.
+        val handover = stage(GiftCardStage.CASH_HANDOVER, GiftCardStatus.AWAITING, amountMinor = 200).copy(approvedMinor = null)
+        assertThat(activity(payout, handover).cashHandover?.approvedMinor).isEqualTo(200)
+        assertThat(activity(payout, handover).cashHandover?.canRecord).isTrue()
+        assertThat(activity(payout, handover).totals.valueRemovedMinor).isEqualTo(200)
+        for (reported in listOf(null, -1L, 501L)) {
+            val inconsistent = activity(payout.copy(approvedMinor = reported), handover)
+            assertThat(inconsistent.cashHandover?.canRecord).isFalse()
+            assertThat(inconsistent.needsAttention).isTrue()
+            assertThat(inconsistent.totals.valueRemovedMinor).isEqualTo(0)
+        }
     }
 
     @Test

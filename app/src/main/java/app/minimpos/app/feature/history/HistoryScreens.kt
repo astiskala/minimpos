@@ -475,7 +475,7 @@ private fun historyRowText(
                     },
                 ),
                 when {
-                    activity.needsAttention || activity.unresolved -> StatusKind.WARNING
+                    activity.needsAttention -> StatusKind.WARNING
                     main.status == GiftCardStatus.SUCCEEDED -> StatusKind.SUCCESS
                     else -> StatusKind.ERROR
                 },

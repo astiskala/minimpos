@@ -345,6 +345,7 @@ class GiftCards(
 ) {
     private val runner =
         OperationRunner<GiftCardRequest>(scope, onTerminal = true) { OperationAmount(it.amountMinor, it.currency) }
+    private val valueApproval = approval.forAction(ManagerAction.GIFT_CARD_CHANGE)
 
     /** The activity running or just finished, by its group ID; waiting and result screens follow it. */
     val state: StateFlow<TransactionState> = runner.state
@@ -380,15 +381,14 @@ class GiftCards(
                     records.settle(stage, GiftCardStatus.UNKNOWN, null, null, unexpected)
                 }
             },
-            release = { request.card?.discard() },
+            release = {
+                request.card?.discard()
+                synchronized(sending) { sending.remove(groupId) }
+                current.remove(groupId)
+                runner.resolved(groupId)
+            },
         ) { id ->
-            try {
-                if (run(id, request, grant)) onFinished(id)
-            } finally {
-                synchronized(sending) { sending.remove(id) }
-                current.remove(id)
-                runner.resolved(id)
-            }
+            if (run(id, request, grant)) onFinished(id)
         }
     }
 
@@ -477,7 +477,7 @@ class GiftCards(
      * false, storing nothing, without approval or when nothing is awaiting.
      */
     suspend fun confirmHandover(groupId: String): Boolean {
-        if (!approval.forAction(ManagerAction.GIFT_CARD_CHANGE).allowsConfigured(approval.grant())) return false
+        if (!valueApproval.allowsConfigured(approval.grant())) return false
         val stage =
             records.activity(groupId)?.stages?.firstOrNull {
                 it.stage == GiftCardStage.CASH_HANDOVER && it.status == GiftCardStatus.AWAITING
@@ -558,7 +558,7 @@ class GiftCards(
             }
 
             is GiftCardRequest.ReturnFunds -> {
-                returnFunds(groupId, request, grant)
+                returnFunds(groupId, grant)
             }
         }
 
@@ -620,7 +620,7 @@ class GiftCards(
                 approvedMinor = change.amountMinor,
                 environment = environment(),
             )
-        return Funded(null).takeIf { approval.forAction(ManagerAction.GIFT_CARD_CHANGE).allowsConfigured(grant) && records.open(fund) }
+        return Funded(null).takeIf { valueApproval.allowsConfigured(grant) && records.open(fund) }
     }
 
     /** Activates or loads again for an activity whose funding is confirmed and whose value was not delivered. */
@@ -629,8 +629,10 @@ class GiftCards(
         grant: ManagerApproval.Grant,
     ): Boolean {
         val activity = records.activity(request.groupId)?.takeIf { GiftCardAction.CONTINUE in it.attention }
-        val change = activity?.let { Change(request.groupId, request.card, request.amountMinor, request.currency, it.kind) }
-        return change != null && value(change, grant, activity.funding?.context)
+        val funding = activity?.funding ?: return false
+        // The value delivered is the confirmed funding, not what the screen last read.
+        val change = Change(request.groupId, request.card, funding.movedMinor, funding.currency, activity.kind)
+        return value(change, grant, funding.context)
     }
 
     /** Sends [change]'s activation or load, once its funding (if any) is confirmed and nothing is unresolved. */
@@ -755,14 +757,13 @@ class GiftCards(
 
     private suspend fun returnFunds(
         groupId: String,
-        request: GiftCardRequest.ReturnFunds,
         grant: ManagerApproval.Grant,
     ): Boolean {
         val funding =
-            records.activity(groupId)?.funding?.takeIf { approval.forAction(ManagerAction.GIFT_CARD_CHANGE).allowsConfigured(grant) }
+            records.activity(groupId)?.funding?.takeIf { valueApproval.allowsConfigured(grant) }
                 ?: return false
         val entity =
-            stage(Change(groupId, null, funding.movedMinor, request.currency, GiftCardStage.FUNDING_RETURNED)).copy(
+            stage(Change(groupId, null, funding.movedMinor, funding.currency, GiftCardStage.FUNDING_RETURNED)).copy(
                 status = GiftCardStatus.SUCCEEDED,
                 processedAt = clock.millis(),
                 approvedMinor = funding.movedMinor,
@@ -787,7 +788,7 @@ class GiftCards(
     ): GiftCardStatus {
         current[entity.groupId] = entity.id
         val attempt =
-            if (!approval.forAction(ManagerAction.GIFT_CARD_CHANGE).allowsConfigured(grant)) {
+            if (!valueApproval.allowsConfigured(grant)) {
                 Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
             } else {
                 call(
@@ -802,7 +803,7 @@ class GiftCards(
                         }
                     },
                     { records.recordContext(entity.id, it) },
-                    { approval.forAction(ManagerAction.GIFT_CARD_CHANGE).allowsConfigured(grant) },
+                    { valueApproval.allowsConfigured(grant) },
                 )
             }
         val settlement =
@@ -821,6 +822,7 @@ class GiftCards(
             }
         // No late answers to release: gift-card activities never start where the Payments app takes requests.
         val status = store(entity.id, settlement)
+        current.remove(entity.groupId)
         synchronized(sending) { sending.remove(entity.groupId) }
         return status
     }

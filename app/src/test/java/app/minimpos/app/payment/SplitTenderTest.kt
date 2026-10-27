@@ -13,6 +13,7 @@ import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.repo.TenderAllocationJson
 import app.minimpos.app.data.repo.TenderBalance
+import app.minimpos.app.data.repo.recordedEnvironment
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.Refundability
@@ -243,5 +244,15 @@ class SplitTenderTest {
         assertThat(record(id).refunds.count { it.cash }).isEqualTo(1)
         val report = HistoryAccounting.totals(HistoryAccounting.activities(refunded.refunds.map { HistoryItem.Refund(it) }))
         assertThat(report.getValue("AUD").cashRefundsMinor).isEqualTo(800)
+        val environments =
+            await {
+                container.history.reader.fold(emptyMap<String, String?>()) { known, items ->
+                    known + items.associate { it.id to it.recordedEnvironment }
+                }
+            }
+        assertThat(environments[cashReturn.id]).isEqualTo("SIMULATOR")
+        val batch = await { container.history.reader.page() }
+        val key = batch.keys.first { it.id == cashReturn.id }
+        assertThat(batch.item(key)?.recordedEnvironment).isEqualTo("SIMULATOR")
     }
 }

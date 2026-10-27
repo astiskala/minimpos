@@ -62,19 +62,13 @@ data class GiftCardActivity(
     /** The latest activation or load attempt; null before one was stored. */
     val value: GiftCardOperationEntity? get() = stages.lastOrNull { it.stage == GiftCardStage.ACTIVATE || it.stage == GiftCardStage.LOAD }
 
-    /** The main value change of an activity without funding: undo, deactivation, cash-out or refund; else [value]. */
+    /** The latest activation, load, deactivation, cash-out or refund attempt; undo and funding stages do not replace it. */
     val change: GiftCardOperationEntity? get() =
-        stages.firstOrNull { it.stage.changesValue && it.stage != GiftCardStage.UNDO_LOAD }
-            ?: value
+        stages.lastOrNull { it.stage.changesValue && it.stage != GiftCardStage.UNDO_LOAD }
 
     /** The provider of its card; null when no stage names one. */
     val provider: GiftCardProvider? get() =
-        stages.firstNotNullOfOrNull { stage ->
-            GiftCardProvider.entries.firstOrNull {
-                it.name ==
-                    stage.provider
-            }
-        }
+        stages.firstNotNullOfOrNull { stage -> GiftCardProvider.entries.firstOrNull { it.name == stage.provider } }
 
     /** The card's last four digits, as last reported; null when unknown. */
     val cardLastFour: String? get() = stages.lastOrNull { it.cardLastFour != null }?.cardLastFour
@@ -105,15 +99,16 @@ data class GiftCardActivity(
     val needsRepair: Boolean get() = funded && !delivered && !repaired && !unresolved
 
     /** Cash-out handover, read through the same durable payout rules as card cashback. */
-    val cashHandover: CashHandover? get() =
-        stages.firstOrNull { it.stage == GiftCardStage.CASH_HANDOVER }?.let {
-            CashHandover(
-                it.amountMinor,
-                it.amountMinor,
-                it.amountMinor,
-                (it.processedAt ?: it.createdAt).takeIf { _ -> it.status == GiftCardStatus.SUCCEEDED },
-            )
-        }
+    val cashHandover: CashHandover? get() {
+        val payout = stages.firstOrNull { it.stage == GiftCardStage.CASH_OUT } ?: return null
+        val handover = stages.firstOrNull { it.stage == GiftCardStage.CASH_HANDOVER } ?: return null
+        return CashHandover(
+            payout.amountMinor,
+            payout.approvedMinor,
+            payout.approvedMinor,
+            (handover.processedAt ?: handover.createdAt).takeIf { handover.status == GiftCardStatus.SUCCEEDED },
+        )
+    }
 
     /** The checks, confirmations and repairs it still needs, whatever the time. */
     val attention: Set<GiftCardAction>
@@ -129,8 +124,8 @@ data class GiftCardActivity(
                 }
             }
 
-    /** Whether it still needs staff: a check, a confirmation or a repair; retention keeps it. */
-    val needsAttention: Boolean get() = attention.isNotEmpty()
+    /** Whether it is unfinished or still needs a check, confirmation or repair; retention keeps it. */
+    val needsAttention: Boolean get() = unresolved || attention.isNotEmpty()
 
     /**
      * What staff may do now: [attention], plus undoing its load while [now] (epoch milliseconds) is within the undo

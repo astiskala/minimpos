@@ -110,18 +110,22 @@ class RefundLegs(
     ) {
         val reviewed = legs.first().reviewedRefunds?.toMutableMap()
         var stop: RefundLegSkip? = null
-        legs.forEachIndexed { index, leg ->
-            if (stop != null) {
-                update(index) { it.copy(skipped = RefundLegSkip.EARLIER_LEG) }
-                return@forEachIndexed
+        // Ends the run even when a leg fails unexpectedly, so later returns are not refused as already running.
+        try {
+            legs.forEachIndexed { index, leg ->
+                if (stop != null) {
+                    update(index) { it.copy(skipped = RefundLegSkip.EARLIER_LEG) }
+                    return@forEachIndexed
+                }
+                val request = leg.copy(reviewedRefunds = reviewed?.toMap())
+                val (id, status, skip) = if (leg.cash) cash(request, grant) else card(request, grant)
+                update(index) { it.copy(refundId = id, status = status, skipped = skip) }
+                if (id != null && status != null && status != RefundStatus.FAILED) reviewed?.put(id, status)
+                if (status != RefundStatus.REQUESTED) stop = skip ?: RefundLegSkip.EARLIER_LEG
             }
-            val request = leg.copy(reviewedRefunds = reviewed?.toMap())
-            val (id, status, skip) = if (leg.cash) cash(request, grant) else card(request, grant)
-            update(index) { it.copy(refundId = id, status = status, skipped = skip) }
-            if (id != null && status != null && status != RefundStatus.FAILED) reviewed?.put(id, status)
-            if (status != RefundStatus.REQUESTED) stop = skip ?: RefundLegSkip.EARLIER_LEG
+        } finally {
+            state.update { it?.copy(finished = true) }
         }
-        state.update { it?.copy(finished = true) }
     }
 
     private suspend fun card(

@@ -588,7 +588,13 @@ private fun ColumnScope.FollowUps(
     if (actions.isEmpty()) return
     if (!state.managerConfigured) OutcomeNote(stringResource(R.string.gift_card_manager_note))
     actions.sortedBy { it.ordinal }.forEach { action ->
-        val ready = state.managerConfigured && (action != GiftCardAction.CONTINUE || state.cardReady)
+        val ready =
+            state.managerConfigured &&
+                when (action) {
+                    GiftCardAction.CONTINUE -> state.cardReady
+                    GiftCardAction.CONFIRM_HANDOVER -> state.activity?.cashHandover?.canRecord == true
+                    GiftCardAction.CHECK_AGAIN, GiftCardAction.REFUND_FUNDING, GiftCardAction.RETURN_FUNDS, GiftCardAction.UNDO_LOAD -> true
+                }
         val text = stringResource(actionLabel(action))
         val tag = Modifier.testTag("giftCardAction_${action.name}")
         if (action == GiftCardAction.CONFIRM_HANDOVER || action == GiftCardAction.CONTINUE) {
@@ -613,6 +619,7 @@ private fun Outcome(
             main.status == GiftCardStatus.SUCCEEDED -> StatusKind.SUCCESS to R.string.gift_card_outcome_done
             else -> StatusKind.ERROR to R.string.gift_card_outcome_not_done
         }
+    val handover = activity.cashHandover
     OutcomeHeader(kind, stringResource(title), money.format(main.amountMinor), titleTag = "giftCardStatus") {
         Text(stringResource(giftCardStageLabel(activity.kind)), style = MaterialTheme.typography.titleSmall)
         when {
@@ -624,8 +631,12 @@ private fun Outcome(
                 OutcomeNote(stringResource(R.string.gift_card_repair_note))
             }
 
-            activity.stages.any { it.stage == GiftCardStage.CASH_HANDOVER && it.status == GiftCardStatus.AWAITING } -> {
-                OutcomeNote(stringResource(R.string.gift_card_handover_due, money.format(activity.totals.valueRemovedMinor)))
+            handover?.needsAttention == true -> {
+                if (handover.canRecord) {
+                    OutcomeNote(stringResource(R.string.gift_card_handover_due, money.format(activity.totals.valueRemovedMinor)))
+                } else {
+                    OutcomeNote(stringResource(R.string.cashback_missing_amount))
+                }
             }
 
             activity.stages.any { it.stage == GiftCardStage.FUNDING_REFUND && it.status == GiftCardStatus.SUCCEEDED } -> {

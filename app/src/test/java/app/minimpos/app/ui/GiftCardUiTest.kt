@@ -16,6 +16,9 @@ import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.clickWhenEnabled
+import app.minimpos.app.data.db.GiftCardCategory
+import app.minimpos.app.data.db.GiftCardOperationEntity
+import app.minimpos.app.data.db.GiftCardStage
 import app.minimpos.app.data.db.GiftCardStatus
 import app.minimpos.app.data.settings.GiftCardSetting
 import app.minimpos.core.giftcard.GiftCardEntry
@@ -121,5 +124,34 @@ class GiftCardUiTest {
             }
         assertThat(stage.status).isEqualTo(GiftCardStatus.SUCCEEDED)
         assertThat(stage.entry).isEqualTo(GiftCardEntry.KEYED.name)
+    }
+
+    @Test
+    fun `an unreported cash out explains why cash cannot be handed over`() {
+        simulator(svs)
+        await {
+            container.giftCardRecords.open(
+                GiftCardOperationEntity(
+                    id = "unknown-cash",
+                    groupId = "payout",
+                    stage = GiftCardStage.CASH_OUT,
+                    category = GiftCardCategory.PAYMENT,
+                    createdAt = System.currentTimeMillis(),
+                    status = GiftCardStatus.PENDING,
+                    provider = "SVS",
+                    currency = "AUD",
+                    amountMinor = 400,
+                    merchantReference = "G-cash",
+                    serviceId = "CASH01",
+                ),
+            )
+            container.giftCardRecords.settle("unknown-cash", GiftCardStatus.SUCCEEDED, null, null, null)
+        }
+        openGiftCards()
+        compose.waitUntilAtLeastOneExists(hasTestTag("giftCardActivity_payout"), 15_000)
+        compose.onNodeWithTag("giftCardActivity_payout").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("giftCardStatus"), 15_000)
+        compose.onNodeWithText(env.context.getString(R.string.cashback_missing_amount)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("giftCardAction_CONFIRM_HANDOVER").performScrollTo().assertIsNotEnabled()
     }
 }

@@ -1054,6 +1054,14 @@ data class GiftCardOperationEntity(
     val customerReceiptJson: String? = null,
     val cashierReceiptJson: String? = null,
 ) {
-    /** What it moved, in minor units: the approved amount, else what a confirmed local stage recorded; 0 otherwise. */
-    val movedMinor: Long get() = if (status == GiftCardStatus.SUCCEEDED) approvedMinor ?: amountMinor else 0
+    /**
+     * What it moved, in minor units: a cash-out needs a reported amount within its request; other confirmed stages use
+     * the approved amount or what was requested/recorded. Zero before success or for an unknown/inconsistent cash-out.
+     */
+    val movedMinor: Long get() =
+        when {
+            status != GiftCardStatus.SUCCEEDED -> 0
+            stage == GiftCardStage.CASH_OUT -> approvedMinor?.takeIf { it in 0..amountMinor } ?: 0
+            else -> approvedMinor ?: amountMinor
+        }
 }

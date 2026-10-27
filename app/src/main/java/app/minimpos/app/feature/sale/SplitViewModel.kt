@@ -229,9 +229,6 @@ class SplitViewModel(
         combine(source, local, giftCards, vouchers) { loaded, choices, settings, voucherFor ->
             val provider =
                 choices.card.provider?.takeIf { chosen -> settings.any { it.provider == chosen } } ?: settings.firstOrNull()?.provider
-            val setting = settings.firstOrNull { it.provider == provider }
-            val entry =
-                choices.card.entry.takeIf { setting?.entries?.contains(it) == true } ?: setting?.entries?.minOrNull() ?: choices.card.entry
             val availability = voucherFor(loaded.currency)
             val voucher =
                 loaded.balance?.takeIf { availability.configured }?.let { balance ->
@@ -239,13 +236,13 @@ class SplitViewModel(
                         availability,
                         choices.voucherChoice,
                         balance,
-                        LocalDate.now(clock.withZone(zone())),
+                        today(),
                         latestSale?.context,
                     )
                 }
             choices.copy(
                 giftCards = settings,
-                card = choices.card.copy(provider = provider, entry = entry),
+                card = choices.card.forProvider(provider, settings),
                 loaded = loaded.loaded,
                 currency = loaded.currency,
                 saleId = loaded.saleId,
@@ -392,14 +389,11 @@ class SplitViewModel(
         }
     }
 
-    private fun reject(): Boolean = local.rejected()
+    private fun reject(): Boolean {
+        local.update { it.copy(rejected = true) }
+        return false
+    }
 
     // Voucher closed days follow the store's local date.
     private fun today(): LocalDate = LocalDate.now(clock.withZone(zone()))
-}
-
-/** Marks the last start refused because the sale changed; returns false for the refused start. */
-internal fun MutableStateFlow<SplitUiState>.rejected(): Boolean {
-    update { it.copy(rejected = true) }
-    return false
 }

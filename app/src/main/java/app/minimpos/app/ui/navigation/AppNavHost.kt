@@ -224,20 +224,16 @@ private fun EntryProviderScope<NavKey>.saleEntries(navigator: Navigator) {
 /** Refund, token and gift-card workflow entries with distinct Manager permissions. */
 private fun EntryProviderScope<NavKey>.moneyEntries(navigator: Navigator) {
     entry<Route.RefundStart> { RefundStartScreen(navigator) }
-    entry<Route.RefundScan> { PinGate(navigator, manager = true) { RefundScanScreen(navigator) } }
+    entry<Route.RefundScan> { ManagerGate(setOf(ManagerAction.REFERENCED_REFUND), navigator) { RefundScanScreen(navigator) } }
     entry<Route.UnreferencedRefund> {
-        PinGate(navigator, manager = true, action = ManagerAction.UNREFERENCED_REFUND) { UnreferencedRefundScreen(navigator) }
+        ManagerGate(setOf(ManagerAction.UNREFERENCED_REFUND), navigator) { UnreferencedRefundScreen(navigator) }
     }
     entry<Route.Refund> { RefundScreen(it.payload, it.saleId, navigator) }
     entry<Route.RefundProcessing> { RefundProcessingScreen(navigator) }
     entry<Route.RefundLegs> { RefundLegsScreen(navigator) }
     entry<Route.RefundResult> { RefundResultScreen(it.refundId, navigator) }
     entry<Route.SavedCard> {
-        PinGate(
-            navigator,
-            manager = true,
-            action = ManagerAction.SAVED_CARD_LOOKUP,
-        ) { SavedCardScreen(navigator) }
+        ManagerGate(setOf(ManagerAction.SAVED_CARD_LOOKUP), navigator) { SavedCardScreen(navigator) }
     }
     entry<Route.SavedCardSale> {
         ManagerGate(setOf(ManagerAction.SALE, ManagerAction.SAVED_CARD_CHARGE), navigator) {

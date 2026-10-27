@@ -74,15 +74,19 @@ class GiftCardRepository(
                 stage.answered(details).copy(
                     status = status,
                     processedAt = if (status == GiftCardStatus.UNKNOWN) null else details?.answeredAt() ?: now(),
-                    approvedMinor = if (status == GiftCardStatus.SUCCEEDED) details?.amountMinor ?: stage.amountMinor else null,
+                    approvedMinor =
+                        when {
+                            status != GiftCardStatus.SUCCEEDED -> null
+                            stage.stage == GiftCardStage.CASH_OUT -> details?.amountMinor
+                            else -> details?.amountMinor ?: stage.amountMinor
+                        },
                     message = message,
                     errorCondition = details?.errorCondition,
                     reason = reason,
                 )
             dao.update(settled)
-            if (stage.stage == GiftCardStage.CASH_OUT && settled.movedMinor > 0 &&
-                dao.group(stage.groupId).none { it.stage == GiftCardStage.CASH_HANDOVER }
-            ) {
+            val paidOut = stage.stage == GiftCardStage.CASH_OUT && status == GiftCardStatus.SUCCEEDED && settled.approvedMinor != 0L
+            if (paidOut && dao.group(stage.groupId).none { it.stage == GiftCardStage.CASH_HANDOVER }) {
                 dao.insert(handover(settled))
             }
             true
@@ -116,6 +120,7 @@ class GiftCardRepository(
             val stage =
                 dao.stage(id)?.takeIf { it.stage == GiftCardStage.CASH_HANDOVER && it.status == GiftCardStatus.AWAITING }
                     ?: return@withTransaction false
+            if (GiftCardActivity(dao.group(stage.groupId)).cashHandover?.canRecord != true) return@withTransaction false
             dao.update(stage.copy(status = GiftCardStatus.SUCCEEDED, processedAt = now()))
             true
         }

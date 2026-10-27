@@ -85,7 +85,7 @@ class HistorySwitches(
         when (item) {
             is HistoryItem.Sale -> !item.sale.retentionEligible && !item.sale.sample
             is HistoryItem.Refund -> item.refund.unresolved
-            is HistoryItem.GiftCard -> item.activity.unresolved || item.activity.needsAttention
+            is HistoryItem.GiftCard -> item.activity.needsAttention
         }
 
     /** Commits an explicit [plan]; false if destination or required warnings changed since preview. Main-safe. */

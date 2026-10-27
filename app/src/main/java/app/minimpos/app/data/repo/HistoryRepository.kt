@@ -49,9 +49,11 @@ sealed interface HistoryItem {
      * A referenced refund.
      *
      * @property refund The stored refund.
+     * @property cashEnvironment Original cash tender's history environment; null when unavailable or not cash.
      */
     data class Refund(
         val refund: RefundEntity,
+        val cashEnvironment: String? = null,
     ) : HistoryItem {
         override val id: String get() = refund.id
         override val createdAt: Long get() = refund.createdAt
@@ -297,7 +299,9 @@ class HistoryRepository(
                     keysetBatches<RefundEntity> { last ->
                         currentCoroutineContext().ensureActive()
                         refundDao.historyBatch(last?.id.orEmpty(), BATCH_SIZE).also { batch ->
-                            result = reduce(result, batch.map { HistoryItem.Refund(it) })
+                            val cashSales = batch.filter { it.cash }.mapNotNull { it.saleId }.distinct()
+                            val tenders = if (cashSales.isEmpty()) emptyMap() else saleDao.historyTenders(cashSales).groupBy { it.saleId }
+                            result = reduce(result, batch.map { HistoryItem.Refund(it, it.cashEnvironment(tenders)) })
                         }
                     }
                     keysetBatches<String> { last ->
@@ -356,6 +360,14 @@ internal inline fun <E> keysetBatches(next: (last: E?) -> List<E>) {
     } while (batch.size == BATCH_SIZE)
 }
 
+/** The history environment of a cash refund's original tender among [tenders] (keyed by sale ID); null otherwise. */
+internal fun RefundEntity.cashEnvironment(tenders: Map<String, List<SaleTenderEntity>>): String? =
+    tenders[saleId]
+        .orEmpty()
+        .firstOrNull { it.id == tenderId }
+        ?.environment
+        ?.takeIf { cash }
+
 /**
  * One bounded batch of candidate activity and the records needed to interpret it.
  *
@@ -375,9 +387,17 @@ data class HistoryBatch(
     /** Candidate's original record; null if a concurrent deletion removed it. */
     fun item(key: HistoryKey): HistoryItem? =
         when {
-            key.giftCard -> giftCards[key.id]?.let(HistoryItem::GiftCard)
-            key.refund -> refunds[key.id]?.let(HistoryItem::Refund)
-            else -> sales[key.id]?.let { HistoryItem.Sale(it, tenders[it.id].orEmpty()) }
+            key.giftCard -> {
+                giftCards[key.id]?.let(HistoryItem::GiftCard)
+            }
+
+            key.refund -> {
+                refunds[key.id]?.let { HistoryItem.Refund(it, it.cashEnvironment(tenders)) }
+            }
+
+            else -> {
+                sales[key.id]?.let { HistoryItem.Sale(it, tenders[it.id].orEmpty()) }
+            }
         }
 }
 
@@ -398,7 +418,7 @@ val HistoryItem.recordedEnvironment: String?
             }
 
             is HistoryItem.Refund -> {
-                refund.context?.historyEnvironment
+                refund.context?.historyEnvironment ?: cashEnvironment.takeIf { refund.cash }
             }
 
             is HistoryItem.GiftCard -> {

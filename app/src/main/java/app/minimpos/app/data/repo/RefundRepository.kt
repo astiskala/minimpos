@@ -115,33 +115,22 @@ class RefundRepository(
             return false
         }
         if (refund.cancellation) return true
-        val prior = refunds.filter { it.status != RefundStatus.FAILED && !it.cancellation }
-        val pending =
-            prior.filter { it.status != RefundStatus.REQUESTED }.fold(
-                0L,
-            ) { sum, priorRefund -> Math.addExact(sum, priorRefund.amountMinor) }
-        val remaining = sale.amountMinor - (sale.cashBackMinor ?: 0) - sale.refundedMinor - pending
+        val balance = RefundBalance(this)
         val approved = tenders.filter { it.approved }
-        if (refund.amountMinor !in 1..remaining || (approved.size > 1 && refund.tenderId == null)) return false
+        if (refund.amountMinor !in 1..balance.remainingMinor || (approved.size > 1 && refund.tenderId == null)) return false
         val id = refund.tenderId ?: return !refund.cash
         val tender = approved.firstOrNull { it.id == id } ?: return false
-        return tender.allows(refund, prior)
+        return tender.allows(refund, balance.of(tender))
     }
 
     private fun SaleTenderEntity.allows(
         refund: RefundEntity,
-        prior: List<RefundEntity>,
+        returns: TenderReturns,
     ): Boolean {
         val cashTender = kind == TenderKind.CASH
         if (refund.cash != cashTender) return false
         if (refund.originalTransactionId != (if (cashTender) id else poiTransactionId)) return false
-        val reserved =
-            prior
-                .filter { it.returnsTo(this) }
-                .fold(0L) { sum, priorRefund -> Math.addExact(sum, priorRefund.amountMinor) }
-        val balance = (authorisedMinor ?: 0) - (cashBackMinor ?: 0) - reserved
-        return refund.amountMinor in 1..balance &&
-            (!refund.full || (!cashTender && reserved == 0L && refund.amountMinor == authorisedMinor))
+        return refund.amountMinor in 1..returns.remainingMinor && (!refund.full || (!cashTender && returns.whole(refund.amountMinor)))
     }
 
     /**
@@ -253,10 +242,3 @@ class RefundRepository(
 /** An unreferenced refund's synchronous acquirer answer from [details], else the stored one; null for referenced refunds. */
 internal fun RefundEntity.acquirerAnswer(details: TransactionDetails?): String? =
     details?.acquirerResponseCode?.takeIf { unreferenced } ?: acquirerResponseCode
-
-/**
- * Whether this refund leg returns money to [tender]: it names the tender, or (recorded before refunds named their
- * tender) it reverses the tender's card transaction.
- */
-fun RefundEntity.returnsTo(tender: SaleTenderEntity): Boolean =
-    tenderId == tender.id || (tenderId == null && tender.kind == TenderKind.CARD && originalTransactionId == tender.poiTransactionId)

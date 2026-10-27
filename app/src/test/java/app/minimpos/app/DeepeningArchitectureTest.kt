@@ -4,6 +4,10 @@ import app.minimpos.app.ArchitectureTest.Companion.app
 import app.minimpos.app.ArchitectureTest.Companion.callTo
 import app.minimpos.app.ArchitectureTest.Companion.callToSubtypeOf
 import app.minimpos.app.ArchitectureTest.Companion.within
+import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.SaleTenderEntity
+import app.minimpos.app.data.repo.RefundBalance
+import app.minimpos.app.data.repo.returnsTo
 import app.minimpos.app.data.security.PinManager
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.AppSettings
@@ -116,6 +120,20 @@ class DeepeningArchitectureTest {
 
     private class CardFeatureViolation {
         fun actions() = setOf(ManagerAction.MANUAL_ENTRY)
+    }
+
+    @Test
+    fun `only the refund balance decides which returns count against a tender`() = refundBalance.check(app)
+
+    @Test
+    fun `refund balance ownership rejects a caller matching returns to tenders itself`() =
+        reject(listOf(refundBalance), RefundBalanceViolation::class.java)
+
+    private class RefundBalanceViolation {
+        fun reserved(
+            refund: RefundEntity,
+            tender: SaleTenderEntity,
+        ) = refund.returnsTo(tender)
     }
 
     @Test
@@ -335,6 +353,15 @@ class DeepeningArchitectureTest {
                     ).or(type(CardFeatureViolation::class.java)),
                 ).should()
                 .accessField(ManagerAction::class.java, ManagerAction.MANUAL_ENTRY.name)
+
+        // Staff review and the storing transaction once computed a tender's remaining balance separately, agreeing only
+        // by accident; both now ask RefundBalance, the one reading of which returns count against a sale or tender.
+        val refundBalance: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within(RefundBalance::class.java.name, "app.minimpos.app.data.repo.RefundBalanceKt"))
+                .should()
+                .callMethodWhere(callTo("app.minimpos.app.data.repo.RefundBalanceKt", "returnsTo"))
 
         // Gift cards once copied the payment lifecycle's send, abort and status check and dropped the late-answer
         // release; every runner of stored terminal requests now decides only what it stores, never how it is sent.

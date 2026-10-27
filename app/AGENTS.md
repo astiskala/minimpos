@@ -89,7 +89,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
 - \* Only `CashTenders` records cash tenders and gift-card cash handovers, and only `RefundLegs` records cash handed
   back; cash reaches neither Adyen nor a terminal, so the stored balance, allocation and review checks are its only
   safeguards. `TenderBalance` is the one allocation reading; returns of split sales go to every original tender through
-  `RefundablePayment.requests`.
+  `RefundablePayment.requests`. `RefundBalance` is the one return-balance reading, asked by review and again inside the
+  transaction storing a return.
 - Only `GiftCards` starts stored-value stages, each stored before sending and recovered with its original message
   category; `GiftCardActivity` alone decides what an activity still needs (check, continue, repair, handover, undo).
   Card cashback handovers also belong to `CashTenders`; approval never implies physical cash handover.

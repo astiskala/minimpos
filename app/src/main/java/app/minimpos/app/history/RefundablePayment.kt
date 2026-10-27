@@ -1,5 +1,6 @@
 package app.minimpos.app.history
 
+import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
@@ -7,10 +8,10 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.repo.RefundBalance
 import app.minimpos.app.data.repo.RefundedLine
 import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.repo.TenderAllocationJson
-import app.minimpos.app.data.repo.returnsTo
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.giftcard.GiftCardProvider
@@ -209,10 +210,13 @@ class RefundablePayment private constructor(
     val local: SaleWithLines?,
     val tender: SaleTenderEntity? = null,
 ) {
-    private val matchingRefunds get() =
-        local?.refunds.orEmpty().filter {
-            !it.cancellation && (tender == null || it.returnsTo(tender)) && it.status != RefundStatus.FAILED
-        }
+    /** The sale's return balance; null for a payment known only from its QR code. */
+    private val balance = local?.let(::RefundBalance)
+
+    /** This tender's share of [balance]; null for the whole sale. */
+    private val tenderReturns = tender?.let { balance?.of(it) }
+
+    private val matchingRefunds: List<RefundEntity> get() = tenderReturns?.returns ?: balance?.returns.orEmpty()
 
     /**
      * One reading per original tender that money can be returned to, in payment order: approved cards with a
@@ -230,21 +234,10 @@ class RefundablePayment private constructor(
         }
 
     /** Already refunded from this terminal; 0 when the sale is not [local]. */
-    val refundedMinor: Long get() =
-        if (tender == null) {
-            local?.sale?.refundedMinor ?: 0
-        } else {
-            matchingRefunds.filter { it.status == RefundStatus.REQUESTED }.fold(
-                0L,
-            ) { sum, refund -> Math.addExact(sum, refund.amountMinor) }
-        }
+    val refundedMinor: Long get() = tenderReturns?.acceptedMinor ?: balance?.acceptedMinor ?: 0
 
     /** Possibly sent returns reserve their original balance until resolved. */
-    val reservedMinor: Long get() =
-        matchingRefunds
-            .filter {
-                it.status != RefundStatus.REQUESTED
-            }.fold(0L) { sum, refund -> Math.addExact(sum, refund.amountMinor) }
+    val reservedMinor: Long get() = tenderReturns?.reservedMinor ?: balance?.reservedMinor ?: 0
 
     /** Original surcharge component; null when unreported or historical. */
     val surchargeMinor: Long? get() = tender?.surchargeMinor ?: local?.sale?.amountSurchargeMinor.takeIf { tender == null }
@@ -262,14 +255,8 @@ class RefundablePayment private constructor(
     val remainingMinor: Long get() = remaining()
 
     private fun remaining(): Long {
-        val own = (amountMinor - refundedMinor - reservedMinor).coerceAtLeast(0)
-        val sale = local?.sale ?: return own
-        val pending =
-            local.refunds
-                .filter {
-                    it.status.unresolved && !it.cancellation
-                }.fold(0L) { sum, refund -> Math.addExact(sum, refund.amountMinor) }
-        val total = (sale.amountMinor - (sale.cashBackMinor ?: 0) - sale.refundedMinor - pending).coerceAtLeast(0)
+        val own = (tenderReturns?.remainingMinor ?: (amountMinor - refundedMinor - reservedMinor)).coerceAtLeast(0)
+        val total = balance?.remainingMinor?.coerceAtLeast(0) ?: return own
         val tenders = if (legs.isEmpty()) total else legs.fold(0L) { sum, leg -> Math.addExact(sum, leg.remaining()) }
         return minOf(own, total, tenders)
     }
@@ -399,8 +386,7 @@ class RefundablePayment private constructor(
     }
 
     /** Whether returning [minor] reverses everything this card leg collected, which a full reversal sends. */
-    private fun whole(minor: Long): Boolean =
-        refundedMinor == 0L && reservedMinor == 0L && (tender?.cashBackMinor ?: 0) == 0L && minor == amountMinor
+    private fun whole(minor: Long): Boolean = tenderReturns?.whole(minor) == true
 
     /** Shares of chosen units' gross for the item tenders that paid for them, within balances and [amount]. */
     private fun earmarks(

@@ -52,7 +52,7 @@ class TapToPayGuideTest {
                 assertThat(steps.select("strong").eachText()).containsAtLeast(discover, connectionTest)
                 assertThat(steps.select("strong").eachText()).doesNotContain(apiTest)
             }
-            listOf("UnavailableService", "TEST", "LIVE", "UTC").forEach {
+            listOf("UnavailableService", "TEST", "LIVE").forEach {
                 assertThat(help.text()).contains(it)
             }
             listOf("1029_605", "GET /me", "null").forEach {

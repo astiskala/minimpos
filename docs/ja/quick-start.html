@@ -118,7 +118,7 @@
   別のお客様向け画面に対応。クラウド経由のオフライン処理はできません。</td></tr><tr><th scope="row"><a href="#tap-to-pay">スマートフォンの Tap to Pay</a></th>
   <td data-label="接続">インターネットと対応する NFC スマートフォン</td><td data-label="領収書">メール、共有。プリンターなし</td><td data-label="機能の制限">
   端末でのチップ、お客様向け画面、MOTO/MKE、オフライン処理、端末精算には非対応。</td></tr></tbody></table></details><p class="hint">端末の機能は、機種、決済方法、Adyen
-  の設定によって異なります。必要な操作を実機でテストしてください。シミュレーターでは実機の動作を検証できません。 <a href="using#capabilities">Adyen機能を確認</a>.</p>
+  の設定によって異なります。必要な操作を実機でテストしてください。 <a href="using#capabilities">Adyen機能を確認</a>.</p>
           <ul>
             <li>印刷にはプリンター内蔵の端末が必要です。プリンターがない場合は、領収書をメール送信または共有できます。</li>
             <li>バーコード、返金用 QR コード、設定コードの読み取りにはカメラが必要です。</li>
@@ -413,7 +413,7 @@
 </div>
           <p>任意の端末機能を使う前に、<a href="using#capabilities">Adyen機能</a>を確認し、実際の決済先でテストします。対象は<a href="using#terminal-tips">
             端末チップ</a>、<a href="using#terminal-checkout">一部承認、購入者向け入力、Giving、カード番号手入力</a>、<a href="using#offline">オフライン処理
-            </a>、<a href="using#reconciliation">端末集計照合</a>です。利用可否はAdyenの設定と決済先によって異なります。シミュレーターの結果は実端末での検証にはなりません。</p>
+            </a>、<a href="using#reconciliation">端末集計照合</a>です。利用可否はAdyenの設定と決済先によって異なります。</p>
           <ol>
             <li>使う予定の任意のフローだけを TEST で試します：<a href="using#preauth">予約金</a>、<a href="using#tips">領収書のチップ</a>、
               <a href="using#payment-links">決済リンク</a>、<a href="using#wallets">ウォレットのスキャン</a>
@@ -438,24 +438,25 @@
         </section>
         <section id="try">
           <h2>シミュレーターを試す</h2>
-          <p>オフライン警告を試すには、<strong>設定 › シミュレーター</strong>で<strong>オフライン承認</strong>
-            （ストア・アンド・フォワード）をオンにします。承認された模擬販売にはPSP参照IDがなく、未確認バッチが報告されます。取引履歴で販売を開き、<a href="using#reconciliation">端末集計照合
-            </a>も試してください。これはデモであり、実際のオフライン承認や後からのAdyenへのアップロードの検証ではありません。</p>
           <p>Adyen アカウントや端末がなくても Mini mPOS を試せます。カードへの請求はありません。</p>
           <ol>
             <li>Android 9 以降のスマートフォンかエミュレーターに<a href="#install">アプリをインストール</a>します。</li>
-            <li>ようこそ画面で<strong>デモを試す</strong>を選び、<strong>続ける</strong>をタップします。ほかに、設定ヘルパーや別のデバイスの<strong>設定コードを読み取る
-              </strong>と、<strong>Adyen に接続</strong>があります。Adyen 端末では接続、それ以外ではデモが最初に選択されています。</li>
-            <li><strong>設定 › シミュレーター</strong>で、決済結果、待ち時間、プリンターの有無を選びます。</li>
+            <li>ようこそ画面で<strong>設定コードを読み取る</strong>や<strong>Adyen に接続</strong>ではなく<strong>デモを試す</strong>を
+              選び、<strong>続ける</strong>をタップします。</li>
+            <li><strong>設定 › シミュレーター</strong>で、決済結果、待ち時間、プリンターの有無を選びます。
+              <strong>オフライン承認</strong>をオンにすると、取引履歴と<a href="using#reconciliation">端末集計照合</a>で
+              オフラインの警告を確認できます。</li>
           </ol>
-          <p>サンプルの商品と履歴にはデモと表示されます。サンプルがすでにあっても、<strong>サンプルデータを追加</strong>
-            を実行するたびにレシートの事業者情報を架空のカフェ情報に置き換えます。レシートのレイアウトと送信設定は変更しません。サンプルはデモの日次合計とレポートに含まれますが、実際の決済ではありません。<strong>設定 ›
-            データと転送</strong>で<strong>サンプルデータを追加</strong>または<strong>サンプルデータを削除</strong>
-            を使えます。削除しても、ご自身の商品、履歴、設定は残ります。オフラインのデモリンクは<a href="using#payment-links">決済リンク</a>を参照してください。</p>
-          <p>接続するには、<strong>設定 › シミュレーター</strong>の<strong>実際の決済を設定</strong>をタップします。ショートカットでサンプルやレシートを確認し、<strong>設定に進む
-            </strong>をタップします。設定を開くだけではデータは変わりません。TEST や LIVE
-            への切り替えを確認すると、未完了の操作を含むすべてのローカル履歴が削除されます。サンプル商品とレシート情報は残ります。不要なサンプルは別途削除し、実際の決済前に架空の店舗情報を確認してください。まず TEST
-            で検証します。</p>
+          <p><strong>設定 › データと転送</strong>で<strong>サンプルデータを追加</strong>または<strong>サンプルデータを削除</strong>を
+            使います。サンプルにはデモと表示されます。サンプルはデモの日次合計とレポートに含まれます。追加すると領収書の事業者情報が
+            架空のカフェに置き換わり、削除してもご自身の商品、履歴、設定は残ります。</p>
+          <p>決済リンクは API 認証情報なしでオフラインで動作し、画面と領収書にはデモと表示されます。この QR コードで支払いはできません。
+            完了させるには<strong>支払いをシミュレート</strong>をタップします。</p>
+          <p>シミュレーターは Mini mPOS の動作を示すもので、端末や Adyen アカウントの対応状況は示しません。音声ガイド、オフライン承認、
+            Adyen 機能などは模擬的に再現されるだけなので、実際の TEST 端末で確認してから利用してください。</p>
+          <p>接続するには、<strong>設定 › シミュレーター</strong>で<strong>実際の決済を設定</strong>、<strong>設定に進む</strong>の順に
+            タップします。TEST や LIVE を確定するとローカル履歴はすべて削除されます。サンプル商品と領収書の情報は残るため、
+            実際の決済の前にサンプルを削除し、事業者情報を確認してください。まず TEST で検証します。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
       </div>

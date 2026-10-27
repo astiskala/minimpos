@@ -55,9 +55,11 @@ restores one before each named flow:
   `settings`: terminal-setup, tax, terminal-tipping.
 - `transfer`: transfer, export; `partial`: partial-payment; `gratuity`: tip-receipt, tip; `tax_dialog`: tax-dialog.
 - `offline`: offline-payment, reconciliation.
+- `split`: split, split-cash; `gift_cards`: gift-cards; `refund_start`: refund-options; `logo`: receipt-logo.
 - `ams1`: sale and the sale-ams1 image (raw 480×872). Both terminal sizes share the raw processing directory.
 
-`settings LANG KEY` opens a Settings section past the admin PIN; `expand_receipt` expands the open simulated printer.
+`settings LANG KEY` opens a Settings section past the admin PIN; `expand_receipt` expands the open simulated printer
+and `close_receipt` closes it without leaving the underlying screen.
 Add a named flow there for each screenshot you
 recapture by hand twice, rather than a temporary script. Do not edit the running shell script during a capture.
 Launch waits for localized Home controls; a Home capture checks them again and refuses splash screens.
@@ -115,7 +117,9 @@ Seeded before the first launch (debug builds only), piped in with
   Coffee/Food/Retail, the beans GST-free with a barcode; plus "Catering deposit" $200.00 GST 10% in a Bookings category
   as a pre-authorisation product. This is the English fixture; use `app/src/main/assets/sample-data.json` for each
   other language's native café, realistic prices and tax examples. JPY minor units are whole yen, not hundredths.
-- The admin PIN (1357) is set in the app.
+- The admin PIN (1357) is set in the app. Protected actions such as referenced refunds need a Manager PIN once an admin
+  PIN exists, so `batch` gives each fixture the demo Manager PIN (2468) through Settings › Security before its flows
+  (`manager_fixture`), and flows enter it when asked.
 - Back up the database through SQLite, including committed WAL contents, before preparing localized copies. Recompute
   line amounts, net/tax totals, tips, authorizations, captures, tenders, refunds and synthetic card-receipt totals in
   the
@@ -182,6 +186,16 @@ closes. Always restore the market's device locale when recapturing only part of 
 11. `checkout.png` shows Charge token: the main fixture's first sale saved a token under its customer reference, so
     the button appears once the lookup answers. Localized fixtures need that sale's references in the language's
     numeric form (`1042`, `2077`).
+12. `split.png` and `split-cash.png`: with terminal tipping off, the main cart's checkout scrolled to Split or pay
+    cash, then Shares (two equal shares, Card and Cash offered); then Cash for the first share with the cash received
+    rounded up to the next 10 major units (1,000 minor units), so the change shows. Nothing is confirmed.
+13. `gift-cards.png`: Home › Gift cards with Givex (swiped or keyed in) and SVS configured in `payment.giftCards`,
+    before choosing an action. The fixtures have no Manager PIN, so value changes would show it as missing.
+14. `refund-options.png`: Home › Refund, showing Scan receipt, Choose a payment and Refund without receipt.
+15. `receipt-logo.png`: Settings › Receipts › Choose image with `receipt-logo.png` from this folder (a text-free
+    coffee cup rendered from `receipt-logo.svg`, so every language's café can use it) pushed to Downloads and picked
+    in the document picker by its file name; the logo editor before saving. The checkout and gratuity flows save the
+    same mark first so their simulated receipts demonstrate the logo too.
 
 ## Driving the UI
 
@@ -191,8 +205,8 @@ closes. Always restore the market's device locale when recapturing only part of 
 - The PIN pad needs OK after the digits.
 - Expand the printer sheet by dragging its handle upward, not by scrolling the receipt; this keeps the business
   details at the top. Find the handle's bounds first: starting above it taps the scrim and dismisses the sheet.
-  Press Back twice from the expanded sheet; the first only collapses it. A merchant copy comes
-  from the sale's history detail (Print merchant copy); the result screen's Print receipt prints the cardholder copy.
+  Use `close_receipt` to stop Back as soon as the sheet closes; it may collapse before dismissing. A merchant copy
+  comes from the sale's history detail (Print merchant copy); the result screen's Print receipt prints the cardholder copy.
 - Focusing a text field scrolls Checkout to its end; swipe to show Save card and its full consent explanation,
   with the cart totals above. Avoid stopping halfway through a text row or leaving a switch behind fixed actions.
   Recheck this in every language: Japanese consent is longer and needs a smaller scroll adjustment.

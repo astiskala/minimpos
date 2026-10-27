@@ -1,7 +1,10 @@
 package app.minimpos.app.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -19,7 +22,9 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.feature.refund.RefundScreen
 import app.minimpos.app.feature.refund.RefundViewModel
+import app.minimpos.app.feature.sale.HoldNotes
 import app.minimpos.app.ui.components.LocalAppContainer
+import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.MiniMposTheme
@@ -50,6 +55,39 @@ class SurchargeUiTest {
     @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
     fun `Traditional Chinese original card and fee review fit AMS1`() = review()
 
+    @Test
+    fun `result notes omit absent fees and tips and retain positive components`() {
+        val sale =
+            mutableStateOf(
+                SaleEntity(
+                    id = "plain",
+                    createdAt = 100,
+                    currency = "AUD",
+                    taxMode = "INCLUSIVE",
+                    netMinor = 1000,
+                    taxMinor = 0,
+                    totalMinor = 1000,
+                    status = SaleStatus.APPROVED,
+                    merchantReference = "PLAIN",
+                ),
+            )
+        compose.setContent {
+            MiniMposTheme {
+                Column { HoldNotes(sale.value, rememberMoneyFormatter("AUD")) }
+            }
+        }
+        val surcharge = env.context.getString(R.string.surcharge_label)
+        val tip = env.context.getString(R.string.detail_tip, "$10.00", "$1.00")
+        compose.onNodeWithText(surcharge).assertDoesNotExist()
+        compose.onNodeWithText(env.context.getString(R.string.surcharge_unknown)).assertDoesNotExist()
+        compose.runOnIdle { sale.value = sale.value.copy(surchargeMinor = 0, tipMinor = 0) }
+        compose.onNodeWithText(surcharge).assertDoesNotExist()
+        compose.onNodeWithText(env.context.getString(R.string.detail_tip, "$10.00", "$0.00")).assertDoesNotExist()
+        compose.runOnIdle { sale.value = sale.value.copy(surchargeMinor = 50, tipMinor = 100) }
+        compose.onNodeWithText(surcharge).assertIsDisplayed()
+        compose.onNodeWithText(tip).assertIsDisplayed()
+    }
+
     private fun review() {
         env.useSimulator()
         val container = env.container
@@ -65,6 +103,7 @@ class SurchargeUiTest {
                 }
             }
             compose.awaitCondition("original card loaded") { vm.state.value.original != null }
+            compose.awaitCondition("refund action laid out") { compose.onNodeWithTag("startRefund").isDisplayed() }
             compose.onNodeWithTag("startRefund").assertIsDisplayed()
             // Both original cards are proposed their own share; neither takes the other's balance.
             assertThat(vm.state.value.refundMinor).isEqualTo(1200)

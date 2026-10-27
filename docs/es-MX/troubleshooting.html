@@ -202,24 +202,18 @@
               elegibles deja el botón oculto. Consulta la tienda asignada, la moneda actual y
               <a href="quick-start#credentials">Roles de la clave API</a>. Tap to Pay y preautorizaciones no ofrecen
               esta acción.</p></dd></div>
-            <div><dt>El descubrimiento de billetera informa un error</dt><dd><p>El error aparece sólo en Configuración y
-              no bloquea los pagos ordinarios. Solucione problemas de credenciales/entorno o acceso de lectura allí. Una
-              falla de actualización temporal mantiene la última lista verificada para la configuración sin cambios; una
-              verificación vacía exitosa o un error de acceso lo elimina. La configuración se verifica en el
-              inicio/cambios de configuración y en la actualización manual, no antes de cada venta.</p></dd></div>
-            <div><dt>El código no es válido o no llega ningún código</dt><dd><p>Utilice el código de pago del comprador,
-              no un perfil, transferencia o recibo QR. Elija la billetera correcta. El escaneo nativo finaliza después
-              de 30 segundos: toque <strong>Escanear de nuevo</strong> o <strong>Usar cámara</strong>. Permitir el
-              permiso de la cámara cuando se solicite. Volver desde el fondo requiere un nuevo escaneo.</p></dd></div>
-            <div><dt>Se rechaza el guardado o no se crea ningún token</dt><dd><p>Siga el resultado del pago. Un pago
-              aprobado permanece aprobado sin un token guardado. Sólo después de un rechazo concluyente, vuelva a
-              finalizar la compra, apague <strong>Guardar tarjeta</strong> e iniciar explícitamente otro análisis si
-              corresponde. No hay pago de reemplazo automático. Para <strong>Resultado desconocido</strong>,
-              <a href="#unknown">comprobar la transacción original</a> en cambio.</p></dd></div>
+            <div><dt>El descubrimiento de billetera informa un error</dt><dd><p>El error solo aparece en Configuración y no
+              bloquea los pagos con tarjeta. Corrija allí la credencial, el entorno o el acceso de lectura y actualice. Una
+              falla temporal conserva las últimas billeteras verificadas.</p></dd></div>
+            <div><dt>El código no es válido o no llega ningún código</dt><dd><p>Use el código de pago del comprador, no un
+              QR de perfil, transferencia o recibo, y elija la billetera correcta. Un escaneo del terminal termina a los 30
+              segundos: toque <strong>Escanear de nuevo</strong> o <strong>Usar cámara</strong>.</p></dd></div>
+            <div><dt>Se rechaza el guardado o no se crea ningún token</dt><dd><p>Un pago aprobado sigue aprobado sin token
+              guardado. Tras un rechazo, desactive <strong>Guardar tarjeta</strong> y vuelva a escanear si corresponde. Para
+              <strong>Resultado desconocido</strong>, <a href="#unknown">compruebe la transacción original</a>.</p></dd>
+              </div>
           </dl>
-          <p>Ver <a href="using#wallets">el procedimiento de pago de billetera</a>. La billetera solicitada por History
-            es una intención, no una prueba de que el pago se realizó correctamente o de que Adyen utilizó ese método.
-            </p>
+          <p>Consulte <a href="using#wallets">el procedimiento de pago con billetera</a>.</p>
           <p class="back-to-contents"><a href="#contents">Volver al contenido</a></p>
         </section>
         <section id="connection">
@@ -299,11 +293,7 @@
                   <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Requisitos de la
                   aplicación Adyen Payments</a>.</p>
                 <p>La clave de cliente debe pertenecer a la misma credencial utilizada para el registro.</p>
-                <p>Use <strong>Compartir informe con datos sensibles ocultos</strong> para compartir exactamente las
-                  filas que se muestran: versión de la aplicación, resultados de acceso y conexión de API con su tiempo
-                  de verificación UTC, integración y entorno, cuenta, tienda, instalación y identificadores de clave
-                  compartida, Android, versiones del dispositivo y de la aplicación Adyen Payments, y para Tap to Pay,
-                  la clave de cliente y los controles de registro con la identidad de credencial verificada.</p></dd>
+                <p>Al pedir ayuda, use <strong>Compartir informe con datos sensibles ocultos</strong>.</p></dd>
                   </div>
             <div id="key-setup"><dt>"La nueva clave está guardada. Actualice la configuración de este terminal"</dt>
               <dd>
@@ -386,8 +376,7 @@
           <dl class="fixes">
             <div><dt>La compra no tiene <strong>Crear enlace de pago</strong></dt>
               <dd>
-<p><span class="fix-label">Arreglar</span>Complete la configuración de Checkout API en <strong>Configuración › Terminal</strong>. Los enlaces se ofrecen únicamente para ventas. Para demostraciones sin conexión, consulte
-  <a href="using#payment-links">enlaces de pago</a>.</p><details class="cause"><summary>causa</summary><p>La
+<p><span class="fix-label">Arreglar</span>Complete la configuración de Checkout API en <strong>Configuración › Terminal</strong>. Los enlaces se ofrecen únicamente para ventas. El <a href="quick-start#try">simulador</a> ofrece enlaces de demostración sin configuración.</p><details class="cause"><summary>causa</summary><p>La
   configuración de pago API está incompleta o el pago es para una autorización previa o una propina en el recibo.</p>
   </details></dd></div>
             <div><dt>Todavía se muestra un enlace pago <strong>En espera de pago</strong></dt>

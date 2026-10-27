@@ -87,7 +87,7 @@
   </li><li><a href="#email">Recibos por e-mail</a></li></ul></li><li><a href="#history">Histórico</a><ul><li>
   <a href="#close-day">Fechar o dia</a></li><li><a href="#reconciliation">Reconciliar com o terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Verifique as capacidades da Adyen</a></li><li>
-  <a href="#terminal-checkout">Fluxos de trabalho de checkout opcionais</a><ul><li><a href="#audio-guidance">Aceitar pagamentos com orientação por áudio</a></li><li><a href="#mexican-installments">Parcelamento de cartões no México</a></li><li><a href="#partial-payments">
+  <a href="#terminal-checkout">Fluxos de trabalho de checkout opcionais</a><ul><li><a href="#audio-guidance">Aceitar pagamentos com orientação por áudio</a></li><li><a href="#surcharges">Sobretaxas</a></li><li><a href="#mexican-installments">Parcelamento de cartões no México</a></li><li><a href="#partial-payments">
   Pagamentos parciais</a></li><li><a href="#split-payments">Divisão e dinheiro</a></li><li><a href="#cashback">Saque com compra</a></li><li><a href="#cashout">Saque</a></li><li><a href="#meal-vouchers">Aceitar vale-refeição</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
   caridade</a></li><li><a href="#keyed-entry">MOTO e MKE</a></li></ul></li><li><a href="#offline">Pagamentos off-line
   </a></li><li><a href="#wallets">Digitalizar códigos de carteira</a></li><li><a href="#shoppers">Referências e cartões
@@ -103,7 +103,7 @@
   </li><li><a href="#email">Recibos por e-mail</a></li></ul></li><li><a href="#history">Histórico</a><ul><li>
   <a href="#close-day">Fechar o dia</a></li><li><a href="#reconciliation">Reconciliar com o terminal</a></li></ul></li>
   <li class="advanced-start"><a href="#capabilities">Verifique as capacidades da Adyen</a></li><li>
-  <a href="#terminal-checkout">Fluxos de trabalho de checkout opcionais</a><ul><li><a href="#audio-guidance">Aceitar pagamentos com orientação por áudio</a></li><li><a href="#mexican-installments">Parcelamento de cartões no México</a></li><li><a href="#partial-payments">
+  <a href="#terminal-checkout">Fluxos de trabalho de checkout opcionais</a><ul><li><a href="#audio-guidance">Aceitar pagamentos com orientação por áudio</a></li><li><a href="#surcharges">Sobretaxas</a></li><li><a href="#mexican-installments">Parcelamento de cartões no México</a></li><li><a href="#partial-payments">
   Pagamentos parciais</a></li><li><a href="#split-payments">Divisão e dinheiro</a></li><li><a href="#cashback">Saque com compra</a></li><li><a href="#cashout">Saque</a></li><li><a href="#meal-vouchers">Aceitar vale-refeição</a></li><li><a href="#shopper-display">Tela do cliente</a></li><li><a href="#giving">Doações de
   caridade</a></li><li><a href="#keyed-entry">MOTO e MKE</a></li></ul></li><li><a href="#offline">Pagamentos off-line
   </a></li><li><a href="#wallets">Digitalizar códigos de carteira</a></li><li><a href="#shoppers">Referências e cartões
@@ -134,10 +134,8 @@
               os preços dos seus produtos depois.</p>
           </div>
           <p id="settings-navigation">
-            Na tela inicial, toque no ícone <strong>Configurações</strong> no canto superior direito para abrir as
-            configurações principais. Insira o PIN de administrador se solicitado. Abra <strong>Produtos</strong> ali;
-            Voltar retorna a Configurações e depois à tela inicial. As configurações e a conexão ficam disponíveis
-            antes de configurar os pagamentos.
+            Na tela inicial, toque no ícone <strong>Configurações</strong> no canto superior direito e digite o PIN de
+            administrador, se solicitado. <strong>Produtos</strong> fica em Configurações.
           </p>
           <h3 id="products">Adicionar produtos</h3>
           <ol>
@@ -148,22 +146,16 @@
               pré-autorizações.</li>
           </ol>
           <h3 id="staff">Configurar os PINs da equipe</h3>
-          <p>Use <strong>Definir PIN</strong> para começar e <strong>Alterar PIN de administrador</strong> ou
-            <strong>Remover PIN de administrador</strong> para alterar o acesso de administrador. Use <strong>Definir
-            PIN de gerente</strong> para ações protegidas.</p>
-          <p>Em Configurações › Segurança, defina um PIN de administrador para proteger Configurações e Produtos.
-            Escolha quando o acesso será bloqueado novamente.</p>
-          <p>Em <strong>Permissões do gerente</strong>, escolha quais ações exigem o PIN de gerente separado. Ações semelhantes
-            compartilham um controle; reembolsos com referência, sem recibo e em dinheiro têm controles separados.
-            Defina um PIN de gerente para ações protegidas. O PIN de administrador não as autoriza.</p>
-          <p>Sem PIN de administrador, todos podem usar todas as ações. Depois de defini-lo, ações protegidas ficam
-            bloqueadas até definir um PIN de gerente. Ações públicas continuam disponíveis mesmo com um PIN de
-            gerente.</p>
-          <p>Remover o PIN de gerente mantém as permissões e as ações protegidas bloqueadas. Remover o PIN de
-            administrador também remove o PIN de gerente e libera todas as ações para todos; as escolhas são mantidas.
-            Várias tentativas incorretas bloqueiam temporariamente a entrada do PIN.</p>
-          <p>A aprovação do gerente mencionada nos guias segue essas permissões. As consultas de status de operações
-            pendentes continuam disponíveis. Recibos automáticos seguem suas configurações.</p>
+          <p>Em <strong>Configurações › Segurança</strong>, toque em <strong>Definir PIN</strong> para proteger
+            Configurações e Produtos com um PIN de administrador e escolha quando o acesso volta a ser bloqueado. Toque em
+            <strong>Definir PIN de gerente</strong> para as ações protegidas; o PIN de administrador não as aprova. Depois, use
+            <strong>Alterar PIN de administrador</strong> ou <strong>Remover PIN de administrador</strong>.</p>
+          <p>Em <strong>Permissões do gerente</strong>, escolha quais ações exigem o PIN de gerente. Ações semelhantes
+            compartilham um interruptor; reembolsos referenciados, sem recibo e em dinheiro têm cada um o seu. A aprovação
+            do gerente nestes guias segue essas escolhas.</p>
+          <p>Sem PIN de administrador, todas as ações ficam liberadas. Depois que ele existe, as ações protegidas ficam
+            bloqueadas até que um PIN de gerente seja definido. Remover o PIN de administrador também remove o PIN de
+            gerente; as escolhas de permissões são mantidas. Vários PINs incorretos bloqueiam a digitação por um tempo.</p>
           <p><a href="troubleshooting#access">Ajuda com o PIN</a></p>
           <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
         </section>
@@ -182,20 +174,19 @@
           </ol>
           <div class="callout callout-note" role="note">
             <p class="callout-title">Nota</p>
-            <p>O terminal lê o cartão; Mini mPOS nunca recebe detalhes completos do cartão. Dependendo do terminal e da
-              sua conta de comerciante, os clientes podem inserir ou tocar em um cartão, ou tocar em um telefone ou
-              relógio. Para pagamentos sem contato, o cartão ou telefone deve permanecer próximo ao símbolo sem contato
-              até que o terminal confirme. Com Tap to Pay, siga as instruções no aplicativo Adyen Payments.</p>
+            <p>Conforme o terminal e sua conta de comerciante, os clientes inserem ou aproximam um cartão, ou aproximam
+              um celular ou relógio. Com o Tap to Pay, o app Adyen Payments orienta o cliente.</p>
           </div>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">Aviso</p>
             <p><strong>Resultado desconhecido</strong> não significa que o pagamento falhou.
               <a href="troubleshooting#unknown">Verifique o pagamento original</a> antes de cobrar novamente.</p>
           </div>
-          <p>Referências de clientes, salvamento de cartões e gorjetas são opcionais; veja <a href="#shoppers">
-            referências e cartões salvos</a>. Para permitir que os clientes paguem no próprio telefone, use um
-            <a href="#payment-links">link de pagamento</a>. Se um pagamento for recusado, consulte
-            <a href="troubleshooting#declines">pagamentos recusados</a>.</p>
+          <p>Referências do cliente e salvamento de cartões são opcionais; veja
+            <a href="#shoppers">referências e cartões salvos</a>. Para dividir a conta ou aceitar dinheiro,
+            cartões-presente ou vale-refeição, veja os <a href="#terminal-checkout">fluxos de pagamento opcionais</a>.
+            Para que os clientes paguem no próprio celular, use um <a href="#payment-links">link de pagamento</a>. Se um
+            pagamento for recusado, veja <a href="troubleshooting#declines">pagamentos recusados</a>.</p>
           <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
         </section>
         <section id="refund">
@@ -215,33 +206,39 @@
               original neste dispositivo.</li>
             <li>Confirme o reembolso e insira o Gerente PIN se solicitado.</li>
           </ol>
+          <figure class="guide-shot">
+            <a class="screenshot-link" href="../images/pt-BR/refund-options.png" aria-label="Abrir captura no tamanho original: Demonstração do simulador em português do Brasil: opções de reembolso: digitalizar o recibo, escolher um pagamento ou reembolsar sem recibo">
+              <div class="terminal terminal-s1f2">
+              <img src="../images/pt-BR/refund-options.png" width="540" height="960" loading="lazy" alt="Demonstração do simulador em português do Brasil: opções de reembolso: digitalizar o recibo, escolher um pagamento ou reembolsar sem recibo" decoding="async">
+              </div></a>
+            <figcaption class="fine">Demonstração do simulador em português do Brasil.<span class="shot-control">Reembolso sem recibo</span><a class="screenshot-link shot-expand" href="../images/pt-BR/refund-options.png">Abrir captura no tamanho original</a></figcaption>
+          </figure>
           <p>Esses reembolsos estão vinculados ao pagamento original. Reembolse links de pagamento pagos na Customer
             Area.</p>
-          <p id="split-refunds">Uma venda dividida é reembolsada aos pagamentos originais. O Mini mPOS propõe quanto volta para cada cartão e quanto
-            dinheiro devolver; toque em um pagamento para ajustá-lo dentro do que ele pode devolver. Os cartões são
-            reembolsados primeiro, um de cada vez, e depois o dinheiro. Devolver dinheiro exige um PIN de gerente. Se um
-            reembolso no cartão não for aceito, nada mais é devolvido; abra a venda para revisar o restante.</p>
+          <p id="split-refunds">Uma venda dividida é reembolsada para seus pagamentos originais. O Mini mPOS propõe quanto
+            devolver a cada cartão e quanto dinheiro entregar; toque em um pagamento para ajustá-lo. Os cartões são
+            reembolsados primeiro, um de cada vez, e depois o dinheiro, que exige um PIN de gerente. Se um reembolso no
+            cartão não for aceito, nada mais é devolvido; abra a venda para ver o que falta.</p>
+          <p>Uma venda com <a href="#surcharges">sobretaxa</a> informada devolve primeiro os valores de
+            compra, depois a gorjeta e por fim a sobretaxa; um reembolso total inclui a sobretaxa restante.</p>
           <h3 id="unreferenced-refunds">Reembolso sem recibo</h3>
-          <p>Use <strong>Reembolso sem recibo</strong> somente quando não houver pagamento a reembolsar, como uma
-            devolução sem recibo. Ele devolve um valor ao cartão apresentado pelo cliente e não está vinculado a nenhum
+          <p>Use <strong>Reembolso sem recibo</strong> somente quando não houver pagamento para reembolsar, como uma
+            devolução sem recibo. Ele devolve um valor ao cartão apresentado pelo comprador e não está vinculado a nenhum
             pagamento, então o Mini mPOS não pode verificar o que foi pago. Você é responsável por reembolsos errados ou
             repetidos.</p>
-          <p>Ele começa desativado. Peça à Adyen para habilitar reembolsos não referenciados para a loja e defina o limite
-            de reembolso da Adyen na Customer Area. Depois, em Configurações › Pagamentos, ative <strong>Permitir
-            reembolsos sem recibo</strong>, defina seu próprio <strong>Limite de reembolso</strong> e um PIN de gerente.
-            O Mini mPOS usa a loja e o país que a Adyen verificou para o terminal. A Adyen não permite esses reembolsos
-            para lojas no Brasil, México, Austrália, Malásia, Singapura, Hong Kong ou Índia, nem para carteiras de QR code
-            como Alipay ou WeChat Pay. Terminais de pagamento conectados localmente ou pela nuvem são compatíveis; o Tap
-            to Pay não é oferecido.</p>
-          <p>Toque em <strong>Reembolso sem recibo</strong>, insira o valor, escolha um motivo, confirme e aprove com o PIN
-            de gerente; o cliente então apresenta o cartão. <strong>Reembolso solicitado</strong> significa que a Adyen
-            recebeu a solicitação; <strong>Reembolso aprovado</strong> significa que o adquirente aprovou na hora. Em
-            ambos os casos, a Adyen confirma o resultado na Customer Area. O histórico, os recibos e o relatório diário
-            mostram esses reembolsos separadamente; concilie-os manualmente.</p>
+          <p>Peça à Adyen para habilitar reembolsos não referenciados para a loja e defina o limite de reembolso da Adyen
+            no Customer Area. Depois, em Configurações › Pagamentos, ative <strong>Permitir reembolsos sem recibo</strong>,
+            defina seu próprio <strong>Limite de reembolso</strong> e um PIN de gerente. A Adyen não permite esses
+            reembolsos em alguns países nem para carteiras com QR code; o Mini mPOS verifica a loja que a Adyen confirmou
+            para o terminal.</p>
+          <p>Toque em <strong>Reembolso sem recibo</strong>, digite o valor, escolha um motivo, confirme e aprove com o PIN
+            de gerente; em seguida, o comprador apresenta o cartão. <strong>Reembolso aprovado</strong> significa que o
+            adquirente aprovou na hora; <strong>Reembolso solicitado</strong> significa que a Adyen recebeu a solicitação.
+            O histórico, os recibos e o relatório diário mostram esses reembolsos separadamente; concilie-os
+            manualmente.</p>
           <p>Se o suporte da Adyen configurou um atraso de reembolso, ative <strong>Atraso de reembolso
-            configurado</strong>. Enquanto o atraso durar, abra o reembolso e toque em <strong>Cancelar reembolso</strong>.
-            Um cancelamento solicitado significa que a Adyen o recebeu; confira na Customer Area se o reembolso foi
-            interrompido.</p>
+            configurado</strong>. Enquanto durar o atraso, abra o reembolso e toque em <strong>Cancelar
+            reembolso</strong>; depois verifique no Customer Area se ele foi interrompido.</p>
           <p><a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/unreferenced">Adyen: Unreferenced refunds</a> · <a href="https://docs.adyen.com/point-of-sale/basic-tapi-integration/refund-payment/cancel-unreferenced">Adyen: Cancel an unreferenced
             refund</a></p>
           <div class="callout callout-important" role="note">
@@ -284,24 +281,27 @@
             <dt>Caracteres por linha</dt><dd>32 por padrão, para rolos de recibos estreitos. Escolha a largura da sua
               impressora com um teste de impressão.</dd>
           </dl>
-          <p id="receipt-logo">Em <strong>Configurações › Recibos › Logotipo</strong>, escolha uma imagem PNG, JPEG ou
-            WebP, ou envie pelo <a href="setup">assistente de configuração</a> se o dispositivo não tiver seletor de
-            arquivos. O assistente pode enviar apenas um logotipo de recibo.</p>
-          <p>Confira a prévia em preto e branco. <strong>Estilo</strong> oferece Automático, Logotipo ou Foto; ajuste
-            Intensidade, Inverter e Recortar margens se necessário. <strong>Tamanho</strong> oferece Grande ou Pequeno.
-            Salve quando a prévia estiver correta. Desative <strong>Imprimir nome do estabelecimento</strong> se o
-            logotipo já o incluir.</p>
-          <p>O logotipo aparece nos recibos impressos, enviados por e-mail e compartilhados, e na prévia. Reimpressões e
-            reenvios usam o logotipo atual. Para ajustá-lo, escolha novamente a imagem original; use Remover logotipo
-            para apagá-lo.</p>
+          <p id="receipt-logo">Em <strong>Configurações › Recibos › Logotipo</strong>, escolha uma imagem PNG, JPEG ou WebP. Se o dispositivo
+            não tiver seletor de arquivos, envie uma pelo <a href="setup">auxiliar de configuração</a>, sozinha ou com
+            outras configurações. Confira a prévia em preto e branco: <strong>Estilo</strong> escolhe Automático, Logotipo
+            ou Foto, e Escuridão, Inverter e Recortar margens fazem o ajuste fino. Escolha um <strong>Tamanho</strong>
+            grande ou pequeno e salve. Desative <strong>Imprimir nome do estabelecimento</strong> se o logotipo já o
+            incluir.</p>
+          <p>O logotipo aparece nos recibos impressos, enviados por e-mail e compartilhados, inclusive reimpressões. Para
+            ajustá-lo, escolha de novo a imagem original; use Remover logotipo para apagá-lo.</p>
+          <figure class="guide-shot">
+            <a class="screenshot-link" href="../images/pt-BR/receipt-logo.png" aria-label="Abrir captura no tamanho original: Demonstração do simulador em português do Brasil: prévia em preto e branco de um logotipo de xícara de café">
+              <div class="terminal terminal-s1f2">
+              <img src="../images/pt-BR/receipt-logo.png" width="540" height="960" loading="lazy" alt="Demonstração do simulador em português do Brasil: prévia em preto e branco de um logotipo de xícara de café" decoding="async">
+              </div></a>
+            <figcaption class="fine">Demonstração do simulador em português do Brasil.<span class="shot-control">Logotipo</span><a class="screenshot-link shot-expand" href="../images/pt-BR/receipt-logo.png">Abrir captura no tamanho original</a></figcaption>
+          </figure>
           <h3 id="language-receipts">Definir o idioma</h3>
-          <p>O aplicativo oferece inglês, chinês simplificado, chinês tradicional, japonês, português do Brasil,
-            espanhol e francês. Escolha <strong>Configurações › Idioma</strong> para substituir o idioma neste
-            dispositivo. A mudança se aplica imediatamente ao texto do aplicativo e às etiquetas de recibos geradas pelo
-            aplicativo; o texto salvo do comerciante, os nomes dos produtos, as configurações de moeda e impostos
-            permanecem inalterados. <strong>Seguir dispositivo</strong> usa o idioma do dispositivo no Android 12 ou
-            anterior, ou a escolha de idioma por aplicativo do Android no Android 13 ou posterior. As linhas de
-            recebimento do cartão Adyen seguem o idioma de recebimento do próprio terminal.</p>
+          <p>O app está disponível em inglês, chinês simplificado, chinês tradicional, japonês, português do Brasil,
+            espanhol e francês. <strong>Configurações › Idioma</strong> muda na hora o texto do app e os rótulos dos
+            recibos neste dispositivo; o texto salvo do estabelecimento e os nomes de produtos não mudam.
+            <strong>Seguir dispositivo</strong> usa o idioma do Android para o app. As linhas de cartão da Adyen seguem o
+            idioma de recibos do terminal.</p>
           <h3 id="email">Configurar recibos de e-mail</h3>
           <ol>
             <li>Abrir <strong>Configurações › Recibos por e-mail</strong>. Escolha seu provedor ou insira o servidor
@@ -330,9 +330,8 @@
         <section id="history">
           <h2>Encontre pagamentos e feche o dia</h2>
           <p><strong>Histórico</strong> lista pagamentos e reembolsos por dia, com totais diários.</p>
-          <p>Cada página mostra até 100 registros correspondentes em até sete dias. Os totais diários incluem o dia
-            filtrado inteiro, mesmo quando seus registros ocupam várias páginas. Use <strong>Anterior</strong> e
-            <strong>Próximo</strong> para navegar. A pesquisa abrange todas as transações mantidas.</p>
+          <p>Cada página mostra até 100 entradas de sete dias; use <strong>Anterior</strong> e
+            <strong>Próximo</strong> para navegar. A busca abrange todas as transações mantidas.</p>
           <ul>
             <li>Filtrar por vendas, <strong>Aguardando gorjeta</strong>, pré-autorizações, reembolsos ou <strong>Precisa
               de atenção</strong>e usar <strong>Forma de pagamento</strong> para uma marca de cartão ou carteira.</li>
@@ -383,9 +382,8 @@
               </li>
             <li>Opcionalmente, toque em <strong>Imprimir o relatório de hoje</strong> para o <strong>Resumo diário local</strong>.</li>
           </ol>
-          <p>Isto está disponível para terminais físicos e para o simulador, não para Tap to Pay. Uma comparação
-            correspondente ou um período fechado não confirma a liquidação, a conclusão do reembolso ou o upload
-            off-line. Continue usando o Customer Area para obter resultados financeiros finais.</p>
+          <p>Não disponível com Tap to Pay. Uma comparação que confere ou um período fechado não confirmam a
+            liquidação, a conclusão de reembolsos nem o envio off-line; o Customer Area continua sendo a referência.</p>
           <figure class="guide-shot">
             <a class="screenshot-link" href="../images/pt-BR/reconciliation.png" aria-label="Abrir captura no tamanho original: Demonstração do simulador em português do Brasil: Reconciliação do terminal">
               <div class="terminal terminal-s1f2">
@@ -408,90 +406,72 @@
             <li>Toque <strong>Atualizar capacidades</strong> para ler as configurações do terminal selecionado. A
               inspeção terminal real utiliza o <a href="quick-start#credentials">Funções API de gerenciamento no início
               rápido</a>.</li>
-            <li>Para terminais suportados, configure a gorjeta do terminal para a moeda de pagamento, DCC, MOTO ou
-              limites offline. Esses controles atualizam as configurações do terminal na Adyen, não apenas no Mini mPOS,
-              e somente quando você toca <strong>Salvar para Adyen</strong>. Os valores rotulados como unidades
-              principais usam unidades monetárias inteiras; valores de unidades menores usam a precisão monetária da
+            <li>Em terminais compatíveis, configure a gorjeta no terminal para a moeda de pagamento, DCC, MOTO ou limites
+              off-line e toque em <strong>Salvar para Adyen</strong>. Isso altera as configurações do terminal na
               Adyen.</li>
-            <li>Habilite as opções de checkout necessárias em <strong>Pagamentos</strong>, <strong>Gorjetas e doações
-              </strong> ou <strong>Tela do terminal para o cliente</strong> em Configurações e teste-os em TEST. A
-              matriz também lista Adyen Giving, autorização parcial, sobretaxa, cartões-presente, reconciliação de
-              terminais e exibição de compradores; ele não fornece um editor para cada recurso.</li>
+            <li>Ative as opções de pagamento necessárias em <strong>Pagamentos</strong>, <strong>Gorjetas e doações</strong>
+              ou <strong>Tela do terminal para o cliente</strong> em Configurações e teste-as em TEST. A tela também
+              mostra Adyen Giving, autorização parcial, sobretaxa, cartões-presente, conciliação do terminal e tela do
+              cliente, sem editá-los.</li>
           </ol>
-          <p>Tap to Pay não oferece recursos de terminal físico, como gorjeta de terminal, exibição de comprador,
-            MOTO/MKE, pagamentos off-line ou reconciliação de terminal. A autorização parcial é uma opção de pagamento
-            separada. Para requisitos de ativação de conta e forma de pagamento, siga as
-            <a href="https://docs.adyen.com/point-of-sale">Documentação de pagamentos presenciais da Adyen</a>. A
-            disponibilidade do simulador não estabelece suporte de terminal real.</p>
+          <p>O Tap to Pay não oferece recursos de terminal físico como gorjeta no terminal, tela do cliente, MOTO/MKE,
+            pagamentos off-line ou conciliação do terminal. Para habilitação da conta e requisitos de métodos de pagamento,
+            siga a <a href="https://docs.adyen.com/point-of-sale">documentação de pagamentos presenciais da Adyen</a>.</p>
           <figure class="guide-shot">
-            <a class="screenshot-link" href="../images/pt-BR/capabilities.png" aria-label="Abrir captura no tamanho original: Demonstração do simulador em português do Brasil: capabilities">
+            <a class="screenshot-link" href="../images/pt-BR/capabilities.png" aria-label="Abrir captura no tamanho original: Demonstração do simulador em português do Brasil: disponibilidade e configuração das capacidades da Adyen">
               <div class="terminal terminal-s1f2">
-              <img src="../images/pt-BR/capabilities.png" width="540" height="960" loading="lazy" alt="Demonstração do simulador em português do Brasil: capabilities" decoding="async">
+              <img src="../images/pt-BR/capabilities.png" width="540" height="960" loading="lazy" alt="Demonstração do simulador em português do Brasil: disponibilidade e configuração das capacidades da Adyen" decoding="async">
               </div></a>
-            <figcaption class="fine">Demonstração do simulador em português do Brasil. A disponibilidade aqui não
-              verifica um terminal real.<span class="shot-control">Atualizar capacidades</span><a class="screenshot-link shot-expand" href="../images/pt-BR/capabilities.png">Abrir captura no tamanho original</a></figcaption>
+            <figcaption class="fine">Demonstração do simulador em português do Brasil.<span class="shot-control">Atualizar capacidades</span><a class="screenshot-link shot-expand" href="../images/pt-BR/capabilities.png">Abrir captura no tamanho original</a></figcaption>
           </figure>
           <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
         </section>
         <section id="terminal-checkout">
           <h2>Use fluxos de trabalho de checkout opcionais</h2>
-          <p>Habilite apenas as opções de checkout necessárias em Configurações. Exceto para autorização parcial, esses
-            fluxos de trabalho precisam de um terminal físico compatível, não de Tap to Pay. Verifique
-            <a href="#capabilities">Capacidades da Adyen</a> e teste primeiro sua configuração real.</p>
+          <p>Ative em Configurações somente as opções de pagamento necessárias. Exceto a autorização parcial, a
+            divisão e as sobretaxas, esses fluxos exigem um terminal físico compatível, não o Tap to Pay. Verifique as
+            <a href="#capabilities">capacidades da Adyen</a> e teste antes sua configuração real. A maioria das opções
+            não pode ser combinada em um pagamento; o checkout explica o conflito e pede que você desative uma.</p>
           <h3 id="audio-guidance">Aceitar pagamentos com orientação por áudio</h3>
-          <p>No pagamento, ative <strong>Orientação por áudio</strong> para este comprador. Ela está disponível em
-            AMS1, S1F2, S1F2L, S1E2L e S1U2 com software 1.117 ou posterior, e em M450, P630 e SFO1 com 1.124 ou
-            posterior. O Suporte da Adyen deve ativá-la no terminal. Tap to Pay e modelos desconhecidos ou não
-            listados não são compatíveis. Consulte os <a
+          <p>No checkout, ative <strong>Orientação por áudio</strong> para este comprador. Ela está disponível em AMS1,
+            S1F2, S1F2L, S1E2L e S1U2 com software 1.117 ou posterior, e em M450, P630 e SFO1 com 1.124 ou posterior. O
+            suporte da Adyen precisa habilitá-la para o terminal. Veja os
+            <a
             href="https://docs.adyen.com/point-of-sale/android-terminals/accessibility-mode/accessibility-from-pos">requisitos
             de pagamentos acessíveis da Adyen</a>.</p>
-          <p>Desative gorjetas no terminal e no recibo, Giving e a entrada especial de cartão. Selecione
-            <strong>Confirmar configuração acessível</strong> após verificar o software e a ativação. Use um cartão
-            sem assinatura e um idioma do terminal que não seja estoniano, letão, islandês ou lituano. A confirmação
-            também pula as solicitações da tela do comprador neste pagamento. Desative a orientação por áudio para
-            escolher um link, uma carteira escaneada ou um token.</p>
-          <p>O terminal lê as instruções em voz alta. Aguarde tempo para o pagamento e o PIN; a orientação termina
-            após o pagamento ou cancelamento. O Mini mPOS espera até dez minutos antes de consultar a transação
-            original. Se a Adyen configurou prazos maiores ou a resposta não chegou, <a
-            href="troubleshooting#unknown">verifique o resultado desconhecido</a> antes de outro pagamento. A
-            escolha é redefinida ao iniciar esta tentativa. As demonstrações não reproduzem áudio nem verificam
-            terminais reais.</p>
-          <p>A Adyen calcula as sobretaxas conforme a configuração. O Mini mPOS registra a sobretaxa informada separada
-            da compra e da gorjeta; o total cobrado já a inclui. Uma taxa não informada, inclusive no histórico antigo,
-            permanece desconhecida. Os recibos preservam os dados originais da Adyen. Os relatórios diários separam os
-            valores conhecidos de compra e sobretaxa e contam as vendas com taxa não informada.</p>
-          <p>Se uma autorização parcial não informar a sobretaxa, o Mini mPOS não poderá determinar o valor restante.
-            Confira na Customer Area ou reembolse o cartão original antes de recomeçar.</p>
-          <p>Antes do reembolso, confira o cartão original e seu saldo restante. Reembolse cada cartão separadamente.
-            Reembolsos pendentes ou desconhecidos reservam o saldo até serem resolvidos. Itens devolvem o valor da compra;
-            valores cobrem a compra, depois a gorjeta e a sobretaxa. Um reembolso total inclui a sobretaxa restante
-            informada. Confirme a conclusão na Customer Area.</p>
-          <p>Informe a sobretaxa antes do pagamento, especialmente com Tap to Pay, que não mostra a tela de confirmação
-            da sobretaxa. Não combine sobretaxas com DCC nem as aumente por ajustes ou sobrecapturas. O Mini mPOS bloqueia
-            ajustes e capturas acima da retenção original quando uma sobretaxa foi informada. Consulte os
-            <a href="https://docs.adyen.com/point-of-sale/surcharge">requisitos de sobretaxa da Adyen</a> e a
-            <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">configuração de sobretaxas da Adyen</a>.</p>
+          <p>Desative gorjetas, Giving e digitação manual e selecione <strong>Confirmar configuração acessível</strong>
+            depois de verificar o software e a habilitação. Use um cartão que não exija assinatura e um idioma de terminal
+            diferente de estoniano, letão, islandês ou lituano. O pagamento solicita o valor total e pula os avisos da tela
+            do cliente.</p>
+          <p>O terminal lê as instruções em voz alta; dê tempo ao comprador. O Mini mPOS espera até dez minutos pelo
+            resultado. Se nenhuma resposta chegar, <a href="troubleshooting#unknown">verifique o resultado
+            desconhecido</a> antes de outro pagamento. A escolha é redefinida após cada tentativa.</p>
+          <h3 id="surcharges">Sobretaxas</h3>
+          <p>A Adyen adiciona as sobretaxas que você configura na Adyen; o Mini mPOS não as define. Quando a Adyen informa
+            uma, o histórico, os recibos e o relatório diário a mostram separada das compras e gorjetas; o total cobrado já
+            a inclui. Uma sobretaxa não informada continua desconhecida. Se uma autorização parcial não informar a
+            sobretaxa, verifique o Customer Area ou reembolse o cartão original antes de recomeçar.</p>
+          <p>Informe a sobretaxa antes do pagamento, principalmente com o Tap to Pay, que não tem tela de confirmação de
+            sobretaxa. Não combine sobretaxas com DCC. O Mini mPOS bloqueia ajustes e capturas acima da reserva original
+            quando uma sobretaxa foi informada. Veja os <a href="https://docs.adyen.com/point-of-sale/surcharge">requisitos
+            de sobretaxa da Adyen</a> e a <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">configuração
+            de sobretaxas da Adyen</a>.</p>
           <h3 id="mexican-installments">Parcelamento de cartões no México</h3>
-          <p>Ative em Configurações › Pagamentos após confirmar programas e tarifas com a Adyen. Atualize os recursos
-            da Adyen para verificar a loja mexicana. Terminais locais e em nuvem são compatíveis; Tap to Pay
-            indisponível. Escolha débito, crédito à vista ou 3, 6, 9, 12 ou 18 parcelas mensais. Use um cartão
-            elegível para toda a venda. Desative opções incompatíveis: divisão, autorização parcial, gorjetas, Giving,
-            guia de áudio, MOTO/MKE e salvar cartão. Links, cobranças de cartões salvos, carteiras escaneadas e
-            cartões-presente não aceitam o plano. Detalhes, Histórico e recibos distinguem o plano solicitado do
-            retornado; dados ausentes ficam não informados. Um emissor incompatível pode recusar. Verifique pagamentos
-            desconhecidos antes de tentar novamente. Reembolse o pagamento original por valor ou integralmente; o
-            emissor gerencia as parcelas e o Customer Area confirma o resultado. Mini mPOS nunca agenda cobranças
-            recorrentes.</p>
+          <p>Confirme com a Adyen seus programas de emissores e tarifas, ative o parcelamento em Configurações › Pagamentos
+            e atualize as capacidades da Adyen para verificar a loja mexicana. No checkout, escolha débito, crédito à vista
+            ou 3, 6, 9, 12 ou 18 parcelas mensais, e pague a venda inteira com um cartão elegível. Links de pagamento,
+            tokens, carteiras escaneadas e cartões-presente não levam o plano.</p>
+          <p>Os detalhes, o histórico e os recibos mostram o plano solicitado e o plano retornado. Um emissor não
+            compatível pode recusar. Reembolse o pagamento original por valor ou integralmente; o emissor administra o
+            cronograma.</p>
           <p><a href="https://docs.adyen.com/point-of-sale/installments/mexico-installments/">Adyen: Parcelamento de cartões no México</a></p>
           <h3 id="partial-payments">Receber um pagamento parcialmente autorizado</h3>
-          <p>Ligar <strong>Permitir autorizações parciais</strong> aceitar uma aprovação de cartão por valor inferior ao
-            solicitado. Quando o resultado aparecer <strong>Parcialmente pago</strong>, verifique os valores pagos e
-            restantes e toque em <strong>Pagamento restante</strong> nessa tela de resultados e cobrar o saldo em outro
-            cartão. O app mantém as tentativas da mesma venda. Não trate a venda como totalmente paga até que o valor
-            total seja aprovado.</p>
-          <p>Uma resposta faltante não é uma aprovação parcial. <a href="troubleshooting#unknown">Resolver resultados
-            desconhecidos</a> antes de coletar mais. Não inicie uma nova venda pelo total original: uma parcela aprovada
-            já foi paga.</p>
+          <p>Ative <strong>Permitir autorizações parciais</strong> para aceitar uma aprovação de cartão menor que o valor
+            solicitado. Quando o resultado mostrar <strong>Parcialmente pago</strong>, confira os valores pago e restante,
+            toque em <strong>Pagamento restante</strong> e receba o saldo em outro cartão. As tentativas ficam na mesma
+            venda. Não inicie uma nova venda pelo total: a parte aprovada já foi paga.</p>
+          <p>Uma resposta ausente não é uma aprovação parcial. <a href="troubleshooting#unknown">Resolva os resultados
+            desconhecidos</a> antes de receber mais.</p>
           <figure class="guide-shot">
             <a class="screenshot-link" href="../images/pt-BR/partial-payment.png" aria-label="Abrir captura no tamanho original: Demonstração do simulador em português do Brasil: Aprovação parcial">
               <div class="terminal terminal-s1f2">
@@ -502,57 +482,59 @@
           </figure>
           <h3 id="split-payments">Dividir uma venda ou receber em dinheiro</h3>
           <p>No checkout, toque em <strong>Dividir ou pagar em dinheiro</strong>. Escolha um <strong>Valor</strong>,
-            <strong>Partes</strong> iguais ou os <strong>Itens</strong> deste pagamento e toque em <strong>Cartão</strong> ou
-            <strong>Dinheiro</strong>. Preços e impostos não mudam, e qualquer centavo extra vai para as primeiras partes. Para
-            dinheiro, informe o valor entregue pelo comprador, devolva o troco indicado e confirme. O dinheiro é registrado
-            só neste dispositivo e nunca chega ao terminal.</p>
-          <p>A venda fica <strong>Parcialmente pago</strong> até ser paga por completo. Toque em <strong>Cobrar saldo</strong> no
-            resultado ou em <strong>Histórico</strong> para continuar, inclusive após reiniciar. Desative gorjetas, doações, orientação por
-            áudio e MOTO ou digitação manual antes de dividir. Itens são cobrados por completo; outros valores no cartão
-            ainda podem ser aprovados parcialmente pelo emissor. Resolva um resultado desconhecido antes de cobrar mais. O
-            recibo lista cada pagamento e o relatório diário separa o dinheiro; os totais do terminal nunca o incluem.</p>
-          <p>Com cartões-presente configurados, toque em <strong>Cartão-presente</strong> para pagar o valor escolhido
-            com um deles. Um saldo insuficiente é aprovado em parte e o restante continua a receber. A devolução de um
-            pagamento com cartão-presente volta ao cartão, exceto para cartões locais, reembolsados fora do Mini mPOS.</p>
+            <strong>Partes</strong> iguais ou os <strong>Itens</strong> que este pagamento cobre e toque em
+            <strong>Cartão</strong> ou <strong>Dinheiro</strong>. Preços e impostos ficam como registrados, e qualquer
+            centavo a mais vai para as primeiras partes. Para dinheiro, digite o que o comprador entregou, devolva o troco
+            mostrado e confirme. O dinheiro é registrado somente neste dispositivo.</p>
+          <p>A venda fica como <strong>Parcialmente pago</strong> até ser paga por completo. Toque em <strong>Cobrar
+            saldo</strong> no resultado ou no <strong>Histórico</strong> para continuar, mesmo após reiniciar. Resolva um
+            resultado de cartão desconhecido antes de receber mais. O recibo lista cada pagamento; o relatório diário
+            mostra o dinheiro separadamente, e os totais do terminal nunca o incluem.</p>
+          <p>Com cartões-presente configurados, toque em <strong>Cartão-presente</strong> para pagar o valor escolhido com
+            um deles; um saldo insuficiente é aprovado em parte. Pagamentos com cartão-presente são reembolsados para o
+            cartão, exceto cartões-presente locais, reembolsados fora do Mini mPOS.</p>
+          <div class="shot-pair">
+            <a class="screenshot-link" href="../images/pt-BR/split.png" aria-label="Abrir captura no tamanho original: Demonstração do simulador em português do Brasil: venda dividida em duas partes iguais">
+              <div class="terminal terminal-s1f2">
+              <img src="../images/pt-BR/split.png" width="540" height="960" loading="lazy" alt="Demonstração do simulador em português do Brasil: venda dividida em duas partes iguais" decoding="async">
+              </div></a>
+            <a class="screenshot-link" href="../images/pt-BR/split-cash.png" aria-label="Abrir captura no tamanho original: Demonstração do simulador em português do Brasil: dinheiro recebido e troco de uma parte">
+              <div class="terminal terminal-s1f2">
+              <img src="../images/pt-BR/split-cash.png" width="540" height="960" loading="lazy" alt="Demonstração do simulador em português do Brasil: dinheiro recebido e troco de uma parte" decoding="async">
+              </div></a>
+          </div>
+          <p class="fine">Demonstrações do simulador em português do Brasil de uma venda dividida.</p>
           <h3 id="cashback">Saque com compra</h3>
-          <p>Ative <strong>Saque com compra</strong> em Configurações › Pagamentos após confirmar a loja e o programa com a Adyen.
-          Defina um limite local e um PIN de gerente. Moeda e idioma não comprovam elegibilidade.</p>
-          <p>No checkout, informe o dinheiro adicional e confirme o cartão elegível. Use uma venda inteira sem divisão,
-          autorização parcial, cartão-presente, vale, parcelamento mexicano, gorjeta, Giving, áudio, MOTO/MKE, link,
-          token ou carteira escaneada. Desative explicitamente as opções incompatíveis.</p>
+          <p>Depois que a Adyen confirmar sua loja e programa de cartões, ative Saque com compra em Configurações ›
+            Pagamentos, defina um limite de dinheiro e um PIN de gerente. No checkout, digite o dinheiro extra solicitado
+            e pague a venda inteira com um cartão elegível. Uma compra pode ser aprovada mesmo com o saque recusado;
+            entregue apenas o dinheiro aprovado.</p>
           <h3 id="cashout">Saque</h3>
-          <p>Saque na tela inicial solicita dinheiro sem compra. Ative separadamente após a Adyen confirmar o saque
-          eftpos australiano para a loja atribuída. Terminais locais e na nuvem são aceitos; Tap to Pay está
-          indisponível.</p>
-          <p>Após a aprovação, confira o saque aprovado e a cobrança no cartão. A compra pode ser aprovada sem o saque,
-          sem deixar mercadorias pendentes por esse motivo. Entregue somente o valor aprovado, selecione Registrar
-          dinheiro entregue e aprove com o PIN de gerente. Confira entregas anteriores. Não entregue dinheiro se o valor
-          não for informado.</p>
-          <p>O histórico preserva solicitações não resolvidas e entregas não registradas. Consulte um resultado
-          desconhecido em vez de solicitar outro saque. Recibos, reimpressões e consultas não registram entregas. O
-          relatório separa dinheiro aprovado e entregue das vendas; a conciliação compara a cobrança no cartão.
-          Reembolsos referenciados devolvem apenas a compra elegível ao cartão original, nunca o dinheiro sacado. Saques
-          sem compra não têm mercadorias para reembolsar.</p>
+          <p>Saque, na tela inicial, solicita dinheiro sem compra. Ative-o separadamente depois que a Adyen confirmar o
+            saque eftpos australiano para a loja.</p>
+          <p>Após a aprovação, confira o dinheiro aprovado e o débito no cartão. Entregue apenas o dinheiro aprovado, toque
+            em <strong>Registrar dinheiro entregue</strong> e aprove com o PIN de gerente. Nunca entregue dinheiro cujo
+            valor não foi informado, e verifique um resultado desconhecido em vez de solicitar dinheiro de novo. O histórico
+            mantém as entregas não registradas; os relatórios diários mostram o dinheiro aprovado e entregue separado das
+            vendas. Reembolsos nunca devolvem o dinheiro entregue.</p>
           <p><a href="https://docs.adyen.com/point-of-sale/cashback-and-cash-out">Adyen: Cashback</a></p>
           <h3 id="meal-vouchers">Aceitar vale-refeição</h3>
           <p>Ative <strong>Vale-refeição</strong> em Configurações › Pagamentos somente depois de assinar os contratos com os
-            emissores, cadastrar a loja e ter os vales habilitados pela Adyen. O país verificado da loja do terminal
-            define quais vales valem: vales do PAT no Brasil; vales Mastercard ou Visa na Bélgica, Finlândia, Alemanha,
+            emissores, cadastrar a loja e ter os vales habilitados pela Adyen. O país verificado da loja do terminal define
+            quais vales valem: vales do PAT no Brasil; vales Mastercard ou Visa na Bélgica, Finlândia, Alemanha,
             Luxemburgo e Espanha; ou Titres-restaurant na França. Atualize as capacidades da Adyen após configurar.
-            Terminais de pagamento são compatíveis; o Tap to Pay não está disponível. Monizze, Pluxee Bélgica e Lunch
-            Check não são oferecidos.</p>
-          <p>Quando os vales exigem produtos elegíveis, abra cada produto em Configurações › Produtos e ative
-            <strong>Aceito em vale-refeição</strong>. Itens avulsos nunca são pagos com vale. No pagamento, toque em
+            Monizze, Pluxee Bélgica e Lunch Check não são oferecidos.</p>
+          <p>Quando os vales exigirem produtos elegíveis, abra cada produto em Configurações › Produtos e ative
+            <strong>Aceito em vale-refeição</strong>; itens personalizados nunca são elegíveis. No checkout, toque em
             <strong>Dividir ou pagar em dinheiro</strong> e depois em <strong>Vale-refeição</strong>. O Mini mPOS oferece o
-            máximo que o vale pode pagar e explica o que impede; receba o restante com cartão ou dinheiro. Vales
-            Mastercard ou Visa podem ser aprovados em parte. Titres-restaurant aceitam no máximo EUR 25 por dia, nunca
-            aos domingos ou feriados, e não podem ser reembolsados: ofereça crédito na loja. Um vale brasileiro com saldo
-            insuficiente é recusado; informe um valor menor.</p>
-          <p>No Brasil, ative <strong>Escolher vales brasileiros no app</strong> para pedir um pagamento com vale pelo Mini
-            mPOS. Deixe desativado quando o suporte da Adyen ativar a tela de crédito, débito ou vale do terminal; nesse
-            caso, pague com cartão e o comprador escolhe no terminal. Detalhes, Histórico e recibos mostram o vale pedido
-            e o que o terminal informou. Reembolsos voltam só para o vale original, nunca em dinheiro. Verifique um
-            pagamento desconhecido antes de tentar de novo.</p>
+            máximo que o vale pode pagar; receba o restante em cartão ou dinheiro. Vales Mastercard ou Visa podem ser
+            aprovados em parte. Titres-restaurant aceitam no máximo EUR 25 por dia, nunca aos domingos ou feriados, e não
+            podem ser reembolsados: ofereça crédito na loja. Um vale brasileiro com saldo insuficiente é recusado; digite
+            um valor menor.</p>
+          <p>No Brasil, ative <strong>Escolher vales brasileiros no app</strong> para solicitar um pagamento com vale pelo
+            Mini mPOS. Deixe desativado quando o suporte da Adyen tiver habilitado a tela de crédito, débito ou voucher do
+            próprio terminal; nesse caso, cobre no cartão e o comprador escolhe no terminal. Devoluções de vale voltam ao
+            vale original, nunca em dinheiro.</p>
           <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers">Adyen: vale-refeição no Brasil</a> · <a href="https://docs.adyen.com/industries/markets/europe-meal-vouchers">Adyen: vales-refeição na Europa</a></p>
           <h3 id="shopper-display">Usar a tela do terminal voltada para o cliente</h3>
           <p>Com um terminal de rede/nuvem separado, abra <strong>Configurações › Tela do terminal para o cliente</strong>. Escolha se deseja mostrar os detalhes do item antes do pagamento, pedir ao comprador para
@@ -561,10 +543,9 @@
             automaticamente quando <strong>Enviar o recibo por e-mail automaticamente</strong> está ativado. Após a
             aprovação, você pode mostrar um código QR e solicitar uma classificação de 0 a 10; uma classificação
             retornada aparece nos detalhes da transação.</p>
-          <p>Esses prompts usam o idioma do aplicativo selecionado e também são simulados. Eles não são oferecidos
-            quando Mini mPOS é executado no próprio terminal de pagamento. O código QR exibido contém a referência do
-            comerciante, não um download de recibo hospedado; continuar a <a href="#receipts">imprimir, enviar por
-            e-mail ou compartilhar o recibo</a>.</p>
+          <p>Esses avisos usam o idioma do app. Eles não são oferecidos quando o Mini mPOS roda no próprio terminal de
+            pagamento. O QR code contém a referência do comerciante, não um recibo; <a href="#receipts">entregue o
+            recibo</a> mesmo assim.</p>
           <h3 id="giving">Convide uma doação de caridade</h3>
           <p>Depois de combinar o Adyen Giving com a Adyen, ative <strong>Doação de caridade (Adyen Giving)</strong> em
             <strong>Configurações › Gorjetas e doações</strong>. Na tela de pagamento, selecione-o para solicitar uma
@@ -580,11 +561,10 @@
               tela de pagamento, selecione <strong>Pedido por correio/telefone (MOTO)</strong> para um pedido remoto, ou
               <strong>Digitação manual do cartão (MKE)</strong> quando a leitura do chip ou sem contato falha. Somente
               um pode ser selecionado.</li>
-            <li>Toque <strong>Pagar</strong>, revise o aviso de responsabilidade por fraude e estorno e conclua a
-              aprovação do Gerente quando solicitado. Insira os dados do cartão no terminal, nunca em Mini mPOS.</li>
+            <li>Toque em <strong>Pagar</strong>, leia o aviso de responsabilidade por fraude e chargeback e conclua a aprovação
+              do gerente quando solicitada.</li>
           </ol>
-          <p>As transações codificadas acarretam maior responsabilidade por fraude e estorno para o comerciante.
-            Habilitar uma troca de aplicativo não habilita o serviço na Adyen nem elimina esse risco.</p>
+          <p>Transações digitadas trazem maior responsabilidade por fraude e chargeback para o comerciante.</p>
           <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
         </section>
         <section id="offline">
@@ -632,15 +612,11 @@
               válida inicia o pagamento imediatamente. Aguarde o resultado normal do pagamento e entregue o seu recibo.
               </li>
           </ol>
-          <p>O cancelamento mantém os campos carrinho e checkout. Códigos inválidos não compensam: digitalize novamente
-            ou troque de carteira. Uma verificação nativa expira após 30 segundos; usar <strong>Digitalizar novamente
-            </strong> ou a câmera. Sair do aplicativo interrompe a digitalização; retornar requer uma nova varredura
-            explícita. Os códigos não podem ser digitados ou colados.</p>
-          <p><strong>Salvar cartão</strong> tenta salvar os dados de pagamento quando a referência e o consentimento do
-            comprador permitirem. O suporte à carteira varia; apenas um token de pagamento armazenado retornado
-            significa que os detalhes foram salvos. Um pagamento aprovado sem token ainda será aprovado.
-            <a href="troubleshooting#wallets">Lidar com descoberta de carteira ou problemas de pagamento</a>; nunca
-            substitua um <a href="troubleshooting#unknown">pagamento desconhecido</a> digitalizando novamente.</p>
+          <p>Cancelar mantém o carrinho. Uma leitura no terminal termina após 30 segundos; use <strong>Digitalizar
+            novamente</strong> ou a câmera. As carteiras podem não aceitar <strong>Salvar cartão</strong>; um pagamento
+            aprovado sem token salvo continua aprovado. <a href="troubleshooting#wallets">Resolva problemas de
+            carteira</a> e nunca substitua um <a href="troubleshooting#unknown">pagamento desconhecido</a> por uma nova
+            leitura.</p>
           <p>Confirme a configuração da sua carteira e teste o comportamento com o
             <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Guia da carteira
             Adyen</a> e
@@ -683,20 +659,16 @@
               personalizado</strong>. Este carrinho é separado de <strong>Nova venda</strong>.</li>
             <li>Revise a cobrança e toque <strong>Cobrar</strong>.</li>
           </ol>
-          <p>O cliente não está presente, portanto obtenha primeiro o seu consentimento. Tokens salvos para um diferente
-            <strong>Modelo de processamento recorrente</strong> não podem ser cobrados aqui. Reembolsar esses pagamentos de
-            <strong>Histórico</strong>; o código QR de reembolso só funciona no dispositivo que fez a cobrança. Se o resultado de uma cobrança
-            for desconhecido, verifique-o no Histórico em até sete dias, depois na Customer Area. Na finalização da
-            compra de uma nova venda, assim que a referência do comprador inserida tiver tokens salvos, <strong>Cobrar
-            token</strong> aparece entre <strong>Digitalizar carteira</strong> e <strong>Criar link de pagamento</strong>: após aprovação do gerente, escolher um token para cobrar a venda do mesmo.</p>
+          <p>O cliente não está presente, então obtenha o consentimento dele antes. Tokens salvos com outro <strong>Modelo de
+            processamento recorrente</strong> não podem ser cobrados aqui. Reembolse esses pagamentos pelo
+            <strong>Histórico</strong>. Se o resultado de uma cobrança for desconhecido, verifique-o pelo histórico em até
+            sete dias e, depois disso, no Customer Area. No checkout de uma nova venda, <strong>Cobrar token</strong>
+            aparece quando a referência do comprador tem tokens salvos.</p>
           <p id="token-deletion">
-            Para excluir um token listado, inclusive um que não pode ser cobrado, toque em <strong>Excluir</strong>.
-            Confira o resumo do cartão, o ID do token, o comprador, a conta de comerciante e o ambiente. Confirme e
-            aprove com o PIN de gerente, que deve estar configurado. O token será removido da Adyen e não poderá ser
-            usado em pagamentos futuros no Mini mPOS nem em outras integrações que o utilizem. Isso não pode ser
-            desfeito. Os pagamentos históricos e seus reembolsos referenciados continuam disponíveis. Se faltar a
-            resposta, o Mini mPOS invalida as seleções e consulta uma nova lista. Se continuar sem confirmação, toque
-            em <strong>Verificar exclusão</strong>; não cobre nem repita a exclusão até resolver.
+            Para excluir um token, toque na ação <strong>Excluir</strong>, confira os detalhes, confirme e aprove com o PIN
+            de gerente. A exclusão remove o token na Adyen para o Mini mPOS e qualquer outra integração; não pode ser
+            desfeita. Pagamentos anteriores e seus reembolsos continuam disponíveis. Se a exclusão não for confirmada,
+            toque em <strong>Verificar exclusão</strong> antes de cobrar ou excluir de novo.
           </p>
           <p class="back-to-contents"><a href="#contents">Voltar ao conteúdo</a></p>
         </section>
@@ -717,6 +689,13 @@
               app</strong> e confirme que recebeu o dinheiro.</li>
             <li>Confirme e aprove com o PIN de gerente.</li>
           </ol>
+          <figure class="guide-shot">
+            <a class="screenshot-link" href="../images/pt-BR/gift-cards.png" aria-label="Abrir captura no tamanho original: Demonstração do simulador em português do Brasil: cartões-presente Givex e SVS, passados ou digitados, com suas ações">
+              <div class="terminal terminal-s1f2">
+              <img src="../images/pt-BR/gift-cards.png" width="540" height="960" loading="lazy" alt="Demonstração do simulador em português do Brasil: cartões-presente Givex e SVS, passados ou digitados, com suas ações" decoding="async">
+              </div></a>
+            <figcaption class="fine">Demonstração do simulador em português do Brasil.<span class="shot-control">Cartões-presente</span><a class="screenshot-link shot-expand" href="../images/pt-BR/gift-cards.png">Abrir captura no tamanho original</a></figcaption>
+          </figure>
           <p>A aprovação de consultas de saldo e alterações de valor segue as <a href="#staff">permissões da equipe</a>.
             O pagamento com cartão é cobrado primeiro e o valor só é enviado depois da aprovação; se o resultado do
             pagamento for desconhecido, verifique-o antes de qualquer outra ação. Se o pagamento foi cobrado mas nenhum
@@ -749,9 +728,6 @@
           <p>A entrada mostra <strong>Aguardando pagamento</strong> até que o link seja pago, expire ou seja cancelado.
             Defina por quanto tempo os links funcionam <strong>Configurações › Pagamentos › Links de pagamento</strong>.
             Os links são apenas para vendas, não para depósitos ou gorjetas no recibo.</p>
-          <p>No simulador, os links funcionam offline sem credenciais API. Seus códigos QR não aceitam pagamentos. Toque
-            <strong>Simular pagamento</strong> para concluir a demonstração, com aprovação do gerente, se configurado. A
-            tela e os recibos entregues permanecem rotulados como demonstrações; nenhum dinheiro se move.</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Importante</p>
             <p>Qualquer pessoa com um link real pode pagar até que ele expire. Reembolsar links pagos em <strong>

@@ -164,15 +164,14 @@
             <div><dt>没有扫描钱包按钮</dt><dd><p>打开<strong>设置 › 终端</strong>，点按<strong>刷新扫码钱包</strong>。成功查询后没有符合条件的 POS
               钱包时，按钮会保持隐藏。核对终端门店、当前币种和<a href="quick-start#credentials">API 密钥角色</a>。Tap to Pay 和预授权不提供此功能。</p></dd>
               </div>
-            <div><dt>钱包查询报错</dt><dd><p>
-              错误仅显示在设置中，不会阻止普通支付。请检查凭据、环境和只读访问权限。设置未变时，临时刷新错误会保留最近验证的钱包列表；成功查询到空列表或访问失败会移除它。只在启动、设置改变或手动刷新时查询，不会在每笔销售前查询。
-              </p></dd></div>
-            <div><dt>付款码无效或未收到付款码</dt><dd><p>请使用购物者的付款码，而非个人资料、设置转移或收据二维码，并选择正确的钱包。终端扫描最多持续 30 秒，之后点按<strong>重新扫描
-              </strong>或<strong>使用摄像头</strong>。摄像头提示时请授予权限。应用从后台返回后需重新开始扫描。</p></dd></div>
-            <div><dt>保存被拒绝或未创建令牌</dt><dd><p>请以支付结果为准。没有保存令牌的已批准付款仍然有效。仅在明确被拒绝后，如需重试，返回结账，关闭<strong>保存卡片</strong>
-              并明确开始新扫描。应用不会自动重新付款。<strong>结果未知</strong>时应<a href="#unknown">查询原交易</a>。</p></dd></div>
+            <div><dt>钱包查询报错</dt><dd><p>错误仅显示在设置中，不会阻止银行卡付款。请在设置中修正凭据、环境或读取权限后
+              刷新。临时失败会保留最近验证的钱包。</p></dd></div>
+            <div><dt>付款码无效或未收到付款码</dt><dd><p>请使用购物者的付款码，而非个人资料、设置转移或收据二维码，并选择正确的
+              钱包。终端扫描 30 秒后结束：点按<strong>重新扫描</strong>或<strong>使用摄像头</strong>。</p></dd></div>
+            <div><dt>保存被拒绝或未创建令牌</dt><dd><p>即使未保存令牌，已批准的付款仍然有效。被拒绝后，关闭<strong>保存卡片</strong>，
+              如有需要再重新扫描。<strong>结果未知</strong>时请<a href="#unknown">查询原交易</a>。</p></dd></div>
           </dl>
-          <p>请参阅<a href="using#wallets">钱包支付步骤</a>。交易记录中的请求钱包仅表示支付意图，不证明付款成功或 Adyen 使用了该方式。</p>
+          <p>请参阅<a href="using#wallets">钱包支付步骤</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="connection">
@@ -226,8 +225,7 @@
                   <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 应用要求
                   </a>。</p>
                 <p>客户端密钥必须属于注册所用的同一凭据。</p>
-                <p><strong>分享已脱敏的报告</strong>仅分享所显示的各行：应用版本、API 访问和连接检查结果及其 UTC 时间、集成方式和环境、账户/门店/安装实例/共享密钥
-                  ID、Android/设备/Payments 应用版本；使用 Tap to Pay 时还包括客户端密钥和注册检查结果及已验证凭据身份。</p></dd></div>
+                <p>寻求帮助时，请使用<strong>分享已脱敏的报告</strong>。</p></dd></div>
             <div id="key-setup"><dt>“新密钥已保存。请更新此终端的配置”</dt>
               <dd>
 <p><span class="fix-label">解决</span>在终端上打开 <strong>Admin menu › Config › Update</strong>，然后返回 Mini mPOS 点按<strong>再次检查</strong>。如果创建中断，请点按<strong>继续密钥设置</strong>，不会创建第二个密钥。参见<a href="quick-start#shared-key-creation">密钥创建</a>及
@@ -291,8 +289,7 @@
           <dl class="fixes">
             <div><dt>结账时没有<strong>创建付款链接</strong></dt>
               <dd>
-<p><span class="fix-label">解决</span>在<strong>设置 › 终端</strong>中完成 Checkout API 设置。链接仅用于销售。离线演示请参阅
-  <a href="using#payment-links">付款链接</a>。</p><details class="cause"><summary>原因</summary><p>Checkout API
+<p><span class="fix-label">解决</span>在<strong>设置 › 终端</strong>中完成 Checkout API 设置。链接仅用于销售。<a href="quick-start#try">模拟器</a>无需设置即可提供演示链接。</p><details class="cause"><summary>原因</summary><p>Checkout API
   设置未完成，或本次结账是预授权或收据小费。</p></details></dd></div>
             <div><dt>已支付的链接仍显示<strong>待支付</strong></dt>
               <dd>

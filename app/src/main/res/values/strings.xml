@@ -1100,9 +1100,9 @@
   <string name="receipt_logo_change">Change</string>
   <string name="receipt_logo_remove">Remove logo</string>
   <string name="receipt_logo_style">Style</string>
-  <string name="receipt_logo_auto">Auto</string>
-  <string name="receipt_logo_mark">Logo</string>
-  <string name="receipt_logo_photo">Photo</string>
+  <string name="receipt_logo_auto">Automatic</string>
+  <string name="receipt_logo_mark">Logo or line art</string>
+  <string name="receipt_logo_photo">Photo or shading</string>
   <string name="receipt_logo_darkness">Darkness</string>
   <string name="receipt_logo_invert">Invert</string>
   <string name="receipt_logo_trim">Trim margins</string>
@@ -1342,7 +1342,6 @@
   <string name="split_cash_received">Cash received</string>
   <string name="split_change">Change</string>
   <string name="split_cash_short">Not enough cash</string>
-  <string name="split_cash_note">Enter the cash received. Confirm only after taking the cash and handing back the change.</string>
   <string name="split_confirm_cash">Confirm %1$s received</string>
   <string name="split_balance_changed">The sale changed. Review the amounts and try again.</string>
   <string name="split_tender_card">Card</string>
@@ -1377,7 +1376,6 @@
   <string name="gift_card_expiry">Expiry date (MMYY)</string>
   <string name="gift_card_swiped_note">The shopper swipes the card on the terminal.</string>
   <string name="gift_card_keyed_note">The card number is keyed in on the terminal.</string>
-  <string name="gift_card_action">Action</string>
   <string name="gift_card_check_balance">Check balance</string>
   <string name="gift_card_activate">Activate</string>
   <string name="gift_card_load">Load</string>
@@ -1548,7 +1546,7 @@
   <string name="refund_entry_history">Choose a payment</string>
   <string name="refund_entry_history_hint">Find the payment in History, open it and refund it there.</string>
   <string name="refund_entry_unreferenced">Refund without receipt</string>
-  <string name="refund_entry_unreferenced_hint">Returns an amount to the card the shopper presents, linked to no payment. Only if Adyen enabled it.</string>
+  <string name="refund_entry_unreferenced_hint">Returns an amount to the card the shopper presents, linked to no payment.</string>
   <string name="unreferenced_title">Refund without receipt</string>
   <string name="unreferenced_warning">This refund is not linked to any payment. The app can’t check what was paid; you are liable for wrong or repeated refunds.</string>
   <string name="unreferenced_reason">Reason</string>

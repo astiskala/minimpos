@@ -138,8 +138,7 @@
   <td data-label="Conexión">Internet; teléfono NFC compatible</td><td data-label="Recibos">Correo o compartir; sin
   impresora</td><td data-label="Límites de funciones">Sin propinas en la terminal, pantalla del cliente, MOTO/MKE, pagos
   sin conexión ni conciliación de terminal.</td></tr></tbody></table></details><p class="hint">Las funciones dependen de la
-  terminal, el método de pago y la configuración de Adyen. Pruebe los flujos que necesita; el simulador no verifica una
-  terminal real. <a href="using#capabilities">Comprueba las capacidades de Adyen</a>.</p>
+  terminal, el método de pago y la configuración de Adyen. Pruebe los flujos que necesita. <a href="using#capabilities">Comprueba las capacidades de Adyen</a>.</p>
           <ul>
             <li>La impresión necesita un terminal con impresora incorporada. Si no hay ninguno, puede enviar los recibos
               por correo electrónico o compartirlos.</li>
@@ -490,8 +489,8 @@
             Adyen</a> y prueba tu destino real: <a href="using#terminal-tips">propinas en el terminal</a>,
             <a href="using#terminal-checkout">pagos parciales, avisos al comprador, donaciones y ingreso manual de
             tarjeta</a>, <a href="using#offline">procesamiento fuera de línea</a> y <a href="using#reconciliation">
-            conciliación terminal</a>. La disponibilidad depende de la configuración de Adyen y del destino del pago;
-            Los resultados del simulador no son una verificación del terminal real.</p>
+            conciliación terminal</a>. La disponibilidad depende de la configuración de Adyen y del destino del
+            pago.</p>
           <ol>
             <li>En TEST, pruebe solo los flujos de trabajo opcionales que planea usar: <a href="using#preauth">depósitos
               </a>, <a href="using#tips">propinas de recibo</a>, <a href="using#payment-links">enlaces de pago</a> o
@@ -522,35 +521,30 @@
         </section>
         <section id="try">
           <h2>Prueba el simulador</h2>
-          <p>Explora Mini mPOS sin una cuenta o terminal de Adyen. No se carga ninguna tarjeta.</p>
-          <p>Para explorar las advertencias sin conexión, active <strong>Aprobaciones sin conexión</strong> en <strong>
-            Configuración › Simulador</strong>. Las ventas simuladas aprobadas entonces no tienen referencia PSP y
-            reportan un lote no confirmado. Inspecciona la venta en Historial y prueba <a href="using#reconciliation">
-            conciliación terminal</a>. Esta es una demostración, no una prueba de autorización real fuera de línea o una
-            carga posterior a Adyen.</p>
+          <p>Explore Mini mPOS sin una cuenta ni terminal de Adyen. No se cobra ninguna tarjeta.</p>
           <ol>
-            <li><a href="#install">Instalar la aplicación</a> en un teléfono o emulador Android 9+.</li>
-            <li>En la pantalla de bienvenida, seleccione <strong>Pruebe una demostración</strong> y toque <strong>
-              Continuar</strong>. Las otras opciones son <strong>Escanear códigos de configuración</strong>, desde el
-              asistente de configuración u otro dispositivo, y <strong>Conéctate a Adyen</strong>. Los terminales Adyen
-              inicialmente seleccionan la conexión; Otros dispositivos seleccionan la demostración.</li>
-            <li>en <strong>Configuración › Simulador</strong>, elija el resultado del pago, el retraso y si hay una
-              impresora disponible.</li>
+            <li><a href="#install">Instale la aplicación</a> en un teléfono o emulador Android 9+.</li>
+            <li>En la pantalla de bienvenida, seleccione <strong>Pruebe una demostración</strong> en lugar de
+              <strong>Escanear códigos de configuración</strong> o <strong>Conéctate a Adyen</strong>, y toque
+              <strong>Continuar</strong>.</li>
+            <li>En <strong>Configuración › Simulador</strong>, elija el resultado del pago, el retraso y si hay impresora.
+              Active <strong>Aprobaciones sin conexión</strong> para ver las advertencias sin conexión en el historial y en
+              la <a href="using#reconciliation">conciliación del terminal</a>.</li>
           </ol>
-          <p>Los productos de muestra y el historial están etiquetados como demostraciones. Cada Use de <strong>Agregar
-            datos de muestra</strong> reemplaza los detalles del negocio del recibo con detalles ficticios del café,
-            inclUse si ya existen muestras; El diseño del recibo y la configuración de entrega permanecen sin cambios.
-            Las muestras cuentan en los totales e informes del día de demostración; No son pagos reales. en <strong>
-            Configuración › Datos y transferencia</strong>, Use <strong>Agregar datos de muestra</strong> o <strong>
-            Eliminar datos de muestra</strong>; La eliminación conserva sus propios productos, historial y
-            configuración. Para enlaces de demostración sin conexión, consulte <a href="using#payment-links">enlaces de
-            pago</a>.</p>
-          <p>¿Listo para conectarse? en <strong>Configuración › Simulador</strong>, toque <strong>Configurar pagos
-            reales</strong>. Revise los accesos directos a datos de muestra y recibos, luego toque <strong>Continuar con
-            la configuración</strong>. La configuración de apertura no cambia ningún dato. Un cambio confirmado a TEST o
-            LIVE elimina todo el historial local, incluidas las operaciones no finalizadas; Productos de muestra y
-            detalles del recibo permanecen. Elimine las muestras no deseadas por separado y revise los detalles
-            comerciales de los recibos ficticios antes de realizar pagos reales. Comience con TEST.</p>
+          <p>En <strong>Configuración › Datos y transferencia</strong>, use <strong>Agregar datos de muestra</strong> o
+            <strong>Eliminar datos de muestra</strong>. Las muestras se etiquetan como demostraciones y cuentan en los
+            totales e informes del día de demostración; agregarlas reemplaza los datos del negocio del recibo por una
+            cafetería ficticia, y eliminarlas conserva sus propios productos, historial y configuración.</p>
+          <p>Los enlaces de pago funcionan sin conexión y sin credenciales de API, y sus pantallas y recibos se etiquetan
+            como demostraciones. Sus códigos QR no pueden recibir pagos; toque <strong>Simular pago</strong> para
+            completar uno.</p>
+          <p>El simulador muestra cómo se comporta Mini mPOS, no lo que admiten su terminal o su cuenta de Adyen.
+            Funciones como la guía por audio, las aprobaciones sin conexión y las capacidades de Adyen se imitan, así
+            que pruébelas en un terminal TEST real antes de depender de ellas.</p>
+          <p>¿Listo para conectarse? En <strong>Configuración › Simulador</strong>, toque <strong>Configurar pagos
+            reales</strong> y luego <strong>Continuar con la configuración</strong>. Confirmar TEST o LIVE elimina todo el
+            historial local; los productos de muestra y los datos del recibo se conservan, así que elimine las muestras y
+            revise los datos del negocio antes de cobrar de verdad. Comience con TEST.</p>
           <p class="back-to-contents"><a href="#contents">Volver al contenido</a></p>
         </section>
       </div>

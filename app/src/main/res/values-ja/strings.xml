@@ -1097,8 +1097,8 @@
   <string name="receipt_logo_remove">ロゴを削除</string>
   <string name="receipt_logo_style">スタイル</string>
   <string name="receipt_logo_auto">自動</string>
-  <string name="receipt_logo_mark">ロゴ</string>
-  <string name="receipt_logo_photo">写真</string>
+  <string name="receipt_logo_mark">ロゴ・線画</string>
+  <string name="receipt_logo_photo">写真・階調</string>
   <string name="receipt_logo_darkness">濃さ</string>
   <string name="receipt_logo_invert">反転</string>
   <string name="receipt_logo_trim">余白を切り取る</string>
@@ -1336,7 +1336,6 @@
   <string name="split_cash_received">受取現金</string>
   <string name="split_change">お釣り</string>
   <string name="split_cash_short">現金が不足しています</string>
-  <string name="split_cash_note">受け取った現金を入力してください。現金を受け取り、お釣りを渡してから確定してください。</string>
   <string name="split_confirm_cash">%1$sの受取を確定</string>
   <string name="split_balance_changed">販売内容が変わりました。金額を確認して、もう一度お試しください。</string>
   <string name="split_tender_card">カード</string>
@@ -1371,7 +1370,6 @@
   <string name="gift_card_expiry">有効期限 (MMYY)</string>
   <string name="gift_card_swiped_note">お客様が端末でカードをスワイプします。</string>
   <string name="gift_card_keyed_note">端末でカード番号を入力します。</string>
-  <string name="gift_card_action">操作</string>
   <string name="gift_card_check_balance">残高照会</string>
   <string name="gift_card_activate">有効化</string>
   <string name="gift_card_load">チャージ</string>
@@ -1542,7 +1540,7 @@
   <string name="refund_entry_history">決済を選択</string>
   <string name="refund_entry_history_hint">履歴で決済を探して開き、そこから返金します。</string>
   <string name="refund_entry_unreferenced">領収書なしで返金</string>
-  <string name="refund_entry_unreferenced_hint">お客様が提示するカードに金額を返金します。どの決済にも紐づきません。Adyenで有効な場合のみ。</string>
+  <string name="refund_entry_unreferenced_hint">お客様が提示するカードに金額を返金します。どの決済にも紐づきません。</string>
   <string name="unreferenced_title">領収書なしの返金</string>
   <string name="unreferenced_warning">この返金はどの決済にも紐づきません。アプリは支払額を確認できず、誤った返金や重複した返金の責任は加盟店が負います。</string>
   <string name="unreferenced_reason">理由</string>

@@ -428,16 +428,14 @@ private fun ReturnComponents(
     ) {
         OutcomeNote(stringResource(R.string.refund_gift_card_local))
     }
-    LabeledValue(
-        stringResource(R.string.surcharge_return_fee),
-        (if (split) original.surchargeFor(state.allocation) else original.surchargeFor(state.choice))?.let(money::format)
-            ?: stringResource(R.string.surcharge_unknown),
-    )
-    LabeledValue(
-        stringResource(R.string.surcharge_return_tip),
-        (if (split) original.tipFor(state.allocation) else original.tipFor(state.choice))?.let(money::format)
-            ?: stringResource(R.string.surcharge_unknown),
-    )
+    val surcharge = if (split) original.surchargeFor(state.allocation) else original.surchargeFor(state.choice)
+    val tip = if (split) original.tipFor(state.allocation) else original.tipFor(state.choice)
+    surcharge?.takeIf { it > 0 }?.let {
+        LabeledValue(stringResource(R.string.surcharge_return_fee), money.format(it))
+    }
+    tip?.takeIf { it > 0 }?.let {
+        LabeledValue(stringResource(R.string.surcharge_return_tip), money.format(it))
+    }
 }
 
 /**
@@ -516,18 +514,19 @@ private fun OriginalPaymentCard(
         LabeledValue(stringResource(R.string.detail_reference), original.reference)
         LabeledValue(stringResource(R.string.detail_date), formatDateTime(original.createdAt.toEpochMilli()))
         LabeledValue(stringResource(R.string.refund_original_amount), money.format(original.amountMinor))
-        LabeledValue(
-            stringResource(R.string.surcharge_purchase),
-            original.purchaseMinor?.let(money::format) ?: stringResource(R.string.surcharge_unknown),
-        )
-        LabeledValue(
-            stringResource(R.string.surcharge_label),
-            original.surchargeMinor?.let(money::format) ?: stringResource(R.string.surcharge_unknown),
-        )
+        if ((original.surchargeMinor ?: 0) > 0) {
+            LabeledValue(
+                stringResource(R.string.surcharge_purchase),
+                original.purchaseMinor?.let(money::format),
+            )
+            LabeledValue(stringResource(R.string.surcharge_label), original.surchargeMinor?.let(money::format))
+        }
         if (original.reservedMinor > 0) {
             LabeledValue(stringResource(R.string.surcharge_reserved), money.format(original.reservedMinor))
         }
-        Text(stringResource(R.string.surcharge_refund_order), Modifier.padding(LocalDimens.current.spacing))
+        if ((original.surchargeMinor ?: 0) > 0 || (original.tipMinor ?: 0) > 0) {
+            Text(stringResource(R.string.surcharge_refund_order), Modifier.padding(LocalDimens.current.spacing))
+        }
         if (original.refundedMinor > 0) {
             LabeledValue(stringResource(R.string.refund_already_refunded), money.format(original.refundedMinor))
         }

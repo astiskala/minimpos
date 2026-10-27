@@ -194,6 +194,7 @@ private fun ColumnScope.SurchargeNotes(
     sale: SaleEntity,
     money: MoneyFormatter,
 ) {
+    if ((sale.surchargeMinor ?: 0) <= 0) return
     LabeledValue(
         stringResource(R.string.surcharge_purchase),
         sale.amountSurchargeMinor?.let {
@@ -219,7 +220,11 @@ private fun ColumnScope.ExtraSaleNotes(
             Modifier.testTag("partialNote"),
         )
     }
-    sale.tipMinor?.let { OutcomeNote(stringResource(R.string.detail_tip, money.format(sale.totalMinor), money.format(it))) }
+    sale.tipMinor?.takeIf { it > 0 }?.let {
+        OutcomeNote(
+            stringResource(R.string.detail_tip, money.format(sale.totalMinor), money.format(it)),
+        )
+    }
     sale.donationMinor?.let { OutcomeNote(stringResource(R.string.detail_donation, money.format(it)), Modifier.testTag("donationNote")) }
     sale.offlineMode?.let { mode ->
         val label =

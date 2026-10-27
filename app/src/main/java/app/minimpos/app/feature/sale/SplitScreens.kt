@@ -262,6 +262,10 @@ private fun SplitChoices(
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
+    if (state.cashStage) {
+        CashChoices(state, money, events.onAmount, modifier)
+        return
+    }
     LazyColumn(
         modifier.testTag("splitChoices"),
         contentPadding = PaddingValues(dimens.screenPadding),
@@ -297,7 +301,7 @@ private fun SplitChoices(
                     )
                 }
             }
-        } else if (state.cashStage || state.mode == SplitMode.AMOUNT) {
+        } else if (state.mode == SplitMode.AMOUNT) {
             item(key = "keypad", contentType = "keypad") {
                 Column(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth().padding(top = dimens.spacing)) {
                     NumericKeypad(
@@ -312,6 +316,34 @@ private fun SplitChoices(
                 SplitItemRow(item, state.selection[item.position] ?: 0, events.onQuantity)
             }
         }
+    }
+}
+
+/** Cash due and change above the received amount; keypad keys share the remaining height on small terminals. */
+@Composable
+private fun CashChoices(
+    state: SplitUiState,
+    money: MoneyFormatter,
+    onAmount: ((AmountEntry) -> AmountEntry) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dimens = LocalDimens.current
+    Column(
+        modifier.padding(dimens.screenPadding),
+        verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth()) {
+            if (state.rejected) OutcomeNote(stringResource(R.string.split_balance_changed))
+            CashEntry(state, money)
+        }
+        NumericKeypad(
+            onDigit = { digit -> onAmount { it.append(digit) } },
+            onDoubleZero = { onAmount { it.appendDoubleZero() } },
+            onBackspace = { onAmount { it.backspace() } },
+            modifier = Modifier.widthIn(max = dimens.contentMaxWidth).then(if (dimens.compact) Modifier.weight(1f) else Modifier),
+            fill = dimens.compact,
+        )
     }
 }
 
@@ -330,10 +362,6 @@ private fun ColumnScope.SplitSummary(
         LabeledValue(stringResource(R.string.split_unpaid), money.format(balance.unpaidMinor), emphasize = true)
     }
     if (state.rejected) OutcomeNote(stringResource(R.string.split_balance_changed))
-    if (state.cashStage) {
-        CashEntry(state, money)
-        return
-    }
     if (state.voucherStage) {
         // A voucher pays a typed amount only, so the allocation modes are not offered.
         SplitAmount(state, money)
@@ -435,15 +463,31 @@ private fun ColumnScope.CashEntry(
     state: SplitUiState,
     money: MoneyFormatter,
 ) {
-    Card {
-        LabeledValue(stringResource(R.string.split_cash_due), money.format(state.amountMinor))
-        LabeledValue(stringResource(R.string.split_cash_received), money.format(state.received.minor), emphasize = true)
-        LabeledValue(
-            stringResource(R.string.split_change),
-            state.changeMinor?.let(money::format) ?: stringResource(R.string.split_cash_short),
-        )
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.split_cash_due), style = MaterialTheme.typography.bodySmall)
+            Text(money.format(state.amountMinor), style = MaterialTheme.typography.titleMedium)
+        }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+            Text(stringResource(R.string.split_change), style = MaterialTheme.typography.bodySmall)
+            Text(
+                state.changeMinor?.let(money::format) ?: stringResource(R.string.split_cash_short),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
     }
-    Text(stringResource(R.string.split_cash_note), style = MaterialTheme.typography.bodySmall)
+    Text(
+        stringResource(R.string.split_cash_received),
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center,
+    )
+    Text(
+        money.format(state.received.minor),
+        style = LocalDimens.current.amountStyle,
+        modifier = Modifier.fillMaxWidth().testTag("cashReceived"),
+        textAlign = TextAlign.Center,
+    )
 }
 
 /**

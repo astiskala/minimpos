@@ -204,26 +204,19 @@
               sans portefeuille POS éligible laisse le bouton masqué. Vérifiez le magasin attribué, la devise actuelle
               et <a href="quick-start#credentials">Rôles de la clé API</a>. Tap to Pay et les préautorisations ne
               proposent pas cette action.</p></dd></div>
-            <div><dt>La découverte de portefeuille signale une erreur</dt><dd><p>L'erreur apparaît uniquement dans les
-              paramètres et ne bloque pas les paiements ordinaires. Corrigez les informations
-              d'identification/l'environnement ou les problèmes d'accès en lecture. Un échec d'actualisation temporaire
-              conserve la dernière liste vérifiée pour une configuration inchangée ; une vérification vide réussie ou un
-              échec d'accès le supprime. La configuration est vérifiée lors des modifications de démarrage/configuration
-              et de l'actualisation manuelle, pas avant chaque vente.</p></dd></div>
-            <div><dt>Le code n'est pas valide ou aucun code n'arrive</dt><dd><p>Utilisez le code de paiement de
-              l'acheteur, pas un profil, un virement ou un reçu QR. Choisissez le bon portefeuille. L'analyse native se
-              termine après 30 secondes : appuyez sur <strong>Scannez à nouveau</strong> ou <strong>Utiliser l’appareil
-              photo</strong>. Autorisez l’autorisation de la caméra lorsque cela est demandé. Le retour de
-              l'arrière-plan nécessite une nouvelle analyse.</p></dd></div>
-            <div><dt>L'enregistrement est rejeté ou aucun jeton n'est créé</dt><dd><p>Suivez le résultat du paiement. Un
-              paiement approuvé reste approuvé sans jeton enregistré. Seulement après un refus concluant, revenez à la
-              caisse, éteignez <strong>Enregistrer la carte</strong> et démarrez explicitement une autre analyse si
-              nécessaire. Il n’y a pas de paiement de remplacement automatique. Pour <strong>Résultat inconnu</strong>,
-              <a href="#unknown">vérifier la transaction originale</a> à la place.</p></dd></div>
+            <div><dt>La découverte de portefeuille signale une erreur</dt><dd><p>L’erreur apparaît uniquement dans les
+              Paramètres et ne bloque pas les paiements par carte. Corrigez-y l’identifiant, l’environnement ou l’accès en
+              lecture, puis actualisez. Un échec temporaire conserve les derniers portefeuilles vérifiés.</p></dd></div>
+            <div><dt>Le code n’est pas valide ou aucun code n’arrive</dt><dd><p>Utilisez le code de paiement de l’acheteur,
+              pas un QR de profil, de transfert ou de reçu, et choisissez le bon portefeuille. Un scan sur le terminal
+              s’arrête après 30 secondes : touchez <strong>Scannez à nouveau</strong> ou <strong>Utiliser l’appareil
+              photo</strong>.</p></dd></div>
+            <div><dt>L’enregistrement est rejeté ou aucun jeton n’est créé</dt><dd><p>Un paiement approuvé reste approuvé
+              sans jeton enregistré. Après un refus, désactivez <strong>Enregistrer la carte</strong> et scannez de nouveau
+              si besoin. Pour <strong>Résultat inconnu</strong>, <a href="#unknown">vérifiez la transaction
+              d’origine</a>.</p></dd></div>
           </dl>
-          <p>Voir <a href="using#wallets">la procédure de paiement du portefeuille</a>. Le portefeuille demandé par
-            History est une intention, et non une preuve que le paiement a réussi ou qu’Adyen a utilisé cette méthode.
-            </p>
+          <p>Voir <a href="using#wallets">la procédure de paiement par portefeuille</a>.</p>
           <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
         </section>
         <section id="connection">
@@ -303,11 +296,7 @@
                   <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Exigences de
                   l'application Adyen Payments</a>.</p>
                 <p>La clé client doit appartenir au même identifiant utilisé pour l'enregistrement.</p>
-                <p>Utilisez <strong>Partager le rapport expurgé</strong> pour partager exactement les lignes affichées :
-                  version de l'application, résultats d'accès et de connexion API avec leur heure de contrôle UTC,
-                  intégration et environnement, identifiants de compte, de magasin, d'installation et de clé partagée,
-                  Android, versions de l'appareil et de l'application Adyen Payments, et pour Tap to Pay, la clé client
-                  et les contrôles d'enregistrement avec l'identité des informations d'identification vérifiées.</p>
+                <p>Pour demander de l’aide, utilisez <strong>Partager le rapport expurgé</strong>.</p>
                   </dd></div>
             <div id="key-setup"><dt>"La nouvelle clé est enregistrée. Mettez à jour la configuration de ce terminal"
               </dt>
@@ -390,8 +379,7 @@
           <dl class="fixes">
             <div><dt>Le paiement n'a pas <strong>Créer un lien de paiement</strong></dt>
               <dd>
-<p><span class="fix-label">Corriger</span>Terminez la configuration de Checkout API dans <strong>Paramètres › Terminal</strong>. Les liens sont proposés uniquement à la vente. Pour des démos hors ligne, voir
-  <a href="using#payment-links">liens de paiement</a>.</p><details class="cause"><summary>Parce que</summary><p>La
+<p><span class="fix-label">Corriger</span>Terminez la configuration de Checkout API dans <strong>Paramètres › Terminal</strong>. Les liens sont proposés uniquement à la vente. Le <a href="quick-start#try">simulateur</a> propose des liens de démo sans configuration.</p><details class="cause"><summary>Parce que</summary><p>La
   configuration du paiement API est incomplète ou le paiement concerne une pré-autorisation ou un pourboire sur le reçu.
   </p></details></dd></div>
             <div><dt>Un lien payant s'affiche toujours <strong>En attente de paiement</strong></dt>

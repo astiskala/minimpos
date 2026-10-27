@@ -67,8 +67,20 @@ class GiftCardUiTest {
         simulator(svs)
         await { container.pinManager.setPin("1357") }
         openGiftCards()
-        compose.waitUntilAtLeastOneExists(hasTestTag("giftCardStart"), 15_000)
-        compose.onNodeWithTag("giftCardStart").assertIsDisplayed().assertIsEnabled()
+        compose.waitUntilAtLeastOneExists(hasTestTag("giftCardOperation_BALANCE"), 15_000)
+        compose.onNodeWithTag("giftCardStart").assertDoesNotExist()
+        compose
+            .onNodeWithTag("giftCardOperation_BALANCE")
+            .assertIsDisplayed()
+            .assertIsEnabled()
+            .performClick()
+        // The simulator's unactivated card refuses the inquiry, proving the list action sent it without a footer.
+        compose.waitUntilAtLeastOneExists(
+            hasText(env.context.getString(R.string.gift_card_balance_failed), substring = true),
+            15_000,
+        )
+        compose.onNodeWithText(env.context.getString(R.string.gift_card_balance_failed), substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("giftCardStart").assertDoesNotExist()
         compose.onNodeWithTag("giftCardOperation_LOAD").performScrollTo().performClick()
         compose.onNodeWithText(env.context.getString(R.string.gift_card_manager_note)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("giftCardStart").assertIsNotEnabled()

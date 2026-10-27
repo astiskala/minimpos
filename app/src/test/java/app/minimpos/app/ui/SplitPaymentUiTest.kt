@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -92,6 +93,9 @@ class SplitPaymentUiTest {
             }
             compose.awaitCondition("split return proposed") { vm.state.value.allocation.size == 2 }
             assertThat(vm.state.value.returnsCash).isTrue()
+            compose.awaitCondition("Manager PIN guidance laid out") {
+                compose.onNodeWithText(env.context.getString(R.string.manager_pin_required)).isDisplayed()
+            }
             compose.onNodeWithText(env.context.getString(R.string.manager_pin_required)).assertIsDisplayed()
             await {
                 container.pinManager.setPin("1357")
@@ -185,6 +189,11 @@ class SplitPaymentUiTest {
             compose.onNodeWithTag("splitCard").assertIsDisplayed()
             compose.onNodeWithTag("splitCash").assertIsDisplayed().performClick()
             compose.awaitCondition("cash entry") { first.state.value.cashStage }
+            listOf("key_1", "key_9", "key_00", "key_0", "cashReceived").forEach {
+                compose.onNodeWithTag(it).assertIsDisplayed()
+            }
+            compose.onNodeWithTag("key_0").performClick()
+            compose.awaitCondition("cash received edited") { first.state.value.received.minor == 4500L }
             compose
                 .onNodeWithTag("confirmCash")
                 .assertIsDisplayed()

@@ -1105,8 +1105,8 @@
   <string name="receipt_logo_remove">Supprimer le logo</string>
   <string name="receipt_logo_style">Style</string>
   <string name="receipt_logo_auto">Automatique</string>
-  <string name="receipt_logo_mark">Logo</string>
-  <string name="receipt_logo_photo">Photo</string>
+  <string name="receipt_logo_mark">Logo ou dessin</string>
+  <string name="receipt_logo_photo">Photo ou dégradés</string>
   <string name="receipt_logo_darkness">Intensité</string>
   <string name="receipt_logo_invert">Inverser</string>
   <string name="receipt_logo_trim">Rogner les marges</string>
@@ -1348,7 +1348,6 @@
   <string name="split_cash_received">Espèces reçues</string>
   <string name="split_change">Monnaie rendue</string>
   <string name="split_cash_short">Espèces insuffisantes</string>
-  <string name="split_cash_note">Saisissez les espèces reçues. Confirmez seulement après les avoir reçues et rendu la monnaie.</string>
   <string name="split_confirm_cash">Confirmer %1$s reçus</string>
   <string name="split_balance_changed">La vente a changé. Vérifiez les montants et réessayez.</string>
   <string name="split_tender_card">Carte</string>
@@ -1383,7 +1382,6 @@
   <string name="gift_card_expiry">Date d’expiration (MMAA)</string>
   <string name="gift_card_swiped_note">L’acheteur glisse la carte sur le terminal.</string>
   <string name="gift_card_keyed_note">Le numéro de carte est saisi sur le terminal.</string>
-  <string name="gift_card_action">Action</string>
   <string name="gift_card_check_balance">Consulter le solde</string>
   <string name="gift_card_activate">Activer</string>
   <string name="gift_card_load">Recharger</string>
@@ -1554,7 +1552,7 @@
   <string name="refund_entry_history">Choisir un paiement</string>
   <string name="refund_entry_history_hint">Trouvez le paiement dans l’Historique, ouvrez-le et remboursez-le depuis là.</string>
   <string name="refund_entry_unreferenced">Rembourser sans reçu</string>
-  <string name="refund_entry_unreferenced_hint">Rend un montant sur la carte présentée par le client, sans lien avec un paiement. Seulement si Adyen l’a activé.</string>
+  <string name="refund_entry_unreferenced_hint">Rend un montant sur la carte présentée par le client, sans lien avec un paiement.</string>
   <string name="unreferenced_title">Remboursement sans reçu</string>
   <string name="unreferenced_warning">Ce remboursement n’est lié à aucun paiement. L’app ne peut pas vérifier ce qui a été payé ; vous êtes responsable des remboursements erronés ou répétés.</string>
   <string name="unreferenced_reason">Motif</string>

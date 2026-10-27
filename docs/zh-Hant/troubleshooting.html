@@ -164,15 +164,14 @@
             <div><dt>沒有掃描錢包按鈕</dt><dd><p>打開<strong>設定 › 終端</strong>，點按<strong>重新整理掃碼錢包</strong>。成功查詢後沒有符合條件的 POS
               錢包時，按鈕會保持隱藏。核對終端店舖、目前貨幣和<a href="quick-start#credentials">API 密鑰角色</a>。Tap to Pay 和預授權不提供此功能。</p></dd>
               </div>
-            <div><dt>錢包查詢報錯</dt><dd><p>
-              錯誤僅顯示在設定中，不會阻止普通支付。請檢查憑據、環境和只讀存取權限。設定未變時，臨時重新整理錯誤會保留最近驗證的錢包列表；成功查詢到空列表或存取失敗會移除它。只在啟動、設定改變或手動重新整理時查詢，不會在每筆銷售前查詢。
-              </p></dd></div>
-            <div><dt>付款碼無效或未收到付款碼</dt><dd><p>請使用顧客的付款碼，而非個人資料、設定轉移或收據二維碼，並選擇正確的錢包。終端掃描最多持續 30 秒，之後點按<strong>重新掃描
-              </strong>或<strong>使用相機</strong>。相機提示時請授予權限。應用程式從後台返回後需重新開始掃描。</p></dd></div>
-            <div><dt>儲存被拒絕或未建立代碼</dt><dd><p>請以支付結果為準。沒有儲存代碼的已批准付款仍然有效。僅在明確被拒絕後，如需重試，返回結帳，關閉<strong>儲存卡</strong>
-              並明確開始新掃描。應用程式不會自動重新付款。<strong>結果未知</strong>時應<a href="#unknown">查詢原交易</a>。</p></dd></div>
+            <div><dt>錢包查詢報錯</dt><dd><p>錯誤僅顯示在設定中，不會阻止銀行卡付款。請在設定中修正憑據、環境或讀取權限後
+              重新整理。臨時失敗會保留最近驗證的錢包。</p></dd></div>
+            <div><dt>付款碼無效或未收到付款碼</dt><dd><p>請使用顧客的付款碼，而非個人資料、設定轉移或收據二維碼，並選擇正確的
+              錢包。終端掃描 30 秒後結束：點按<strong>重新掃描</strong>或<strong>使用相機</strong>。</p></dd></div>
+            <div><dt>儲存被拒絕或未建立代碼</dt><dd><p>即使未儲存代碼，已批准的付款仍然有效。被拒絕後，關閉<strong>儲存卡</strong>，
+              如有需要再重新掃描。<strong>結果未知</strong>時請<a href="#unknown">查詢原交易</a>。</p></dd></div>
           </dl>
-          <p>請參閱<a href="using#wallets">錢包支付步驟</a>。交易紀錄中的請求錢包僅表示支付意圖，不證明付款成功或 Adyen 使用了該方式。</p>
+          <p>請參閱<a href="using#wallets">錢包支付步驟</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="connection">
@@ -227,8 +226,7 @@
                   <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式要求
                   </a>。</p>
                 <p>客戶端密鑰必須屬於註冊所用的同一憑據。</p>
-                <p><strong>分享已隱去敏感資料的報告</strong>只分享顯示的各行：應用程式版本、API 存取和連接檢查結果及其 UTC 時間、整合方式和環境、帳戶/店舖/安裝實例/共享密鑰
-                  ID、Android/裝置/Payments 應用程式版本；使用 Tap to Pay 時亦包括客戶端密鑰和註冊檢查結果及已驗證憑據身份。</p></dd></div>
+                <p>尋求協助時，請使用<strong>分享已隱去敏感資料的報告</strong>。</p></dd></div>
             <div id="key-setup"><dt>“新密鑰已儲存。請更新此終端的設定”</dt>
               <dd>
 <p><span class="fix-label">解決</span>在終端上打開 <strong>Admin menu › Config › Update</strong>，然後返回 Mini mPOS 點按<strong>再次檢查</strong>。如果建立中斷，請點按<strong>繼續密鑰設定</strong>，不會建立第二個密鑰。參見<a href="quick-start#shared-key-creation">密鑰建立</a>及
@@ -292,8 +290,7 @@
           <dl class="fixes">
             <div><dt>結帳時沒有<strong>建立付款連結</strong></dt>
               <dd>
-<p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中完成 Checkout API 設定。連結僅用於銷售。離線演示請參閱
-  <a href="using#payment-links">付款連結</a>。</p><details class="cause"><summary>原因</summary><p>Checkout API
+<p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中完成 Checkout API 設定。連結僅用於銷售。<a href="quick-start#try">模擬器</a>毋須設定即可提供示範連結。</p><details class="cause"><summary>原因</summary><p>Checkout API
   設定未完成，或本次結帳是預授權或收據小費。</p></details></dd></div>
             <div><dt>已支付的連結仍顯示<strong>待支付</strong></dt>
               <dd>

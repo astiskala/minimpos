@@ -1097,8 +1097,8 @@
   <string name="receipt_logo_remove">移除標誌</string>
   <string name="receipt_logo_style">樣式</string>
   <string name="receipt_logo_auto">自動</string>
-  <string name="receipt_logo_mark">標誌</string>
-  <string name="receipt_logo_photo">相片</string>
+  <string name="receipt_logo_mark">標誌或線條圖</string>
+  <string name="receipt_logo_photo">相片或漸變圖</string>
   <string name="receipt_logo_darkness">深淺</string>
   <string name="receipt_logo_invert">反色</string>
   <string name="receipt_logo_trim">裁剪邊距</string>
@@ -1336,7 +1336,6 @@
   <string name="split_cash_received">收到現金</string>
   <string name="split_change">找續</string>
   <string name="split_cash_short">現金不足</string>
-  <string name="split_cash_note">請輸入收到的現金。收款並找續後才確認。</string>
   <string name="split_confirm_cash">確認已收 %1$s</string>
   <string name="split_balance_changed">銷售已變更。請檢查金額後再試。</string>
   <string name="split_tender_card">信用卡</string>
@@ -1371,7 +1370,6 @@
   <string name="gift_card_expiry">到期日 (MMYY)</string>
   <string name="gift_card_swiped_note">顧客在終端上刷卡。</string>
   <string name="gift_card_keyed_note">在終端上輸入卡號。</string>
-  <string name="gift_card_action">操作</string>
   <string name="gift_card_check_balance">查詢餘額</string>
   <string name="gift_card_activate">啟用</string>
   <string name="gift_card_load">增值</string>
@@ -1542,7 +1540,7 @@
   <string name="refund_entry_history">選擇付款</string>
   <string name="refund_entry_history_hint">在歷史記錄中找到付款，開啟後在那裡退款。</string>
   <string name="refund_entry_unreferenced">無收據退款</string>
-  <string name="refund_entry_unreferenced_hint">將金額退還到顧客出示的卡，不關聯任何付款。僅在 Adyen 已啟用時可用。</string>
+  <string name="refund_entry_unreferenced_hint">將金額退還到顧客出示的卡，不關聯任何付款。</string>
   <string name="unreferenced_title">無收據退款</string>
   <string name="unreferenced_warning">此退款不關聯任何付款。應用程式無法核實已付款項；錯誤或重複退款由您承擔責任。</string>
   <string name="unreferenced_reason">原因</string>

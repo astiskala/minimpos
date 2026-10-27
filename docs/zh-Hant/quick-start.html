@@ -113,7 +113,7 @@
   </td><td data-label="功能限制">支援獨立顧客螢幕；雲端路由不提供離線處理。</td></tr><tr><th scope="row"><a href="#tap-to-pay">在手機上使用 Tap to Pay
   </a></th><td data-label="連接">互聯網；兼容 NFC 手機</td><td data-label="收據">電郵或分享；無打印機</td><td data-label="功能限制">
   不支援終端小費、顧客螢幕、MOTO/MKE、離線處理或終端對賬。</td></tr></tbody></table></details><p class="hint">終端功能取決於型號、付款方式及 Adyen
-  設定。請測試所需流程；模擬器無法驗證真實終端。 <a href="using#capabilities">檢查 Adyen
+  設定。請測試所需流程。 <a href="using#capabilities">檢查 Adyen
   功能</a>.</p>
           <ul>
             <li>列印需要內置打印機的終端。如果沒有打印機，可改為發送電子收據或分享收據。</li>
@@ -392,7 +392,7 @@
 </div>
           <p>使用可選終端功能前，請檢查 <a href="using#capabilities">Adyen 功能</a>並測試實際收款目標：<a href="using#terminal-tips">終端小費</a>、
             <a href="using#terminal-checkout">部分付款、顧客提示、Giving 和手動輸入卡號</a>、<a href="using#offline">離線處理</a>及
-            <a href="using#reconciliation">終端對帳</a>。可用性取決於 Adyen 設定和收款目標；模擬器結果不等於真實終端驗證。</p>
+            <a href="using#reconciliation">終端對帳</a>。可用性取決於 Adyen 設定和收款目標。</p>
           <ol>
             <li>在 TEST 中測試計劃使用的可選流程：<a href="using#preauth">訂金</a>、<a href="using#tips">收據小費</a>、
               <a href="using#payment-links">付款連結</a>或<a href="using#wallets">掃描錢包</a>。訂金和收據小費會凍結資金，直至扣款。請在商戶後台確認最終扣款結果。
@@ -414,21 +414,21 @@
         </section>
         <section id="try">
           <h2>試用模擬器</h2>
-          <p>要示範離線警告，請在<strong>設定 › 模擬器</strong>中開啟<strong>離線批准</strong>（Store-and-Forward）。獲批的模擬銷售將沒有 PSP
-            參考編號，並報告未確認批次。在交易紀錄中查看銷售並嘗試<a href="using#reconciliation">終端對帳</a>。這只是示範，不會驗證真實離線授權或稍後上傳 Adyen 的流程。</p>
           <p>無需 Adyen 帳戶或終端即可體驗 Mini mPOS，不會扣款。</p>
           <ol>
             <li>在 Android 9+ 手機或模擬器上<a href="#install">安裝應用程式</a>。</li>
-            <li>在歡迎畫面選擇<strong>試用示範</strong>，點按<strong>繼續</strong>。其他選項為<strong>掃描設定二維碼</strong>（來自設定助手或另一台設備）及<strong>
-              連接 Adyen</strong>。Adyen 終端預設選擇連接，其他設備預設選擇示範。</li>
-            <li>在<strong>設定 › 模擬器</strong>中選擇支付結果、延遲以及是否有打印機。</li>
+            <li>在歡迎畫面選擇<strong>試用示範</strong>（而非<strong>掃描設定二維碼</strong>或<strong>連接 Adyen</strong>），然後點按
+              <strong>繼續</strong>。</li>
+            <li>在<strong>設定 › 模擬器</strong>中選擇支付結果、延遲以及是否有打印機。開啟<strong>離線批准</strong>後，可在交易紀錄和
+              <a href="using#reconciliation">終端對帳</a>中查看離線警告。</li>
           </ol>
-          <p>示例商品和交易紀錄會標為演示。每次<strong>新增示例資料</strong>都會以虛構咖啡店資料取代收據商戶資料，即使示例已存在；收據版面和傳送設定保持不變。示例計入演示每日總計和報告，並非真實付款。在
-            <strong>設定 › 資料與轉移</strong>中可<strong>新增示例資料</strong>或<strong>刪除示例資料</strong>；刪除會保留您自己的商品、交易紀錄和設定。離線演示連結請參閱
-            <a href="using#payment-links">付款連結</a>。</p>
-          <p>準備連接時，在<strong>設定 › 模擬器</strong>中點按<strong>設定真實付款</strong>。透過捷徑檢查示例資料及收據，再點按<strong>繼續設定</strong>
-            。開啟設定不會更改資料。確認切換至 TEST 或 LIVE 後，所有本機記錄（包括未完成的操作）都會刪除；示例商品及收據資料會保留。請另外移除不需要的示例，並在真實付款前檢查虛構的收據商戶資料。先使用 TEST
-            測試。</p>
+          <p>在<strong>設定 › 資料與轉移</strong>中可<strong>新增示例資料</strong>或<strong>刪除示例資料</strong>。示例會標為演示。
+            示例計入演示每日總計和報告；新增示例會以虛構咖啡店取代收據商戶資料，刪除示例會保留您自己的商品、交易紀錄和設定。</p>
+          <p>付款連結無需 API 憑據即可離線使用，其頁面和收據都標為演示。這些二維碼無法收款；點按<strong>模擬支付</strong>即可完成演示。</p>
+          <p>模擬器展示的是 Mini mPOS 的運作方式，而不是您的終端或 Adyen 帳戶支援甚麼。語音引導、離線批准和 Adyen 功能等只是模擬，
+            請在真實的 TEST 終端上測試後再使用。</p>
+          <p>準備連接時，在<strong>設定 › 模擬器</strong>中依次點按<strong>設定真實付款</strong>和<strong>繼續設定</strong>。確認 TEST
+            或 LIVE 會刪除所有本機記錄；示例商品和收據資料會保留，因此請在真實付款前移除示例並檢查商戶資料。先使用 TEST 測試。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
       </div>

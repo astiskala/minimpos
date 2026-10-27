@@ -10,7 +10,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,8 +37,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -124,9 +135,7 @@ fun GiftCardsScreen(
         onBack = navigator::back,
         modifier = modifier,
         bottomBar = {
-            StartBar(state, money, onStart = {
-                if (state.changesValue) confirm = true else approveBalance(setOf(ManagerAction.GIFT_CARD_BALANCE)) { vm.readBalance() }
-            })
+            StartBar(state, money, onStart = { confirm = true })
         },
     ) { padding ->
         if (state.loaded && state.settings.isEmpty()) {
@@ -139,35 +148,40 @@ fun GiftCardsScreen(
             return@MiniScaffold
         }
         ScreenColumn(padding) {
-            GiftCardPicker(
-                state.settings,
-                state.card,
-                onProvider = vm::selectProvider,
-                onEntry = vm::selectEntry,
-                onScan = vm::scanned,
-                onExpiry = vm::setExpiry,
-            )
-            Operations(state, vm::selectOperation)
+            Column(verticalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing / 2)) {
+                GiftCardPicker(
+                    state.settings,
+                    state.card,
+                    onProvider = vm::selectProvider,
+                    onEntry = vm::selectEntry,
+                    onScan = vm::scanned,
+                    onExpiry = vm::setExpiry,
+                )
+            }
+            Operations(state, vm::selectOperation) {
+                vm.selectOperation(GiftCardOperation.BALANCE)
+                approveBalance(setOf(ManagerAction.GIFT_CARD_BALANCE)) { vm.readBalance() }
+            }
             OperationDetails(state, money, AmountEvents(vm::updateAmount, vm::selectFunding, vm::confirmExternal))
             Activities(state, money) { navigator.push(Route.GiftCardActivity(it)) }
         }
     }
 }
 
-/** The pinned primary action: read the balance, or start the chosen value change; nothing without providers. */
+/** The pinned secondary action for reviewing a value change; balance runs directly from its list button. */
 @Composable
 private fun StartBar(
     state: GiftCardsUiState,
     money: MoneyFormatter,
     onStart: () -> Unit,
 ) {
-    if (state.settings.isEmpty()) return
+    if (state.settings.isEmpty() || !state.changesValue) return
     BottomActions {
         GatedButton(
             text = startLabel(state, money),
             onClick = onStart,
             blocked = state.reason,
-            primary = true,
+            icon = operationIcon(state.operation),
             enabled = state.ready,
             loading = state.reading,
             requiresSetup = true,
@@ -195,7 +209,7 @@ private fun StartDialog(
     destructive = state.operation == GiftCardOperation.DEACTIVATE,
 )
 
-/** Below the actions: the balance read, the amount to enter, or what deactivation means. */
+/** Below the actions: the amount to enter, or what deactivation means; balance results stay beside their action. */
 @Composable
 private fun ColumnScope.OperationDetails(
     state: GiftCardsUiState,
@@ -203,9 +217,8 @@ private fun ColumnScope.OperationDetails(
     events: AmountEvents,
 ) {
     when {
-        state.operation == GiftCardOperation.BALANCE -> state.balance?.let { Balance(it) }
         state.takesAmount -> AmountEntry(state, money, events)
-        else -> OutcomeNote(stringResource(R.string.gift_card_deactivate_note))
+        state.changesValue -> OutcomeNote(stringResource(R.string.gift_card_deactivate_note))
     }
 }
 
@@ -231,7 +244,7 @@ internal fun ColumnScope.GiftCardPicker(
         }
     }
     if (settings.size > 1) {
-        SectionHeader(stringResource(R.string.gift_card_provider))
+        PickerLabel(stringResource(R.string.gift_card_provider))
         Choices(settings.map { it.provider }, card.provider, "giftCardProvider", onProvider) { providerName(it) }
     }
     val entries =
@@ -241,7 +254,7 @@ internal fun ColumnScope.GiftCardPicker(
             ?.sorted()
             .orEmpty()
     if (entries.size > 1) {
-        SectionHeader(stringResource(R.string.gift_card_entry))
+        PickerLabel(stringResource(R.string.gift_card_entry))
         Choices(entries, card.entry, "giftCardEntry", onEntry) { stringResource(entryLabel(it)) }
     }
     if (card.entry == GiftCardEntry.SCANNED) {
@@ -274,6 +287,17 @@ internal fun ColumnScope.GiftCardPicker(
     }
 }
 
+/** Compact headings keep each selector close to its label. */
+@Composable
+private fun PickerLabel(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.semantics { heading() },
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun <T> Choices(
@@ -295,26 +319,52 @@ private fun <T> Choices(
     }
 }
 
-/** The actions the chosen provider supports, as buttons that select one. */
+/** Full-width secondary actions: read a balance directly, or select a value change to review below. */
 @Composable
 private fun ColumnScope.Operations(
     state: GiftCardsUiState,
     onSelect: (GiftCardOperation) -> Unit,
+    onBalance: () -> Unit,
 ) {
-    SectionHeader(stringResource(R.string.gift_card_action))
-    state.operations.chunked(2).forEach { row ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
-            row.forEach { operation ->
-                val chosen = operation == state.operation
-                val text = stringResource(operationLabel(operation))
-                val tag = Modifier.weight(1f).testTag("giftCardOperation_${operation.name}")
-                if (chosen) PrimaryButton(text, { onSelect(operation) }, tag) else SecondaryButton(text, { onSelect(operation) }, tag)
-            }
-            if (row.size == 1) Column(Modifier.weight(1f)) {}
+    state.operations.forEach { operation ->
+        val chosen = operation == state.operation
+        val tag = Modifier.testTag("giftCardOperation_${operation.name}").semantics { selected = chosen }
+        if (operation == GiftCardOperation.BALANCE) {
+            val balance = state.copy(operation = GiftCardOperation.BALANCE)
+            GatedButton(
+                stringResource(operationLabel(operation)),
+                onBalance,
+                blocked = balance.reason,
+                enabled = balance.ready,
+                loading = state.reading,
+                icon = operationIcon(operation),
+                requiresSetup = true,
+                modifier = tag,
+            )
+            if (state.operation == GiftCardOperation.BALANCE) state.balance?.let { Balance(it) }
+        } else {
+            SecondaryButton(
+                stringResource(operationLabel(operation)),
+                { onSelect(operation) },
+                tag,
+                icon = if (chosen) Icons.Default.Check else operationIcon(operation),
+            )
         }
     }
     if (state.changesValue && !state.managerConfigured) OutcomeNote(stringResource(R.string.gift_card_manager_note))
 }
+
+/** Icons for choosing an action and confirming the selected value change. */
+private fun operationIcon(operation: GiftCardOperation): ImageVector =
+    when (operation) {
+        GiftCardOperation.BALANCE -> Icons.Default.AccountBalanceWallet
+        GiftCardOperation.ACTIVATE -> Icons.Default.CreditCard
+        GiftCardOperation.LOAD -> Icons.Default.AddCircle
+        GiftCardOperation.CASH_OUT -> Icons.Default.Payments
+        GiftCardOperation.REFUND, GiftCardOperation.UNDO_LOAD -> Icons.AutoMirrored.Filled.Undo
+        GiftCardOperation.DEACTIVATE -> Icons.Default.Block
+        GiftCardOperation.REDEEM -> Icons.Default.CardGiftcard
+    }
 
 @Composable
 private fun ColumnScope.Balance(result: GiftCardBalanceResult) {

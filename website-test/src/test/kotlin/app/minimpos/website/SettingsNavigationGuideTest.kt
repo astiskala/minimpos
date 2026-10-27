@@ -36,7 +36,7 @@ class SettingsNavigationGuideTest {
             assertWithMessage("$language configurable Manager permissions").that(labels).contains(strings.getValue("manager_permissions"))
             assertWithMessage("$language separate Manager PIN setup").that(labels).contains(strings.getValue("manager_pin_set"))
             assertWithMessage("$language simulator link action")
-                .that(using.select("#payment-links strong").eachText())
+                .that(Jsoup.parse(directory.resolve("quick-start.html").readText()).select("#try strong").eachText())
                 .contains(strings.getValue("link_simulate"))
             assertWithMessage("$language browser update action")
                 .that(using.select("#more strong").eachText())

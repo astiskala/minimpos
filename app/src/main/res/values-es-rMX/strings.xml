@@ -1105,8 +1105,8 @@
   <string name="receipt_logo_remove">Quitar logotipo</string>
   <string name="receipt_logo_style">Estilo</string>
   <string name="receipt_logo_auto">Automático</string>
-  <string name="receipt_logo_mark">Logotipo</string>
-  <string name="receipt_logo_photo">Foto</string>
+  <string name="receipt_logo_mark">Logotipo o dibujo</string>
+  <string name="receipt_logo_photo">Foto o sombreado</string>
   <string name="receipt_logo_darkness">Oscuridad</string>
   <string name="receipt_logo_invert">Invertir</string>
   <string name="receipt_logo_trim">Recortar márgenes</string>
@@ -1348,7 +1348,6 @@
   <string name="split_cash_received">Efectivo recibido</string>
   <string name="split_change">Cambio</string>
   <string name="split_cash_short">Efectivo insuficiente</string>
-  <string name="split_cash_note">Ingrese el efectivo recibido. Confirme solo después de recibirlo y entregar el cambio.</string>
   <string name="split_confirm_cash">Confirmar %1$s recibido</string>
   <string name="split_balance_changed">La venta cambió. Revise los montos e inténtelo de nuevo.</string>
   <string name="split_tender_card">Tarjeta</string>
@@ -1383,7 +1382,6 @@
   <string name="gift_card_expiry">Vencimiento (MMAA)</string>
   <string name="gift_card_swiped_note">El comprador desliza la tarjeta en la terminal.</string>
   <string name="gift_card_keyed_note">El número de tarjeta se teclea en la terminal.</string>
-  <string name="gift_card_action">Acción</string>
   <string name="gift_card_check_balance">Consultar saldo</string>
   <string name="gift_card_activate">Activar</string>
   <string name="gift_card_load">Recargar</string>
@@ -1554,7 +1552,7 @@
   <string name="refund_entry_history">Elegir un pago</string>
   <string name="refund_entry_history_hint">Busca el pago en Historial, ábrelo y reembólsalo ahí.</string>
   <string name="refund_entry_unreferenced">Reembolso sin recibo</string>
-  <string name="refund_entry_unreferenced_hint">Devuelve un monto a la tarjeta que presenta el cliente, sin vínculo con ningún pago. Solo si Adyen lo habilitó.</string>
+  <string name="refund_entry_unreferenced_hint">Devuelve un monto a la tarjeta que presenta el cliente, sin vínculo con ningún pago.</string>
   <string name="unreferenced_title">Reembolso sin recibo</string>
   <string name="unreferenced_warning">Este reembolso no está vinculado a ningún pago. La app no puede verificar lo pagado; eres responsable de reembolsos erróneos o repetidos.</string>
   <string name="unreferenced_reason">Motivo</string>

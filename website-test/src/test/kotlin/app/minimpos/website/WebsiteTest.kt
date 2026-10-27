@@ -655,7 +655,7 @@ class WebsitePresentationTest {
         LANGUAGES.forEach { language ->
             val page = pages.getValue(language to Kind.USING)
             assertWithMessage(page.name).that(page.ids).contains("language-receipts")
-            (listOf("Android 12", "Android 13") + labels.getValue(language)).forEach {
+            labels.getValue(language).forEach {
                 assertWithMessage(page.name).that(page.text).contains(it)
             }
         }

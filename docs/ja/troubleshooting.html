@@ -171,17 +171,16 @@
             <div><dt>ウォレットをスキャンがない</dt><dd><p><strong>設定 › 端末</strong>で<strong>ウォレットを更新</strong>をタップします。照会が成功しても対象 POS
               ウォレットがなければ、ボタンは表示しません。端末の店舗、現在の通貨、<a href="quick-start#credentials">APIキーのロール</a>を確認します。Tap to Pay
               とプリオーソリでは使えません。</p></dd></div>
-            <div><dt>ウォレット照会のエラー</dt><dd><p>
-              エラーは設定だけに表示し、通常の支払いを妨げません。認証情報、環境、読み取り権限を確認してください。設定が同じなら、一時的な更新失敗では最後に確認した一覧を維持します。正常な空の結果やアクセス失敗では削除します。起動、設定変更、手動更新だけで照会し、毎回の販売前には照会しません。
-              </p></dd></div>
-            <div><dt>コードが無効、または受信できない</dt><dd><p>プロフィール、設定転送、領収書 QR ではなく、購入者の支払いコードと正しいウォレットを選びます。端末スキャンは最大 30 秒です。
-              <strong>再スキャン</strong>または<strong>カメラを使用</strong>を選び、求められたカメラ権限を許可してください。バックグラウンドから戻った場合も明示的な再開が必要です。</p>
-              </dd></div>
-            <div><dt>保存が拒否された、またはトークンがない</dt><dd><p>決済結果に従ってください。保存トークンがなくても承認済みの支払いは承認済みです。明確な拒否が確認された場合だけ、必要に応じて会計に戻り、
-              <strong>カードを保存</strong>をオフにして新しいスキャンを始めます。自動で代替決済はしません。<strong>結果不明</strong>なら<a href="#unknown">元の取引を確認
-              </a>します。</p></dd></div>
+            <div><dt>ウォレット照会のエラー</dt><dd><p>エラーは設定だけに表示され、カード決済を妨げません。設定で認証情報、
+              環境、読み取り権限を直してから更新してください。一時的な失敗では最後に確認したウォレットを維持します。</p></dd></div>
+            <div><dt>コードが無効、または受信できない</dt><dd><p>プロフィール、設定転送、領収書の QR ではなく、購入者の支払いコードを
+              使い、正しいウォレットを選びます。端末でのスキャンは 30 秒で終了します。<strong>再スキャン</strong>または
+              <strong>カメラを使用</strong>をタップしてください。</p></dd></div>
+            <div><dt>保存が拒否された、またはトークンがない</dt><dd><p>保存トークンがなくても、承認済みの支払いは承認済みです。
+              拒否された場合は<strong>カードを保存</strong>をオフにし、必要に応じて再スキャンします。<strong>結果不明</strong>なら
+              <a href="#unknown">元の取引を確認</a>します。</p></dd></div>
           </dl>
-          <p><a href="using#wallets">ウォレット決済の手順</a>を参照してください。履歴のリクエストしたウォレットは意図だけで、支払い成功や Adyen の実際の方法を証明しません。</p>
+          <p><a href="using#wallets">ウォレット決済の手順</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="connection">
@@ -238,9 +237,7 @@
                   <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments アプリの要件
                   </a>も参照してください。</p>
                 <p>登録に使った同じ認証情報のキーが必要です。</p>
-                <p><strong>機密情報を除いたレポートを共有</strong>は表示中の行だけを共有します。内容は、アプリのバージョン、API アクセスと接続の結果と確認日時
-                  (UTC)、連携方法と環境、アカウント・店舗・インストール・共有キーの ID、Android・デバイス・Payments アプリのバージョン、Tap to Pay
-                  ではクライアントキーと登録の確認結果と確認済み認証情報です。</p></dd></div>
+                <p>サポートを依頼するときは<strong>機密情報を除いたレポートを共有</strong>を使ってください。</p></dd></div>
             <div id="key-setup"><dt>「新しいキーを保存しました。この端末で…設定を更新してください」</dt>
               <dd>
 <p><span class="fix-label">対処</span>端末で <strong>Admin menu › Config › Update</strong> を開き、Mini mPOS に戻って<strong>もう一度確認
@@ -312,8 +309,7 @@
           <dl class="fixes">
             <div><dt>会計に<strong>決済リンクを作成</strong>がない</dt>
               <dd>
-<p><span class="fix-label">対処</span><strong>設定 › 端末</strong>で Checkout API の設定を完了します。リンクは販売専用です。オフラインのデモは
-  <a href="using#payment-links">決済リンク</a>を参照してください。</p><details class="cause"><summary>原因</summary><p>Checkout API
+<p><span class="fix-label">対処</span><strong>設定 › 端末</strong>で Checkout API の設定を完了します。リンクは販売専用です。<a href="quick-start#try">シミュレーター</a>では設定なしでデモリンクを使えます。</p><details class="cause"><summary>原因</summary><p>Checkout API
   の設定が完了していないか、プリオーソリまたは領収書のチップの会計です。</p></details></dd></div>
             <div><dt>支払済みのリンクが<strong>支払い待ち</strong>のまま</dt>
               <dd>

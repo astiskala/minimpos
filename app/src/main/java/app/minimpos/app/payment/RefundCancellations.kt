@@ -2,12 +2,10 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundCancelStatus
-import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.cancellable
-import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.core.access.ManagerAction
 import app.minimpos.terminal.checkout.ModificationResult
@@ -81,66 +79,93 @@ class RefundCancellations(
     /** Asks Adyen to cancel refund [id], or sends an unresolved cancellation of it again with its original identity. */
     suspend fun cancel(id: String): RefundCancelResult =
         mutex.withLock {
+            val approval = approval.forAction(ManagerAction.UNREFERENCED_REFUND)
             val refund =
-                refunds.get(id)?.takeIf { approval.forAction(ManagerAction.UNREFERENCED_REFUND).allowsNow() && it.cancellable(delayed()) }
+                refunds.get(id)?.takeIf { approval.allowsNow() && it.cancellable(delayed()) }
                     ?: return@withLock RefundCancelResult.NotAllowed
-            val unresolved = refund.cancelStatus?.unresolved == true
-            when (val access = target().modifications(refund.context)) {
-                is ApiAccess.Blocked -> {
-                    val failure = Failure.NotSetUp(access.problem)
-                    if (unresolved) RefundCancelResult.Unconfirmed(failure) else RefundCancelResult.NotDone(failure)
-                }
+            val target = target()
+            val operation =
+                object : IdentifiedSend<PaymentModifications, ModificationResult> {
+                    override val unresolved = refund.cancelStatus?.unresolved == true
+                    override val firstSentAt = refund.cancelStartedAt
+                    override val reason = refund.cancelReason
 
-                is ApiAccess.Ready -> {
-                    if (unresolved) {
-                        OperationIdentity.replayProblem(refund.cancelStartedAt, clock.millis(), refund.cancelReason)?.let {
-                            return@withLock RefundCancelResult.Unconfirmed(Failure.NotSetUp(it))
-                        }
+                    override suspend fun approved() = approval.allowsNow()
+
+                    override suspend fun access() = target.modifications(refund.context)
+
+                    override suspend fun sending() = refunds.cancelSending(refund.id, clock.millis()) != null
+
+                    override suspend fun exchange(client: PaymentModifications) =
+                        client.cancelPendingRefund(checkNotNull(refund.pspReference), "void-${refund.id}")
+
+                    override fun fault(answer: ModificationResult) = (answer as? ModificationResult.Failed)?.fault
+                }
+            withContext(NonCancellable) {
+                when (val sent = OperationIdentity.send(operation, clock.millis())) {
+                    Sent.Unapproved, Sent.Withdrawn -> {
+                        RefundCancelResult.NotAllowed
                     }
-                    if (!approval.forAction(ManagerAction.UNREFERENCED_REFUND).allowsNow()) return@withLock RefundCancelResult.NotAllowed
-                    withContext(NonCancellable) { send(refund, access) }
+
+                    is Sent.Blocked -> {
+                        val failure = Failure.NotSetUp(sent.problem)
+                        if (operation.unresolved) RefundCancelResult.Unconfirmed(failure) else RefundCancelResult.NotDone(failure)
+                    }
+
+                    is Sent.Expired -> {
+                        RefundCancelResult.Unconfirmed(sent.failure)
+                    }
+
+                    // An earlier unresolved request stays unresolved: this answer cannot say the first one was not received.
+                    is Sent.Unchanged -> {
+                        answered(refund.id, null, RefundCancelStatus.UNKNOWN, RefundCancelResult.Unconfirmed(sent.failure))
+                    }
+
+                    is Sent.Answered -> {
+                        answered(refund.id, sent.answer, sent.failed)
+                    }
                 }
             }
         }
 
-    private suspend fun send(
-        refund: RefundEntity,
-        access: ApiAccess.Ready<PaymentModifications>,
-    ): RefundCancelResult {
-        val sending = refunds.cancelSending(refund.id, clock.millis()) ?: return RefundCancelResult.NotAllowed
-        val result = access.client.cancelPendingRefund(checkNotNull(sending.pspReference), "void-${refund.id}")
-        val (status, outcome) =
-            when (result) {
-                is ModificationResult.Received -> {
-                    RefundCancelStatus.REQUESTED to RefundCancelResult.Requested
-                }
-
-                is ModificationResult.Authorised -> {
-                    RefundCancelStatus.REQUESTED to RefundCancelResult.Requested
-                }
-
-                is ModificationResult.Refused -> {
-                    RefundCancelStatus.FAILED to
-                        RefundCancelResult.NotDone(Failure.Remote(Fault.UnreadableReply()))
-                }
-
-                is ModificationResult.Failed -> {
-                    val failure = Failure.Remote(result.fault)
-                    // An earlier unresolved request stays unresolved: this answer cannot say the first one was not received.
-                    if (OperationIdentity.failed(refund.cancelStatus?.unresolved == true, result.fault) == FailedSend.NOT_DONE) {
-                        RefundCancelStatus.FAILED to RefundCancelResult.NotDone(failure)
-                    } else {
-                        RefundCancelStatus.UNKNOWN to RefundCancelResult.Unconfirmed(failure)
-                    }
-                }
+    /** Stores Adyen's [result] to cancelling refund [id], which [failed] classifies when it failed, and reports it. */
+    private suspend fun answered(
+        id: String,
+        result: ModificationResult,
+        failed: FailedSend?,
+    ): RefundCancelResult =
+        when (result) {
+            is ModificationResult.Received, is ModificationResult.Authorised -> {
+                answered(id, result, RefundCancelStatus.REQUESTED, RefundCancelResult.Requested)
             }
+
+            is ModificationResult.Refused -> {
+                answered(id, result, RefundCancelStatus.FAILED, RefundCancelResult.NotDone(Failure.Remote(Fault.UnreadableReply())))
+            }
+
+            is ModificationResult.Failed if failed == FailedSend.NOT_DONE -> {
+                answered(id, result, RefundCancelStatus.FAILED, RefundCancelResult.NotDone(Failure.Remote(result.fault)))
+            }
+
+            is ModificationResult.Failed -> {
+                answered(id, result, RefundCancelStatus.UNKNOWN, RefundCancelResult.Unconfirmed(Failure.Remote(result.fault)))
+            }
+        }
+
+    /** Stores [status] for cancelling refund [id], with [outcome]'s reason and the PSP reference of a received [result]. */
+    private suspend fun answered(
+        id: String,
+        result: ModificationResult?,
+        status: RefundCancelStatus,
+        outcome: RefundCancelResult,
+    ): RefundCancelResult {
         val reason =
             when (outcome) {
                 is RefundCancelResult.NotDone -> StoredReason.NotDone(outcome.failure)
                 is RefundCancelResult.Unconfirmed -> StoredReason.Unconfirmed(outcome.failure)
                 RefundCancelResult.Requested, RefundCancelResult.NotAllowed -> null
             }
-        refunds.cancelAnswered(refund.id, status, reason, (result as? ModificationResult.Received)?.pspReference)
+        refunds.cancelAnswered(id, status, reason, (result as? ModificationResult.Received)?.pspReference)
         return outcome
     }
 }

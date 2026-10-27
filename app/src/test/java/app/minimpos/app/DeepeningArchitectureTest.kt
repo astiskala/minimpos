@@ -23,14 +23,18 @@ import app.minimpos.app.feature.history.SaleDetailViewModel
 import app.minimpos.app.feature.persisting
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.ReceiptStanding
+import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.payment.AutoDelivery
 import app.minimpos.app.payment.Captures
 import app.minimpos.app.payment.Checkout
+import app.minimpos.app.payment.CheckoutBook
 import app.minimpos.app.payment.CheckoutOperations
 import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.FinancialOperations
+import app.minimpos.app.payment.IdentifiedSend
 import app.minimpos.app.payment.OperationKind
+import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.RefundCancellations
 import app.minimpos.app.payment.SaleBook
@@ -58,6 +62,10 @@ import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.tax.StarterTax
 import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.CheckoutSavedCards
+import app.minimpos.terminal.checkout.ModificationAmount
+import app.minimpos.terminal.checkout.PaymentLinkApi
+import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.transport.AdyenLocalTransport
@@ -122,6 +130,24 @@ class DeepeningArchitectureTest {
 
     private class OperationIdentityViolation {
         fun unchanged(fault: Fault) = !fault.mayHaveTakenEffect
+    }
+
+    @Test
+    fun `identified Checkout operations are exchanged only inside the operation identity's send`() =
+        identifiedSends.forEach { it.check(app) }
+
+    @Test
+    fun `identified send ownership rejects a capture or book sent outside the protocol`() =
+        reject(identifiedSends, IdentifiedSendViolation::class.java)
+
+    private class IdentifiedSendViolation {
+        suspend fun capture(modifications: PaymentModifications) =
+            modifications.capture("PSP", ModificationAmount("AUD", 1), "R", "capture-s-1")
+
+        suspend fun resend(
+            book: CheckoutBook<RefundStart, PaymentModifications>,
+            modifications: PaymentModifications,
+        ) = book.send("r", modifications, 0)
     }
 
     @Test
@@ -398,7 +424,7 @@ class DeepeningArchitectureTest {
                     within(
                         "app.minimpos.app.payment.SavedCardCharges\$Book",
                         "app.minimpos.app.payment.CheckoutRefunds\$Book",
-                        "app.minimpos.app.payment.PaymentLinks\$Book",
+                        PaymentLinks::class.java.name,
                         CheckoutOperations::class.java.name,
                         Captures::class.java.name,
                         RefundCancellations::class.java.name,
@@ -406,6 +432,30 @@ class DeepeningArchitectureTest {
                     ),
                 ).should()
                 .callMethodWhere(callToSubtypeOf(Fault::class.java, "getMayHaveTakenEffect"))
+
+        // Captures, adjustments, refund cancellations and link expiry each wrote their own approval, setup, replay-window,
+        // persistence and failure ordering around those decisions, and the copies disagreed; OperationIdentity.send runs
+        // that order once, so money-moving Checkout calls are made only by its adapters and the books they send.
+        val identifiedSends: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that()
+                    .doNotImplement(IdentifiedSend::class.java)
+                    .and()
+                    .doNotImplement(CheckoutBook::class.java)
+                    .should()
+                    .callMethodWhere(
+                        callTo(PaymentModifications::class.java.name, "capture", "updateAmount", "refund", "cancelPendingRefund"),
+                    ).orShould()
+                    .callMethodWhere(callTo(SavedCardApi::class.java.name, "charge"))
+                    .orShould()
+                    .callMethodWhere(callTo(PaymentLinkApi::class.java.name, "create", "expire")),
+                noClasses()
+                    .that()
+                    .doNotImplement(IdentifiedSend::class.java)
+                    .should()
+                    .callMethodWhere(callTo(CheckoutBook::class.java.name, "send")),
+            )
 
         // Checkout and the payment request each derived MOTO/MKE and cash permissions, and PaymentStart restated every
         // feature pair; CardFeatures states them once, so offers, validation, destination checks and approval agree.

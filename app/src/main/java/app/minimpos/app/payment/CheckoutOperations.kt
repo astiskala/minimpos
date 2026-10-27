@@ -53,7 +53,7 @@ class CheckoutReply(
  *
  * @property pending Whether it was never sent (PENDING); false for one that was sent and whose outcome is unknown.
  * @property createdAt When it was opened, in epoch milliseconds, which decides whether it may be sent again (see
- *   [OperationIdentity.replayProblem]).
+ *   [OperationIdentity.send]).
  * @property context The original payment context the current API target must match; null when none was recorded.
  * @property reason Last unresolved outcome, including Adyen’s persisted retry permission; null when unavailable.
  */
@@ -196,50 +196,57 @@ class CheckoutOperations<R, C>(
     /**
      * Sends record [id], whose outcome is unknown, again with its stored request and idempotency key, and stores Adyen's
      * answer. Anything else has nothing left to check ([Recheck.Settled]); nothing changes while approval, setup or the
-     * original payment context is missing, or once [OperationIdentity.replayProblem] forbids sending it again.
+     * original payment context is missing, or once [OperationIdentity.send] forbids sending it again.
      */
     suspend fun recheck(id: String): Recheck = mutex.withLock { recheckUnlocked(id) }
 
     /** Runs [recheck] while the caller already holds [mutex]. */
     internal suspend fun recheckUnlocked(id: String): Recheck {
         val record = book.unsent(id)?.takeUnless { it.pending } ?: return Recheck.Settled
-        OperationIdentity.replayProblem(record.createdAt, clock.millis(), record.reason)?.let {
-            return Recheck.StillUnknown(Failure.NotSetUp(it))
-        }
         return send(id, record, grant = null)?.let(Recheck::StillUnknown) ?: Recheck.Settled
     }
 
     /**
-     * Sends [record] [id] and stores the answer; returns why nothing (or nothing certain) is known yet. [grant] is the
-     * approval taken when it started in this process; null for a resend, which needs the approval held now.
+     * Sends [record] [id] through [OperationIdentity] and stores the answer; returns why nothing (or nothing certain) is
+     * known yet. [grant] is the approval taken when it started in this process; null for a resend, which needs the
+     * approval held now.
      */
     private suspend fun send(
         id: String,
         record: CheckoutRecord,
         grant: ManagerApproval.Grant?,
     ): Failure? {
-        val approved = if (grant != null) approval.allows(grant) else approval.allowsNow()
-        val problem = if (approved) book.missing(id) else SetupProblem.MANAGER_APPROVAL
-        if (problem != null) return notSent(id, record.pending, problem)
-        val client =
-            when (val access = book.access(target(), record.context)) {
-                is ApiAccess.Ready -> access.client
+        val operation =
+            object : IdentifiedSend<C, CheckoutReply> {
+                override val unresolved = !record.pending
+                override val firstSentAt = record.createdAt
+                override val reason = record.reason
 
+                override suspend fun approved() = if (grant != null) approval.allows(grant) else approval.allowsNow()
+
+                override suspend fun missing() = book.missing(id)
+
+                override suspend fun access() = book.access(target(), record.context)
+
+                override suspend fun exchange(client: C) = book.send(id, client, clock.millis())
+
+                override fun fault(answer: CheckoutReply) = answer.fault
+            }
+        val answer =
+            when (val sent = OperationIdentity.send(operation, clock.millis())) {
                 // A fresh pending request is known not sent, including after its selected context changed. An unknown
                 // operation may already have happened, so missing setup or a different context must leave it unchanged.
-                is ApiAccess.Blocked -> return notSent(id, record.pending, access.problem)
-            }
-        if (!(if (grant != null) approval.allows(grant) else approval.allowsNow())) {
-            return notSent(id, record.pending, SetupProblem.MANAGER_APPROVAL)
-        }
-        val reply = book.send(id, client, clock.millis())
-        val fault = reply.fault
-        val failed = fault?.let { OperationIdentity.failed(!record.pending, it) }
-        val answer =
-            if (fault != null && failed == FailedSend.UNCHANGED) {
-                CheckoutAnswer.Unconfirmed(Failure.Remote(fault))
-            } else {
-                reply.store(failed)
+                Sent.Unapproved -> return notSent(id, record.pending, SetupProblem.MANAGER_APPROVAL)
+
+                is Sent.Blocked -> return notSent(id, record.pending, sent.problem)
+
+                is Sent.Expired -> return sent.failure
+
+                Sent.Withdrawn -> CheckoutAnswer.NotTaken
+
+                is Sent.Unchanged -> return sent.failure
+
+                is Sent.Answered -> sent.answer.store(sent.failed)
             }
         return when (answer) {
             is CheckoutAnswer.Unconfirmed -> {

@@ -6,6 +6,7 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.ManagerApproval
@@ -48,8 +49,8 @@ sealed interface LinkUpdate {
     ) : LinkUpdate
 
     /**
-     * Adyen did not confirm a creation or expiry that may have taken effect; the stored sale says so, and checking again
-     * establishes it.
+     * Adyen did not confirm a creation or expiry that may have taken effect; checking again establishes it. An unknown
+     * creation is stored as unknown; an unconfirmed expiry leaves the stored sale awaiting its payment.
      *
      * @property failure What prevented the confirmation.
      */
@@ -86,7 +87,7 @@ class PaymentLinks(
     private val sales: SaleRepository,
     private val target: suspend () -> ApiTarget,
     onCreated: (id: String, start: PaymentLinkStart) -> Unit = { _, _ -> },
-    clock: Clock = Clock.systemUTC(),
+    private val clock: Clock = Clock.systemUTC(),
     newId: () -> String = { Uuid.random().toString() },
     locale: () -> Locale = { Locale.getDefault() },
     private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
@@ -160,8 +161,45 @@ class PaymentLinks(
         mutex.withLock {
             val sale = sales.get(saleId)?.sale?.takeIf { it.status == SaleStatus.AWAITING_PAYMENT }
             val linkId = sale?.paymentLinkId ?: return@withLock LinkUpdate.Settled
-            if (!approval.forAction(ManagerAction.LINK_CHANGE).allowsNow()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
-            withApi(sale) { stored(saleId, it.expire(linkId), cancelling = true) }
+            val approval = approval.forAction(ManagerAction.LINK_CHANGE)
+            val target = target()
+            val expiry =
+                object : IdentifiedSend<PaymentLinkApi, PaymentLinkResult> {
+                    override val unresolved = false
+                    override val firstSentAt: Long? = null
+                    override val reason: StoredReason? = null
+
+                    override suspend fun approved() = approval.allowsNow()
+
+                    override suspend fun access() = target.links(sale.context)
+
+                    override suspend fun exchange(client: PaymentLinkApi) = client.expire(linkId)
+
+                    override fun fault(answer: PaymentLinkResult) = (answer as? PaymentLinkResult.Failed)?.fault
+                }
+            when (val sent = OperationIdentity.send(expiry, clock.millis())) {
+                Sent.Unapproved -> notSetUp(SetupProblem.MANAGER_APPROVAL)
+                is Sent.Blocked -> notSetUp(sent.problem)
+                is Sent.Expired -> LinkUpdate.NotDone(sent.failure)
+                Sent.Withdrawn -> LinkUpdate.Settled
+                is Sent.Unchanged -> LinkUpdate.Unconfirmed(sent.failure)
+                is Sent.Answered -> expired(saleId, sent.answer, sent.failed)
+            }
+        }
+
+    /**
+     * Stores the answer [result] to expiring the link of sale [id], which [failed] classifies when it failed: an expiry
+     * that may have taken effect is unconfirmed, and checking again establishes it.
+     */
+    private suspend fun expired(
+        id: String,
+        result: PaymentLinkResult,
+        failed: FailedSend?,
+    ): LinkUpdate =
+        when (result) {
+            is PaymentLinkResult.Answered -> applied(id, result.link, cancelling = true)
+            is PaymentLinkResult.Failed if failed == FailedSend.UNCONFIRMED -> LinkUpdate.Unconfirmed(Failure.Remote(result.fault))
+            is PaymentLinkResult.Failed -> LinkUpdate.NotDone(Failure.Remote(result.fault))
         }
 
     /**
@@ -217,29 +255,14 @@ class PaymentLinks(
             is ApiAccess.Blocked -> notSetUp(access.problem)
         }
 
-    /**
-     * Stores Adyen's answer [result] about the link of sale [id], which was being expired when [cancelling]. A question
-     * about where it stands that got no answer changed nothing; an expiry that may have taken effect is unconfirmed.
-     */
+    /** Stores Adyen's answer [result] about where the link of sale [id] stands; a question that got no answer changed nothing. */
     private suspend fun stored(
         id: String,
         result: PaymentLinkResult,
-        cancelling: Boolean = false,
     ): LinkUpdate =
         when (result) {
-            is PaymentLinkResult.Answered -> {
-                applied(id, result.link, cancelling)
-            }
-
-            is PaymentLinkResult.Failed if cancelling && result.fault.mayHaveTakenEffect -> {
-                LinkUpdate.Unconfirmed(
-                    Failure.Remote(result.fault),
-                )
-            }
-
-            is PaymentLinkResult.Failed -> {
-                LinkUpdate.NotDone(Failure.Remote(result.fault))
-            }
+            is PaymentLinkResult.Answered -> applied(id, result.link)
+            is PaymentLinkResult.Failed -> LinkUpdate.NotDone(Failure.Remote(result.fault))
         }
 
     private fun notSetUp(problem: SetupProblem): LinkUpdate = LinkUpdate.NotDone(Failure.NotSetUp(problem))

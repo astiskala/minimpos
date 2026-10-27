@@ -80,8 +80,10 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   follow `paymentProgress`/`refundProgress` (amount as requested) through `FollowProgress` and leave results through it,
   never through a runner's own state; view-model actions with an `ActionState` run through `runAction`. Saved-card
   charges, Checkout refunds and payment-link creations are sent only by `CheckoutBook`s run by `CheckoutOperations`,
-  which declines a second link per checkout so screens never guard it. `OperationIdentity` alone decides when a stored
-  request may be sent again and what a failed send establishes; books, captures and refund cancellations ask it.
+  which declines a second link per checkout so screens never guard it. `OperationIdentity.send` alone sends identified
+  Checkout operations (books, captures, adjustments, refund cancellations, link expiry): replay window, approval, setup
+  and original context, approval again, persistence, then what a failed send establishes. Each kind supplies an
+  `IdentifiedSend` and only stores and reports what it found.
   Terminal reconciliation (recheck unresolved, read or close totals, compare) is one operation in payment
   (`TerminalReconciliation`); screens follow its outcome.
 - \* Only `SavedCardLookup` lists and selects saved cards for a charge. It owns reference/model/target freshness and

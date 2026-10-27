@@ -116,13 +116,13 @@ class Captures(
                 allowing(saleId, PaymentAction.ENTER_TIP)?.takeIf { tipMinor >= 0 } ?: return@withLock CaptureResult.NotAllowed
             val total = Math.addExact(Math.addExact(sale.totalMinor, sale.surchargeMinor ?: 0), tipMinor)
             if (!PaymentStanding.captureAmountAllowed(sale, total)) return@withLock CaptureResult.NotAllowed
-            if (PaymentStanding.captureNeedsAdjustment(sale, total, tipMinor)) {
-                // The tip is only saved once the higher amount is authorised.
-                withApi(target, sale) { modifications ->
-                    adjusted(sale, total, modifications) { capture(it, total, modifications, tipMinor) }
+            committed {
+                if (PaymentStanding.captureNeedsAdjustment(sale, total, tipMinor)) {
+                    // The tip is only saved once the higher amount is authorised.
+                    adjusted(sale, total, target) { capture(it, total, target, tipMinor) }
+                } else {
+                    capture(sale, total, target, tipMinor)
                 }
-            } else {
-                withApi(target, sale) { capture(sale, total, it, tipMinor) }
             }
         }
 
@@ -139,12 +139,12 @@ class Captures(
             val sale =
                 allowing(saleId, PaymentAction.CAPTURE)?.takeIf { amountMinor > 0 } ?: return@withLock CaptureResult.NotAllowed
             if (!PaymentStanding.captureAmountAllowed(sale, amountMinor)) return@withLock CaptureResult.NotAllowed
-            if (PaymentStanding.captureNeedsAdjustment(sale, amountMinor)) {
-                withApi(target, sale) { modifications ->
-                    adjusted(sale, amountMinor, modifications) { capture(it, amountMinor, modifications) }
+            committed {
+                if (PaymentStanding.captureNeedsAdjustment(sale, amountMinor)) {
+                    adjusted(sale, amountMinor, target) { capture(it, amountMinor, target) }
+                } else {
+                    capture(sale, amountMinor, target)
                 }
-            } else {
-                withApi(target, sale) { capture(sale, amountMinor, it) }
             }
         }
 
@@ -160,7 +160,7 @@ class Captures(
             val target = target()
             val sale =
                 allowing(saleId, PaymentAction.ADJUST)?.takeIf { amountMinor > 0 } ?: return@withLock CaptureResult.NotAllowed
-            withApi(target, sale) { adjust(sale, amountMinor, it) }
+            committed { adjust(sale, amountMinor, target) }
         }
 
     /** Sends the capture of [saleId] again as it was, when its [StoredPayment.actions] include [PaymentAction.RETRY_CAPTURE]. */
@@ -169,7 +169,7 @@ class Captures(
             val target = target()
             val sale = allowing(saleId, PaymentAction.RETRY_CAPTURE)
             val amount = sale?.capturedMinor
-            if (sale == null || amount == null) CaptureResult.NotAllowed else withApi(target, sale) { capture(sale, amount, it) }
+            if (sale == null || amount == null) CaptureResult.NotAllowed else committed { capture(sale, amount, target) }
         }
 
     /** The stored sale [saleId] when its [StoredPayment.actions] include [action]; else null. */
@@ -186,38 +186,23 @@ class Captures(
             ?.sale
     }
 
-    /** Runs [send] with the Checkout API when [target] has it; else nothing is sent, and [sale] records why. */
-    private suspend fun withApi(
-        target: ApiTarget,
-        sale: SaleEntity,
-        send: suspend (PaymentModifications) -> CaptureResult,
-    ): CaptureResult =
-        when (val access = target.modifications(sale.context)) {
-            is ApiAccess.Ready -> {
-                currentCoroutineContext().ensureActive()
-                withContext(NonCancellable) { send(access.client) }
-                    .also { currentCoroutineContext().ensureActive() }
-            }
+    /**
+     * Runs [send] once the caller still wants it; once committed, its requests and stored answers finish even if the
+     * caller is cancelled, which is then rethrown so a closed screen never continues with the outcome.
+     */
+    private suspend fun committed(send: suspend () -> CaptureResult): CaptureResult {
+        currentCoroutineContext().ensureActive()
+        return withContext(NonCancellable) { send() }.also { currentCoroutineContext().ensureActive() }
+    }
 
-            is ApiAccess.Blocked -> {
-                val unresolved =
-                    sale.adjustmentPending || sale.standing in setOf(PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN)
-                if (access is ApiAccess.Unavailable && !unresolved) {
-                    sales.record(sale.id, SaleEvent.ModificationNotSetUp(access.problem))
-                }
-                val failure = Failure.NotSetUp(access.problem)
-                if (unresolved) CaptureResult.Unconfirmed(failure) else CaptureResult.NotDone(failure)
-            }
-        }
-
-    /** Adjusts [sale] to [amount] and, once that went through, runs [then] with the adjusted sale. */
+    /** Adjusts [sale] to [amount] at [target] and, once that went through, runs [then] with the adjusted sale. */
     private suspend fun adjusted(
         sale: SaleEntity,
         amount: Long,
-        modifications: PaymentModifications,
+        target: ApiTarget,
         then: suspend (SaleEntity) -> CaptureResult,
     ): CaptureResult {
-        val result = adjust(sale, amount, modifications)
+        val result = adjust(sale, amount, target)
         val adjusted = sales.get(sale.id)?.sale
         return if (result == CaptureResult.Adjusted && adjusted != null) then(adjusted) else result
     }
@@ -225,76 +210,125 @@ class Captures(
     private suspend fun adjust(
         sale: SaleEntity,
         amount: Long,
-        modifications: PaymentModifications,
+        target: ApiTarget,
     ): CaptureResult {
-        if (!approval.forAction(ManagerAction.ADJUST_AUTHORISATION).allowsNow()) return CaptureResult.NotAllowed
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
         // An unresolved request keeps its identity; a separate renewal or amount change gets a new identity.
         if (sale.adjustmentPending && sale.adjustmentAmountMinor != amount) return CaptureResult.NotAllowed
-        if (sale.adjustmentPending) {
-            OperationIdentity.replayProblem(sale.adjustmentStartedAt, clock.millis(), sale.modificationReason)?.let {
-                return CaptureResult.Unconfirmed(Failure.NotSetUp(it))
-            }
-        }
         val key = if (sale.adjustmentPending) checkNotNull(sale.adjustmentKey) else "adjust-${Uuid.random()}"
-        if (!sale.adjustmentPending) sales.record(sale.id, SaleEvent.AdjustmentSending(key, amount, clock.millis()))
-        val result =
-            modifications.updateAmount(
-                psp,
-                ModificationAmount(sale.currency, amount),
-                sale.merchantReference,
-                sale.adjustAuthorisationData,
-                key,
-            )
-        val failed = (result as? ModificationResult.Failed)?.let { OperationIdentity.failed(sale.adjustmentPending, it.fault) }
-        return if (result is ModificationResult.Failed && failed == FailedSend.UNCHANGED) {
-            CaptureResult.Unconfirmed(Failure.Remote(result.fault))
-        } else {
-            sales.record(sale.id, SaleEvent.AdjustmentAnswered(amount, result))
-            when (result) {
-                is ModificationResult.Authorised, is ModificationResult.Received -> CaptureResult.Adjusted
-                is ModificationResult.Refused -> CaptureResult.Refused(result.said)
-                is ModificationResult.Failed -> result.fault.captureResult(failed)
+        val operation =
+            object : Modification(sale, target, ManagerAction.ADJUST_AUTHORISATION) {
+                override val unresolved = sale.adjustmentPending
+                override val firstSentAt = sale.adjustmentStartedAt
+
+                override suspend fun sending(): Boolean {
+                    if (!unresolved) sales.record(sale.id, SaleEvent.AdjustmentSending(key, amount, clock.millis()))
+                    return true
+                }
+
+                override suspend fun exchange(client: PaymentModifications) =
+                    client.updateAmount(
+                        psp,
+                        ModificationAmount(sale.currency, amount),
+                        sale.merchantReference,
+                        sale.adjustAuthorisationData,
+                        key,
+                    )
             }
+        return operation.outcome(OperationIdentity.send(operation, clock.millis())) { answer ->
+            sales.record(sale.id, SaleEvent.AdjustmentAnswered(amount, answer))
+            CaptureResult.Adjusted
         }
     }
 
     private suspend fun capture(
         sale: SaleEntity,
         amount: Long,
-        modifications: PaymentModifications,
+        target: ApiTarget,
         tipMinor: Long? = null,
     ): CaptureResult {
-        if (!approval.forAction(ManagerAction.CAPTURE).allowsNow()) return CaptureResult.NotAllowed
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
-        val unresolved = sale.standing in setOf(PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN)
-        if (sale.capturedMinor == amount) {
-            OperationIdentity.replayProblem(sale.captureStartedAt, clock.millis(), sale.modificationReason)?.let {
-                return CaptureResult.Unconfirmed(Failure.NotSetUp(it))
+        val operation =
+            object : Modification(sale, target, ManagerAction.CAPTURE) {
+                override val unresolved = sale.standing in setOf(PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN)
+
+                // The capture's identity is the sale and amount, so the same amount is a resend even after a known failure.
+                override val resend = sale.capturedMinor == amount
+                override val firstSentAt = sale.captureStartedAt
+
+                override suspend fun sending(): Boolean {
+                    if (!unresolved) sales.record(sale.id, SaleEvent.CaptureSending(amount, tipMinor, clock.millis()))
+                    return true
+                }
+
+                override suspend fun exchange(client: PaymentModifications) =
+                    client.capture(psp, ModificationAmount(sale.currency, amount), sale.merchantReference, "capture-${sale.id}-$amount")
             }
-        }
-        if (!unresolved) sales.record(sale.id, SaleEvent.CaptureSending(amount, tipMinor, clock.millis()))
-        val result =
-            modifications.capture(
-                psp,
-                ModificationAmount(sale.currency, amount),
-                sale.merchantReference,
-                "capture-${sale.id}-$amount",
-            )
-        val failed = (result as? ModificationResult.Failed)?.let { OperationIdentity.failed(unresolved, it.fault) }
-        return if (result is ModificationResult.Failed && failed == FailedSend.UNCHANGED) {
-            CaptureResult.Unconfirmed(Failure.Remote(result.fault))
-        } else {
-            sales.record(sale.id, SaleEvent.CaptureAnswered(result))
-            when (result) {
-                is ModificationResult.Received, is ModificationResult.Authorised -> CaptureResult.Requested
-                is ModificationResult.Refused -> CaptureResult.Refused(result.said)
-                is ModificationResult.Failed -> result.fault.captureResult(failed)
-            }
+        return operation.outcome(OperationIdentity.send(operation, clock.millis())) { answer ->
+            sales.record(sale.id, SaleEvent.CaptureAnswered(answer))
+            CaptureResult.Requested
         }
     }
 
-    /** This fault as the result of a capture or adjustment, as [failed] classifies it: not done only when it proved so. */
-    private fun Fault.captureResult(failed: FailedSend?): CaptureResult =
-        if (failed == FailedSend.NOT_DONE) CaptureResult.NotDone(Failure.Remote(this)) else CaptureResult.Unconfirmed(Failure.Remote(this))
+    /**
+     * A capture or adjustment of [sale] at [target] as [OperationIdentity] sends it, under the [permission] checked as
+     * held now.
+     */
+    private abstract inner class Modification(
+        private val sale: SaleEntity,
+        private val target: ApiTarget,
+        private val permission: ManagerAction,
+    ) : IdentifiedSend<PaymentModifications, ModificationResult> {
+        override val reason get() = sale.modificationReason
+
+        override suspend fun approved() = approval.forAction(permission).allowsNow()
+
+        override suspend fun access() = target.modifications(sale.context)
+
+        override fun fault(answer: ModificationResult) = (answer as? ModificationResult.Failed)?.fault
+
+        /** What [sent] means for the caller, with [stored] recording an answer and naming the result it went through as. */
+        suspend fun outcome(
+            sent: Sent<ModificationResult>,
+            stored: suspend (ModificationResult) -> CaptureResult,
+        ): CaptureResult =
+            when (sent) {
+                Sent.Unapproved, Sent.Withdrawn -> {
+                    CaptureResult.NotAllowed
+                }
+
+                is Sent.Blocked -> {
+                    val unresolved =
+                        sale.adjustmentPending || sale.standing in setOf(PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN)
+                    if (sent.access is ApiAccess.Unavailable && !unresolved) {
+                        sales.record(sale.id, SaleEvent.ModificationNotSetUp(sent.problem))
+                    }
+                    val failure = Failure.NotSetUp(sent.problem)
+                    if (unresolved) CaptureResult.Unconfirmed(failure) else CaptureResult.NotDone(failure)
+                }
+
+                is Sent.Expired -> {
+                    CaptureResult.Unconfirmed(sent.failure)
+                }
+
+                is Sent.Unchanged -> {
+                    CaptureResult.Unconfirmed(sent.failure)
+                }
+
+                is Sent.Answered -> {
+                    val went = stored(sent.answer)
+                    when (val answer = sent.answer) {
+                        is ModificationResult.Received, is ModificationResult.Authorised -> went
+                        is ModificationResult.Refused -> CaptureResult.Refused(answer.said)
+                        is ModificationResult.Failed -> answer.fault.captureResult(sent.failed)
+                    }
+                }
+            }
+
+        /** This fault as the result of a capture or adjustment, as [failed] classifies it: not done only when it proved so. */
+        private fun Fault.captureResult(failed: FailedSend?): CaptureResult {
+            val failure = Failure.Remote(this)
+            return if (failed == FailedSend.NOT_DONE) CaptureResult.NotDone(failure) else CaptureResult.Unconfirmed(failure)
+        }
+    }
 }

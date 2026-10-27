@@ -61,7 +61,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   Only `CapabilityDiscovery` reads or updates Management capability settings (`capabilities`, `updateCapabilities`).
   Tasks receive `TerminalListingApi`, `SharedKeyApi` or `TerminalCapabilitiesApi`; only the container holds
   `TerminalDetailsApi`.
-  `SetupDiscovery` returns immutable operation outcomes, not ambient problem/key-missing getters.
+  `SetupDiscovery` returns immutable operation outcomes, not ambient problem/key-missing getters. Wallet and capability
+  readings follow their setup only through `SetupReading`, which alone fences them.
 - \* Destination requirements/capabilities belong to adapter companions in `Destinations.kt`; `DestinationRules.of`
   selects rules. Which Settings › Terminal steps a destination asks for (`setupSteps`) and which of its connection
   details are already supplied (`suppliedDetails`) are the rules' too; only `TerminalSetupPlan` reads them to number,

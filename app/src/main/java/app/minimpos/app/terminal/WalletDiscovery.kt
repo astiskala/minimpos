@@ -11,12 +11,9 @@ import app.minimpos.terminal.transport.TerminalListingApi
 import app.minimpos.terminal.transport.WalletMethodListing
 import app.minimpos.terminal.transport.WalletMethodsApi
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -101,19 +98,19 @@ class WalletDiscovery(
     private val terminals: (String) -> TerminalListingApi,
     private val connect: (String, TerminalEnvironment) -> WalletMethodsApi,
 ) {
-    private val refreshes = Mutex()
     private val started = AtomicBoolean()
+    private val reading =
+        SetupReading(setups, WalletAvailability(), { it.identity }, { it.context }) { it.copy(checking = false) }
 
     /** Current non-secret availability and Settings-only diagnostics. */
-    val state: StateFlow<WalletAvailability>
-        field = MutableStateFlow(WalletAvailability())
+    val state: StateFlow<WalletAvailability> get() = reading.state
 
     /** Starts once per process; changed setup invalidates availability before starting a new lookup. */
     fun start() {
         if (!started.compareAndSet(false, true)) return
         scope.launch {
             setups.discoveryChanges.collectLatest {
-                state.value = WalletAvailability()
+                reading.reset()
                 refresh()
             }
         }
@@ -125,14 +122,9 @@ class WalletDiscovery(
     }
 
     /** Performs one serialized read, retaining cached offers only after a transient failure for unchanged setup. */
-    suspend fun refresh() =
-        refreshes.withLock {
-            val origin = setups.unlocked()
-            val setup = origin.setup
-            val context = setup.paymentContext()
-            val identity = setups.SetupFence(origin, SetupFreshness.SECRETS).identity
-            val old = state.value.takeIf { it.identity == identity && it.context == context } ?: WalletAvailability()
-            val initial =
+    suspend fun refresh() {
+        reading.refresh(
+            begin = { old ->
                 old.copy(
                     context = context,
                     identity = identity,
@@ -144,21 +136,19 @@ class WalletDiscovery(
                     simulated = setup.apiSetup == ApiSetup.Simulated,
                     checking = true,
                 )
-            state.value = initial
+            },
+        ) { initial ->
             when {
                 !setup.capabilities.scannedWallets -> {
-                    publish(origin, initial.copy(checking = false))
+                    publish(initial.copy(checking = false))
                 }
 
                 setup.problem != null -> {
-                    publish(origin, initial.copy(checking = false, checked = false, problem = setup.problem))
+                    publish(initial.copy(checking = false, checked = false, problem = setup.problem))
                 }
 
                 setup.apiSetup == ApiSetup.Simulated -> {
-                    publish(
-                        origin,
-                        initial.copy(checking = false, checked = true, problem = null, failure = null),
-                    )
+                    publish(initial.copy(checking = false, checked = true, problem = null, failure = null))
                 }
 
                 else -> {
@@ -166,13 +156,10 @@ class WalletDiscovery(
                 }
             }
         }
+    }
 
     /** Revalidates a scan's original setup without networking, so stale discovery can never rebind a payment. */
-    internal suspend fun current(origin: WalletAvailability): Boolean {
-        val actual = setups.unlocked()
-        return actual.setup.problem == null && setups.SetupFence(actual, SetupFreshness.SECRETS).identity == origin.identity &&
-            actual.setup.paymentContext() == origin.context
-    }
+    internal suspend fun current(origin: WalletAvailability): Boolean = reading.madeForCurrent(origin)
 
     private suspend fun discover(
         origin: UnlockedSetup,
@@ -242,7 +229,5 @@ class WalletDiscovery(
     private suspend fun publish(
         origin: UnlockedSetup,
         result: WalletAvailability,
-    ) {
-        if (setups.SetupFence(origin, SetupFreshness.SECRETS).stillCurrent()) state.value = result
-    }
+    ) = reading.publish(origin, result)
 }

@@ -40,12 +40,16 @@ import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.receipt.ReceiptFactory
 import app.minimpos.app.receipt.ReceiptKind
 import app.minimpos.app.terminal.Attempt
+import app.minimpos.app.terminal.CapabilityDiscovery
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.SetupDiscovery
+import app.minimpos.app.terminal.SetupFreshness
 import app.minimpos.app.terminal.SharedKeySetupOutcome
 import app.minimpos.app.terminal.SimulatedTerminal
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalSetupSource
+import app.minimpos.app.terminal.UnlockedSetup
+import app.minimpos.app.terminal.WalletDiscovery
 import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.tax.StarterTax
@@ -60,6 +64,7 @@ import com.tngtech.archunit.base.DescribedPredicate
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.belongToAnyOf
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.type
+import com.tngtech.archunit.core.domain.JavaConstructorCall
 import com.tngtech.archunit.core.domain.JavaMethodCall
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.lang.ArchRule
@@ -145,6 +150,20 @@ class DeepeningArchitectureTest {
     @Test
     fun `operation registry rejects reading a runner's own flag or releasing its requests elsewhere`() =
         reject(operationRegistry, OperationRegistryViolation::class.java)
+
+    @Test
+    fun `wallet and capability readings follow their setup only through the setup reading`() = setupReadings.check(app)
+
+    @Test
+    fun `setup reading ownership rejects a reading fencing its setup itself`() =
+        reject(listOf(setupReadings), SetupReadingViolation::class.java)
+
+    private class SetupReadingViolation {
+        fun fence(
+            setups: TerminalSetupSource,
+            origin: UnlockedSetup,
+        ) = setups.SetupFence(origin, SetupFreshness.SECRETS)
+    }
 
     private class RefundBalanceViolation {
         fun reserved(
@@ -401,6 +420,19 @@ class DeepeningArchitectureTest {
                     .should()
                     .callMethodWhere(callTo(OperationKind::class.java.name, "forget", "forgetAll")),
             )
+
+        // Wallet and capability discovery each repeated the same fenced refresh and dropped stale results differently;
+        // SetupReading alone decides reuse for the same setup, fenced publishing and that checking always ends.
+        val setupReadings: ArchRule =
+            noClasses()
+                .that(
+                    belongToAnyOf(WalletDiscovery::class.java, CapabilityDiscovery::class.java).or(type(SetupReadingViolation::class.java)),
+                ).should()
+                .callConstructorWhere(
+                    DescribedPredicate.describe<JavaConstructorCall>("a setup fence") {
+                        it.targetOwner.isEquivalentTo(TerminalSetupSource.SetupFence::class.java)
+                    },
+                )
 
         // Gift cards once copied the payment lifecycle's send, abort and status check and dropped the late-answer
         // release; every runner of stored terminal requests now decides only what it stores, never how it is sent.

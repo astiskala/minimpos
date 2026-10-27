@@ -1,7 +1,9 @@
 package app.minimpos.app.feature
 
+import androidx.lifecycle.ViewModel
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.closeViewModels
 import app.minimpos.app.data.db.CategoryEntity
 import app.minimpos.app.data.db.EmailFault
 import app.minimpos.app.data.db.Failure
@@ -30,6 +32,7 @@ import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.items
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.OperationAmount
+import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.RefundStarted
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.core.codec.RefundQrPayload
@@ -63,14 +66,16 @@ import java.time.Instant
 class ViewModelsTest {
     private val env = TestEnvironment()
     private val container = env.container
+    private val viewModels = mutableListOf<ViewModel>()
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
     @After
     fun tearDown() {
-        Dispatchers.resetMain()
+        closeViewModels(viewModels)
         env.close()
+        Dispatchers.resetMain()
     }
 
     private fun seedCatalogue(): Pair<TaxRateEntity, ProductEntity> =
@@ -87,16 +92,40 @@ class ViewModelsTest {
 
     private fun saleViewModel() =
         SaleViewModel(container.catalog, container.session(SaleKind.SALE), container.settingsState, container::currency)
+            .also(viewModels::add)
+
+    private fun checkout(links: PaymentLinks? = null) =
+        CheckoutViewModel(
+            container.session(SaleKind.SALE),
+            container.payments,
+            container.settingsState,
+            container.terminalStatus.state,
+            container::currency,
+            links,
+        ).also(viewModels::add)
+
+    private fun saleResult(saleId: String) =
+        SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
+            .also(viewModels::add)
+
+    private fun refund(
+        payload: String?,
+        saleId: String?,
+    ) = RefundViewModel(payload, saleId, container.sales, container.storedPaymentActions).also(viewModels::add)
+
+    private fun refundResult(
+        refundId: String,
+        justMade: Boolean = true,
+    ) = RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.operations, justMade)
+        .also(viewModels::add)
+
+    private fun productEditor(
+        productId: Long?,
+        sku: String?,
+    ) = ProductEditViewModel(productId, sku, container.catalog, container.settingsState, container::currency).also(viewModels::add)
 
     private fun payAndWait(configure: (CheckoutViewModel) -> Unit = {}): String {
-        val checkout =
-            CheckoutViewModel(
-                container.session(SaleKind.SALE),
-                container.payments,
-                container.settingsState,
-                container.terminalStatus.state,
-                container::currency,
-            )
+        val checkout = checkout()
         configure(checkout)
         val form = container.session(SaleKind.SALE).form.value
         await { checkout.state.first { it.canPay && it.form == form } }
@@ -183,14 +212,7 @@ class ViewModelsTest {
         env.useSimulator { it.copy(payment = it.payment.copy(shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE)) }
         val (tax, latte) = seedCatalogue()
         container.session(SaleKind.SALE).addProduct(latte, tax)
-        val vm =
-            CheckoutViewModel(
-                container.session(SaleKind.SALE),
-                container.payments,
-                container.settingsState,
-                container.terminalStatus.state,
-                container::currency,
-            )
+        val vm = checkout()
         vm.update { it.copy(customerReference = "ab") }
         var state = await { vm.state.first { it.form.customerReference == "ab" } }
         assertThat(state.customerReferenceValid).isFalse()
@@ -263,7 +285,7 @@ class ViewModelsTest {
                 .session(SaleKind.SALE)
                 .cart.value.lines,
         ).isEmpty()
-        val vm = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
+        val vm = saleResult(saleId)
         val state = await { vm.state.first { it.transaction.print.done && it.transaction.email.done } }
         assertThat(state.approved).isTrue()
         assertThat(state.transaction.merchantCopyPending).isTrue()
@@ -286,7 +308,7 @@ class ViewModelsTest {
         vm.transaction.email("c@d.co")
         await { vm.state.first { it.transaction.email.outcome == ActionOutcome.Emailed("c@d.co") } }
         // A second view model for the same sale (the screen recreated) delivers nothing again.
-        val again = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
+        val again = saleResult(saleId)
         await { again.state.first { it.record != null && it.transaction.receipt != null } }
         assertThat(again.state.value.transaction.print).isEqualTo(ActionState())
         assertThat(env.mail.sent).hasSize(2)
@@ -320,20 +342,13 @@ class ViewModelsTest {
         val (tax, _) = seedCatalogue()
         // Adyen's test amounts ending in 139 are approved in part.
         container.session(SaleKind.SALE).addCustom("Item", 139, tax)
-        val checkout =
-            CheckoutViewModel(
-                container.session(SaleKind.SALE),
-                container.payments,
-                container.settingsState,
-                container.terminalStatus.state,
-                container::currency,
-            )
+        val checkout = checkout()
         val form = container.session(SaleKind.SALE).form.value
         await { checkout.state.first { it.canPay && it.form == form } }
         assertThat(checkout.pay()).isTrue()
         assertThat(checkout.pay()).isFalse()
         val saleId = await { (container.payments.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
-        val result = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
+        val result = saleResult(saleId)
         val partial = checkNotNull(await { result.state.first { it.record?.sale?.isPartiallyPaid == true } }.record).sale
         // The waiting screen shows what the next tender requests: the balance, not the cart the first tender cleared.
         assertThat(checkNotNull(Checkout.remainingPayment(partial)).amount).isEqualTo(OperationAmount(partial.remainingMinor, "AUD"))
@@ -354,15 +369,7 @@ class ViewModelsTest {
         env.useLinks()
         val (tax, latte) = seedCatalogue()
         container.session(SaleKind.SALE).addProduct(latte, tax)
-        val checkout =
-            CheckoutViewModel(
-                container.session(SaleKind.SALE),
-                container.payments,
-                container.settingsState,
-                container.terminalStatus.state,
-                container::currency,
-                container.links,
-            )
+        val checkout = checkout(container.links)
         await { checkout.state.first { it.canPay && it.linksAvailable } }
         val id = checkNotNull(checkout.sendLink())
         assertThat(checkout.sendLink()).isNull()
@@ -376,7 +383,7 @@ class ViewModelsTest {
         val (tax, latte) = seedCatalogue()
         container.session(SaleKind.SALE).addProduct(latte, tax)
         val saleId = payAndWait()
-        val vm = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
+        val vm = saleResult(saleId)
         val busy = await { vm.state.first { it.record != null } }
         assertThat(busy.advice).isEqualTo(RetryAdvice.TERMINAL_BUSY)
         assertThat(busy.canAbortBusy).isTrue()
@@ -398,7 +405,7 @@ class ViewModelsTest {
         container.payments.acknowledge()
         val record = await { container.sales.get(saleId)!! }
 
-        val vm = RefundViewModel(null, saleId, container.sales, container.storedPaymentActions)
+        val vm = refund(null, saleId)
         val ready = await { vm.state.first { it.load is Refundability.Refundable } }
         assertThat(ready.refundMinor).isEqualTo(900)
         assertThat(ready.amountValid).isTrue()
@@ -426,7 +433,7 @@ class ViewModelsTest {
         assertThat(refund.merchantReference).startsWith("R-")
         assertThat(refund.full).isFalse()
 
-        val result = RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.operations)
+        val result = refundResult(refundId)
         val resultState = await { result.state.first { it.refund != null } }
         assertThat(resultState.accepted).isTrue()
         assertThat(resultState.canRecheck).isFalse()
@@ -448,20 +455,19 @@ class ViewModelsTest {
         val saleId = payAndWait()
         container.payments.acknowledge()
         val lineId = await { container.sales.get(saleId)!! }.sortedLines.single().id
-        val vm = RefundViewModel(null, saleId, container.sales, container.storedPaymentActions)
+        val vm = refund(null, saleId)
         await { vm.state.first { it.load is Refundability.Refundable } }
         vm.selectOption(RefundOption.ITEMS)
         vm.setQuantity(lineId, 1)
         assertThat(vm.refund()).isEqualTo(RefundStarted.SINGLE)
         val refundId = await { (container.refunds.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
         // The result right after the refund claims its automatic receipt.
-        val justMade = RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.operations)
+        val justMade = refundResult(refundId)
         await { justMade.state.first { it.transaction.print.done } }
         justMade.finish()
 
         // Opened again from history, nothing is delivered automatically or acknowledged.
-        val fromHistory =
-            RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.operations, justMade = false)
+        val fromHistory = refundResult(refundId, justMade = false)
         assertThat(await { fromHistory.state.first { it.refund != null } }.transaction.print).isEqualTo(ActionState())
         // Only an unknown outcome is checked again; a settled one has nothing left to confirm.
         fromHistory.transaction.recheck()
@@ -474,7 +480,7 @@ class ViewModelsTest {
 
         // Scanning the same receipt again knows what is left.
         val qr = RefundablePayment.qrCode(await { container.sales.get(saleId)!! })!!
-        val again = RefundViewModel(qr, null, container.sales, container.storedPaymentActions)
+        val again = refund(qr, null)
         val original = await { again.state.first { it.load is Refundability.Refundable } }.original!!
         assertThat(original.remainingMinor).isEqualTo(450)
         assertThat(original.local).isNotNull()
@@ -484,7 +490,7 @@ class ViewModelsTest {
     fun `refund view model handles foreign and invalid receipts`() {
         env.useSimulator()
         val foreign = RefundQrPayload("TENDER.PSPX", Instant.parse("2026-01-01T00:00:00Z"), 1_000, "AUD", "MP-9").encode()
-        val vm = RefundViewModel(foreign, null, container.sales, container.storedPaymentActions)
+        val vm = refund(foreign, null)
         val ready = await { vm.state.first { it.load is Refundability.Refundable } }
         assertThat(ready.original!!.local).isNull()
         assertThat(ready.original!!.timestamp).isEqualTo("2026-01-01T00:00:00.000Z")
@@ -501,7 +507,7 @@ class ViewModelsTest {
         ) = (
             checkNotNull(
                 await {
-                    RefundViewModel(payload, saleId, container.sales, container.storedPaymentActions).state.first {
+                    refund(payload, saleId).state.first {
                         it.load != null
                     }
                 }.load,
@@ -528,7 +534,7 @@ class ViewModelsTest {
         env.useSimulator { it.copy(simulator = it.simulator.copy(outcome = SimulatedOutcome.DECLINE)) }
         container.session(SaleKind.SALE).addProduct(latte, tax)
         payAndWait()
-        val vm = HistoryViewModel(container.history)
+        val vm = HistoryViewModel(container.history).also(viewModels::add)
         val day = await { vm.state.first { it.days.sumOf { d -> d.items.size } == 2 } }.days.single()
         assertThat(day.totals.saleCount).isEqualTo(1)
         assertThat(day.totals.salesMinor).containsExactly(
@@ -552,7 +558,7 @@ class ViewModelsTest {
                 container.receipts,
                 container.storedPaymentActions,
                 container.operations,
-            )
+            ).also(viewModels::add)
         val state = await { detail.state.first { it.record != null } }
         assertThat(state.actions).contains(PaymentAction.REFUND)
         detail.transaction.print()
@@ -570,7 +576,7 @@ class ViewModelsTest {
     @Test
     fun `a second tap on Save while the product is being saved is ignored`() {
         val (tax, _) = seedCatalogue()
-        val edit = ProductEditViewModel(null, null, container.catalog, container.settingsState, container::currency)
+        val edit = productEditor(null, null)
         await { edit.state.first { it.loaded && !it.skuChecking } }
         edit.update { it.copy(name = "Scone", price = "4.50", taxRateId = tax.id) }
         // Hold the save on a queue, so the second tap certainly comes while the first save is under way.
@@ -593,7 +599,7 @@ class ViewModelsTest {
     fun `products view models manage the catalogue`() {
         env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "AUD")) }
         val (tax, _) = seedCatalogue()
-        val vm = ProductsViewModel(container.catalog, container.settingsState, container::currency)
+        val vm = ProductsViewModel(container.catalog, container.settingsState, container::currency).also(viewModels::add)
         await { vm.state.first { it.products.size == 2 } }
         vm.saveCategory(CategoryEntity(name = " Food "))
         val state = await { vm.state.first { it.categories.size == 2 } }
@@ -602,7 +608,7 @@ class ViewModelsTest {
         vm.deleteCategory(state.categories.first { it.name == "Food" })
         await { vm.state.first { it.categories.size == 1 } }
 
-        val edit = ProductEditViewModel(null, "NEW1", container.catalog, container.settingsState, container::currency)
+        val edit = productEditor(null, "NEW1")
         var form = await { edit.state.first { it.loaded && !it.skuChecking } }
         assertThat(form.form.sku).isEqualTo("NEW1")
         assertThat(form.form.taxRateId).isEqualTo(tax.id)
@@ -621,7 +627,7 @@ class ViewModelsTest {
 
         val scone = await { container.catalog.productBySku("NEW1")!! }
         assertThat(scone.taxRateId).isEqualTo(tax.id)
-        val existing = ProductEditViewModel(scone.id, null, container.catalog, container.settingsState, container::currency)
+        val existing = productEditor(scone.id, null)
         form = await { existing.state.first { it.loaded && !it.skuChecking } }
         assertThat(form.form.price).isEqualTo("4.50")
         assertThat(form.form.taxRateId).isEqualTo(tax.id)
@@ -631,7 +637,7 @@ class ViewModelsTest {
         existing.update { it.copy(taxRateId = free) }
         existing.save {}
         assertThat(await { container.catalog.products.first { it.any { p -> p.id == scone.id && p.taxRateId == free } } }).isNotEmpty()
-        val reopened = ProductEditViewModel(scone.id, null, container.catalog, container.settingsState, container::currency)
+        val reopened = productEditor(scone.id, null)
         assertThat(await { reopened.state.first { it.loaded && !it.skuChecking } }.form.taxRateId).isEqualTo(free)
         reopened.update { it.copy(taxRateId = null) }
         assertThat(reopened.state.value.valid).isFalse()
@@ -639,12 +645,12 @@ class ViewModelsTest {
 
         // With tax switched off in settings, the rate is hidden but new products still get the default one.
         env.updateSettings { it.copy(payment = it.payment.copy(chargeTax = false)) }
-        val offline = ProductEditViewModel(null, null, container.catalog, container.settingsState, container::currency)
+        val offline = productEditor(null, null)
         val off = await { offline.state.first { it.loaded && !it.skuChecking } }
         assertThat(off.chargeTax).isFalse()
         assertThat(off.form.taxRateId).isEqualTo(tax.id)
         env.updateSettings { it.copy(payment = it.payment.copy(chargeTax = true)) }
-        val other = ProductEditViewModel(null, "NEW1", container.catalog, container.settingsState, container::currency)
+        val other = productEditor(null, "NEW1")
         assertThat(await { other.state.first { it.loaded && it.skuInUse } }.valid).isFalse()
         other.save { error("must not save") }
         val deleted = CompletableDeferred<Unit>()

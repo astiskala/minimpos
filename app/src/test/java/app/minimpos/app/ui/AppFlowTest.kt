@@ -292,7 +292,7 @@ class AppFlowTest {
         compose.waitForTag("chargeTax")
         compose.onNodeWithTag("chargeTax").performClick()
         compose.awaitCondition("Switching tax off") { !container.settingsState.value.payment.chargeTax }
-        compose.onNodeWithTag("addTaxRate").assertDoesNotExist()
+        compose.waitUntilDoesNotExist(hasTestTag("addTaxRate"), 15_000)
         compose.onNodeWithTag("back").performClick()
         waitForText("Off")
         compose.onNodeWithTag("back").performClick()

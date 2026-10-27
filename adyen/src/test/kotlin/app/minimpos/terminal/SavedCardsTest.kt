@@ -67,10 +67,11 @@ class SavedCardsTest {
             val known = second.charge(request, "kept") as CardChargeResult.Authorised
             outcome = SimulatedOutcome.DECLINE
             assertThat(second.charge(request, "kept")).isEqualTo(known)
-            val deleted = second.charge(request, "deleted")
-            simulator.forget(SimulatorRemoval(emptySet(), emptySet(), emptySet(), setOf("deleted")))
+            val removedSale = request.copy(reference = "261017-101600-CD34")
+            val deleted = second.charge(removedSale, "deleted")
+            simulator.forget(SimulatorRemoval(emptySet(), emptySet(), emptySet(), setOf(removedSale.reference)))
             outcome = SimulatedOutcome.APPROVE
-            assertThat(first.charge(request, "deleted")).isNotEqualTo(deleted)
+            assertThat(first.charge(removedSale, "deleted")).isNotEqualTo(deleted)
             assertThat(first.charge(request, "kept")).isEqualTo(known)
         }
 

@@ -10,7 +10,6 @@ import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.HTTP_NOT_FOUND
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 
 /**
@@ -23,15 +22,14 @@ import kotlin.random.Random
  */
 class SimulatedSavedCards internal constructor(
     private val random: Random,
-    private val ledger: SimulatedLedger,
+    private val account: SimulatedAccount,
     private val cards: suspend (shopperReference: String) -> List<StoredCard>,
-    private val answered: ConcurrentHashMap<String, CardChargeResult>,
-    private val deleted: MutableSet<Pair<String, String>>,
     private val outcome: () -> SimulatedOutcome,
 ) : SavedCardApi {
     override suspend fun list(shopperReference: String): StoredCardListing = StoredCardListing.Listed(available(shopperReference))
 
-    private suspend fun available(reference: String): List<StoredCard> = cards(reference).filter { reference to it.id !in deleted }
+    private suspend fun available(reference: String): List<StoredCard> =
+        cards(reference).filter { reference to it.id !in account.deletedTokens }
 
     override suspend fun delete(
         shopperReference: String,
@@ -42,7 +40,7 @@ class SimulatedSavedCards internal constructor(
         if (chosen in setOf(SimulatedOutcome.DECLINE, SimulatedOutcome.CANCEL, SimulatedOutcome.BUSY)) {
             return StoredCardDeletion.Failed(Fault.Permission(ApiKey.ADYEN))
         }
-        deleted += shopperReference to id
+        account.deletedTokens += shopperReference to id
         return if (chosen == SimulatedOutcome.TIMEOUT) StoredCardDeletion.Failed(Fault.TimedOut) else StoredCardDeletion.Deleted
     }
 
@@ -50,7 +48,7 @@ class SimulatedSavedCards internal constructor(
         request: CardChargeRequest,
         idempotencyKey: String,
     ): CardChargeResult {
-        answered[idempotencyKey]?.let { return it }
+        account.charge(idempotencyKey)?.let { return it }
         val card = available(request.shopperReference).firstOrNull { it.id == request.storedPaymentMethodId }
         val chosen = outcome()
         val approve =
@@ -80,8 +78,8 @@ class SimulatedSavedCards internal constructor(
                     CardChargeResult.Refused(psp, ExternalText("Not enough balance (simulated)"))
                 }
             }
-        answered[idempotencyKey] = result
-        if (result is CardChargeResult.Authorised) ledger.approved(psp, manualCapture = false)
+        account.charged(request.reference, idempotencyKey, result)
+        if (result is CardChargeResult.Authorised) account.ledger.approved(psp, manualCapture = false)
         // A lost answer: the card was charged, and only asking again with the same key says so.
         return if (chosen == SimulatedOutcome.TIMEOUT && approve) CardChargeResult.Failed(Fault.TimedOut) else result
     }

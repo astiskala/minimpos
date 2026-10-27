@@ -657,7 +657,7 @@ class AppContainer(
         val ids = items.map { it.id }.toSet()
         operations.forget(ids)
         receipts.forget(ids)
-        simulator.forget(items, tenders, operations.idempotencyKeys(items))
+        simulator.forget(items, tenders)
     }
 
     /** Returns split across several tenders or including cash, one persisted leg at a time. */

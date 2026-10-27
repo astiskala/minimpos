@@ -1,6 +1,5 @@
 package app.minimpos.terminal.simulator
 
-import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.NexoVocabulary
@@ -158,15 +157,14 @@ class TerminalSimulator(
     /** Receives every print request that succeeds, read back the way a terminal prints it, e.g. to show it on screen. */
     private val onPrint: (PrintJob) -> Unit = {},
 ) : TerminalTransport {
-    private val completed = CompletedTransactions()
-    private val chargeAnswers = ConcurrentHashMap<String, CardChargeResult>()
-    private val deletedTokens = ConcurrentHashMap.newKeySet<Pair<String, String>>()
-    private val aborted = ConcurrentHashMap.newKeySet<String>()
+    private val account = SimulatedAccount()
+    private val completed = account.completed
+    private val aborted = account.aborted
     private val inProgress = ConcurrentHashMap.newKeySet<String>()
-    private val ledger = SimulatedLedger()
+    private val ledger = account.ledger
     private val reconciliationId = AtomicInteger(INITIAL_RECONCILIATION_ID)
     private val periodTotals = ConcurrentHashMap<String, SimulatedPeriodTotals>()
-    private val paymentAmountsByTransactionId = ConcurrentHashMap<String, Pair<String, BigDecimal>>()
+    private val paymentAmountsByTransactionId = account.paymentAmounts
     private val giftCards = SimulatedGiftCards(clock)
     private val giftCardTerminal =
         SimulatedGiftCardTerminal(giftCards, completed, ::giftCardIds, ::waitForShopper, ::recordGiftCardPayment)
@@ -179,26 +177,13 @@ class TerminalSimulator(
      * simulator's outcome and remembered in the ledger [modifications] shares.
      */
     fun savedCards(cards: suspend (shopperReference: String) -> List<StoredCard>): SimulatedSavedCards =
-        SimulatedSavedCards(random, ledger, cards, chargeAnswers, deletedTokens) { config().outcome }
+        SimulatedSavedCards(random, account, cards) { config().outcome }
 
     /** Forgets all history identities after confirmed purge, retaining independent reconciliation period totals. */
-    fun forgetHistory() {
-        completed.clear()
-        aborted.clear()
-        paymentAmountsByTransactionId.clear()
-        chargeAnswers.clear()
-        deletedTokens.clear()
-        ledger.clear()
-    }
+    fun forgetHistory() = account.forgetHistory()
 
     /** Releases only durably deleted history identities, preserving unfinished retries and terminal period totals. */
-    fun forget(removed: SimulatorRemoval) {
-        completed.forget(removed.serviceIds, removed.transactionIds)
-        removed.serviceIds.forEach(aborted::remove)
-        removed.transactionIds.forEach(paymentAmountsByTransactionId::remove)
-        removed.chargeKeys.forEach(chargeAnswers::remove)
-        ledger.forget(removed.pspReferences)
-    }
+    fun forget(removed: SimulatorRemoval) = account.forget(removed)
 
     override suspend fun send(
         request: TerminalAPIRequest,

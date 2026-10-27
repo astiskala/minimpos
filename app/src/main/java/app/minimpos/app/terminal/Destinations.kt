@@ -195,7 +195,6 @@ class SimulatedTerminal(
     internal fun forget(
         items: List<HistoryItem>,
         tenders: List<SaleTenderEntity>,
-        chargeKeys: Set<String>,
     ) {
         val sales = items.filterIsInstance<HistoryItem.Sale>().map { it.sale }
         val refunds = items.filterIsInstance<HistoryItem.Refund>().map { it.refund }
@@ -208,7 +207,7 @@ class SimulatedTerminal(
                         stages.mapNotNull { it.poiTransactionId }
                 ).toSet(),
                 (sales.mapNotNull { it.pspReference } + tenders.mapNotNull { it.pspReference }).toSet(),
-                chargeKeys,
+                sales.map { it.merchantReference }.toSet(),
             ),
         )
     }

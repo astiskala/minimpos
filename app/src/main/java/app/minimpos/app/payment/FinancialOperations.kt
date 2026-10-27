@@ -3,7 +3,6 @@ package app.minimpos.app.payment
 import app.minimpos.app.data.db.RefundRoute
 import app.minimpos.app.data.db.SaleRoute
 import app.minimpos.app.data.db.route
-import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.ManagerApproval
@@ -71,14 +70,6 @@ class FinancialOperations(
 
     /** Releases process-only request material after durable history deletion, routed to every runner. */
     internal fun forget(ids: Set<String>) = kinds().forEach { it.forget(ids) }
-
-    /** The idempotency keys the operations of removed history [items] were sent with, which simulated Adyen keeps too. */
-    internal fun idempotencyKeys(items: List<HistoryItem>): Set<String> =
-        items
-            .filterIsInstance<HistoryItem.Sale>()
-            .filter { it.sale.route == SaleRoute.SAVED_CARD }
-            .map { SavedCardCharges.idempotencyKey(it.id) }
-            .toSet()
 
     /**
      * Whether a card payment, refund, saved-card charge or Checkout refund is being sent now, so the configuration it

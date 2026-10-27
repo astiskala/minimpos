@@ -10,6 +10,8 @@ import app.minimpos.terminal.client.TerminalExchange
 import app.minimpos.terminal.client.TransactionDetails
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppCredentials
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
+import app.minimpos.terminal.simulator.SimulatedAccount
+import app.minimpos.terminal.simulator.SimulatedLedger
 import app.minimpos.terminal.transport.AdyenCloudDevices
 import app.minimpos.terminal.transport.AdyenHttp
 import app.minimpos.terminal.transport.AdyenStoreDetails
@@ -250,6 +252,29 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `only the simulated account releases what simulated Adyen remembers`() =
+        simulatorRetention(
+            resideInAnyPackage("app.minimpos.terminal.simulator..").and(DescribedPredicate.not(type(SimulatedAccount::class.java))),
+        ).check(terminal)
+
+    @Test
+    fun `simulator retention ownership rejects a simulator forgetting history itself`() {
+        val violation = ClassFileImporter().importClasses(SimulatorRetentionViolation::class.java)
+        val rule = simulatorRetention(type(SimulatorRetentionViolation::class.java))
+        assertTrue(rule.description, rule.evaluate(violation).hasViolation())
+    }
+
+    private class SimulatorRetentionViolation {
+        fun purge(
+            completed: CompletedTransactions,
+            ledger: SimulatedLedger,
+        ) {
+            completed.clear()
+            ledger.clear()
+        }
+    }
+
+    @Test
     fun `the Checkout API's parts are made together for one credential`() =
         // AdyenCheckout makes modifications, links and saved cards with one HTTP client and application information.
         // A part's default-argument constructor delegates to its own full constructor.
@@ -426,6 +451,20 @@ class ArchitectureTest {
                 .should()
                 .callMethod(ExternalText::class.java, "constructor-impl", String::class.java)
                 .because("Production code outside the simulator wraps nullable remote fields via ExternalText.of")
+
+        // The terminal simulator and its saved cards each held and released their own share of simulated Adyen's memory,
+        // so a purge and a scoped removal listed different subsets; SimulatedAccount owns both releases.
+        fun simulatorRetention(selected: DescribedPredicate<JavaClass>): ArchRule =
+            noClasses()
+                .that(selected)
+                .should()
+                .callMethod(CompletedTransactions::class.java, "clear")
+                .orShould()
+                .callMethod(CompletedTransactions::class.java, "forget", Set::class.java, Set::class.java)
+                .orShould()
+                .callMethod(SimulatedLedger::class.java, "clear")
+                .orShould()
+                .callMethod(SimulatedLedger::class.java, "forget", Set::class.java)
 
         // The simulator and the Payments app transport both answer status checks themselves; the Payments app once
         // built its own answer, so the repeated body a client reads back could differ between them.

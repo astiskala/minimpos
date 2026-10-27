@@ -48,9 +48,11 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
   converts them to and from nexo's major units, with the Adyen decimals it is constructed with (`currencyDigits`).
 - `TerminalLocalAPI` posts to `<endpoint>:8443/nexo/`; `xerces:xercesImpl` supplies `DatatypeFactory` on Android.
   Unknown enum values deserialize to null. Keep application info identical on every payment/refund.
-- `TerminalSimulator` and `SimulatedModifications` share a ledger; changes must agree across Terminal and Checkout
-  operations. Transports answering status themselves (the simulator and the Payments app from late answers) use
-  `CompletedTransactions`, the one builder of status answers that repeat a transaction.
+- \* `TerminalSimulator`, `SimulatedModifications` and `SimulatedSavedCards` share one `SimulatedAccount`; changes must
+  agree across Terminal and Checkout operations, and only the account releases what simulated Adyen remembers after a
+  purge or a scoped history removal (by ServiceID, transaction ID, PSP reference and merchant reference). Transports
+  answering status themselves (the simulator and the Payments app from late answers) use `CompletedTransactions`, the
+  one builder of status answers that repeat a transaction.
 - For library upgrades and release R8 checks, follow `CONTRIBUTING.md` rather than adding Android dependencies here.
 
 ## Tests

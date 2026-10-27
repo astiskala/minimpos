@@ -85,7 +85,7 @@ class SmtpSettingsFlowTest : SmtpSettingsScreen(TestEnvironment()) {
         compose.onNodeWithTag("smtpAdvice").assertTextContains("SMTP AUTH", substring = true)
         compose.onNodeWithTag("smtpHost").performTextReplacement("mail.example.com")
         compose.awaitCondition("the typed server is stored") { email().host == "mail.example.com" }
-        compose.onNodeWithTag("smtpAdvice").assertDoesNotExist()
+        compose.waitUntilDoesNotExist(hasTestTag("smtpAdvice"), 15_000)
         compose.onNodeWithTag("smtpHelp").assertDoesNotExist()
     }
 

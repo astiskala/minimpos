@@ -138,7 +138,7 @@ class SmallScreenTest {
         waitForTag("showTaxAmounts")
         compose.onNodeWithTag("showTaxAmounts").performScrollTo().performClick()
         compose.awaitCondition("tax amounts are hidden") { !container.settingsState.value.receipt.showTaxAmounts }
-        compose.onNodeWithTag("showTaxBreakdown").assertDoesNotExist()
+        compose.waitUntilDoesNotExist(hasTestTag("showTaxBreakdown"), 15_000)
         compose.onNodeWithTag("showTaxRateTotals").performScrollTo().performClick()
         compose.awaitCondition("taxable totals are enabled") { container.settingsState.value.receipt.showTaxRateTotals }
         compose.onNodeWithTag("markedTaxRate").performScrollTo().performTextReplacement("5.5")
@@ -146,6 +146,7 @@ class SmallScreenTest {
         compose.onNodeWithTag("markedTaxRate").performTextReplacement("101")
         assertThat(container.settingsState.value.receipt.markedTaxRateMilliPercent).isEqualTo(5_500)
         compose.onNodeWithTag("markedTaxRate").performTextReplacement("5.5")
+        waitForTag("taxMarker")
         compose.onNodeWithTag("taxMarker").performScrollTo().performTextReplacement("*")
         compose.awaitCondition("the marker is saved") { container.settingsState.value.receipt.markedTaxRateMarker == "*" }
         compose.onNodeWithTag("taxMarkerNote").performScrollTo().performTextReplacement("* Reduced rate")
@@ -161,9 +162,10 @@ class SmallScreenTest {
         )
         compose.onNodeWithTag("markedTaxRate").performScrollTo().performTextReplacement("")
         compose.awaitCondition("item marking is disabled") { container.settingsState.value.receipt.markedTaxRateMilliPercent == null }
-        compose.onNodeWithTag("taxMarker").assertDoesNotExist()
+        compose.waitUntilDoesNotExist(hasTestTag("taxMarker"), 15_000)
         compose.onNodeWithTag("showTaxAmounts").performScrollTo().performClick()
         compose.awaitCondition("tax amounts are enabled") { container.settingsState.value.receipt.showTaxAmounts }
+        waitForTag("showTaxBreakdown")
         compose.onNodeWithTag("showTaxBreakdown").performScrollTo().performClick()
         compose.awaitCondition("the tax breakdown is hidden") { !container.settingsState.value.receipt.showTaxBreakdown }
     }

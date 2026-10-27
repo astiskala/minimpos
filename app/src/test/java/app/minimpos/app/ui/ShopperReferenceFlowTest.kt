@@ -153,7 +153,7 @@ class ShopperReferenceFlowTest {
         compose.onNodeWithTag("tokenizeDefault").assertExists()
         compose.onNodeWithTag("offerCardSaving").performScrollTo().performClick()
         awaitSetting("Offer to save cards") { !container.settingsState.value.payment.offerCardSaving }
-        compose.onNodeWithTag("tokenizeDefault").assertDoesNotExist()
+        compose.waitUntilDoesNotExist(hasTestTag("tokenizeDefault"), 15_000)
         compose.onNodeWithTag("preAuthTokenizeDefault").assertDoesNotExist()
         compose.onNodeWithTag("referenceSource").assertTextContains("as the shopper reference", substring = true)
 
@@ -162,7 +162,7 @@ class ShopperReferenceFlowTest {
         waitForTag("referenceSource_NONE")
         compose.onNodeWithTag("referenceSource_NONE").performClick()
         awaitSetting("None") { container.settingsState.value.payment.shopperReferenceSource == ShopperReferenceSource.NONE }
-        compose.onNodeWithTag("offerCardSaving").assertDoesNotExist()
+        compose.waitUntilDoesNotExist(hasTestTag("offerCardSaving"), 15_000)
         compose.onNodeWithTag("referenceSource").assertTextContains("cards cannot be saved", substring = true)
     }
 

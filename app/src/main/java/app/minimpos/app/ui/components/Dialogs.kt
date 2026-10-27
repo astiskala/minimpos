@@ -2,6 +2,7 @@ package app.minimpos.app.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
@@ -31,6 +32,27 @@ import app.minimpos.app.R
 import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.shopper.ShopperReferences
+
+/** Scrollable choices under [title]; the caller closes the dialog before running the chosen action. */
+@Composable
+fun ActionOptionsDialog(
+    title: String,
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(
+                Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing),
+                content = content,
+            )
+        },
+        confirmButton = { TextButton(onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
+}
 
 /**
  * Asks the operator to confirm [message] before an action such as deleting. [destructive] shows the confirm button in

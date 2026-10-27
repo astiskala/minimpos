@@ -50,7 +50,8 @@ restores one before each named flow:
 
 - `home`: home only; `overview`: home, history, history-search; `catalog`: products; `preferences`: settings,
   capabilities.
-- `cart`: sale; `checkout`: sale, checkout, wallets, wallet-scan, processing, approved, receipt, refund.
+- `cart`: sale; `checkout_choices`: checkout only; `checkout`: sale, checkout, wallets, wallet-scan, processing, approved,
+  receipt, refund.
 - `authorize`: pre-auth; `preauth`: pre-auth-detail; `terminal_setup`: terminal-setup;
   `settings`: terminal-setup, tax, terminal-tipping.
 - `transfer`: transfer, export; `partial`: partial-payment; `gratuity`: tip-receipt, tip; `tax_dialog`: tax-dialog.
@@ -175,7 +176,7 @@ closes. Always restore the market's device locale when recapturing only part of 
    after this capture.
 9. `partial-payment.png`: with Allow partial authorizations on and tipping off, take a custom-item sale of $21.39.
    The simulator's minor-unit `139` suffix approves half, rounded up: $10.70 paid and $10.69 remaining. Capture the
-   result with Pay remaining visible; turn the simulated printer off for this capture so Show receipt also fits.
+   result with Collect visible; turn the simulated printer off for this capture so Show receipt also fits.
    Restore the printer afterward; do not add this payment to the main history screenshot.
 10. `offline-payment.png` and `reconciliation.png`: use a separate empty-history demo fixture with the same products.
     Enable Settings › Simulator › Offline approvals, then approve the $34.00 sale. In its History
@@ -183,11 +184,12 @@ closes. Always restore the market's device locale when recapturing only part of 
     followed by the receipt preview. Go Home, open Reconciliation and tap Check terminal totals without restarting the
     app: the simulator ledger is in memory. Capture matching $34.00 totals together with the offline-sale and
     one-unconfirmed-batch warning. Restore the main fixture afterward.
-11. `checkout.png` shows Charge token: the main fixture's first sale saved a token under its customer reference, so
+11. Other payment options includes Charge token: the main fixture's first sale saved a token under its customer
+    reference, so
     the button appears once the lookup answers. Localized fixtures need that sale's references in the language's
     numeric form (`1042`, `2077`).
-12. `split.png` and `split-cash.png`: with terminal tipping off, the main cart's checkout scrolled to Split or pay
-    cash, then Shares (two equal shares, Card and Cash offered); then Cash for the first share with the cash received
+12. `split.png` and `split-cash.png`: with terminal tipping off, the main cart's checkout › Other payment options ›
+    Split payment, then Shares (two equal shares, Pay and Cash offered); then Cash for the first share with the cash received
     rounded up to the next 10 major units (1,000 minor units), so the change shows. Nothing is confirmed.
 13. `gift-cards.png`: Home › Gift cards with Givex (swiped or keyed in) and SVS configured in `payment.giftCards`,
     before choosing an action. The fixtures have no Manager PIN, so value changes would show it as missing.

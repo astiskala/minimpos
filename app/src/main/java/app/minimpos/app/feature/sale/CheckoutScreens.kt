@@ -4,11 +4,9 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -21,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -78,6 +77,7 @@ import app.minimpos.app.payment.Tender
 import app.minimpos.app.payment.TenderCeremony
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.share.ShareEffect
+import app.minimpos.app.ui.components.ActionOptionsDialog
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
@@ -238,10 +238,11 @@ private fun CheckoutContent(
                 onScanWallet = { advance(Tender.WALLET) },
                 tokens = tokens,
                 onChargeToken = { advance(Tender.TOKEN) },
+                onSplit = { cash -> navigator.push(Route.Split(cash = cash)) },
             )
         },
     ) { padding ->
-        CheckoutDetails(state, money, actions.update, { navigator.push(Route.Split()) }, Modifier.fillMaxSize().padding(padding))
+        CheckoutDetails(state, money, actions.update, Modifier.fillMaxSize().padding(padding))
     }
 }
 
@@ -341,7 +342,6 @@ private fun CheckoutDetails(
     state: Checkout,
     money: MoneyFormatter,
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
-    onSplit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
@@ -394,13 +394,12 @@ private fun CheckoutDetails(
                 CheckoutSwitches(state, onUpdate)
             }
         }
-        if (!state.preAuthorisation) item(key = "split", contentType = "split") { SplitEntry(state, onSplit) }
     }
 }
 
 /**
- * Pay on the terminal and, under it, Scan wallet when offered, Charge token when the shopper has [tokens] saved, and
- * Create payment link when links are offered. Each reaches Adyen or a terminal, so each goes through the setup gate.
+ * Payment on the terminal beside one entry to the other payment options. Cash and split choices stay local; actions that
+ * reach Adyen pass the setup gate. The options scroll inside their dialog so the checkout keeps room for its form.
  */
 @Composable
 private fun CheckoutActions(
@@ -411,12 +410,14 @@ private fun CheckoutActions(
     onScanWallet: () -> Unit,
     tokens: Boolean,
     onChargeToken: () -> Unit,
+    onSplit: (cash: Boolean) -> Unit,
 ) {
     val gate = currentSetupGate()
     val pay = { gate.run(onPay) }
     val sendLink = { gate.run(onSendLink) }
     val scanWallet = { gate.run(onScanWallet) }
     val chargeToken = { gate.run(onChargeToken) }
+    var options by rememberSaveable { mutableStateOf(false) }
     BottomActions {
         PrimaryButton(
             text =
@@ -428,20 +429,34 @@ private fun CheckoutActions(
             onClick = pay,
             modifier = Modifier.testTag("pay"),
         )
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val sideBySide = state.offersScanWallet && state.canSendLink && !tokens
-            if (maxWidth >= SIDE_BY_SIDE_ACTIONS_WIDTH && sideBySide) {
-                Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
-                    WalletCheckoutButton(state.canScanWallet, scanWallet, Modifier.weight(1f))
-                    LinkCheckoutButton(sendLink, Modifier.weight(1f))
-                }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
-                    if (state.offersScanWallet) WalletCheckoutButton(state.canScanWallet, scanWallet)
-                    if (tokens) TokenCheckoutButton(state.canPay, chargeToken)
-                    if (state.canSendLink) LinkCheckoutButton(sendLink)
-                }
+        val alternatives = state.offersScanWallet || tokens || state.canSendLink
+        if (!state.preAuthorisation || alternatives) {
+            SecondaryButton(
+                stringResource(R.string.checkout_options),
+                { options = true },
+                modifier = Modifier.testTag("paymentOptions"),
+            )
+        }
+    }
+    if (options) {
+        fun choose(action: () -> Unit) {
+            options = false
+            action()
+        }
+        ActionOptionsDialog(stringResource(R.string.checkout_options), { options = false }) {
+            if (!state.preAuthorisation) {
+                SecondaryButton(
+                    stringResource(R.string.split_pay_cash),
+                    { choose { onSplit(true) } },
+                    enabled = state.canSplit,
+                    icon = Icons.Default.Payments,
+                    modifier = Modifier.testTag("payCash"),
+                )
+                SplitEntry(state) { choose { onSplit(false) } }
             }
+            if (state.offersScanWallet) WalletCheckoutButton(state.canScanWallet, { choose(scanWallet) })
+            if (tokens) TokenCheckoutButton(state.canPay) { choose(chargeToken) }
+            if (state.canSendLink) LinkCheckoutButton({ choose(sendLink) })
         }
     }
 }
@@ -901,7 +916,7 @@ fun SaleResultScreen(
                             state,
                             money,
                             onNewSale = { done(ringUp) },
-                            onPayRemaining = { gate.run { if (vm.payRemaining()) navigator.replace(Route.Payment(state.kind)) } },
+                            onPayRemaining = { navigator.push(Route.Split(saleId)) },
                         ) {
                             vm.finish()
                             navigator.replace(if (ringUp == Route.Cashout) Route.Cashout else Route.Checkout(state.kind))
@@ -922,7 +937,7 @@ fun SaleResultScreen(
             }
             CashbackHandover(record.sale, navigator)
             SalePaymentCard(record.sale)
-            SplitProgress(record, money) { navigator.push(Route.Split(saleId = saleId)) }
+            SplitProgress(record, money, onCollect = null)
             if (state.approved) {
                 if (PaymentAction.ENTER_TIP in state.actions) EnterTipButton({ gate.run { navigator.push(Route.Tip(saleId)) } })
                 ReceiptActions(state.transaction, vm.transaction, MerchantCopy.WHEN_DUE, email = record.sale.shopperEmail.orEmpty())
@@ -965,7 +980,7 @@ private fun SaleOutcome(
 }
 
 /**
- * What the result offers beside Home: "Pay remaining" for a partly paid sale, "New sale" (or "New pre-auth" after a
+ * What the result offers beside Home: "Collect" for a partly paid sale, "New sale" (or "New pre-auth" after a
  * pre-authorisation) after an approved payment, or "Try again" (back to checkout with the same cart) after one that
  * failed and may be retried; null after one that must not be.
  */
@@ -980,7 +995,11 @@ private fun saleResultNext(
     val sale = state.record?.sale ?: return null
     return when (saleResultNext(sale)) {
         SaleResultNext.PAY_REMAINING -> {
-            ResultAction(stringResource(R.string.result_pay_remaining, money.format(sale.remainingMinor)), "payRemaining", onPayRemaining)
+            ResultAction(
+                stringResource(R.string.result_pay_remaining, money.format(sale.remainingMinor)),
+                "payRemaining",
+                onClick = onPayRemaining,
+            )
         }
 
         SaleResultNext.NEW_SALE -> {
@@ -993,12 +1012,12 @@ private fun saleResultNext(
                     },
                 ),
                 "newSaleAfter",
-                onNewSale,
+                onClick = onNewSale,
             )
         }
 
         SaleResultNext.TRY_AGAIN -> {
-            ResultAction(stringResource(R.string.result_try_again), "tryAgain", onTryAgain)
+            ResultAction(stringResource(R.string.result_try_again), "tryAgain", onClick = onTryAgain)
         }
 
         SaleResultNext.NONE -> {
@@ -1080,9 +1099,6 @@ private fun saleResultViewModel(saleId: String): SaleResultViewModel {
         )
     }
 }
-
-/** The width from which the action bar puts Scan wallet and Create payment link side by side. */
-private val SIDE_BY_SIDE_ACTIONS_WIDTH = 480.dp
 
 private fun resultOrigin(state: SaleResultUiState): Route {
     val sale = state.record?.sale

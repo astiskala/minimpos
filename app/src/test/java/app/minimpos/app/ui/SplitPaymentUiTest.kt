@@ -1,15 +1,21 @@
 package app.minimpos.app.ui
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation3.runtime.NavBackStack
@@ -24,6 +30,7 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.settings.GiftCardSetting
 import app.minimpos.app.feature.refund.RefundLegsScreen
 import app.minimpos.app.feature.refund.RefundScreen
@@ -77,6 +84,10 @@ class SplitPaymentUiTest {
     fun `a share paid in cash and the balance on a card fit AMS1`() = split()
 
     @Test
+    @Config(qualifiers = "fr-rFR-w320dp-h460dp-hdpi")
+    fun `French split and inline exact cash fit AMS1`() = split()
+
+    @Test
     @Config(qualifiers = "ja-rJP-w320dp-h460dp-hdpi")
     fun `Japanese split and cash confirmation fit AMS1`() = split()
 
@@ -106,7 +117,11 @@ class SplitPaymentUiTest {
             )
         val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.Checkout(), Route.Split()))
         try {
-            show { SplitScreen(null, navigator, vm = vm) }
+            lateinit var back: OnBackPressedDispatcher
+            show {
+                back = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
+                SplitScreen(null, navigator, vm = vm)
+            }
             compose.awaitCondition("split loaded") { vm.state.value.balance != null }
             vm.updateAmount { AmountEntry(450) }
             compose.awaitCondition("amount chosen") { vm.state.value.valid }
@@ -124,7 +139,7 @@ class SplitPaymentUiTest {
             vm.enterVoucher(true)
             compose.awaitCondition("voucher replaces cash") { vm.state.value.voucherStage && !vm.state.value.cashStage }
             compose.onNodeWithTag("payMealVoucher").assertIsDisplayed()
-            compose.onNodeWithTag("back").performClick()
+            compose.runOnIdle { back.onBackPressed() }
             compose.awaitCondition("voucher closed") { vm.state.value.stage == SplitStage.CHOOSE }
             vm.enterVoucher(true)
             vm.enterGiftCard(true)
@@ -136,6 +151,127 @@ class SplitPaymentUiTest {
             compose.awaitCondition("voucher reopened") { vm.state.value.voucherStage }
             vouchers.value = { MealVoucherAvailability() }
             compose.awaitCondition("unavailable voucher closed") { vm.state.value.stage == SplitStage.CHOOSE }
+        } finally {
+            close(listOf(vm))
+        }
+    }
+
+    @Test
+    fun `collecting a three way split offers the next share rather than the whole remainder`() {
+        ringUp()
+        val first = splitViewModel(null)
+        val models = mutableListOf(first)
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.Checkout(), Route.Split()))
+        try {
+            show { SplitScreen(null, navigator, vm = first) }
+            compose.awaitCondition("split ready") { first.state.value.valid }
+            first.setShares(3)
+            first.selectMode(SplitMode.SHARES)
+            compose.awaitCondition("first of three shares") { first.state.value.amountMinor == 300L }
+            first.enterCash(true)
+            compose.awaitCondition("cash ready") { first.state.value.confirmable }
+            var saleId: String? = null
+            compose.runOnIdle { first.confirmCash { saleId = it } }
+            compose.awaitCondition("first share recorded") { saleId != null }
+            val next = splitViewModel(checkNotNull(saleId)).also(models::add)
+            compose.awaitCondition("next share offered") { next.state.value.amountMinor == 300L }
+            assertThat(
+                next.state.value.balance
+                    ?.unpaidMinor,
+            ).isEqualTo(600)
+            assertThat(next.state.value.mode).isEqualTo(SplitMode.SHARES)
+            assertThat(next.state.value.shareIndex).isEqualTo(1)
+            assertThat(next.state.value.allocation).isEqualTo(
+                TenderAllocation.Share(1, 3, 900),
+            )
+        } finally {
+            close(models)
+        }
+    }
+
+    @Test
+    fun `cash starts at the balance and keypad entry replaces the exact prefill`() {
+        ringUp()
+        val vm = splitViewModel(null)
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.Checkout(), Route.Split()))
+        try {
+            show { SplitScreen(null, navigator, vm = vm) }
+            compose.awaitCondition("full balance offered") { vm.state.value.amountMinor == 900L }
+            compose.onNodeWithTag("splitCash").assertIsDisplayed().performClick()
+            compose.awaitCondition("exact cash offered") { vm.state.value.received.minor == 900L }
+            listOf("key_2", "key_0", "key_00").forEach { compose.onNodeWithTag(it).performClick() }
+            compose.awaitCondition("twenty dollars received") { vm.state.value.received.minor == 2000L }
+            assertThat(vm.state.value.changeMinor).isEqualTo(1100)
+            compose.onNodeWithTag("cashReceived").assertTextEquals("$20.00")
+            compose.onNodeWithTag("exactCash").assertIsDisplayed().performClick()
+            compose.awaitCondition("exact cash restored") { vm.state.value.received.minor == 900L }
+            assertThat(vm.state.value.changeMinor).isEqualTo(0)
+        } finally {
+            close(listOf(vm))
+        }
+    }
+
+    @Test
+    fun `typing a split amount replaces the full balance`() {
+        ringUp()
+        val vm = splitViewModel(null)
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.Checkout(), Route.Split()))
+        try {
+            show { SplitScreen(null, navigator, vm = vm) }
+            compose.awaitCondition("full amount offered") { vm.state.value.amountMinor == 900L }
+            compose.onNodeWithTag("key_4").performScrollTo().performClick()
+            compose.onNodeWithTag("key_00").performScrollTo().performClick()
+            compose.awaitCondition("four dollar tender") { vm.state.value.amountMinor == 400L }
+            assertThat(vm.state.value.valid).isTrue()
+        } finally {
+            close(listOf(vm))
+        }
+    }
+
+    @Test
+    fun `cash received stays on one line for large amounts`() {
+        ringUp()
+        val vm = splitViewModel(null)
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.Checkout(), Route.Split()))
+        try {
+            show { SplitScreen(null, navigator, vm = vm) }
+            compose.awaitCondition("split ready") { vm.state.value.valid }
+            vm.enterCash(true)
+            compose.awaitCondition("cash open") { vm.state.value.cashStage }
+            vm.updateAmount { AmountEntry(123_456_789) }
+            compose.awaitCondition("large cash entered") { vm.state.value.received.minor == 123_456_789L }
+            listOf("cashDue", "cashReceived", "cashChange").forEach { tag ->
+                val layouts = mutableListOf<TextLayoutResult>()
+                compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                assertThat(layouts.single().lineCount).isEqualTo(1)
+                assertThat(layouts.single().hasVisualOverflow).isFalse()
+            }
+            compose.onNodeWithTag("exactCash").assertIsDisplayed()
+            compose.onNodeWithTag("confirmCash").assertIsDisplayed()
+        } finally {
+            close(listOf(vm))
+        }
+    }
+
+    @Test
+    fun `Android Back closes each tender step before leaving the split`() {
+        ringUp()
+        val vm = splitViewModel(null, listOf(GiftCardSetting(GiftCardProvider.SVS)))
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.Checkout(), Route.Split()))
+        lateinit var back: OnBackPressedDispatcher
+        try {
+            show {
+                back = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
+                SplitScreen(null, navigator, vm = vm)
+            }
+            compose.awaitCondition("split ready") { vm.state.value.valid }
+            listOf<() -> Unit>({ vm.enterCash(true) }, { vm.enterGiftCard(true) }).forEach { open ->
+                compose.runOnIdle { open() }
+                compose.awaitCondition("tender open") { vm.state.value.stage != SplitStage.CHOOSE }
+                compose.runOnIdle { back.onBackPressed() }
+                compose.awaitCondition("tender closed") { vm.state.value.stage == SplitStage.CHOOSE }
+                assertThat(navigator.current).isEqualTo(Route.Split())
+            }
         } finally {
             close(listOf(vm))
         }
@@ -163,7 +299,7 @@ class SplitPaymentUiTest {
     @Test
     fun `returning cash waits for a Manager PIN and each leg is shown`() {
         val container = env.container
-        val saleId = cashThenCard()
+        val saleId = paidSale()
         await { container.pinManager.setPin("1357") }
         val vm = RefundViewModel(null, saleId, container.sales, container.storedPaymentActions)
         val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.Refund(saleId = saleId)))
@@ -190,7 +326,8 @@ class SplitPaymentUiTest {
                 container.refundLegs.state.value
                     ?.finished == true
             }
-            compose.onNodeWithTag("refundLeg_0").assertIsDisplayed()
+            compose.onNodeWithTag("refundLegsStatus").assertIsDisplayed()
+            compose.onNodeWithTag("refundLeg_0").performScrollTo().assertIsDisplayed()
             compose.onNodeWithTag("refundLeg_1").performScrollTo().assertIsDisplayed()
             assertThat(
                 container.refundLegs.state.value!!
@@ -199,6 +336,32 @@ class SplitPaymentUiTest {
             ).containsExactly(RefundStatus.REQUESTED, RefundStatus.REQUESTED)
             compose.onNodeWithTag("home").performClick()
             compose.awaitCondition("run left") { container.refundLegs.state.value == null }
+        } finally {
+            close(listOf(vm))
+        }
+    }
+
+    @Test
+    fun `cash only refunds report local handback without an Adyen confirmation note`() {
+        val container = env.container
+        val saleId = paidSale(cashMinor = 900)
+        await {
+            container.pinManager.setPin("1357")
+            container.managerPin.setPin("2468")
+        }
+        container.managerLock.unlock()
+        val vm = RefundViewModel(null, saleId, container.sales, container.storedPaymentActions)
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.RefundLegs))
+        try {
+            show { RefundLegsScreen(navigator) }
+            compose.awaitCondition("cash refund loaded") { vm.state.value.refundMinor == 900L }
+            assertThat(vm.refund()).isEqualTo(RefundStarted.LEGS)
+            compose.awaitCondition("cash returned") {
+                container.refundLegs.state.value
+                    ?.finished == true
+            }
+            compose.onNodeWithTag("refundLegsStatus").assertTextEquals(env.context.getString(R.string.split_cash_returned))
+            compose.onNodeWithText(env.context.getString(R.string.refund_async_note)).assertDoesNotExist()
         } finally {
             close(listOf(vm))
         }
@@ -248,6 +411,34 @@ class SplitPaymentUiTest {
         )
     }
 
+    private fun confirmCashShare(first: SplitViewModel) {
+        compose.onNodeWithTag("splitCash").assertIsDisplayed().performClick()
+        compose.awaitCondition("cash entry") { first.state.value.cashStage }
+        assertExactCashLabel()
+        listOf("key_1", "key_9", "key_00", "key_0", "cashReceived").forEach {
+            compose.onNodeWithTag(it).assertIsDisplayed()
+        }
+        compose.onNodeWithTag("key_0").performClick()
+        compose.awaitCondition("cash received edited") { first.state.value.received.minor == 0L }
+        compose.onNodeWithTag("exactCash").performClick()
+        compose.awaitCondition("exact cash restored") { first.state.value.received.minor == 450L }
+        compose
+            .onNodeWithTag("confirmCash")
+            .assertIsDisplayed()
+            .assertIsEnabled()
+            .performClick()
+    }
+
+    private fun assertExactCashLabel() {
+        val shortcut = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithTag("exactCash").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(shortcut) }
+        val label = shortcut.single()
+        assertThat(label.lineCount).isEqualTo(1)
+        // Like ScreenTextTest, allow a pixel of font-layout rounding, but no lost text.
+        assertThat(label.getLineRight(0) - label.getLineLeft(0)).isAtMost(label.size.width + 1f)
+        assertThat(label.multiParagraph.height).isAtMost(label.size.height + 1f)
+    }
+
     private fun split() {
         ringUp()
         val container = env.container
@@ -269,18 +460,7 @@ class SplitPaymentUiTest {
             compose.onNodeWithTag("splitMode_${SplitMode.SHARES.name}").performClick()
             compose.awaitCondition("first share chosen") { first.state.value.amountMinor == 450L }
             compose.onNodeWithTag("splitCard").assertIsDisplayed()
-            compose.onNodeWithTag("splitCash").assertIsDisplayed().performClick()
-            compose.awaitCondition("cash entry") { first.state.value.cashStage }
-            listOf("key_1", "key_9", "key_00", "key_0", "cashReceived").forEach {
-                compose.onNodeWithTag(it).assertIsDisplayed()
-            }
-            compose.onNodeWithTag("key_0").performClick()
-            compose.awaitCondition("cash received edited") { first.state.value.received.minor == 4500L }
-            compose
-                .onNodeWithTag("confirmCash")
-                .assertIsDisplayed()
-                .assertIsEnabled()
-                .performClick()
+            confirmCashShare(first)
             compose.awaitCondition("cash recorded") { navigator.current is Route.SaleResult }
             val id = checkNotNull(navigator.current as? Route.SaleResult).saleId
             val stored = await { container.sales.get(id)!! }
@@ -297,7 +477,7 @@ class SplitPaymentUiTest {
             }
             val rest = checkNotNull(models[id])
             assertThat(rest.state.value.sharesFixed).isTrue()
-            compose.onNodeWithTag("splitMode_${SplitMode.SHARES.name}").performClick()
+            assertThat(rest.state.value.mode).isEqualTo(SplitMode.SHARES)
             compose.awaitCondition("last share chosen") { rest.state.value.amountMinor == 450L }
             compose.onNodeWithTag("splitCard").assertIsDisplayed().performClick()
             compose.awaitCondition("card collected") { container.payments.state.value is TransactionState.Finished }
@@ -348,18 +528,20 @@ class SplitPaymentUiTest {
         }
     }
 
-    /** A 9.00 sale paid 4.00 in cash and 5.00 on a card. */
-    private fun cashThenCard(): String {
+    /** A 9.00 sale with [cashMinor] paid in cash and any balance paid on the terminal. */
+    private fun paidSale(cashMinor: Long = 400): String {
         ringUp()
         val container = env.container
         val session = container.session(SaleKind.SALE)
         val checkout = await { session.checkout(container.settingsState, currency = container::currency).first { it.canPay } }
-        val start = checkNotNull(session.splitStart(checkout, Instant.now(), ZoneOffset.UTC, 400, null))
-        val id = checkNotNull(await { container.cashTenders.payNew(start, 500, createdAt = 1) })
+        val start = checkNotNull(session.splitStart(checkout, Instant.now(), ZoneOffset.UTC, cashMinor, null))
+        val id = checkNotNull(await { container.cashTenders.payNew(start, cashMinor + 100, createdAt = 1) })
         val sale = await { container.sales.get(id)!! }.sale
-        val card = checkNotNull(container.payments.start(checkNotNull(Checkout.remainingPayment(sale))))
-        await { container.payments.state.first { it == TransactionState.Finished(card) } }
-        container.payments.acknowledge()
+        if (sale.isPartiallyPaid) {
+            val card = checkNotNull(container.payments.start(checkNotNull(Checkout.remainingPayment(sale))))
+            await { container.payments.state.first { it == TransactionState.Finished(card) } }
+            container.payments.acknowledge()
+        }
         return id
     }
 }

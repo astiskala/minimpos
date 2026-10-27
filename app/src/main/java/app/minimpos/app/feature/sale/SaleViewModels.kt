@@ -607,15 +607,4 @@ class SaleResultViewModel(
 
     /** Leaves the result, so the next payment can start, whichever way this one was sent. */
     fun finish() = operations.acknowledgePayment()
-
-    /**
-     * Starts collecting the remaining balance of a partially paid sale on another card; false when not partially paid
-     * or a payment is already running.
-     */
-    fun payRemaining(): Boolean {
-        val sale = state.value.record?.sale ?: return false
-        val start = Checkout.remainingPayment(sale) ?: return false
-        operations.acknowledgePayment()
-        return lifecycle.start(start) != null
-    }
 }

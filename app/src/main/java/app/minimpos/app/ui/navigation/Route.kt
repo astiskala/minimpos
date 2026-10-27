@@ -69,9 +69,11 @@ sealed interface Route : NavKey {
      * Cash tenders stay local, so it opens before payments are set up; card tenders pass the setup gate.
      *
      * @property saleId The stored sale to collect, or null for the sale being rung up.
+     * @property cash Open cash entry for the full balance (or the next share) immediately.
      */
     @Serializable data class Split(
         val saleId: String? = null,
+        val cash: Boolean = false,
     ) : Route {
         override val requiresSetup get() = false
     }

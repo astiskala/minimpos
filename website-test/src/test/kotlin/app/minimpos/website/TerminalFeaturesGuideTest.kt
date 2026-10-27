@@ -39,6 +39,7 @@ class TerminalFeaturesGuideTest {
                 ),
             "meal-vouchers" to
                 listOf("voucher_title", "split_open", "split_pay_meal_voucher", "products_meal_voucher", "voucher_account_title"),
+            "split-payments" to listOf("checkout_options", "split_open", "split_cash_exact"),
             "partial-payments" to listOf("settings_allow_partial_auth", "status_partially_paid"),
             "shopper-display" to listOf("settings_shopper_display"),
             "giving" to listOf("checkout_ask_giving"),

@@ -5,11 +5,13 @@ import androidx.lifecycle.viewModelScope
 import app.minimpos.app.data.repo.cashHandover
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.CashbackSettings
+import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.payment.CashTenders
 import app.minimpos.app.payment.Cashback
 import app.minimpos.app.payment.Checkout
+import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.terminal.WalletAvailability
@@ -99,6 +101,8 @@ internal data class CashHandoverState(
     val ready: Boolean = false,
     val confirmed: Boolean = false,
     val managerConfigured: Boolean = false,
+    val currency: String = PaymentSettings.FALLBACK_CURRENCY,
+    val amountMinor: Long? = null,
 )
 
 /** Confirmation writes survive leaving the screen and can be recorded only once by CashTenders. */
@@ -106,6 +110,7 @@ internal class CashHandoverViewModel(
     private val id: String,
     sales: StoredPayments,
     private val cash: CashTenders,
+    private val operations: FinancialOperations,
     configured: Flow<Boolean>,
 ) : ViewModel() {
     private var writing = false
@@ -116,8 +121,12 @@ internal class CashHandoverViewModel(
                 pin && sale?.cashHandover?.canRecord == true,
                 sale?.cashHandedOverAt != null,
                 pin,
+                sale?.currency ?: PaymentSettings.FALLBACK_CURRENCY,
+                sale?.cashHandover?.approvedMinor,
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, CashHandoverState())
+
+    fun finish() = operations.acknowledgePayment()
 
     fun confirm() {
         if (writing || !state.value.ready) return

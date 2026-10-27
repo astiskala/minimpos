@@ -58,6 +58,7 @@ import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.feature.GatedButton
 import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.ReceiptActions
+import app.minimpos.app.feature.ResultAction
 import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.TransactionActions
@@ -486,6 +487,15 @@ fun GiftCardActivityScreen(
         )
     }
     val activity = state.activity
+    val pinned =
+        state.actions
+            .firstOrNull {
+                it == GiftCardAction.CONTINUE || it == GiftCardAction.CONFIRM_HANDOVER
+            }.takeUnless { fromHistory }
+
+    fun follow(action: GiftCardAction) {
+        if (action == GiftCardAction.CONFIRM_HANDOVER) pending = action else gate.run { pending = action }
+    }
     pending?.let { action ->
         activity?.let { FollowUpDialog(action, it, onConfirm = { approved = action }, onDismiss = { pending = null }) }
     }
@@ -493,16 +503,40 @@ fun GiftCardActivityScreen(
         title = stringResource(R.string.gift_card_activity_title),
         onBack = if (processing) null else ::done,
         modifier = modifier,
-        bottomBar = { if (!fromHistory && activity != null && !processing) ResultBar(onHome = ::done, next = null) },
+        bottomBar = { GiftCardResultBar(state, !fromHistory && !processing, pinned, ::done, ::follow) },
     ) { padding ->
         if (processing || activity == null) {
             ActivityProgress(state, vm::cancel, Modifier.padding(padding))
         } else {
             ScreenColumn(padding, horizontalAlignment = Alignment.CenterHorizontally) {
-                ActivityResult(state, activity, vm.transaction, vm::updateCard) { action -> gate.run { pending = action } }
+                ActivityResult(state, activity, vm.transaction, vm::updateCard, pinned, ::follow)
             }
         }
     }
+}
+
+/** Pins the activity's next handover or continuation beside Home, with the same prerequisites as its body action. */
+@Composable
+private fun GiftCardResultBar(
+    state: GiftCardActivityUiState,
+    visible: Boolean,
+    pinned: GiftCardAction?,
+    onHome: () -> Unit,
+    onAction: (GiftCardAction) -> Unit,
+) {
+    if (!visible || state.activity == null) return
+    ResultBar(
+        onHome = onHome,
+        next =
+            pinned?.let {
+                ResultAction(
+                    stringResource(actionLabel(it)),
+                    "giftCardAction_${it.name}",
+                    enabled = followUpReady(state, it),
+                    onClick = { onAction(it) },
+                )
+            },
+    )
 }
 
 /** Asks staff to confirm [action] on [activity] before Manager approval; nothing while it is not stored. */
@@ -554,6 +588,7 @@ private fun ColumnScope.ActivityResult(
     activity: GiftCardActivity,
     transaction: TransactionActions,
     onCard: ((CardChoice) -> CardChoice) -> Unit,
+    pinned: GiftCardAction?,
     onAction: (GiftCardAction) -> Unit,
 ) {
     val money = rememberMoneyFormatter(activity.currency)
@@ -575,26 +610,21 @@ private fun ColumnScope.ActivityResult(
             onExpiry = { expiry -> onCard { it.copy(expiry = expiry.filter(Char::isDigit).take(EXPIRY_LENGTH)) } },
         )
     }
-    FollowUps(state, onAction)
+    FollowUps(state, pinned, onAction)
     if (activity.stages.any { it.status == GiftCardStatus.SUCCEEDED }) ReceiptActions(state.transaction, transaction, MerchantCopy.NONE)
 }
 
 @Composable
 private fun ColumnScope.FollowUps(
     state: GiftCardActivityUiState,
+    pinned: GiftCardAction?,
     onAction: (GiftCardAction) -> Unit,
 ) {
     val actions = state.actions - GiftCardAction.CHECK_AGAIN
     if (actions.isEmpty()) return
     if (!state.managerConfigured) OutcomeNote(stringResource(R.string.gift_card_manager_note))
-    actions.sortedBy { it.ordinal }.forEach { action ->
-        val ready =
-            state.managerConfigured &&
-                when (action) {
-                    GiftCardAction.CONTINUE -> state.cardReady
-                    GiftCardAction.CONFIRM_HANDOVER -> state.activity?.cashHandover?.canRecord == true
-                    GiftCardAction.CHECK_AGAIN, GiftCardAction.REFUND_FUNDING, GiftCardAction.RETURN_FUNDS, GiftCardAction.UNDO_LOAD -> true
-                }
+    actions.filter { it != pinned }.sortedBy { it.ordinal }.forEach { action ->
+        val ready = followUpReady(state, action)
         val text = stringResource(actionLabel(action))
         val tag = Modifier.testTag("giftCardAction_${action.name}")
         if (action == GiftCardAction.CONFIRM_HANDOVER || action == GiftCardAction.CONTINUE) {
@@ -604,6 +634,18 @@ private fun ColumnScope.FollowUps(
         }
     }
 }
+
+/** Whether the selected follow-up can be confirmed with the currently presented card and Manager setup. */
+private fun followUpReady(
+    state: GiftCardActivityUiState,
+    action: GiftCardAction,
+): Boolean =
+    state.managerConfigured &&
+        when (action) {
+            GiftCardAction.CONTINUE -> state.cardReady
+            GiftCardAction.CONFIRM_HANDOVER -> state.activity?.cashHandover?.canRecord == true
+            GiftCardAction.CHECK_AGAIN, GiftCardAction.REFUND_FUNDING, GiftCardAction.RETURN_FUNDS, GiftCardAction.UNDO_LOAD -> true
+        }
 
 /** The activity's outcome: what it set out to do, where it stands and its main amount. */
 @Composable

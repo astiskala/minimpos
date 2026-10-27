@@ -152,6 +152,6 @@ class GiftCardUiTest {
         compose.onNodeWithTag("giftCardActivity_payout").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("giftCardStatus"), 15_000)
         compose.onNodeWithText(env.context.getString(R.string.cashback_missing_amount)).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("giftCardAction_CONFIRM_HANDOVER").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("giftCardAction_CONFIRM_HANDOVER").assertIsDisplayed().assertIsNotEnabled()
     }
 }

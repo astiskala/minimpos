@@ -366,24 +366,22 @@
             分期安排由發卡機構管理。</p>
           <p><a href="https://docs.adyen.com/point-of-sale/installments/mexico-installments/">Adyen: 墨西哥信用卡分期付款</a></p>
           <h3 id="partial-payments">收取部分授權後的剩餘金額</h3>
-          <p>開啟<strong>允許部分授權</strong>後，可接受低於要求金額的銀行卡批准。結果顯示<strong>部分已付</strong>時，請核對
-            已付和剩餘金額，點按<strong>支付剩餘</strong>，並以另一張卡收取餘額。各次嘗試都記錄在同一筆銷售中。不要按總額
-            另開銷售：已批准的部分已經付款。</p>
+          <p>開啟<strong>允許部分授權</strong>即可接受低於要求金額的刷卡批准。結果顯示<strong>部分已付</strong>時，核對已付和剩餘金額，然後點按「首頁」旁的
+            <strong>收取</strong>，選擇如何收取同一筆銷售的餘額。已批准部分已經付清，請勿重新按全額建立銷售。</p>
           <p>未收到回應不等於部分授權。請先<a href="troubleshooting#unknown">處理結果不明的交易</a>，再繼續收款。</p>
           <figure class="guide-shot">
-            <a class="screenshot-link" href="../images/zh-Hant/partial-payment.png" aria-label="查看原尺寸螢幕截圖: 繁體中文模擬器演示：已支付 60.70 港元、剩餘 60.69 港元及支付餘額按鈕">
+            <a class="screenshot-link" href="../images/zh-Hant/partial-payment.png" aria-label="查看原尺寸螢幕截圖: 繁體中文模擬器演示：已支付 60.70 港元、剩餘 60.69 港元及收取餘額按鈕">
               <div class="terminal terminal-s1f2">
-              <img src="../images/zh-Hant/partial-payment.png" width="540" height="960" loading="lazy" alt="繁體中文模擬器演示：已支付 60.70 港元、剩餘 60.69 港元及支付餘額按鈕" decoding="async">
+              <img src="../images/zh-Hant/partial-payment.png" width="540" height="960" loading="lazy" alt="繁體中文模擬器演示：已支付 60.70 港元、剩餘 60.69 港元及收取餘額按鈕" decoding="async">
               </div></a>
             <figcaption class="fine">繁體中文模擬器部分授權演示，並非已全額支付的銷售。<span class="shot-control">部分已付</span><a class="screenshot-link shot-expand" href="../images/zh-Hant/partial-payment.png">查看原尺寸螢幕截圖</a></figcaption>
           </figure>
           <h3 id="split-payments">拆分銷售或收取現金</h3>
-          <p>結帳時點按<strong>拆分或以現金付款</strong>。選擇<strong>金額</strong>、<strong>均分</strong>或本次付款涵蓋的
-            <strong>商品</strong>，然後點按<strong>刷卡</strong>或<strong>現金</strong>。價格和稅費保持不變，多出的零頭計入
-            前幾份。收取現金時，輸入顧客給的金額，找回顯示的零錢後確認。現金只記錄在本裝置上。</p>
-          <p>在全數付清之前，該銷售保持<strong>部分已付</strong>。在結果頁面或<strong>交易紀錄</strong>中點按
-            <strong>收取餘額</strong>即可繼續，重新啟動後亦可。繼續收款前，請先處理結果不明的銀行卡付款。收據會列出每筆
-            付款；每日報告分開顯示現金，終端總額從不包括現金。</p>
+          <p>結帳時點按<strong>其他付款選項</strong>。選擇<strong>現金</strong>可收取全部餘額；選擇<strong>拆分付款</strong>可按金額、均分或商品指定本次金額，再選銀
+            行卡或現金。價格和稅額保持不變，多出的分幣計入前幾份。實收現金預設等於應付金額，輸入數字會取代預設值。<strong>現金剛好</strong>可還原該金額。核對實收現金與找續，交還找續後確認。現金只記錄
+            在此裝置上。</p>
+          <p>銷售在付清前維持<strong>部分已付</strong>。點按結果中的<strong>收取</strong>或交易紀錄中的<strong>收取餘額</strong>即可繼續，重新啟動後也可操作。下一份均分
+            金額會自動選取。銀行卡結果未知時，請先處理再收取更多款項。收據列出每筆付款，日報分開列出現金，終端總額不含現金。</p>
           <p>設定禮品卡後，點按<strong>禮品卡</strong>即可用禮品卡支付所選金額；餘額不足時會部分批准。禮品卡付款會退回到該卡，
             本地禮品卡除外，需在 Mini mPOS 以外退款。</p>
           <div class="shot-pair">
@@ -412,7 +410,7 @@
             餐券；或法國的 Titres-restaurant。設定後請重新整理 Adyen 功能。不提供 Monizze、比利時 Pluxee 和
             Lunch Check。</p>
           <p>如果餐券要求合資格的商品，請在「設定」›「商品」中開啟每個商品並開啟<strong>可用餐券支付</strong>；自訂商品
-            一律不合資格。結帳時點按<strong>拆分或以現金付款</strong>，再點按<strong>餐券</strong>。Mini mPOS 會提供餐券
+            一律不合資格。結帳時點按<strong>其他付款選項 › 拆分付款</strong>，再點按<strong>餐券</strong>。Mini mPOS 會提供餐券
             最多可支付的金額；其餘部分以銀行卡或現金收取。Mastercard 或 Visa 餐券可能獲部分批准。Titres-restaurant
             每日最多 EUR 25，星期日和公眾假期不可用，且不能退款：請改為提供店內抵用額。餘額不足的巴西餐券會被拒絕；
             請輸入較低的金額。</p>

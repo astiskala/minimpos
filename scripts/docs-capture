@@ -477,6 +477,18 @@ close_receipt() {
     }
 }
 
+flow_checkout_choices() {
+    demo_settings "$1" 's/"payment":{/"payment":{"tokenizeDefaultOn":true,/'
+    ring_up "$1"
+    tap "$1" ^sale_charge 2
+    enter_reference "$1" customerReference
+    back
+    tap "$1" ^sale_charge 2
+    remote input swipe 360 850 360 500 800
+    sleep 1
+    shot "$1" checkout
+}
+
 flow_checkout() {
     save_demo_logo "$1"
     flow_cart "$1"
@@ -488,6 +500,8 @@ flow_checkout() {
     enable_switch "$1" checkout_save_card
     sleep 2
     shot "$1" checkout
+    tap "$1" checkout_options
+    scroll "$1" checkout_scan_wallet
     tap "$1" checkout_scan_wallet 3
     shot "$1" wallets
     tap "$1" "=Alipay" 3
@@ -579,10 +593,7 @@ flow_split() {
     demo_settings "$1" 's/"payment":{/"payment":{"terminalTipping":"DISABLED",/'
     ring_up "$1"
     tap "$1" ^sale_charge 2
-    # Checkout scrolls only above its pinned payment buttons.
-    remote input swipe 360 800 360 200 800
-    remote input swipe 360 800 360 200 800
-    sleep 1
+    tap "$1" checkout_options
     tap "$1" split_open 2
     tap "$1" split_mode_shares 1.5
     shot "$1" split
@@ -590,9 +601,7 @@ flow_split() {
     local total due
     total=$(($(price "$1" "Flat white") * 2 + $(price "$1" "Banana bread") + $(price "$1" "Coffee beans 250 g")))
     due=$(((total + 1) / 2))
-    # Cash received starts at the amount due; the whole keypad fits without scrolling.
-    local _
-    for _ in $(seq $((${#due} + 1))); do tap "$1" action_backspace 0.2; done
+    # The first digit replaces the exact cash prefill; the keypad fits without scrolling.
     key_in "$1" "$(((due + 999) / 1000 * 1000))"
     shot "$1" split-cash
 }

@@ -140,7 +140,7 @@ val SaleEntity.decline: Decline? get() = Decline.of(status == SaleStatus.APPROVE
  * See [saleResultNext].
  */
 enum class SaleResultNext {
-    /** Collect the remaining balance of a partially paid sale on another card. */
+    /** Choose how to collect the remaining balance of a partially paid sale. */
     PAY_REMAINING,
 
     /** The payment was approved: start the next one of its kind. */

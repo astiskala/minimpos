@@ -91,6 +91,8 @@ data class SplitItem(
  * @property selection Units chosen per line position, for [SplitMode.ITEMS].
  * @property stage The tender-entry step currently shown.
  * @property received Cash received, entered on the keypad during [cashStage].
+ * @property amountPrefilled Whether the initial unpaid amount is still shown; the first edit replaces it.
+ * @property cashPrefilled Whether the cash entry still contains the exact amount; the first edit replaces it.
  * @property rejected Whether the last start was refused because the sale changed; review and try again.
  * @property recording Whether a cash tender is being recorded.
  * @property giftCards Configured gift-card providers that take payments; empty offers no gift-card tender.
@@ -111,6 +113,8 @@ data class SplitUiState(
     val selection: Map<Int, Int> = emptyMap(),
     val stage: SplitStage = SplitStage.CHOOSE,
     val received: AmountEntry = AmountEntry(),
+    val amountPrefilled: Boolean = false,
+    val cashPrefilled: Boolean = false,
     val rejected: Boolean = false,
     val recording: Boolean = false,
     val giftCards: List<GiftCardSetting> = emptyList(),
@@ -188,6 +192,7 @@ data class SplitUiState(
  * @param vouchers Meal-voucher availability for a currency, from settings and verified store discovery.
  * @param clock Stamps references and cash tenders, and dates voucher use in [zone].
  * @param zone The time zone of generated references.
+ * @param cashEntry Whether the first step opens cash entry for the unpaid balance or next share.
  */
 class SplitViewModel(
     private val saleId: String?,
@@ -200,8 +205,10 @@ class SplitViewModel(
     vouchers: Flow<(String) -> MealVoucherAvailability> = flowOf { MealVoucherAvailability() },
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
+    private val cashEntry: Boolean = false,
 ) : ViewModel() {
     private val local = MutableStateFlow(SplitUiState())
+    private var initialized = false
     private var latestCheckout: Checkout? = null
     private var latestSale: SaleEntity? = null
 
@@ -246,7 +253,7 @@ class SplitViewModel(
 
     /** The screen state, updated whenever the sale or checkout and the operator's choices change. */
     val state: StateFlow<SplitUiState> =
-        combine(source, local, giftCards, vouchers) { loaded, choices, settings, voucherFor ->
+        combine(source.map(::initialize), local, giftCards, vouchers) { loaded, choices, settings, voucherFor ->
             val provider =
                 choices.card.provider?.takeIf { chosen -> settings.any { it.provider == chosen } } ?: settings.firstOrNull()?.provider
             val availability = voucherFor(loaded.currency)
@@ -274,6 +281,26 @@ class SplitViewModel(
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SplitUiState())
 
+    private fun initialize(loaded: SplitUiState): SplitUiState {
+        val balance = loaded.balance
+        if (!initialized && balance != null) {
+            initialized = true
+            val share = balance.nextShare
+            val amount = balance.amountFor(share, balance.unpaidMinor)
+            local.update {
+                it.copy(
+                    mode = if (share != null) SplitMode.SHARES else SplitMode.AMOUNT,
+                    amount = AmountEntry(balance.unpaidMinor),
+                    amountPrefilled = true,
+                    stage = if (cashEntry) SplitStage.CASH else SplitStage.CHOOSE,
+                    received = AmountEntry(amount),
+                    cashPrefilled = cashEntry,
+                )
+            }
+        }
+        return loaded
+    }
+
     /** Chooses how the next tender is allocated. */
     fun selectMode(mode: SplitMode) = local.update { it.copy(mode = mode, stage = SplitStage.CHOOSE, rejected = false) }
 
@@ -282,10 +309,11 @@ class SplitViewModel(
         local.update {
             if (it.cashStage) {
                 it.copy(
-                    received = transform(it.received),
+                    received = transform(if (it.cashPrefilled) AmountEntry() else it.received),
+                    cashPrefilled = false,
                 )
             } else {
-                it.copy(amount = transform(it.amount), rejected = false)
+                it.copy(amount = transform(if (it.amountPrefilled) AmountEntry() else it.amount), amountPrefilled = false, rejected = false)
             }
         }
 
@@ -368,6 +396,7 @@ class SplitViewModel(
                 voucherChoice = choice,
                 mode = if (open) SplitMode.AMOUNT else it.mode,
                 amount = if (limit > 0) AmountEntry(limit) else it.amount,
+                amountPrefilled = limit > 0 || it.amountPrefilled,
                 rejected = false,
             )
         }
@@ -379,6 +408,7 @@ class SplitViewModel(
             it.copy(
                 stage = if (open && state.value.valid) SplitStage.CASH else SplitStage.CHOOSE,
                 received = AmountEntry(state.value.amountMinor),
+                cashPrefilled = true,
                 rejected = false,
             )
         }

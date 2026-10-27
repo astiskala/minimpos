@@ -1,5 +1,6 @@
 package app.minimpos.app.feature.sale
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.CardGiftcard
@@ -25,6 +27,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -33,6 +36,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
@@ -81,14 +85,16 @@ import kotlinx.coroutines.flow.flowOf
 /**
  * Splitting a sale: choosing what the next tender pays (an amount, an equal share or sold items), then collecting it on
  * the terminal or confirming cash received and change. [saleId] null splits the sale being rung up; otherwise the
- * stored partially paid sale. A card tender goes through the setup gate; cash reaches neither Adyen nor a terminal.
+ * stored partially paid sale. With [cash], cash entry opens directly for the balance or next share. A terminal
+ * tender goes through the setup gate; cash reaches neither Adyen nor a terminal.
  */
 @Composable
 fun SplitScreen(
     saleId: String?,
     navigator: Navigator,
     modifier: Modifier = Modifier,
-    vm: SplitViewModel = splitViewModel(saleId),
+    cash: Boolean = false,
+    vm: SplitViewModel = splitViewModel(saleId, cash),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(state.currency.ifEmpty { PaymentSettings.FALLBACK_CURRENCY })
@@ -100,16 +106,19 @@ fun SplitScreen(
             gate.run { if (start()) navigator.replace(Route.Payment(SaleKind.SALE)) }
         }
     }
+
+    fun back() {
+        when {
+            state.cashStage -> vm.enterCash(false)
+            state.giftCardStage -> vm.enterGiftCard(false)
+            state.voucherStage -> vm.enterVoucher(false)
+            else -> navigator.back()
+        }
+    }
+    BackHandler(enabled = state.stage != SplitStage.CHOOSE, onBack = ::back)
     MiniScaffold(
         title = stringResource(R.string.split_title),
-        onBack = {
-            when {
-                state.cashStage -> vm.enterCash(false)
-                state.giftCardStage -> vm.enterGiftCard(false)
-                state.voucherStage -> vm.enterVoucher(false)
-                else -> navigator.back()
-            }
-        },
+        onBack = ::back,
         modifier = modifier,
         bottomBar = {
             if (state.balance != null) {
@@ -147,6 +156,7 @@ fun SplitScreen(
                     SplitEvents(
                         vm::selectMode,
                         vm::updateAmount,
+                        { vm.enterCash(true) },
                         vm::setShares,
                         vm::setQuantity,
                         vm::updateCard,
@@ -158,7 +168,7 @@ fun SplitScreen(
     }
 }
 
-/** Card for the chosen amount and Cash under it, or, while entering cash, the confirmation of cash received. */
+/** Terminal payment for the chosen amount and Cash under it, or, while entering cash, the confirmation of cash received. */
 @Composable
 private fun SplitActions(
     state: SplitUiState,
@@ -249,6 +259,7 @@ private fun ColumnScope.StoredValueTenders(
 private class SplitEvents(
     val onMode: (SplitMode) -> Unit,
     val onAmount: ((AmountEntry) -> AmountEntry) -> Unit,
+    val onExactCash: () -> Unit,
     val onShares: (Int) -> Unit,
     val onQuantity: (position: Int, quantity: Int) -> Unit,
     val onCard: ((CardChoice) -> CardChoice) -> Unit = {},
@@ -264,7 +275,7 @@ private fun SplitChoices(
 ) {
     val dimens = LocalDimens.current
     if (state.cashStage) {
-        CashChoices(state, money, events.onAmount, modifier)
+        CashChoices(state, money, events.onAmount, events.onExactCash, modifier)
         return
     }
     LazyColumn(
@@ -326,6 +337,7 @@ private fun CashChoices(
     state: SplitUiState,
     money: MoneyFormatter,
     onAmount: ((AmountEntry) -> AmountEntry) -> Unit,
+    onExactCash: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
@@ -336,7 +348,7 @@ private fun CashChoices(
     ) {
         Column(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth()) {
             if (state.rejected) OutcomeNote(stringResource(R.string.split_balance_changed))
-            CashEntry(state, money)
+            CashEntry(state, money, onExactCash)
         }
         NumericKeypad(
             onDigit = { digit -> onAmount { it.append(digit) } },
@@ -463,26 +475,44 @@ private fun ColumnScope.Shares(
 private fun ColumnScope.CashEntry(
     state: SplitUiState,
     money: MoneyFormatter,
+    onExactCash: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Column(Modifier.weight(1f)) {
             Text(stringResource(R.string.split_cash_due), style = MaterialTheme.typography.bodySmall)
-            Text(money.format(state.amountMinor), style = MaterialTheme.typography.titleMedium)
+            Text(
+                money.format(state.amountMinor),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = MaterialTheme.typography.titleMedium.fontSize),
+                modifier = Modifier.testTag("cashDue"),
+            )
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
             Text(stringResource(R.string.split_change), style = MaterialTheme.typography.bodySmall)
             Text(
                 state.changeMinor?.let(money::format) ?: stringResource(R.string.split_cash_short),
                 style = MaterialTheme.typography.titleMedium,
+                maxLines = if (state.changeMinor != null) 1 else Int.MAX_VALUE,
+                autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = MaterialTheme.typography.titleMedium.fontSize),
+                modifier = Modifier.testTag("cashChange"),
             )
         }
     }
-    Text(
-        stringResource(R.string.split_cash_received),
-        style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.fillMaxWidth(),
-        textAlign = TextAlign.Center,
-    )
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            stringResource(R.string.split_cash_received),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onExactCash, Modifier.testTag("exactCash")) {
+            Text(stringResource(R.string.split_cash_exact), style = MaterialTheme.typography.labelMedium)
+        }
+    }
     Text(
         money.format(state.received.minor),
         style = LocalDimens.current.amountStyle,
@@ -541,34 +571,32 @@ private fun modeLabel(mode: SplitMode): Int =
 
 /** Checkout's way into a split, or why an option chosen at checkout prevents one. */
 @Composable
-internal fun SplitEntry(
+internal fun ColumnScope.SplitEntry(
     state: Checkout,
     onSplit: () -> Unit,
 ) {
-    val dimens = LocalDimens.current
-    Column(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth().padding(top = dimens.spacing)) {
-        SecondaryButton(
-            stringResource(R.string.split_open),
-            onSplit,
-            enabled = state.canSplit,
-            icon = Icons.AutoMirrored.Filled.CallSplit,
-            modifier = Modifier.testTag("splitPayment"),
-        )
-        if (state.splitBlocked) BlockedReason(stringResource(R.string.split_blocked))
-    }
+    SecondaryButton(
+        stringResource(R.string.split_open),
+        onSplit,
+        enabled = state.canSplit,
+        icon = Icons.AutoMirrored.Filled.CallSplit,
+        modifier = Modifier.testTag("splitPayment"),
+    )
+    if (state.splitBlocked) BlockedReason(stringResource(R.string.split_blocked))
 }
 
 /**
  * A stored sale's tenders and, while a balance can be collected, the way back into its split ([onCollect]), also after
- * a restart; nothing for a sale paid with one card.
+ * a restart when [onCollect] is supplied. Results pass null because their bottom bar offers collection instead.
+ * Nothing for a sale paid with one card.
  */
 @Composable
 internal fun ColumnScope.SplitProgress(
     record: SaleWithLines,
     money: MoneyFormatter,
-    onCollect: () -> Unit,
+    onCollect: (() -> Unit)?,
 ) {
-    if (saleResultNext(record.sale) == SaleResultNext.PAY_REMAINING) {
+    if (onCollect != null && saleResultNext(record.sale) == SaleResultNext.PAY_REMAINING) {
         SecondaryButton(
             stringResource(R.string.split_collect_balance),
             onCollect,
@@ -627,9 +655,12 @@ private fun SaleTenders(
 }
 
 @Composable
-private fun splitViewModel(saleId: String?): SplitViewModel {
+private fun splitViewModel(
+    saleId: String?,
+    cash: Boolean,
+): SplitViewModel {
     val container = LocalAppContainer.current
-    return viewModel(key = "split|${saleId.orEmpty()}") {
+    return viewModel(key = "split|${saleId.orEmpty()}|$cash") {
         val session = container.session(SaleKind.SALE)
         SplitViewModel(
             saleId,
@@ -664,6 +695,7 @@ private fun splitViewModel(saleId: String?): SplitViewModel {
                     )
                 }
             },
+            cashEntry = cash,
         )
     }
 }

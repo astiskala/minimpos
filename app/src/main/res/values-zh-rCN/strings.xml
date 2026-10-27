@@ -109,6 +109,7 @@
   <string name="checkout_save_card_hint">将卡片令牌化并关联至此购物者识别号。请先征得购物者同意。</string>
   <string name="checkout_save_card_email_hint">将卡片令牌化并关联至此电子邮件地址。请先征得购物者同意。</string>
   <string name="checkout_pay">支付 %1$s</string>
+  <string name="checkout_options">其他付款选项</string>
   <string name="checkout_scan_wallet">扫描钱包</string>
   <string name="checkout_send_link">创建付款链接</string>
   <string name="checkout_charge_token">令牌扣款</string>
@@ -249,7 +250,7 @@
   <string name="result_abort_sent">已请求终端取消当前交易。请在终端空闲后重试。</string>
   <string name="result_tip_note">请打印收据，让购物者填写小费并签名，然后输入小费。</string>
   <string name="result_enter_tip">输入小费</string>
-  <string name="result_pay_remaining">支付剩余 %1$s</string>
+  <string name="result_pay_remaining">收取%1$s</string>
   <string name="result_tap_to_pay_ready">Tap to Pay 已设置（安装 %1$s）。</string>
   <string name="result_tap_to_pay_removed">已移除本手机。请同时在 Adyen Payments 应用的设置中选择“Unregister”。</string>
   <string name="status_approved">已批准</string>
@@ -1316,7 +1317,7 @@
   <string name="surcharge_remaining_unknown">附加费未报告，剩余购买金额未知。请在 Customer Area 核实，或先向此卡退款再重新收款。</string>
 
   <!-- Split payment -->
-  <string name="split_open">拆分或现金支付</string>
+  <string name="split_open">拆分付款</string>
   <string name="split_blocked">要分单收款，请关闭购物取现、分期、小费、捐赠、语音引导以及 MOTO 或手动输入。</string>
   <string name="split_title">拆分付款</string>
   <string name="split_unavailable">现在无法拆分。该销售必须有待付余额且没有进行中的付款。</string>
@@ -1330,10 +1331,11 @@
   <string name="split_share_count">份数</string>
   <string name="split_share_line">第 %1$d 份，共 %2$d 份</string>
   <string name="split_item_hint">售出 %1$d · 已付 %2$d</string>
-  <string name="split_pay_card">刷卡 %1$s</string>
+  <string name="split_pay_card">支付 %1$s</string>
   <string name="split_pay_cash">现金</string>
   <string name="split_cash_due">现金应付</string>
   <string name="split_cash_received">收到现金</string>
+  <string name="split_cash_exact">现金刚好</string>
   <string name="split_change">找零</string>
   <string name="split_cash_short">现金不足</string>
   <string name="split_confirm_cash">确认已收 %1$s</string>
@@ -1344,6 +1346,8 @@
   <string name="split_cash_returned">已退现金</string>
   <string name="split_cash_hand_back">请立即将这笔现金退还给购物者。</string>
   <string name="split_refund_title">退回原付款</string>
+  <string name="split_refund_requested">已请求退款</string>
+  <string name="split_refund_stopped">退款未完成</string>
   <string name="split_refund_tenders">退回至</string>
   <string name="split_refund_tender_line">%1$s：%2$s（最多 %3$s）</string>
   <string name="split_refund_unallocated">已分配 %1$s，共 %2$s。请调整各付款使其一致。</string>
@@ -1526,6 +1530,7 @@
   <string name="cashback_unavailable">不可用：请在设置中检查启用状态、卡计划、已验证门店、收款终端和限额。</string>
   <string name="cashback_conflicts">请确认符合条件的卡，并输入限额内金额。须整笔刷卡，不可与分单、部分授权、小费、Giving、语音引导、特殊输入或保存卡同时使用。</string>
   <string name="cashback_handover">记录现金已交付</string>
+  <string name="cashback_handover_amount">记录已交付%1$s</string>
   <string name="cashback_handover_confirm">仅在将批准的现金交给顾客后确认。请先检查以往交付记录。收据和状态查询并不代表现金已交付。</string>
   <string name="cashback_handed_over">现金已交付</string>
   <string name="cashback_not_handed_over">尚无现金交付记录</string>

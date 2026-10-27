@@ -74,8 +74,9 @@ class PaymentLinkFlowTest {
         env.updateSettings { it.copy(receipt = it.receipt.copy(autoPrint = false)) }
         ringUpCustomAmount(1, 2, 5, 0)
         compose.clickWhenEnabled("charge")
+        compose.onNodeWithTag("paymentOptions").performClick()
         waitForTag("sendLink")
-        compose.onNodeWithTag("sendLink").performClick()
+        compose.onNodeWithTag("sendLink").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Awaiting payment"), 15_000)
         compose.onNodeWithTag("linkUrl").assertTextEquals(FakeLinkApi.URL)
         compose.onNodeWithTag("linkQr").assertExists()
@@ -142,7 +143,8 @@ class PaymentLinkFlowTest {
         ringUpCustomAmount(5, 0, 0)
         compose.clickWhenEnabled("charge")
         waitForTag("pay")
-        compose.onNodeWithTag("sendLink").assertExists()
+        compose.onNodeWithTag("paymentOptions").performClick()
+        compose.onNodeWithTag("sendLink").performScrollTo().assertExists()
     }
 
     @Test
@@ -150,8 +152,9 @@ class PaymentLinkFlowTest {
         env.useSimulator { it.copy(receipt = it.receipt.copy(autoPrint = false)) }
         ringUpCustomAmount(5, 0, 0)
         compose.clickWhenEnabled("charge")
+        compose.onNodeWithTag("paymentOptions").performClick()
         waitForTag("sendLink")
-        compose.onNodeWithTag("sendLink").performClick()
+        compose.onNodeWithTag("sendLink").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Awaiting payment"), 15_000)
         compose.onNodeWithText("Simulation only. No money moved.").assertExists()
         compose.onNodeWithTag("checkLink").performScrollTo().performClick()

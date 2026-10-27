@@ -71,6 +71,7 @@ import app.minimpos.app.history.approvedSynchronously
 import app.minimpos.app.payment.RefundCancelResult
 import app.minimpos.app.payment.RefundLegSkip
 import app.minimpos.app.payment.RefundLegState
+import app.minimpos.app.payment.RefundRun
 import app.minimpos.app.payment.RefundStarted
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.scan.ScanHint
@@ -663,14 +664,48 @@ fun RefundLegsScreen(
     ) { padding ->
         val current = run ?: return@MiniScaffold
         ScreenColumn(padding, horizontalAlignment = Alignment.CenterHorizontally) {
-            if (!current.finished) CircularProgressIndicator(Modifier.testTag("progress"))
+            if (!current.finished) {
+                CircularProgressIndicator(Modifier.testTag("progress"))
+            } else {
+                RefundRunOutcome(current)
+            }
             current.legs.forEachIndexed { index, leg ->
                 RefundLegRow(index, leg) { id -> navigator.push(Route.RefundDetail(id)) }
             }
-            if (current.finished && current.legs.any { it.status != RefundStatus.REQUESTED }) {
-                OutcomeNote(stringResource(R.string.split_refund_incomplete))
-            }
         }
+    }
+}
+
+/** Summarizes accepted requests separately from cash returned locally, and keeps unfinished legs explicit. */
+@Composable
+private fun RefundRunOutcome(current: RefundRun) {
+    val incomplete = current.legs.any { it.status != RefundStatus.REQUESTED }
+    val cashOnly = current.legs.all { it.cash }
+    val money =
+        rememberMoneyFormatter(
+            current.legs
+                .first()
+                .amount.currency,
+        )
+    val title =
+        when {
+            incomplete -> R.string.split_refund_stopped
+            cashOnly -> R.string.split_cash_returned
+            else -> R.string.split_refund_requested
+        }
+    val note =
+        when {
+            incomplete -> R.string.split_refund_incomplete
+            cashOnly -> R.string.split_cash_hand_back
+            else -> R.string.refund_async_note
+        }
+    OutcomeHeader(
+        if (incomplete) StatusKind.WARNING else StatusKind.SUCCESS,
+        stringResource(title),
+        money.format(current.legs.sumOf { it.amount.amountMinor }),
+        titleTag = "refundLegsStatus",
+    ) {
+        OutcomeNote(stringResource(note))
     }
 }
 

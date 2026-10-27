@@ -111,6 +111,7 @@
   <string name="checkout_save_card_hint">Tokenise la carte pour cette référence client. Demandez le consentement du client.</string>
   <string name="checkout_save_card_email_hint">Tokenise la carte pour cette adresse e-mail. Demandez le consentement du client.</string>
   <string name="checkout_pay">Payer %1$s</string>
+  <string name="checkout_options">Autres options de paiement</string>
   <string name="checkout_scan_wallet">Scanner le portefeuille</string>
   <string name="checkout_send_link">Créer un lien de paiement</string>
   <string name="checkout_charge_token">Débiter un jeton</string>
@@ -251,7 +252,7 @@
   <string name="result_abort_sent">Il a été demandé au terminal d’annuler sa transaction en cours. Réessayez une fois qu’il est inactif.</string>
   <string name="result_tip_note">Imprimez le reçu pour que le client puisse ajouter un pourboire et le signer, puis saisissez le pourboire.</string>
   <string name="result_enter_tip">Entrez le pourboire</string>
-  <string name="result_pay_remaining">Payer les %1$s restants</string>
+  <string name="result_pay_remaining">Encaisser %1$s</string>
   <string name="result_tap_to_pay_ready">Tap to Pay est configuré (installation %1$s).</string>
   <string name="result_tap_to_pay_removed">Ce téléphone a été supprimé. Sélectionnez également Se désinscrire dans les paramètres de l’application Adyen Payments.</string>
   <string name="status_approved">Approuvé</string>
@@ -1328,7 +1329,7 @@
   <string name="surcharge_remaining_unknown">Le supplément n’a pas été indiqué. Le montant d’achat restant est inconnu. Vérifiez dans le Customer Area ou remboursez cette carte avant de recommencer.</string>
 
   <!-- Split payment -->
-  <string name="split_open">Partager ou payer en espèces</string>
+  <string name="split_open">Partager le paiement</string>
   <string name="split_blocked">Désactivez le retrait avec achat, les mensualités, les pourboires, les dons, l’audio et MOTO ou la saisie manuelle pour fractionner cette vente.</string>
   <string name="split_title">Partager le paiement</string>
   <string name="split_unavailable">Rien ne peut être partagé pour l’instant. La vente doit avoir un solde dû et aucun paiement en cours.</string>
@@ -1342,10 +1343,11 @@
   <string name="split_share_count">Nombre de parts</string>
   <string name="split_share_line">Part %1$d sur %2$d</string>
   <string name="split_item_hint">Vendus %1$d · payés %2$d</string>
-  <string name="split_pay_card">Carte %1$s</string>
+  <string name="split_pay_card">Payer %1$s</string>
   <string name="split_pay_cash">Espèces</string>
   <string name="split_cash_due">À payer en espèces</string>
   <string name="split_cash_received">Espèces reçues</string>
+  <string name="split_cash_exact">Montant exact</string>
   <string name="split_change">Monnaie rendue</string>
   <string name="split_cash_short">Espèces insuffisantes</string>
   <string name="split_confirm_cash">Confirmer %1$s reçus</string>
@@ -1356,6 +1358,8 @@
   <string name="split_cash_returned">Espèces rendues</string>
   <string name="split_cash_hand_back">Rendez maintenant ces espèces à l’acheteur.</string>
   <string name="split_refund_title">Remboursement des paiements d’origine</string>
+  <string name="split_refund_requested">Remboursements demandés</string>
+  <string name="split_refund_stopped">Remboursements incomplets</string>
   <string name="split_refund_tenders">Restitué sur</string>
   <string name="split_refund_tender_line">%1$s : %2$s (jusqu’à %3$s)</string>
   <string name="split_refund_unallocated">%1$s sur %2$s réparti. Ajustez les paiements pour qu’ils correspondent.</string>
@@ -1538,6 +1542,7 @@
   <string name="cashback_unavailable">Indisponible : vérifiez activation, carte, magasin vérifié, destination et plafond dans Réglages.</string>
   <string name="cashback_conflicts">Confirmez la carte et un montant sous le plafond. Utilisez une vente entière sans fractionnement, autorisation partielle, pourboire, Giving, audio, saisie spéciale ni enregistrement de carte.</string>
   <string name="cashback_handover">Enregistrer la remise d’espèces</string>
+  <string name="cashback_handover_amount">Enregistrer la remise de %1$s</string>
   <string name="cashback_handover_confirm">Confirmez après avoir remis les espèces autorisées. Vérifiez les remises précédentes. Reçus et vérifications ne prouvent jamais la remise.</string>
   <string name="cashback_handed_over">Espèces remises</string>
   <string name="cashback_not_handed_over">Aucune remise d’espèces enregistrée</string>

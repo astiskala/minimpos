@@ -25,6 +25,7 @@ import app.minimpos.app.feature.refund.RefundViewModel
 import app.minimpos.app.feature.sale.CheckoutViewModel
 import app.minimpos.app.feature.sale.SaleResultViewModel
 import app.minimpos.app.feature.sale.SaleViewModel
+import app.minimpos.app.feature.sale.SplitViewModel
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.RefundInvalidReason
 import app.minimpos.app.history.Refundability
@@ -337,7 +338,7 @@ class ViewModelsTest {
     }
 
     @Test
-    fun `a second Pay or Pay remaining while the payment runs starts nothing more`() {
+    fun `a second Pay or split card start while the payment runs starts nothing more`() {
         env.useSimulator { it.copy(simulator = it.simulator.copy(delayMillis = 300)) }
         val (tax, _) = seedCatalogue()
         // Adyen's test amounts ending in 139 are approved in part.
@@ -357,8 +358,19 @@ class ViewModelsTest {
                 .session(SaleKind.SALE)
                 .cart.value.lines,
         ).isEmpty()
-        assertThat(result.payRemaining()).isTrue()
-        assertThat(result.payRemaining()).isFalse()
+        val session = container.session(SaleKind.SALE)
+        val split =
+            SplitViewModel(
+                saleId,
+                session,
+                session.checkout(container.settingsState, container.terminalStatus.state, currency = container::currency),
+                container.storedPayments,
+                container.payments,
+                container.cashTenders,
+            ).also(viewModels::add)
+        await { split.state.first { it.valid } }
+        assertThat(split.payByCard()).isTrue()
+        assertThat(split.payByCard()).isFalse()
         await { container.payments.state.first { it == TransactionState.Finished(saleId) } }
         assertThat(await { container.database.saleDao().historyTenders(listOf(saleId)) }).hasSize(2)
         assertThat(await { container.history.items().first() }).hasSize(1)

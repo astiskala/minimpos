@@ -5,6 +5,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import app.minimpos.app.GST_RATES
 import app.minimpos.app.MiniMposApp
@@ -87,8 +88,9 @@ class CheckoutTokenTest {
     @Test
     fun `a shopper with a saved token can be charged from checkout and the New sale cart is cleared`() {
         checkoutWith("CUST-001")
+        compose.onNodeWithTag("paymentOptions").performClick()
         waitForTag("chargeToken")
-        compose.onNodeWithTag("chargeToken").performClick()
+        compose.onNodeWithTag("chargeToken").performScrollTo().performClick()
         waitForTag("token_TOKEN1")
         compose.onNodeWithTag("token_TOKEN1").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Approved"), 15_000)
@@ -116,6 +118,7 @@ class CheckoutTokenTest {
     fun `a shopper without tokens is not offered a token charge`() {
         checkoutWith("CUST-404")
         waitForTag("pay")
+        compose.onNodeWithTag("paymentOptions").performClick()
         // Unlike a shopper with tokens, nothing appears once the lookup has had time to answer.
         val appeared = runCatching { compose.waitUntilAtLeastOneExists(hasTestTag("chargeToken"), 3_000) }.isSuccess
         assertThat(appeared).isFalse()

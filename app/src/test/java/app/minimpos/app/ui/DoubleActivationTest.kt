@@ -19,6 +19,7 @@ import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
 import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.TenderKind
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.settings.CashbackCard
 import app.minimpos.app.data.settings.CashbackSettings
@@ -163,6 +164,8 @@ class DoubleActivationTest {
         listOf(2, 4, 6, 8).forEach { compose.onNodeWithTag("pin_$it").performClick() }
         doubleTap("pin_OK")
         waitForText("Cash handed over")
+        compose.onNodeWithTag("cashHandoverStatusAmount").assertExists()
+        compose.onNodeWithTag("handoverDone").assertExists()
         val handed = await { checkNotNull(container.sales.get(record.id)).sale.cashHandedOverAt }
         assertThat(handed).isNotNull()
         assertThat(await { container.cashTenders.handOverCashback(record.id) }).isFalse()
@@ -235,12 +238,14 @@ class DoubleActivationTest {
     }
 
     @Test
-    fun `a double tap on Pay remaining collects one more tender`() {
+    fun `double taps through balance collection collect one more tender`() {
         // Adyen's test amounts ending in 139 are approved in part when partial authorisation is allowed.
         checkout(1, 3, 9)
         compose.onNodeWithTag("pay").performClick()
         waitForTag("payRemaining")
         doubleTap("payRemaining")
+        waitForTag("splitCard")
+        doubleTap("splitCard")
         compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Approved"), 15_000)
         val sale = sales().single()
         val record = await { container.sales.get(sale.id)!! }
@@ -255,6 +260,7 @@ class DoubleActivationTest {
         }
         await { container.walletDiscovery.refresh() }
         checkout(1, 2, 5, 0)
+        compose.onNodeWithTag("paymentOptions").performClick()
         compose.onNodeWithTag("splitPayment").performScrollTo().performClick()
         waitForTag("splitMealVoucher")
         compose.onNodeWithTag("splitMealVoucher").performClick()
@@ -270,9 +276,27 @@ class DoubleActivationTest {
     }
 
     @Test
+    fun `double tapping cash confirmation records one tender for the full balance`() {
+        checkout(1, 2, 5, 0)
+        compose.onNodeWithTag("pay").assertExists()
+        compose.onNodeWithTag("paymentOptions").performClick()
+        compose.onNodeWithTag("payCash").performClick()
+        waitForTag("confirmCash")
+        doubleTap("confirmCash")
+        waitForText("Approved")
+        val record = await { container.sales.get(sales().single().id)!! }
+        assertThat(record.tenders).hasSize(1)
+        assertThat(record.tenders.single().kind).isEqualTo(TenderKind.CASH)
+        assertThat(record.sale.paidMinor).isEqualTo(1250)
+        assertThat(record.sale.isPartiallyPaid).isFalse()
+    }
+
+    @Test
     fun `a double tap on Create payment link creates one link`() {
         env.useLinks()
         checkout(1, 2, 5, 0)
+        compose.onNodeWithTag("paymentOptions").performClick()
+        compose.onNodeWithTag("sendLink").performScrollTo()
         doubleTap("sendLink")
         compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Awaiting payment"), 15_000)
         compose.awaitCondition("every link that was started is stored") { sales().none { it.sale.status == SaleStatus.PENDING } }

@@ -110,6 +110,7 @@
   <string name="checkout_save_card_hint">Tokenizes the card for this customer reference. Ask the customer for consent.</string>
   <string name="checkout_save_card_email_hint">Tokenizes the card for this email address. Ask the customer for consent.</string>
   <string name="checkout_pay">Pay %1$s</string>
+  <string name="checkout_options">Other payment options</string>
   <string name="checkout_scan_wallet">Scan wallet</string>
   <string name="checkout_send_link">Create payment link</string>
   <string name="checkout_charge_token">Charge token</string>
@@ -250,7 +251,7 @@
   <string name="result_abort_sent">The terminal was asked to cancel its current transaction. Try again once it is idle.</string>
   <string name="result_tip_note">Print the receipt so the customer can add a tip and sign it, then enter the tip.</string>
   <string name="result_enter_tip">Enter tip</string>
-  <string name="result_pay_remaining">Pay remaining %1$s</string>
+  <string name="result_pay_remaining">Collect %1$s</string>
   <string name="result_tap_to_pay_ready">Tap to Pay is set up (installation %1$s).</string>
   <string name="result_tap_to_pay_removed">This phone was removed. Also select Unregister in the Adyen Payments app’s settings.</string>
   <string name="status_approved">Approved</string>
@@ -1322,7 +1323,7 @@
   <string name="surcharge_remaining_unknown">The surcharge was not reported. The remaining purchase amount is unknown. Check the Customer Area or refund this card before starting again.</string>
 
   <!-- Split payment -->
-  <string name="split_open">Split or pay cash</string>
+  <string name="split_open">Split payment</string>
   <string name="split_blocked">Turn off cashback, installments, tipping, donations, audio guidance and MOTO or manual entry to split this sale.</string>
   <string name="split_title">Split payment</string>
   <string name="split_unavailable">Nothing can be split now. The sale must have a balance due and no payment in progress.</string>
@@ -1336,10 +1337,11 @@
   <string name="split_share_count">Number of shares</string>
   <string name="split_share_line">Share %1$d of %2$d</string>
   <string name="split_item_hint">Sold %1$d · paid %2$d</string>
-  <string name="split_pay_card">Card %1$s</string>
+  <string name="split_pay_card">Pay %1$s</string>
   <string name="split_pay_cash">Cash</string>
   <string name="split_cash_due">Due in cash</string>
   <string name="split_cash_received">Cash received</string>
+  <string name="split_cash_exact">Exact cash</string>
   <string name="split_change">Change</string>
   <string name="split_cash_short">Not enough cash</string>
   <string name="split_confirm_cash">Confirm %1$s received</string>
@@ -1350,6 +1352,8 @@
   <string name="split_cash_returned">Cash returned</string>
   <string name="split_cash_hand_back">Hand this cash back to the shopper now.</string>
   <string name="split_refund_title">Refund to original payments</string>
+  <string name="split_refund_requested">Refunds requested</string>
+  <string name="split_refund_stopped">Refunds incomplete</string>
   <string name="split_refund_tenders">Returned to</string>
   <string name="split_refund_tender_line">%1$s: %2$s (up to %3$s)</string>
   <string name="split_refund_unallocated">%1$s of %2$s allocated. Adjust the payments to match.</string>
@@ -1532,6 +1536,7 @@
   <string name="cashback_unavailable">Unavailable: check enablement, card program, verified store, destination and local limit in Settings.</string>
   <string name="cashback_conflicts">Confirm an eligible card and enter cash within the local limit. Use a whole card sale without splits, partial authorization, tips, Giving, audio guidance, special entry or card saving.</string>
   <string name="cashback_handover">Record cash handed over</string>
+  <string name="cashback_handover_amount">Record %1$s handed over</string>
   <string name="cashback_handover_confirm">Confirm only after handing the approved cash to the shopper. Check earlier handovers first. Receipts and status checks never mean cash was handed over.</string>
   <string name="cashback_handed_over">Cash handed over</string>
   <string name="cashback_not_handed_over">No cash handover recorded</string>

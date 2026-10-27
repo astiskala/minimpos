@@ -211,7 +211,7 @@ private fun EntryProviderScope<NavKey>.saleEntries(navigator: Navigator) {
     entry<Route.WalletScan> { WalletScreen(navigator) }
     entry<Route.Payment> { PaymentScreen(navigator, it.kind) }
     entry<Route.SaleResult> { SaleResultScreen(it.saleId, navigator) }
-    entry<Route.Split> { SplitScreen(it.saleId, navigator) }
+    entry<Route.Split> { SplitScreen(it.saleId, navigator, cash = it.cash) }
     entry<Route.PaymentLink> { PaymentLinkScreen(it.saleId, it.fresh, navigator) }
     entry<Route.Tip> { ManagerGate(setOf(ManagerAction.CAPTURE), navigator) { TipScreen(it.saleId, navigator) } }
     entry<Route.Capture> {

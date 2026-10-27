@@ -298,10 +298,14 @@ class SmallScreenTest {
         compose.onNodeWithTag("newSale").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("charge") and isEnabled(), 15_000)
         compose.clickWhenEnabled("charge")
+        compose.onNodeWithTag("paymentOptions").performClick()
         waitForTag("scanWallet")
-        compose.onNodeWithTag("pay").assertIsDisplayed()
-        compose.onNodeWithTag("sendLink").assertIsDisplayed()
-        compose.onNodeWithTag("scanWallet").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("sendLink").performScrollTo().assertIsDisplayed()
+        compose
+            .onNodeWithTag("scanWallet")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         waitForTag("wallet_pick_wechatpay_pos")
         compose.onNodeWithTag("wallet_pick_wechatpay_pos").performScrollTo().performClick()
         waitForTag("walletDemo")
@@ -479,10 +483,14 @@ class SmallScreenTest {
         listOf(1, 2, 5, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
         compose.onNodeWithTag("addCustom").performClick()
         compose.clickWhenEnabled("charge")
-        // Both ways to pay stay in reach below the checkout form.
+        // The footer keeps payment and its alternatives reachable without scrolling the form.
+        compose.onNodeWithTag("paymentOptions").performClick()
         waitForTag("sendLink")
-        compose.onNodeWithTag("pay").assertIsDisplayed()
-        compose.onNodeWithTag("sendLink").assertIsDisplayed().performClick()
+        compose
+            .onNodeWithTag("sendLink")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Awaiting payment"), 15_000)
         compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()
         compose.onNodeWithTag("home").assertIsDisplayed()

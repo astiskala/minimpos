@@ -397,28 +397,24 @@
             ことがあります。元の決済を金額指定または全額で返金してください。支払いスケジュールは発行会社が管理します。</p>
           <p><a href="https://docs.adyen.com/point-of-sale/installments/mexico-installments/">Adyen: メキシコのカード分割払い</a></p>
           <h3 id="partial-payments">一部承認された決済の残額を受け取る</h3>
-          <p><strong>一部承認を許可</strong>をオンにすると、要求額より少ないカード承認を受け付けます。結果に
-            <strong>一部支払済み</strong>と表示されたら、支払済み額と残額を確認し、<strong>残額を支払う</strong>をタップして
-            別のカードで残額を受け取ります。試行は同じ販売に記録されます。合計額で新しい販売を始めないでください。承認された
-            分はすでに支払われています。</p>
+          <p><strong>一部承認を許可</strong>をオンにすると、要求額より少ないカード承認を受け付けます。結果が<strong>一部支払済み</strong>の場合は、支払い済み額と残額を確認し、ホーム
+            の横の<strong>受け取る</strong>ボタンをタップします。同じ販売の残額を受け取る方法を選びます。承認済み分は支払い済みなので、全額で新しい販売を始めないでください。</p>
           <p>応答がないことは一部承認ではありません。追加で受け取る前に<a href="troubleshooting#unknown">結果不明の取引を
             解決</a>してください。</p>
           <figure class="guide-shot">
-            <a class="screenshot-link" href="../images/ja/partial-payment.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：支払済み1,070円、残額1,069円と残額を支払うボタン">
+            <a class="screenshot-link" href="../images/ja/partial-payment.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：支払済み1,070円、残額1,069円と受け取るボタン">
               <div class="terminal terminal-s1f2">
-              <img src="../images/ja/partial-payment.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：支払済み1,070円、残額1,069円と残額を支払うボタン" decoding="async">
+              <img src="../images/ja/partial-payment.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：支払済み1,070円、残額1,069円と受け取るボタン" decoding="async">
               </div></a>
             <figcaption class="fine">日本語のシミュレーターでの一部承認です。販売全額の支払完了ではありません。<span class="shot-control">一部支払済み</span><a class="screenshot-link shot-expand" href="../images/ja/partial-payment.png">スクリーンショットを元のサイズで開く</a></figcaption>
           </figure>
           <h3 id="split-payments">販売を分割する・現金で受け取る</h3>
-          <p>会計時に<strong>分割または現金で支払う</strong>をタップします。<strong>金額</strong>、<strong>均等割</strong>、
-            またはこの支払いで対象とする<strong>商品</strong>を選び、<strong>カード</strong>または<strong>現金</strong>を
-            タップします。価格と税は登録時のままで、端数は最初の分に回ります。現金では、お客様から受け取った金額を入力し、
-            表示されたお釣りを渡して確定します。現金はこの端末にのみ記録されます。</p>
-          <p>全額が支払われるまで販売は<strong>一部支払済み</strong>のままです。結果画面または<strong>取引履歴</strong>で
-            <strong>残高を回収</strong>をタップすると、再起動後も続けられます。追加で受け取る前に、結果不明のカード決済を
-            解決してください。領収書にはすべての支払いが記載されます。日次レポートでは現金を別に表示し、端末の合計には
-            含まれません。</p>
+          <p>会計で<strong>その他の支払い方法</strong>をタップします。残額全額を受け取るには<strong>現金</strong>を選び、金額・均等割り・商品を指定するには
+            <strong>支払いを分割</strong>を選んでから支払いまたは現金を選びます。価格と税額は変わらず、端数は最初の支払いに割り当てます。受取現金は支払額から始まり、数字を入力すると置き換わります。
+            <strong>ちょうどの現金</strong>で元の額に戻せます。受取額とお釣りを確認し、お釣りを渡してから確定してください。現金はこのデバイスだけに記録されます。</p>
+          <p>販売は全額を受け取るまで<strong>一部支払済み</strong>です。結果の<strong>受け取る</strong>、または取引履歴の<strong>残高を回収</strong>で、再起動後も
+            続けられます。均等割りの次の支払い額は自動選択されます。カードの結果が不明な場合は、追加で受け取る前に解決してください。領収書には全支払いが載り、日次レポートでは現金を分けて表示します。端末集計に現金は含
+            まれません。</p>
           <p>ギフトカードを設定している場合は、<strong>ギフトカード</strong>をタップして選んだ金額をギフトカードで支払います。
             残高が足りない場合は一部が承認されます。ギフトカードでの支払いはそのカードに返金されます。ただしローカル
             ギフトカードはMini mPOSの外で返金します。</p>
@@ -451,7 +447,7 @@
             フィンランド・ドイツ・ルクセンブルク・スペインのMastercard/Visa食事券、フランスのTitres-restaurantです。
             設定後にAdyen機能を更新してください。Monizze、ベルギーのPluxee、Lunch Checkは対象外です。</p>
           <p>食事券に対象商品が必要な場合は、「設定」›「商品」で各商品を開き、<strong>食事券の対象</strong>をオンにします。
-            任意の商品は対象になりません。会計時に<strong>分割または現金で支払う</strong>、<strong>食事券</strong>の順に
+            任意の商品は対象になりません。会計時に<strong>その他の支払い方法 › 支払いを分割</strong>、<strong>食事券</strong>の順に
             タップします。Mini mPOSは食事券で支払える最大額を提示します。残りはカードまたは現金で受け取ります。
             Mastercard/Visa食事券は一部承認されることがあります。Titres-restaurantは1日あたり最大EUR 25までで、日曜日と
             祝日は使えず、返金もできないため、ストアクレジットで対応してください。残高が足りないブラジルの食事券は拒否

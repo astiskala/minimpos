@@ -109,6 +109,7 @@
   <string name="checkout_save_card_hint">カードをトークン化し、この購入者参照IDに紐付けます。購入者の同意を得てください。</string>
   <string name="checkout_save_card_email_hint">カードをトークン化し、このメールアドレスに紐付けます。購入者の同意を得てください。</string>
   <string name="checkout_pay">%1$sを決済</string>
+  <string name="checkout_options">その他の支払い方法</string>
   <string name="checkout_scan_wallet">ウォレットをスキャン</string>
   <string name="checkout_send_link">決済リンクを作成</string>
   <string name="checkout_charge_token">トークンで請求</string>
@@ -249,7 +250,7 @@
   <string name="result_abort_sent">端末に現在の取引のキャンセルを要求しました。端末が空いてから再試行してください。</string>
   <string name="result_tip_note">領収書を印刷し、購入者にチップの記入と署名をお願いしてから、チップを入力してください。</string>
   <string name="result_enter_tip">チップを入力</string>
-  <string name="result_pay_remaining">残額 %1$s を支払う</string>
+  <string name="result_pay_remaining">%1$sを受け取る</string>
   <string name="result_tap_to_pay_ready">Tap to Payを設定しました（インストール %1$s）。</string>
   <string name="result_tap_to_pay_removed">このスマートフォンを削除しました。Adyen Paymentsアプリの設定でも「Unregister」を選択してください。</string>
   <string name="status_approved">承認済み</string>
@@ -1316,7 +1317,7 @@
   <string name="surcharge_remaining_unknown">サーチャージが未報告のため、購入額の残額は不明です。Customer Areaで確認するか、このカードに返金してからやり直してください。</string>
 
   <!-- Split payment -->
-  <string name="split_open">分割または現金で支払う</string>
+  <string name="split_open">支払いを分割</string>
   <string name="split_blocked">この売上を分割するには、現金引き出し、メキシコの分割払い、チップ、寄付、音声案内、MOTOまたは手入力をオフにしてください。</string>
   <string name="split_title">支払いを分割</string>
   <string name="split_unavailable">現在は分割できません。未払い残高があり、処理中の支払いがない販売が必要です。</string>
@@ -1330,10 +1331,11 @@
   <string name="split_share_count">分割数</string>
   <string name="split_share_line">%2$d分割の%1$d</string>
   <string name="split_item_hint">販売 %1$d・支払済み %2$d</string>
-  <string name="split_pay_card">カード %1$s</string>
+  <string name="split_pay_card">%1$sを決済</string>
   <string name="split_pay_cash">現金</string>
   <string name="split_cash_due">現金での支払額</string>
   <string name="split_cash_received">受取現金</string>
+  <string name="split_cash_exact">ちょうどの現金</string>
   <string name="split_change">お釣り</string>
   <string name="split_cash_short">現金が不足しています</string>
   <string name="split_confirm_cash">%1$sの受取を確定</string>
@@ -1344,6 +1346,8 @@
   <string name="split_cash_returned">現金返金済み</string>
   <string name="split_cash_hand_back">この現金を今、購入者に返してください。</string>
   <string name="split_refund_title">元の支払いへの返金</string>
+  <string name="split_refund_requested">返金をリクエストしました</string>
+  <string name="split_refund_stopped">返金が完了していません</string>
   <string name="split_refund_tenders">返金先</string>
   <string name="split_refund_tender_line">%1$s：%2$s（上限 %3$s）</string>
   <string name="split_refund_unallocated">%2$sのうち%1$sを割り当て済みです。一致するよう支払いを調整してください。</string>
@@ -1526,6 +1530,7 @@
   <string name="cashback_unavailable">利用できません。設定で有効化、カード、確認済み店舗、送信先、上限を確認してください。</string>
   <string name="cashback_conflicts">対象カードと上限内の金額を確認してください。分割、部分承認、チップ、Giving、音声案内、特殊入力、カード保存は併用できません。</string>
   <string name="cashback_handover">現金の引き渡しを記録</string>
+  <string name="cashback_handover_amount">%1$sの引き渡しを記録</string>
   <string name="cashback_handover_confirm">承認された現金を渡してから確認してください。過去の引き渡しを先に確認してください。レシートや状況照会は引き渡しを意味しません。</string>
   <string name="cashback_handed_over">現金引き渡し済み</string>
   <string name="cashback_not_handed_over">現金引き渡しの記録なし</string>

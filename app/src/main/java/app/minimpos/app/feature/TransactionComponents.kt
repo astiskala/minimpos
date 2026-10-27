@@ -180,11 +180,13 @@ fun ColumnScope.StatusCheck(
  *
  * @property text The button's label.
  * @property tag The button's test tag.
+ * @property enabled Whether its prerequisites are ready.
  * @property onClick What it does.
  */
 class ResultAction(
     val text: String,
     val tag: String,
+    val enabled: Boolean = true,
     val onClick: () -> Unit,
 )
 
@@ -206,7 +208,7 @@ fun ResultBar(
                 icon = Icons.Default.Home,
                 modifier = Modifier.weight(1f).heightIn(min = LocalDimens.current.buttonHeight).testTag("home"),
             )
-            next?.let { PrimaryButton(it.text, it.onClick, modifier = Modifier.weight(1f).testTag(it.tag)) }
+            next?.let { PrimaryButton(it.text, it.onClick, enabled = it.enabled, modifier = Modifier.weight(1f).testTag(it.tag)) }
         }
     }
 }

@@ -45,16 +45,17 @@ class CheckoutModificationsTest {
     )
 
     @Test
-    fun `captures and both adjustment modes send identical sanitized Terminal API application info`() =
+    fun `captures refunds and both adjustment modes send identical sanitized Terminal API application info`() =
         runBlocking {
             val application = PosApplication(" (Mini) mPOS! ", "1.2.0-beta_1", "!!!", "Android", "13").toApplicationInfo()
             val identified = CheckoutModifications(credentials, baseUrl = server.url("/v72/"), application = application)
             val expected = JsonParser.parseString(TerminalAPIGsonBuilder.create().toJson(application))
-            repeat(3) { reply("""{"status":"received"}""") }
+            repeat(4) { reply("""{"status":"received"}""") }
             identified.capture("PSP1", amount, "ref", "capture")
             identified.updateAmount("PSP1", amount, "ref", "blob", "sync")
             identified.updateAmount("PSP1", amount, "ref", null, "async")
-            repeat(3) {
+            identified.refund("PSP1", amount, "ref", "refund")
+            repeat(4) {
                 val body = JsonParser.parseString(server.takeRequest().body!!.utf8()).asJsonObject
                 assertThat(body["applicationInfo"]).isEqualTo(expected)
             }

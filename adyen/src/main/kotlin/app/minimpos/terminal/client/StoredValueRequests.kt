@@ -42,7 +42,10 @@ suspend fun TerminalClient.storedValue(
             storedValueRequest =
                 StoredValueRequest().apply {
                     saleData =
-                        SaleData().apply { saleTransactionID = TerminalClient.transaction(params.merchantReference, clock.instant()) }
+                        SaleData().apply {
+                            saleTransactionID = TerminalClient.transaction(params.merchantReference, clock.instant())
+                            saleToAcquirerData = application.acquirerData()
+                        }
                     storedValueData += data
                 }
         }

@@ -7,6 +7,7 @@ import com.adyen.model.applicationinfo.ApplicationInfo
 import com.adyen.model.applicationinfo.CommonField
 import com.adyen.model.applicationinfo.ExternalPlatform
 import com.adyen.model.applicationinfo.MerchantDevice
+import com.adyen.model.terminal.SaleToAcquirerData
 import java.util.concurrent.atomic.AtomicReference
 
 private const val MAX_SCANNED_CODE_LENGTH = 128
@@ -29,8 +30,9 @@ data class TerminalIdentity(
 )
 
 /**
- * The POS software, sent to Adyen as `SaleToAcquirerData.applicationInfo` on every payment and refund (see "Pass
- * application information"), so transactions can be traced to it. The Adyen library adds `adyenLibrary` itself.
+ * The POS software, sent to Adyen as `SaleToAcquirerData.applicationInfo` on every payment, refund and stored-value
+ * request (see "Pass application information"), so transactions can be traced to it. The Adyen library adds
+ * `adyenLibrary` itself.
  *
  * Values are passed through [clean] only when converted by [toApplicationInfo], so the same input always produces the
  * same request; Adyen asks for identical formatting across requests.
@@ -116,6 +118,12 @@ data class PosApplication(
                 .ifEmpty { null }
     }
 }
+
+/** Fresh acquirer data with the same POS identification for every transaction; null keeps the SDK's library-only info. */
+internal fun PosApplication?.acquirerData(): SaleToAcquirerData =
+    SaleToAcquirerData().apply {
+        this@acquirerData?.let { applicationInfo = it.toApplicationInfo() }
+    }
 
 /**
  * The application info of a [PosApplication] as Adyen receives it, each value formatted for display.

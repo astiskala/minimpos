@@ -236,6 +236,15 @@ merchant-category exclusions, the excluded-country error, `PaymentType=Refund` a
 status recovery, receipts with `transaction_type_refund`, terminal totals, Payments app support, and `/voidPendingRefund`
 with a Support-configured refund delay, its credential role and `VOID_PENDING_REFUND` outcome. No real calls were made.
 
+Idempotency verification remains open for Classic `/voidPendingRefund` and Management/Payments app credential creation,
+key generation, boarding-token creation and revocation. Adyen's [general idempotency guidance](https://docs.adyen.com/development-resources/api-idempotency/)
+describes POST requests, but these endpoint references do not explicitly document `Idempotency-Key` support.
+Confirm endpoint-specific support and retention with Adyen before relying on it; a fake server receiving a header does
+not prove deduplication. Keep the existing provisioning journal and lookup recovery. `/voidPendingRefund` already sends
+a stable key, but its response-header echo and duplicate-request behavior still need verification in TEST.
+Automated recovery tests recreate operation owners over stored records; they do not simulate Android process death or
+establish Adyen's retention and deduplication behavior.
+
 ## Make changes that fit
 
 [AGENTS.md](AGENTS.md) is the single list of repository constraints for every contributor: money, compatibility,

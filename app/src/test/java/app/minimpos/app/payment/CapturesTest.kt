@@ -343,6 +343,34 @@ class CapturesTest {
     }
 
     @Test
+    fun `recreated capture and adjustment owners replay stored facts but a separate renewal gets a new key`() {
+        store(bill.copy(id = "p1", tipOnReceipt = false, kind = SaleKind.PRE_AUTHORISATION))
+        fake.adjustResult = ModificationResult.Failed(Fault.TimedOut)
+        assertThat(await { captures.adjust("p1", 2_500) }).isInstanceOf(CaptureResult.Unconfirmed::class.java)
+        val adjustmentKey = fake.keys.single()
+        val original = fake.adjustments.single()
+        val restored = Captures(container.sales, { target })
+        fake.adjustResult = ModificationResult.Authorised("ADJ", "BQABAQnext")
+        assertThat(await { restored.adjust("p1", 2_500) }).isEqualTo(CaptureResult.Adjusted)
+        assertThat(fake.keys).containsExactly(adjustmentKey, adjustmentKey).inOrder()
+        assertThat(fake.adjustments).containsExactly(original, original).inOrder()
+        val renewed = Captures(container.sales, { target })
+        assertThat(await { renewed.adjust("p1", 2_500) }).isEqualTo(CaptureResult.Adjusted)
+        assertThat(fake.keys.last()).isNotEqualTo(adjustmentKey)
+        assertThat(fake.adjustments.last()).isEqualTo(ModificationAmount("AUD", 2_500) to "BQABAQnext")
+
+        fake.captureResult = ModificationResult.Failed(Fault.TimedOut)
+        assertThat(await { renewed.capture("p1", 2_000) }).isInstanceOf(CaptureResult.Unconfirmed::class.java)
+        val captureKey = fake.keys.last()
+        val captureRequest = fake.captures.single()
+        fake.captureResult = ModificationResult.Received("CAP")
+        val recovering = Captures(container.sales, { target })
+        assertThat(await { recovering.retryCapture("p1") }).isEqualTo(CaptureResult.Requested)
+        assertThat(fake.keys.takeLast(2)).containsExactly(captureKey, captureKey).inOrder()
+        assertThat(fake.captures).containsExactly(captureRequest, captureRequest).inOrder()
+    }
+
+    @Test
     fun `adjusting what a pre-authorisation holds goes through the API`() {
         store(bill.copy(id = "p1", tipOnReceipt = false, kind = SaleKind.PRE_AUTHORISATION))
         assertThat(await { captures.adjust("p1", 3_000) }).isEqualTo(CaptureResult.Adjusted)

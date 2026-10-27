@@ -12,6 +12,7 @@ import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.checkout.StoredCardDeletion
 import app.minimpos.terminal.checkout.StoredCardListing
+import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.simulator.SimulatedLedger
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatedOutcome
@@ -23,6 +24,7 @@ import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
+import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import com.google.common.truth.Truth.assertThat
 import com.google.gson.JsonParser
 import kotlinx.coroutines.runBlocking
@@ -205,6 +207,19 @@ class SavedCardsTest {
             assertThat(cards.delete("CUST-001", "TOKEN1")).isEqualTo(StoredCardDeletion.Failed(Fault.AdyenRejected(404)))
             chosen = SimulatedOutcome.APPROVE
             assertThat(cards.delete("OTHER", "TOKEN1")).isEqualTo(StoredCardDeletion.Deleted)
+        }
+
+    @Test
+    fun `saved card charges send the same sanitized application info as terminal payments`() =
+        runBlocking {
+            val application = PosApplication(" (Mini) mPOS! ", "1.2.0-beta_1", "!!!", "Android", "13").toApplicationInfo()
+            val identified = CheckoutSavedCards(credentials, baseUrl = server.url("/v72/"), application = application)
+            reply("""{"pspReference":"PSP9","resultCode":"Authorised"}""")
+            assertThat(identified.charge(request, "card-sale-1")).isInstanceOf(CardChargeResult.Authorised::class.java)
+            val body = JsonParser.parseString(server.takeRequest().body!!.utf8()).asJsonObject
+            assertThat(body["applicationInfo"]).isEqualTo(
+                JsonParser.parseString(TerminalAPIGsonBuilder.create().toJson(application)),
+            )
         }
 
     @Test

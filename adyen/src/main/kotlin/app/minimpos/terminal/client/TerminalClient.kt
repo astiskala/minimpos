@@ -50,7 +50,6 @@ import com.adyen.model.nexo.TransactionConditions
 import com.adyen.model.nexo.TransactionIdentification
 import com.adyen.model.nexo.TransactionTotals
 import com.adyen.model.nexo.TransactionType
-import com.adyen.model.terminal.SaleToAcquirerData
 import com.adyen.model.terminal.SaleToAcquirerData.RecurringProcessingModelEnum
 import com.adyen.model.terminal.TerminalAPIRequest
 import java.math.BigDecimal
@@ -82,8 +81,8 @@ class TerminalClient(
     private val transport: TerminalTransport,
     /** The SaleID and POIID put in every message header. */
     val identity: TerminalIdentity,
-    /** Sent as application info on payments and refunds; null only in tests. */
-    private val application: PosApplication? = null,
+    /** Sent as application info on payments, refunds and stored-value requests; null only in tests. */
+    internal val application: PosApplication? = null,
     /** Stamps the `SaleTransactionID` of payments and refunds. */
     internal val clock: Clock = Clock.systemUTC(),
     /** Makes the ServiceIDs of requests the caller does not name itself (aborts, prints, diagnoses, status checks). */
@@ -142,7 +141,7 @@ class TerminalClient(
                                     saleTransactionID = transaction(effectiveParams.merchantReference, clock.instant())
                                     saleReferenceID = effectiveParams.saleReferenceId
                                     saleToAcquirerData =
-                                        acquirerData().apply {
+                                        application.acquirerData().apply {
                                             shopperReference = effectiveParams.shopperReference
                                             shopperEmail = effectiveParams.shopperEmail
                                             recurringProcessingModel =
@@ -314,7 +313,7 @@ class TerminalClient(
                                 saleTransactionID = transaction(params.merchantReference, clock.instant())
                                 // Partial refunds must state the original currency.
                                 saleToAcquirerData =
-                                    acquirerData().apply {
+                                    application.acquirerData().apply {
                                         currency = params.currency?.takeIf { params.amountMinor != null }
                                     }
                             }
@@ -567,11 +566,6 @@ class TerminalClient(
             is TerminalExchange.StatusCheck.Settled -> check.outcome
             TerminalExchange.StatusCheck.InProgress -> TransactionOutcome.Unknown(Fault.StillInProgress)
             is TerminalExchange.StatusCheck.NoAnswer -> TransactionOutcome.Unknown(check.fault)
-        }
-
-    private fun acquirerData(): SaleToAcquirerData =
-        SaleToAcquirerData().apply {
-            application?.let { applicationInfo = it.toApplicationInfo() }
         }
 
     internal suspend fun sendShortMessage(

@@ -279,7 +279,8 @@ class UnreferencedRefundsTest {
         voids.answer = ModificationResult.Failed(Fault.AdyenRejected(422, null, null))
         await { assertThat(cancellations.cancel(id)).isInstanceOf(RefundCancelResult.Unconfirmed::class.java) }
         voids.answer = ModificationResult.Received("VOID1")
-        await { assertThat(cancellations.cancel(id)).isEqualTo(RefundCancelResult.Requested) }
+        val restored = RefundCancellations(container.refundRecords, { target }, { true }, approval, clock)
+        await { assertThat(restored.cancel(id)).isEqualTo(RefundCancelResult.Requested) }
         val requested = await { checkNotNull(container.refundRecords.get(id)) }
         assertThat(requested.cancelStatus).isEqualTo(RefundCancelStatus.REQUESTED)
         assertThat(requested.cancelPspReference).isEqualTo("VOID1")
@@ -287,7 +288,7 @@ class UnreferencedRefundsTest {
         assertThat(requested.cancelStartedAt).isEqualTo(unknown.cancelStartedAt)
         assertThat(sent.map { it.second }.distinct()).containsExactly("void-$id")
         assertThat(sent.map { it.first }.distinct()).containsExactly(accepted.pspReference)
-        await { assertThat(cancellations.cancel(id)).isEqualTo(RefundCancelResult.NotAllowed) }
+        await { assertThat(restored.cancel(id)).isEqualTo(RefundCancelResult.NotAllowed) }
         assertThat(sent).hasSize(3)
         assertThat(env.context.unreferencedRefundFacts(requested)).contains(
             "Cancellation requested. Check your Customer Area to see if the refund was stopped.",

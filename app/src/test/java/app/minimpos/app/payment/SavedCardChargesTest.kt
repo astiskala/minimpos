@@ -289,6 +289,27 @@ class SavedCardChargesTest {
     }
 
     @Test
+    fun `a recreated charge owner replays the stored request and key without a new start`() {
+        answers += CardChargeResult.Failed(Fault.TimedOut)
+        val id = charge()
+        val original = sent.single()
+        charges.acknowledge()
+        val restored =
+            SavedCardCharges(
+                container.appScope,
+                container.sales,
+                { target },
+                clock = clock,
+                newId = { error("Recovery must not allocate a new identity") },
+                approval = approval,
+            )
+        answers += CardChargeResult.Authorised("PSP9")
+        assertThat(await { restored.recheck(id) }).isEqualTo(Recheck.Settled)
+        assertThat(sent).containsExactly(original, original).inOrder()
+        assertThat(sale(id).status).isEqualTo(SaleStatus.APPROVED)
+    }
+
+    @Test
     fun `a Checkout refund whose answer is lost is sent again with the same key and a rejected one fails`() {
         answers += CardChargeResult.Authorised("PSP9")
         val id = charge()
@@ -301,10 +322,21 @@ class SavedCardChargesTest {
         assertThat(checkNotNull(await { container.refundRecords.get(refundId) }).status).isEqualTo(RefundStatus.UNKNOWN)
         refunds.acknowledge()
         refundAnswer = ModificationResult.Received("REF2")
-        assertThat(await { refunds.recheck(refundId) }).isEqualTo(Recheck.Settled)
+        val restored =
+            CheckoutRefunds(
+                container.appScope,
+                container.refundRecords,
+                container.sales,
+                { target },
+                clock = clock,
+                newId = { error("Recovery must not allocate a new identity") },
+                approval = approval,
+            )
+        assertThat(await { restored.recheck(refundId) }).isEqualTo(Recheck.Settled)
         assertThat(checkNotNull(await { container.refundRecords.get(refundId) }).status).isEqualTo(RefundStatus.REQUESTED)
-        assertThat(refundsSent.map { it.substringAfterLast(':') }.distinct()).containsExactly(CheckoutRefunds.idempotencyKey(refundId))
-        assertThat(await { refunds.recheck(refundId) }).isEqualTo(Recheck.Settled)
+        assertThat(refundsSent).containsExactly(refundsSent.first(), refundsSent.first()).inOrder()
+        assertThat(refundsSent.first()).endsWith(CheckoutRefunds.idempotencyKey(refundId))
+        assertThat(await { restored.recheck(refundId) }).isEqualTo(Recheck.Settled)
         assertThat(refundsSent).hasSize(2)
     }
 

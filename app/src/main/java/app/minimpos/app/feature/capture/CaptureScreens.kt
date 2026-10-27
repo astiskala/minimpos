@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -36,9 +35,12 @@ import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.NumericKeypad
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.SecondaryButton
@@ -132,10 +134,10 @@ private fun TipEntry(
         AmountText(state.entry.minor, money, "tipAmount")
         val tip = state.tipMinor
         when {
-            state.belowBill -> Note(stringResource(R.string.tip_below_bill), isError = true)
-            tip != null -> Note(sum(state.billMinor, tip, money))
+            state.belowBill -> Notice(stringResource(R.string.tip_below_bill), kind = NoticeKind.WARNING)
+            tip != null -> Description(sum(state.billMinor, tip, money), centered = true)
         }
-        if (state.needsAdjustment) Note(stringResource(R.string.tip_adjustment_note, PaymentStanding.TIP_ADJUSTMENT_PERCENT))
+        if (state.needsAdjustment) Notice(stringResource(R.string.tip_adjustment_note, PaymentStanding.TIP_ADJUSTMENT_PERCENT))
         OutcomeMessage(state.submission)
     }
 }
@@ -265,10 +267,10 @@ private fun CaptureEntry(
         AmountText(state.amountMinor, money, "captureAmount")
         val amount = state.amountMinor
         when {
-            (sale.surchargeMinor ?: 0) > 0 -> Note(stringResource(R.string.surcharge_hold_limit))
-            state.adjustOnly -> Note(stringResource(R.string.adjust_note))
-            amount > state.heldMinor -> Note(stringResource(R.string.capture_more_note, money.format(amount)))
-            amount in 1..<state.heldMinor -> Note(stringResource(R.string.capture_less_note))
+            (sale.surchargeMinor ?: 0) > 0 -> Notice(stringResource(R.string.surcharge_hold_limit))
+            state.adjustOnly -> Notice(stringResource(R.string.adjust_note))
+            amount > state.heldMinor -> Notice(stringResource(R.string.capture_more_note, money.format(amount)))
+            amount in 1..<state.heldMinor -> Notice(stringResource(R.string.capture_less_note))
         }
         OutcomeMessage(state.submission)
     }
@@ -347,19 +349,6 @@ private fun AmountText(
     style = LocalDimens.current.amountStyle,
     textAlign = TextAlign.Center,
     modifier = Modifier.fillMaxWidth().testTag(tag),
-)
-
-/** A centred note under the amount; an error is in the error colour. */
-@Composable
-private fun Note(
-    text: String,
-    isError: Boolean = false,
-) = Text(
-    text,
-    style = MaterialTheme.typography.bodyMedium,
-    color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-    textAlign = TextAlign.Center,
-    modifier = Modifier.fillMaxWidth(),
 )
 
 /** "Bill … + tip … = …". */

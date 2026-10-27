@@ -70,6 +70,7 @@ class AudioGuidanceLifecycleTest {
         ready.complete(isolated)
         try {
             isolated.useLinks()
+            isolated.updateSettings { it.copy(payment = it.payment.copy(audioGuidance = true)) }
             val delegate = SaleBook(isolated.container.sales)
             val unconfirmed =
                 object : TransactionBook<PaymentStart> by delegate {
@@ -100,7 +101,12 @@ class AudioGuidanceLifecycleTest {
 
     @Test
     fun `accessible payment persists request facts before sending and recovers without another payment`() {
-        env.useSimulator { it.copy(simulator = it.simulator.copy(outcome = SimulatedOutcome.TIMEOUT, delayMillis = 0)) }
+        env.useSimulator {
+            it.copy(
+                payment = it.payment.copy(audioGuidance = true),
+                simulator = it.simulator.copy(outcome = SimulatedOutcome.TIMEOUT, delayMillis = 0),
+            )
+        }
         val id = payments.started(request().copy(audioGuidance = true, audioGuidancePoiId = "SIMULATOR-000000001"))
         val sale = finished(id).sale
         assertThat(sale.status).isEqualTo(SaleStatus.APPROVED)
@@ -112,11 +118,21 @@ class AudioGuidanceLifecycleTest {
 
     @Test
     fun `changed accessible terminal is not silently replaced with ordinary card collection`() {
-        env.useSimulator()
+        env.useSimulator { it.copy(payment = it.payment.copy(audioGuidance = true)) }
         val id = payments.started(request().copy(audioGuidance = true, audioGuidancePoiId = "AMS1-old"))
         val sale = finished(id).sale
         assertThat(sale.status).isEqualTo(SaleStatus.FAILED)
         assertThat(sale.audioGuidance).isTrue()
+        assertThat(sale.poiTransactionId).isNull()
+        assertThat(sale.reason).isEqualTo(StoredReason.NotDone(Failure.Remote(Fault.Unsupported)))
+    }
+
+    @Test
+    fun `audio guidance turned off in Settings after checkout sends no payment`() {
+        env.useSimulator()
+        val id = payments.started(request().copy(audioGuidance = true, audioGuidancePoiId = "SIMULATOR-000000001"))
+        val sale = finished(id).sale
+        assertThat(sale.status).isEqualTo(SaleStatus.FAILED)
         assertThat(sale.poiTransactionId).isNull()
         assertThat(sale.reason).isEqualTo(StoredReason.NotDone(Failure.Remote(Fault.Unsupported)))
     }

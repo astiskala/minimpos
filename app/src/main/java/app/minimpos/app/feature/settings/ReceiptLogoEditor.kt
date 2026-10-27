@@ -31,10 +31,14 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
+import app.minimpos.app.data.settings.decodeLogo
 import app.minimpos.app.feature.persisting
 import app.minimpos.app.ui.components.BottomActions
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ReceiptLogoPreview
 import app.minimpos.app.ui.components.SecondaryButton
@@ -100,7 +104,7 @@ private fun ReceiptLogoActions(
     onRemove: () -> Unit,
 ) {
     SettingActions {
-        if (logo == null) Text(stringResource(R.string.receipt_logo_none))
+        if (logo == null) Description(stringResource(R.string.receipt_logo_none))
         SecondaryButton(
             stringResource(if (logo == null) R.string.receipt_logo_choose else R.string.receipt_logo_change),
             onChoose,
@@ -117,7 +121,7 @@ private fun ReceiptLogoActions(
                 modifier = Modifier.testTag("removeReceiptLogo"),
             )
         }
-        problem?.let { Text(stringResource(it)) }
+        problem?.let { Notice(stringResource(it), kind = NoticeKind.WARNING) }
     }
 }
 
@@ -198,7 +202,7 @@ internal fun ReceiptLogoEditor(
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             val result = state.result
             if (result is LogoResult.Converted) ReceiptLogoPreview(result.bitmap)
-            if (result == LogoResult.Blank) Text(stringResource(R.string.receipt_logo_blank))
+            if (result == LogoResult.Blank) Notice(stringResource(R.string.receipt_logo_blank), kind = NoticeKind.WARNING, inset = true)
             LogoControls(state.options, result as? LogoResult.Converted, onUpdate)
         }
     }
@@ -228,10 +232,16 @@ private fun ColumnScope.LogoControls(
         tag = "receiptLogoStyle",
     )
     Column(Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding)) {
+        // The thumb follows the finger locally; the preview converts once, when the drag ends.
+        var dragged by remember { mutableStateOf<Float?>(null) }
         Text(stringResource(R.string.receipt_logo_darkness))
         Slider(
-            (options.threshold ?: 127).toFloat(),
-            { onUpdate(options.copy(threshold = it.toInt())) },
+            dragged ?: (options.threshold ?: 127).toFloat(),
+            { dragged = it },
+            onValueChangeFinished = {
+                dragged?.let { onUpdate(options.copy(threshold = it.toInt())) }
+                dragged = null
+            },
             valueRange = 0f..255f,
             modifier = Modifier.testTag("receiptLogoDarkness"),
         )

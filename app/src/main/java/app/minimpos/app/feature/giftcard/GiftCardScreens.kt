@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -40,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
@@ -71,6 +69,7 @@ import app.minimpos.app.payment.GiftCardFunding
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.scan.ScanMode
 import app.minimpos.app.scan.ScannerDialog
+import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
@@ -78,6 +77,8 @@ import app.minimpos.app.ui.components.EmptyState
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.NumericKeypad
 import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.OutcomeNote
@@ -87,6 +88,7 @@ import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.StatusKind
+import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
@@ -219,7 +221,7 @@ private fun ColumnScope.OperationDetails(
 ) {
     when {
         state.takesAmount -> AmountEntry(state, money, events)
-        state.changesValue -> OutcomeNote(stringResource(R.string.gift_card_deactivate_note))
+        state.changesValue -> Notice(stringResource(R.string.gift_card_deactivate_note), kind = NoticeKind.WARNING)
     }
 }
 
@@ -245,7 +247,7 @@ internal fun ColumnScope.GiftCardPicker(
         }
     }
     if (settings.size > 1) {
-        PickerLabel(stringResource(R.string.gift_card_provider))
+        Subheading(stringResource(R.string.gift_card_provider))
         Choices(settings.map { it.provider }, card.provider, "giftCardProvider", onProvider) { providerName(it) }
     }
     val entries =
@@ -255,7 +257,7 @@ internal fun ColumnScope.GiftCardPicker(
             ?.sorted()
             .orEmpty()
     if (entries.size > 1) {
-        PickerLabel(stringResource(R.string.gift_card_entry))
+        Subheading(stringResource(R.string.gift_card_entry))
         Choices(entries, card.entry, "giftCardEntry", onEntry) { stringResource(entryLabel(it)) }
     }
     if (card.entry == GiftCardEntry.SCANNED) {
@@ -281,22 +283,8 @@ internal fun ColumnScope.GiftCardPicker(
             modifier = Modifier.fillMaxWidth().testTag("giftCardExpiry"),
         )
     } else {
-        Text(
-            stringResource(if (card.entry == GiftCardEntry.KEYED) R.string.gift_card_keyed_note else R.string.gift_card_swiped_note),
-            style = MaterialTheme.typography.bodySmall,
-        )
+        Notice(stringResource(if (card.entry == GiftCardEntry.KEYED) R.string.gift_card_keyed_note else R.string.gift_card_swiped_note))
     }
-}
-
-/** Compact headings keep each selector close to its label. */
-@Composable
-private fun PickerLabel(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.semantics { heading() },
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -352,7 +340,7 @@ private fun ColumnScope.Operations(
             )
         }
     }
-    if (state.changesValue && !state.managerConfigured) OutcomeNote(stringResource(R.string.gift_card_manager_note))
+    if (state.changesValue && !state.managerConfigured) Notice(stringResource(R.string.gift_card_manager_note), kind = NoticeKind.WARNING)
 }
 
 /** Icons for choosing an action and confirming the selected value change. */
@@ -379,12 +367,13 @@ private fun ColumnScope.Balance(result: GiftCardBalanceResult) {
         }
 
         is GiftCardBalanceResult.NotRead -> {
-            OutcomeNote(
+            ActionMessage(
                 listOfNotNull(
                     stringResource(if (result.cancelled) R.string.gift_card_balance_cancelled else R.string.gift_card_balance_failed),
                     result.failure?.text(),
                     result.message,
                 ).joinToString(" "),
+                isError = true,
             )
         }
     }
@@ -417,10 +406,10 @@ private fun ColumnScope.AmountEntry(
             onBackspace = { events.onAmount { it.backspace() } },
         )
     }
-    if (state.operation == GiftCardOperation.CASH_OUT) OutcomeNote(stringResource(R.string.gift_card_cash_out_note))
-    if (state.operation == GiftCardOperation.ACTIVATE) OutcomeNote(stringResource(R.string.gift_card_activate_note))
+    if (state.operation == GiftCardOperation.CASH_OUT) Notice(stringResource(R.string.gift_card_cash_out_note))
+    if (state.operation == GiftCardOperation.ACTIVATE) Notice(stringResource(R.string.gift_card_activate_note))
     if (state.funded) {
-        SectionHeader(stringResource(R.string.gift_card_funding))
+        SectionHeader(stringResource(R.string.gift_card_funding), inset = false)
         Choices(GiftCardFunding.entries, state.funding, "giftCardFunding", events.onFunding) { stringResource(fundingLabel(it)) }
         if (state.funding == GiftCardFunding.EXTERNAL) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -441,7 +430,7 @@ private fun ColumnScope.Activities(
     listOf(R.string.gift_card_needs_attention to state.attention, R.string.gift_card_recent_loads to state.undoable)
         .filter { it.second.isNotEmpty() }
         .forEach { (title, activities) ->
-            SectionHeader(stringResource(title))
+            SectionHeader(stringResource(title), inset = false)
             activities.forEach { activity ->
                 TextButton(
                     onClick = { onOpen(activity.groupId) },
@@ -622,7 +611,7 @@ private fun ColumnScope.FollowUps(
 ) {
     val actions = state.actions - GiftCardAction.CHECK_AGAIN
     if (actions.isEmpty()) return
-    if (!state.managerConfigured) OutcomeNote(stringResource(R.string.gift_card_manager_note))
+    if (!state.managerConfigured) Notice(stringResource(R.string.gift_card_manager_note), kind = NoticeKind.WARNING)
     actions.filter { it != pinned }.sortedBy { it.ordinal }.forEach { action ->
         val ready = followUpReady(state, action)
         val text = stringResource(actionLabel(action))
@@ -663,7 +652,7 @@ private fun Outcome(
         }
     val handover = activity.cashHandover
     OutcomeHeader(kind, stringResource(title), money.format(main.amountMinor), titleTag = "giftCardStatus") {
-        Text(stringResource(giftCardStageLabel(activity.kind)), style = MaterialTheme.typography.titleSmall)
+        Subheading(stringResource(giftCardStageLabel(activity.kind)))
         when {
             activity.funding?.status == GiftCardStatus.UNKNOWN -> {
                 OutcomeNote(stringResource(R.string.gift_card_funding_unknown))

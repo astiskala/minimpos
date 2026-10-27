@@ -4,7 +4,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhonelinkSetup
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,6 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
+import app.minimpos.app.ui.components.Description
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 
@@ -31,7 +33,7 @@ internal fun DemoExit(onOpen: (String) -> Unit) {
     }
     if (review) {
         SectionHeader(stringResource(R.string.demo_exit_history))
-        SettingNote(stringResource(R.string.demo_exit_history_hint))
+        Notice(stringResource(R.string.demo_exit_history_hint), kind = NoticeKind.WARNING, inset = true)
         SettingNavRow(Icons.Default.Storage, stringResource(R.string.sample_data), stringResource(R.string.demo_exit_samples_hint), {
             onOpen(SettingsSections.DATA)
         }, tag = "reviewDemoSamples")
@@ -44,7 +46,7 @@ internal fun DemoExit(onOpen: (String) -> Unit) {
                 { onOpen(SettingsSections.TERMINAL) },
                 modifier = Modifier.testTag("continueDemoSetup"),
             )
-            Text(stringResource(R.string.demo_exit_unchanged))
+            Description(stringResource(R.string.demo_exit_unchanged))
         }
     }
 }

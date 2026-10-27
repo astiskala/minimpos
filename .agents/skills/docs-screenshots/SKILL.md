@@ -194,10 +194,11 @@ closes. Always restore the market's device locale when recapturing only part of 
 13. `gift-cards.png`: Home › Gift cards with Givex (swiped or keyed in) and SVS configured in `payment.giftCards`,
     before choosing an action. The fixtures have no Manager PIN, so value changes would show it as missing.
 14. `refund-options.png`: Home › Refund, showing Scan receipt, Choose a payment and Refund without receipt.
-15. `receipt-logo.png`: Settings › Receipts › Choose image with `receipt-logo.png` from this folder (a text-free
-    coffee cup rendered from `receipt-logo.svg`, so every language's café can use it) pushed to Downloads and picked
-    in the document picker by its file name; the logo editor before saving. The checkout and gratuity flows save the
-    same mark first so their simulated receipts demonstrate the logo too.
+15. `receipt-logo.png`: Settings › Receipts › Choose image with `app/src/main/assets/sample-logo.png` (a text-free
+    coffee cup rendered 240×120 from `receipt-logo.svg` in this folder, so every language's café can use it; sample
+    data saves the same image on devices) pushed to Downloads and picked in the document picker by its file name; the
+    logo editor before saving. The checkout and gratuity flows save the same mark first so their simulated receipts
+    demonstrate the logo too.
 
 ## Driving the UI
 

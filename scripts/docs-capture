@@ -535,7 +535,7 @@ flow_authorize() {
     tap "$1" home_pre_auth 2
     tap "$1" "=$(item "$1" "Catering deposit")" 2
     enter_reference "$1" preAuthCustomerReference
-    # Save card sits below Audio guidance; scroll it clear of the pinned Pre-authorize button.
+    # Save card sits low on the form; scroll it clear of the pinned Pre-authorize button.
     local y _
     for _ in 1 2 3 4; do
         y=$(centre "$(label "$1" checkout_save_card)" | awk '{ print $2 }') || true
@@ -619,9 +619,9 @@ flow_refund_start() {
     shot "$1" refund-options
 }
 
-# Chooses the text-free demo logo through the document picker by its file name, which no language translates.
+# Chooses the text-free sample-data logo through the document picker by its file name, which no language translates.
 choose_demo_logo() {
-    device push "$root/.agents/skills/docs-screenshots/receipt-logo.png" /sdcard/Download/minimpos-logo.png > /dev/null
+    device push "$root/app/src/main/assets/sample-logo.png" /sdcard/Download/minimpos-logo.png > /dev/null
     remote am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/minimpos-logo.png > /dev/null
     # Japanese also has a 領収書 section header, so open Receipts by its summary, the fixture's business name.
     local business

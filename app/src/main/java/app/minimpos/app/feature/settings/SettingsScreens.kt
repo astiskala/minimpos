@@ -87,10 +87,13 @@ import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.ConfirmDialog
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.HistorySwitchDialog
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.SecondaryButton
@@ -867,7 +870,7 @@ private fun WalletSettings(
             },
         )
     }
-    state.failure?.let { SettingNote(walletCheckFailed(it)) }
+    state.failure?.let { Notice(walletCheckFailed(it), kind = NoticeKind.WARNING, inset = true) }
     SettingActions {
         GatedButton(
             stringResource(R.string.wallet_refresh),
@@ -1200,7 +1203,7 @@ private fun SecuritySection(
     )
     ManagerPinSettings(state, events) { onSetPin(true) }
     ManagerPermissions(state, events)
-    SettingNote(stringResource(R.string.settings_pin_forgotten))
+    Notice(stringResource(R.string.settings_pin_forgotten), inset = true)
 }
 
 @Composable
@@ -1315,8 +1318,7 @@ private fun AboutSection(state: SettingsUiState) {
         )
         LabeledValue(stringResource(R.string.about_model), container.device.model)
         LabeledValue(stringResource(R.string.about_android), container.device.osVersion)
-        HorizontalDivider(Modifier.padding(vertical = 12.dp))
-        Text(stringResource(R.string.about_app_info), style = MaterialTheme.typography.titleSmall)
+        SectionHeader(stringResource(R.string.about_app_info), inset = false)
         val info = remember { container.application.summary() }
         LabeledValue(stringResource(R.string.about_app_info_application), info.application)
         LabeledValue(stringResource(R.string.about_app_info_platform), info.platform)
@@ -1324,6 +1326,6 @@ private fun AboutSection(state: SettingsUiState) {
         LabeledValue(stringResource(R.string.about_app_info_device), info.device)
         LabeledValue(stringResource(R.string.about_app_info_library), info.library)
         HorizontalDivider(Modifier.padding(vertical = 12.dp))
-        Text(stringResource(R.string.about_text))
+        Description(stringResource(R.string.about_text))
     }
 }

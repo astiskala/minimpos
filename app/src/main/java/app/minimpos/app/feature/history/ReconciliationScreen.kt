@@ -44,10 +44,14 @@ import app.minimpos.app.history.CurrencyReconciliation
 import app.minimpos.app.history.TerminalReconciliationReport
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.StepBody
 import app.minimpos.app.ui.components.StepHeader
+import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.components.rememberMoneyFormatters
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.theme.LocalDimens
@@ -184,13 +188,11 @@ private fun ColumnScope.ReconciliationSteps(
 private fun ReconciliationResult(report: TerminalReconciliationReport) {
     val colors = LocalStatusColors.current
     Card(Modifier.fillMaxWidth().testTag("reconciliationCard")) {
-        Text(
+        Subheading(
             stringResource(
                 if (report.closedPeriod) R.string.reconciliation_closed_title else R.string.reconciliation_title,
                 report.poiReconciliationId ?: "—",
             ),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -207,19 +209,12 @@ private fun ReconciliationResult(report: TerminalReconciliationReport) {
             )
         }
         if (!report.allMatch) {
-            Text(
-                stringResource(R.string.reconciliation_mismatch_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Description(stringResource(R.string.reconciliation_mismatch_hint))
         }
         TotalsTable(report.currencies)
-        if (report.unresolvedCount > 0) Warning(stringResource(R.string.reconciliation_unresolved, report.unresolvedCount), colors.warning)
+        if (report.unresolvedCount > 0) ReportWarning(stringResource(R.string.reconciliation_unresolved, report.unresolvedCount))
         if (report.offlineSaleCount > 0 || report.unconfirmedBatchCount > 0) {
-            Warning(
-                stringResource(R.string.reconciliation_offline_warning, report.offlineSaleCount, report.unconfirmedBatchCount),
-                colors.warning,
-            )
+            ReportWarning(stringResource(R.string.reconciliation_offline_warning, report.offlineSaleCount, report.unconfirmedBatchCount))
         }
     }
 }
@@ -278,13 +273,4 @@ private fun TableRow(
 }
 
 @Composable
-private fun Warning(
-    text: String,
-    color: Color,
-) {
-    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.Top) {
-        Icon(Icons.Default.Warning, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.bodySmall)
-    }
-}
+private fun ReportWarning(text: String) = Notice(text, Modifier.padding(top = 8.dp), kind = NoticeKind.WARNING)

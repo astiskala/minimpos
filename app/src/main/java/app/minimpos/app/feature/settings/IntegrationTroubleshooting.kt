@@ -38,6 +38,7 @@ import app.minimpos.app.share.TroubleshootingShareEffect
 import app.minimpos.app.terminal.ApiCheck
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.app.terminal.TerminalState
+import app.minimpos.app.ui.components.Notice
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.theme.LocalDimens
@@ -104,7 +105,7 @@ private fun ColumnScope.IntegrationDetails(
             )
         }
     }
-    SettingNote(stringResource(R.string.diagnostics_report_notice))
+    Notice(stringResource(R.string.diagnostics_report_notice), inset = true)
     SettingActions {
         SecondaryButton(
             stringResource(R.string.diagnostics_share_report),

@@ -127,12 +127,8 @@
   <string name="checkout_tip_on_receipt_hint">Ingresa la propina del recibo para capturar.</string>
   <string name="checkout_audio_guidance">Guía por audio</string>
   <string name="checkout_audio_hint">Lee los pasos del pago en voz alta.</string>
-  <string name="checkout_audio_confirm">Confirmar configuración accesible</string>
-  <string name="checkout_audio_requirements">Confirma software %1$s o posterior y la activación por Soporte de Adyen para esta terminal. Usa una tarjeta que no requiera firma. El idioma de la terminal no puede ser estonio, letón, islandés ni lituano. Omite las autorizaciones parciales y las indicaciones de la pantalla para el comprador en este pago.</string>
   <string name="checkout_audio_conflicts">Desactiva propinas, Giving y la captura especial de tarjetas para continuar. Desactiva la guía por audio para usar un enlace, una billetera escaneada o un token.</string>
-  <string name="checkout_audio_unavailable">La guía por audio necesita una terminal Android compatible y habilitada. No está disponible para este destino o modelo desconocido.</string>
-  <string name="capability_audio_detail">Confirma modelo, software, idioma, activación por Soporte y una tarjeta sin firma al pagar. Consulta la guía Usar Mini mPOS.</string>
-  <string name="checkout_audio_demo_requirements">Solo demostración sin conexión. Simula la guía por audio y omite las autorizaciones parciales y las indicaciones de la pantalla del comprador en este pago. No se verifica el audio de la terminal ni la compatibilidad del equipo real.</string>
+  <string name="capability_audio_detail">Actívala en Configuración › Pagos tras confirmar modelo, software, idioma y activación por Soporte. Consulta la guía Usar Mini mPOS.</string>
   <string name="checkout_tip_on_terminal">Propina sobre la terminal</string>
   <string name="checkout_tip_on_terminal_hint">Solicite una propina al comprador en la pantalla del terminal antes de cobrar la tarjeta.</string>
   <string name="checkout_ask_giving">Donación benéfica (Adyen Giving)</string>
@@ -172,8 +168,8 @@
   <string name="token_deleted">El token %1$s del comprador %2$s ya no está disponible en Adyen.</string>
   <string name="token_delete_failed">No se eliminó el token %1$s del comprador %2$s.</string>
   <string name="token_delete_unknown">La eliminación del token %1$s del comprador %2$s no está confirmada. Vuelva a consultar la lista de Adyen. No cobre ni repita la eliminación todavía.</string>
-  <string name="token_deleting">Comprobando la eliminación del token %1$s del comprador %2$s…</string>
   <string name="token_delete_recheck">Comprobar eliminación</string>
+  <string name="token_deletion_title">Eliminación del token</string>
   <string name="saved_card_card">Tarjeta</string>
   <string name="saved_card_charge">Cobrar %1$s</string>
   <string name="saved_card_charging">Cobrando el token…</string>
@@ -506,10 +502,10 @@
   <string name="products_meal_voucher_hint">Un vale de comida puede pagar este producto donde los vales de la tienda exigen productos elegibles. El precio y el impuesto no cambian.</string>
   <string name="products_kind_meal_voucher">Vale</string>
   <string name="sample_data">Datos de muestra</string>
-  <string name="sample_data_hint">Agregue productos de muestra e historial de demostración de solo lectura. Cada uso reemplaza los detalles comerciales del recibo con detalles ficticios de la empresa, incluso si ya existen muestras. El diseño del recibo y la configuración de entrega permanecen sin cambios. Las muestras cuentan para los informes y totales diarios de demostración.</string>
+  <string name="sample_data_hint">Agregue productos de muestra, historial de demostración de solo lectura y un logotipo de recibo de demostración si no hay uno. Cada uso reemplaza los detalles comerciales del recibo con detalles ficticios de la empresa, incluso si ya existen muestras. El diseño del recibo y la configuración de entrega permanecen sin cambios. Las muestras cuentan para los informes y totales diarios de demostración.</string>
   <string name="sample_add">Agregar datos de muestra</string>
   <string name="sample_remove">Eliminar datos de muestra</string>
-  <string name="sample_remove_message">¿Eliminar productos de muestra (incluidas las ediciones) y el historial de demostraciones? Sus propios productos, historial, tasas impositivas y configuraciones permanecen. Las categorías utilizadas por sus productos también permanecen.</string>
+  <string name="sample_remove_message">¿Eliminar productos de muestra (incluidas las ediciones), el historial de demostraciones y el logotipo de demostración sin cambios? Sus propios productos, historial, tasas impositivas, logotipo y configuraciones permanecen. Las categorías utilizadas por sus productos también permanecen.</string>
   <string name="sample_added">Los datos de muestra están listos. Se conservaron las muestras existentes; Se reemplazaron los detalles comerciales del recibo.</string>
   <string name="sample_removed">Datos de muestra eliminados.</string>
   <string name="sample_write_failed">No se pudo guardar el cambio. Intentar otra vez.</string>
@@ -1084,6 +1080,9 @@
   <string name="settings_allow_moto_hint">El personal puede teclear pedidos por correo y por teléfono en la terminal. Necesita aprobación del gerente.</string>
   <string name="settings_allow_mke">Ofrecer ingreso manual de tarjeta</string>
   <string name="settings_allow_mke_hint">El personal puede introducir la tarjeta en el terminal cuando el chip no se puede leer. Necesita aprobación del gerente.</string>
+  <string name="settings_accessibility">Accesibilidad</string>
+  <string name="settings_audio_guidance">Activar guía por audio</string>
+  <string name="settings_audio_guidance_hint">El personal puede activarla en Cobro para cada comprador. Requiere activación por Soporte de Adyen, software de terminal compatible y un idioma de terminal distinto de estonio, letón, islandés o lituano.</string>
 
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">Encabezado y pie de página</string>
@@ -1540,6 +1539,8 @@
   <string name="cashback_card_charge">Cargo a tarjeta</string>
   <string name="cashback_card_confirm">Confirmé que el cliente tiene una tarjeta %1$s elegible</string>
   <string name="cashback_unavailable">No disponible: revisa habilitación, tarjeta, tienda verificada, destino y límite en Configuración.</string>
+  <string name="cashout_manager_note">El retiro y la entrega de efectivo requieren un PIN de gerente. Configúralo en Configuración › Seguridad.</string>
+  <string name="cashout_over_limit">Supera tu límite local de efectivo.</string>
   <string name="cashback_conflicts">Confirma la tarjeta y un importe dentro del límite. Usa una venta completa sin división, autorización parcial, propinas, Giving, audio, entrada especial ni guardado de tarjeta.</string>
   <string name="cashback_handover">Registrar efectivo entregado</string>
   <string name="cashback_handover_amount">Registrar entrega de %1$s</string>

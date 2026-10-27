@@ -404,6 +404,8 @@ enum class ReceiptTipping {
  * @property cashback Explicit Support enablement, card program and local cash limit; disabled by default.
  * @property unreferencedRefunds Explicit Adyen enablement, local limit and refund delay of unreferenced refunds;
  *   disabled by default.
+ * @property audioGuidance Whether checkout offers audio guidance to shoppers on supported terminal models; the merchant
+ *   confirms Adyen Support enablement, terminal software and language when turning it on. Off by default.
  */
 @Serializable
 data class PaymentSettings(
@@ -446,6 +448,7 @@ data class PaymentSettings(
     val mealVoucherAccountSelection: Boolean = false,
     val cashback: CashbackSettings = CashbackSettings(),
     val unreferencedRefunds: UnreferencedRefundSettings = UnreferencedRefundSettings(),
+    val audioGuidance: Boolean = false,
 ) {
     /**
      * These settings with [linkExpiryHours] and terminal tipping numbers within their valid ranges, and one entry per

@@ -55,9 +55,9 @@ import app.minimpos.terminal.client.TransactionKind
  * @property requestedAmountMinor Amount requested for this tender in minor units; defaults to `totals.amounts.gross`.
  * @property existingSaleId Existing partially paid sale ID when collecting the remaining balance; null for a new sale.
  * @property askGiving Whether `AskGiving` is sent on this payment.
- * @property audioGuidance Whether audio guidance was selected and explicitly confirmed for this shopper.
+ * @property audioGuidance Whether audio guidance was selected for this shopper while enabled in the payment settings.
  * @property mexicanPayment Frozen Mexican card routing and monthly count; null for ordinary routing.
- * @property audioGuidancePoiId Confirmed terminal POIID; checked again immediately before sending.
+ * @property audioGuidancePoiId Terminal POIID checkout resolved for audio guidance; checked again immediately before sending.
  * @property cardEntryOverride Card entry override (`NORMAL`, `MOTO` or `MKE`).
  * @property allocation Equal-share or item allocation this tender pays; null for an amount or the whole balance.
  * @property reviewedPaidMinor Purchase already paid when an [existingSaleId] tender was reviewed; a changed stored
@@ -147,7 +147,7 @@ data class PaymentStart(
         require(allocation !is TenderAllocation.Items || !allowPartialAuthorisation) {
             "Item tenders are collected in full so their units are paid exactly once"
         }
-        require(!audioGuidance || audioGuidancePoiId != null) { "Audio guidance requires a confirmed terminal" }
+        require(!audioGuidance || audioGuidancePoiId != null) { "Audio guidance requires a resolved terminal" }
         require(tokenization == null || shopperReference != null) { "Saving a card needs a shopper reference" }
     }
 

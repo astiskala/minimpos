@@ -20,13 +20,21 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/** The selected options and the exact converted preview; null means conversion is still running. */
+/**
+ * The selected options and the latest converted preview.
+ *
+ * @property options The controls as selected now.
+ * @property result The latest finished conversion; null before the first one finishes. While [pending], it was made
+ *   from earlier options and stays shown so the editor's layout does not jump.
+ * @property pending Whether a conversion of [options] is still scheduled or running.
+ */
 internal data class LogoEditorState(
     val options: LogoOptions = LogoOptions(),
     val result: LogoResult? = null,
+    val pending: Boolean = false,
 ) {
-    /** True only when the displayed bitmap can be saved. */
-    val canSave: Boolean get() = result is LogoResult.Converted
+    /** True only when the displayed bitmap was converted from [options] and can be saved. */
+    val canSave: Boolean get() = !pending && result is LogoResult.Converted
 }
 
 /**
@@ -43,15 +51,18 @@ internal class ReceiptLogoEditorViewModel(
     private val conversionMutex = Mutex()
     private var conversion: Job? = null
 
-    /** Current controls and preview; conversion never publishes a stale result. */
+    /** Current controls and preview; conversion never publishes a stale result as current. */
     val state: StateFlow<LogoEditorState>
-        field = MutableStateFlow(LogoEditorState())
+        field = MutableStateFlow(LogoEditorState(pending = true))
 
     init {
         convert(LogoOptions(), false)
     }
 
-    /** Replaces the controls and schedules conversion; save stays disabled until the new preview is ready. */
+    /**
+     * Replaces the controls and schedules conversion. The previous preview stays shown, and save stays disabled, until
+     * the new preview is ready.
+     */
     fun update(options: LogoOptions) = convert(options, true)
 
     private fun convert(
@@ -59,7 +70,7 @@ internal class ReceiptLogoEditorViewModel(
         debounce: Boolean,
     ) {
         conversion?.cancel()
-        state.value = LogoEditorState(options)
+        state.value = state.value.copy(options = options, pending = true)
         conversion =
             viewModelScope.launch {
                 if (debounce) delay(CONVERSION_DEBOUNCE_MS)
@@ -82,7 +93,9 @@ internal class ReceiptLogoEditorViewModel(
 
     /** Saves exactly the current preview, finishing the write if the editor closes. Blank/pending previews do nothing. */
     suspend fun save() {
-        val bitmap = (state.value.result as? LogoResult.Converted)?.bitmap ?: return
+        val current = state.value
+        val bitmap = (current.result as? LogoResult.Converted)?.bitmap
+        if (current.pending || bitmap == null) return
         persisting { store.replace(bitmap) }
     }
 }

@@ -81,9 +81,12 @@ import app.minimpos.app.ui.components.ActionOptionsDialog
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.PrimaryButton
@@ -138,7 +141,7 @@ fun CheckoutScreen(
         kind = kind,
         actions = CheckoutCallbacks(vm::pay, vm::scanWallet, vm::sendLink, vm::update),
         tokens =
-            state.form.cashBackMinor == 0L && (tokens.isNotEmpty() || needsLookupApproval) && !state.form.audioGuidance &&
+            state.form.cashBackMinor == 0L && (tokens.isNotEmpty() || needsLookupApproval) && !state.audioGuidance &&
                 state.form.mexicanPayment == null,
         onChooseToken = {
             choosingToken = true
@@ -362,13 +365,7 @@ private fun CheckoutDetails(
                     modifier = Modifier.fillMaxWidth().testTag("checkoutAmount"),
                 )
                 if (state.preAuthorisation) {
-                    Text(
-                        stringResource(R.string.checkout_pre_auth_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().testTag("preAuthNote"),
-                    )
+                    Description(stringResource(R.string.checkout_pre_auth_note), Modifier.testTag("preAuthNote"), centered = true)
                 }
             }
         }
@@ -688,51 +685,23 @@ private fun ColumnScope.CheckoutSwitches(
     SpecialEntrySwitches(state, onUpdate)
 }
 
+/** Audio guidance for this shopper, offered only once enabled in Settings for a supported terminal. */
 @Composable
 private fun ColumnScope.AudioGuidanceSwitches(
     state: Checkout,
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
 ) {
-    val minimumSoftware = state.audioGuidanceMinimumSoftware
-    if (minimumSoftware == null && !state.audioGuidanceSimulated && !state.form.audioGuidance) {
-        Text(stringResource(R.string.checkout_audio_unavailable), style = MaterialTheme.typography.bodySmall)
-        return
-    }
+    if (!state.offersAudioGuidance) return
     LabeledSwitch(
         title = stringResource(R.string.checkout_audio_guidance),
         hint = stringResource(R.string.checkout_audio_hint),
         hintMaxLines = 2,
-        checked = state.form.audioGuidance,
-        onChange = { checked -> onUpdate { it.copy(audioGuidance = checked, audioGuidanceConfirmedFor = null) } },
+        checked = state.audioGuidance,
+        onChange = { checked -> onUpdate { it.copy(audioGuidance = checked) } },
         tag = "audioGuidance",
     )
-    if (state.form.audioGuidance) {
-        if (minimumSoftware != null || state.audioGuidanceSimulated) {
-            LabeledSwitch(
-                title = stringResource(R.string.checkout_audio_confirm),
-                hint =
-                    if (state.audioGuidanceSimulated) {
-                        stringResource(R.string.checkout_audio_demo_requirements)
-                    } else {
-                        stringResource(R.string.checkout_audio_requirements, checkNotNull(minimumSoftware))
-                    },
-                checked = state.form.audioGuidanceConfirmedFor == state.audioGuidanceTarget,
-                onChange = { checked ->
-                    onUpdate { it.copy(audioGuidanceConfirmedFor = state.audioGuidanceTarget.takeIf { checked }) }
-                },
-                tag = "audioGuidanceConfirm",
-            )
-        }
-        Text(
-            stringResource(
-                if (minimumSoftware == null && !state.audioGuidanceSimulated) {
-                    R.string.checkout_audio_unavailable
-                } else {
-                    R.string.checkout_audio_conflicts
-                },
-            ),
-            style = MaterialTheme.typography.bodySmall,
-        )
+    if (state.audioGuidance) {
+        Notice(stringResource(R.string.checkout_audio_conflicts), Modifier.testTag("audioGuidanceNotice"), kind = NoticeKind.WARNING)
     }
 }
 
@@ -963,7 +932,7 @@ private fun SaleOutcome(
         if (state.preAuthorisation && sale.standing.held) OutcomeNote(stringResource(R.string.checkout_pre_auth_note))
         HoldNotes(sale, money, afterPayment = true)
         state.advice?.let { advice ->
-            Text(
+            OutcomeNote(
                 if (state.tapToPayHelp &&
                     advice == RetryAdvice.NOT_ENABLED
                 ) {
@@ -971,9 +940,7 @@ private fun SaleOutcome(
                 } else {
                     adviceText(advice)
                 },
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().testTag("retryAdvice"),
+                Modifier.testTag("retryAdvice"),
             )
         }
     }

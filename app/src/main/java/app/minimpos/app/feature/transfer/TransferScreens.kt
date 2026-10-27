@@ -77,10 +77,14 @@ import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.HistorySwitchDialog
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
+import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ProcessingContent
 import app.minimpos.app.ui.components.QrImage
@@ -88,6 +92,7 @@ import app.minimpos.app.ui.components.ReceiptLogoPreview
 import app.minimpos.app.ui.components.SharedKeyDialog
 import app.minimpos.app.ui.components.StatusBadge
 import app.minimpos.app.ui.components.StatusKind
+import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
@@ -148,11 +153,7 @@ private fun ExportChoice(
     val noSecrets = state.secretsAvailable.isEmpty()
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
         Column(Modifier.widthIn(max = LocalDimens.current.contentMaxWidth)) {
-            Text(
-                stringResource(R.string.transfer_choose_hint),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(LocalDimens.current.screenPadding),
-            )
+            Description(stringResource(R.string.transfer_choose_hint), Modifier.padding(LocalDimens.current.screenPadding))
             SettingSwitch(
                 stringResource(R.string.transfer_part_catalogue),
                 state.contents.catalogue,
@@ -215,11 +216,7 @@ private fun ExportCodes(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(dimens.spacing),
     ) {
-        Text(
-            stringResource(R.string.transfer_export_hint),
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Description(stringResource(R.string.transfer_export_hint))
         TransferCodeCard(export.code, Modifier.widthIn(max = 420.dp))
         val code = codes[index.coerceIn(0, codes.lastIndex)]
         QrImage(
@@ -257,17 +254,13 @@ private fun TransferCodeCard(
     modifier: Modifier = Modifier,
 ) {
     Card(modifier) {
-        Text(stringResource(R.string.transfer_code_title), style = MaterialTheme.typography.labelLarge)
+        Subheading(stringResource(R.string.transfer_code_title))
         Text(
             code,
             style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace),
             modifier = Modifier.testTag("transferCode"),
         )
-        Text(
-            stringResource(R.string.transfer_code_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Description(stringResource(R.string.transfer_code_hint))
     }
 }
 
@@ -436,7 +429,7 @@ private fun ImportContent(
         is ImportUiState.RecoveryFailed -> {
             Column(modifier.padding(LocalDimens.current.screenPadding)) {
                 ActionMessage(state.outcome.text(), isError = true)
-                Text(stringResource(R.string.setup_transfer_pending))
+                Notice(stringResource(R.string.setup_transfer_pending), kind = NoticeKind.WARNING)
             }
         }
 
@@ -601,12 +594,12 @@ private fun ImportScanning(
                     modifier = Modifier.testTag("importProgress"),
                 )
             } else {
-                Text(stringResource(R.string.transfer_import_hint))
+                Description(stringResource(R.string.transfer_import_hint))
             }
             state.error?.let {
-                Text(
+                ActionMessage(
                     stringResource(if (it == ImportError.CORRUPT) R.string.transfer_corrupt else R.string.transfer_not_transfer),
-                    color = MaterialTheme.colorScheme.error,
+                    isError = true,
                 )
             }
         }
@@ -635,10 +628,10 @@ private fun ImportReady(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(Modifier.widthIn(max = LocalDimens.current.contentMaxWidth), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
-            Text(stringResource(R.string.transfer_ready), style = MaterialTheme.typography.titleLarge)
+            Subheading(stringResource(R.string.transfer_ready))
             if (received.hasConnection) ConnectionPreview(received)
             if (received.connectionDestination == ConnectionDestination.TAP_TO_PAY) {
-                Note(stringResource(R.string.transfer_register_phone))
+                Notice(stringResource(R.string.transfer_register_phone))
             }
             TransferSummary(
                 received.catalogue,
@@ -650,31 +643,31 @@ private fun ImportReady(
             if (received.hasSecrets) TransferCodeField(state.code, state.wrongCode, onCode)
             received.catalogue?.let { catalogue ->
                 if (!state.currencyMatches) {
-                    Text(
+                    Notice(
                         stringResource(
                             R.string.transfer_currency_mismatch,
                             catalogue.currencyCode,
                             received.currencyAfterImport(currency),
                         ),
-                        color = MaterialTheme.colorScheme.error,
+                        kind = NoticeKind.WARNING,
                     )
                 }
                 CatalogueModeChoice(state.mode, onMode)
             }
-            if (received.hasSettings) Note(stringResource(R.string.transfer_settings_note))
+            if (received.hasSettings) Notice(stringResource(R.string.transfer_settings_note))
             state.outcome?.let {
                 if (state.keyPending) {
                     Card(Modifier.testTag("keyUpdateCallout")) {
-                        Text(stringResource(R.string.setup_key_update_title), style = MaterialTheme.typography.titleSmall)
-                        Text(it.text(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Subheading(stringResource(R.string.setup_key_update_title))
+                        Description(it.text())
                     }
                 } else {
                     ActionMessage(it.text(), isError = true)
                 }
             }
             if (state.incomplete) ActionMessage(stringResource(R.string.transfer_missing_fields), isError = true)
-            if (state.boardingRequired) Text(stringResource(R.string.transfer_board_first))
-            if (state.keyPending) Note(stringResource(R.string.transfer_key_not_imported))
+            if (state.boardingRequired) Notice(stringResource(R.string.transfer_board_first), kind = NoticeKind.WARNING)
+            if (state.keyPending) Notice(stringResource(R.string.transfer_key_not_imported))
         }
     }
 }
@@ -740,7 +733,11 @@ private fun CatalogueModeChoice(
                 RadioButton(selected = mode == selected, onClick = null)
                 Column(Modifier.padding(start = 12.dp)) {
                     Text(stringResource(title), style = MaterialTheme.typography.bodyLarge)
-                    Note(stringResource(hint))
+                    Text(
+                        stringResource(hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -790,16 +787,6 @@ internal object TransferCodeTransformation : VisualTransformation {
     }
 }
 
-/** Small secondary text. */
-@Composable
-private fun Note(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
 /** What the import added and updated, under a success badge like the other results. */
 @Composable
 private fun ImportDone(
@@ -846,7 +833,7 @@ private fun ImportDone(
             secrets?.let { TransferDetail(stringResource(R.string.transfer_part_secrets), it) }
         }
         if (result.businessWarning) ActionMessage(stringResource(R.string.transfer_business_failed), isError = true)
-        if (result.paymentsAppChecked) Note(stringResource(R.string.transfer_tap_checked))
+        if (result.paymentsAppChecked) OutcomeNote(stringResource(R.string.transfer_tap_checked))
     }
 }
 

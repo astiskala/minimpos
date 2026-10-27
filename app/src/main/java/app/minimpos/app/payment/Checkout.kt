@@ -78,7 +78,7 @@ data class ShopperPromptTexts(
  *   ([app.minimpos.app.data.settings.AppSettings.asksEmailOnTerminal]).
  * @property audioGuidanceMinimumSoftware Minimum supported software for the resolved model; null when unsupported or unknown.
  * @property audioGuidanceSimulated Whether the choice demonstrates the flow without physical terminal requirements.
- * @property audioGuidanceTarget Resolved terminal POIID; binds the per-shopper confirmation to that terminal.
+ * @property audioGuidanceTarget Resolved terminal POIID; an audio-guided payment goes only to that terminal.
  * @property mexicanRoutingAvailable Verified Mexican store assignment on a supported destination, or explicit offline demo.
  * @property cashbackAvailable Verified purchase-linked market and explicit merchant configuration.
  * @property managerConfigured Whether cashback is public or a Manager PIN is configured to approve it.
@@ -223,9 +223,19 @@ data class Checkout(
     /** True when the operator selected MOTO or MKE, requiring a fraud/liability warning and Manager PIN approval. */
     val requiresSpecialEntryApproval: Boolean get() = effectiveCardEntry != CardEntryOverride.NORMAL
 
+    /**
+     * Whether checkout offers audio guidance: enabled in the payment settings, for a resolved terminal whose model
+     * supports it or in the simulator. The merchant confirmed Support enablement, software and language in Settings.
+     */
+    val offersAudioGuidance: Boolean
+        get() = payment.audioGuidance && audioGuidanceTarget != null && (audioGuidanceSimulated || audioGuidanceMinimumSoftware != null)
+
+    /** Whether this shopper's payment is audio-guided: chosen at checkout while [offersAudioGuidance]. */
+    val audioGuidance: Boolean get() = form.audioGuidance && offersAudioGuidance
+
     /** Whether the issuer may approve less: allowed by the settings for an immediate sale without receipt tipping or audio guidance. */
     private val allowPartial: Boolean
-        get() = payment.allowPartialAuthorisation && !preAuthorisation && !tipOnReceipt && !form.audioGuidance
+        get() = payment.allowPartialAuthorisation && !preAuthorisation && !tipOnReceipt && !audioGuidance
 
     /**
      * The card features this checkout's terminal payment carries as chosen now, which [CardFeatures] relates. Requested
@@ -239,7 +249,7 @@ data class Checkout(
                 if (tipOnReceipt) add(CardFeature.TIP_ON_RECEIPT)
                 if (askGratuity) add(CardFeature.TERMINAL_TIP)
                 if (askGiving) add(CardFeature.GIVING)
-                if (form.audioGuidance) add(CardFeature.AUDIO_GUIDANCE)
+                if (audioGuidance) add(CardFeature.AUDIO_GUIDANCE)
                 if (allowPartial) add(CardFeature.PARTIAL_AUTHORISATION)
                 if (tokenize) add(CardFeature.TOKENIZATION)
                 if (requiresSpecialEntryApproval) add(CardFeature.SPECIAL_ENTRY)
@@ -359,13 +369,9 @@ data class Checkout(
         )
     }
 
-    /** Whether this shopper's accessible flow is compatible and its setup was explicitly confirmed for this terminal. */
+    /** Whether this shopper's audio-guided payment, if chosen, conflicts with no other choice. */
     val audioGuidanceReady: Boolean
-        get() =
-            !form.audioGuidance || (
-                (audioGuidanceSimulated || audioGuidanceMinimumSoftware != null) && audioGuidanceTarget != null &&
-                    form.audioGuidanceConfirmedFor == audioGuidanceTarget && CardFeatures.allows(CardFeature.AUDIO_GUIDANCE, chosenFeatures)
-            )
+        get() = !audioGuidance || CardFeatures.allows(CardFeature.AUDIO_GUIDANCE, chosenFeatures)
 
     /** Whether explicit configuration and verified store facts permit asking for Mexican card routing. */
     val offersMexicanRouting: Boolean get() = payment.mexicanInstallments && mexicanRoutingAvailable && currency.code == "MXN"
@@ -431,7 +437,7 @@ data class Checkout(
             shopperReference = shopperReference,
             sessionRevision = sessionRevision,
             terminalTip = terminalTipOptions(),
-            shopperFlow = if (form.audioGuidance) null else shopperSessionFlow(reference),
+            shopperFlow = if (audioGuidance) null else shopperSessionFlow(reference),
             allowPartialAuthorisation = allowPartial,
             askGiving = askGiving,
             cardEntryOverride = effectiveCardEntry,
@@ -441,8 +447,8 @@ data class Checkout(
             cashBackMinor = form.cashBackMinor.takeIf { it > 0 },
             cashbackConfiguration = payment.cashback.takeIf { form.cashBackMinor > 0 },
             requestedAmountMinor = requestedCardMinor,
-            audioGuidance = form.audioGuidance,
-            audioGuidancePoiId = audioGuidanceTarget.takeIf { form.audioGuidance },
+            audioGuidance = audioGuidance,
+            audioGuidancePoiId = audioGuidanceTarget.takeIf { audioGuidance },
         )
     }
 

@@ -47,9 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -98,6 +95,7 @@ import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.MoneyFormatters
+import app.minimpos.app.ui.components.Notice
 import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.ScreenColumn
@@ -106,6 +104,7 @@ import app.minimpos.app.ui.components.SearchMode
 import app.minimpos.app.ui.components.SearchToggle
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.StatusKind
+import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.components.TransactionRow
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.components.currentSetupGate
@@ -347,7 +346,7 @@ private fun DayHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+            Subheading(title)
             DaySummary(day.totals, money)
         }
         if (canPrint) {
@@ -577,7 +576,7 @@ private fun SaleDetailOutcome(
     formatDateTime: (Long) -> String,
 ) {
     val sale = state.record?.sale ?: return
-    if (sale.sample) Text(stringResource(R.string.sample_history_hint), style = MaterialTheme.typography.bodySmall)
+    if (sale.sample) Notice(stringResource(R.string.sample_history_hint))
     OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.amountMinor), titleTag = "detailStatus") {
         OutcomeNote(
             listOfNotNull(
@@ -685,14 +684,7 @@ private fun ColumnScope.SaleDetailActions(
             modifier = Modifier.testTag("showLink"),
         )
     }
-    sale.decline?.advice?.let {
-        Text(
-            adviceText(it),
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
+    sale.decline?.advice?.let { OutcomeNote(adviceText(it)) }
     if (PaymentAction.CHECK_AGAIN in state.actions) StatusCheck(state.transaction, onRecheck, onCheckDismiss)
     if (PaymentAction.REFUND in state.actions) {
         SecondaryButton(
@@ -727,10 +719,7 @@ private fun ColumnScope.SaleRefunds(
     if (refunds.isEmpty()) return
     // Rows like the history list's, inside a card like the payment details.
     Card {
-        Text(
-            stringResource(if (preAuthorisation) R.string.detail_cancellations else R.string.detail_refunds),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        Subheading(stringResource(if (preAuthorisation) R.string.detail_cancellations else R.string.detail_refunds))
         refunds.forEach { refund ->
             TransactionRow(
                 title = refund.merchantReference,

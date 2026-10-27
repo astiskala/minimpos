@@ -100,15 +100,15 @@ class LocalizedUiTest {
     fun `Traditional Chinese Mexican installments fit an AMS1`() = saleFits(mexican = true)
 
     @Test
-    fun `Japanese audio guidance confirmation fits an AMS1`() = saleFits(audioGuidance = true)
+    fun `Japanese audio guidance notice fits an AMS1`() = saleFits(audioGuidance = true)
 
     @Test
     @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
-    fun `Chinese audio guidance confirmation fits an AMS1`() = saleFits(audioGuidance = true)
+    fun `Chinese audio guidance notice fits an AMS1`() = saleFits(audioGuidance = true)
 
     @Test
     @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
-    fun `Traditional Chinese audio guidance confirmation fits an AMS1`() = saleFits(audioGuidance = true)
+    fun `Traditional Chinese audio guidance notice fits an AMS1`() = saleFits(audioGuidance = true)
 
     @Test
     fun `Japanese sale primary actions fit an AMS1`() = saleFits()
@@ -376,6 +376,7 @@ class LocalizedUiTest {
         mexican: Boolean = false,
     ) {
         if (mexican) configureMexicanCheckout()
+        if (audioGuidance) env.updateSettings { it.copy(payment = it.payment.copy(audioGuidance = true)) }
         val context = env.context
         compose.setContent { MiniMposApp(env.container) }
         assertHomeAreas()
@@ -410,12 +411,11 @@ class LocalizedUiTest {
         }
         if (audioGuidance) {
             compose.onNodeWithTag("audioGuidance").performScrollTo().performClick()
-            compose.waitUntilAtLeastOneExists(hasTestTag("audioGuidanceConfirm"), 15_000)
+            compose.waitUntilAtLeastOneExists(hasTestTag("audioGuidanceNotice"), 15_000)
             compose
-                .onNodeWithTag("audioGuidanceConfirm")
+                .onNodeWithTag("audioGuidanceNotice")
                 .performScrollTo()
                 .assertIsDisplayed()
-                .performClick()
         }
         compose.onNodeWithTag("pay").assertIsDisplayed()
         compose.clickWhenEnabled("pay")

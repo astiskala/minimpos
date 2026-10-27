@@ -80,6 +80,7 @@ settings.json: app.minimpos.app.data.settings.AppSettings
       currency?: string
       storeId?: string
       storeCountry?: string
+    audioGuidance: boolean
   receipt: app.minimpos.app.data.settings.ReceiptSettings
     businessName: string
     addressLines: string
@@ -287,6 +288,7 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
         currency?: string
         storeId?: string
         storeCountry?: string
+      audioGuidance: boolean
     receipt: app.minimpos.app.data.settings.ReceiptSettings
       businessName: string
       addressLines: string

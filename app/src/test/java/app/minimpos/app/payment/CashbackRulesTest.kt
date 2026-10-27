@@ -192,7 +192,12 @@ class CashbackRulesTest {
             checkout.copy(form = checkout.form.copy(cashBackMinor = 5001)),
             checkout.copy(form = checkout.form.copy(cashBackMinor = -1)),
             checkout.copy(form = checkout.form.copy(cashbackConfirmation = null)),
-            checkout.copy(form = checkout.form.copy(audioGuidance = true)),
+            checkout.copy(
+                form = checkout.form.copy(audioGuidance = true),
+                payment = checkout.payment.copy(audioGuidance = true),
+                audioGuidanceMinimumSoftware = "1.117",
+                audioGuidanceTarget = "AMS1-123",
+            ),
             checkout.copy(form = checkout.form.copy(mexicanPayment = MexicanPayment.DEBIT)),
             checkout.copy(form = checkout.form.copy(cardEntryOverride = CardEntryOverride.MOTO)),
             checkout.copy(form = checkout.form.copy(askGiving = true)),

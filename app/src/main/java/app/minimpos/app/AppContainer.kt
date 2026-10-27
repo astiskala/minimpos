@@ -1,6 +1,7 @@
 package app.minimpos.app
 
 import android.content.Context
+import android.graphics.ImageDecoder
 import androidx.annotation.StringRes
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
@@ -17,6 +18,7 @@ import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.repo.SampleData
 import app.minimpos.app.data.repo.SampleDataFixture
+import app.minimpos.app.data.repo.SampleLogo
 import app.minimpos.app.data.security.KeystoreSecretCipher
 import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.ManagerPolicy
@@ -36,6 +38,7 @@ import app.minimpos.app.data.settings.ReceiptLogoStore
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.StorageHealth
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.data.settings.decodeLogo
 import app.minimpos.app.data.transfer.SetupTransfer
 import app.minimpos.app.email.EmailTexts
 import app.minimpos.app.email.MailTransport
@@ -715,6 +718,7 @@ class AppContainer(
                 pricingChanges.update { it.copy(receipt = sampleFixture().receipt(it.receipt, replaceReceiptDetails)) }
                 added
             },
+            logo = SampleLogo(receiptLogo, { decodeLogo(ImageDecoder.createSource(context.assets, "sample-logo.png")) }),
         )
 
     private fun sampleFixture(): SampleDataFixture =

@@ -1,4 +1,4 @@
-package app.minimpos.app.feature.settings
+package app.minimpos.app.data.settings
 
 import android.content.ContentResolver
 import android.graphics.ColorSpace
@@ -14,13 +14,10 @@ import java.io.IOException
  * ARGB. Smaller sources decode unpremultiplied to preserve exact channel values. Call on a worker dispatcher.
  * Unreadable or unsupported sources return null; the source is never changed.
  */
-internal fun decodeLogo(
-    resolver: ContentResolver,
-    uri: Uri,
-): ArgbImage? =
+internal fun decodeLogo(source: ImageDecoder.Source): ArgbImage? =
     try {
         val bitmap =
-            ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, uri)) { decoder, info, _ ->
+            ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
                 decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
                 decoder.setTargetColorSpace(ColorSpace.get(Named.SRGB))
                 val longest = maxOf(info.size.width, info.size.height)
@@ -47,5 +44,11 @@ internal fun decodeLogo(
     } catch (_: SecurityException) {
         null
     }
+
+/** Decodes the image a document picker returned at [uri], as [decodeLogo] does any source. */
+internal fun decodeLogo(
+    resolver: ContentResolver,
+    uri: Uri,
+): ArgbImage? = decodeLogo(ImageDecoder.createSource(resolver, uri))
 
 private const val MAX_SOURCE_SIDE = 4096

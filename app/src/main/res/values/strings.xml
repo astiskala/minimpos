@@ -126,12 +126,8 @@
   <string name="checkout_tip_on_receipt_hint">Print tip lines. Enter the tip later to capture.</string>
   <string name="checkout_audio_guidance">Audio guidance</string>
   <string name="checkout_audio_hint">Read payment steps aloud for this shopper.</string>
-  <string name="checkout_audio_confirm">Confirm accessible setup</string>
-  <string name="checkout_audio_requirements">Confirm software %1$s or later and Adyen Support enablement for this terminal. Use a card that needs no signature. Terminal language cannot be Estonian, Latvian, Icelandic or Lithuanian. Skip partial authorizations and shopper-display prompts for this payment.</string>
   <string name="checkout_audio_conflicts">Turn off tipping, Giving and special card entry to continue. Turn off audio guidance to use a link, scanned wallet or token.</string>
-  <string name="checkout_audio_unavailable">Audio guidance needs an enabled, supported Android terminal. It is unavailable for this destination or unknown model.</string>
-  <string name="capability_audio_detail">Confirm model, software, language, Support enablement and a card without signature at checkout. See the Using Mini mPOS guide.</string>
-  <string name="checkout_audio_demo_requirements">Offline demo only. Simulate audio guidance and skip partial authorizations and shopper-display prompts for this payment. No terminal audio or real hardware support is verified.</string>
+  <string name="capability_audio_detail">Turn it on in Settings › Payments after confirming the model, software, language and Support enablement. See the Using Mini mPOS guide.</string>
   <string name="checkout_tip_on_terminal">Tip on the terminal</string>
   <string name="checkout_tip_on_terminal_hint">Ask the shopper for a tip on the terminal screen before charging the card.</string>
   <string name="checkout_ask_giving">Charity donation (Adyen Giving)</string>
@@ -171,8 +167,8 @@
   <string name="token_deleted">Token %1$s for shopper %2$s is no longer available at Adyen.</string>
   <string name="token_delete_failed">Token %1$s for shopper %2$s was not deleted.</string>
   <string name="token_delete_unknown">Deletion of token %1$s for shopper %2$s is unconfirmed. Check again to refresh the Adyen listing. Do not charge or retry deletion yet.</string>
-  <string name="token_deleting">Checking deletion of token %1$s for shopper %2$s…</string>
   <string name="token_delete_recheck">Check deletion</string>
+  <string name="token_deletion_title">Token deletion</string>
   <string name="saved_card_card">Card</string>
   <string name="saved_card_charge">Charge %1$s</string>
   <string name="saved_card_charging">Charging the token…</string>
@@ -505,10 +501,10 @@
   <string name="products_meal_voucher_hint">A meal voucher may pay for this product where the store’s vouchers require eligible products. Price and tax are unchanged.</string>
   <string name="products_kind_meal_voucher">Voucher</string>
   <string name="sample_data">Sample data</string>
-  <string name="sample_data_hint">Add sample products and read-only demo history. Each use replaces receipt business details with fictional company details, even if samples already exist. Receipt layout and delivery settings stay unchanged. Samples count toward demo daily totals and reports.</string>
+  <string name="sample_data_hint">Add sample products, read-only demo history and a demo receipt logo if none is set. Each use replaces receipt business details with fictional company details, even if samples already exist. Receipt layout and delivery settings stay unchanged. Samples count toward demo daily totals and reports.</string>
   <string name="sample_add">Add sample data</string>
   <string name="sample_remove">Remove sample data</string>
-  <string name="sample_remove_message">Remove sample products (including edits) and demo history? Your own products, history, tax rates, and settings stay. Categories used by your products stay too.</string>
+  <string name="sample_remove_message">Remove sample products (including edits), demo history and the unchanged demo logo? Your own products, history, tax rates, logo and settings stay. Categories used by your products stay too.</string>
   <string name="sample_added">Sample data is ready. Existing samples were kept; receipt business details were replaced.</string>
   <string name="sample_removed">Sample data removed.</string>
   <string name="sample_write_failed">Could not save the change. Try again.</string>
@@ -1080,6 +1076,9 @@
   <string name="settings_allow_moto_hint">Staff can key mail and telephone orders on the terminal. Needs Manager approval.</string>
   <string name="settings_allow_mke">Offer manual key entry</string>
   <string name="settings_allow_mke_hint">Staff can key the card on the terminal when the chip can’t be read. Needs Manager approval.</string>
+  <string name="settings_accessibility">Accessibility</string>
+  <string name="settings_audio_guidance">Enable audio guidance</string>
+  <string name="settings_audio_guidance_hint">Staff can turn it on at checkout for each shopper. Needs Adyen Support enablement, supported terminal software and a terminal language other than Estonian, Latvian, Icelandic or Lithuanian.</string>
 
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">Header and footer</string>
@@ -1534,6 +1533,8 @@
   <string name="cashback_card_charge">Card charge</string>
   <string name="cashback_card_confirm">I confirmed the shopper has an eligible %1$s card</string>
   <string name="cashback_unavailable">Unavailable: check enablement, card program, verified store, destination and local limit in Settings.</string>
+  <string name="cashout_manager_note">Cashout and cashback need a Manager PIN. Set one in Settings › Security.</string>
+  <string name="cashout_over_limit">Above your local cash limit.</string>
   <string name="cashback_conflicts">Confirm an eligible card and enter cash within the local limit. Use a whole card sale without splits, partial authorization, tips, Giving, audio guidance, special entry or card saving.</string>
   <string name="cashback_handover">Record cash handed over</string>
   <string name="cashback_handover_amount">Record %1$s handed over</string>

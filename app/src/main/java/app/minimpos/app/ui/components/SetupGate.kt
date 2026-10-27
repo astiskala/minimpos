@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
@@ -116,12 +114,8 @@ fun SetupRequired(modifier: Modifier = Modifier) {
             ).testTag("setupRequired"),
         verticalArrangement = Arrangement.spacedBy(dimens.spacing),
     ) {
-        Text(stringResource(R.string.setup_required_title), style = MaterialTheme.typography.titleSmall)
-        Text(
-            stringResource(R.string.setup_required_message),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Subheading(stringResource(R.string.setup_required_title))
+        Description(stringResource(R.string.setup_required_message))
         SecondaryButton(
             stringResource(R.string.setup_required_action),
             gate::openSetup,

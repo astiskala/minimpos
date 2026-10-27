@@ -43,8 +43,8 @@ import kotlin.uuid.Uuid
  * @property tipOnReceipt "Tip on the receipt": null until the operator touches the switch, as with [tokenize].
  * @property askGratuity "Tip on terminal": null until the operator touches the switch; mutually exclusive with [tipOnReceipt].
  * @property askGiving "Charity donation (Adyen Giving)": null until the operator touches the switch.
- * @property audioGuidance Whether this shopper requests audio instructions on the terminal.
- * @property audioGuidanceConfirmedFor POIID whose software, Support enablement and non-signature card flow the operator confirmed.
+ * @property audioGuidance Whether this shopper requests audio instructions on the terminal; applies only while
+ *   checkout offers it ([Checkout.audioGuidance]).
  * @property cardEntryOverride Selected card entry mode (`NORMAL`, `MOTO` or `MKE`).
  * @property mexicanPayment Shopper-selected Mexican debit/credit routing; null uses ordinary terminal routing.
  * @property cashBackMinor Cash requested beyond merchandise in minor units; zero means none.
@@ -59,7 +59,6 @@ data class CheckoutForm(
     val askGratuity: Boolean? = null,
     val askGiving: Boolean? = null,
     val audioGuidance: Boolean = false,
-    val audioGuidanceConfirmedFor: String? = null,
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
     val mexicanPayment: MexicanPayment? = null,
     val cashBackMinor: Long = 0,
@@ -212,11 +211,11 @@ class SaleSession(
         val current = current(checkout) ?: return null
         if (walletScan == null) {
             val start = current.paymentStart(now, zone) ?: return null
-            if (!current.form.audioGuidance) return start
+            if (!start.audioGuidance) return start
             // Consume this shopper's choice once, even if the attempt is cancelled or its result stays unknown.
             return synchronized(this) {
                 if (current(checkout) == null) return@synchronized null
-                updateForm { it.copy(audioGuidance = false, audioGuidanceConfirmedFor = null) }
+                updateForm { it.copy(audioGuidance = false) }
                 start.copy(sessionRevision = revision)
             }
         }
@@ -347,7 +346,7 @@ fun SaleSession.savedCardStart(
     zone: ZoneId,
     fromCheckout: Boolean = false,
 ): SavedCardStart? {
-    if (checkout.form.audioGuidance) return null
+    if (checkout.audioGuidance) return null
     // The session's payment start is null once an edit made checkout stale; the charge is built from checkout itself.
     paymentStart(checkout, now, zone) ?: return null
     return checkout.savedCardStart(card, now, zone, fromCheckout = fromCheckout)

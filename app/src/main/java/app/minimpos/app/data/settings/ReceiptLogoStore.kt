@@ -81,4 +81,12 @@ class ReceiptLogoStore(
     suspend fun replace(logo: MonoBitmap?) {
         store.update { ReceiptLogoFile(logo) }
     }
+
+    /** Atomically replaces the image with [logo] only while the stored one equals [expected] (null: none saved). */
+    suspend fun replaceIf(
+        expected: MonoBitmap?,
+        logo: MonoBitmap?,
+    ) {
+        store.update { stored -> if (stored.logo == expected) ReceiptLogoFile(logo) else stored }
+    }
 }

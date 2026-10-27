@@ -86,7 +86,12 @@ class DestinationSettingsTest {
         }
         assertThat(env.container.settingsState.value.payment.allowMoto).isTrue()
         assertThat(env.container.settingsState.value.payment.allowMke).isTrue()
-        compose.onAllNodesWithText("Not available with Tap to Pay.").assertCountEquals(2)
+        compose
+            .onNodeWithTag("audioGuidanceSetting")
+            .performScrollTo()
+            .assertIsNotEnabled()
+            .assertIsOff()
+        compose.onAllNodesWithText("Not available with Tap to Pay.").assertCountEquals(3)
         compose.onNodeWithTag("allowPartialAuthorisation").performScrollTo().assertIsEnabled()
         env.useSimulator()
         compose.awaitCondition(

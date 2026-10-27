@@ -17,6 +17,8 @@ import app.minimpos.app.feature.giftcard.entryLabel
 import app.minimpos.app.feature.giftcard.providerName
 import app.minimpos.app.terminal.DestinationCapabilities
 import app.minimpos.app.ui.components.LocalAppContainer
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.core.giftcard.GiftCardEntry
@@ -29,7 +31,10 @@ import app.minimpos.app.data.settings.CashbackSettings as CashbackConfiguration
 internal fun SettingsEvents.onPaymentUpdate(transform: (PaymentSettings) -> PaymentSettings) =
     onUpdate { it.copy(payment = transform(it.payment)) }
 
-/** Currency, payment references, card-entry offers, card saving and link expiry; no connection setup or receipt delivery. */
+/**
+ * Currency, payment references, card-entry offers, card saving, link expiry, gift cards and audio guidance; no
+ * connection setup or receipt delivery.
+ */
 @Composable
 internal fun ColumnScope.PaymentsSection(
     state: SettingsUiState,
@@ -88,6 +93,28 @@ internal fun ColumnScope.PaymentsSection(
     PaymentLinkSettings(payment, update)
     SectionHeader(stringResource(R.string.settings_gift_cards), Modifier.testTag("giftCardsHeader"))
     GiftCardSettings(payment, update)
+    AccessibilitySettings(payment, capabilities, update)
+}
+
+/**
+ * Audio guidance, which checkout offers per shopper once the merchant confirmed Support enablement, software and
+ * terminal language; destinations without terminal features keep the saved choice but cannot change it.
+ */
+@Composable
+private fun ColumnScope.AccessibilitySettings(
+    payment: PaymentSettings,
+    capabilities: DestinationCapabilities,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    SectionHeader(stringResource(R.string.settings_accessibility))
+    SettingSwitch(
+        stringResource(R.string.settings_audio_guidance),
+        payment.audioGuidance,
+        { value -> update { it.copy(audioGuidance = value) } },
+        subtitle = stringResource(R.string.settings_audio_guidance_hint),
+        tag = "audioGuidanceSetting",
+        blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
+    )
 }
 
 /**
@@ -169,7 +196,7 @@ private fun ColumnScope.GiftCardSettings(
                 tag = "giftCard_${provider.name}_${entry.name}",
             )
         }
-        if (!setting.complete) SettingNote(stringResource(R.string.settings_gift_card_incomplete))
+        if (!setting.complete) Notice(stringResource(R.string.settings_gift_card_incomplete), kind = NoticeKind.WARNING, inset = true)
     }
 }
 

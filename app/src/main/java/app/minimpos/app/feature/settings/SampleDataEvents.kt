@@ -2,8 +2,6 @@ package app.minimpos.app.feature.settings
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Science
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -11,6 +9,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
 import app.minimpos.app.feature.SampleDataState
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.SecondaryButton
@@ -43,7 +42,7 @@ internal fun SampleDataSection(
 ) {
     SectionHeader(stringResource(R.string.sample_data))
     SettingActions {
-        Text(stringResource(R.string.sample_data_hint), style = MaterialTheme.typography.bodySmall)
+        Description(stringResource(R.string.sample_data_hint))
         SecondaryButton(
             stringResource(R.string.sample_add),
             events::onAdd,

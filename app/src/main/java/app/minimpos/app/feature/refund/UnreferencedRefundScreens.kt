@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -28,6 +27,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,13 +46,16 @@ import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.NumericKeypad
-import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
@@ -106,7 +109,7 @@ private fun RefundWay(
     onClick: () -> Unit,
 ) {
     Card {
-        Text(stringResource(hint), style = MaterialTheme.typography.bodyMedium)
+        Description(stringResource(hint))
         Spacer(Modifier.height(LocalDimens.current.spacing))
         SecondaryButton(stringResource(label), onClick, Modifier.testTag(tag), icon = icon)
     }
@@ -225,14 +228,17 @@ internal fun UnreferencedRefundScreen(
         }
     }) { padding ->
         ScreenColumn(padding) {
-            OutcomeNote(stringResource(R.string.unreferenced_warning))
+            Notice(stringResource(R.string.unreferenced_warning), kind = NoticeKind.WARNING)
             Text(
                 money.format(state.amount.minor),
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.testTag("unreferencedAmount"),
+                style = LocalDimens.current.amountStyle,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().testTag("unreferencedAmount"),
             )
-            if (state.limitMinor > 0) Text(stringResource(R.string.unreferenced_limit, money.format(state.limitMinor)))
-            Text(stringResource(R.string.unreferenced_reason), style = MaterialTheme.typography.titleSmall)
+            if (state.limitMinor > 0) {
+                Description(stringResource(R.string.unreferenced_limit, money.format(state.limitMinor)), centered = true)
+            }
+            Subheading(stringResource(R.string.unreferenced_reason))
             ReasonChoice(state.reason, vm::choose)
             NumericKeypad(
                 { digit -> vm.updateAmount { it.append(digit) } },

@@ -37,6 +37,8 @@ import app.minimpos.app.terminal.AdyenCapabilitiesState
 import app.minimpos.app.terminal.CapabilityStanding
 import app.minimpos.app.terminal.GratuityCapability
 import app.minimpos.app.terminal.MotoCapability
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
@@ -63,7 +65,7 @@ internal fun ColumnScope.CapabilitiesSection(
         SetupRequired()
         return
     }
-    capabilities.failure?.let { SettingNote(it.text()) }
+    capabilities.failure?.let { Notice(it.text(), kind = NoticeKind.WARNING, inset = true) }
     if (capabilities.capabilities.discoversTerminals || capabilities.simulated) {
         SettingActions {
             GatedButton(
@@ -76,7 +78,7 @@ internal fun ColumnScope.CapabilitiesSection(
             )
         }
     } else {
-        capabilities.problem?.let { SettingNote(it.text()) }
+        capabilities.problem?.let { Notice(it.text(), kind = NoticeKind.WARNING, inset = true) }
     }
 
     SectionHeader(stringResource(R.string.capabilities_matrix_header))

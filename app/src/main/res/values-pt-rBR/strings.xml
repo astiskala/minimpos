@@ -127,12 +127,8 @@
   <string name="checkout_tip_on_receipt_hint">Digite a gorjeta do recibo para capturar.</string>
   <string name="checkout_audio_guidance">Orientação por áudio</string>
   <string name="checkout_audio_hint">Lê as etapas do pagamento em voz alta.</string>
-  <string name="checkout_audio_confirm">Confirmar configuração acessível</string>
-  <string name="checkout_audio_requirements">Confirme o software %1$s ou posterior e a ativação pelo Suporte da Adyen para este terminal. Use um cartão que não exija assinatura. O idioma do terminal não pode ser estoniano, letão, islandês ou lituano. Pule as autorizações parciais e as solicitações da tela do comprador neste pagamento.</string>
   <string name="checkout_audio_conflicts">Desative gorjetas, Giving e a entrada especial de cartão para continuar. Desative a orientação por áudio para usar um link, uma carteira escaneada ou um token.</string>
-  <string name="checkout_audio_unavailable">A orientação por áudio exige um terminal Android compatível e ativado. Ela não está disponível para este destino ou modelo desconhecido.</string>
-  <string name="capability_audio_detail">Confirme modelo, software, idioma, ativação pelo Suporte e um cartão sem assinatura no pagamento. Consulte o guia Usar o Mini mPOS.</string>
-  <string name="checkout_audio_demo_requirements">Somente demonstração offline. Simule a orientação por áudio e pule as autorizações parciais e as solicitações da tela do comprador neste pagamento. O áudio do terminal e a compatibilidade do equipamento real não são verificados.</string>
+  <string name="capability_audio_detail">Ative em Configurações › Pagamentos depois de confirmar modelo, software, idioma e ativação pelo Suporte. Consulte o guia Usar o Mini mPOS.</string>
   <string name="checkout_tip_on_terminal">Gorjeta no terminal</string>
   <string name="checkout_tip_on_terminal_hint">Peça uma gorjeta ao comprador na tela do terminal antes de cobrar o cartão.</string>
   <string name="checkout_ask_giving">Doação de caridade (Adyen Giving)</string>
@@ -172,8 +168,8 @@
   <string name="token_deleted">O token %1$s do comprador %2$s não está mais disponível na Adyen.</string>
   <string name="token_delete_failed">O token %1$s do comprador %2$s não foi excluído.</string>
   <string name="token_delete_unknown">A exclusão do token %1$s do comprador %2$s não foi confirmada. Consulte novamente a lista da Adyen. Não cobre nem repita a exclusão ainda.</string>
-  <string name="token_deleting">Verificando a exclusão do token %1$s do comprador %2$s…</string>
   <string name="token_delete_recheck">Verificar exclusão</string>
+  <string name="token_deletion_title">Exclusão do token</string>
   <string name="saved_card_card">Cartão</string>
   <string name="saved_card_charge">Cobrar %1$s</string>
   <string name="saved_card_charging">Cobrando o token…</string>
@@ -506,10 +502,10 @@
   <string name="products_meal_voucher_hint">Um vale-refeição pode pagar este produto quando os vales da loja exigem produtos elegíveis. Preço e imposto não mudam.</string>
   <string name="products_kind_meal_voucher">Vale</string>
   <string name="sample_data">Dados de amostra</string>
-  <string name="sample_data_hint">Adicionar produtos de amostra e histórico de demonstração somente leitura. Cada uso substitui detalhes comerciais de recibo por detalhes fictícios da empresa, mesmo que já existam amostras. O layout de recibo e as configurações de entrega permanecem inalterados. As amostras contam para totais e relatórios diários de demonstração.</string>
+  <string name="sample_data_hint">Adicionar produtos de amostra, histórico de demonstração somente leitura e um logotipo de recibo de demonstração, se não houver um. Cada uso substitui detalhes comerciais de recibo por detalhes fictícios da empresa, mesmo que já existam amostras. O layout de recibo e as configurações de entrega permanecem inalterados. As amostras contam para totais e relatórios diários de demonstração.</string>
   <string name="sample_add">Adicionar dados de amostra</string>
   <string name="sample_remove">Remover dados de amostra</string>
-  <string name="sample_remove_message">Remover produtos de amostra (incluindo edições) e histórico de demonstração? Seus próprios produtos, histórico, taxas de impostos e configurações permanecem. As categorias utilizadas pelos seus produtos também permanecem.</string>
+  <string name="sample_remove_message">Remover produtos de amostra (incluindo edições), histórico de demonstração e o logotipo de demonstração inalterado? Seus próprios produtos, histórico, taxas de impostos, logotipo e configurações permanecem. As categorias utilizadas pelos seus produtos também permanecem.</string>
   <string name="sample_added">Os dados de amostra estão prontos. As amostras existentes foram mantidas; os detalhes comerciais do recibo foram substituídos.</string>
   <string name="sample_removed">Dados de amostra removidos.</string>
   <string name="sample_write_failed">Não foi possível salvar a alteração. Tente novamente.</string>
@@ -1084,6 +1080,9 @@
   <string name="settings_allow_moto_hint">A equipe pode digitar pedidos por correio e por telefone no terminal. Precisa de aprovação do gerente.</string>
   <string name="settings_allow_mke">Oferecer digitação manual do cartão</string>
   <string name="settings_allow_mke_hint">A equipe pode digitar o cartão no terminal quando o chip não puder ser lido. Precisa de aprovação do gerente.</string>
+  <string name="settings_accessibility">Acessibilidade</string>
+  <string name="settings_audio_guidance">Ativar orientação por áudio</string>
+  <string name="settings_audio_guidance_hint">A equipe pode ativá-la no pagamento para cada comprador. Exige ativação pelo Suporte da Adyen, software de terminal compatível e um idioma do terminal diferente de estoniano, letão, islandês ou lituano.</string>
 
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">Cabeçalho e rodapé</string>
@@ -1540,6 +1539,8 @@
   <string name="cashback_card_charge">Cobrança no cartão</string>
   <string name="cashback_card_confirm">Confirmei que o cliente tem um cartão %1$s elegível</string>
   <string name="cashback_unavailable">Indisponível: confira ativação, cartão, loja verificada, destino e limite em Configurações.</string>
+  <string name="cashout_manager_note">Saque e entrega de dinheiro exigem um PIN de gerente. Configure em Configurações › Segurança.</string>
+  <string name="cashout_over_limit">Acima do seu limite local de saque.</string>
   <string name="cashback_conflicts">Confirme o cartão e o valor dentro do limite. Use uma venda inteira sem divisão, autorização parcial, gorjeta, Giving, áudio, entrada especial ou salvamento de cartão.</string>
   <string name="cashback_handover">Registrar dinheiro entregue</string>
   <string name="cashback_handover_amount">Registrar entrega de %1$s</string>

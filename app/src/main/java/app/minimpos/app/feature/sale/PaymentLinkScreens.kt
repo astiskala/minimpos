@@ -51,6 +51,7 @@ import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.ConfirmDialog
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.EmailReceiptDialog
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
@@ -225,12 +226,7 @@ private fun ColumnScope.OpenLink(
     link: String,
     simulated: Boolean,
 ) {
-    Text(
-        stringResource(if (simulated) R.string.link_demo_hint else R.string.link_scan_hint),
-        style = MaterialTheme.typography.bodyMedium,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth(),
-    )
+    Description(stringResource(if (simulated) R.string.link_demo_hint else R.string.link_scan_hint), centered = true)
     QrImage(link, Modifier.fillMaxWidth(QR_WIDTH).widthIn(max = 320.dp).testTag("linkQr"))
     SelectionContainer {
         Text(

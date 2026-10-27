@@ -368,9 +368,7 @@ class CheckoutViewModel(
     fun pay(): Boolean {
         val start = session.paymentStart(state.value, clock.instant(), zone()) ?: return false
         if (payments.start(start) != null) return true
-        if (start.audioGuidance) {
-            session.updateForm(start) { it.copy(audioGuidance = true, audioGuidanceConfirmedFor = start.audioGuidancePoiId) }
-        }
+        if (start.audioGuidance) session.updateForm(start) { it.copy(audioGuidance = true) }
         return false
     }
 

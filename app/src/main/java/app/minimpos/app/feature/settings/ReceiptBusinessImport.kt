@@ -33,6 +33,8 @@ import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.ScreenColumn
@@ -146,7 +148,7 @@ private fun ColumnScope.BusinessReview(business: ReceiptBusiness) {
     BusinessField(stringResource(R.string.settings_address), business.address)
     BusinessField(stringResource(R.string.settings_phone), business.phone)
     SettingNote(stringResource(R.string.settings_business_review_hint))
-    if (!business.available) Text(stringResource(R.string.settings_business_unavailable))
+    if (!business.available) Notice(stringResource(R.string.settings_business_unavailable), kind = NoticeKind.WARNING, inset = true)
 }
 
 @Composable

@@ -125,12 +125,8 @@
   <string name="checkout_tip_on_receipt_hint">輸入收據上的小費後扣款。</string>
   <string name="checkout_audio_guidance">語音引導</string>
   <string name="checkout_audio_hint">為今次顧客讀出付款指引。</string>
-  <string name="checkout_audio_confirm">確認無障礙設定</string>
-  <string name="checkout_audio_requirements">請確認此終端的軟件為%1$s或更新版本，且已由Adyen支援團隊啟用。請使用毋須簽名的卡。終端語言不能為愛沙尼亞語、拉脫維亞語、冰島語或立陶宛語。此次付款將略過部分授權及顧客螢幕提示。</string>
   <string name="checkout_audio_conflicts">請關閉小費、Giving及特殊卡輸入方式後繼續。如需使用付款連結、掃碼錢包或代碼，請關閉語音引導。</string>
-  <string name="checkout_audio_unavailable">語音引導需要已啟用且受支援的Android終端。目前付款目標或未知型號不支援此功能。</string>
-  <string name="capability_audio_detail">請於付款時確認型號、軟件、語言、支援團隊啟用狀態及毋須簽名的卡。請參閱「使用Mini mPOS」指南。</string>
-  <string name="checkout_audio_demo_requirements">僅供離線示範。此次付款將模擬語音引導並略過部分授權及顧客螢幕提示。不會驗證終端音訊或真實硬件支援。</string>
+  <string name="capability_audio_detail">確認型號、軟件、語言及支援團隊啟用狀態後，於設定 › 支付中開啟。請參閱「使用Mini mPOS」指南。</string>
   <string name="checkout_tip_on_terminal">在終端上輸入小費</string>
   <string name="checkout_tip_on_terminal_hint">刷卡扣款前在終端螢幕上請顧客選擇或輸入小費。</string>
   <string name="checkout_ask_giving">慈善捐款（Adyen Giving）</string>
@@ -170,8 +166,8 @@
   <string name="token_deleted">顧客 %2$s 的代碼 %1$s 已無法在Adyen使用。</string>
   <string name="token_delete_failed">顧客 %2$s 的代碼 %1$s 未被刪除。</string>
   <string name="token_delete_unknown">顧客 %2$s 的代碼 %1$s 刪除結果未確認。請重新取得Adyen清單。暫時不要扣款或再次刪除。</string>
-  <string name="token_deleting">正在檢查顧客 %2$s 的代碼 %1$s 的刪除結果…</string>
   <string name="token_delete_recheck">檢查刪除結果</string>
+  <string name="token_deletion_title">刪除代碼</string>
   <string name="saved_card_card">卡</string>
   <string name="saved_card_charge">扣款 %1$s</string>
   <string name="saved_card_charging">正在使用代碼扣款…</string>
@@ -504,10 +500,10 @@
   <string name="products_meal_voucher_hint">當店舖的餐券要求合資格商品時，可用餐券支付此商品。價格和稅項不變。</string>
   <string name="products_kind_meal_voucher">餐券</string>
   <string name="sample_data">示例資料</string>
-  <string name="sample_data_hint">新增示例商品和只讀演示紀錄。每次使用都會以虛構公司資料取代收據商戶資料，即使示例已存在。收據版面和傳送設定保持不變。示例計入演示每日總額和報告。</string>
+  <string name="sample_data_hint">新增示例商品和只讀演示紀錄；未設定標誌時，亦會新增示範收據標誌。每次使用都會以虛構公司資料取代收據商戶資料，即使示例已存在。收據版面和傳送設定保持不變。示例計入演示每日總額和報告。</string>
   <string name="sample_add">新增示例資料</string>
   <string name="sample_remove">刪除示例資料</string>
-  <string name="sample_remove_message">刪除示例商品（包括已編輯的商品）和演示紀錄？您自己的商品、紀錄、稅率和設定將保留。您的商品使用的分類也將保留。</string>
+  <string name="sample_remove_message">刪除示例商品（包括已編輯的商品）、演示紀錄和未更改的示範標誌？您自己的商品、紀錄、稅率、標誌和設定將保留。您的商品使用的分類也將保留。</string>
   <string name="sample_added">示例資料已就緒。現有示例已保留；收據商戶資料已取代。</string>
   <string name="sample_removed">示例資料已刪除。</string>
   <string name="sample_write_failed">無法儲存更改。請重試。</string>
@@ -1076,6 +1072,9 @@
   <string name="settings_allow_moto_hint">店員可在終端上手動輸入郵購和電話訂購的卡號。需要經理批准。</string>
   <string name="settings_allow_mke">提供手動鍵入卡號</string>
   <string name="settings_allow_mke_hint">晶片無法讀取時，店員可在終端上手動鍵入卡號。需要經理批准。</string>
+  <string name="settings_accessibility">無障礙</string>
+  <string name="settings_audio_guidance">啟用語音引導</string>
+  <string name="settings_audio_guidance_hint">店員可於結帳時為每位顧客開啟。需要Adyen支援團隊啟用、受支援的終端軟件，且終端語言不能為愛沙尼亞語、拉脫維亞語、冰島語或立陶宛語。</string>
 
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">頁首和頁尾</string>
@@ -1528,6 +1527,8 @@
   <string name="cashback_card_charge">卡扣款金額</string>
   <string name="cashback_card_confirm">我已確認顧客持有合資格的 %1$s 卡</string>
   <string name="cashback_unavailable">未能使用：請在設定中檢查啟用狀態、卡計劃、已驗證門店、收款終端及限額。</string>
+  <string name="cashout_manager_note">提款及現金回贈需要經理PIN。請在設定 › 安全中設定。</string>
+  <string name="cashout_over_limit">超過本地提款限額。</string>
   <string name="cashback_conflicts">請確認合資格的卡，並輸入限額內金額。須整筆刷卡，不可與分單、部分授權、小費、Giving、語音指引、特殊輸入或儲存卡同時使用。</string>
   <string name="cashback_handover">記錄現金已交付</string>
   <string name="cashback_handover_amount">記錄已交付%1$s</string>

@@ -68,7 +68,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -101,6 +100,7 @@ import app.minimpos.app.ui.components.SearchField
 import app.minimpos.app.ui.components.SearchMode
 import app.minimpos.app.ui.components.SearchToggle
 import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.SheetTitle
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.components.rememberSearchControl
@@ -398,11 +398,7 @@ private fun CartSheet(
     val dimens = LocalDimens.current
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.padding(bottom = dimens.screenPadding)) {
-            Text(
-                stringResource(R.string.sale_cart),
-                style = dimens.titleStyle,
-                modifier = Modifier.padding(horizontal = dimens.rowHorizontalPadding).semantics { heading() },
-            )
+            SheetTitle(stringResource(R.string.sale_cart))
             CartList(state.cart.lines, money, onQuantity, onRemove, Modifier.heightIn(max = 420.dp))
             Box(Modifier.padding(horizontal = dimens.screenPadding)) {
                 PrimaryButton(

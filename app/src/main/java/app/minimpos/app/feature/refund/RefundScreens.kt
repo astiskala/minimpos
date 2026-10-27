@@ -82,10 +82,13 @@ import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.EmptyState
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.NumericKeypad
 import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.OutcomeNote
@@ -95,6 +98,7 @@ import app.minimpos.app.ui.components.QuantityStepper
 import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.StatusKind
+import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
@@ -316,11 +320,7 @@ private fun VoucherKept(
             ?.filter(RefundablePayment.Companion::keepsVoucherValue)
             ?.sumOf { it.authorisedMinor ?: it.requestedMinor } ?: 0
     if (kept > 0) {
-        Text(
-            stringResource(R.string.refund_voucher_kept, money.format(kept)),
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.testTag("refundVoucherKept"),
-        )
+        Notice(stringResource(R.string.refund_voucher_kept, money.format(kept)), Modifier.testTag("refundVoucherKept"))
     }
 }
 
@@ -424,7 +424,7 @@ private fun ReturnComponents(
             .orEmpty()
             .any { it.approved && it.giftCard == GiftCardProvider.LOCAL.name }
     ) {
-        OutcomeNote(stringResource(R.string.refund_gift_card_local))
+        Notice(stringResource(R.string.refund_gift_card_local))
     }
     val surcharge = if (split) original.surchargeFor(state.allocation) else original.surchargeFor(state.choice)
     val tip = if (split) original.tipFor(state.allocation) else original.tipFor(state.choice)
@@ -462,7 +462,7 @@ private fun ColumnScope.AllocationLegs(
     onEditLeg: (String?) -> Unit,
     onReset: () -> Unit,
 ) {
-    Text(stringResource(R.string.split_refund_tenders), style = MaterialTheme.typography.titleSmall)
+    Subheading(stringResource(R.string.split_refund_tenders))
     original.legs.forEach { leg ->
         val tender = leg.tender ?: return@forEach
         FilterChip(
@@ -483,9 +483,9 @@ private fun ColumnScope.AllocationLegs(
     }
     val allocated = state.allocation.values.sum()
     if (allocated != state.refundMinor) {
-        Text(
+        Notice(
             stringResource(R.string.split_refund_unallocated, money.format(allocated), money.format(state.refundMinor)),
-            color = MaterialTheme.colorScheme.error,
+            kind = NoticeKind.WARNING,
         )
     }
     if (state.adjusted != null) SecondaryButton(stringResource(R.string.split_refund_reset), onReset, Modifier.testTag("resetAllocation"))
@@ -494,11 +494,7 @@ private fun ColumnScope.AllocationLegs(
 @Composable
 private fun RefundOriginNote(itemsKnown: Boolean) {
     if (!itemsKnown) {
-        Text(
-            stringResource(R.string.refund_not_local),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Notice(stringResource(R.string.refund_not_local))
     }
 }
 
@@ -523,7 +519,7 @@ private fun OriginalPaymentCard(
             LabeledValue(stringResource(R.string.surcharge_reserved), money.format(original.reservedMinor))
         }
         if ((original.surchargeMinor ?: 0) > 0 || (original.tipMinor ?: 0) > 0) {
-            Text(stringResource(R.string.surcharge_refund_order), Modifier.padding(LocalDimens.current.spacing))
+            Description(stringResource(R.string.surcharge_refund_order), Modifier.padding(vertical = LocalDimens.current.spacing))
         }
         if (original.refundedMinor > 0) {
             LabeledValue(stringResource(R.string.refund_already_refunded), money.format(original.refundedMinor))
@@ -585,12 +581,7 @@ private fun ColumnScope.RefundAmount(
         modifier = Modifier.fillMaxWidth().testTag("refundAmount"),
     )
     if (tooMuch) {
-        Text(
-            stringResource(R.string.refund_too_much, money.format(remainingMinor)),
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Notice(stringResource(R.string.refund_too_much, money.format(remainingMinor)), kind = NoticeKind.WARNING)
     }
 }
 
@@ -730,9 +721,17 @@ private fun RefundLegRow(
             emphasize = true,
         )
         LabeledValue(stringResource(R.string.split_leg_status), status)
-        if (leg.cash && leg.status == RefundStatus.REQUESTED) OutcomeNote(stringResource(R.string.split_cash_hand_back))
-        if (leg.skipped == RefundLegSkip.MANAGER_APPROVAL) OutcomeNote(stringResource(R.string.split_cash_refund_manager))
-        if (leg.skipped == RefundLegSkip.BALANCE_CHANGED) OutcomeNote(stringResource(R.string.split_balance_changed))
+        if (leg.cash &&
+            leg.status == RefundStatus.REQUESTED
+        ) {
+            Notice(stringResource(R.string.split_cash_hand_back), kind = NoticeKind.WARNING)
+        }
+        if (leg.skipped ==
+            RefundLegSkip.MANAGER_APPROVAL
+        ) {
+            Notice(stringResource(R.string.split_cash_refund_manager), kind = NoticeKind.WARNING)
+        }
+        if (leg.skipped == RefundLegSkip.BALANCE_CHANGED) Notice(stringResource(R.string.split_balance_changed), kind = NoticeKind.WARNING)
         leg.refundId?.let { id -> SecondaryButton(stringResource(R.string.split_refund_open), { onOpen(id) }) }
     }
 }

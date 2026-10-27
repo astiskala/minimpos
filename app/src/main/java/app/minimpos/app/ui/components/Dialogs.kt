@@ -127,6 +127,27 @@ fun ResultDialog(
     )
 }
 
+/**
+ * Reports a neutral answer, such as nothing found, without a success or error badge: [title], [message] (tagged [tag],
+ * scrolling on small screens) and OK (tagged `[tag]Ok`); both OK and dismissing call [onDismiss].
+ */
+@Composable
+fun InfoDialog(
+    title: String,
+    message: String,
+    tag: String,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message, Modifier.verticalScroll(rememberScrollState()).testTag(tag)) },
+        confirmButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("${tag}Ok")) { Text(stringResource(R.string.action_ok)) }
+        },
+    )
+}
+
 /** Confirms [offer]'s exact terminal and environment without exposing secrets; body scrolls on small screens. */
 @Composable
 fun SharedKeyDialog(

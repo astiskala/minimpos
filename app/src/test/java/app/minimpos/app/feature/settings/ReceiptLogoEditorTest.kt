@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.closeViewModels
+import app.minimpos.app.data.settings.decodeLogo
 import app.minimpos.core.logo.ArgbImage
 import app.minimpos.core.logo.LogoMode
 import app.minimpos.core.logo.LogoOptions
@@ -61,18 +62,32 @@ class ReceiptLogoEditorTest {
         val cpu = StandardTestDispatcher(main.scheduler)
         val editor = editor(cpu = cpu)
         assertThat(editor.state.value.result).isNull()
+        assertThat(editor.state.value.pending).isTrue()
         main.scheduler.runCurrent()
         assertThat(editor.state.value.canSave).isTrue()
     }
 
     @Test
-    fun `changing threshold clears preview until debounce finishes`() {
+    fun `changing threshold keeps the previous preview until debounce finishes`() {
         val editor = editor()
+        val previous = editor.state.value.result
         editor.update(LogoOptions(mode = LogoMode.MARK, threshold = 42, invert = false))
+        assertThat(editor.state.value.pending).isTrue()
+        assertThat(editor.state.value.result).isEqualTo(previous)
+        assertThat(editor.state.value.options.threshold).isEqualTo(42)
         assertThat(editor.state.value.canSave).isFalse()
         main.scheduler.advanceTimeBy(150)
         main.scheduler.runCurrent()
+        assertThat(editor.state.value.pending).isFalse()
         assertThat((requireNotNull(editor.state.value.result) as LogoResult.Converted).threshold).isEqualTo(42)
+    }
+
+    @Test
+    fun `save ignores the previous preview while a change is pending`() {
+        val editor = editor()
+        editor.update(LogoOptions(mode = LogoMode.MARK, threshold = 42, invert = true))
+        await { editor.save() }
+        assertThat(await { env.container.receiptLogo.current() }).isNull()
     }
 
     @Test

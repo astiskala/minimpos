@@ -149,9 +149,14 @@ class TokenManagementUiTest {
             "deleted at simulator",
         ) { env.container.savedCardCharges.deletion.value.status == TokenDeletionStatus.DELETED }
         waitForTag("tokenDeletionOutcome")
+        compose.onNodeWithTag("tokenDeletionOutcomeOk").performClick()
+        compose.onNodeWithTag("tokenDeletionOutcome").assertDoesNotExist()
         compose.onNodeWithTag("findCards").performScrollTo()
         compose.clickWhenEnabled("findCards")
+        // Nothing found is reported in a neutral popup rather than under the button.
         waitForTag("noSavedCards")
+        compose.onNodeWithTag("noSavedCardsOk").performClick()
+        compose.onNodeWithTag("noSavedCards").assertDoesNotExist()
         assertThat(await { env.container.sales.get("saved") }?.sale?.storedPaymentMethodId).isEqualTo("TOKEN1")
         assertThat(env.container.sessionLock.unlocked.value).isFalse()
     }

@@ -341,13 +341,14 @@
             请先查看<a href="#capabilities">Adyen 功能</a>并用实际配置测试。大多数选项不能在同一笔付款中同时使用；
             出现冲突时，结账页面会说明并要求您关闭其中一项。</p>
           <h3 id="audio-guidance">使用语音引导付款</h3>
-          <p>结账时为该购物者开启<strong>语音引导</strong>。AMS1、S1F2、S1F2L、S1E2L 和 S1U2 需要软件 1.117 或更高版本，
-            M450、P630 和 SFO1 需要 1.124 或更高版本。Adyen 支持团队必须为该终端启用此功能。请参阅
+          <p>请先确认 Adyen 支持团队已为您的终端启用此功能、终端运行受支持的软件，且终端语言不是爱沙尼亚语、拉脱维亚语、
+            冰岛语或立陶宛语，然后在<strong>设置 › 支付 › 无障碍</strong>中开启<strong>启用语音引导</strong>。AMS1、S1F2、
+            S1F2L、S1E2L 和 S1U2 需要软件 1.117 或更高版本，M450、P630 和 SFO1 需要 1.124 或更高版本。请参阅
             <a
             href="https://docs.adyen.com/point-of-sale/android-terminals/accessibility-mode/accessibility-from-pos">Adyen
             无障碍付款要求</a>。</p>
-          <p>关闭小费、Giving 和手动输入，确认软件和启用状态后选择<strong>确认无障碍设置</strong>。请使用无需签名的卡，终端
-            语言不能为爱沙尼亚语、拉脱维亚语、冰岛语或立陶宛语。此次付款将请求全额，并跳过购物者屏幕提示。</p>
+          <p>结账时为需要的购物者开启<strong>语音引导</strong>，并关闭小费、Giving 和手动输入。请使用无需签名的卡。此次付款
+            将请求全额，并跳过购物者屏幕提示。</p>
           <p>终端会朗读付款说明，请给购物者留足时间。Mini mPOS 最多等待十分钟获取结果。如果未收到响应，请在再次付款前
             <a href="troubleshooting#unknown">查询结果不明的交易</a>。每次尝试后此选项都会重置。</p>
           <h3 id="surcharges">附加费</h3>

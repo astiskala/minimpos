@@ -19,6 +19,10 @@ import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.terminalOperation
 import app.minimpos.app.sales
+import app.minimpos.core.logo.ArgbImage
+import app.minimpos.core.logo.LogoConverter
+import app.minimpos.core.logo.LogoResult
+import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.tax.TaxMode
@@ -224,6 +228,38 @@ class SampleDataTest {
             ).isTrue()
             assertThat(container.sampleData.populate(container.settings.current())).isTrue()
             Unit
+        }
+
+    @Test
+    fun `samples add the small demo logo only when none is saved and purge removes only the unchanged mark`() =
+        await {
+            val logos = container.receiptLogo
+            container.sampleData.populate()
+            val mark = checkNotNull(logos.current())
+            // The demo cup prints about half the Large height bound, as in the guides' screenshots.
+            assertThat(mark.height).isAtLeast(MonoBitmap.MAX_HEIGHT / 2 - 8)
+            assertThat(mark.height).isAtMost(MonoBitmap.MAX_HEIGHT / 2 + 8)
+            container.sampleData.purge()
+            assertThat(logos.current()).isNull()
+
+            val merchant =
+                (
+                    LogoConverter.convert(
+                        ArgbImage(2, 2, intArrayOf(-1, -16_777_216, -16_777_216, -1)),
+                    ) as LogoResult.Converted
+                ).bitmap
+            logos.replace(merchant)
+            container.sampleData.populate()
+            assertThat(logos.current()).isEqualTo(merchant)
+            container.sampleData.purge()
+            assertThat(logos.current()).isEqualTo(merchant)
+
+            logos.replace(null)
+            container.sampleData.populate()
+            assertThat(logos.current()).isEqualTo(mark)
+            logos.replace(merchant)
+            container.sampleData.purge()
+            assertThat(logos.current()).isEqualTo(merchant)
         }
 
     @Test

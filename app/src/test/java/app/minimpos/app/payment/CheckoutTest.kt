@@ -44,6 +44,7 @@ class CheckoutTest {
         Cart()
             .addProduct(CartProduct(1, "Latte", null, 450, AppliedTax("GST", 10_000))) { "a" }
             .totals(TaxMode.INCLUSIVE)
+    private val audioSettings = AppSettings(payment = PaymentSettings(audioGuidance = true))
 
     private fun checkout(
         form: CheckoutForm = CheckoutForm(),
@@ -83,7 +84,12 @@ class CheckoutTest {
             ready.copy(payment = ready.payment.copy(mexicanInstallments = false)),
             ready.copy(payment = ready.payment.copy(allowPartialAuthorisation = true)),
             ready.copy(kind = SaleKind.PRE_AUTHORISATION),
-            ready.copy(form = ready.form.copy(audioGuidance = true)),
+            ready.copy(
+                form = ready.form.copy(audioGuidance = true),
+                payment = ready.payment.copy(audioGuidance = true),
+                audioGuidanceMinimumSoftware = "1.117",
+                audioGuidanceTarget = "AMS1-123",
+            ),
             ready.copy(form = ready.form.copy(tipOnReceipt = true)),
             ready.copy(form = ready.form.copy(askGratuity = true)),
             ready.copy(form = ready.form.copy(askGiving = true)),
@@ -98,28 +104,32 @@ class CheckoutTest {
         runBlocking {
             val session = SaleSession()
             session.addCustom("Item", 1200, TaxRateEntity(1, "Zero", 0))
-            session.updateForm { it.copy(audioGuidance = true, audioGuidanceConfirmedFor = "AMS1-123") }
+            session.updateForm { it.copy(audioGuidance = true) }
             val terminal = flowOf(TerminalState(poiId = "AMS1-123"))
-            val checkout = session.checkout(flowOf(AppSettings()), terminal = terminal, currency = { aud }).first()
+            val checkout = session.checkout(flowOf(audioSettings), terminal = terminal, currency = { aud }).first()
             val start = checkNotNull(session.paymentStart(checkout, now, ZoneOffset.UTC))
-            session.updateForm(start) { it.copy(audioGuidance = true, audioGuidanceConfirmedFor = start.audioGuidancePoiId) }
+            session.updateForm(start) { it.copy(audioGuidance = true) }
             assertThat(session.form.value.audioGuidance).isTrue()
-            assertThat(session.form.value.audioGuidanceConfirmedFor).isEqualTo("AMS1-123")
             assertThat(session.paymentStart(checkout, now, ZoneOffset.UTC)).isNull()
             session.complete(start)
             assertThat(session.cart.value.lines).hasSize(1)
-            session.updateForm { it.copy(audioGuidance = false, audioGuidanceConfirmedFor = null) }
-            session.updateForm(start) { it.copy(audioGuidance = true, audioGuidanceConfirmedFor = start.audioGuidancePoiId) }
+            session.updateForm { it.copy(audioGuidance = false) }
+            session.updateForm(start) { it.copy(audioGuidance = true) }
             assertThat(session.form.value.audioGuidance).isFalse()
         }
 
     @Test
-    fun `audio guidance needs terminal confirmation and explicit conflict resolution`() {
-        val audio =
+    fun `audio guidance is offered only once enabled for a supported terminal and needs no confirmation`() {
+        val chosen =
             checkout(form = CheckoutForm(audioGuidance = true))
                 .copy(audioGuidanceMinimumSoftware = "1.117", audioGuidanceTarget = "AMS1-123")
-        assertThat(audio.canPay).isFalse()
-        val ready = audio.copy(form = audio.form.copy(audioGuidanceConfirmedFor = "AMS1-123"))
+        assertThat(chosen.offersAudioGuidance).isFalse()
+        assertThat(checkNotNull(chosen.paymentStart(now, ZoneOffset.UTC)).audioGuidance).isFalse()
+        val ready = chosen.copy(payment = chosen.payment.copy(audioGuidance = true))
+        assertThat(ready.offersAudioGuidance).isTrue()
+        assertThat(ready.copy(audioGuidanceMinimumSoftware = null).offersAudioGuidance).isFalse()
+        assertThat(ready.copy(audioGuidanceMinimumSoftware = null, audioGuidanceSimulated = true).offersAudioGuidance).isTrue()
+        assertThat(ready.copy(audioGuidanceTarget = null).offersAudioGuidance).isFalse()
         assertThat(ready.canPay).isTrue()
         val start = checkNotNull(ready.paymentStart(now, ZoneOffset.UTC))
         assertThat(start.audioGuidance).isTrue()
@@ -133,8 +143,9 @@ class CheckoutTest {
             )
         assertThat(fullAmount.allowPartialAuthorisation).isFalse()
         assertThrows(IllegalArgumentException::class.java) { fullAmount.copy(allowPartialAuthorisation = true) }
-        assertThat(ready.copy(audioGuidanceTarget = "AMS1-other").canPay).isFalse()
-        assertThat(ready.copy(audioGuidanceMinimumSoftware = null).canPay).isFalse()
+        assertThat(
+            checkNotNull(ready.copy(audioGuidanceTarget = "AMS1-other").paymentStart(now, ZoneOffset.UTC)).audioGuidancePoiId,
+        ).isEqualTo("AMS1-other")
         assertThat(
             ready
                 .copy(
@@ -166,13 +177,12 @@ class CheckoutTest {
         runBlocking {
             val session = SaleSession()
             session.addCustom("Item", 1200, TaxRateEntity(1, "Zero", 0))
-            session.updateForm { it.copy(audioGuidance = true, audioGuidanceConfirmedFor = "AMS1-123") }
+            session.updateForm { it.copy(audioGuidance = true) }
             val terminal = flowOf(TerminalState(poiId = "AMS1-123"))
-            val checkout = session.checkout(flowOf(AppSettings()), terminal = terminal, currency = { aud }).first()
+            val checkout = session.checkout(flowOf(audioSettings), terminal = terminal, currency = { aud }).first()
             val start = checkNotNull(session.paymentStart(checkout, now, ZoneOffset.UTC))
             assertThat(start.audioGuidance).isTrue()
             assertThat(session.form.value.audioGuidance).isFalse()
-            assertThat(session.form.value.audioGuidanceConfirmedFor).isNull()
             assertThat(session.paymentStart(checkout, now, ZoneOffset.UTC)).isNull()
             session.complete(start)
             assertThat(session.cart.value.lines).isEmpty()

@@ -21,8 +21,10 @@ import app.minimpos.app.feature.cashbackFacts
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutForm
 import app.minimpos.app.ui.components.LabeledValue
-import app.minimpos.app.ui.components.OutcomeNote
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.components.SwitchRow
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
@@ -37,7 +39,7 @@ internal fun ColumnScope.CashbackChoices(
     if (!state.payment.cashback.enabled && state.form.cashBackMinor == 0L) return
     val money = rememberMoneyFormatter(state.currency)
     var input by remember { mutableStateOf(money.formatPlain(state.form.cashBackMinor)) }
-    Text(stringResource(R.string.cashback_title))
+    Subheading(stringResource(R.string.cashback_title))
     OutlinedTextField(
         input,
         { value ->
@@ -59,9 +61,9 @@ internal fun ColumnScope.CashbackChoices(
         state.form.cashbackConfirmation == state.payment.cashback,
         { value -> onUpdate { it.copy(cashbackConfirmation = state.payment.cashback.takeIf { value }) } },
     )
-    if (!state.managerConfigured) OutcomeNote(stringResource(R.string.gift_card_manager_note))
-    if (!state.cashbackAvailable) OutcomeNote(stringResource(R.string.cashback_unavailable))
-    if (!state.cashbackReady) OutcomeNote(stringResource(R.string.cashback_conflicts))
+    if (!state.managerConfigured) Notice(stringResource(R.string.cashout_manager_note), kind = NoticeKind.WARNING)
+    if (!state.cashbackAvailable) Notice(stringResource(R.string.cashback_unavailable), kind = NoticeKind.WARNING)
+    if (!state.cashbackReady) Notice(stringResource(R.string.cashback_conflicts), kind = NoticeKind.WARNING)
 }
 
 /** The same cash facts and explicit handover entry on results and historical details. */

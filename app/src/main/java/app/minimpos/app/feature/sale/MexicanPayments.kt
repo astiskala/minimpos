@@ -10,7 +10,11 @@ import app.minimpos.app.R
 import app.minimpos.app.feature.mexicanPaymentLabel
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutForm
+import app.minimpos.app.ui.components.Description
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.Subheading
 import app.minimpos.terminal.client.MexicanPayment
 
 /** Explicit shopper choice, retained visibly when another option or changed setup prevents sending it. */
@@ -20,8 +24,8 @@ internal fun ColumnScope.MexicanPaymentChoices(
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
 ) {
     if (!state.payment.mexicanInstallments && state.form.mexicanPayment == null) return
-    Text(stringResource(R.string.mexican_title))
-    Text(stringResource(R.string.mexican_hint))
+    Subheading(stringResource(R.string.mexican_title))
+    Description(stringResource(R.string.mexican_hint))
     if (state.offersMexicanRouting || state.form.mexicanPayment != null) {
         val selected = state.form.mexicanPayment
         Text(selected?.let { stringResource(mexicanPaymentLabel(it)) } ?: stringResource(R.string.mexican_automatic))
@@ -38,6 +42,6 @@ internal fun ColumnScope.MexicanPaymentChoices(
             )
         }
     }
-    if (!state.offersMexicanRouting) Text(stringResource(R.string.mexican_unavailable))
-    if (!state.mexicanRoutingReady) Text(stringResource(R.string.mexican_conflicts))
+    if (!state.offersMexicanRouting) Notice(stringResource(R.string.mexican_unavailable), kind = NoticeKind.WARNING)
+    if (!state.mexicanRoutingReady) Notice(stringResource(R.string.mexican_conflicts), kind = NoticeKind.WARNING)
 }

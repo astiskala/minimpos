@@ -46,6 +46,7 @@ import app.minimpos.app.ui.components.CenteredScrollColumn
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.PrintJobsPreview
 import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.SheetTitle
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.components.openUrl
 import app.minimpos.app.ui.navigation.AppNavHost
@@ -204,7 +205,7 @@ private fun VirtualPrinterSheet() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.virtual_printer_title), style = MaterialTheme.typography.titleMedium)
+            SheetTitle(stringResource(R.string.virtual_printer_title))
             PrintJobsPreview(jobs)
         }
     }

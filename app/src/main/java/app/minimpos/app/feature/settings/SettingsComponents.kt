@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.ui.components.BlockedReason
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SwitchRow
 import app.minimpos.app.ui.theme.LocalDimens
@@ -285,7 +286,7 @@ private fun <T : Any> ChoiceDialog(
         title = { Text(title) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()).selectableGroup()) {
-                note?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 12.dp)) }
+                note?.let { Description(it, Modifier.padding(bottom = 12.dp)) }
                 options.forEach { (value, label) ->
                     Row(
                         Modifier
@@ -520,16 +521,12 @@ fun SettingIntro(
     SettingNote(text, modifier.testTag("settingIntro").padding(top = if (compact) 8.dp else 16.dp))
 }
 
-/** Small explanatory text under a setting. */
+/**
+ * Explains a settings section or step: the app's [Description], indented like the rows. Use an inset
+ * [app.minimpos.app.ui.components.Notice] for a requirement or problem instead.
+ */
 @Composable
 fun SettingNote(
     text: String,
     modifier: Modifier = Modifier,
-) {
-    Text(
-        text,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 4.dp),
-    )
-}
+) = Description(text, modifier.padding(vertical = 4.dp), inset = true)

@@ -81,7 +81,7 @@ fun SecondaryButton(
 /**
  * A lesser full-width action as text, such as showing the receipt, with the height of a [SecondaryButton] so every
  * action is as easy to hit, and an optional leading [icon]. [destructive] shows it in the error colour, as for removing
- * something saved.
+ * something saved; like [PrimaryButton] it shows a spinner while [loading].
  */
 @Composable
 fun TertiaryButton(
@@ -91,10 +91,12 @@ fun TertiaryButton(
     enabled: Boolean = true,
     destructive: Boolean = false,
     icon: ImageVector? = null,
+    loading: Boolean = false,
 ) {
+    val content = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
     TextButton(
         onClick = onClick,
-        enabled = enabled,
+        enabled = enabled && !loading,
         modifier = modifier.fillMaxWidth().heightIn(min = LocalDimens.current.secondaryButtonHeight),
         shape = MaterialTheme.shapes.medium,
         colors =
@@ -104,7 +106,7 @@ fun TertiaryButton(
                 ButtonDefaults.textButtonColors()
             },
     ) {
-        ButtonContent(text, icon, spinner = null, spinnerSize = 18.dp)
+        ButtonContent(text, icon, spinner = content.takeIf { loading }, spinnerSize = 18.dp)
     }
 }
 

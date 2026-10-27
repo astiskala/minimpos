@@ -344,7 +344,8 @@ class TerminalGateway(
      * request is sent; [authorized] rechecks approval after setup and persistence. Without complete setup, including
      * the Checkout API, nothing is sent ([Attempt.NotSetUp]), and an
      * unreachable destination is [TransactionOutcome.NotProcessed]. For audio guidance, [audioGuidancePoiId] names the
-     * terminal whose requirements the operator confirmed; changed or unsupported destinations send no payment.
+     * terminal checkout resolved; a changed or unsupported destination, or audio guidance since turned off in the
+     * payment settings, sends no payment.
      */
     suspend fun pay(
         params: PaymentParams,
@@ -361,7 +362,13 @@ class TerminalGateway(
         send(paying = true, serviceId, onSending, onContext, expected, expectedIdentity, authorized) {
             val configured =
                 cashbackConfigured(params, it.context(), cashbackIdentity) &&
-                    unreferencedConfigured(params, it.context(), unreferencedIdentity)
+                    unreferencedConfigured(params, it.context(), unreferencedIdentity) &&
+                    (
+                        !params.audioGuidance ||
+                            setups
+                                .current()
+                                .settings.payment.audioGuidance
+                    )
             if (!configured ||
                 unsupported(
                     params,

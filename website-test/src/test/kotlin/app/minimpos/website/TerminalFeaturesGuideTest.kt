@@ -22,7 +22,7 @@ class TerminalFeaturesGuideTest {
     private val workflowLabels =
         mapOf(
             "capabilities" to listOf("settings_capabilities", "capability_status_needs_config", "capability_status_unsupported"),
-            "audio-guidance" to listOf("checkout_audio_guidance", "checkout_audio_confirm"),
+            "audio-guidance" to listOf("checkout_audio_guidance", "settings_audio_guidance", "settings_accessibility"),
             "terminal-tips" to listOf("checkout_tip_on_terminal", "settings_dynamic_tip_override", "settings_tip_on_pre_tax"),
             "mexican-installments" to listOf("mexican_title"),
             "cashback" to listOf("cashback_title"),

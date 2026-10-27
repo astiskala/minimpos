@@ -19,6 +19,7 @@ import kotlin.uuid.Uuid
  * Existing catalog rows, history and tax rates are never overwritten. Repeated creation adds no rows while any tracked
  * samples remain; edits retain their sample identity. The container applies fictional receipt business details after
  * population; onboarding preserves any merchant business fields already entered. Exported catalog data has no sample identity.
+ * Each population request also adds the sample [logo] while no receipt logo is saved; purging removes it only while unchanged.
  *
  * @param db Database transaction boundary shared by the repositories.
  * @param catalog Owns sample catalog writes.
@@ -30,6 +31,7 @@ import kotlin.uuid.Uuid
  * @param now Epoch milliseconds used for the sample history.
  * @param withSettings Receives the receipt replacement policy and runs population with stable settings while excluding
  *   concurrent pricing transitions.
+ * @param logo The receipt logo samples demonstrate; null adds none.
  */
 class SampleData(
     private val db: AppDatabase,
@@ -41,12 +43,15 @@ class SampleData(
     private val country: String,
     private val now: () -> Long = System::currentTimeMillis,
     private val withSettings: suspend (Boolean, suspend (AppSettings) -> Boolean) -> Boolean = { _, write -> write(AppSettings()) },
+    private val logo: SampleLogo? = null,
 ) {
     /**
-     * Adds samples in the current stable currency/tax style; returns false if samples already exist.
+     * Adds samples in the current stable currency/tax style and the sample logo when none is saved; returns false if
+     * samples already exist.
      * @param replaceReceiptDetails Whether to replace merchant business fields; false fills only an empty business profile.
      */
-    suspend fun populate(replaceReceiptDetails: Boolean = true): Boolean = withSettings(replaceReceiptDetails, ::populate)
+    suspend fun populate(replaceReceiptDetails: Boolean = true): Boolean =
+        withSettings(replaceReceiptDetails, ::populate).also { logo?.add() }
 
     /** Adds samples priced in [settings]'s currency/tax style; returns false if samples already exist. */
     suspend fun populate(settings: AppSettings): Boolean =
@@ -62,9 +67,10 @@ class SampleData(
             true
         }
 
-    /** Purges only tracked samples. Merchant records and sample categories they use remain. */
+    /** Purges only tracked samples and the unchanged sample logo. Merchant records and sample categories they use remain. */
     suspend fun purge() {
         history.removeSamples { catalog.samples.remove() }
+        logo?.remove()
     }
 
     private suspend fun createSale(

@@ -28,6 +28,7 @@ import app.minimpos.app.feature.SampleDataState
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.PrimaryButton
@@ -95,7 +96,7 @@ internal fun OnboardingContent(
         },
     ) { padding ->
         ScreenColumn(padding, Modifier.selectableGroup()) {
-            Text(stringResource(R.string.onboarding_hint), style = MaterialTheme.typography.bodyMedium)
+            Description(stringResource(R.string.onboarding_hint))
             choices.forEach { choice ->
                 OnboardingOption(choice, selected == choice, !state.running) { selected = choice }
             }
@@ -133,8 +134,8 @@ private fun OnboardingOption(
         ) {
             RadioButton(selected = selected, onClick = null, enabled = enabled)
             Column(Modifier.weight(1f).padding(start = dimens.spacing)) {
-                Text(stringResource(title), style = MaterialTheme.typography.titleSmall)
-                Text(stringResource(hint), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(title), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

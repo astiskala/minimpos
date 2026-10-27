@@ -52,7 +52,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -179,29 +178,6 @@ fun ScreenColumn(
             content = content,
         )
     }
-}
-
-/** The upper-case title of a group of rows in a list, a heading for screen readers. */
-@Composable
-fun SectionHeader(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    val dimens = LocalDimens.current
-    val compact = dimens.compact
-    Text(
-        text = text.uppercase(),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier =
-            modifier
-                .padding(
-                    start = dimens.rowHorizontalPadding,
-                    end = dimens.rowHorizontalPadding,
-                    top = if (compact) 12.dp else 20.dp,
-                    bottom = if (compact) 4.dp else 8.dp,
-                ).semantics { heading() },
-    )
 }
 
 /** A label on the left and its value on the right, as on a receipt; nothing is shown when [value] is null or blank. */

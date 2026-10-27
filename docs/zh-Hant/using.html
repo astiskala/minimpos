@@ -341,13 +341,14 @@
             請先查看<a href="#capabilities">Adyen 功能</a>並以實際設定測試。大多數選項不能在同一筆付款中同時使用；
             出現衝突時，結帳頁面會說明並要求您關閉其中一項。</p>
           <h3 id="audio-guidance">使用語音引導付款</h3>
-          <p>結帳時為該顧客開啟<strong>語音引導</strong>。AMS1、S1F2、S1F2L、S1E2L 和 S1U2 需要軟件 1.117 或更高版本，
-            M450、P630 和 SFO1 需要 1.124 或更高版本。Adyen 支援團隊必須為該終端啟用此功能。請參閱
+          <p>請先確認 Adyen 支援團隊已為您的終端啟用此功能、終端運行受支援的軟件，且終端語言不是愛沙尼亞語、拉脫維亞語、
+            冰島語或立陶宛語，然後於<strong>設定 › 支付 › 無障礙</strong>中開啟<strong>啟用語音引導</strong>。AMS1、S1F2、
+            S1F2L、S1E2L 和 S1U2 需要軟件 1.117 或更高版本，M450、P630 和 SFO1 需要 1.124 或更高版本。請參閱
             <a
             href="https://docs.adyen.com/point-of-sale/android-terminals/accessibility-mode/accessibility-from-pos">Adyen
             無障礙付款要求</a>。</p>
-          <p>關閉小費、Giving 和手動輸入，確認軟件和啟用狀態後選擇<strong>確認無障礙設定</strong>。請使用毋須簽名的卡，終端
-            語言不能為愛沙尼亞語、拉脫維亞語、冰島語或立陶宛語。此次付款將要求全額，並略過顧客螢幕提示。</p>
+          <p>結帳時為有需要的顧客開啟<strong>語音引導</strong>，並關閉小費、Giving 和手動輸入。請使用毋須簽名的卡。此次付款
+            將要求全額，並略過顧客螢幕提示。</p>
           <p>終端會朗讀付款指示，請給顧客預留足夠時間。Mini mPOS 最多等待十分鐘取得結果。如果未收到回應，請在再次付款前
             <a href="troubleshooting#unknown">查詢結果不明的交易</a>。每次嘗試後此選項都會重設。</p>
           <h3 id="surcharges">附加費</h3>

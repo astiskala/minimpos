@@ -63,11 +63,14 @@ import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.NumericKeypad
 import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.QuantityStepper
 import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
@@ -146,7 +149,7 @@ fun SplitScreen(
             }
 
             state.balance == null -> {
-                OutcomeNote(stringResource(R.string.split_unavailable), Modifier.padding(padding))
+                SplitUnavailable(Modifier.padding(padding))
             }
 
             else -> {
@@ -167,6 +170,11 @@ fun SplitScreen(
         }
     }
 }
+
+/** Why nothing can be split now, in place of the choices. */
+@Composable
+private fun SplitUnavailable(modifier: Modifier = Modifier) =
+    Notice(stringResource(R.string.split_unavailable), modifier.padding(LocalDimens.current.screenPadding), kind = NoticeKind.WARNING)
 
 /** Terminal payment for the chosen amount and Cash under it, or, while entering cash, the confirmation of cash received. */
 @Composable
@@ -347,7 +355,7 @@ private fun CashChoices(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(Modifier.widthIn(max = dimens.contentMaxWidth).fillMaxWidth()) {
-            if (state.rejected) OutcomeNote(stringResource(R.string.split_balance_changed))
+            if (state.rejected) Notice(stringResource(R.string.split_balance_changed), kind = NoticeKind.WARNING)
             CashEntry(state, money, onExactCash)
         }
         NumericKeypad(
@@ -374,7 +382,7 @@ private fun ColumnScope.SplitSummary(
         LabeledValue(stringResource(R.string.split_paid), money.format(balance.paidMinor))
         LabeledValue(stringResource(R.string.split_unpaid), money.format(balance.unpaidMinor), emphasize = true)
     }
-    if (state.rejected) OutcomeNote(stringResource(R.string.split_balance_changed))
+    if (state.rejected) Notice(stringResource(R.string.split_balance_changed), kind = NoticeKind.WARNING)
     if (state.voucherStage) {
         // A voucher pays a typed amount only, so the allocation modes are not offered.
         SplitAmount(state, money)
@@ -536,7 +544,7 @@ private fun ColumnScope.MealVoucherDetails(
     val balance = state.balance ?: return
     val scheme = reading.scheme
     if (state.voucherAvailability.simulated) {
-        Text(stringResource(R.string.voucher_demo), style = MaterialTheme.typography.bodySmall)
+        Notice(stringResource(R.string.voucher_demo))
         if (reading.schemes.size > 1) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 reading.schemes.forEachIndexed { index, choice ->
@@ -551,14 +559,16 @@ private fun ColumnScope.MealVoucherDetails(
         }
     }
     Card(Modifier.testTag("mealVoucher")) {
-        scheme?.let { Text(stringResource(mealVoucherLabel(it)), style = MaterialTheme.typography.titleSmall) }
+        scheme?.let { Subheading(stringResource(mealVoucherLabel(it))) }
         if (scheme?.productEligibility == true) {
             LabeledValue(stringResource(R.string.voucher_eligible), money.format(balance.eligibleMinor))
         }
         LabeledValue(stringResource(R.string.voucher_limit), money.format(reading.limitMinor), emphasize = true)
     }
-    scheme?.let { Text(stringResource(mealVoucherRules(it)), style = MaterialTheme.typography.bodySmall) }
-    if (scheme?.productEligibility == true) Text(stringResource(R.string.voucher_custom_items), style = MaterialTheme.typography.bodySmall)
+    scheme?.let { voucher ->
+        val custom = stringResource(R.string.voucher_custom_items).takeIf { voucher.productEligibility }
+        Notice(listOfNotNull(stringResource(mealVoucherRules(voucher)), custom).joinToString(" "))
+    }
     reading.blocked?.let { BlockedReason(stringResource(mealVoucherBlocked(it))) }
 }
 
@@ -606,7 +616,7 @@ internal fun ColumnScope.SplitProgress(
     }
     val context = androidx.compose.ui.platform.LocalContext.current
     record.tenders.sortedBy { it.sequence }.forEach { tender ->
-        (context.mexicanPlan(tender) + context.mealVoucherFacts(tender)).forEach { Text(it) }
+        (context.mexicanPlan(tender) + context.mealVoucherFacts(tender)).forEach { OutcomeNote(it) }
     }
     SaleTenders(record, money)
 }

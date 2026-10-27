@@ -128,7 +128,7 @@ sealed interface TerminalOperation {
      * A card payment whose Manager permissions follow its sale kind, cash request and card-entry method.
      *
      * @property params What to charge.
-     * @property audioGuidancePoiId Confirmed audio-guidance terminal; null for ordinary payments.
+     * @property audioGuidancePoiId Terminal checkout resolved for audio guidance; null for ordinary payments.
      * @property expected Checked destination for scanned or Mexican-routed payments; null for ordinary collection.
      * @property setupIdentity Exact checked store/scan setup fingerprint; null for ordinary collection.
      * @property cashbackIdentity Non-secret configuration identity confirmed for a cash request; null for ordinary collection.

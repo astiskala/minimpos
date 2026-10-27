@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -27,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -42,10 +40,14 @@ import app.minimpos.app.payment.WalletScanStage
 import app.minimpos.app.scan.ScanMode
 import app.minimpos.app.scan.ScannerView
 import app.minimpos.app.ui.components.BottomActions
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.Notice
+import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -128,16 +130,16 @@ private fun WalletContent(
                     }
                 }
             } else {
-                state.selected?.let { Text(it.displayName, style = MaterialTheme.typography.titleMedium) }
-                if (state.savingRequested) Text(stringResource(R.string.wallet_saving_note), style = MaterialTheme.typography.bodySmall)
+                state.selected?.let { Subheading(it.displayName) }
+                if (state.savingRequested) Notice(stringResource(R.string.wallet_saving_note))
                 if (state.selected ==
                     ScanWallet.PAYME
                 ) {
-                    Text(stringResource(R.string.wallet_payme_note), style = MaterialTheme.typography.bodySmall)
+                    Notice(stringResource(R.string.wallet_payme_note))
                 }
-                state.problem?.let { Text(it.text(), color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center) }
+                state.problem?.let { Notice(it.text(), kind = NoticeKind.WARNING) }
                 if (state.stage == WalletScanStage.SCANNING && state.source == WalletScanSource.CAMERA) {
-                    Text(stringResource(R.string.wallet_scan_hint, state.selected?.displayName.orEmpty()), textAlign = TextAlign.Center)
+                    Description(stringResource(R.string.wallet_scan_hint, state.selected?.displayName.orEmpty()), centered = true)
                     key(state.epoch) {
                         ScannerView(
                             ScanMode.WALLET,
@@ -172,9 +174,9 @@ private fun WalletWaiting(
             if (state.source ==
                 WalletScanSource.NATIVE
             ) {
-                Text(stringResource(R.string.wallet_native_hint, state.terminalId.orEmpty()), textAlign = TextAlign.Center)
+                Description(stringResource(R.string.wallet_native_hint, state.terminalId.orEmpty()), centered = true)
             }
-            if (state.source == WalletScanSource.DEMO) Text(stringResource(R.string.wallet_demo_note), textAlign = TextAlign.Center)
+            if (state.source == WalletScanSource.DEMO) Notice(stringResource(R.string.wallet_demo_note))
         }
     }
 }

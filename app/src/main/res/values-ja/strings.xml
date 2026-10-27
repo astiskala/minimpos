@@ -125,12 +125,8 @@
   <string name="checkout_tip_on_receipt_hint">領収書のチップを入力して確定します。</string>
   <string name="checkout_audio_guidance">音声ガイド</string>
   <string name="checkout_audio_hint">このお客様に支払い手順を読み上げます。</string>
-  <string name="checkout_audio_confirm">音声ガイドの設定を確認</string>
-  <string name="checkout_audio_requirements">この端末のソフトウェアが%1$s以降で、Adyenサポートによる有効化が済んでいることを確認してください。署名不要のカードを使用してください。端末の言語にはエストニア語、ラトビア語、アイスランド語、リトアニア語は使えません。この支払いでは一部承認とお客様用画面の案内を使いません。</string>
   <string name="checkout_audio_conflicts">続行するには、チップ、Giving、特殊なカード入力をオフにしてください。リンク、スキャン式ウォレット、トークンを使うには音声ガイドをオフにしてください。</string>
-  <string name="checkout_audio_unavailable">音声ガイドには有効化済みの対応Android端末が必要です。この接続先または不明な機種では利用できません。</string>
-  <string name="capability_audio_detail">支払い時に機種、ソフトウェア、言語、サポートによる有効化、署名不要のカードを確認してください。「Mini mPOSの使い方」を参照してください。</string>
-  <string name="checkout_audio_demo_requirements">オフラインデモです。この支払いでは音声ガイドをシミュレートし、一部承認とお客様用画面の案内を使いません。端末の音声や実機の対応は確認されません。</string>
+  <string name="capability_audio_detail">機種、ソフトウェア、言語、サポートによる有効化を確認してから、設定 › 決済でオンにしてください。「Mini mPOSの使い方」を参照してください。</string>
   <string name="checkout_tip_on_terminal">端末でチップを入力</string>
   <string name="checkout_tip_on_terminal_hint">カード決済の前に端末画面で購入者にチップを尋ねます。</string>
   <string name="checkout_ask_giving">チャリティ寄付（Adyen Giving）</string>
@@ -170,8 +166,8 @@
   <string name="token_deleted">購入者 %2$s のトークン %1$s はAdyenで利用できなくなりました。</string>
   <string name="token_delete_failed">購入者 %2$s のトークン %1$s は削除されませんでした。</string>
   <string name="token_delete_unknown">購入者 %2$s のトークン %1$s の削除は未確認です。Adyenの一覧を再取得してください。請求や削除の再試行はまだ行わないでください。</string>
-  <string name="token_deleting">購入者 %2$s のトークン %1$s の削除を確認中…</string>
   <string name="token_delete_recheck">削除を確認</string>
+  <string name="token_deletion_title">トークンの削除</string>
   <string name="saved_card_card">カード</string>
   <string name="saved_card_charge">%1$sを請求</string>
   <string name="saved_card_charging">トークンで請求しています…</string>
@@ -504,10 +500,10 @@
   <string name="products_meal_voucher_hint">店舗の食事券が対象商品を求める場合、この商品を食事券で支払えます。価格と税は変わりません。</string>
   <string name="products_kind_meal_voucher">食事券</string>
   <string name="sample_data">サンプルデータ</string>
-  <string name="sample_data_hint">サンプル商品と読み取り専用のデモ履歴を追加します。サンプルがすでにあっても、実行するたびにレシートの事業者情報を架空の会社情報に置き換えます。レシートのレイアウトと送信設定は変更しません。サンプルはデモの日次合計とレポートに含まれます。</string>
+  <string name="sample_data_hint">サンプル商品と読み取り専用のデモ履歴を追加し、ロゴが未設定ならデモ用のレシートロゴも追加します。サンプルがすでにあっても、実行するたびにレシートの事業者情報を架空の会社情報に置き換えます。レシートのレイアウトと送信設定は変更しません。サンプルはデモの日次合計とレポートに含まれます。</string>
   <string name="sample_add">サンプルデータを追加</string>
   <string name="sample_remove">サンプルデータを削除</string>
-  <string name="sample_remove_message">サンプル商品（編集済みを含む）とデモ履歴を削除しますか？ご自身の商品、履歴、税率、設定は残ります。ご自身の商品が使うカテゴリも残ります。</string>
+  <string name="sample_remove_message">サンプル商品（編集済みを含む）、デモ履歴、変更されていないデモロゴを削除しますか？ご自身の商品、履歴、税率、ロゴ、設定は残ります。ご自身の商品が使うカテゴリも残ります。</string>
   <string name="sample_added">サンプルデータを用意しました。既存のサンプルは保持し、レシートの事業者情報を置き換えました。</string>
   <string name="sample_removed">サンプルデータを削除しました。</string>
   <string name="sample_write_failed">変更を保存できませんでした。もう一度お試しください。</string>
@@ -1076,6 +1072,9 @@
   <string name="settings_allow_moto_hint">郵送・電話注文のカード番号をスタッフが端末で入力できます。マネージャーの承認が必要です。</string>
   <string name="settings_allow_mke">手入力決済を許可</string>
   <string name="settings_allow_mke_hint">ICチップが読み取れないとき、スタッフが端末でカード番号を入力できます。マネージャーの承認が必要です。</string>
+  <string name="settings_accessibility">アクセシビリティ</string>
+  <string name="settings_audio_guidance">音声ガイドを有効にする</string>
+  <string name="settings_audio_guidance_hint">会計時にお客様ごとにスタッフがオンにできます。Adyenサポートによる有効化、対応する端末ソフトウェア、エストニア語・ラトビア語・アイスランド語・リトアニア語以外の端末言語が必要です。</string>
 
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">ヘッダーとフッター</string>
@@ -1528,6 +1527,8 @@
   <string name="cashback_card_charge">カード請求額</string>
   <string name="cashback_card_confirm">対象の%1$sカードであることを確認しました</string>
   <string name="cashback_unavailable">利用できません。設定で有効化、カード、確認済み店舗、送信先、上限を確認してください。</string>
+  <string name="cashout_manager_note">キャッシュアウトとキャッシュバックにはマネージャーPINが必要です。設定 › セキュリティで設定してください。</string>
+  <string name="cashout_over_limit">現金引き出し上限を超えています。</string>
   <string name="cashback_conflicts">対象カードと上限内の金額を確認してください。分割、部分承認、チップ、Giving、音声案内、特殊入力、カード保存は併用できません。</string>
   <string name="cashback_handover">現金の引き渡しを記録</string>
   <string name="cashback_handover_amount">%1$sの引き渡しを記録</string>

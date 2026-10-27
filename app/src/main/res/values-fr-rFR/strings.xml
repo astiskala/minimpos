@@ -127,12 +127,8 @@
   <string name="checkout_tip_on_receipt_hint">Saisissez le pourboire du reçu pour capturer.</string>
   <string name="checkout_audio_guidance">Guidage audio</string>
   <string name="checkout_audio_hint">Lit les étapes du paiement à voix haute.</string>
-  <string name="checkout_audio_confirm">Confirmer la configuration accessible</string>
-  <string name="checkout_audio_requirements">Confirmez le logiciel %1$s ou ultérieur et l’activation par le support Adyen pour ce terminal. Utilisez une carte sans signature. La langue du terminal ne peut pas être l’estonien, le letton, l’islandais ou le lituanien. Ignorez les autorisations partielles et les invites de l’écran client pour ce paiement.</string>
   <string name="checkout_audio_conflicts">Désactivez les pourboires, Giving et la saisie spéciale des cartes pour continuer. Désactivez le guidage audio pour utiliser un lien, un portefeuille scanné ou un token.</string>
-  <string name="checkout_audio_unavailable">Le guidage audio nécessite un terminal Android compatible et activé. Il est indisponible pour cette destination ou ce modèle inconnu.</string>
-  <string name="capability_audio_detail">Confirmez le modèle, le logiciel, la langue, l’activation par le support et une carte sans signature au paiement. Consultez le guide Utiliser Mini mPOS.</string>
-  <string name="checkout_audio_demo_requirements">Démonstration hors ligne uniquement. Simulez le guidage audio et ignorez les autorisations partielles et les invites de l’écran client pour ce paiement. Le son du terminal et la compatibilité du matériel réel ne sont pas vérifiés.</string>
+  <string name="capability_audio_detail">Activez-le dans Paramètres › Paiements après avoir confirmé le modèle, le logiciel, la langue et l’activation par le support. Consultez le guide Utiliser Mini mPOS.</string>
   <string name="checkout_tip_on_terminal">Pourboire sur le terminal</string>
   <string name="checkout_tip_on_terminal_hint">Demandez un pourboire à l’acheteur sur l’écran du terminal avant de débiter la carte.</string>
   <string name="checkout_ask_giving">Don de charité (Adyen Giving)</string>
@@ -172,8 +168,8 @@
   <string name="token_deleted">Le jeton %1$s de l’acheteur %2$s n’est plus disponible chez Adyen.</string>
   <string name="token_delete_failed">Le jeton %1$s de l’acheteur %2$s n’a pas été supprimé.</string>
   <string name="token_delete_unknown">La suppression du jeton %1$s de l’acheteur %2$s est non confirmée. Actualisez la liste Adyen. Ne débitez pas et ne relancez pas encore la suppression.</string>
-  <string name="token_deleting">Vérification de la suppression du jeton %1$s de l’acheteur %2$s…</string>
   <string name="token_delete_recheck">Vérifier la suppression</string>
+  <string name="token_deletion_title">Suppression du jeton</string>
   <string name="saved_card_card">Carte</string>
   <string name="saved_card_charge">Débiter %1$s</string>
   <string name="saved_card_charging">Débit du jeton…</string>
@@ -506,10 +502,10 @@
   <string name="products_meal_voucher_hint">Un titre-restaurant peut payer ce produit lorsque les titres du magasin exigent des produits éligibles. Le prix et la taxe ne changent pas.</string>
   <string name="products_kind_meal_voucher">Titre</string>
   <string name="sample_data">Exemples de données</string>
-  <string name="sample_data_hint">Ajoutez des exemples de produits et un historique de démonstration en lecture seule. Chaque utilisation remplace les détails commerciaux du reçu par des détails fictifs sur l’entreprise, même si des échantillons existent déjà. La présentation du reçu et les paramètres de livraison restent inchangés. Les échantillons comptent dans les totaux et les rapports quotidiens de démonstration.</string>
+  <string name="sample_data_hint">Ajoutez des exemples de produits, un historique de démonstration en lecture seule et un logo de reçu de démonstration s’il n’y en a pas. Chaque utilisation remplace les détails commerciaux du reçu par des détails fictifs sur l’entreprise, même si des échantillons existent déjà. La présentation du reçu et les paramètres de livraison restent inchangés. Les échantillons comptent dans les totaux et les rapports quotidiens de démonstration.</string>
   <string name="sample_add">Ajouter des exemples de données</string>
   <string name="sample_remove">Supprimer les exemples de données</string>
-  <string name="sample_remove_message">Supprimer les exemples de produits (y compris les modifications) et l’historique des démos ? Vos propres produits, votre historique, vos taux de taxe et vos paramètres restent. Les catégories utilisées par vos produits restent également.</string>
+  <string name="sample_remove_message">Supprimer les exemples de produits (y compris les modifications), l’historique des démos et le logo de démonstration non modifié ? Vos propres produits, votre historique, vos taux de taxe, votre logo et vos paramètres restent. Les catégories utilisées par vos produits restent également.</string>
   <string name="sample_added">Les exemples de données sont prêts. Les échantillons existants ont été conservés ; les détails commerciaux du reçu ont été remplacés.</string>
   <string name="sample_removed">Exemples de données supprimés.</string>
   <string name="sample_write_failed">Impossible d’enregistrer la modification. Essayer à nouveau.</string>
@@ -1084,6 +1080,9 @@
   <string name="settings_allow_moto_hint">Le personnel peut saisir les commandes par courrier et par téléphone sur le terminal. Nécessite l’approbation du responsable.</string>
   <string name="settings_allow_mke">Proposer la saisie manuelle de la carte</string>
   <string name="settings_allow_mke_hint">Le personnel peut saisir la carte sur le terminal lorsque la puce n’est pas lisible. Nécessite l’approbation du responsable.</string>
+  <string name="settings_accessibility">Accessibilité</string>
+  <string name="settings_audio_guidance">Activer le guidage audio</string>
+  <string name="settings_audio_guidance_hint">Le personnel peut l’activer à l’encaissement pour chaque client. Nécessite l’activation par le support Adyen, un logiciel de terminal compatible et une langue du terminal autre que l’estonien, le letton, l’islandais ou le lituanien.</string>
 
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">En-tête et pied de page</string>
@@ -1540,6 +1539,8 @@
   <string name="cashback_card_charge">Montant débité sur la carte</string>
   <string name="cashback_card_confirm">J’ai confirmé que le client présente une carte %1$s éligible</string>
   <string name="cashback_unavailable">Indisponible : vérifiez activation, carte, magasin vérifié, destination et plafond dans Réglages.</string>
+  <string name="cashout_manager_note">Le retrait et la remise d’espèces nécessitent un PIN responsable. Définissez-le dans Paramètres › Sécurité.</string>
+  <string name="cashout_over_limit">Au-delà de votre plafond local d’espèces.</string>
   <string name="cashback_conflicts">Confirmez la carte et un montant sous le plafond. Utilisez une vente entière sans fractionnement, autorisation partielle, pourboire, Giving, audio, saisie spéciale ni enregistrement de carte.</string>
   <string name="cashback_handover">Enregistrer la remise d’espèces</string>
   <string name="cashback_handover_amount">Enregistrer la remise de %1$s</string>

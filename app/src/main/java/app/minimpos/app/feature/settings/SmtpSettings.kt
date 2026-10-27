@@ -12,7 +12,6 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +31,7 @@ import app.minimpos.app.data.settings.EmailSettings
 import app.minimpos.app.data.settings.SmtpSecurity
 import app.minimpos.app.email.SmtpProvider
 import app.minimpos.app.ui.components.ActionMessage
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.components.openUrl
@@ -144,11 +144,7 @@ private fun SmtpProviderButtons(
     onOther: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 4.dp)) {
-        Text(
-            stringResource(R.string.settings_smtp_providers),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Description(stringResource(R.string.settings_smtp_providers))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SmtpProvider.entries.forEach { provider ->
                 ProviderChip(provider.label, provider == selected, { onFill(provider) }, "smtpProvider_${provider.name}")
@@ -185,12 +181,7 @@ private fun SmtpProviderHelp(
 ) {
     val context = LocalContext.current
     Column(Modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 4.dp)) {
-        Text(
-            stringResource(providerAdvice(provider)),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.testTag("smtpAdvice"),
-        )
+        Description(stringResource(providerAdvice(provider)), Modifier.testTag("smtpAdvice"))
         if (canOpenLinks) {
             TertiaryButton(
                 stringResource(R.string.settings_smtp_help, provider.label),

@@ -1,9 +1,10 @@
-package app.minimpos.app.feature.settings
+package app.minimpos.app.data
 
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
+import app.minimpos.app.data.settings.decodeLogo
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test

@@ -91,8 +91,9 @@ class SmallScreenTest {
     }
 
     @Test
-    fun `physical AMS1 audio requirements can be read and confirmed with Pay still visible`() {
+    fun `physical AMS1 audio guidance enabled in Settings needs no confirmation and keeps Pay visible`() {
         configureKey()
+        env.updateSettings { it.copy(payment = it.payment.copy(audioGuidance = true)) }
         container.session(SaleKind.SALE).addCustom("Item", 1200, TaxRateEntity(name = "No tax", rateMilliPercent = 0))
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("newSale").performClick()
@@ -100,15 +101,26 @@ class SmallScreenTest {
         compose.clickWhenEnabled("charge")
         waitForTag("pay")
         compose.onNodeWithTag("audioGuidance").performScrollTo().performClick()
-        waitForTag("audioGuidanceConfirm")
+        waitForTag("audioGuidanceNotice")
         compose
-            .onNodeWithTag("audioGuidanceConfirm")
+            .onNodeWithTag("audioGuidanceNotice")
             .performScrollTo()
             .assertIsDisplayed()
-            .assertTextContains(env.context.getString(R.string.checkout_audio_requirements, "1.117"))
-            .performClick()
+            .assertTextContains(env.context.getString(R.string.checkout_audio_conflicts))
         compose.waitUntilAtLeastOneExists(hasTestTag("pay") and isEnabled(), 15_000)
         compose.onNodeWithTag("pay").assertIsDisplayed().assert(isEnabled())
+    }
+
+    @Test
+    fun `audio guidance stays off checkout until enabled in Settings`() {
+        configureKey()
+        container.session(SaleKind.SALE).addCustom("Item", 1200, TaxRateEntity(name = "No tax", rateMilliPercent = 0))
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("newSale").performClick()
+        waitForTag("charge")
+        compose.clickWhenEnabled("charge")
+        waitForTag("pay")
+        compose.onNodeWithTag("audioGuidance").assertDoesNotExist()
     }
 
     @Test

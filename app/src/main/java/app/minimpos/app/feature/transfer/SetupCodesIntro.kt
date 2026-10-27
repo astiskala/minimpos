@@ -1,8 +1,6 @@
 package app.minimpos.app.feature.transfer
 
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -10,27 +8,25 @@ import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.Subheading
 
 /** Explains both code sources and the separate transfer code before the camera requests permission. */
 @Composable
 internal fun SetupCodesIntro(padding: PaddingValues) {
     ScreenColumn(padding, Modifier.testTag("setupCodesIntro")) {
         Card {
-            Text(stringResource(R.string.setup_codes_computer), style = MaterialTheme.typography.titleSmall)
-            Text(stringResource(R.string.setup_codes_computer_hint), style = MaterialTheme.typography.bodySmall)
+            Subheading(stringResource(R.string.setup_codes_computer))
+            Description(stringResource(R.string.setup_codes_computer_hint))
         }
         Card {
-            Text(stringResource(R.string.setup_codes_device), style = MaterialTheme.typography.titleSmall)
-            Text(stringResource(R.string.setup_codes_device_hint), style = MaterialTheme.typography.bodySmall)
+            Subheading(stringResource(R.string.setup_codes_device))
+            Description(stringResource(R.string.setup_codes_device_hint))
         }
-        Text(
-            stringResource(R.string.setup_codes_transfer_hint),
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.testTag("setupTransferCodeHint"),
-        )
+        Description(stringResource(R.string.setup_codes_transfer_hint), Modifier.testTag("setupTransferCodeHint"))
     }
 }
 

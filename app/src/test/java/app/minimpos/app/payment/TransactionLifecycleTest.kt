@@ -208,8 +208,13 @@ class TransactionLifecycleTest {
             finished(id)
             payments.acknowledge()
         }
-        val field = TransactionLifecycle::class.java.getDeclaredField("serviceIds").apply { isAccessible = true }
-        assertThat(field.get(payments) as Map<*, *>).isEmpty()
+        val sends =
+            TransactionLifecycle::class.java
+                .getDeclaredField("sends")
+                .apply { isAccessible = true }
+                .get(payments)
+        val field = TerminalSends::class.java.getDeclaredField("sending").apply { isAccessible = true }
+        assertThat(field.get(sends) as Map<*, *>).isEmpty()
     }
 
     @Test

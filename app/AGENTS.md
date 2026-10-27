@@ -89,7 +89,7 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   back; cash reaches neither Adyen nor a terminal, so the stored balance, allocation and review checks are its only
   safeguards. `TenderBalance` is the one allocation reading; returns of split sales go to every original tender through
   `RefundablePayment.requests`.
-- Only `GiftCards` sends stored-value stages, each stored before sending and recovered with its original message
+- Only `GiftCards` starts stored-value stages, each stored before sending and recovered with its original message
   category; `GiftCardActivity` alone decides what an activity still needs (check, continue, repair, handover, undo).
   Card cashback handovers also belong to `CashTenders`; approval never implies physical cash handover.
   Gift-card value changes, repairs, handovers and balance inquiries follow their configured Manager permissions.
@@ -105,8 +105,10 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   never returned as cash; Titres-restaurant are never refunded through the app.
 - \* Only container wiring for committed history deletion releases process request/receipt registries and simulator
   identities. Retained unknown operations keep their recovery evidence; simulator period totals survive retention.
-- \* `TransactionLifecycle` alone releases a received late answer, only after durable resolved settlement.
-  It stores only through `TransactionBook`. A stored Busy refusal's ServiceID lives on the
+- \* `TerminalSends` alone sends, aborts and checks again stored terminal requests (`TerminalGateway` payments,
+  refunds, stored value, status, abort) and releases a received late answer, only after durable resolved settlement.
+  `TransactionLifecycle` stores only through `TransactionBook`, `GiftCards` through its stages. A stored Busy
+  refusal's ServiceID lives on the
   sale, written and cleared only by `SaleEvent`; the book is its only reader, and the waiting screen asks
   `TransactionState.Processing.canCancel` rather than a ServiceID. Links reach Adyen/store link answers only through
   `PaymentLinks`, which serializes checks/cancellations and obtains eligible `ApiTarget` access. An unknown creation

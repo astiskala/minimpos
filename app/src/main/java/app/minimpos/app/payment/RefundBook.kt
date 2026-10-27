@@ -36,10 +36,13 @@ class RefundBook(
 
     override suspend fun context(id: String) = refunds.get(id)?.context
 
-    override fun expectedContext(request: RefundStart) = request.expectedContext
-
     override fun operation(request: RefundStart): TerminalOperation =
-        TerminalOperation.Refund(request.params(), OperationAmount(request.amountMinor, request.currency), request.cancellation)
+        TerminalOperation.Refund(
+            request.params(),
+            OperationAmount(request.amountMinor, request.currency),
+            request.cancellation,
+            request.expectedContext,
+        )
 
     override suspend fun settle(
         id: String,

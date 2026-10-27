@@ -26,6 +26,7 @@ import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.SavedCardLookup
 import app.minimpos.app.payment.StoredTransaction
+import app.minimpos.app.payment.TerminalSends
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.receipt.ReceiptFactory
 import app.minimpos.app.receipt.ReceiptKind
@@ -34,12 +35,14 @@ import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SharedKeySetupOutcome
 import app.minimpos.app.terminal.SimulatedTerminal
+import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.tax.StarterTax
 import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.checkout.StoredCard
+import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.transport.AdyenLocalTransport
 import app.minimpos.terminal.transport.DiscoveredKey
 import com.tngtech.archunit.core.importer.ClassFileImporter
@@ -64,7 +67,7 @@ class DeepeningArchitectureTest {
     }
 
     @Test
-    fun `only the durable transaction lifecycle releases late answers`() = lateAnswerLifetime.check(app)
+    fun `only terminal sends release late answers, after durable settlement`() = lateAnswerLifetime.check(app)
 
     @Test
     fun `late answer lifetime rejects premature caller acknowledgement`() =
@@ -72,6 +75,17 @@ class DeepeningArchitectureTest {
 
     private class LateAnswerViolation {
         fun release(attempt: Attempt.Made<*>) = attempt.onStored()
+    }
+
+    @Test
+    fun `stored terminal requests are sent, aborted and checked again only by terminal sends`() = terminalSends.check(app)
+
+    @Test
+    fun `terminal send ownership rejects a runner calling the gateway itself`() =
+        reject(listOf(terminalSends), TerminalSendViolation::class.java)
+
+    private class TerminalSendViolation {
+        suspend fun recheck(gateway: TerminalGateway) = gateway.status("service", TransactionKind.PAYMENT)
     }
 
     @Test
@@ -258,9 +272,18 @@ class DeepeningArchitectureTest {
         val lateAnswerLifetime: ArchRule =
             noClasses()
                 .that()
-                .haveNameNotMatching(within(TransactionLifecycle::class.java.name))
+                .haveNameNotMatching(within(TerminalSends::class.java.name))
                 .should()
                 .callMethodWhere(callTo("app.minimpos.app.terminal.Attempt\$Made", "getOnStored"))
+
+        // Gift cards once copied the payment lifecycle's send, abort and status check and dropped the late-answer
+        // release; every runner of stored terminal requests now decides only what it stores, never how it is sent.
+        val terminalSends: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within(TerminalSends::class.java.name, TerminalGateway::class.java.name))
+                .should()
+                .callMethodWhere(callTo(TerminalGateway::class.java.name, "pay", "refund", "storedValue", "status", "abort"))
 
         // Missing fake wiring must fail offline, never turn a unit/UI test into a real network request.
         val offlineFixture: ArchRule =

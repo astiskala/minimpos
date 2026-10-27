@@ -30,14 +30,9 @@ import app.minimpos.terminal.client.StoredValueOperation
 import app.minimpos.terminal.client.StoredValueParams
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TransactionKind
-import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.transport.Fault
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.time.ZoneId
 import kotlin.uuid.Uuid
@@ -328,7 +323,7 @@ sealed interface GiftCardBalanceResult {
  * @param newServiceId Generates ServiceIDs.
  */
 class GiftCards(
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val gateway: TerminalGateway,
     private val records: GiftCardRepository,
     private val cash: CashTenders,
@@ -350,12 +345,12 @@ class GiftCards(
     /** The activity running or just finished, by its group ID; waiting and result screens follow it. */
     val state: StateFlow<TransactionState> = runner.state
 
-    private val sending = mutableMapOf<String, Pair<String, TransactionKind>>()
+    /** Sends each stage and checks unknown ones again. */
+    private val sends = TerminalSends(scope, gateway, runner.state)
     private val current = mutableMapOf<String, String>()
-    private val rechecks = Mutex()
 
     /** Whether an original terminal request is being checked now; setup and history maintenance wait for it. */
-    internal val checking: Boolean get() = rechecks.isLocked
+    internal val checking: Boolean get() = sends.checking
 
     /** Releases process-only requests after an explicitly confirmed complete history purge committed. */
     internal fun forgetAll() = runner.forgetAll()
@@ -383,7 +378,6 @@ class GiftCards(
             },
             release = {
                 request.card?.discard()
-                synchronized(sending) { sending.remove(groupId) }
                 current.remove(groupId)
                 runner.resolved(groupId)
             },
@@ -396,14 +390,7 @@ class GiftCards(
      * Asks the terminal to stop the running activity's current request once it is being sent; the outcome still
      * arrives through the request itself.
      */
-    @Synchronized
-    fun cancel() {
-        val processing = runner.state.value as? TransactionState.Processing ?: return
-        if (processing.cancelling || !processing.canCancel) return
-        val (serviceId, kind) = synchronized(sending) { sending[processing.id] } ?: return
-        runner.state.value = processing.copy(cancelling = true)
-        scope.launch { gateway.abort(serviceId, kind) }
-    }
+    fun cancel() = sends.cancel()
 
     /** Returns to [TransactionState.Idle] once the result has been seen. */
     fun acknowledge() = runner.acknowledge()
@@ -456,21 +443,10 @@ class GiftCards(
      * category and context, and stores the answer. Settled funding never continues by itself.
      */
     suspend fun recheck(groupId: String): Recheck =
-        rechecks.withLock {
-            val stage =
-                records.activity(groupId)?.stages?.firstOrNull { it.status == GiftCardStatus.UNKNOWN && it.stage.sent }
-                    ?: return@withLock Recheck.Settled
-            val serviceId = stage.serviceId ?: return@withLock Recheck.Settled
-            val attempt = gateway.status(serviceId, kindOf(checkNotNull(stage.category)), stage.context)
-            val outcome =
-                when (attempt) {
-                    is Attempt.NotSetUp -> return@withLock Recheck.StillUnknown(Failure.NotSetUp(attempt.problem))
-                    is Attempt.Made -> attempt.result
-                }
-            if (outcome is TransactionOutcome.Unknown) return@withLock Recheck.StillUnknown(Failure.Remote(outcome.fault))
-            store(stage.id, settlementOf(outcome))
-            Recheck.Settled
-        }
+        sends.recheck(unresolved = {
+            val stage = records.activity(groupId)?.stages?.firstOrNull { it.status == GiftCardStatus.UNKNOWN && it.stage.sent }
+            stage?.serviceId?.let { UnresolvedRequest(it, kindOf(checkNotNull(stage.category)), stage.context, record(stage.id)) }
+        })
 
     /**
      * Records that the cash of activity [groupId]'s approved cash-out was handed over, after its configured Manager approval;
@@ -597,15 +573,13 @@ class GiftCards(
         val fund = stage(change, GiftCardStage.FUNDING_CARD, funds = change.stage)
         val paid =
             records.open(fund) &&
-                send(fund, grant) { onSending, onContext, authorized ->
-                    gateway.pay(
+                send(
+                    fund,
+                    grant,
+                    TerminalOperation.Pay(
                         PaymentParams(change.amountMinor, change.currency, fund.merchantReference, appPrintsReceipts = true),
-                        checkNotNull(fund.serviceId),
-                        onContext = onContext,
-                        onSending = onSending,
-                        authorized = authorized,
-                    )
-                } == GiftCardStatus.SUCCEEDED
+                    ),
+                ) == GiftCardStatus.SUCCEEDED
         return if (paid) Funded(records.get(fund.id)?.context) else null
     }
 
@@ -646,16 +620,14 @@ class GiftCards(
         val operation = if (change.stage == GiftCardStage.ACTIVATE) StoredValueOperation.ACTIVATE else StoredValueOperation.LOAD
         // A new activity without funding, or confirmed funding that has delivered no value and is not being repaired.
         return records.open(entity) { it == null || GiftCardAction.CONTINUE in it.attention } &&
-            send(entity, grant) { onSending, onContext, authorized ->
-                gateway.storedValue(
+            send(
+                entity,
+                grant,
+                TerminalOperation.StoredValue(
                     StoredValueParams(operation, card.account, change.amountMinor, change.currency, entity.merchantReference),
-                    checkNotNull(entity.serviceId),
                     expected,
-                    authorized = authorized,
-                    onContext = onContext,
-                    onSending = onSending,
-                )
-            } == GiftCardStatus.SUCCEEDED
+                ),
+            ) == GiftCardStatus.SUCCEEDED
     }
 
     private suspend fun undo(
@@ -674,8 +646,10 @@ class GiftCards(
             )
         val original = load.pspReference?.let { ".$it" } ?: checkNotNull(load.poiTransactionId)
         return records.open(entity) { it != null && GiftCardAction.UNDO_LOAD in it.actions(now) } &&
-            send(entity, grant) { onSending, onContext, authorized ->
-                gateway.storedValue(
+            send(
+                entity,
+                grant,
+                TerminalOperation.StoredValue(
                     StoredValueParams(
                         StoredValueOperation.UNDO_LOAD,
                         null,
@@ -685,13 +659,9 @@ class GiftCards(
                         original,
                         checkNotNull(load.poiTimestamp),
                     ),
-                    checkNotNull(entity.serviceId),
                     load.context,
-                    authorized = authorized,
-                    onContext = onContext,
-                    onSending = onSending,
-                )
-            } == GiftCardStatus.SUCCEEDED
+                ),
+            ) == GiftCardStatus.SUCCEEDED
     }
 
     /** Sends a value change without funding: deactivation, cash-out or an unreferenced refund onto the card. */
@@ -702,36 +672,24 @@ class GiftCards(
         val card = checkNotNull(change.card)
         val supported = change.stage.operation?.let { card.setting.provider.supports(it) } == true
         val entity = stage(change)
-        val serviceId = checkNotNull(entity.serviceId)
-        return supported &&
-            records.open(entity) &&
-            send(entity, grant) { onSending, onContext, authorized ->
-                if (change.stage == GiftCardStage.DEACTIVATE) {
-                    gateway.storedValue(
-                        StoredValueParams(StoredValueOperation.DEACTIVATE, card.account, 0, change.currency, entity.merchantReference),
-                        serviceId,
-                        onContext = onContext,
-                        onSending = onSending,
-                        authorized = authorized,
-                    )
-                } else {
-                    val use = if (change.stage == GiftCardStage.CASH_OUT) GiftCardUse.CASH_OUT else GiftCardUse.REFUND
-                    val payment = GiftCardPayment(card.account, use)
-                    gateway.pay(
-                        PaymentParams(
-                            change.amountMinor,
-                            change.currency,
-                            entity.merchantReference,
-                            appPrintsReceipts = true,
-                            giftCard = payment,
-                        ),
-                        serviceId,
-                        onContext = onContext,
-                        onSending = onSending,
-                        authorized = authorized,
-                    )
-                }
-            } == GiftCardStatus.SUCCEEDED
+        val request =
+            if (change.stage == GiftCardStage.DEACTIVATE) {
+                TerminalOperation.StoredValue(
+                    StoredValueParams(StoredValueOperation.DEACTIVATE, card.account, 0, change.currency, entity.merchantReference),
+                )
+            } else {
+                val use = if (change.stage == GiftCardStage.CASH_OUT) GiftCardUse.CASH_OUT else GiftCardUse.REFUND
+                TerminalOperation.Pay(
+                    PaymentParams(
+                        change.amountMinor,
+                        change.currency,
+                        entity.merchantReference,
+                        appPrintsReceipts = true,
+                        giftCard = GiftCardPayment(card.account, use),
+                    ),
+                )
+            }
+        return supported && records.open(entity) && send(entity, grant, request) == GiftCardStatus.SUCCEEDED
     }
 
     private suspend fun refundFunding(
@@ -743,16 +701,15 @@ class GiftCards(
         val entity =
             stage(Change(groupId, null, funding.movedMinor, funding.currency, GiftCardStage.FUNDING_REFUND)).copy(originalId = funding.id)
         return records.open(entity) { GiftCardAction.REFUND_FUNDING in it?.attention.orEmpty() } &&
-            send(entity, grant) { onSending, onContext, authorized ->
-                gateway.refund(
+            send(
+                entity,
+                grant,
+                TerminalOperation.Refund(
                     RefundParams(checkNotNull(funding.poiTransactionId), checkNotNull(funding.poiTimestamp), entity.merchantReference),
-                    checkNotNull(entity.serviceId),
-                    funding.context,
-                    authorized = authorized,
-                    onContext = onContext,
-                    onSending = onSending,
-                )
-            } == GiftCardStatus.SUCCEEDED
+                    OperationAmount(entity.amountMinor, entity.currency),
+                    expected = funding.context,
+                ),
+            ) == GiftCardStatus.SUCCEEDED
     }
 
     private suspend fun returnFunds(
@@ -774,74 +731,46 @@ class GiftCards(
     }
 
     /**
-     * Sends stored PENDING [entity] with [call] once Manager approval still holds, and stores its settlement; the
-     * stored status. Without approval nothing is sent and it is stored as failed.
+     * Sends stored PENDING [entity] as [request] once Manager approval still holds, and stores its settlement; the
+     * stored status, null when the stage proved gone. Without approval nothing is sent and it is stored as failed.
      */
     private suspend fun send(
         entity: GiftCardOperationEntity,
         grant: ManagerApproval.Grant,
-        call: suspend (
-            onSending: suspend (String) -> Unit,
-            onContext: suspend (PaymentContext) -> Unit,
-            authorized: suspend () -> Boolean,
-        ) -> Attempt<TransactionOutcome>,
-    ): GiftCardStatus {
+        request: TerminalOperation,
+    ): GiftCardStatus? {
         current[entity.groupId] = entity.id
-        val attempt =
-            if (!valueApproval.allowsConfigured(grant)) {
-                Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
-            } else {
-                call(
-                    { poiId ->
-                        synchronized(sending) {
-                            sending[entity.groupId] =
-                                checkNotNull(entity.serviceId) to kindOf(checkNotNull(entity.category))
-                        }
-                        records.sending(entity.id, poiId)
-                        runner.state.update { state ->
-                            (state as? TransactionState.Processing)?.takeIf { it.id == entity.groupId }?.copy(canCancel = true) ?: state
-                        }
-                    },
-                    { records.recordContext(entity.id, it) },
-                    { valueApproval.allowsConfigured(grant) },
-                )
-            }
         val settlement =
-            when (attempt) {
-                is Attempt.Made -> {
-                    settlementOf(attempt.result)
-                }
-
-                is Attempt.NotSetUp -> {
-                    Settlement(
-                        SettlementStatus.FAILED,
-                        null,
-                        reason = StoredReason.NotDone(Failure.NotSetUp(attempt.problem)),
-                    )
-                }
+            sends.send(entity.groupId, checkNotNull(entity.serviceId), request, record(entity.id)) {
+                valueApproval.allowsConfigured(grant)
             }
-        // No late answers to release: gift-card activities never start where the Payments app takes requests.
-        val status = store(entity.id, settlement)
         current.remove(entity.groupId)
-        synchronized(sending) { sending.remove(entity.groupId) }
-        return status
+        return settlement?.status?.let(::statusOf)
     }
 
-    private suspend fun store(
-        id: String,
-        settlement: Settlement,
-    ): GiftCardStatus {
-        val status =
-            when (settlement.status) {
-                SettlementStatus.SUCCEEDED -> GiftCardStatus.SUCCEEDED
-                SettlementStatus.CANCELLED -> GiftCardStatus.CANCELLED
-                SettlementStatus.DECLINED -> GiftCardStatus.DECLINED
-                SettlementStatus.FAILED -> GiftCardStatus.FAILED
-                SettlementStatus.UNKNOWN -> GiftCardStatus.UNKNOWN
+    /** Stage [id] as [records] store it. */
+    private fun record(id: String) =
+        object : TerminalRecord {
+            override suspend fun sending(poiId: String) {
+                records.sending(id, poiId)
             }
-        records.settle(id, status, settlement.message, settlement.details, settlement.reason)
-        return status
-    }
+
+            override suspend fun recordContext(context: PaymentContext) {
+                records.recordContext(id, context)
+            }
+
+            override suspend fun settle(settlement: Settlement): Boolean =
+                records.settle(id, statusOf(settlement.status), settlement.message, settlement.details, settlement.reason)
+        }
+
+    private fun statusOf(status: SettlementStatus): GiftCardStatus =
+        when (status) {
+            SettlementStatus.SUCCEEDED -> GiftCardStatus.SUCCEEDED
+            SettlementStatus.CANCELLED -> GiftCardStatus.CANCELLED
+            SettlementStatus.DECLINED -> GiftCardStatus.DECLINED
+            SettlementStatus.FAILED -> GiftCardStatus.FAILED
+            SettlementStatus.UNKNOWN -> GiftCardStatus.UNKNOWN
+        }
 
     /** [change] as a new PENDING (sent) or local stage of kind [stage], before anything is sent. */
     private fun stage(

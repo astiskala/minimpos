@@ -535,4 +535,21 @@ class GiftCardsTest {
         val refused = await { giftCards.balance(card()) } as GiftCardBalanceResult.NotRead
         assertThat(refused.cancelled).isTrue()
     }
+
+    @Test
+    fun `a stage can be aborted only once its request is being sent`() {
+        env.useSimulator {
+            it.copy(
+                payment = it.payment.copy(currencyCode = "AUD", giftCards = listOf(svs)),
+                simulator = it.simulator.copy(delayMillis = 20_000),
+            )
+        }
+        giftCards.cancel()
+        val id = checkNotNull(giftCards.start(GiftCardRequest.Activate(card(), 0, "AUD", null)))
+        await { giftCards.state.first { (it as? TransactionState.Processing)?.canCancel == true } }
+        giftCards.cancel()
+        assertThat((giftCards.state.value as? TransactionState.Processing)?.cancelling).isTrue()
+        await { giftCards.state.first { it == TransactionState.Finished(id) } }
+        assertThat(activity(id).stages.single().status).isEqualTo(GiftCardStatus.CANCELLED)
+    }
 }

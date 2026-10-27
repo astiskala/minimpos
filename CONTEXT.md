@@ -18,6 +18,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Checkout | Decides what a session may become: readiness, references, card saving and receipt tipping. | `payment/Checkout`, `PaymentStart` |
 | Transaction | A payment/refund sent to the terminal: persisted pending, then settled as succeeded, cancelled, declined, failed or unknown. | `TransactionLifecycle`, `TransactionBook`, `Settlement` |
 | Financial operation | A terminal transaction, saved-card charge or Checkout refund being sent; one place routes its status check and refund, and says whether any is running. | `payment/FinancialOperations`, `CheckoutOperations`, `CheckoutBook` |
+| Terminal send | One stored terminal request sent and recorded: approval checked again before it leaves, its ServiceID kept for an abort while it is sent, its answer classified and stored, a late answer released only after durable resolved settlement. Its status check asks with the original ServiceID, message category and context. Payments, refunds and gift-card stages share it. | `payment/TerminalSends`, `TerminalRecord` |
 | Status check / recheck | Requests the original operation's outcome the way it was sent; not a new payment. Offered from the stored reading. | `FinancialOperations.recheck`, `PaymentAction.CHECK_AGAIN`, `RefundEntity.canCheckAgain` |
 | Abort | Asks the terminal to stop a current transaction; does not establish its outcome. | `TerminalClient` |
 | Decline | Terminal refusal/cancellation/busy reason and retry advice, derived from ErrorCondition. | `client/Decline` |

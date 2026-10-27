@@ -24,7 +24,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.feature.FollowProgress
 import app.minimpos.app.feature.GatedButton
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.lock.rememberManagerAction
@@ -318,10 +318,8 @@ fun SavedCardReviewScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(state.checkout.currency)
     val charge = state.charge
-    LaunchedEffect(charge) {
-        // Leaving the result acknowledges the charge, as for any payment.
-        if (charge is TransactionState.Finished) navigator.replace(Route.SaleResult(charge.id))
-    }
+    // Leaving the result acknowledges the charge, as for any payment.
+    FollowProgress(charge, { navigator.replace(Route.SaleResult(it)) })
     val charging = charge is TransactionState.Processing
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()

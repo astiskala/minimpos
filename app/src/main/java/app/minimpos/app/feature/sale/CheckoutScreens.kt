@@ -34,7 +34,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +55,7 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.settings.PaymentSettings
+import app.minimpos.app.feature.FollowProgress
 import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.ReceiptActions
@@ -818,13 +818,7 @@ fun PaymentScreen(
     val scope = rememberCoroutineScope()
     val wait = stringResource(R.string.processing_wait)
 
-    LaunchedEffect(state) {
-        when (val current = state) {
-            is TransactionState.Finished -> navigator.replace(Route.SaleResult(current.id))
-            TransactionState.Idle -> navigator.popTo(Route.ringUp(kind))
-            is TransactionState.Processing -> Unit
-        }
-    }
+    FollowProgress(state, { navigator.replace(Route.SaleResult(it)) }) { navigator.popTo(Route.ringUp(kind)) }
     val processing = state as? TransactionState.Processing
     val cancellable = processing != null && processing.onTerminal && processing.canCancel && !processing.cancelling
     BackHandler(enabled = processing != null) {

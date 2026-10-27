@@ -15,7 +15,7 @@ import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.TransactionActionsState
-import app.minimpos.app.feature.launchWrite
+import app.minimpos.app.feature.runAction
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.StoredPayments
@@ -485,10 +485,8 @@ class PaymentLinkViewModel(
     }
 
     /** Asks Adyen now whether the link was paid (or, after an unknown outcome, creates it again). */
-    fun check() {
-        if (local.value.check.running) return
-        local.update { it.copy(check = ActionState(running = true)) }
-        launchWrite({
+    fun check() =
+        runAction(local, { it.check }, { copy(check = it) }) {
             val update = links.check(saleId)
             if (update == LinkUpdate.Settled) {
                 val sale = payments.get(saleId)?.sale
@@ -500,8 +498,7 @@ class PaymentLinkViewModel(
             } else {
                 update.toState(stillOpen = true)
             }
-        }) { checked -> local.update { it.copy(check = checked) } }
-    }
+        }
 
     /** Closes the manual check's popup without changing the stored payment or background polling. */
     fun dismissCheckResult() {
@@ -509,20 +506,10 @@ class PaymentLinkViewModel(
     }
 
     /** Expires the link, so the shopper can no longer pay with it. */
-    fun cancel() {
-        if (local.value.cancel.running) return
-        local.update { it.copy(cancel = ActionState(running = true)) }
-        launchWrite({ links.cancel(saleId) }) { update -> local.update { it.copy(cancel = update.toState(stillOpen = false)) } }
-    }
+    fun cancel() = runAction(local, { it.cancel }, { copy(cancel = it) }) { links.cancel(saleId).toState(stillOpen = false) }
 
     /** Completes a demo link after the screen's Manager approval; the operation checks approval again before writing. */
-    fun simulate() {
-        if (local.value.simulation.running) return
-        local.update { it.copy(simulation = ActionState(running = true)) }
-        launchWrite({ links.simulate(saleId) }) { update ->
-            local.update { it.copy(simulation = update.toState(stillOpen = false)) }
-        }
-    }
+    fun simulate() = runAction(local, { it.simulation }, { copy(simulation = it) }) { links.simulate(saleId).toState(stillOpen = false) }
 
     /** This update as a finished action: done once settled, a note that it is not paid yet, or the failure. */
     private fun LinkUpdate.toState(stillOpen: Boolean): ActionState =
@@ -605,16 +592,18 @@ class SaleResultViewModel(
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SaleResultUiState())
 
     /** Cancels the transaction a busy terminal is working on, so the payment can be retried. */
-    fun abortBusyTransaction() {
-        if (local.value.abort.running) return
-        local.update { it.copy(abort = ActionState(running = true)) }
-        launchWrite({ lifecycle.abortBusyTransaction(saleId) }) { sent ->
+    fun abortBusyTransaction() =
+        runAction(local, { it.abort }, { copy(abort = it) }) {
             // Once sent, the stored refusal no longer names the busy transaction, so the action disappears on its own.
-            local.update {
-                it.copy(abort = if (sent) ActionState(outcome = ActionOutcome.AbortSent, done = true) else ActionState(isError = true))
+            if (lifecycle.abortBusyTransaction(
+                    saleId,
+                )
+            ) {
+                ActionState(outcome = ActionOutcome.AbortSent, done = true)
+            } else {
+                ActionState(isError = true)
             }
         }
-    }
 
     /** Leaves the result, so the next payment can start, whichever way this one was sent. */
     fun finish() = operations.acknowledgePayment()

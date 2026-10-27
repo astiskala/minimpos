@@ -75,14 +75,15 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   `Captures` takes a target supplier, not `AdyenApi`; the simulated `CheckoutApi` is injected by the container, and
   the app never builds a Checkout part outside `AdyenCheckout`.
 - \* Only `FinancialOperations` checks stored operations again, routes refunds and says whether any is running, holding
-  each runner through its one `OperationKind` (busy, history release) and releasing them only itself; screens
-  offer checks from `PaymentAction.CHECK_AGAIN`/`RefundEntity.canCheckAgain`, never a ServiceID. Waiting and result
-  screens follow `paymentProgress`/`refundProgress` (amount as requested) and leave results through it, never through a
-  runner's own state. Saved-card charges,
-  Checkout refunds and payment-link creations are sent only by `CheckoutBook`s run by `CheckoutOperations`, which
-  declines a second link per checkout so screens never guard it. `OperationIdentity` alone decides when a stored
-  request may be sent again and what a failed send establishes; books, captures and refund cancellations ask it. Terminal reconciliation (recheck unresolved, read or
-  close totals, compare) is one operation in payment (`TerminalReconciliation`); screens follow its outcome.
+  each runner through its one `OperationKind` (busy, history release) and releasing them only itself; screens offer
+  checks from `PaymentAction.CHECK_AGAIN`/`RefundEntity.canCheckAgain`, never a ServiceID. Waiting and result screens
+  follow `paymentProgress`/`refundProgress` (amount as requested) through `FollowProgress` and leave results through it,
+  never through a runner's own state; view-model actions with an `ActionState` run through `runAction`. Saved-card
+  charges, Checkout refunds and payment-link creations are sent only by `CheckoutBook`s run by `CheckoutOperations`,
+  which declines a second link per checkout so screens never guard it. `OperationIdentity` alone decides when a stored
+  request may be sent again and what a failed send establishes; books, captures and refund cancellations ask it.
+  Terminal reconciliation (recheck unresolved, read or close totals, compare) is one operation in payment
+  (`TerminalReconciliation`); screens follow its outcome.
 - \* Only `SavedCardLookup` lists and selects saved cards for a charge. It owns reference/model/target freshness and
   model eligibility; Checkout still validates pure request facts. Tokens retains its explicit lookup across
   reference/cart/review screens; checkout's automatic lookup stays screen-scoped. Only `SavedCardCharges` deletes tokens,

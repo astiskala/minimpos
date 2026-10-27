@@ -18,6 +18,7 @@ import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.feature.persisting
+import app.minimpos.app.feature.runAction
 import app.minimpos.app.feature.toState
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.terminal.AdyenApi
@@ -414,22 +415,17 @@ class SettingsViewModel(
     }
 
     /** Sends a test email to [to] with the stored SMTP settings. */
-    fun sendTestEmail(to: String) {
-        actions.update { it.copy(email = ActionState(running = true)) }
-        viewModelScope.launch {
-            val result = checks.receipts.sendTestEmail(to).toState(ActionOutcome.TestEmailSent(to))
-            actions.update { it.copy(email = result) }
-        }
-    }
+    fun sendTestEmail(to: String) =
+        runAction(
+            actions,
+            { it.email },
+            { copy(email = it) },
+        ) { checks.receipts.sendTestEmail(to).toState(ActionOutcome.TestEmailSent(to)) }
 
     /** Prints the [SettingsUiState.sampleReceipt] to check the receipt layout; ignored until it is loaded. */
     fun printTest() {
         val document = state.value.sampleReceipt ?: return
-        actions.update { it.copy(print = ActionState(running = true)) }
-        viewModelScope.launch {
-            val result = checks.receipts.printDocument(document)
-            actions.update { it.copy(print = result.toState()) }
-        }
+        runAction(actions, { it.print }, { copy(print = it) }) { checks.receipts.printDocument(document).toState() }
     }
 
     /** Deletes every sale and refund; the catalogue and settings stay. */

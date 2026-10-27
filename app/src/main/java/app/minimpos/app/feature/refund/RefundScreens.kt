@@ -53,6 +53,7 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleLineEntity
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.TenderKind
+import app.minimpos.app.feature.FollowProgress
 import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.ReceiptActions
 import app.minimpos.app.feature.ResultAction
@@ -731,13 +732,7 @@ fun RefundProcessingScreen(
     val container = LocalAppContainer.current
     // A saved-card charge's refund runs through the Checkout API rather than the terminal; this follows whichever runs.
     val state by container.operations.refundProgress.collectAsStateWithLifecycle(initialValue = container.operations.currentRefund)
-    LaunchedEffect(state) {
-        when (val current = state) {
-            is TransactionState.Finished -> navigator.replace(Route.RefundResult(current.id))
-            TransactionState.Idle -> navigator.home()
-            is TransactionState.Processing -> Unit
-        }
-    }
+    FollowProgress(state, { navigator.replace(Route.RefundResult(it)) }) { navigator.home() }
     // The request is stored and runs on whatever screen is shown, but this one shows its result: Back says to wait.
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()

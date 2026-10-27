@@ -37,6 +37,7 @@ import app.minimpos.app.payment.SavedCardLookup
 import app.minimpos.app.payment.StoredTransaction
 import app.minimpos.app.payment.TerminalSends
 import app.minimpos.app.payment.TransactionLifecycle
+import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.receipt.ReceiptFactory
 import app.minimpos.app.receipt.ReceiptKind
 import app.minimpos.app.terminal.Attempt
@@ -61,6 +62,7 @@ import app.minimpos.terminal.transport.AdyenLocalTransport
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
 import com.tngtech.archunit.base.DescribedPredicate
+import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.belongToAnyOf
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.type
@@ -163,6 +165,17 @@ class DeepeningArchitectureTest {
             setups: TerminalSetupSource,
             origin: UnlockedSetup,
         ) = setups.SetupFence(origin, SetupFreshness.SECRETS)
+    }
+
+    @Test
+    fun `waiting screens move on from a finished operation only by following its progress`() = followProgress.check(app)
+
+    @Test
+    fun `progress following rejects a screen reading a finished operation itself`() =
+        reject(listOf(followProgress), FollowProgressViolation::class.java)
+
+    private class FollowProgressViolation {
+        fun result(state: TransactionState.Finished) = state.id
     }
 
     private class RefundBalanceViolation {
@@ -433,6 +446,22 @@ class DeepeningArchitectureTest {
                         it.targetOwner.isEquivalentTo(TerminalSetupSource.SetupFence::class.java)
                     },
                 )
+
+        // Payment, refund and charge waiting screens each wrote their own Finished/Idle navigation; FollowProgress is the
+        // one reading of how a waiting screen moves on, so they cannot drift apart.
+        val followProgress: ArchRule =
+            noClasses()
+                .that(
+                    resideInAnyPackage("app.minimpos.app.feature..", "app.minimpos.app.ui..")
+                        .and(
+                            DescribedPredicate.not(
+                                DescribedPredicate.describe<JavaClass>("the progress follower") {
+                                    it.name.matches(Regex(within("app.minimpos.app.feature.OperationProgressKt")))
+                                },
+                            ),
+                        ).or(type(FollowProgressViolation::class.java)),
+                ).should()
+                .callMethodWhere(callTo(TransactionState.Finished::class.java.name, "getId"))
 
         // Gift cards once copied the payment lifecycle's send, abort and status check and dropped the late-answer
         // release; every runner of stored terminal requests now decides only what it stores, never how it is sent.

@@ -86,16 +86,17 @@ class PreAuthorisationViewModelsTest {
         deposit: ProductEntity,
         tax: TaxRateEntity,
     ): String {
-        container.session(SaleKind.PRE_AUTHORISATION).addProduct(deposit, tax)
+        val session = container.session(SaleKind.PRE_AUTHORISATION)
+        session.addProduct(deposit, tax)
+        session.updateForm { it.copy(customerReference = "CUST-1") }
         val checkout =
             CheckoutViewModel(
-                container.session(SaleKind.PRE_AUTHORISATION),
+                session,
                 container.payments,
                 container.settingsState,
                 container.terminalStatus.state,
                 container::currency,
             ).also(viewModels::add)
-        checkout.update { it.copy(customerReference = "CUST-1") }
         await { checkout.state.first { it.form.customerReference == "CUST-1" && !it.totals.isEmpty } }
         assertThat(checkout.pay()).isTrue()
         return await { (container.payments.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }

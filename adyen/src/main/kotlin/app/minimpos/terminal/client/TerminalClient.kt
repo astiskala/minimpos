@@ -676,9 +676,11 @@ class TerminalClient(
 
         /**
          * Whether a stored unreferenced refund's verbatim `acquirerResponseCode` says the acquirer approved it
-         * synchronously (`Approved`); Adyen still confirms the refund with its `REFUND_WITH_DATA` webhook.
+         * synchronously (`Approved`, case-insensitive: TEST terminals also return `APPROVED`); Adyen still confirms
+         * the refund with its `REFUND_WITH_DATA` webhook.
          */
-        fun refundApproved(acquirerResponseCode: String?): Boolean = acquirerResponseCode?.trim() == NexoVocabulary.APPROVED
+        fun refundApproved(acquirerResponseCode: String?): Boolean =
+            acquirerResponseCode?.trim()?.equals(NexoVocabulary.APPROVED, ignoreCase = true) == true
 
         private val TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
 

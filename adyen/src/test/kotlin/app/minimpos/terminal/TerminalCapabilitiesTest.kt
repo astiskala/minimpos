@@ -2,6 +2,7 @@ package app.minimpos.terminal
 
 import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MalformedPart
 import app.minimpos.terminal.transport.RemoteTerminalCapabilities
@@ -16,6 +17,7 @@ import app.minimpos.terminal.transport.TerminalMotoSettings
 import app.minimpos.terminal.transport.TerminalOfflineLimits
 import com.adyen.model.management.TerminalSettings
 import com.google.common.truth.Truth.assertThat
+import com.google.gson.JsonParser
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -252,7 +254,7 @@ class TerminalCapabilitiesTest {
         }
 
     @Test
-    fun `a cleared limit is left out of its object and may read back as the inherited value`(): Unit =
+    fun `cleared limits send explicit nulls and may read back as inherited values`(): Unit =
         runBlocking {
             reply("{}")
             reply("""{"moto":{"enableMoto":true,"maxAmount":300}}""")
@@ -263,7 +265,7 @@ class TerminalCapabilitiesTest {
                     TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = true)),
                 ),
             ).isEqualTo(TerminalCapabilitiesUpdate.Ready(RemoteTerminalCapabilities(moto = TerminalMotoSettings(true, 300))))
-            assertThat(checkNotNull(server.takeRequest().body).utf8()).isEqualTo("""{"moto":{"enableMoto":true}}""")
+            assertThat(checkNotNull(server.takeRequest().body).utf8()).isEqualTo("""{"moto":{"enableMoto":true,"maxAmount":null}}""")
             server.takeRequest()
 
             reply(
@@ -282,9 +284,91 @@ class TerminalCapabilitiesTest {
                 ),
             ).isEqualTo(TerminalCapabilitiesUpdate.Ready(RemoteTerminalCapabilities(offline = TerminalOfflineLimits(40, emptyMap(), 30))))
             server.takeRequest()
-            assertThat(checkNotNull(server.takeRequest().body).utf8())
-                .isEqualTo("""{"offlineProcessing":{},"storeAndForward":{"maxAmount":[],"supportedCardTypes":{"credit":true}}}""")
+            assertThat(JsonParser.parseString(checkNotNull(server.takeRequest().body).utf8()))
+                .isEqualTo(
+                    JsonParser.parseString(
+                        """
+                        {"offlineProcessing":{"chipFloorLimit":null},
+                        "storeAndForward":{"maxAmount":[],"maxPayments":null,"supportedCardTypes":{"credit":true}}}
+                        """.trimIndent(),
+                    ),
+                )
             server.takeRequest()
+        }
+
+    @Test
+    fun `offline settings can be cleared after the server adds supported card defaults`(): Unit =
+        runBlocking {
+            reply(
+                """
+                {"offlineProcessing":{"chipFloorLimit":1},
+                "storeAndForward":{"maxAmount":[{"amount":100,"currencyCode":"AUD"}],"maxPayments":1,
+                "supportedCardTypes":{"credit":true,"debit":true,"deferredDebit":false,"prepaid":true,"unknown":false}}}
+                """.trimIndent(),
+            )
+            reply("{}")
+            reply(
+                """
+                {"offlineProcessing":{"chipFloorLimit":0},
+                "storeAndForward":{"maxAmount":[],"supportedCardTypes":
+                {"credit":true,"debit":true,"deferredDebit":false,"prepaid":true,"unknown":false}}}
+                """.trimIndent(),
+            )
+            assertThat(
+                api.updateCapabilities(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    TerminalCapabilitiesPatch.Offline("AUD", chipFloorLimit = null, maxStoreAndForwardMinor = null, maxPayments = null),
+                ),
+            ).isEqualTo(
+                TerminalCapabilitiesUpdate.Ready(
+                    RemoteTerminalCapabilities(offline = TerminalOfflineLimits(chipFloorLimit = 0)),
+                ),
+            )
+            server.takeRequest()
+            assertThat(JsonParser.parseString(checkNotNull(server.takeRequest().body).utf8()))
+                .isEqualTo(
+                    JsonParser.parseString(
+                        """
+                        {"offlineProcessing":{"chipFloorLimit":null},
+                        "storeAndForward":{"maxAmount":[],"maxPayments":null,
+                        "supportedCardTypes":{"credit":true,"debit":true,"deferredDebit":false,"prepaid":true,"unknown":false}}}
+                        """.trimIndent(),
+                    ),
+                )
+            server.takeRequest()
+        }
+
+    @Test
+    fun `moto eligibility rejection is definite and does not trigger read-back`(): Unit =
+        runBlocking {
+            val detail =
+                "Field 'device.allowMoto' is not valid. Reason: We couldn't verify whether this merchant account " +
+                    "is eligible for MOTO. Contact Support.."
+            reply(
+                """
+                {"status":422,"errorCode":"33_008","title":"Invalid parameters",
+                "detail":"$detail"}
+                """.trimIndent(),
+                422,
+            )
+            assertThat(
+                api.updateCapabilities(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = true, maxAmount = 1)),
+                ),
+            ).isEqualTo(
+                TerminalCapabilitiesUpdate.Failed(
+                    Fault.AdyenRejected(
+                        422,
+                        "33_008",
+                        ExternalText(detail),
+                    ),
+                    uncertain = false,
+                ),
+            )
+            assertThat(server.requestCount).isEqualTo(1)
         }
 
     @Test

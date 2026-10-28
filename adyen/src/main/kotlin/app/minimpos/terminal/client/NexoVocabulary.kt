@@ -52,7 +52,7 @@ internal object NexoVocabulary {
     /** An unreferenced refund's acquirer answer, sent only when it is processed synchronously, e.g. `Approved`. */
     const val ACQUIRER_RESPONSE_CODE = "acquirerResponseCode"
 
-    /** The [ACQUIRER_RESPONSE_CODE] of an approved synchronous refund. */
+    /** The [ACQUIRER_RESPONSE_CODE] of an approved synchronous refund, compared without case. */
     const val APPROVED = "Approved"
 
     /** The kind of transaction the terminal processed, e.g. `REFUND` for an unreferenced refund. */

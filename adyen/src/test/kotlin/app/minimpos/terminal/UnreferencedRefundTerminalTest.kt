@@ -26,6 +26,7 @@ import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalTransport
 import app.minimpos.terminal.transport.base64Json
+import app.minimpos.terminal.transport.nexoGson
 import com.adyen.model.nexo.AmountsResp
 import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.PaymentResponse
@@ -117,17 +118,22 @@ class UnreferencedRefundTerminalTest {
         }
 
     @Test
-    fun `only an Approved acquirer response is a synchronous approval, still kept verbatim otherwise`() =
+    fun `acquirer approval is case insensitive while response text stays verbatim`() =
         runTest {
-            val approved =
-                client { respond { paymentResponse = answer(mapOf("acquirerResponseCode" to "Approved")) } }.pay(refund)
-                    as TransactionOutcome.Completed
-            assertThat(TerminalClient.refundApproved(approved.details.acquirerResponseCode)).isTrue()
-            val other =
-                client { respond { paymentResponse = answer(mapOf("acquirerResponseCode" to " Pending ")) } }.pay(refund)
-                    as TransactionOutcome.Completed
-            assertThat(other.details.acquirerResponseCode).isEqualTo("Pending")
-            assertThat(TerminalClient.refundApproved(other.details.acquirerResponseCode)).isFalse()
+            listOf("Approved", "APPROVED", "approved", " Approved ").forEach { code ->
+                val approved =
+                    client { respond { paymentResponse = answer(mapOf("acquirerResponseCode" to code)) } }.pay(refund)
+                        as TransactionOutcome.Completed
+                assertThat(approved.details.acquirerResponseCode).isEqualTo(code.trim())
+                assertThat(TerminalClient.refundApproved(approved.details.acquirerResponseCode)).isTrue()
+            }
+            listOf(" Pending ", "NotApproved", "Approved offline").forEach { code ->
+                val other =
+                    client { respond { paymentResponse = answer(mapOf("acquirerResponseCode" to code)) } }.pay(refund)
+                        as TransactionOutcome.Completed
+                assertThat(other.details.acquirerResponseCode).isEqualTo(code.trim())
+                assertThat(TerminalClient.refundApproved(other.details.acquirerResponseCode)).isFalse()
+            }
         }
 
     @Test
@@ -159,6 +165,41 @@ class UnreferencedRefundTerminalTest {
                     .saleToPOIRequest.transactionStatusRequest.messageReference
             assertThat(reference.serviceID).isEqualTo("URREC1")
             assertThat(reference.messageCategory).isEqualTo(MessageCategoryType.PAYMENT)
+        }
+
+    @Test
+    fun `status recovers a network-declined refund without an authorized amount or PSP reference`() =
+        runTest {
+            val response =
+                """
+                {"SaleToPOIResponse":{"TransactionStatusResponse":{
+                  "Response":{"Result":"Success"},
+                  "MessageReference":{"MessageCategory":"Payment","SaleID":"POS1","ServiceID":"URDECLINE"},
+                  "RepeatedMessageResponse":{
+                    "MessageHeader":{"MessageCategory":"Payment","MessageClass":"Service","MessageType":"Response",
+                      "POIID":"S1F2-123","ProtocolVersion":"3.0","SaleID":"POS1","ServiceID":"URDECLINE"},
+                    "RepeatedResponseMessageBody":{"PaymentResponse":{
+                      "Response":{"Result":"Failure","ErrorCondition":"UnreachableHost",
+                        "AdditionalResponse":"transactionType=REFUND&posAuthAmountValue=100&paymentMethod=mc&message=DECLINED"},
+                      "PaymentResult":{"PaymentType":"Refund"}
+                    }}
+                  }
+                }}}
+                """.trimIndent()
+            val recovered =
+                client { Delivery.Answered(nexoGson.fromJson(response, TerminalAPIResponse::class.java)) }
+                    .status("URDECLINE", TransactionKind.PAYMENT) as TransactionOutcome.Completed
+            assertThat(recovered.details.success).isFalse()
+            assertThat(recovered.details.amountMinor).isNull()
+            assertThat(recovered.details.pspReference).isNull()
+            assertThat(recovered.details.additionalData["transactionType"]).isEqualTo("REFUND")
+            assertThat(recovered.details.additionalData["posAuthAmountValue"]).isEqualTo("100")
+            assertThat(sent.single().saleToPOIRequest.paymentRequest).isNull()
+            assertThat(
+                sent
+                    .single()
+                    .saleToPOIRequest.transactionStatusRequest.messageReference.serviceID,
+            ).isEqualTo("URDECLINE")
         }
 
     @Test

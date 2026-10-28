@@ -172,8 +172,8 @@ standalone release builds retain release lint by default. R8, signing and packag
 There is no real Adyen test account in CI. JVM checks do not establish Android UI, persistence, process-death
 recovery or final settlement behavior. LIVE software certification requirements remain unverified.
 
-Still needing real-device/API verification: cloud busy events and explicit not-connected (`TerminalOffline`)
-rejection classification; Payments app dual-install TEST/LIVE routing and separate boarding on physical phones;
+Still needing real-device/API verification: cloud busy events;
+Payments app dual-install TEST/LIVE routing and separate boarding on physical phones;
 Payments app v1.8.0+ transaction-status beta enablement, missing-callback/process-death recovery, InProgress and
 NotFound behavior on physical phones (automated encrypted App Link/simulator tests do not establish enablement);
 Payments app return-URL encoding, error answers and size limits, boarding-credential `/me` permissions
@@ -183,21 +183,18 @@ payment-method-specific payment-link line-item validation; long-delay token crea
 `recurringProcessingModel`;
 other terminal-saved token/listing configurations, successful shopper-not-present (`ContAuth`) token payments for
 `CardOnFile` and `Subscription`, and final Checkout refund outcomes (`/payments/{pspReference}/refunds`);
-token DELETE permission-denied answers;
-Management single-store receipt details, denied-read behavior and missing-store answers other than HTTP 404 and
-HTTP 422/error `30_112`; terminal discovery for assignments other than merchant-without-store, and Ethernet address
-reporting; inherited shared-key settings and sensitive-field permissions; POS-wallet
+Management single-store receipt details; terminal discovery for assignments other than merchant-without-store,
+and Ethernet address reporting; inherited shared-key settings; POS-wallet
 configuration inheritance and routing for individually configured GCash, DANA, Kakao Pay and TrueMoney; native scanner
 model reporting, single-scan/end behavior on local/network/cloud terminals, and wallet tokenization attempts. PayMe
 merchant scanning is intentionally best-effort: Adyen's published wallet guide excludes it, and simulator success does
 not establish support. Also needing real-terminal verification: scoped Management `terminalSettings` updates for
-MOTO and offline limits; gratuity/DCC override/inheritance restoration;
+MOTO; gratuity override/inheritance restoration and DCC inheritance restoration;
 audio-guidance Support provisioning, other terminal-language/card combinations,
 signature refusals, long PIN entry, and cancellation/missing-answer recovery while audio guidance is active;
 configuration-based surcharge `TotalFeesAmount`/`AuthorizedAmount` with tips, partial approvals and referenced refunds,
 receipt disclosure and DCC/adjustment restrictions;
-Android split-tender allocation/recovery for operator amounts, equal shares and item units;
-`SaleReferenceID` linking in the Customer Area and terminal totals beside locally recorded cash;
+`SaleReferenceID` linking in the Customer Area;
 gift cards for Givex, SVS, Fiserv ValueLink, Intersolve card types and local gift cards: provider onboarding, swiped,
 keyed and scanned entry (including the scanned expiry format), `StoredValue` activation/load/`Reverse`/`Unload`
 answers and balances, `BalanceInquiry`, redemption partial approvals (and whether `TotalFeesAmount` is reported),
@@ -210,31 +207,27 @@ meal vouchers: Brazilian PAT `selectedAccountType` `MEAL_VOUCHER` requests and t
 screen, returned `fundingSource`/`paymentMethodVariant`, short-balance refusals and referenced refunds; European
 Mastercard/Visa voucher recognition, partial approvals and refunds; Titres-restaurant (Conecs) routing, the EUR 25 daily
 limit and Sunday/public-holiday declines; issuer MID/MCC registration declines and status recovery of voucher payments;
-Android lifecycle/session-failure recovery for totals and reconciliation;
+terminal session-failure responses for totals and reconciliation;
 M400 virtual-receipt layout, which uses `virtual_receipt02.xslt` instead of the other
 models' `virtual-receipt.xslt`; `AskGiving` two-step
-`TransactionStatus` (`SaleID=AdyenGiving`) lookups; `MOTO` and `ForceEntryMode=Keyed` (MKE); and offline EMV /
+`TransactionStatus` (`SaleID=AdyenGiving`) lookups; and offline EMV /
 Store-and-Forward `OnlineFlag`, `offlineAuthCode` and `unconfirmedBatchCount` fields.
 
 For a merchant-scan TEST check, verify discovery for the actual store and currency, scan once with camera and native
 hardware, cancel/switch/background a scan and verify late data cannot pay, exercise approval/decline/missing replies,
 check token-created and no-token results, and refund the original confirmed payment. Confirm provider onboarding and
 accepted code formats before LIVE use; do not execute real calls without separate explicit approval.
-Do not describe simulator coverage as proof of these behaviors. Mobile SDK card readers are intentionally absent:
-they require a backend for certificates, a private Maven repository, PCI MPoC and six-monthly updates.
+Do not describe simulator coverage as proof of these behaviors.
 
 Cashback/cash-out verification remains open: Support enablement for each store/card program, Australian eftpos standalone
 cash-out, girocard and European Visa/Mastercard purchase-linked cashback, issuer limits, purchase-only partial answers,
-unknown-result recovery, receipts, terminal totals and purchase-only referenced refunds. Local/cloud simulator tests do
-not establish real support. No real calls were made for this implementation.
+unknown-result recovery, receipts, terminal totals and purchase-only referenced refunds.
 
 The terminal's receipt-logo printing refusal answer when an image is unsupported remains unverified.
 
-Unreferenced refund verification remains open: Adyen enablement per store or terminal, the Customer Area limit and
-merchant-category exclusions, the excluded-country error, `PaymentType=Refund` answers on local and cloud terminals
-(`transactionType`, `posAuthAmountValue`, synchronous `acquirerResponseCode` per scheme and country), `Payment`-category
-status recovery, receipts with `transaction_type_refund`, terminal totals, Payments app support, and `/voidPendingRefund`
-with a Support-configured refund delay, its credential role and `VOID_PENDING_REFUND` outcome. No real calls were made.
+Unreferenced refund verification remains open for Customer Area limits, merchant-category and excluded-country
+rejections; named-field receipts with `transaction_type_refund`; terminal totals; Payments app support; and
+`/voidPendingRefund` with a Support-configured refund delay, its credential role and `VOID_PENDING_REFUND` outcome.
 
 Idempotency verification remains open for Classic `/voidPendingRefund` and Management/Payments app credential creation,
 key generation, boarding-token creation and revocation. Adyen's [general idempotency guidance](https://docs.adyen.com/development-resources/api-idempotency/)
@@ -242,8 +235,6 @@ describes POST requests, but these endpoint references do not explicitly documen
 Confirm endpoint-specific support and retention with Adyen before relying on it; a fake server receiving a header does
 not prove deduplication. Keep the existing provisioning journal and lookup recovery. `/voidPendingRefund` already sends
 a stable key, but its response-header echo and duplicate-request behavior still need verification in TEST.
-Automated recovery tests recreate operation owners over stored records; they do not simulate Android process death or
-establish Adyen's retention and deduplication behavior.
 
 ## Make changes that fit
 

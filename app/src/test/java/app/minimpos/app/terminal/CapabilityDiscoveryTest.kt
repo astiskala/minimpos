@@ -277,12 +277,17 @@ class CapabilityDiscoveryTest {
         lookupGate = lookup
         val vm = CapabilitiesViewModel(discovery = env.container.capabilityDiscovery)
         try {
-            await { vm.state.first { it.checking } }
-            // The reading begun on the old setup cannot be published, so only a new refresh can finish checking.
+            val originalIdentity = await { vm.state.first { it.checking } }.identity
+            // Cancelling the old refresh also ends checking; wait for a published reading on the new setup.
             env.updateSettings { it.copy(terminal = it.terminal.copy(storeId = "ST2")) }
             lookup.complete(Unit)
 
-            val refreshed = await { vm.state.first { !it.checking && it.problem == null } }
+            val refreshed =
+                await {
+                    vm.state.first {
+                        !it.checking && it.problem == null && it.identity != originalIdentity && it.storeId == "ST1"
+                    }
+                }
             assertThat(refreshed.failure).isNull()
             assertThat(refreshed.giftCardsFor("AUD")).containsExactly("svs")
         } finally {

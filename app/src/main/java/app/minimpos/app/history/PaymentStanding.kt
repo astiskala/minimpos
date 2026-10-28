@@ -384,8 +384,8 @@ fun RefundEntity.cancellable(delayed: Boolean): Boolean =
         cancelStatus != RefundCancelStatus.REQUESTED && (delayed || cancelStatus?.unresolved == true)
 
 /**
- * Whether this accepted unreferenced refund was approved synchronously by the acquirer (`acquirerResponseCode=Approved`)
- * rather than only requested; either way Adyen confirms the refund itself only in the Customer Area.
+ * Whether this accepted unreferenced refund received `Approved` (case-insensitive) as its acquirer response, rather
+ * than only being requested; either way Adyen confirms the refund itself only in the Customer Area.
  */
 val RefundEntity.approvedSynchronously: Boolean
     get() = route == RefundRoute.UNREFERENCED && status == RefundStatus.REQUESTED && TerminalClient.refundApproved(acquirerResponseCode)

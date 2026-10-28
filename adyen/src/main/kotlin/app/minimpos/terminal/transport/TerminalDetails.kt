@@ -214,8 +214,8 @@ sealed interface TerminalCapabilitiesLookup {
  * Scoped Management `terminalSettings` update payload; never includes `nexo` or unrelated sections.
  * Management can also change related effective settings, such as `standalone.enableGratuities` after gratuity updates.
  * Read-back verifies the requested capability values, not the absence of server-side changes to other settings.
- * Management replaces each sent object whole: a limit left out of it (null here) is removed from the terminal, which
- * then inherits its store's, merchant account's or company's value, so the read-back may still show one.
+ * Clearing a limit sends an explicit JSON null: TEST Management retained omitted fields even inside a sent object.
+ * A cleared limit may then inherit its store's, merchant account's or company's value, so read-back may still show one.
  */
 sealed interface TerminalCapabilitiesPatch {
     /** Updates the gratuity entry for [currency], preserving other currencies' entries.
@@ -498,7 +498,7 @@ class AdyenTerminalDetails(
 
             is TerminalCapabilitiesPatch.Moto -> {
                 TerminalSettings()
-                    .moto(Moto().enableMoto(patch.settings.enabled).maxAmount(patch.settings.maxAmount))
+                    .moto(Moto().includeNullValues(true).enableMoto(patch.settings.enabled).maxAmount(patch.settings.maxAmount))
                     .toJson()
             }
 
@@ -523,9 +523,10 @@ class AdyenTerminalDetails(
                             .prepaid(true)
                             .takeIf { amounts.isNotEmpty() }
                 TerminalSettings()
-                    .offlineProcessing(OfflineProcessing().chipFloorLimit(patch.chipFloorLimit))
+                    .offlineProcessing(OfflineProcessing().includeNullValues(true).chipFloorLimit(patch.chipFloorLimit))
                     .storeAndForward(
                         StoreAndForward()
+                            .includeNullValues(true)
                             .maxAmount(amounts)
                             .maxPayments(patch.maxPayments)
                             .supportedCardTypes(cardTypes),

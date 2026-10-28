@@ -136,7 +136,7 @@ class UnreferencedRefundsTest {
                         settlement.copy(
                             details =
                                 settlement.details?.let {
-                                    it.copy(additionalData = it.additionalData + ("acquirerResponseCode" to "Approved"))
+                                    it.copy(additionalData = it.additionalData + ("acquirerResponseCode" to "APPROVED"))
                                 },
                         ),
                     )
@@ -144,9 +144,9 @@ class UnreferencedRefundsTest {
         val id = run(start, runner(synchronous))
         val refund = await { checkNotNull(container.refundRecords.get(id)) }
         assertThat(refund.status).isEqualTo(RefundStatus.REQUESTED)
-        assertThat(refund.acquirerResponseCode).isEqualTo("Approved")
+        assertThat(refund.acquirerResponseCode).isEqualTo("APPROVED")
         assertThat(refund.approvedSynchronously).isTrue()
-        assertThat(env.context.unreferencedRefundFacts(refund)).contains("Acquirer response: Approved")
+        assertThat(env.context.unreferencedRefundFacts(refund)).contains("Acquirer response: APPROVED")
     }
 
     @Test

@@ -324,7 +324,15 @@ class CloudTransport internal constructor(
 
     private companion object {
         /** How Adyen words that a terminal cannot be reached at all, so the request never got to it. */
-        private val NOT_CONNECTED = listOf("not connected", "offline", "unknown device", "not found")
+        private val NOT_CONNECTED =
+            listOf(
+                "not connected",
+                "offline",
+                "unknown device",
+                "not found",
+                // Observed from TEST Cloud device API with a powered-off terminal absent from connectedDevices.
+                "Failed to send message to POI. There may be a network issue or it may not have the websocket connected.",
+            )
     }
 }
 

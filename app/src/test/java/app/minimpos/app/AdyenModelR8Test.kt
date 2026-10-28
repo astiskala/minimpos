@@ -84,6 +84,18 @@ class AdyenModelR8Test {
                 val body = type.getMethod("toJson").invoke(value) as String
                 assertThat(JsonParser.parseString(body)).isEqualTo(JsonParser.parseString(json))
             }
+            // Management requires explicit nulls to clear limits; R8 must preserve the SDK's tracking and any-getter.
+            listOf(
+                Moto::class.java to """{"enableMoto":true,"maxAmount":null}""",
+                OfflineProcessing::class.java to """{"chipFloorLimit":null}""",
+                StoreAndForward::class.java to """{"maxAmount":[],"maxPayments":null,"supportedCardTypes":null}""",
+            ).forEach { (model, json) ->
+                val type = loader.loadClass(model.name)
+                val value = JSON.getMapper().readValue(json, type)
+                type.getMethod("includeNullValues", Boolean::class.javaPrimitiveType).invoke(value, true)
+                assertThat(JsonParser.parseString(type.getMethod("toJson").invoke(value) as String))
+                    .isEqualTo(JsonParser.parseString(json))
+            }
             val model = loader.loadClass(PaymentMethodsRequest::class.java.name)
             val methodsRequest = model.getConstructor().newInstance()
             model.getMethod("merchantAccount", String::class.java).invoke(methodsRequest, "HarbourCoffeeCOM")
@@ -173,7 +185,7 @@ class AdyenModelR8Test {
                 .addProguardConfiguration(
                     models.map {
                         "-keep,allowoptimization class ${it.name} { public <init>(...); " +
-                            "public *** merchantAccount(...); public *** toJson(...); }"
+                            "public *** merchantAccount(...); public *** includeNullValues(...); public *** toJson(...); }"
                     } +
                         listOf(
                             "-allowaccessmodification",

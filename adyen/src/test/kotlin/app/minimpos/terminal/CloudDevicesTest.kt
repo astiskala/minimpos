@@ -177,6 +177,7 @@ class CloudDevicesTest {
             "Device S1F2-1 is offline",
             "Unknown device S1F2-1",
             "Device not found",
+            "Failed to send message to POI. There may be a network issue or it may not have the websocket connected.",
         ).forEach { msg ->
             assertThat(failure(200, event(msg)).fault)
                 .isEqualTo(Fault.TerminalOffline("S1F2-000158213605014", ExternalText(msg)))

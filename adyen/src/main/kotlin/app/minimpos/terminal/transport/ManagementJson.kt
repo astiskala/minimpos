@@ -20,6 +20,8 @@ import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.type.LogicalType
 import java.time.OffsetDateTime
 
+private const val HTTP_UNPROCESSABLE_ENTITY = 422
+
 private val apiMapper =
     JSON.getMapper().copy().apply {
         disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
@@ -174,9 +176,23 @@ internal fun managementFault(
     role: String? = null,
 ): Fault =
     when (reply) {
-        is AdyenReply.Failed -> reply.fault
-        is AdyenReply.Answered if reply.ok -> Fault.UnreadableReply()
-        is AdyenReply.Answered -> reply.fault(key, role, managementError(reply.body))
+        is AdyenReply.Failed -> {
+            reply.fault
+        }
+
+        is AdyenReply.Answered if reply.ok -> {
+            Fault.UnreadableReply()
+        }
+
+        is AdyenReply.Answered -> {
+            val error = managementError(reply.body)
+            // Management also reports absent entities as HTTP 422, not just HTTP 404.
+            if (reply.code == HTTP_UNPROCESSABLE_ENTITY && error.code == "30_112") {
+                Fault.NotFound(null)
+            } else {
+                reply.fault(key, role, error)
+            }
+        }
     }
 
 private fun managementError(body: String): AdyenError {

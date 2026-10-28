@@ -425,17 +425,31 @@ class TerminalClient(
         )
     }
 
-    /** Retrieves the terminal's current reconciliation period totals (`GetTotalsRequest`) without closing the period. */
+    /**
+     * Retrieves the terminal's current reconciliation period totals (`GetTotalsRequest`) without closing the period.
+     * An explicit LoggedOut rejection opens a short-lived session; an existing session is left untouched.
+     */
     suspend fun getTotals(): TerminalTotalsOutcome = reconcile(closePeriod = false)
 
     /**
      * Retrieves the terminal's current reconciliation period totals (`GetTotalsRequest`), or starts a new period
-     * (`SaleReconciliation`) when [closePeriod] is true.
+     * (`SaleReconciliation`) when [closePeriod] is true. Only an explicit LoggedOut rejection permits login and one
+     * new attempt; missing or malformed answers never cause a reconciliation resend. Sessions opened here are
+     * best-effort logged out without replacing the operation's result.
      *
      * @param closePeriod True to close the current reconciliation period (`SaleReconciliation`); false for `GetTotals`.
      * @return [TerminalTotalsOutcome.Answered] with totals per currency, or [TerminalTotalsOutcome.Failed].
      */
     suspend fun reconcile(closePeriod: Boolean = true): TerminalTotalsOutcome {
+        val answer = readTotals(closePeriod)
+        return if (answer is TerminalAnswer.Read && Decline.requiresLogin(answer.body.response)) {
+            withTotalsLogin { totalsOutcome(readTotals(closePeriod), closePeriod) }
+        } else {
+            totalsOutcome(answer, closePeriod)
+        }
+    }
+
+    private suspend fun readTotals(closePeriod: Boolean): TerminalAnswer<TotalsBody> {
         val request =
             if (closePeriod) {
                 exchange.message(MessageClassType.SERVICE, MessageCategoryType.RECONCILIATION, newServiceId()).apply {
@@ -452,24 +466,28 @@ class TerminalClient(
                         }
                 }
             }
-        return when (
-            val answer =
-                readTerminalAnswer(transport.send(exchange.wrap(request), shortTimeout)) { response ->
-                    when {
-                        closePeriod -> {
-                            response.reconciliationResponse?.let {
-                                TotalsBody(it.response, it.poiReconciliationID, it.transactionTotals)
-                            }
-                        }
-
-                        else -> {
-                            response.getTotalsResponse?.let {
-                                TotalsBody(it.response, it.poiReconciliationID, it.transactionTotals)
-                            }
-                        }
+        return readTerminalAnswer(transport.send(exchange.wrap(request), shortTimeout)) { response ->
+            when {
+                closePeriod -> {
+                    response.reconciliationResponse?.let {
+                        TotalsBody(it.response, it.poiReconciliationID, it.transactionTotals)
                     }
                 }
-        ) {
+
+                else -> {
+                    response.getTotalsResponse?.let {
+                        TotalsBody(it.response, it.poiReconciliationID, it.transactionTotals)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun totalsOutcome(
+        answer: TerminalAnswer<TotalsBody>,
+        closePeriod: Boolean,
+    ): TerminalTotalsOutcome =
+        when (answer) {
             is TerminalAnswer.Unread -> {
                 TerminalTotalsOutcome.Failed(answer.fault)
             }
@@ -484,7 +502,6 @@ class TerminalClient(
                 )
             }
         }
-    }
 
     /** The body of a `GetTotals` or `SaleReconciliation` answer, whichever was asked for. */
     private data class TotalsBody(
@@ -584,7 +601,7 @@ class TerminalClient(
                     tip.suggestions?.let { suggestions ->
                         put(
                             NexoVocabulary.TIP_OPTIONS,
-                            tipOptions(tip.amountToTipOnMinor?.let { money.major(it, params.currency) }, suggestions),
+                            tipOptions(tip.amountToTipOnMinor?.let { money.major(it, params.currency) }, suggestions, params.currency),
                         )
                     }
                 }
@@ -600,6 +617,7 @@ class TerminalClient(
     private fun tipOptions(
         amountToTipOn: BigDecimal?,
         configured: TerminalTipSuggestions,
+        currency: String,
     ): Map<String, Any> {
         val suggestions =
             when (configured) {
@@ -615,7 +633,7 @@ class TerminalClient(
                 is TerminalTipSuggestions.FixedAmounts -> {
                     buildMap<String, Any> {
                         for (index in configured.amountsMinor.indices) {
-                            put("${NexoVocabulary.TIP_AMOUNT}${index + 1}", configured.amountsMinor[index])
+                            put("${NexoVocabulary.TIP_AMOUNT}${index + 1}", money.major(configured.amountsMinor[index], currency))
                         }
                         put(NexoVocabulary.TIP_CUSTOM, configured.allowCustom)
                     }

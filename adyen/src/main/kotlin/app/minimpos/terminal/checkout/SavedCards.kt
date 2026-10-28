@@ -236,7 +236,12 @@ class CheckoutSavedCards(
         }
         val methods =
             response.storedPaymentMethods
-                ?: return StoredCardListing.Failed(Fault.UnreadableReply())
+                // TEST returns only the two identity fields when this shopper has no stored cards.
+                ?: return if (response.merchantAccount == credentials.merchantAccount && response.shopperReference == reference) {
+                    StoredCardListing.Listed(emptyList())
+                } else {
+                    StoredCardListing.Failed(Fault.UnreadableReply())
+                }
         // Dropping malformed entries could falsely confirm that an uncertain deletion removed its token.
         if (methods.any { it?.id.isNullOrBlank() }) return StoredCardListing.Failed(Fault.UnreadableReply())
         val cards =

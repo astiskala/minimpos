@@ -1,5 +1,9 @@
 package app.minimpos.terminal.client
 
+import com.adyen.model.nexo.ErrorConditionType
+import com.adyen.model.nexo.Response
+import com.adyen.model.nexo.ResultType
+
 /**
  * Why a payment or refund was not approved: the one reading of nexo's `ErrorCondition` and Adyen's refusal reason, so
  * no caller compares those strings itself. It comes with a live answer ([TransactionDetails.decline]) and can be read
@@ -52,6 +56,10 @@ data class Decline(
         private const val CANCEL = "Cancel"
         private const val ABORTED = "Aborted"
         private const val BUSY = "Busy"
+
+        /** Whether a service request was definitively rejected because this SaleID needs a login. */
+        internal fun requiresLogin(response: Response?): Boolean =
+            response?.result == ResultType.FAILURE && response.errorCondition == ErrorConditionType.LOGGED_OUT
 
         private val INVALID_CARD_FINAL = listOf("Card data authentication failed")
 

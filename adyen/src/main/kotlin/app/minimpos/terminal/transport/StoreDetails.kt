@@ -69,7 +69,7 @@ sealed interface StoreLookup {
         val store: StoreDetails,
     ) : StoreLookup
 
-    /** Adyen knows no such store in the requested merchant account (HTTP 404). */
+    /** Adyen knows no such store in the requested merchant account (HTTP 404 or Management entity-not-found code). */
     data object Missing : StoreLookup
 
     /**
@@ -197,7 +197,10 @@ class AdyenStoreDetails(
                     }
 
                     !reply.ok -> {
-                        StoreLookup.Failed(managementFault(reply, role = AdyenRole.STORES_READ.displayName))
+                        when (val fault = managementFault(reply, role = AdyenRole.STORES_READ.displayName)) {
+                            is Fault.NotFound -> StoreLookup.Missing
+                            else -> StoreLookup.Failed(fault)
+                        }
                     }
 
                     else -> {

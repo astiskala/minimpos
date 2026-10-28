@@ -78,6 +78,22 @@ class SavedCardsTest {
         }
 
     @Test
+    fun `listing accepts omitted empty cards only with matching merchant and shopper`() =
+        runBlocking {
+            reply("""{"merchantAccount":"HarbourCoffeeCOM","shopperReference":"NEW"}""")
+            assertThat(api.list("NEW")).isEqualTo(StoredCardListing.Listed(emptyList()))
+            listOf(
+                """{"merchantAccount":"HarbourCoffeeCOM"}""",
+                """{"shopperReference":"NEW"}""",
+                """{"merchantAccount":"OtherMerchant","shopperReference":"NEW"}""",
+                """{"merchantAccount":"HarbourCoffeeCOM","shopperReference":"OTHER"}""",
+            ).forEach { body ->
+                reply(body)
+                assertThat(api.list("NEW")).isEqualTo(StoredCardListing.Failed(Fault.UnreadableReply()))
+            }
+        }
+
+    @Test
     fun `listing asks for the shopper's cards of the merchant account and keeps only usable summaries`() =
         runBlocking {
             reply(

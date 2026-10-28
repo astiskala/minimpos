@@ -132,6 +132,16 @@ class StoreDetailsTest {
     }
 
     @Test
+    fun `Management entity not found code maps a missing store without hiding other rejections`() {
+        reply("""{"status":422,"errorCode":"30_112","title":"Entity was not found"}""", 422)
+        assertThat(store()).isEqualTo(StoreLookup.Missing)
+        reply("""{"status":422,"errorCode":"30_113","title":"Other rejection"}""", 422)
+        assertThat(failure()).isEqualTo(Fault.AdyenRejected(422, "30_113", ExternalText("Other rejection")))
+        reply("""{"status":400,"errorCode":"30_112","title":"Bad request"}""", 400)
+        assertThat(failure()).isEqualTo(Fault.AdyenRejected(400, "30_112", ExternalText("Bad request")))
+    }
+
+    @Test
     fun `merchant receipt lookup reads only legal name without borrowing city or store fields`() {
         reply("""{"id":"Merchant/One","name":" Legal Shop ","merchantCity":"Sydney","description":"Internal"}""")
         val found = runBlocking { api.merchant("Merchant/One") } as MerchantLookup.Found

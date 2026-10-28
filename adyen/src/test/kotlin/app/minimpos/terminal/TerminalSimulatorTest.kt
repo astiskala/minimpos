@@ -343,12 +343,12 @@ class TerminalSimulatorTest {
                         amountMinor = 600,
                         terminalTip =
                             TerminalTipOptions(
-                                suggestions = TerminalTipSuggestions.FixedAmounts(listOf(100, 200, 300), allowCustom = false),
+                                suggestions = TerminalTipSuggestions.FixedAmounts(listOf(125, 200, 300), allowCustom = false),
                             ),
                     ),
                 )
-            assertThat(fixedTip.tipMinor).isEqualTo(100)
-            assertThat(fixedTip.amountMinor).isEqualTo(700)
+            assertThat(fixedTip.tipMinor).isEqualTo(125)
+            assertThat(fixedTip.amountMinor).isEqualTo(725)
 
             val percentTipNoCustom =
                 pay(

@@ -155,7 +155,7 @@ internal fun simulatedTipAmount(
                 val suggestions = tipOptions.getAsJsonObject(NexoVocabulary.TIP_SUGGESTIONS)
                 when {
                     suggestions.has(NexoVocabulary.FIRST_TIP_AMOUNT) -> {
-                        BigDecimal.valueOf(suggestions.get(NexoVocabulary.FIRST_TIP_AMOUNT).asLong, scale)
+                        suggestions.get(NexoVocabulary.FIRST_TIP_AMOUNT).asBigDecimal
                     }
 
                     else -> {

@@ -211,7 +211,9 @@ sealed interface TerminalCapabilitiesLookup {
 }
 
 /**
- * Scoped Management `terminalSettings` update for one capability section; never touches `nexo` or unrelated sections.
+ * Scoped Management `terminalSettings` update payload; never includes `nexo` or unrelated sections.
+ * Management can also change related effective settings, such as `standalone.enableGratuities` after gratuity updates.
+ * Read-back verifies the requested capability values, not the absence of server-side changes to other settings.
  * Management replaces each sent object whole: a limit left out of it (null here) is removed from the terminal, which
  * then inherits its store's, merchant account's or company's value, so the read-back may still show one.
  */

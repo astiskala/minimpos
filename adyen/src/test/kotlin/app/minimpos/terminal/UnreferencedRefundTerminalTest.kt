@@ -28,7 +28,11 @@ import app.minimpos.terminal.transport.TerminalTransport
 import app.minimpos.terminal.transport.base64Json
 import app.minimpos.terminal.transport.nexoGson
 import com.adyen.model.nexo.AmountsResp
+import com.adyen.model.nexo.DocumentQualifierType
 import com.adyen.model.nexo.MessageCategoryType
+import com.adyen.model.nexo.OutputContent
+import com.adyen.model.nexo.OutputText
+import com.adyen.model.nexo.PaymentReceipt
 import com.adyen.model.nexo.PaymentResponse
 import com.adyen.model.nexo.PaymentResult
 import com.adyen.model.nexo.PaymentType
@@ -134,6 +138,39 @@ class UnreferencedRefundTerminalTest {
                 assertThat(other.details.acquirerResponseCode).isEqualTo(code.trim())
                 assertThat(TerminalClient.refundApproved(other.details.acquirerResponseCode)).isFalse()
             }
+        }
+
+    @Test
+    fun `approved unreferenced refund preserves named receipt fields without a literal transaction type key`() =
+        runTest {
+            // TEST S1F2 returned a translated label and value, not the docs' literal transaction_type_refund.
+            val fields = listOf("key=txtype&name=Type&value=REFUND", "key=approved&name=APPROVED")
+            val details =
+                (
+                    client {
+                        respond {
+                            paymentResponse =
+                                answer(mapOf("transactionType" to "REFUND", "acquirerResponseCode" to "APPROVED")).apply {
+                                    paymentReceipt.addAll(
+                                        listOf(
+                                            PaymentReceipt().apply {
+                                                documentQualifier = DocumentQualifierType.CUSTOMER_RECEIPT
+                                                outputContent =
+                                                    OutputContent().apply {
+                                                        outputText = fields.map { field -> OutputText().apply { text = field } }
+                                                    }
+                                            },
+                                        ),
+                                    )
+                                }
+                        }
+                    }.pay(refund) as TransactionOutcome.Completed
+                ).details
+            assertThat(details.success).isTrue()
+            assertThat(TerminalClient.refundApproved(details.acquirerResponseCode)).isTrue()
+            assertThat(details.customerReceipt.map { Triple(it.key, it.name, it.value) })
+                .containsExactly(Triple("txtype", "Type", "REFUND"), Triple("approved", "APPROVED", null))
+                .inOrder()
         }
 
     @Test

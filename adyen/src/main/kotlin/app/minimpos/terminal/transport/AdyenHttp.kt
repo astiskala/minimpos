@@ -112,7 +112,10 @@ internal class AdyenHttp(
         timeout: Duration,
     ): AdyenReply = call(Request.Builder().url(url).get(), timeout)
 
-    /** `POST [url]` with the JSON [json], waiting at most [timeout]; with [idempotencyKey] Adyen applies it at most once. */
+    /**
+     * `POST [url]` with the JSON [json], waiting at most [timeout]; attaches [idempotencyKey] when supplied.
+     * Deduplication depends on the endpoint: TEST Management credential creation and key generation ignored the header.
+     */
     suspend fun post(
         url: HttpUrl,
         json: String,

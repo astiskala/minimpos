@@ -37,6 +37,8 @@ class PaymentsAppCredentialsTest {
                 assertThat(request.method).isEqualTo("POST")
                 assertThat(request.url.encodedPath).isEqualTo("/v3/merchants/Merchant/apiCredentials")
                 assertThat(request.headers["x-api-key"]).isEqualTo("primary-secret")
+                // TEST Management ignored repeated Idempotency-Key headers; recovery uses the journal and listing.
+                assertThat(request.headers["Idempotency-Key"]).isNull()
                 assertThat(request.body!!.utf8()).isEqualTo(
                     """{"description":"$reference","roles":["Adyen Payments App role","Management API - Accounts read"]}""",
                 )
@@ -117,6 +119,7 @@ class PaymentsAppCredentialsTest {
                 }
                 val rotate = server.takeRequest()
                 assertThat(rotate.url.encodedPath).isEqualTo("/v3/merchants/Merchant/apiCredentials/C1/generateApiKey")
+                assertThat(rotate.headers["Idempotency-Key"]).isNull()
                 assertThat(server.requestCount).isEqualTo(3)
             }
         }
@@ -128,6 +131,7 @@ class PaymentsAppCredentialsTest {
                 server.start()
                 listOf(
                     """{"data":[]}""",
+                    """{"itemsTotal":0,"pagesTotal":0,"_links":{"self":{"href":"https://untrusted.example/"}}}""",
                     """{"data":[${credential().replace(reference, "another-device")}]}""",
                 ).forEach { body ->
                     server.enqueue(MockResponse.Builder().body(body).build())
@@ -140,7 +144,7 @@ class PaymentsAppCredentialsTest {
                     assertThat(creation.url.encodedPath).isEqualTo("/v3/merchants/Merchant/apiCredentials")
                     assertThat(creation.body!!.utf8()).contains(""""description":"$reference"""")
                 }
-                assertThat(server.requestCount).isEqualTo(4)
+                assertThat(server.requestCount).isEqualTo(6)
             }
         }
 
@@ -156,13 +160,16 @@ class PaymentsAppCredentialsTest {
                     """{"data":[${credential().replace("\"C1\"", "\"\"")}]}""",
                     """{"data":[null]}""",
                     """{"data":null}""",
+                    """{"itemsTotal":1,"pagesTotal":0}""",
+                    """{"itemsTotal":0,"pagesTotal":1}""",
+                    """{"itemsTotal":0,"pagesTotal":0,"_links":{"next":{"href":"https://untrusted.example/"}}}""",
                     "{}",
                 ).forEach { body ->
                     server.enqueue(MockResponse.Builder().body(body).build())
                     assertThat(api(server).provision("Merchant", reference, true)).isInstanceOf(ProvisionedCredential.Failed::class.java)
                     assertThat(server.takeRequest().method).isEqualTo("GET")
                 }
-                assertThat(server.requestCount).isEqualTo(7)
+                assertThat(server.requestCount).isEqualTo(10)
             }
         }
 

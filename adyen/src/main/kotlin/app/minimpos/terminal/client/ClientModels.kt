@@ -267,6 +267,8 @@ data class PaymentParams(
     /**
      * Sends `PaymentData.PaymentType=Refund`: an unreferenced refund of [amountMinor] to the card the shopper presents,
      * linked to no original payment. Adyen enables it per store or terminal; it carries no other card feature.
+     * Named receipt fields can express the refund as `key=txtype&name=Type&value=REFUND`; the documentation's
+     * `transaction_type_refund` is not a required literal receipt key or label.
      */
     val unreferencedRefund: Boolean = false,
 ) {
@@ -622,7 +624,10 @@ sealed interface TransactionOutcome {
 
 /** The result of [TerminalClient.print]. */
 sealed interface PrintOutcome {
-    /** Every job was printed. */
+    /**
+     * Every job received a successful terminal acknowledgement. This does not verify the rendered paper: a TEST S1F2
+     * acknowledged XHTML containing invalid PNG bytes with `Success`, rather than refusing the image.
+     */
     data object Printed : PrintOutcome
 
     /**

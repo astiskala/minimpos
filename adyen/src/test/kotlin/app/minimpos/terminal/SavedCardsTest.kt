@@ -276,8 +276,12 @@ class SavedCardsTest {
             assertThat((api.charge(request, "k4") as CardChargeResult.Failed).fault.mayHaveTakenEffect).isTrue()
             reply("""{"pspReference":"PSP6","resultCode":"RedirectShopper"}""")
             assertThat((api.charge(request, "k5") as CardChargeResult.Failed).fault.mayHaveTakenEffect).isTrue()
-            reply("""{"status":422,"errorCode":"800","message":"Contract not found"}""", 422)
-            assertThat((api.charge(request, "k6") as CardChargeResult.Failed).fault.mayHaveTakenEffect).isFalse()
+            // TEST advertised all models, but CardOnFile and Subscription charges still required a CVC.
+            reply("""{"status":422,"errorCode":"14_029","message":"Required field 'cvc' is not provided."}""", 422)
+            val cvcRequired = (api.charge(request, "k6") as CardChargeResult.Failed).fault
+            assertThat(cvcRequired)
+                .isEqualTo(Fault.AdyenRejected(422, "14_029", ExternalText("Required field 'cvc' is not provided.")))
+            assertThat(cvcRequired.mayHaveTakenEffect).isFalse()
             reply("{}", 503)
             assertThat((api.charge(request, "k7") as CardChargeResult.Failed).fault.mayHaveTakenEffect).isTrue()
             val requests = server.requestCount

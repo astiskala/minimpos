@@ -43,7 +43,10 @@ data class StoredCard(
     val holderName: String? = null,
     val recurringModels: Set<String> = emptySet(),
 ) {
-    /** Whether the token may be charged with [model]; a token without listed models is not ruled out. */
+    /**
+     * Whether the listing permits [model]; a token without listed models is not ruled out. Listed compatibility does
+     * not establish no-CVC payment readiness: TEST listed all three models while two still required a CVC at charge time.
+     */
     fun supports(model: String): Boolean = recurringModels.isEmpty() || model in recurringModels
 }
 

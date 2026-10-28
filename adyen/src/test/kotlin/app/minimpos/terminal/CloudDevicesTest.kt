@@ -5,6 +5,7 @@ import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.PrintLine
 import app.minimpos.terminal.client.PrintOutcome
 import app.minimpos.terminal.client.RecoveryPolicy
+import app.minimpos.terminal.client.RetryAdvice
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalIdentity
 import app.minimpos.terminal.client.TransactionOutcome
@@ -139,6 +140,29 @@ class CloudDevicesTest {
         }
         val outcome = runBlocking { client().pay(payment, serviceId = "PAY1") }
         assertThat(outcome).isEqualTo(TransactionOutcome.Unknown(Fault.UnreadableReply()))
+    }
+
+    @Test
+    fun `competing cloud payment is answered Busy with the active service ID without recovery or resend`() {
+        // Sanitized TEST S1F2 response while another payment was waiting at its gratuity prompt.
+        syncReply = {
+            MockResponse
+                .Builder()
+                .body(
+                    """
+                    {"SaleToPOIResponse":{
+                      "MessageHeader":{"ProtocolVersion":"3.0","MessageClass":"Service","MessageCategory":"Payment",
+                        "MessageType":"Response","SaleID":"MiniMPOS","POIID":"S1F2-000158213605014","ServiceID":"PAY1"},
+                      "PaymentResponse":{"Response":{"Result":"Failure","ErrorCondition":"Busy",
+                        "AdditionalResponse":"message=The%20POI%20Terminal%20is%20temporary%20not%20available%2c%20because%20another%20request%20is%20processed%20by%20the%20POI.&serviceId=ACTIVE1"}}}}
+                    """.trimIndent(),
+                ).build()
+        }
+        val outcome = runBlocking { client().pay(payment, serviceId = "PAY1") } as TransactionOutcome.Completed
+        assertThat(outcome.details.success).isFalse()
+        assertThat(outcome.details.decline!!.advice).isEqualTo(RetryAdvice.TERMINAL_BUSY)
+        assertThat(outcome.details.decline!!.busyServiceId).isEqualTo("ACTIVE1")
+        assertThat(server.requestCount).isEqualTo(1)
     }
 
     @Test

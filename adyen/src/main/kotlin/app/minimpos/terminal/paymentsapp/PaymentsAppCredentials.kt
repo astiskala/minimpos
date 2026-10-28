@@ -51,6 +51,8 @@ fun interface PaymentsAppCredentials {
      * Creates a credential named [reference] for [merchant]. With [recover], first recovers that exact creation: reads
      * all pages, then replaces its unretrieved API key; only when the complete listing has no credential named
      * [reference] is it created again. Never rotates an unrelated credential.
+     * TEST Management created duplicate credentials and different API/client keys for repeated identical POSTs with
+     * the same `Idempotency-Key`; the caller must retain its provisioning journal rather than rely on that header.
      */
     suspend fun provision(
         merchant: String,
@@ -134,11 +136,18 @@ class AdyenPaymentsAppCredentials(
     private fun parsePage(body: String): Pair<List<ApiCredential>, Boolean>? =
         runCatching {
             val response = requireNotNull(decodeAdyenModel(body, ListMerchantApiCredentialsResponse::class.java))
-            requireNotNull(response.data).map { requireNotNull(it) } to
+            val hasNext =
                 !response.links
                     ?.next
                     ?.href
                     .isNullOrBlank()
+            // TEST omits data when no active merchant credentials exist. Only explicit zero counts establish absence;
+            // an unreadable or incomplete listing must never authorize another credential creation.
+            val items =
+                response.data ?: emptyList<ApiCredential>().takeIf {
+                    response.itemsTotal == 0 && response.pagesTotal == 0 && !hasNext
+                }
+            requireNotNull(items).map { requireNotNull(it) } to hasNext
         }.getOrNull()
 
     /** Replaces the unretrieved API key of the one credential in [matches], which a creation left without its answer. */

@@ -269,6 +269,8 @@ class AdyenCloudDevices(
  * have reached Adyen without an answer, HTTP 5xx, 408 or 429, an unreadable reply and any other event notification
  * Adyen answers with instead of a response ([Fault.NoAnswerFromTerminal], e.g. that the terminal did not answer in
  * time) may have, after which the outcome is unknown.
+ * A competing TEST payment instead returned an ordinary `PaymentResponse` with `ErrorCondition=Busy` and the active
+ * request's `serviceId` in `AdditionalResponse`; it remains an answered payment for the client's decline handling.
  */
 class CloudTransport internal constructor(
     /** The merchant account's base URL, `…/v1/merchants/{merchantAccount}`. */

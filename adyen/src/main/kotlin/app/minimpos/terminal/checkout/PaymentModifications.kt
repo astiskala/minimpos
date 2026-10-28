@@ -136,6 +136,8 @@ interface PaymentModifications {
      * its `VOID_PENDING_REFUND` webhook, so it is shown in the Customer Area. Only Support-configured delayed refunds
      * can be cancelled, and only before the delay ends. A 403 names the Classic API role the key lacks. By default
      * nothing is sent ([Fault.Unsupported]).
+     * TEST v68 echoed the idempotency key and returned the same modification reference for an identical repeated
+     * request; this confirms request deduplication, not the asynchronous cancellation outcome or retention period.
      *
      * @param refundPspReference The PSP reference of the unreferenced refund.
      * @param idempotencyKey Sent as `Idempotency-Key`, so repeating a cancellation whose outcome is unknown is safe.

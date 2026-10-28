@@ -36,7 +36,7 @@ class TerminalSessionTest {
     private var ids = 0
     private val clock = Clock.fixed(Instant.parse("2026-09-30T01:02:03.456Z"), ZoneOffset.UTC)
     private val unreachable = Fault.Unreachable("192.168.1.20:8443", terminal = true)
-    private val loggedOut = result(ResultType.FAILURE, ErrorConditionType.LOGGED_OUT)
+    private val loggedOut = result(ResultType.FAILURE, ErrorConditionType.LOGGED_OUT, "message=Must%20be%20logged%20in")
 
     private fun client(
         application: PosApplication? = PosApplication("Mini mPOS", "1.0", "Mini mPOS", "Android", "13"),
@@ -217,7 +217,8 @@ class TerminalSessionTest {
                     answer(MessageCategoryType.RECONCILIATION) to TerminalTotalsOutcome.Answered("42", emptyList(), true),
                     Delivery.Failed(Fault.TimedOut) to TerminalTotalsOutcome.Failed(Fault.TimedOut),
                     Delivery.Answered(null) to TerminalTotalsOutcome.Failed(Fault.UnreadableReply()),
-                    answer(MessageCategoryType.RECONCILIATION, loggedOut) to TerminalTotalsOutcome.Failed(Fault.TerminalRejected(null)),
+                    answer(MessageCategoryType.RECONCILIATION, loggedOut) to
+                        TerminalTotalsOutcome.Failed(Fault.TerminalRejected(ExternalText("Must be logged in"))),
                 )
             cases.forEach { (retryAnswer, expected) ->
                 sent.clear()

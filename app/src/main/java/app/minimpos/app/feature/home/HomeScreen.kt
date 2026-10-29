@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.LockClock
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
@@ -292,7 +293,7 @@ private fun PaymentTile(
                 Text(
                     hint,
                     style = MaterialTheme.typography.bodyMedium,
-                    maxLines = if (dimens.compact) 1 else 2,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -342,7 +343,7 @@ private fun ColumnScope.AreaTiles(onOpen: (Route) -> Unit) {
             modifier = Modifier.testTag("refund"),
         )
         HomeTile(
-            Icons.Default.Balance,
+            Icons.Default.Payments,
             cashout,
             labels,
             onClick = { onOpen(Route.Cashout) },

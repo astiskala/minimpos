@@ -3,6 +3,7 @@ package app.minimpos.app.feature.history
 import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,8 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Undo
@@ -257,7 +258,8 @@ private fun HistoryList(
 
 /**
  * The payment method menu (when history has [methods] to choose from), then a chip per [HistoryFilter], in one row
- * that scrolls sideways.
+ * that scrolls sideways. Not lazy: a lazy row keeps its first visible chip in place, so the menu, added once history
+ * has loaded its [methods], would appear scrolled out of sight before it.
  */
 @Composable
 private fun HistoryFilters(
@@ -267,12 +269,14 @@ private fun HistoryFilters(
     method: PaymentMethodFilter?,
     onMethod: (PaymentMethodFilter?) -> Unit,
 ) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = if (LocalDimens.current.compact) 4.dp else 12.dp),
+    Row(
+        Modifier
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = if (LocalDimens.current.compact) 4.dp else 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (methods.isNotEmpty() || method != null) item(key = "method") { PaymentMethodChip(methods, method, onMethod) }
-        items(HistoryFilter.entries, key = { it.name }) { filter ->
+        if (methods.isNotEmpty() || method != null) PaymentMethodChip(methods, method, onMethod)
+        HistoryFilter.entries.forEach { filter ->
             FilterChip(
                 selected = selected == filter,
                 onClick = { onSelect(filter) },

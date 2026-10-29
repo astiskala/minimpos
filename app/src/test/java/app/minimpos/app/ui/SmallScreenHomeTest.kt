@@ -97,6 +97,32 @@ class SmallScreenHomeTest {
     }
 
     @Test
+    fun `payment tile hints are not cut on the smallest terminal`() = paymentHintsFit()
+
+    @Test
+    @Config(qualifiers = "fr-rFR-w320dp-h460dp-hdpi")
+    fun `French payment tile hints are not cut on the smallest terminal`() = paymentHintsFit()
+
+    /** Both payment tiles' hints are drawn whole, wrapping rather than ending in an ellipsis. */
+    private fun paymentHintsFit() {
+        compose.setContent { MiniMposApp(container) }
+        waitForTag("newSale")
+        listOf(R.string.home_new_sale_hint, R.string.home_pre_auth_hint).forEach { hint ->
+            val text = env.context.getString(hint)
+            val layouts = mutableListOf<TextLayoutResult>()
+            compose
+                .onNodeWithText(text, useUnmergedTree = true)
+                .fetchSemanticsNode()
+                .config
+                .getOrNull(SemanticsActions.GetTextLayoutResult)
+                ?.action
+                ?.invoke(layouts)
+            val layout = layouts.single()
+            assertWithMessage(text).that(layout.isLineEllipsized(layout.lineCount - 1)).isFalse()
+        }
+    }
+
+    @Test
     fun `home tile labels share one font size on the smallest terminal`() = homeTextsShareSizes()
 
     @Test

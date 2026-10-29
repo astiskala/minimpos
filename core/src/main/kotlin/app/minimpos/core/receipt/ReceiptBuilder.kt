@@ -82,7 +82,7 @@ class ReceiptBuilder(
         out += Row(if (cancellation) labels.released else labels.refundTotal, money.format(receipt.amount), TextStyle.BOLD)
         // An unreferenced refund returns no recorded payment's surcharge or tip.
         if (!cancellation && original != null) {
-            out += Row(labels.surcharge, receipt.surchargeMinor?.let(money::format) ?: labels.unreported)
+            receipt.surchargeMinor?.takeIf { it > 0 }?.let { out += Row(labels.surcharge, money.format(it)) }
             receipt.tipMinor?.let { out += Row(labels.tip, money.format(it)) }
         }
         receipt.standingNote?.let { note(out, it) }
@@ -206,7 +206,7 @@ class ReceiptBuilder(
     ) {
         if (receipt.discloseSurcharge) {
             receipt.purchaseMinor?.let { out += Row(labels.purchase, money.format(it)) }
-            out += Row(labels.surcharge, receipt.surchargeMinor?.let(money::format) ?: labels.unreported)
+            receipt.surchargeMinor?.takeIf { it > 0 }?.let { out += Row(labels.surcharge, money.format(it)) }
         }
         receipt.heldNow?.let { out += Row(labels.heldNow, money.format(it)) }
         receipt.captured?.let { out += Row(labels.captured, money.format(it), TextStyle.BOLD) }

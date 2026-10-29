@@ -51,6 +51,9 @@ sealed interface AppLinkAnswer {
     /** The app could not be started, so nothing was sent. */
     data object NotStarted : Unanswered(Fault.NotStarted)
 
+    /** Android could not confirm activity launch, including a partial Binder size failure; the app may have acted. */
+    data object LaunchFailed : Unanswered(Fault.ConnectionLost)
+
     /** The app did not call back in time; whether it acted is unknown. */
     data object TimedOut : Unanswered(Fault.TimedOut)
 
@@ -208,10 +211,16 @@ internal class PaymentsAppCrypto(
  * Payments, reversals and transaction status travel through the encrypted `/nexo` App Link. Status first uses a
  * validated [AppLinkExchange.lateReplies] answer, then queries installations whose version may support it. Version
  * 1.8.0 introduced status; version alone does not establish beta enablement. NotFound remains inconclusive on this
- * destination, so recovery never authorizes another payment. Other requests (abort, print, diagnosis) fail with
+ * destination, so recovery never authorizes another payment. Version 1.9.0 can omit `MessageReference` from a successful
+ * status answer; its complete repeated response header must then identify the original transaction instead.
+ * Other requests (abort, print, diagnosis) fail with
  * [Fault.Unsupported]. A request that cannot be encrypted, a Payments app that could not be started and an answer with
  * only an `error` (the Payments app did not take the payment) took no effect. Not calling back in time, coming back
  * without a result, and an answer that cannot be verified or belongs to another request may have.
+ *
+ * Keep links small: Android's Binder buffer is shared, so there is no fixed safe per-link size. A large link can start
+ * without yielding a callback; a Binder launch failure can also be partial. Both the missing callback and
+ * [AppLinkAnswer.LaunchFailed] stay uncertain and use status recovery, never payment replay.
  *
  * @param key The shared key the Payments app's requests are encrypted with.
  * @param environment Which Payments app to use.
@@ -473,17 +482,21 @@ class PaymentsAppTransport(
         header: MessageHeader,
     ): Boolean = response.response?.result == ResultType.SUCCESS && repeatsRequest(response, request, header)
 
-    /** Whether the reference, repeated header and body all identify the requested original, regardless of status outcome. */
+    /** Whether supplied identities and the body identify the original, with at least one complete identity. */
     private fun repeatsRequest(
         response: TransactionStatusResponse,
         request: TransactionStatusRequest,
         header: MessageHeader,
     ): Boolean {
-        if (!sameReference(response.messageReference, request.messageReference)) return false
+        val reference = request.messageReference ?: return false
+        val referenced = response.messageReference?.let { sameReference(it, reference) }
+        if (referenced == false) return false
         val repeated = response.repeatedMessageResponse ?: return false
-        val original = originalHeader(request.messageReference, header)
+        // Real Payments app status answers may identify the original only in the authenticated repeated header.
+        if (referenced == null && repeated.messageHeader == null) return false
+        val original = originalHeader(reference, header)
         return (repeated.messageHeader == null || matches(repeated.messageHeader, original)) &&
-            bodyMatches(repeated.repeatedResponseMessageBody, request.messageReference.messageCategory)
+            bodyMatches(repeated.repeatedResponseMessageBody, reference.messageCategory)
     }
 
     private fun bodyMatches(

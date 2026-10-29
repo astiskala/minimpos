@@ -26,6 +26,7 @@ import java.math.BigDecimal
  * `StoredValue`. The shopper may have to swipe or key in the card, so it waits like a payment; a missing answer is
  * settled with transaction status checks for category `StoredValue`, never by sending it again. The answer's balance is
  * [TransactionDetails.balanceMinor]; its transaction ID identifies a load for a later undo. Main-safe.
+ * A successful `Reverse` can omit `StoredValueResult`, currency and balance; absence is not a zero balance or a failure.
  *
  * @param params What to do with which card.
  * @param serviceId The request's ServiceID; pass one to record it before the terminal is called.

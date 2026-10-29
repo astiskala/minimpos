@@ -17,6 +17,52 @@ import java.net.UnknownHostException
 
 class WalletMethodsTest {
     @Test
+    fun `empty store configuration stays empty without a merchant fallback`() =
+        runTest {
+            MockWebServer().use { server ->
+                server.start()
+                server.enqueue(MockResponse.Builder().body("""{"data":[]}""").build())
+                val api = AdyenWalletMethods("synthetic", TerminalEnvironment.TEST, baseUrl = server.url("/v3/"))
+                assertThat(api.methods("Merchant", "ST1")).isEqualTo(WalletMethodListing.Listed(emptyList()))
+                assertThat(server.requestCount).isEqualTo(1)
+                assertThat(server.takeRequest().url.queryParameter("storeId")).isEqualTo("ST1")
+            }
+        }
+
+    @Test
+    fun `enabled POS variants remain discoverable when optional eligibility and channel fields are absent`() =
+        runTest {
+            MockWebServer().use { server ->
+                server.start()
+                server.enqueue(
+                    MockResponse
+                        .Builder()
+                        .body(
+                            """
+                            {"data":[
+                                {"type":"wechatpay_pos","enabled":true,"countries":[],"currencies":[],"storeIds":[]},
+                                {"type":"wechatpay_pos","enabled":true,"allowed":false},
+                                {"type":"wechatpay_pos","enabled":true,"shopperInteraction":"eCommerce"},
+                                {"type":"wechatpay_pos"},
+                                {"type":"alipay","enabled":true}
+                            ]}
+                            """.trimIndent(),
+                        ).build(),
+                )
+                val api = AdyenWalletMethods("synthetic", TerminalEnvironment.TEST, baseUrl = server.url("/v3/"))
+                val result = api.methods("Merchant", "") as WalletMethodListing.Listed
+                assertThat(result.methods)
+                    .containsExactly(
+                        WalletMethod("wechatpay_pos", true, true, "pos"),
+                        WalletMethod("wechatpay_pos", true, false, "pos"),
+                        WalletMethod("wechatpay_pos", true, true, "eCommerce"),
+                        WalletMethod("wechatpay_pos", false, false, "pos"),
+                        WalletMethod("alipay", true, true, ""),
+                    ).inOrder()
+            }
+        }
+
+    @Test
     fun `malformed enablement flags errors and HTTP failures are discovery failures not permission to offer wallets`() =
         runTest {
             MockWebServer().use { server ->

@@ -37,6 +37,45 @@ class PaymentsAppRecoveryTest {
     private val payment = PaymentParams(1250, "EUR", "260930-1")
 
     @Test
+    fun `status without message reference recovers only with the complete original repeated header`() {
+        runBlocking { client.pay(payment, "RESTART") }
+        val mutations: List<(MessageHeader) -> Unit> =
+            listOf(
+                {},
+                { it.saleID = "FOREIGN" },
+                { it.serviceID = "FOREIGN" },
+                { it.poiid = "FOREIGN" },
+                { it.messageCategory = MessageCategoryType.REVERSAL },
+                { it.messageClass = MessageClassType.DEVICE },
+                { it.messageType = MessageType.REQUEST },
+            )
+        mutations.forEachIndexed { index, mutation ->
+            app.transform = {
+                it.saleToPOIResponse.transactionStatusResponse.apply {
+                    messageReference = null
+                    repeatedMessageResponse.messageHeader =
+                        MessageHeader().apply {
+                            saleID = "MiniMPOS"
+                            serviceID = "RESTART"
+                            poiid = "INSTALLATION-1"
+                            messageCategory = MessageCategoryType.PAYMENT
+                            messageClass = MessageClassType.SERVICE
+                            messageType = MessageType.RESPONSE
+                            mutation(this)
+                        }
+                }
+            }
+            val result = runBlocking { client.status("RESTART") }
+            if (index == 0) {
+                assertThat(result).isInstanceOf(TransactionOutcome.Completed::class.java)
+            } else {
+                assertThat(result).isEqualTo(TransactionOutcome.Unknown(Fault.UnreadableReply()))
+            }
+        }
+        assertThat(app.requests.count { it.saleToPOIRequest.paymentRequest != null }).isEqualTo(1)
+    }
+
+    @Test
     fun `retained inconclusive callbacks are discarded without releasing financial answers`() {
         app.retainAnswers = true
         repeat(8) {

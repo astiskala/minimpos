@@ -121,7 +121,6 @@ data class ReceiptOptions(
  * @property paidOnline the note on the receipt of a sale paid through a payment link.
  * @property markedTaxRateNote Explanation of marked items, printed after them; blank omits the explanation.
  * @property surcharge Label of the fee component.
- * @property unreported Unavailable component, distinct from zero.
  * @property charged Total charged across original tenders.
  * @property purchase Purchase component excluding tips, surcharge and cash movement.
  * @property tenderCard Label of a card tender in the breakdown, followed by its brand and masked number.
@@ -178,8 +177,6 @@ data class ReceiptLabels(
     val markedTaxRateNote: String = "※ Items at the marked tax rate",
     /** Fee component already included in the charged amount. */
     val surcharge: String = "Surcharge",
-    /** A fee that was not recorded or reported, distinct from zero. */
-    val unreported: String = "Unreported",
     /** Total charged across the original tenders. */
     val charged: String = "CHARGED",
     /** Purchase component excluding tip, fee and cash movement. */
@@ -293,7 +290,7 @@ enum class ReceiptCopy {
  * @property surchargeMinor Reported fee in minor units; null when unreported.
  * @property chargedAmount Total authorized across tenders; null for old or non-terminal receipts.
  * @property purchaseMinor Known purchase component in minor units; null when unreported.
- * @property discloseSurcharge Whether the original fee component, including unknown, must be shown.
+ * @property discloseSurcharge Whether to show the known purchase component and a positive reported surcharge.
  * @property cardPlans Localized requested/returned plan and meal-voucher facts, including unresolved tenders; never proof
  *   of approval.
  * @property tenders Approved tenders in payment order, printed as a breakdown when there are several or any is cash.

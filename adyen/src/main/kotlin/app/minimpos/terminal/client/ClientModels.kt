@@ -242,7 +242,7 @@ data class PaymentParams(
     val shopperFlow: ShopperSessionFlow? = null,
     /** Sends `AllowPartialAuthorisation` in `SaleToAcquirerData.tenderOption` so the terminal can approve part of [amountMinor]. */
     val allowPartialAuthorisation: Boolean = false,
-    /** Optional `SaleData.SaleReferenceID` grouping split tenders of the same sale. */
+    /** Optional `SaleData.SaleReferenceID` grouping split tenders; shown as Merchant Order in the Customer Area. */
     val saleReferenceId: String? = null,
     /** Sends `AskGiving` in `SaleToAcquirerData.tenderOption` to prompt for a charity donation after purchase. */
     val askGiving: Boolean = false,
@@ -398,6 +398,10 @@ data class TerminalTipOptions(
  * A transient numeric wallet code, consumed once while building a request. String conversion never exposes it.
  * Recovery uses transaction status, never this code. Safe to consume or discard from any thread.
  *
+ * Adyen's POS TEST wallet simulator accepts synthetic scan data; no live wallet barcode is needed. Use the wallet's
+ * documented shape (for example, 18 digits starting with 10–15 for WeChat Pay) and the amount-based scenarios in
+ * [Adyen's POS testing guide](https://docs.adyen.com/point-of-sale/testing-pos-payments/).
+ *
  * @property brand Exact Terminal API routing brand, not a display name.
  * @param code ASCII digits, retaining leading zeros; bounded to 128 characters for unverified wallet contracts.
  * @throws IllegalArgumentException for an empty/invalid brand or a nonnumeric, empty or oversized code.
@@ -461,7 +465,8 @@ data class RefundParams(
 }
 
 /**
- * The card details Adyen stored during a payment that asked for tokenization, read from the `AdditionalResponse`.
+ * The stored-payment identifier Adyen returned in `AdditionalResponse`, including supported wallet replies. Its presence
+ * alone does not establish supported recurring models or the outcome of a later charge.
  *
  * @property storedPaymentMethodId The token for charging the stored card later (`tokenization.storedPaymentMethodId`,
  *   or the older `recurring.recurringDetailReference`).
@@ -551,7 +556,7 @@ data class TransactionDetails(
     val signatureRequired: Boolean,
     /** The complete `AdditionalResponse`, flattened by [app.minimpos.terminal.parse.AdditionalResponseParser]. */
     val additionalData: Map<String, String>,
-    /** The stored card, when a payment asked for tokenization and Adyen stored it; null otherwise. */
+    /** Stored payment details reported by Adyen; null when no stored-payment identifier was returned. */
     val tokenization: Tokenization?,
     /** Email collected from the shopper on the terminal before payment (`InputRequest` `GetText`), if any. */
     val collectedEmail: String? = null,
@@ -626,7 +631,7 @@ sealed interface TransactionOutcome {
 sealed interface PrintOutcome {
     /**
      * Every job received a successful terminal acknowledgement. This does not verify the rendered paper: a TEST S1F2
-     * acknowledged XHTML containing invalid PNG bytes with `Success`, rather than refusing the image.
+     * acknowledged XHTML containing invalid PNG bytes with `Success` while printing nothing, rather than refusing it.
      */
     data object Printed : PrintOutcome
 
@@ -654,6 +659,7 @@ sealed interface PrintOutcome {
 
 /**
  * Totals reported by the terminal for one [currency] in a `GetTotalsResponse` or `ReconciliationResponse`.
+ * These debit/credit payment aggregates exclude gift-card `StoredValue` management, such as Givex activation and loading.
  *
  * @property currency ISO 4217 currency code (`PaymentCurrency`).
  * @property debitMinor Total approved payment amount (`TransactionType.DEBIT`), in minor units.

@@ -67,7 +67,6 @@ private fun receiptLabels(localizedContext: Context) =
         amount = localizedContext.getString(R.string.receipt_amount),
         tip = localizedContext.getString(R.string.receipt_tip),
         surcharge = localizedContext.getString(R.string.surcharge_label),
-        unreported = localizedContext.getString(R.string.surcharge_unknown),
         charged = localizedContext.getString(R.string.surcharge_charged),
         purchase = localizedContext.getString(R.string.surcharge_purchase),
         tenderCard = localizedContext.getString(R.string.split_tender_card),

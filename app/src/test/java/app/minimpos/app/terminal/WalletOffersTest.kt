@@ -7,6 +7,18 @@ import org.junit.Test
 
 class WalletOffersTest {
     @Test
+    fun `ANY currencies permit wallets and gift cards without bypassing store restrictions`() {
+        val wallet = WalletMethod("wechatpay_pos", true, true, "pos", setOf("ANY"), setOf("ANY"), setOf("ST1"))
+        val gift = wallet.copy(type = "givex")
+        val offers = WalletOffers.configured(listOf(wallet), "ST1", "AU")
+        assertThat(WalletOffers.forCurrency(offers, "AUD")).containsExactly(ScanWallet.WECHAT_PAY)
+        assertThat(WalletOffers.forCurrency(offers, "EUR")).containsExactly(ScanWallet.WECHAT_PAY)
+        assertThat(WalletOffers.giftCards(listOf(gift), "ST1", "AU", "AUD")).containsExactly("givex")
+        assertThat(WalletOffers.configured(listOf(wallet), "ST2", "AU")).isEmpty()
+        assertThat(WalletOffers.giftCards(listOf(gift), "ST2", "AU", "AUD")).isEmpty()
+    }
+
+    @Test
     fun `only enabled allowed POS wallets in the current store country and currency are offered`() {
         val enabled = WalletMethod("wechatpay_pos", true, true, "pos", setOf("AUD"), setOf("AU"), setOf("ST1"))
         val methods =

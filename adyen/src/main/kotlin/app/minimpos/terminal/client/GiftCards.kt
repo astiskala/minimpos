@@ -104,6 +104,7 @@ class GiftCardAccount private constructor(
 
         /**
          * A card the terminal reads: swiped ([GiftCardEntryMode.MAG_STRIPE]) or keyed ([GiftCardEntryMode.KEYED]).
+         * The terminal and provider decide which additional fields to collect; keyed entry need not ask for expiry or PIN.
          *
          * @throws IllegalArgumentException for an invalid provider or [GiftCardEntryMode.SCANNED].
          */
@@ -122,7 +123,10 @@ enum class GiftCardUse {
     /** Pays with the card's value (`PaymentType=Normal`); a short balance may be approved in part. */
     REDEEM,
 
-    /** Pays the card's value out to the shopper (`PaymentType=Normal`, `redemptionType=cashback`). */
+    /**
+     * Pays the card's value out to the shopper (`PaymentType=Normal`, `redemptionType=cashback`). Normally requires
+     * the full remaining balance in the card's currency; only some Givex cards support partial cash-out.
+     */
     CASH_OUT,
 
     /** Unreferenced refund onto the card (`PaymentType=Refund`). */
@@ -195,7 +199,7 @@ sealed interface GiftCardBalance {
      * The card's balance.
      *
      * @property balanceMinor `PaymentAccountStatus.CurrentBalance` in minor units of [currency].
-     * @property currency ISO 4217 code of the balance.
+     * @property currency ISO 4217 code returned by the terminal; never inferred from the POS currency.
      * @property lastFour Last four digits the terminal reported or the scanned number ended with; null when unknown.
      */
     data class Read(

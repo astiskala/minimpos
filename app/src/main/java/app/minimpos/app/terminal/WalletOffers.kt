@@ -7,7 +7,7 @@ import java.util.Locale
 /**
  * One eligible POS wallet's non-secret currency restrictions, not a guarantee that a payment will be approved.
  * @property wallet Explicitly configured wallet; Alipay+ never implies individually onboarded wallets.
- * @property currencies Allowed currencies; empty means no additional restriction was supplied.
+ * @property currencies Allowed currencies; empty or containing `ANY` means no additional restriction was supplied.
  */
 data class WalletOffer(
     val wallet: ScanWallet,
@@ -47,7 +47,7 @@ internal object WalletOffers {
             .filter { it.enabled && it.allowed && it.channel.equals("pos", ignoreCase = true) }
             .filter { it.storeIds.isEmpty() || storeId in it.storeIds }
             .filter { it.countries.isEmpty() || country in it.countries || "ANY" in it.countries }
-            .filter { it.currencies.isEmpty() || currency in it.currencies }
+            .filter { it.currencies.allowsCurrency(currency) }
             .map { it.type.trim().lowercase(Locale.ROOT) }
             .filter { it.contains("giftcard") || it in GIFT_CARD_TYPES }
             .distinct()
@@ -58,9 +58,11 @@ internal object WalletOffers {
         currency: String,
     ): List<ScanWallet> =
         offers
-            .filter { it.currencies.isEmpty() || currency in it.currencies }
+            .filter { it.currencies.allowsCurrency(currency) }
             .map { it.wallet }
             .sortedBy { it.displayName }
+
+    private fun Set<String>.allowsCurrency(currency: String): Boolean = isEmpty() || "ANY" in this || currency in this
 
     fun nativeScanner(
         model: String,

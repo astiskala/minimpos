@@ -13,9 +13,9 @@ import kotlin.time.Duration.Companion.seconds
  * Non-secret payment-method configuration, not proof that a particular scanned code can be charged.
  * @property type Exact configured Adyen payment-method type.
  * @property enabled Whether the configuration is enabled.
- * @property allowed Whether Adyen allows receiving payments.
- * @property channel Sales channel, such as pos; empty when absent and never eligible for POS by inference.
- * @property currencies Configured currencies; empty means no additional currency restriction was supplied.
+ * @property allowed Explicit Adyen permission when supplied, otherwise the configuration's enablement.
+ * @property channel Explicit sales channel, or pos for an unambiguous `_pos` variant when absent; empty otherwise.
+ * @property currencies Configured currencies; empty or containing `ANY` means no additional currency restriction.
  * @property countries Configured countries; empty means no additional country restriction was supplied.
  * @property storeIds Explicit store restrictions; empty means merchant-wide configuration.
  */
@@ -32,7 +32,8 @@ data class WalletMethod(
 /** Complete read-only lookup, never a partial list after a failed page. */
 sealed interface WalletMethodListing {
     /**
-     * All configuration pages, including inactive methods for the decision owner to filter.
+     * All configuration pages, including inactive methods for the decision owner to filter. An empty list is a
+     * successful lookup with no matching configurations at the requested scope, not a discovery failure.
      * @property methods Configurations in response order; no secrets or raw JSON.
      */
     data class Listed(
@@ -60,6 +61,8 @@ fun interface WalletMethodsApi {
 /**
  * Management v3 payment-method reads through the shared HTTP boundary and SDK wire models.
  * Requires [AdyenRole.PAYMENT_METHODS_READ]. Pagination stays at the supplied endpoint; links are never followed.
+ * Real enabled configurations may omit `allowed` and `shopperInteraction`. Enablement supplies the former only when
+ * absent; only an explicit `_pos` variant supplies a missing channel. Explicit denial or a different channel always wins.
  * @param apiKey Credential sent only as an authentication header.
  * @param environment Exact environment, never probed across TEST/LIVE.
  * @param baseUrl Endpoint override for offline tests.
@@ -126,8 +129,8 @@ class AdyenWalletMethods(
         WalletMethod(
             type = checkNotNull(value.type),
             enabled = value.enabled == true,
-            allowed = value.allowed == true,
-            channel = value.shopperInteraction.orEmpty(),
+            allowed = value.allowed ?: (value.enabled == true),
+            channel = value.shopperInteraction ?: "pos".takeIf { value.type.endsWith("_pos") }.orEmpty(),
             currencies = value.currencies.orEmpty().toSet(),
             countries = value.countries.orEmpty().toSet(),
             storeIds = value.storeIds.orEmpty().toSet(),

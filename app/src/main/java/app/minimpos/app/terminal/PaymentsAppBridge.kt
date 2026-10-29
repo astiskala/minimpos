@@ -1,5 +1,7 @@
 package app.minimpos.app.terminal
 
+import android.content.ActivityNotFoundException
+import android.os.TransactionTooLargeException
 import app.minimpos.terminal.paymentsapp.AppLinkAnswer
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
 import kotlinx.coroutines.CompletableDeferred
@@ -73,6 +75,36 @@ class PaymentsAppBridge : AppLinkExchange {
 
     override fun forgetLateReplies(urls: Set<String>) {
         late.removeAll(urls)
+    }
+
+    /**
+     * Starts [launch] with [open]. A missing app is known not sent; a Binder size failure is uncertain and must be
+     * recovered, because Android cannot establish whether the request or its launch acknowledgement was too large.
+     * Other runtime failures propagate.
+     */
+    fun launch(
+        launch: Launch,
+        open: (Launch) -> Unit,
+    ) {
+        // startActivity wraps the checked Binder failure in a runtime exception. Only those known failures are handled.
+        runCatching { open(launch) }.fold(
+            onSuccess = { opened(launch.id) },
+            onFailure = { failure ->
+                when {
+                    failure is ActivityNotFoundException -> {
+                        failed(launch.id)
+                    }
+
+                    generateSequence(failure) { it.cause }.any { it is TransactionTooLargeException } -> {
+                        pending?.takeIf { it.id == launch.id }?.reply?.complete(AppLinkAnswer.LaunchFailed)
+                    }
+
+                    else -> {
+                        throw failure
+                    }
+                }
+            },
+        )
     }
 
     /** The activity started the Payments app with [id]'s link. */

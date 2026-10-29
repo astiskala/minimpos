@@ -1,6 +1,5 @@
 package app.minimpos.app
 
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -126,11 +125,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun open(launch: PaymentsAppBridge.Launch) {
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, launch.link.toUri()).setPackage(launch.packageName))
-            paymentsApp.opened(launch.id)
-        } catch (ignored: ActivityNotFoundException) {
-            paymentsApp.failed(launch.id)
+        paymentsApp.launch(launch) {
+            startActivity(Intent(Intent.ACTION_VIEW, it.link.toUri()).setPackage(it.packageName))
         }
     }
 

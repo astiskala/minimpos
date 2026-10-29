@@ -802,7 +802,10 @@ private fun StoreChoiceDialog(
     ChoiceDialog(R.string.settings_choose_store, R.string.settings_no_stores, choices, "store", onChoose)
 }
 
-/** Set up (or again, once [boarded]) or remove this phone, busy while [result] runs. */
+/**
+ * Set up or remove this phone, busy while [result] runs. Explicit reboarding is available once [boarded] or after a
+ * failed setup: an existing Payments app registration may not belong to the selected merchant or store.
+ */
 @Composable
 private fun TapToPayButtons(
     boarded: Boolean,
@@ -824,6 +827,16 @@ private fun TapToPayButtons(
                 loading = result.running,
                 icon = Icons.Default.Contactless,
             )
+            if (result.isError) {
+                // No verified local installation ID does not establish that the Payments app is unregistered.
+                SecondaryButton(
+                    stringResource(R.string.settings_set_up_again),
+                    { onSetUp(true) },
+                    Modifier.testTag("reboardTapToPay"),
+                    loading = result.running,
+                    icon = Icons.Default.Refresh,
+                )
+            }
         }
         if (boarded) {
             ConfirmedRemoval(

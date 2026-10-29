@@ -120,6 +120,8 @@ sealed interface PaymentLinkResult {
 interface PaymentLinkApi {
     /**
      * Creates a link (`POST /paymentLinks`).
+     * Successful creation, including accepted line items, does not validate every offered payment method's provider
+     * credentials or shopper-data requirements. A method can still fail when the shopper selects it on the hosted page.
      *
      * @param request What the link is for.
      * @param idempotencyKey Sent as `Idempotency-Key`, so sending the request again after an unknown outcome returns the

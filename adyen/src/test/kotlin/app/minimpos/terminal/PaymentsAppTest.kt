@@ -140,6 +140,23 @@ class PaymentsAppTest {
     }
 
     @Test
+    fun `uncertain activity launch checks status without sending another payment`() {
+        app.unanswered = AppLinkAnswer.LaunchFailed
+        assertThat(runBlocking { client.pay(payment, "LARGE") }).isEqualTo(TransactionOutcome.Unknown(Fault.ConnectionLost))
+        val categories =
+            app.opened.map { opened ->
+                JsonParser
+                    .parseString(String(Base64.UrlSafe.decode(checkNotNull(opened.request))))
+                    .asJsonObject
+                    .getAsJsonObject("SaleToPOIRequest")
+                    .getAsJsonObject("MessageHeader")
+                    .get("MessageCategory")
+                    .asString
+            }
+        assertThat(categories).containsExactly("Payment", "TransactionStatus").inOrder()
+    }
+
+    @Test
     fun `missing payment and refund callbacks recover with status without sending another financial request`() {
         app.loseFinancialReplies = true
         val paid = runBlocking { client.pay(payment, "LOSTPAY") } as TransactionOutcome.Completed
@@ -458,6 +475,9 @@ class PaymentsAppTest {
         app.unanswered = AppLinkAnswer.NotStarted
         assertThat(runBlocking { onboarding.board(BoardingTarget("Merchant"), reboard = true) })
             .isEqualTo(Onboarding.Failed(Fault.NotStarted, unboarded = false))
+        app.unanswered = AppLinkAnswer.LaunchFailed
+        assertThat(runBlocking { onboarding.board(BoardingTarget("Merchant"), reboard = true) })
+            .isEqualTo(Onboarding.Failed(Fault.ConnectionLost, unboarded = true))
         app.unanswered = AppLinkAnswer.Abandoned
         assertThat(runBlocking { onboarding.board(BoardingTarget("Merchant"), reboard = true) })
             .isEqualTo(Onboarding.Failed(Fault.Abandoned, unboarded = true))

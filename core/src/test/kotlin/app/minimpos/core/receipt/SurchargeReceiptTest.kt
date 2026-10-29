@@ -54,12 +54,12 @@ class SurchargeReceiptTest {
     }
 
     @Test
-    fun `unknown fees stay distinct from a reported zero and do not invent purchase amounts`() {
+    fun `receipts hide absent and zero fees without inventing purchase amounts`() {
         val unknown = builder.sale(sale.copy(discloseSurcharge = true, chargedAmount = 1000)).elements
-        assertThat(unknown).contains(ReceiptElement.Row("Surcharge", "Unreported"))
+        assertThat(unknown.filterIsInstance<ReceiptElement.Row>().map { it.left }).doesNotContain("Surcharge")
         assertThat(unknown.filterIsInstance<ReceiptElement.Row>().map { it.left }).doesNotContain("Purchase")
         val zero = builder.sale(sale.copy(discloseSurcharge = true, surchargeMinor = 0, chargedAmount = 1000)).elements
-        assertThat(zero).contains(ReceiptElement.Row("Surcharge", "$0.00"))
+        assertThat(zero.filterIsInstance<ReceiptElement.Row>().map { it.left }).doesNotContain("Surcharge")
     }
 
     @Test
@@ -72,7 +72,9 @@ class SurchargeReceiptTest {
             ReceiptElement.Row("TIP", "$1.00"),
         )
         val unknown = builder.refund(refund.copy(surchargeMinor = null, tipMinor = null)).elements
-        assertThat(unknown).contains(ReceiptElement.Row("Surcharge", "Unreported"))
+        assertThat(unknown.filterIsInstance<ReceiptElement.Row>().map { it.left }).doesNotContain("Surcharge")
+        val zero = builder.refund(refund.copy(surchargeMinor = 0)).elements.filterIsInstance<ReceiptElement.Row>()
+        assertThat(zero.map { it.left }).doesNotContain("Surcharge")
         val cancelled = builder.refund(refund.copy(cancellation = true)).elements.filterIsInstance<ReceiptElement.Row>()
         assertThat(cancelled.map { it.left }).containsNoneOf("Surcharge", "TIP")
     }

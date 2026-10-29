@@ -315,6 +315,41 @@ class TapToPaySettingsTest {
 
     @Test
     @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `an unverified existing registration offers explicit reboarding without replacing it automatically`() {
+        device.paymentsApps = TerminalEnvironment.entries.toSet()
+        paymentsApp.boarded = true
+        management.registrationResult = ManagementResult.NotBoarded
+        env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "checkout-key") }
+        openTerminalSettings()
+        testApi()
+        compose.onNodeWithTag("reboardTapToPay").assertDoesNotExist()
+        compose.onNodeWithTag("setUpTapToPay").performScrollTo().performClick()
+        waitForTag("tapToPayResult")
+        compose.onNodeWithTag("tapToPayResultOk").performClick()
+        compose.waitUntilDoesNotExist(hasTestTag("tapToPayResult"), 15_000)
+        assertThat(container.settingsState.value.terminal.paymentsAppInstallationId).isEmpty()
+        assertThat(paymentsApp.opened).hasSize(1)
+        assertThat(paymentsApp.opened.single()).doesNotContain("reboard=true")
+        assertThat(management.requests).isEmpty()
+
+        management.result = ManagementResult.Done("BT-1", FakePaymentsApp.INSTALLATION_ID)
+        compose
+            .onNodeWithTag("reboardTapToPay")
+            .performScrollTo()
+            .assertTextContains("Set up again")
+            .performClick()
+        compose.awaitCondition("explicit reboarding completes") {
+            container.settingsState.value.terminal.paymentsAppInstallationId == FakePaymentsApp.INSTALLATION_ID
+        }
+        assertThat(paymentsApp.opened[1]).contains("reboard=true")
+        assertThat(management.requests.single().merchantAccount).isEqualTo("Merchant")
+        assertThat(paymentsApp.packages)
+            .containsExactlyElementsIn(List(3) { "com.adyen.ipp.mobile.companion.test" })
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
     fun `boarding preserves the manual shared key without any settings lookup on the smallest screen`() {
         env.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "manual-key", keyVersion = 2)) }
         await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "manual secret") }

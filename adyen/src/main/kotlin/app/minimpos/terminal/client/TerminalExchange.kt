@@ -4,7 +4,6 @@ import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalTransport
 import com.adyen.model.nexo.DocumentQualifierType
-import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.MessageClassType
 import com.adyen.model.nexo.MessageHeader
@@ -121,11 +120,11 @@ internal class TerminalExchange(
                     ?: StatusCheck.NoAnswer(Fault.UnreadableReply())
             }
 
-            response?.errorCondition == ErrorConditionType.NOT_FOUND -> {
+            Decline.statusNotFound(response) -> {
                 StatusCheck.Settled(TransactionOutcome.NotProcessed(Fault.NoRecord))
             }
 
-            response?.errorCondition == ErrorConditionType.IN_PROGRESS -> {
+            Decline.statusInProgress(response) -> {
                 StatusCheck.InProgress
             }
 

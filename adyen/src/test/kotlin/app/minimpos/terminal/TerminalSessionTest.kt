@@ -146,33 +146,37 @@ class TerminalSessionTest {
         }
 
     @Test
-    fun `login refusal and unreadable login never retry totals or log out an unconfirmed session`() =
+    fun `failed logins never retry totals and log out only a session that may have opened`() =
         runTest {
+            val notOpened = listOf(MessageCategoryType.GET_TOTALS, MessageCategoryType.LOGIN)
+            val maybeOpened = notOpened + MessageCategoryType.LOGOUT
             val cases =
                 listOf(
-                    answer(
-                        MessageCategoryType.LOGIN,
-                        result(ResultType.FAILURE, ErrorConditionType.NOT_ALLOWED, "message=Login+denied"),
-                    ) to Fault.TerminalRejected(ExternalText("Login denied")),
-                    Delivery.Answered(null) to Fault.UnreadableReply(),
-                    answer(MessageCategoryType.LOGIN, null) to Fault.UnreadableReply(),
-                    Delivery.Failed(unreachable) to unreachable,
-                    Delivery.Failed(Fault.TimedOut) to Fault.TimedOut,
+                    Triple(
+                        answer(
+                            MessageCategoryType.LOGIN,
+                            result(ResultType.FAILURE, ErrorConditionType.NOT_ALLOWED, "message=Login+denied"),
+                        ),
+                        Fault.TerminalRejected(ExternalText("Login denied")),
+                        notOpened,
+                    ),
+                    Triple(Delivery.Failed(unreachable), unreachable, notOpened),
+                    Triple(Delivery.Answered(null), Fault.UnreadableReply(), maybeOpened),
+                    Triple(answer(MessageCategoryType.LOGIN, null), Fault.UnreadableReply(), maybeOpened),
+                    Triple(Delivery.Failed(Fault.TimedOut), Fault.TimedOut, maybeOpened),
                 )
-            cases.forEach { (loginAnswer, fault) ->
+            cases.forEach { (loginAnswer, fault, requests) ->
                 sent.clear()
                 val terminal =
                     client { request ->
-                        if (request.saleToPOIRequest.loginRequest !=
-                            null
-                        ) {
-                            loginAnswer
-                        } else {
-                            answer(MessageCategoryType.GET_TOTALS, loggedOut)
+                        when {
+                            request.saleToPOIRequest.loginRequest != null -> loginAnswer
+                            request.saleToPOIRequest.logoutRequest != null -> Delivery.Failed(Fault.TimedOut)
+                            else -> answer(MessageCategoryType.GET_TOTALS, loggedOut)
                         }
                     }
                 assertThat(terminal.getTotals()).isEqualTo(TerminalTotalsOutcome.Failed(fault))
-                assertThat(categories()).containsExactly(MessageCategoryType.GET_TOTALS, MessageCategoryType.LOGIN).inOrder()
+                assertThat(categories()).containsExactlyElementsIn(requests).inOrder()
             }
         }
 

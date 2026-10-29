@@ -170,7 +170,7 @@ class TerminalMealVoucherTest {
             val chosen = answered("installments=3&fundingSource=PREPAID").details
             assertThat(chosen.returnedInstallments).isEqualTo("3")
             assertThat(chosen.returnedPaymentType).isNull()
-            listOf("installments=0", "installments=x", "installments=%20", "fundingSource=PREPAID").forEach {
+            listOf("installments=0", "installments=1", "installments=x", "installments=%20", "fundingSource=PREPAID").forEach {
                 assertThat(answered(it).details.returnedInstallments).isNull()
             }
         }

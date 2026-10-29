@@ -61,6 +61,12 @@ data class Decline(
         internal fun requiresLogin(response: Response?): Boolean =
             response?.result == ResultType.FAILURE && response.errorCondition == ErrorConditionType.LOGGED_OUT
 
+        /** Whether a transaction status answer says the asked-about transaction is still running (`InProgress`). */
+        internal fun statusInProgress(response: Response?): Boolean = response?.errorCondition == ErrorConditionType.IN_PROGRESS
+
+        /** Whether a transaction status answer says the terminal has no record of the asked-about transaction (`NotFound`). */
+        internal fun statusNotFound(response: Response?): Boolean = response?.errorCondition == ErrorConditionType.NOT_FOUND
+
         private val INVALID_CARD_FINAL = listOf("Card data authentication failed")
 
         private val REFUSAL_FINAL =

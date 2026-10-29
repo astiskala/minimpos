@@ -802,7 +802,7 @@ class TerminalClient(
                         ?.instalment
                         ?.totalNbOfPayments
                         ?.toString()
-                        ?: additional[NexoVocabulary.INSTALLMENTS]?.trim()?.takeIf { count -> count.toIntOrNull()?.let { it > 0 } == true },
+                        ?: additional[NexoVocabulary.INSTALLMENTS]?.trim()?.takeIf { count -> count.toIntOrNull()?.let { it > 1 } == true },
                 returnedPlanId = response.paymentResult?.instalment?.planID,
                 amountMinor = minor(response.paymentResult?.amountsResp?.authorizedAmount, response.paymentResult?.amountsResp?.currency),
                 tipMinor = minor(response.paymentResult?.amountsResp?.tipAmount, response.paymentResult?.amountsResp?.currency),

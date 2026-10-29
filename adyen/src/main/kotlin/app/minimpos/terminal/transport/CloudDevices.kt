@@ -332,8 +332,9 @@ class CloudTransport internal constructor(
                 "offline",
                 "unknown device",
                 "not found",
-                // Observed from TEST Cloud device API with a powered-off terminal absent from connectedDevices.
-                "Failed to send message to POI. There may be a network issue or it may not have the websocket connected.",
+                // Observed from TEST Cloud device API with a powered-off terminal absent from connectedDevices; the
+                // rest of the sentence only guesses at the cause.
+                "Failed to send message to POI",
             )
     }
 }

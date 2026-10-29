@@ -206,6 +206,7 @@ class ReceiptFactory(
                         (sale.amountMinor - it - (sale.tipMinor ?: 0) - (sale.cashBackMinor ?: 0)).coerceAtLeast(0)
                     },
                 discloseSurcharge = standing.approved && sale.route == SaleRoute.TERMINAL,
+                surchargeUnreported = (sale.surchargeMinor ?: 0) > 0,
                 cardPlans =
                     resolved.cashback(sale) +
                         record.tenders.sortedBy { it.sequence }.flatMap { resolved.mexicanPlan(it) + resolved.mealVoucher(it) },

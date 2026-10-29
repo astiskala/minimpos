@@ -10,7 +10,6 @@ import com.adyen.model.nexo.BarcodeType
 import com.adyen.model.nexo.DeviceType
 import com.adyen.model.nexo.DisplayOutput
 import com.adyen.model.nexo.DisplayRequest
-import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.InfoQualifyType
 import com.adyen.model.nexo.Input
 import com.adyen.model.nexo.InputCommandType
@@ -446,11 +445,11 @@ private suspend fun TerminalClient.givingStatus(givingServiceId: String): Giving
             )
         }
 
-        status.response?.errorCondition == ErrorConditionType.IN_PROGRESS -> {
+        Decline.statusInProgress(status.response) -> {
             GivingCheck.InProgress
         }
 
-        status.response?.errorCondition == ErrorConditionType.NOT_FOUND -> {
+        Decline.statusNotFound(status.response) -> {
             GivingCheck.Settled(null)
         }
 

@@ -192,15 +192,12 @@ class AdyenStoreDetails(
 
             is AdyenReply.Answered -> {
                 when {
-                    reply.code == HTTP_NOT_FOUND -> {
+                    reply.code == HTTP_NOT_FOUND || managementEntityMissing(reply) -> {
                         StoreLookup.Missing
                     }
 
                     !reply.ok -> {
-                        when (val fault = managementFault(reply, role = AdyenRole.STORES_READ.displayName)) {
-                            is Fault.NotFound -> StoreLookup.Missing
-                            else -> StoreLookup.Failed(fault)
-                        }
+                        StoreLookup.Failed(managementFault(reply, role = AdyenRole.STORES_READ.displayName))
                     }
 
                     else -> {

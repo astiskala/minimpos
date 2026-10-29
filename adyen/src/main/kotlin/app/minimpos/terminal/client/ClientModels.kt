@@ -570,8 +570,9 @@ data class TransactionDetails(
     /** Explicit returned installment PaymentType; null for missing/default Normal. Never inferred from the request. */
     val returnedPaymentType: String? = null,
     /**
-     * Returned Instalment.TotalNbOfPayments as a decimal integer, else a positive `installments` additional-data count
-     * (the only report Brazilian terminals give of a shopper-chosen count); null when neither is returned.
+     * Returned Instalment.TotalNbOfPayments as a decimal integer, else an `installments` additional-data count above one
+     * (the only report Brazilian terminals give of a shopper-chosen count; one payment is no plan); null when neither
+     * is returned.
      */
     val returnedInstallments: String? = null,
     /** Returned Instalment.PlanID, verbatim; null when omitted. */

@@ -23,7 +23,9 @@ import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.TerminalHttpClient
 import com.adyen.Client
 import com.adyen.model.management.DefaultErrorResponseEntity
+import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.RepeatedMessageResponse
+import com.adyen.model.nexo.Response
 import com.adyen.model.nexo.TransactionStatusResponse
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -327,6 +329,34 @@ class ArchitectureTest {
             .orShould()
             .callMethod(TransactionDetails::class.java, "getRefusalReason")
             .check(terminal)
+
+    @Test
+    fun `only the decline reads status and login error conditions in the client`() =
+        // Status recovery, Adyen Giving and totals login must agree on what InProgress, NotFound and LoggedOut mean.
+        statusConditionOwnership(
+            resideInAnyPackage("app.minimpos.terminal.client..")
+                .and(DescribedPredicate.not(JavaClass.Predicates.belongToAnyOf(Decline::class.java))),
+        ).check(terminal)
+
+    @Test
+    fun `status condition ownership rejects a direct error condition comparison`() {
+        val violation = ClassFileImporter().importClasses(StatusConditionViolation::class.java)
+        assertTrue(statusConditionOwnership(type(StatusConditionViolation::class.java)).evaluate(violation).hasViolation())
+    }
+
+    private fun statusConditionOwnership(classes: DescribedPredicate<in JavaClass>): ArchRule =
+        noClasses()
+            .that(classes)
+            .should()
+            .accessField(ErrorConditionType::class.java, "IN_PROGRESS")
+            .orShould()
+            .accessField(ErrorConditionType::class.java, "NOT_FOUND")
+            .orShould()
+            .accessField(ErrorConditionType::class.java, "LOGGED_OUT")
+
+    private class StatusConditionViolation {
+        fun running(response: Response?) = response?.errorCondition == ErrorConditionType.IN_PROGRESS
+    }
 
     @Test
     fun `simple nexo answers and shopper display steps stay behind their single owners`() {

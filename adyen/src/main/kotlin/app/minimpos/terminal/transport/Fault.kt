@@ -167,7 +167,7 @@ sealed class Fault(
     ) : NotSent()
 
     /**
-     * Adyen does not know the requested entity (HTTP 404 or Management's entity-not-found code).
+     * Adyen does not know the requested terminal in the merchant account (HTTP 404).
      *
      * @property poiId The terminal asked for; null when not a terminal.
      */

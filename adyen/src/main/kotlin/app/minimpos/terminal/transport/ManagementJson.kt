@@ -22,6 +22,9 @@ import java.time.OffsetDateTime
 
 private const val HTTP_UNPROCESSABLE_ENTITY = 422
 
+/** Management's error code for an entity it does not know. */
+private const val ENTITY_NOT_FOUND = "30_112"
+
 private val apiMapper =
     JSON.getMapper().copy().apply {
         disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
@@ -185,15 +188,19 @@ internal fun managementFault(
         }
 
         is AdyenReply.Answered -> {
-            val error = managementError(reply.body)
-            // Management also reports absent entities as HTTP 422, not just HTTP 404.
-            if (reply.code == HTTP_UNPROCESSABLE_ENTITY && error.code == "30_112") {
-                Fault.NotFound(null)
-            } else {
-                reply.fault(key, role, error)
-            }
+            reply.fault(key, role, managementError(reply.body))
         }
     }
+
+/**
+ * Whether [reply] is Management's entity-not-found rejection (HTTP 422 with `30_112`), which it sends for an absent
+ * entity besides HTTP 404. Only lookups whose caller knows which entity was asked for read it as absence; elsewhere it
+ * stays an [Fault.AdyenRejected] with Adyen's own words.
+ */
+internal fun managementEntityMissing(reply: AdyenReply): Boolean =
+    reply is AdyenReply.Answered &&
+        reply.code == HTTP_UNPROCESSABLE_ENTITY &&
+        managementError(reply.body).code == ENTITY_NOT_FOUND
 
 private fun managementError(body: String): AdyenError {
     val error = decodeAdyenModel(body, DefaultErrorResponseEntity::class.java)

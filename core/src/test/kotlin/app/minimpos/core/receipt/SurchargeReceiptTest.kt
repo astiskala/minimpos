@@ -63,6 +63,18 @@ class SurchargeReceiptTest {
     }
 
     @Test
+    fun `an applied fee whose current amount is unknown is printed as unreported, not left out`() {
+        val changed = sale.copy(discloseSurcharge = true, surchargeUnreported = true, chargedAmount = 1200)
+        val rows = builder.sale(changed).elements.filterIsInstance<ReceiptElement.Row>()
+        assertThat(rows).contains(ReceiptElement.Row("Surcharge", "Unreported"))
+        assertThat(rows.map { it.left }).doesNotContain("Purchase")
+        val reported = builder.sale(changed.copy(surchargeMinor = 50)).elements.filterIsInstance<ReceiptElement.Row>()
+        assertThat(reported).contains(ReceiptElement.Row("Surcharge", "$0.50"))
+        val hidden = builder.sale(changed.copy(discloseSurcharge = false)).elements.filterIsInstance<ReceiptElement.Row>()
+        assertThat(hidden.map { it.left }).doesNotContain("Surcharge")
+    }
+
+    @Test
     fun `refund fee and tip are included components while unknown allocations and cancellations remain distinct`() {
         val refund = RefundReceipt("R", "FEE", "24/10/2026", emptyList(), 1150, emptyList(), surchargeMinor = 50, tipMinor = 100)
         val rows = builder.refund(refund).elements.filterIsInstance<ReceiptElement.Row>()

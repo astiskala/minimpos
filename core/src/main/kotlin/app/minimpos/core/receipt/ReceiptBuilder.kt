@@ -206,7 +206,11 @@ class ReceiptBuilder(
     ) {
         if (receipt.discloseSurcharge) {
             receipt.purchaseMinor?.let { out += Row(labels.purchase, money.format(it)) }
-            receipt.surchargeMinor?.takeIf { it > 0 }?.let { out += Row(labels.surcharge, money.format(it)) }
+            val fee = receipt.surchargeMinor
+            when {
+                fee != null && fee > 0 -> out += Row(labels.surcharge, money.format(fee))
+                fee == null && receipt.surchargeUnreported -> out += Row(labels.surcharge, labels.unreported)
+            }
         }
         receipt.heldNow?.let { out += Row(labels.heldNow, money.format(it)) }
         receipt.captured?.let { out += Row(labels.captured, money.format(it), TextStyle.BOLD) }

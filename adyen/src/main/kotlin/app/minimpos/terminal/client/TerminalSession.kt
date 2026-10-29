@@ -14,8 +14,9 @@ import kotlinx.coroutines.withContext
 
 /**
  * Opens a session only after an explicit LoggedOut rejection, runs [operation] once, then best-effort logs out the session
- * this call opened, including on cancellation. An unanswered login never permits [operation]; cleanup cannot replace its
- * result or cause a reconciliation to be repeated.
+ * this call opened, including on cancellation. An unanswered login never permits [operation]; one that may have reached
+ * the terminal is logged out too, since it may have opened a session. Cleanup cannot replace a result or cause a
+ * reconciliation to be repeated.
  */
 internal suspend fun TerminalClient.withTotalsLogin(operation: suspend () -> TerminalTotalsOutcome): TerminalTotalsOutcome {
     val delivery =
@@ -36,8 +37,14 @@ internal suspend fun TerminalClient.withTotalsLogin(operation: suspend () -> Ter
         }
     val response =
         when (val answer = readTerminalAnswer(delivery) { it.loginResponse?.response }) {
-            is TerminalAnswer.Unread -> return TerminalTotalsOutcome.Failed(answer.fault)
-            is TerminalAnswer.Read -> answer.body
+            is TerminalAnswer.Unread -> {
+                if (answer.fault.mayHaveTakenEffect) withContext(NonCancellable) { logOut() }
+                return TerminalTotalsOutcome.Failed(answer.fault)
+            }
+
+            is TerminalAnswer.Read -> {
+                answer.body
+            }
         }
     if (response.result != ResultType.SUCCESS) {
         val message = AdditionalResponseParser.parse(response.additionalResponse)[NexoVocabulary.MESSAGE]
@@ -46,8 +53,11 @@ internal suspend fun TerminalClient.withTotalsLogin(operation: suspend () -> Ter
     return try {
         operation()
     } finally {
-        withContext(NonCancellable) {
-            sendShortMessage(MessageClassType.SERVICE, MessageCategoryType.LOGOUT) { logoutRequest = LogoutRequest() }
-        }
+        withContext(NonCancellable) { logOut() }
     }
+}
+
+/** Best-effort `LogoutRequest`; its answer is ignored. Callers send it `NonCancellable` so cancellation still logs out. */
+private suspend fun TerminalClient.logOut() {
+    sendShortMessage(MessageClassType.SERVICE, MessageCategoryType.LOGOUT) { logoutRequest = LogoutRequest() }
 }

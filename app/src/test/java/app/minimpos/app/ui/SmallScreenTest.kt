@@ -198,7 +198,7 @@ class SmallScreenTest {
         compose.onNodeWithTag("setupCodesIntro").assertExists()
         compose.onNodeWithTag("startSetupScan").assertIsDisplayed().performClick()
         waitForText("Point the camera")
-        compose.onNodeWithText("Set up from another device").assertIsDisplayed()
+        compose.onNodeWithText("Scan setup codes").assertIsDisplayed()
     }
 
     @Test
@@ -237,7 +237,7 @@ class SmallScreenTest {
         compose
             .onNodeWithTag("discoverSetup")
             .performScrollTo()
-            .assertTextContains("Save and find terminal")
+            .assertTextContains("Save and find setup")
             .performClick()
         // Finding the terminal's setup tests the API first, then asks for whatever it did not find.
         compose.waitUntilAtLeastOneExists(hasText(env.context.getString(R.string.settings_discovery_manual)), 15_000)
@@ -641,7 +641,7 @@ class SmallScreenTest {
         compose
             .onNodeWithTag("discoverSetup")
             .performScrollTo()
-            .assertTextContains("Save and find terminal")
+            .assertTextContains("Save and find setup")
             .performClick()
         // The device certificate supplies TEST before credential validation, without a shared-key probe. Finding the
         // terminal's setup tests the key first, without a popup of its own.

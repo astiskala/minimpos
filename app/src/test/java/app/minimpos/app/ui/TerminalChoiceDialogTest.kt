@@ -29,6 +29,10 @@ class TerminalChoiceDialogTest {
     fun `a search finds a terminal among hundreds by part of its serial number`() {
         var chosen: String? = null
         compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds) { chosen = it } } }
+        compose
+            .onNodeWithText(
+                "After selection, Mini mPOS checks the connection if setup is complete. No payment is taken.",
+            ).assertIsDisplayed()
         compose.onNodeWithTag("terminalSearch").performTextInput("2740")
         compose.onNodeWithTag("terminal_S1F2-000158204502740").assertIsDisplayed().performClick()
         assertThat(chosen).isEqualTo("S1F2-000158204502740")
@@ -48,5 +52,9 @@ class TerminalChoiceDialogTest {
         compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds.takeLast(3)) {} } }
         compose.onNodeWithTag("terminal_S1F2-000158204502740").assertIsDisplayed()
         compose.onNodeWithTag("terminalSearch").assertDoesNotExist()
+        compose
+            .onNodeWithText(
+                "After selection, Mini mPOS checks the connection if setup is complete. No payment is taken.",
+            ).assertIsDisplayed()
     }
 }

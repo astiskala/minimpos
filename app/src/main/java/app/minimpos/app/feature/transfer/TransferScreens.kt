@@ -309,7 +309,7 @@ fun TransferImportScreen(
     val snackbar = remember { SnackbarHostState() }
     ImportNavigation(state, navigator, snackbar)
     MiniScaffold(
-        title = stringResource(R.string.transfer_import),
+        title = stringResource(R.string.settings_quick_setup_import),
         onBack = ::back.takeUnless { importing },
         modifier = modifier,
         snackbarHostState = snackbar,

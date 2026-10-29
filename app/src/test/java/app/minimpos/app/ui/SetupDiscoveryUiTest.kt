@@ -167,20 +167,24 @@ class SetupDiscoveryUiTest {
         chooseMode(TerminalMode.PAYMENTS_APP)
         compose.onNodeWithTag("environment_TEST").performScrollTo().performClick()
         waitForTag("getPaymentsAppTest")
+        compose.onNodeWithText("Adyen Payments Test (TEST)").assertExists()
         compose.onNodeWithText("Not installed").assertExists()
         compose.onNodeWithTag("getPaymentsAppTest").assertExists()
         compose.onNodeWithTag("getPaymentsAppLive").assertDoesNotExist()
         assertSteps("Environment", "Adyen Payments app", "Adyen API")
         compose.onNodeWithTag("step_2").assertExists()
-        phone.paymentsApps = setOf(TerminalEnvironment.TEST)
+        phone.paymentsApps = TerminalEnvironment.entries.toSet()
         env.container.terminalStatus.readDevice()
         compose.awaitCondition("the TEST Payments app is detected") {
             env.container.terminalStatus.state.value.environment == TerminalEnvironment.TEST
         }
         compose.waitUntilAtLeastOneExists(hasText("Adyen Payments Test (TEST)"), 15_000)
+        compose.waitUntilAtLeastOneExists(hasText("Installed"), 15_000)
+        compose.onNodeWithText("Adyen Payments (LIVE)").assertDoesNotExist()
         waitForTag("apiKey")
         assertSteps("Environment", "Adyen Payments app", "Adyen API")
         compose.onNodeWithTag("step_4").assertDoesNotExist()
+        compose.onNodeWithTag("merchantAccountHint").assertTextContains(env.context.getString(R.string.settings_api_phone_hint))
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
         waitForTag("setUpTapToPay")
         assertSteps("Environment", "Adyen Payments app", "Adyen API", "Tap to Pay")
@@ -239,6 +243,7 @@ class SetupDiscoveryUiTest {
             container.settingsState.value.terminal.environment == environment
         }
         assertRoleHelp()
+        compose.onNodeWithTag("merchantAccountHint").assertTextContains(env.context.getString(R.string.settings_api_hint))
         assertHintBeforeField("merchantAccountHint", "merchantAccount")
         if (environment == TerminalEnvironment.LIVE) {
             assertHintBeforeField("livePrefixHint", "livePrefix")
@@ -268,6 +273,9 @@ class SetupDiscoveryUiTest {
     }
 
     private fun assertRoleHelp() {
+        // Role details must stay available without putting the key behind the full list on first open.
+        compose.onNodeWithTag("roleCloud").assertDoesNotExist()
+        compose.onNodeWithTag("apiRoles").performScrollTo().performClick()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_terminals), substring = true).assertExists()
         compose.onNodeWithText("Checkout webservice role", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Required for real payments.", substring = true).assertDoesNotExist()
@@ -276,6 +284,9 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertExists()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertExists()
         compose.onNodeWithText("API tokenise payment details", substring = true).assertExists()
+        compose.onNodeWithTag("apiRoles").performScrollTo().performClick()
+        compose.onNodeWithTag("roleCloud").assertDoesNotExist()
+        compose.onNodeWithTag("apiKey").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -292,10 +303,7 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("step_1")
         compose.onNodeWithTag("step_1").assertIsDisplayed().assertTextContains("Environment")
-        compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertExists()
-        compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertExists()
-        compose.onNodeWithText("API tokenise payment details", substring = true).assertExists()
-        compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_terminals), substring = true).assertExists()
+        assertRoleHelp()
         compose.onNodeWithTag("environment").assertExists()
         compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("Merchant")

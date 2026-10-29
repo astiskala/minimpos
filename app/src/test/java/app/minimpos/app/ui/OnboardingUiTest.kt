@@ -225,7 +225,7 @@ class OnboardingUiTest {
         assertThat(env.container.settingsState.value.onboardingCompleted).isFalse()
         compose.onNodeWithTag("onboardingContinue").performClick()
         compose.waitUntilAtLeastOneExists(
-            hasText("Set up from another device"),
+            hasText("Scan setup codes"),
             15_000,
         )
         compose.awaitCondition("import choice is persisted") { env.container.settingsState.value.onboardingCompleted }

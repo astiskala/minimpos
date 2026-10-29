@@ -22,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Api
 import androidx.compose.material.icons.filled.Contactless
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.KeyOff
 import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.PhonelinkErase
@@ -37,7 +39,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -505,7 +506,18 @@ private fun ColumnScope.ApiFields(
     api: ApiEntry,
     update: TerminalUpdate,
 ) {
-    SettingNote(stringResource(R.string.settings_api_hint), Modifier.testTag("merchantAccountHint"))
+    SettingNote(
+        stringResource(
+            if (api.terminal.mode ==
+                TerminalMode.PAYMENTS_APP
+            ) {
+                R.string.settings_api_phone_hint
+            } else {
+                R.string.settings_api_hint
+            },
+        ),
+        Modifier.testTag("merchantAccountHint"),
+    )
     SettingTextField(
         stringResource(R.string.settings_merchant_account),
         api.terminal.merchantAccount,
@@ -591,11 +603,27 @@ private fun ColumnScope.AdyenApiStep(
  */
 @Composable
 private fun ColumnScope.ApiKeyRoles() {
-    SettingNote(stringResource(R.string.settings_adyen_roles_hint))
-    SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
-    SettingNote("• " + stringResource(R.string.settings_adyen_role_terminals), Modifier.testTag("roleTerminals"))
-    listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key, R.string.settings_adyen_role_tokens).forEach {
-        SettingNote("• " + stringResource(it))
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    TextButton(
+        onClick = { expanded = !expanded },
+        modifier = Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding).testTag("apiRoles"),
+    ) {
+        Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(if (expanded) R.string.settings_hide_roles else R.string.settings_show_roles))
+    }
+    if (expanded) {
+        SettingNote(stringResource(R.string.settings_adyen_roles_hint))
+        SettingNote(
+            listOf(
+                R.string.settings_adyen_role_cloud,
+                R.string.settings_adyen_role_terminals,
+                R.string.settings_adyen_role_settings,
+                R.string.settings_adyen_role_shared_key,
+                R.string.settings_adyen_role_tokens,
+            ).map { "• " + stringResource(it) }.joinToString("\n"),
+            Modifier.testTag("roleCloud"),
+        )
     }
 }
 
@@ -696,11 +724,16 @@ internal fun TerminalChoiceDialog(
     onChoose: (poiId: String?) -> Unit,
 ) {
     if (poiIds.size <= TERMINAL_SEARCH_FROM) {
-        ChoiceDialog(R.string.settings_choose_terminal, R.string.settings_no_terminals, poiIds.map { it to it }, "terminal", onChoose)
+        ChoiceDialog(
+            R.string.settings_choose_terminal,
+            R.string.settings_no_terminals,
+            poiIds.map { it to it },
+            "terminal",
+            onChoose,
+            hint = R.string.settings_terminal_choice_hint,
+        )
         return
     }
-    var query by rememberSaveable { mutableStateOf("") }
-    val shown = remember(poiIds, query) { poiIds.filter { it.contains(query.trim(), ignoreCase = true) } }
     val compact = LocalDimens.current.compact
     // Not an AlertDialog: its default width keeps a text field from settling in tests, as in the currency picker.
     Dialog(onDismissRequest = { onChoose(null) }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -722,34 +755,46 @@ internal fun TerminalChoiceDialog(
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(horizontal = 24.dp),
                 )
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it.take(MAX_TERMINAL_QUERY_LENGTH) },
-                    placeholder = { Text(stringResource(R.string.settings_terminal_search)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Search),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).testTag("terminalSearch"),
-                )
-                LazyColumn(Modifier.weight(1f, fill = false)) {
-                    items(shown, key = { it }) { poiId ->
-                        TextButton({ onChoose(poiId) }, Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("terminal_$poiId")) {
-                            Text(poiId)
-                        }
-                    }
-                    if (shown.isEmpty()) {
-                        item {
-                            Text(
-                                stringResource(R.string.settings_terminal_search_none),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                            )
-                        }
-                    }
-                }
+                SettingNote(stringResource(R.string.settings_terminal_choice_hint))
+                SearchableTerminals(poiIds, onChoose)
                 TextButton({ onChoose(null) }, Modifier.align(Alignment.End).padding(horizontal = 12.dp)) {
                     Text(stringResource(R.string.action_cancel))
                 }
+            }
+        }
+    }
+}
+
+/** Search and lazy choices inside the terminal dialog; query matching ignores case and surrounding spaces. */
+@Composable
+private fun ColumnScope.SearchableTerminals(
+    poiIds: List<String>,
+    onChoose: (String?) -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val shown = remember(poiIds, query) { poiIds.filter { it.contains(query.trim(), ignoreCase = true) } }
+    OutlinedTextField(
+        value = query,
+        onValueChange = { query = it.take(MAX_TERMINAL_QUERY_LENGTH) },
+        placeholder = { Text(stringResource(R.string.settings_terminal_search)) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Search),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).testTag("terminalSearch"),
+    )
+    LazyColumn(Modifier.weight(1f, fill = false)) {
+        items(shown, key = { it }) { poiId ->
+            TextButton({ onChoose(poiId) }, Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("terminal_$poiId")) {
+                Text(poiId)
+            }
+        }
+        if (shown.isEmpty()) {
+            item {
+                Text(
+                    stringResource(R.string.settings_terminal_search_none),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                )
             }
         }
     }
@@ -768,12 +813,14 @@ private fun ChoiceDialog(
     choices: List<Pair<String, String>>,
     tagPrefix: String,
     onChoose: (id: String?) -> Unit,
+    @StringRes hint: Int? = null,
 ) {
     AlertDialog(
         onDismissRequest = { onChoose(null) },
         title = { Text(stringResource(title)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
+                hint?.let { SettingNote(stringResource(it)) }
                 if (choices.isEmpty()) Text(stringResource(empty))
                 choices.forEach { (id, label) ->
                     TextButton({ onChoose(id) }, Modifier.fillMaxWidth().testTag("${tagPrefix}_$id")) { Text(label) }
@@ -797,7 +844,20 @@ private fun ColumnScope.PaymentsAppStep(
     StepHeader(step.number, stringResource(R.string.settings_payments_app), done = step.done)
     SettingNote(stringResource(R.string.settings_payments_app_hint))
     Column(Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding)) {
-        LabeledValue(stringResource(R.string.settings_payments_app_installed), paymentsAppLabel(paymentsApps))
+        environment?.let {
+            LabeledValue(
+                stringResource(
+                    if (it ==
+                        TerminalEnvironment.TEST
+                    ) {
+                        R.string.settings_payments_app_test
+                    } else {
+                        R.string.settings_payments_app_live
+                    },
+                ),
+                stringResource(if (it in paymentsApps) R.string.settings_payments_app_installed else R.string.settings_payments_app_none),
+            )
+        }
     }
     if (environment != null && environment !in paymentsApps) {
         val context = LocalContext.current
@@ -820,16 +880,6 @@ private fun ColumnScope.PaymentsAppStep(
         }
     }
 }
-
-/** Which Adyen Payments app is installed, for display. */
-@Composable
-@ReadOnlyComposable
-private fun paymentsAppLabel(paymentsApps: Set<TerminalEnvironment>): String =
-    when (paymentsApps.singleOrNull()) {
-        TerminalEnvironment.TEST -> stringResource(R.string.settings_payments_app_test)
-        TerminalEnvironment.LIVE -> stringResource(R.string.settings_payments_app_live)
-        null -> stringResource(if (paymentsApps.isEmpty()) R.string.settings_payments_app_none else R.string.settings_payments_app_both)
-    }
 
 /**
  * Setting up Tap to Pay on this phone: the boarded [installationId] (blank until boarded), the optional [storeId], the

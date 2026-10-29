@@ -79,6 +79,7 @@ import app.minimpos.app.terminal.AndroidDeviceInfo
 import app.minimpos.app.terminal.CapabilityDiscovery
 import app.minimpos.app.terminal.DeviceInfo
 import app.minimpos.app.terminal.HistorySwitches
+import app.minimpos.app.terminal.MerchantCurrency
 import app.minimpos.app.terminal.PaymentsAppBridge
 import app.minimpos.app.terminal.ReceiptBusinessDetails
 import app.minimpos.app.terminal.SetupAccess
@@ -333,6 +334,9 @@ class AppContainer(
 
     /** Read-only Management store lookup for manually importing receipt business details. */
     val receiptBusinessDetails = ReceiptBusinessDetails(terminalSetup, storeDetails, terminalDetails)
+
+    /** Optional settlement-currency proposals after successful real setup. */
+    val merchantCurrency = MerchantCurrency(terminalSetup, storeDetails)
 
     /** The built-in simulator, which stands in for the terminal and the Checkout API alike. */
     private val simulator = SimulatedTerminal(virtualPrinter)

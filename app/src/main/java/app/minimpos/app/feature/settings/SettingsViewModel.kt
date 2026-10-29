@@ -24,6 +24,7 @@ import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiCheck
 import app.minimpos.app.terminal.HistorySwitches
+import app.minimpos.app.terminal.MerchantCurrency
 import app.minimpos.app.terminal.ReceiptBusinessDetails
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.app.terminal.TerminalStatus
@@ -143,12 +144,14 @@ enum class SettingsResult {
  * @property receipts Prints the test receipt and sends the test email.
  * @property api Tests the Adyen API key.
  * @property businessDetails Reads store receipt fields for reviewed import.
+ * @property merchantCurrency Optional settlement-currency lookup after successful setup.
  */
 class SettingsChecks(
     val status: TerminalStatus,
     val receipts: ReceiptDelivery,
     val api: AdyenApi,
     val businessDetails: ReceiptBusinessDetails,
+    val merchantCurrency: MerchantCurrency? = null,
 )
 
 /**
@@ -225,6 +228,10 @@ class SettingsViewModel(
     /** Store receipt proposals and confirmation actions, without automatic replacement of merchant text. */
     internal val businessImport =
         ReceiptBusinessImports(this, checks.businessDetails, pricingChanges, state.map { it.settings.receipt }, checks.api)
+
+    internal val currencySuggestion by lazy {
+        MerchantCurrencySuggestions(this, checks.merchantCurrency, checks.status, pricingChanges, pricing)
+    }
 
     /** Stores ordinary settings; pricing and history-destructive environment changes require confirmation. */
     fun update(transform: (AppSettings) -> AppSettings) = pricing.edit(transform)

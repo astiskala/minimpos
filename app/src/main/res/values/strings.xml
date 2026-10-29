@@ -834,6 +834,10 @@
   <string name="settings_shared_key_check_again">Check again</string>
   <string name="settings_connection_ok">Connected</string>
   <string name="settings_connection_currency">Payments are taken in %1$s, which follows the device’s region. To change it, go to Settings › Payments.</string>
+  <string name="settings_merchant_currency">Payment currency</string>
+  <string name="settings_merchant_currency_hint">Adyen reports %1$s as this merchant’s primary settlement currency. This does not confirm which payment currencies are accepted. Review prices before switching.</string>
+  <string name="settings_merchant_currency_use">Review %1$s pricing</string>
+  <string name="settings_merchant_currency_keep">Keep current currency</string>
   <string name="settings_connection_failed">Connection failed</string>
   <string name="settings_connection_result_failed">Could not connect</string>
   <string name="settings_status_checking">Checking the connection…</string>

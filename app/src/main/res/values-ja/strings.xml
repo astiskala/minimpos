@@ -832,6 +832,10 @@
   <string name="settings_shared_key_check_again">もう一度確認</string>
   <string name="settings_connection_ok">接続済み</string>
   <string name="settings_connection_currency">決済は%1$sで行われます（デバイスの地域から自動設定）。変更するには「設定 › 決済」を開いてください。</string>
+  <string name="settings_merchant_currency">決済通貨</string>
+  <string name="settings_merchant_currency_hint">Adyenでは、この加盟店の主な精算通貨は%1$sとされています。利用可能な決済通貨を保証するものではありません。変更する前に価格を確認してください。</string>
+  <string name="settings_merchant_currency_use">%1$sの価格を確認</string>
+  <string name="settings_merchant_currency_keep">現在の通貨を維持</string>
   <string name="settings_connection_failed">接続失敗</string>
   <string name="settings_connection_result_failed">接続できませんでした</string>
   <string name="settings_status_checking">接続を確認中…</string>

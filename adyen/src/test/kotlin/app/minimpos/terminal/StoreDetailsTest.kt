@@ -143,9 +143,12 @@ class StoreDetailsTest {
 
     @Test
     fun `merchant receipt lookup reads only legal name without borrowing city or store fields`() {
-        reply("""{"id":"Merchant/One","name":" Legal Shop ","merchantCity":"Sydney","description":"Internal"}""")
+        reply(
+            """{"id":"Merchant/One","name":" Legal Shop ","merchantCity":"Sydney",""" +
+                """"description":"Internal","primarySettlementCurrency":" AUD "}""",
+        )
         val found = runBlocking { api.merchant("Merchant/One") } as MerchantLookup.Found
-        assertThat(found).isEqualTo(MerchantLookup.Found("Legal Shop"))
+        assertThat(found).isEqualTo(MerchantLookup.Found("Legal Shop", "AUD"))
         assertThat(found.legalName).isEqualTo("Legal Shop")
         val sent = server.takeRequest()
         assertThat(sent.method).isEqualTo("GET")

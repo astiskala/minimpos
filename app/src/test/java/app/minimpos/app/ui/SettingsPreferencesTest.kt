@@ -1,6 +1,7 @@
 package app.minimpos.app.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
@@ -67,7 +68,7 @@ class SettingsPreferencesTest {
         }
         open("terminal")
         compose.waitUntilAtLeastOneExists(hasTestTag("merchantAccount"), 15_000)
-        compose.onNodeWithTag("merchantAccount").performScrollTo().assertTextContains("Merchant account")
+        compose.onNodeWithTag("merchantAccount").performScrollTo().assertContentDescriptionEquals("Merchant account")
         env.updateSettings {
             it.copy(terminal = it.terminal.copy(merchantAccount = "ImportedMerchant", liveUrlPrefix = "imported-prefix"))
         }

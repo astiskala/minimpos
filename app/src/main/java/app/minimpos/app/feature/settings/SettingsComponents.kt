@@ -49,6 +49,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -69,6 +71,8 @@ private fun Modifier.tagged(tag: String?) = if (tag != null) testTag(tag) else t
  * A text setting that keeps its own editing state (so asynchronous DataStore round trips never move the cursor) and
  * commits every valid change straight away, so nothing is lost when leaving the screen. External saved changes
  * refresh unfocused fields; focused drafts keep their cursor through asynchronous storage updates.
+ * The external title matches toggle titles; [description] explains the field before entry, while [supporting] is
+ * additional information below it.
  */
 @Composable
 fun SettingTextField(
@@ -77,6 +81,7 @@ fun SettingTextField(
     onCommit: (String) -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
+    description: String? = null,
     supporting: String? = null,
     isError: (String) -> Boolean = { false },
     keyboardType: KeyboardType = KeyboardType.Text,
@@ -85,6 +90,7 @@ fun SettingTextField(
     autoCorrect: Boolean = true,
     imeAction: ImeAction = ImeAction.Default,
     tag: String? = null,
+    descriptionTag: String? = null,
 ) {
     val container = LocalAppContainer.current
     var text by rememberSaveable { mutableStateOf(value) }
@@ -101,9 +107,10 @@ fun SettingTextField(
     Column(
         modifier.fillMaxWidth().padding(
             horizontal = LocalDimens.current.rowHorizontalPadding,
-            vertical = if (LocalDimens.current.compact) 2.dp else 4.dp,
+            vertical = LocalDimens.current.rowPadding - 2.dp,
         ),
     ) {
+        SettingFieldHeading(label, description = description, descriptionTag = descriptionTag)
         OutlinedTextField(
             value = text,
             onValueChange = {
@@ -114,13 +121,15 @@ fun SettingTextField(
                     onCommit(it)
                 }
             },
-            label = { Text(label) },
             placeholder = placeholder?.let { { Text(it) } },
             isError = error,
             singleLine = singleLine,
             minLines = if (singleLine) 1 else 3,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, autoCorrectEnabled = autoCorrect, imeAction = imeAction),
-            modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused }.tagged(tag),
+            modifier =
+                Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused }.semantics { contentDescription = label }.tagged(
+                    tag,
+                ),
         )
         supporting?.let {
             FieldNote(
@@ -130,6 +139,25 @@ fun SettingTextField(
                 Modifier.padding(top = 4.dp),
             )
         }
+    }
+}
+
+/** Field title and primary explanation, preceding entry and styled like a toggle row. */
+@Composable
+internal fun SettingFieldHeading(
+    title: String,
+    modifier: Modifier = Modifier,
+    description: String? = null,
+    descriptionTag: String? = null,
+) {
+    Column(modifier) {
+        Text(
+            title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(bottom = 4.dp),
+        )
+        description?.let { Description(it, Modifier.tagged(descriptionTag).padding(bottom = 4.dp)) }
     }
 }
 
@@ -155,12 +183,14 @@ fun SettingNumberField(
     value: Int,
     range: IntRange,
     onCommit: (Int) -> Unit,
+    description: String? = null,
     supporting: String? = null,
     tag: String? = null,
 ) = SettingTextField(
     label = label,
     value = value.toString(),
     onCommit = { it.toIntOrNull()?.let(onCommit) },
+    description = description,
     supporting = supporting,
     isError = { it.toIntOrNull()?.let { number -> number in range } != true },
     keyboardType = KeyboardType.Number,
@@ -323,43 +353,50 @@ private fun PasswordField(
     modifier: Modifier = Modifier,
     placeholder: String? = null,
     saved: String = "",
+    description: String? = null,
+    tag: String? = null,
 ) {
     val container = LocalAppContainer.current
     var visible by remember { mutableStateOf(false) }
     var focused by remember { mutableStateOf(false) }
     // A saved secret shows its masked [saved] text (empty when none is saved) until focused to type a replacement.
     val showsSaved = saved.isNotEmpty() && !focused && value.isEmpty()
-    OutlinedTextField(
-        value = if (showsSaved) saved else value,
-        onValueChange = {
-            container.userActivity()
-            if (!showsSaved) onValueChange(it)
-        },
-        label = { Text(label) },
-        // On one line, so a long hint cannot make the field grow when it gets the focus.
-        placeholder = placeholder?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
-        singleLine = true,
-        visualTransformation = if (visible || showsSaved) VisualTransformation.None else PasswordVisualTransformation(),
-        trailingIcon = {
-            if (showsSaved) {
-                Icon(
-                    Icons.Default.CheckCircle,
-                    contentDescription = stringResource(R.string.settings_secret_saved),
-                    tint = LocalStatusColors.current.success,
-                )
-                return@OutlinedTextField
-            }
-            IconButton(onClick = { visible = !visible }, modifier = Modifier.testTag("secretVisibility")) {
-                Icon(
-                    if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    contentDescription = stringResource(if (visible) R.string.settings_secret_hide else R.string.settings_secret_show),
-                )
-            }
-        },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { onDone() }),
-        modifier = modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
-    )
+    Column(modifier.fillMaxWidth()) {
+        SettingFieldHeading(label, description = description)
+        OutlinedTextField(
+            value = if (showsSaved) saved else value,
+            onValueChange = {
+                container.userActivity()
+                if (!showsSaved) onValueChange(it)
+            },
+            // On one line, so a long hint cannot make the field grow when it gets the focus.
+            placeholder = placeholder?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
+            singleLine = true,
+            visualTransformation = if (visible || showsSaved) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                if (showsSaved) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = stringResource(R.string.settings_secret_saved),
+                        tint = LocalStatusColors.current.success,
+                    )
+                    return@OutlinedTextField
+                }
+                IconButton(onClick = { visible = !visible }, modifier = Modifier.testTag("secretVisibility")) {
+                    Icon(
+                        if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = stringResource(if (visible) R.string.settings_secret_hide else R.string.settings_secret_show),
+                    )
+                }
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onDone() }),
+            modifier =
+                Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused }.semantics { contentDescription = label }.tagged(
+                    tag,
+                ),
+        )
+    }
 }
 
 /**
@@ -379,27 +416,26 @@ fun SecretField(
     tag: String? = null,
     onDraft: ((Boolean) -> Unit)? = null,
     hint: String? = null,
+    description: String? = null,
 ) {
     val reportDraft by rememberUpdatedState(onDraft)
     LaunchedEffect(value) { reportDraft?.invoke(value.isNotEmpty()) }
     DisposableEffect(Unit) { onDispose { reportDraft?.invoke(false) } }
-    val compact = LocalDimens.current.compact
-    Column(modifier.fillMaxWidth()) {
+    Column(
+        modifier.fillMaxWidth().padding(
+            horizontal = LocalDimens.current.rowHorizontalPadding,
+            vertical = LocalDimens.current.rowPadding - 2.dp,
+        ),
+    ) {
         PasswordField(
             value = value,
             onValueChange = onValueChange,
             label = label,
+            description = description,
             onDone = onSubmit,
             placeholder = stringResource(if (isSet) R.string.settings_secret_replace else R.string.settings_secret_enter),
             saved = if (isSet) MASK + MASK + hint.orEmpty() else "",
-            modifier =
-                Modifier
-                    .padding(
-                        start = LocalDimens.current.rowHorizontalPadding,
-                        end = LocalDimens.current.rowHorizontalPadding,
-                        top = if (compact) 2.dp else 4.dp,
-                        bottom = if (compact) 8.dp else 12.dp,
-                    ).tagged(tag),
+            tag = tag,
         )
     }
 }
@@ -454,7 +490,7 @@ fun SettingSecret(
                     onValueChange = { value = it },
                     label = stringResource(R.string.settings_secret_new),
                     onDone = ::save,
-                    modifier = Modifier.testTag("secretInput"),
+                    tag = "secretInput",
                 )
             },
             confirmButton = {

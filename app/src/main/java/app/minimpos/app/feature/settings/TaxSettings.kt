@@ -38,6 +38,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -207,28 +209,9 @@ internal fun TaxRateDialog(
 @Composable
 internal fun TaxRateForm(form: TaxRateFormState) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-            value = form.name,
-            onValueChange = { form.name = it.take(MAX_NAME_LENGTH) },
-            label = { Text(stringResource(R.string.settings_tax_name)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-            modifier = Modifier.fillMaxWidth().testTag("taxName"),
-        )
+        TaxNameField(form)
         TaxNameSuggestions(form.name) { form.name = it }
-        OutlinedTextField(
-            value = form.rate,
-            onValueChange = { form.rate = it.take(MAX_RATE_LENGTH) },
-            label = { Text(stringResource(R.string.settings_tax_rate)) },
-            suffix = { Text("%") },
-            isError = form.invalidRate,
-            supportingText = {
-                Text(stringResource(if (form.invalidRate) R.string.settings_tax_rate_invalid else R.string.settings_tax_rate_hint))
-            },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth().testTag("taxRate"),
-        )
+        TaxRateField(form)
         Row(
             modifier =
                 Modifier
@@ -249,6 +232,43 @@ internal fun TaxRateForm(form: TaxRateFormState) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/** A name title and input form one group, with the same internal gap as other Settings fields. */
+@Composable
+private fun TaxNameField(form: TaxRateFormState) {
+    Column {
+        val nameLabel = stringResource(R.string.settings_tax_name)
+        SettingFieldHeading(nameLabel)
+        OutlinedTextField(
+            value = form.name,
+            onValueChange = { form.name = it.take(MAX_NAME_LENGTH) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = nameLabel }.testTag("taxName"),
+        )
+    }
+}
+
+/** Rate input keeps its format hint or validation below the field. */
+@Composable
+private fun TaxRateField(form: TaxRateFormState) {
+    Column {
+        val rateLabel = stringResource(R.string.settings_tax_rate)
+        SettingFieldHeading(rateLabel)
+        OutlinedTextField(
+            value = form.rate,
+            onValueChange = { form.rate = it.take(MAX_RATE_LENGTH) },
+            suffix = { Text("%") },
+            isError = form.invalidRate,
+            supportingText = {
+                Text(stringResource(if (form.invalidRate) R.string.settings_tax_rate_invalid else R.string.settings_tax_rate_hint))
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = rateLabel }.testTag("taxRate"),
+        )
     }
 }
 

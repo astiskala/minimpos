@@ -3,6 +3,7 @@ package app.minimpos.app.feature.settings
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -118,7 +119,14 @@ private fun settingsViewModel(): SettingsViewModel {
             secrets = container.secrets,
             pins = container.pinManager,
             sessionLock = container.sessionLock,
-            checks = SettingsChecks(container.terminalStatus, container.receipts, container.api, container.receiptBusinessDetails),
+            checks =
+                SettingsChecks(
+                    container.terminalStatus,
+                    container.receipts,
+                    container.api,
+                    container.receiptBusinessDetails,
+                    container.merchantCurrency,
+                ),
             history = container.history,
             catalog = container.catalog,
             sampleReceipt = container::sampleReceipt,
@@ -621,36 +629,37 @@ fun SettingsSectionScreen(
         }, onCancel = { settingPin = null }, modifier = modifier, manager = settingPin == true)
         return
     }
+    val currencyOffer: @Composable ColumnScope.() -> Unit = {
+        val currencyProposal by vm.currencySuggestion.proposal.collectAsStateWithLifecycle()
+        MerchantCurrencyOffer(
+            currencyProposal?.code,
+            LocalAppContainer.current.currency(state.settings).code,
+            vm.currencySuggestion::choose,
+            vm.currencySuggestion::dismiss,
+        )
+    }
     MiniScaffold(
         title = stringResource(sectionTitle(section)),
         onBack = navigator::back,
         modifier = modifier,
         bottomBar = { FirstRunActions(section, navigator) },
         actions = {
-            if (section == SettingsSections.TERMINAL) {
-                SetupScannerAction(state.loaded, setupActions.unsavedSecrets.isNotEmpty()) { navigator.push(Route.TransferImport) }
-            }
+            SetupScannerAction(section, state.loaded, setupActions.unsavedSecrets.isNotEmpty()) { navigator.push(Route.TransferImport) }
         },
     ) { padding ->
-        if (!state.loaded) return@MiniScaffold
-        Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(Modifier.widthIn(max = LocalDimens.current.listMaxWidth).padding(bottom = 32.dp)) {
-                if (section == SettingsSections.DATA) {
-                    val samples by sampleData.state.collectAsStateWithLifecycle()
-                    SampleDataSection(samples, events.samples)
-                }
-                val businessImport by vm.businessImport.state.collectAsStateWithLifecycle()
-                SettingsContent(section, state, actions, setupActions, events, setupEvents, navigator, opening, setPin) {
-                    ReceiptsSection(state, actions, businessImport, events)
-                }
-                if (section == SettingsSections.TERMINAL) {
-                    val terminal by LocalAppContainer.current.terminalStatus.state
-                        .collectAsStateWithLifecycle()
-                    SetupImportFeedback(terminal.importPending, businessImport, events.businessImport, navigator)
-                }
+        SettingsSectionLayout(padding, state.loaded) {
+            if (section == SettingsSections.DATA) {
+                val samples by sampleData.state.collectAsStateWithLifecycle()
+                SampleDataSection(samples, events.samples)
+            }
+            val businessImport by vm.businessImport.state.collectAsStateWithLifecycle()
+            SettingsContent(section, state, actions, setupActions, events, setupEvents, navigator, opening, setPin, currencyOffer) {
+                ReceiptsSection(state, actions, businessImport, events)
+            }
+            if (section == SettingsSections.TERMINAL) {
+                val terminal by LocalAppContainer.current.terminalStatus.state
+                    .collectAsStateWithLifecycle()
+                SetupImportFeedback(terminal.importPending, businessImport, events.businessImport, navigator)
             }
         }
     }
@@ -695,10 +704,12 @@ private fun ColumnScope.SetupImportFeedback(
 /** Header shortcut available throughout setup, with an explicit choice before leaving unsaved secret drafts. */
 @Composable
 private fun SetupScannerAction(
+    section: String,
     enabled: Boolean,
     hasDrafts: Boolean,
     onScan: () -> Unit,
 ) {
+    if (section != SettingsSections.TERMINAL) return
     var confirm by rememberSaveable { mutableStateOf(false) }
     IconButton(
         onClick = { if (hasDrafts) confirm = true else onScan() },
@@ -721,6 +732,22 @@ private fun SetupScannerAction(
     }
 }
 
+/** Scrollable section content uses the same width and bottom clearance across Settings. */
+@Composable
+private fun SettingsSectionLayout(
+    padding: PaddingValues,
+    loaded: Boolean,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    if (!loaded) return
+    Column(
+        Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(Modifier.widthIn(max = LocalDimens.current.listMaxWidth).padding(bottom = 32.dp), content = content)
+    }
+}
+
 /** Section-specific rows; receipt content and PIN navigation stay owned by the screen. */
 @Composable
 private fun ColumnScope.SettingsContent(
@@ -733,6 +760,7 @@ private fun ColumnScope.SettingsContent(
     navigator: Navigator,
     opening: SectionOpening,
     onSetPin: (Boolean) -> Unit,
+    currencyOffer: @Composable ColumnScope.() -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val terminal by LocalAppContainer.current.terminalStatus.state
@@ -752,7 +780,7 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.PAYMENTS -> {
-            PaymentsSection(state, terminal.capabilities, events)
+            PaymentsSection(state, terminal.capabilities, events, currencyOffer)
         }
 
         SettingsSections.TIPPING -> {

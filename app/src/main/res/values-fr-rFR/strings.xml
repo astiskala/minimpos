@@ -836,6 +836,10 @@
   <string name="settings_shared_key_check_again">Vérifiez à nouveau</string>
   <string name="settings_connection_ok">Connecté</string>
   <string name="settings_connection_currency">Les paiements sont effectués en %1$s, qui suit la région de l’appareil. Pour le modifier, accédez à Paramètres › Paiements.</string>
+  <string name="settings_merchant_currency">Devise de paiement</string>
+  <string name="settings_merchant_currency_hint">Adyen indique %1$s comme devise de règlement principale de ce compte marchand. Cela ne confirme pas les devises de paiement acceptées. Vérifiez les prix avant de changer.</string>
+  <string name="settings_merchant_currency_use">Vérifier les prix en %1$s</string>
+  <string name="settings_merchant_currency_keep">Conserver la devise actuelle</string>
   <string name="settings_connection_failed">La connexion a échoué</string>
   <string name="settings_connection_result_failed">Impossible de se connecter</string>
   <string name="settings_status_checking">Vérification de la connexion…</string>

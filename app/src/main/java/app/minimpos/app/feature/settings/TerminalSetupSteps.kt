@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -414,12 +415,11 @@ private fun ColumnScope.NetworkTerminalStep(
     update: TerminalUpdate,
 ) {
     StepHeader(number, stringResource(R.string.settings_step_terminal), done = done)
-    SettingNote(stringResource(R.string.settings_host_hint))
-    SettingNote(stringResource(R.string.settings_poiid_help))
     SettingTextField(
         stringResource(R.string.settings_host),
         terminal.host,
         { value -> update { it.copy(host = value.trim()) } },
+        description = stringResource(R.string.settings_host_hint),
         placeholder = stringResource(R.string.settings_host_placeholder),
         keyboardType = KeyboardType.Uri,
         autoCorrect = false,
@@ -430,6 +430,7 @@ private fun ColumnScope.NetworkTerminalStep(
         label = stringResource(R.string.settings_poiid),
         value = terminal.poiIdOverride,
         onCommit = { value -> update { it.copy(poiIdOverride = value.trim()) } },
+        description = stringResource(R.string.settings_poiid_help),
         placeholder = stringResource(R.string.settings_poiid_hint),
         autoCorrect = false,
         imeAction = ImeAction.Next,
@@ -506,22 +507,21 @@ private fun ColumnScope.ApiFields(
     api: ApiEntry,
     update: TerminalUpdate,
 ) {
-    SettingNote(
-        stringResource(
-            if (api.terminal.mode ==
-                TerminalMode.PAYMENTS_APP
-            ) {
-                R.string.settings_api_phone_hint
-            } else {
-                R.string.settings_api_hint
-            },
-        ),
-        Modifier.testTag("merchantAccountHint"),
-    )
     SettingTextField(
         stringResource(R.string.settings_merchant_account),
         api.terminal.merchantAccount,
         { value -> update { it.copy(merchantAccount = value.trim()) } },
+        description =
+            stringResource(
+                if (api.terminal.mode ==
+                    TerminalMode.PAYMENTS_APP
+                ) {
+                    R.string.settings_api_phone_hint
+                } else {
+                    R.string.settings_api_hint
+                },
+            ),
+        descriptionTag = "merchantAccountHint",
         autoCorrect = false,
         imeAction = ImeAction.Next,
         tag = "merchantAccount",
@@ -529,11 +529,12 @@ private fun ColumnScope.ApiFields(
 
     // Until the environment is known, the Checkout API cannot be used anyway (SetupProblem.ENVIRONMENT).
     if (api.environment == TerminalEnvironment.LIVE || (api.environment == null && api.terminal.liveUrlPrefix.isNotBlank())) {
-        SettingNote(stringResource(R.string.settings_live_prefix_hint), Modifier.testTag("livePrefixHint"))
         SettingTextField(
             stringResource(R.string.settings_live_prefix),
             api.terminal.liveUrlPrefix,
             { value -> update { it.copy(liveUrlPrefix = value.trim()) } },
+            description = stringResource(R.string.settings_live_prefix_hint),
+            descriptionTag = "livePrefixHint",
             autoCorrect = false,
             tag = "livePrefix",
         )
@@ -565,11 +566,11 @@ private fun ColumnScope.AdyenApiStep(
         }
     }
     StepHeader(number, stringResource(R.string.settings_api), done = done)
-    SettingNote(stringResource(R.string.settings_adyen_key_hint))
     ApiKeyRoles()
 
     SecretField(
         label = stringResource(R.string.settings_api_key),
+        description = stringResource(R.string.settings_adyen_key_hint),
         isSet = api.keySaved,
         value = api.key,
         hint = api.keyHint,
@@ -607,8 +608,13 @@ private fun ColumnScope.ApiKeyRoles() {
     TextButton(
         onClick = { expanded = !expanded },
         modifier = Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding).testTag("apiRoles"),
+        contentPadding = PaddingValues(vertical = 8.dp),
     ) {
-        Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+        Icon(
+            if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = null,
+            modifier = Modifier.testTag("apiRolesArrow"),
+        )
         Spacer(Modifier.width(8.dp))
         Text(stringResource(if (expanded) R.string.settings_hide_roles else R.string.settings_show_roles))
     }
@@ -701,11 +707,11 @@ private fun ColumnScope.CloudTerminalStep(
     onPoiId: (String) -> Unit,
 ) {
     StepHeader(number, stringResource(R.string.settings_step_terminal), done = done)
-    SettingNote(stringResource(R.string.settings_cloud_poiid_help))
     SettingTextField(
         label = stringResource(R.string.settings_poiid),
         value = poiId,
         onCommit = { onPoiId(it.trim()) },
+        description = stringResource(R.string.settings_cloud_poiid_help),
         placeholder = stringResource(R.string.settings_poiid_hint),
         autoCorrect = false,
         imeAction = ImeAction.Done,
@@ -911,7 +917,7 @@ private fun ColumnScope.TapToPayStep(
         label = stringResource(R.string.settings_store_id),
         value = storeId,
         onCommit = { onStoreId(it.trim()) },
-        supporting = stringResource(R.string.settings_store_id_hint),
+        description = stringResource(R.string.settings_store_id_hint),
         autoCorrect = false,
         imeAction = ImeAction.Next,
         tag = "storeId",

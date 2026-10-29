@@ -81,14 +81,20 @@ sealed interface StoreLookup {
     ) : StoreLookup
 }
 
-/** Result of reading a merchant account's legal name; HTTP, network and malformed-answer failures are returned, not thrown. */
+/**
+ * Result of reading a merchant account’s legal name and primary settlement currency; HTTP, network and malformed
+ * answers return failures rather than throwing.
+ */
 sealed interface MerchantLookup {
     /**
      * The requested merchant account.
      * @property legalName Its legal name, trimmed; blank if Adyen has none.
+     * @property primarySettlementCurrency ISO currency code reported by Management, blank if absent.
+     *   This is not a list of accepted payment currencies.
      */
     data class Found(
         val legalName: String,
+        val primarySettlementCurrency: String = "",
     ) : MerchantLookup
 
     /**
@@ -111,7 +117,7 @@ interface StoreDetailsApi {
         storeId: String,
     ): StoreLookup
 
-    /** Reads the legal name of [merchantAccount] with [AdyenRole.ACCOUNT_READ]; it has no receipt address or phone. */
+    /** Reads [merchantAccount]’s legal name and primary settlement currency with [AdyenRole.ACCOUNT_READ]. */
     suspend fun merchant(merchantAccount: String): MerchantLookup
 }
 
@@ -231,7 +237,7 @@ class AdyenStoreDetails(
                     runCatching {
                         val merchant = requireNotNull(decodeAdyenModel(reply.body, Merchant::class.java))
                         require(merchant.id == merchantAccount)
-                        MerchantLookup.Found(merchant.name?.trim().orEmpty())
+                        MerchantLookup.Found(merchant.name?.trim().orEmpty(), merchant.primarySettlementCurrency?.trim().orEmpty())
                     }.getOrElse { MerchantLookup.Failed(Fault.UnreadableReply()) }
                 }
             }

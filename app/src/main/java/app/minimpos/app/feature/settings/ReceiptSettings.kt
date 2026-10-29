@@ -191,7 +191,7 @@ private fun ColumnScope.ReceiptPrintingSettings(
         receipt.charsPerLine,
         ReceiptSettings.CHARS_PER_LINE,
         { chars -> update { it.copy(charsPerLine = chars) } },
-        supporting = stringResource(R.string.settings_chars_per_line_hint),
+        description = stringResource(R.string.settings_chars_per_line_hint),
         tag = "charsPerLine",
     )
 }

@@ -40,6 +40,7 @@ internal fun ColumnScope.PaymentsSection(
     state: SettingsUiState,
     capabilities: DestinationCapabilities,
     events: SettingsEvents,
+    content: @Composable ColumnScope.() -> Unit = {},
 ) {
     val payment = state.settings.payment
     val update = events::onPaymentUpdate
@@ -49,12 +50,13 @@ internal fun ColumnScope.PaymentsSection(
         automatic = PaymentSettings().resolvedCurrency(LocalAppContainer.current.device.country),
         onSelect = { code -> update { it.copy(currencyCode = code) } },
     )
+    content()
     SectionHeader(stringResource(R.string.settings_references))
     SettingTextField(
         stringResource(R.string.settings_reference_prefix),
         payment.referencePrefix,
         { value -> update { it.copy(referencePrefix = value.trim()) } },
-        supporting = stringResource(R.string.settings_reference_prefix_hint),
+        description = stringResource(R.string.settings_reference_prefix_hint),
         autoCorrect = false,
     )
     SettingSwitch(stringResource(R.string.settings_ask_transaction_reference), payment.askTransactionReference, { value ->
@@ -183,7 +185,7 @@ private fun ColumnScope.GiftCardSettings(
                 stringResource(R.string.settings_gift_card_code),
                 setting.code,
                 { value -> change { it.copy(code = value.trim().lowercase()) } },
-                supporting = stringResource(R.string.settings_gift_card_code_hint),
+                description = stringResource(R.string.settings_gift_card_code_hint),
                 autoCorrect = false,
             )
         }
@@ -380,7 +382,7 @@ private fun ColumnScope.CashbackSettings(
         stringResource(R.string.cashback_limit),
         money.formatPlain(cash.limitMinor),
         { value -> change { it.copy(limitMinor = CurrencySpec.of(currency).parseMinor(value) ?: 0) } },
-        supporting = stringResource(R.string.cashback_limit_hint),
+        description = stringResource(R.string.cashback_limit_hint),
     )
 }
 
@@ -416,7 +418,7 @@ private fun ColumnScope.UnreferencedRefundSection(
         stringResource(R.string.unreferenced_settings_limit),
         money.formatPlain(refunds.limitMinor),
         { value -> change { it.copy(limitMinor = CurrencySpec.of(currency).parseMinor(value) ?: 0) } },
-        supporting = stringResource(R.string.unreferenced_settings_limit_hint),
+        description = stringResource(R.string.unreferenced_settings_limit_hint),
     )
     SettingSwitch(
         stringResource(R.string.unreferenced_settings_delay),

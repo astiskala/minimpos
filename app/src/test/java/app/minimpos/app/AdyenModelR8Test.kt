@@ -130,7 +130,7 @@ class AdyenModelR8Test {
                 """"storeAndForward":{"maxAmount":[{"amount":5000,"currencyCode":"AUD"}],""" +
                 """"maxPayments":10,"supportedCardTypes":{"credit":true,"debit":true}},""" +
                 """"surcharge":{"askConfirmation":true}}""",
-            Merchant::class.java to """{"id":"HarbourCoffeeCOM","name":"Harbour Coffee"}""",
+            Merchant::class.java to """{"id":"HarbourCoffeeCOM","name":"Harbour Coffee","primarySettlementCurrency":"AUD"}""",
             Store::class.java to
                 """{"id":"ST1","shopperStatement":"Harbour Coffee","phoneNumber":"+61212345678",""" +
                 """"address":{"line1":"1 Main St","city":"Sydney","country":"AU"}}""",

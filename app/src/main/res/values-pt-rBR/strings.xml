@@ -836,6 +836,10 @@
   <string name="settings_shared_key_check_again">Verifique novamente</string>
   <string name="settings_connection_ok">Conectado</string>
   <string name="settings_connection_currency">Os pagamentos são realizados em %1$s, que segue a região do aparelho. Para alterá-lo, vá para Configurações › Pagamentos.</string>
+  <string name="settings_merchant_currency">Moeda de pagamento</string>
+  <string name="settings_merchant_currency_hint">A Adyen informa %1$s como a moeda de liquidação principal desta conta de estabelecimento. Isso não confirma quais moedas de pagamento são aceitas. Revise os preços antes de alterar.</string>
+  <string name="settings_merchant_currency_use">Revisar preços em %1$s</string>
+  <string name="settings_merchant_currency_keep">Manter moeda atual</string>
   <string name="settings_connection_failed">Conexão falhou</string>
   <string name="settings_connection_result_failed">Não foi possível conectar</string>
   <string name="settings_status_checking">Verificando a conexão…</string>

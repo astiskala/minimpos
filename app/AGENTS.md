@@ -210,8 +210,10 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
 - Flows: workflow screen (one pinned primary "Verb amount", confirm before money moves back) → `ProcessingContent` →
   result. Stepped screens use `StepHeader`/`StepBody`: later steps hidden until unlocked, tick once done, actions as
   main action → outcome → removals. Settings › Terminal shows setup outcomes in a dialog instead, one at a time.
-- Settings switches and choices have a short title plus a 1–2 sentence description. Local settings save as they
-  change; Adyen-side capability sections edit a draft sent by "Save to Adyen".
+- Settings fields use external titles in the same style as toggles, then primary descriptions, then inputs.
+  Notes below fields hold only additional information or validation. Settings switches and choices have a short title
+  plus a 1–2 sentence description. Local settings save as they change; Adyen-side capability sections edit a draft sent
+  by "Save to Adyen".
 
 ## Tests
 

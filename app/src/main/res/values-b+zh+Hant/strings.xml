@@ -832,6 +832,10 @@
   <string name="settings_shared_key_check_again">再次檢查</string>
   <string name="settings_connection_ok">已連接</string>
   <string name="settings_connection_currency">收款貨幣為 %1$s（根據設備所在地區）。如需更改，請前往“設定 › 支付”。</string>
+  <string name="settings_merchant_currency">付款貨幣</string>
+  <string name="settings_merchant_currency_hint">Adyen 顯示此商戶的主要結算貨幣為 %1$s。這並不代表已確認可接受的付款貨幣。切換前請檢查價格。</string>
+  <string name="settings_merchant_currency_use">檢查 %1$s 價格</string>
+  <string name="settings_merchant_currency_keep">保留目前貨幣</string>
   <string name="settings_connection_failed">連接失敗</string>
   <string name="settings_connection_result_failed">無法連接</string>
   <string name="settings_status_checking">正在檢查連接…</string>

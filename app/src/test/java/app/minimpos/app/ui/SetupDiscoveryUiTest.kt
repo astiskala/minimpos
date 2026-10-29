@@ -275,6 +275,9 @@ class SetupDiscoveryUiTest {
     private fun assertRoleHelp() {
         // Role details must stay available without putting the key behind the full list on first open.
         compose.onNodeWithTag("roleCloud").assertDoesNotExist()
+        val arrow = compose.onNodeWithTag("apiRolesArrow", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val field = compose.onNodeWithTag("apiKey").getUnclippedBoundsInRoot()
+        assertThat(arrow.left.value).isWithin(0.1f).of(field.left.value)
         compose.onNodeWithTag("apiRoles").performScrollTo().performClick()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_terminals), substring = true).assertExists()
         compose.onNodeWithText("Checkout webservice role", substring = true).assertDoesNotExist()

@@ -260,6 +260,9 @@ class OnboardingUiTest {
         compose.onNodeWithTag("onboardingContinue").performClick()
         waitFor("scanSetup")
         compose.awaitCondition("terminal choice is persisted") { env.container.settingsState.value.onboardingCompleted }
+        // Payments would still go to the simulator, so where they go is asked straight away.
+        waitFor("terminalMode_CLOUD")
+        compose.onNodeWithText(env.context.getString(R.string.action_cancel)).performClick()
         assertThat(
             await {
                 env.container.catalog.products

@@ -61,6 +61,7 @@ import app.minimpos.app.feature.sale.SavedCardReviewScreen
 import app.minimpos.app.feature.sale.SavedCardScreen
 import app.minimpos.app.feature.sale.SplitScreen
 import app.minimpos.app.feature.sale.WalletScreen
+import app.minimpos.app.feature.settings.SectionOpening
 import app.minimpos.app.feature.settings.SettingsScreen
 import app.minimpos.app.feature.settings.SettingsSectionScreen
 import app.minimpos.app.feature.settings.SettingsSections
@@ -160,7 +161,9 @@ private fun AppEntries(
                 entry<Route.TransferImport> { PinGate(navigator) { TransferImportScreen(navigator) } }
                 entry<Route.Settings>(metadata = settingsList) { PinGate(navigator) { SettingsScreen(navigator) } }
                 entry<Route.SettingsSection>(metadata = settingsDetail) {
-                    PinGate(navigator) { SettingsSectionScreen(it.section, navigator, showTroubleshooting = it.troubleshooting) }
+                    PinGate(navigator) {
+                        SettingsSectionScreen(it.section, navigator, opening = SectionOpening(it.troubleshooting, it.chooseDestination))
+                    }
                 }
             },
     )

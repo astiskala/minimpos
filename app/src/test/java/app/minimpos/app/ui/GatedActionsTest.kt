@@ -67,9 +67,10 @@ class GatedActionsTest {
     @Test
     fun `scanned wallets wait for payments to be set up`() {
         useNetworkTerminalWithoutId()
-        open("terminal")
-        compose.waitUntilAtLeastOneExists(hasTestTag("terminalMode"), 15_000)
-        compose.onNodeWithTag("refreshWallets").assertDoesNotExist()
+        // Wallet offers are listed with Adyen capabilities, and only once payments are set up.
+        open("capabilities")
+        compose.waitUntilAtLeastOneExists(hasText(env.context.getString(R.string.capabilities_intro)), 15_000)
+        compose.onNodeWithTag("walletOffers").assertDoesNotExist()
     }
 
     @Test

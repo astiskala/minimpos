@@ -119,7 +119,7 @@ class OnTerminalDiscoveryTest {
         compose.onNodeWithTag("step_2").assertExists()
         compose.onNodeWithTag("merchantAccount").assertExists()
         compose.onNodeWithTag("testConnection").assertExists()
-        compose.onNodeWithTag("testApi").assertExists()
+        compose.onNodeWithTag("testApi").assertDoesNotExist()
         compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("terminal-key", substring = true)
         compose.onNodeWithTag("terminal_$POI_ID").assertDoesNotExist()
         assertThat(queries).isNotEmpty()

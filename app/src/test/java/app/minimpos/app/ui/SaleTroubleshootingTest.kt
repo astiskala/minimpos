@@ -19,6 +19,7 @@ import app.minimpos.app.createRecordingComposeRule
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.feature.sale.SaleResultScreen
+import app.minimpos.app.feature.settings.SectionOpening
 import app.minimpos.app.feature.settings.SettingsSectionScreen
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.ui.components.LocalAppContainer
@@ -79,7 +80,7 @@ class SaleTroubleshootingTest {
                             SettingsSectionScreen(
                                 route.section,
                                 navigator,
-                                showTroubleshooting = route.troubleshooting,
+                                opening = SectionOpening(troubleshooting = route.troubleshooting),
                             )
                         }
 

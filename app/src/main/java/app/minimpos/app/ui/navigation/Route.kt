@@ -293,10 +293,13 @@ sealed interface Route : NavKey {
      *
      * @property section One of the [app.minimpos.app.feature.settings.SettingsSections] keys.
      * @property troubleshooting Opens Help with its troubleshooting table expanded and in view.
+     * @property chooseDestination Opens Terminal with "Payments go to" already open while payments go to the simulator,
+     *   as after choosing to connect to Adyen on first run.
      */
     @Serializable data class SettingsSection(
         val section: String,
         val troubleshooting: Boolean = false,
+        val chooseDestination: Boolean = false,
     ) : Route {
         override val isProtected get() = true
     }

@@ -121,6 +121,8 @@ class KeystoreSecretCipher(
  * @property boardingRecovery Encrypted phone registration recovery facts; never transferred.
  * @property keyCreationRecovery Encrypted terminal-key creation records; never transferred.
  * @property boardingCredential Encrypted device-local generated boarding credential and creation intent; never transferred.
+ * @property hints Plain-text recognition hints, keyed by [Secret.name], written and cleared with their secret: only the
+ *   last [SECRET_HINT_LENGTH] characters of an Adyen API key ([secretHint]). Keys saved before hints have none.
  */
 @Serializable
 data class SecretBlob(
@@ -129,7 +131,24 @@ data class SecretBlob(
     val boardingRecovery: String? = null,
     val keyCreationRecovery: String? = null,
     val boardingCredential: String? = null,
+    val hints: Map<String, String> = emptyMap(),
 )
+
+/** How many trailing characters of an Adyen API key are kept as its [SecretBlob.hints] entry. */
+const val SECRET_HINT_LENGTH = 4
+
+/**
+ * The plain-text hint kept for [secret] with [value]: the end of an Adyen API key (over a hundred characters, so four
+ * reveal next to nothing; the Customer Area shows key ends too), so a merchant can tell which key is saved. Null for
+ * every other secret: passphrases, passwords and PIN verifiers are short enough that any part of them would help guess them.
+ */
+internal fun secretHint(
+    secret: Secret,
+    value: String,
+): String? = value.takeLast(SECRET_HINT_LENGTH).takeIf { secret == Secret.ADYEN_API_KEY && value.length >= SECRET_HINT_MIN_LENGTH }
+
+/** Shorter keys are not Adyen API keys; they get no hint rather than revealing a large share. */
+private const val SECRET_HINT_MIN_LENGTH = 32
 
 internal class SetupSecrets(
     val configured: Set<Secret>,
@@ -277,6 +296,15 @@ class SecretStore(
     val configured: Flow<Set<Secret>> =
         this.store.data.map { blob -> Secret.entries.filter { it.name in blob.values }.toSet() }
 
+    /** The [SecretBlob.hints] of the stored secrets that have one; plain text, safe to show. */
+    val hints: Flow<Map<Secret, String>> =
+        this.store.data.map { blob ->
+            Secret.entries
+                .filter { it.name in blob.values }
+                .mapNotNull { secret -> blob.hints[secret.name]?.let { secret to it } }
+                .toMap()
+        }
+
     /** The secret, or null when it is not stored or can no longer be decrypted. */
     suspend fun get(secret: Secret): String? {
         val stored = store.data.first().values[secret.name] ?: return null
@@ -353,7 +381,12 @@ class SecretStore(
 
     internal suspend fun setAll(values: Map<Secret, String>) {
         val encrypted = values.mapKeys { it.key.name }.mapValues { encrypt(it.value) }
-        store.update { it.copy(values = it.known() + encrypted) }
+        store.update { blob ->
+            blob.copy(
+                values = blob.known() + encrypted,
+                hints = values.entries.fold(blob.knownHints()) { hints, (secret, value) -> hints.with(secret, value) },
+            )
+        }
     }
 
     /** Stores [value], or clears the secret when it is null or empty. Throws [SecretStoreException] if it cannot be encrypted. */
@@ -364,12 +397,24 @@ class SecretStore(
         val encrypted = value?.takeIf { it.isNotEmpty() }?.let { encrypt(it) }
         store.update { blob ->
             val known = blob.known()
-            blob.copy(values = if (encrypted == null) known - secret.name else known + (secret.name to encrypted))
+            blob.copy(
+                values = if (encrypted == null) known - secret.name else known + (secret.name to encrypted),
+                hints = blob.knownHints().with(secret, value.takeIf { encrypted != null }),
+            )
         }
     }
 
     /** The stored values of the secrets this version has, so that a write deletes any it no longer reads. */
     private fun SecretBlob.known(): Map<String, String> = values.filterKeys { name -> Secret.entries.any { it.name == name } }
+
+    /** The hints of the secrets this version has, as [known] keeps their values. */
+    private fun SecretBlob.knownHints(): Map<String, String> = hints.filterKeys { name -> Secret.entries.any { it.name == name } }
+
+    /** These hints with [secret]'s replaced by the one [value] gets, or removed when it gets none or is cleared. */
+    private fun Map<String, String>.with(
+        secret: Secret,
+        value: String?,
+    ): Map<String, String> = value?.let { secretHint(secret, it) }?.let { this + (secret.name to it) } ?: (this - secret.name)
 
     private suspend fun encrypt(value: String): String =
         withContext(io) {

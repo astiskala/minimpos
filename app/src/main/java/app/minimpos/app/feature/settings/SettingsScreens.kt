@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.Percent
 import androidx.compose.material.icons.filled.PhonelinkSetup
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
@@ -70,7 +69,6 @@ import app.minimpos.app.data.settings.PricingChange
 import app.minimpos.app.data.settings.SimulatorSettings
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.ActionState
-import app.minimpos.app.feature.GatedButton
 import app.minimpos.app.feature.OutcomeDialog
 import app.minimpos.app.feature.labels
 import app.minimpos.app.feature.lock.SetPinScreen
@@ -568,21 +566,37 @@ private fun FirstRunActions(
 ) {
     if (section == SettingsSections.TERMINAL && navigator.isOnboarding) {
         BottomActions {
-            PrimaryButton(stringResource(R.string.action_home), navigator::home, modifier = Modifier.testTag("finishOnboarding"))
+            // Home is the way on once payments work; until then the setup steps above carry the next action.
+            if (currentSetupGate().pending) {
+                SecondaryButton(stringResource(R.string.action_home), navigator::home, modifier = Modifier.testTag("finishOnboarding"))
+            } else {
+                PrimaryButton(stringResource(R.string.action_home), navigator::home, modifier = Modifier.testTag("finishOnboarding"))
+            }
         }
     }
 }
 
 /**
+ * What a settings section shows straight away when opened.
+ *
+ * @property troubleshooting Expands Help's table and scrolls it into view, as when opened from a failed payment.
+ * @property chooseDestination Opens Terminal's "Payments go to" choice while payments go to the simulator.
+ */
+data class SectionOpening(
+    val troubleshooting: Boolean = false,
+    val chooseDestination: Boolean = false,
+)
+
+/**
  * One settings [section] (a [SettingsSections] key; unknown keys show About).
- * [showTroubleshooting] expands Help's table and scrolls it into view when opened from a failed payment.
+ * [opening] says what the section shows straight away.
  */
 @Composable
 fun SettingsSectionScreen(
     section: String,
     navigator: Navigator,
     modifier: Modifier = Modifier,
-    showTroubleshooting: Boolean = false,
+    opening: SectionOpening = SectionOpening(),
 ) {
     val vm = settingsViewModel()
     val sampleData = sampleDataViewModel()
@@ -629,7 +643,7 @@ fun SettingsSectionScreen(
                     SampleDataSection(samples, events.samples)
                 }
                 val businessImport by vm.businessImport.state.collectAsStateWithLifecycle()
-                SettingsContent(section, state, actions, setupActions, events, setupEvents, navigator, showTroubleshooting, setPin) {
+                SettingsContent(section, state, actions, setupActions, events, setupEvents, navigator, opening, setPin) {
                     ReceiptsSection(state, actions, businessImport, events)
                 }
                 if (section == SettingsSections.TERMINAL) {
@@ -652,6 +666,10 @@ private fun ColumnScope.CapabilitiesSectionScreen(payment: PaymentSettings) {
     val terminal by LocalAppContainer.current.terminalStatus.state
         .collectAsStateWithLifecycle()
     CapabilitiesSection(capabilities, actions, payment, currency, terminal.printingStanding, terminal.receiptSharingStanding, events)
+    val wallets by LocalAppContainer.current.walletDiscovery.state
+        .collectAsStateWithLifecycle()
+    // What Adyen reports about wallets only means something once payments are set up.
+    if (wallets.supported && !currentSetupGate().pending) WalletOffers(wallets, currency)
 }
 
 @Composable
@@ -713,7 +731,7 @@ private fun ColumnScope.SettingsContent(
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
     navigator: Navigator,
-    showTroubleshooting: Boolean,
+    opening: SectionOpening,
     onSetPin: (Boolean) -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -721,7 +739,7 @@ private fun ColumnScope.SettingsContent(
         .collectAsStateWithLifecycle()
     when (section) {
         SettingsSections.TERMINAL -> {
-            TerminalSection(state, actions, setup, events, setupEvents, navigator)
+            TerminalSection(state, actions, setup, events, setupEvents, navigator, opening.chooseDestination)
         }
 
         SettingsSections.CAPABILITIES -> {
@@ -766,7 +784,7 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.HELP -> {
-            HelpSection(terminal, setup, setupEvents, showTroubleshooting)
+            HelpSection(terminal, setup, setupEvents, opening.troubleshooting)
         }
 
         else -> {
@@ -807,6 +825,7 @@ private fun ColumnScope.TerminalSection(
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
     navigator: Navigator,
+    chooseDestination: Boolean,
 ) {
     val terminalStatus = LocalAppContainer.current.terminalStatus
     val status by terminalStatus.state.collectAsStateWithLifecycle()
@@ -833,7 +852,7 @@ private fun ColumnScope.TerminalSection(
         val apiKeySaved = Secret.ADYEN_API_KEY in state.secrets
         events.onUpdate { it.copy(terminal = it.terminal.selectDestination(choice, terminalStatus.automaticMode, apiKeySaved)) }
     }
-    TerminalModeChoice(mode, status.onTerminal, selectMode)
+    TerminalModeChoice(mode, status.onTerminal, selectMode, open = chooseDestination && mode == TerminalMode.SIMULATOR)
     if (mode == TerminalMode.SIMULATOR) {
         SettingNavRow(
             Icons.Default.Science,
@@ -844,20 +863,17 @@ private fun ColumnScope.TerminalSection(
     } else {
         TerminalSteps(status, DestinationRules.of(mode, LocalAppContainer.current.device), state, actions, setup, events, setupEvents)
     }
-    val container = LocalAppContainer.current
-    val wallets by container.walletDiscovery.state.collectAsStateWithLifecycle()
-    // What Adyen reports about wallets only means something once payments are set up.
-    if (wallets.supported && !currentSetupGate().pending) {
-        WalletSettings(wallets, container.currency(state.settings).code, container.walletDiscovery::refreshInBackground)
-    }
     TerminalResults(status, state, actions, setup, events, setupEvents)
 }
 
+/**
+ * Which scanned wallets Adyen offers in [currency], or why the check failed. They are read again whenever setup
+ * changes and with every capability refresh, so there is no separate refresh.
+ */
 @Composable
-private fun WalletSettings(
+private fun ColumnScope.WalletOffers(
     state: WalletAvailability,
     currency: String,
-    onRefresh: () -> Unit,
 ) {
     SectionHeader(stringResource(R.string.wallet_methods))
     val offered = state.offered(currency)
@@ -868,19 +884,10 @@ private fun WalletSettings(
             } else {
                 stringResource(R.string.wallet_available, currency, offered.joinToString { it.displayName })
             },
+            Modifier.testTag("walletOffers"),
         )
     }
     state.failure?.let { Notice(walletCheckFailed(it), kind = NoticeKind.WARNING, inset = true) }
-    SettingActions {
-        GatedButton(
-            stringResource(R.string.wallet_refresh),
-            onRefresh,
-            blocked = state.refreshBlocked,
-            loading = state.checking,
-            icon = Icons.Default.Refresh,
-            modifier = Modifier.testTag("refreshWallets"),
-        )
-    }
 }
 
 /**
@@ -948,13 +955,14 @@ private fun QuickSetup(onImport: () -> Unit) {
 
 /**
  * "Payments go to": this terminal or the simulator on a terminal; elsewhere a terminal on the network or in the cloud,
- * Tap to Pay with the Adyen Payments app, or the simulator.
+ * Tap to Pay with the Adyen Payments app, or the simulator. [open] shows the choice straight away.
  */
 @Composable
 private fun TerminalModeChoice(
     mode: TerminalMode,
     onTerminal: Boolean,
     onSelect: (TerminalMode) -> Unit,
+    open: Boolean,
 ) {
     SettingChoice(
         title = stringResource(R.string.settings_mode),
@@ -972,6 +980,7 @@ private fun TerminalModeChoice(
         onSelect = onSelect,
         subtitle = stringResource(R.string.settings_mode_hint),
         tag = "terminalMode",
+        initiallyOpen = open,
     )
 }
 

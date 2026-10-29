@@ -1,6 +1,6 @@
 # Mini mPOS threat model
 
-Version: 1.2.0. Updated: 2026-10-26. Method: STRIDE. Local pre-deployment audit context, not a certification.
+Version: 1.3.0. Updated: 2026-10-29. Method: STRIDE. Local pre-deployment audit context, not a certification.
 
 ## 1. System Overview
 
@@ -42,7 +42,9 @@ Repository interfaces include GitHub events, workflow inputs, API run metadata, 
 ## 4. Critical Assets and Data Classification
 
 - Credentials: Adyen API keys, terminal shared keys, SMTP passwords, PIN verifiers, Android Keystore keys,
-  APK signing keys and GitHub cache-encryption keys. Never commit or log their values.
+  APK signing keys and GitHub cache-encryption keys. Never commit or log their values. Settings may show only the
+  last four characters of a saved Adyen API key of at least 32 characters, stored beside it in plain text so the UI
+  never decrypts the key; other secrets show no part of themselves.
 - Personal data: shopper email/reference and receipt details, including masked card information.
   They remain in private device storage or deliberately delivered receipts, not telemetry or public CI fixtures.
 - Financial state: operation identities, request facts, transaction history and encrypted recovery journals.
@@ -128,3 +130,5 @@ controls remain trusted. Cache writes stay scoped to trusted main builds; forks 
   committed findings file.
 - 1.2.0: Expanded financial boundaries for the capabilities integration; clarified category/identity checks, approval
   freshness between request stages, mutation recovery and running-operation protection.
+- 1.3.0: Accepted showing a saved Adyen API key's last four characters in Settings, kept as a plain-text hint written
+  and cleared with the key; passphrases, passwords and PIN verifiers keep no hint.

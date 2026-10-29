@@ -1,6 +1,7 @@
 package app.minimpos.app.feature.settings
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -9,9 +10,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Api
@@ -23,16 +28,22 @@ import androidx.compose.material.icons.filled.PhonelinkErase
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,8 +54,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import app.minimpos.app.R
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
@@ -109,14 +123,29 @@ internal fun ColumnScope.TerminalSteps(
             terminal = state.settings.terminal,
             environment = status.environment,
             keySaved = Secret.ADYEN_API_KEY in state.secrets,
+            keyHint = state.secretHints[Secret.ADYEN_API_KEY],
             key = apiKey,
             onKey = { apiKey = it },
             problem = status.apiProblem,
         )
     val update: TerminalUpdate = { transform -> events.onUpdate { it.copy(terminal = transform(it.terminal)) } }
-    key(status.mode, status.environment, setup.revision) {
-        DestinationSteps(status, rules, state, actions, setup, events, setupEvents, api, update)
+    key(status.mode, status.environment) {
+        // Outlives discovery imports (the revision), which refresh the fields but must not forget a passed API test.
+        val apiTest = remember { ApiTestMemory() }
+        key(setup.revision) {
+            DestinationSteps(status, rules, state, actions, setup, events, setupEvents, api, apiTest, update)
+        }
     }
+}
+
+/**
+ * What this visit to the steps remembers about the API test, for one destination and environment: the merchant
+ * account and live URL prefix the latest test or discovery started with, and whether a test of them succeeded.
+ */
+@Stable
+private class ApiTestMemory {
+    var testedFields by mutableStateOf<Pair<String, String>?>(null)
+    var complete by mutableStateOf(false)
 }
 
 @Composable
@@ -165,13 +194,12 @@ private fun ColumnScope.DestinationSteps(
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
     api: ApiEntry,
+    apiTest: ApiTestMemory,
     update: TerminalUpdate,
 ) {
-    var testedFields by remember { mutableStateOf<Pair<String, String>?>(null) }
-    var apiComplete by remember { mutableStateOf(false) }
     // An immediate retest can conflate running and success; new tested fields must still recheck completion.
-    LaunchedEffect(actions.api, api.problem, api.key, testedFields) {
-        if (api.testCompleted(actions.api, testedFields)) apiComplete = true
+    LaunchedEffect(actions.api, api.problem, api.key, apiTest.testedFields) {
+        if (api.testCompleted(actions.api, apiTest.testedFields)) apiTest.complete = true
     }
     val terminal = state.settings.terminal
     val progress =
@@ -182,7 +210,7 @@ private fun ColumnScope.DestinationSteps(
             terminal = terminal,
             secrets = state.secrets,
             verified = !currentSetupGate().pending,
-            visit = rememberSetupVisit(terminal, apiTested = apiComplete),
+            visit = rememberSetupVisit(terminal, apiTested = apiTest.complete),
         )
     val plan = TerminalSetupPlan.steps(rules, progress)
 
@@ -194,7 +222,6 @@ private fun ColumnScope.DestinationSteps(
         number = apiStep.number,
         done = apiStep.done,
         discovers = status.mode != TerminalMode.PAYMENTS_APP,
-        findOnly = !status.onTerminal && status.mode != TerminalMode.PAYMENTS_APP,
         api = api,
         actions = actions,
         setup = setup,
@@ -202,11 +229,11 @@ private fun ColumnScope.DestinationSteps(
         setupEvents = setupEvents,
         update = update,
         onFind = {
-            testedFields = api.terminal.merchantAccount to api.terminal.liveUrlPrefix
+            apiTest.testedFields = api.terminal.merchantAccount to api.terminal.liveUrlPrefix
             events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.API) { setupEvents.onTerminalsFind("") }
         },
         onTest = {
-            testedFields = api.terminal.merchantAccount to api.terminal.liveUrlPrefix
+            apiTest.testedFields = api.terminal.merchantAccount to api.terminal.liveUrlPrefix
             events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.API)
         },
     )
@@ -329,6 +356,7 @@ private fun ColumnScope.EnvironmentStep(
  * @property terminal The stored terminal settings (merchant account, live URL prefix).
  * @property environment Where payments go; the live URL prefix is asked for once it is LIVE.
  * @property keySaved Whether an API key is saved.
+ * @property keyHint The saved key's last characters, when it has them; see [SecretField].
  * @property key The API key typed and not saved yet; empty when none is.
  * @property onKey Takes what is typed into the API key field.
  * @property problem What the Checkout API is still missing; null once it is set up.
@@ -337,6 +365,7 @@ private class ApiEntry(
     val terminal: TerminalSettings,
     val environment: TerminalEnvironment?,
     val keySaved: Boolean,
+    val keyHint: String?,
     val key: String,
     val onKey: (String) -> Unit,
     val problem: SetupProblem?,
@@ -500,15 +529,15 @@ private fun ColumnScope.ApiFields(
 }
 
 /**
- * One Adyen API step for every real destination: key and account together, then [onTest] and its outcome. Optional
- * terminal discovery first tests API access; saved helper fields are never marked tested.
+ * One Adyen API step for every real destination: key and account together, then one action. Where it [discovers]
+ * terminals, [onFind] tests API access first and is the only action, since a terminal entered by hand is tested by
+ * the final connection test; elsewhere (Tap to Pay) [onTest]. Saved helper fields are never marked tested.
  */
 @Composable
 private fun ColumnScope.AdyenApiStep(
     number: Int,
     done: Boolean,
     discovers: Boolean,
-    findOnly: Boolean,
     api: ApiEntry,
     actions: SettingsActions,
     setup: TerminalSetupActions,
@@ -520,7 +549,7 @@ private fun ColumnScope.AdyenApiStep(
 ) {
     fun saveAndTest() {
         if (!actions.api.running) {
-            if (findOnly) onFind() else onTest()
+            if (discovers) onFind() else onTest()
         }
     }
     StepHeader(number, stringResource(R.string.settings_api), done = done)
@@ -531,6 +560,7 @@ private fun ColumnScope.AdyenApiStep(
         label = stringResource(R.string.settings_api_key),
         isSet = api.keySaved,
         value = api.key,
+        hint = api.keyHint,
         onValueChange = api.onKey,
         onSubmit = ::saveAndTest,
         tag = "apiKey",
@@ -538,7 +568,7 @@ private fun ColumnScope.AdyenApiStep(
     )
     ApiFields(api, update)
     SettingActions {
-        if (!findOnly) {
+        if (!discovers) {
             TestButton(
                 typed = api.key.isNotBlank(),
                 save = R.string.settings_save_and_test_api,
@@ -655,14 +685,80 @@ private fun ColumnScope.CloudTerminalStep(
     )
 }
 
-/** The terminals connected in the cloud, to choose one; [onChoose] gets null when the dialog is dismissed. */
+/**
+ * The terminals connected in the cloud, to choose one; [onChoose] gets null when the dialog is dismissed. An account
+ * can have hundreds, so more than [TERMINAL_SEARCH_FROM] add a search field matching any part of the POIID, ignoring
+ * case, and the list is lazy.
+ */
 @Composable
 internal fun TerminalChoiceDialog(
     poiIds: List<String>,
     onChoose: (poiId: String?) -> Unit,
 ) {
-    ChoiceDialog(R.string.settings_choose_terminal, R.string.settings_no_terminals, poiIds.map { it to it }, "terminal", onChoose)
+    if (poiIds.size <= TERMINAL_SEARCH_FROM) {
+        ChoiceDialog(R.string.settings_choose_terminal, R.string.settings_no_terminals, poiIds.map { it to it }, "terminal", onChoose)
+        return
+    }
+    var query by rememberSaveable { mutableStateOf("") }
+    val shown = remember(poiIds, query) { poiIds.filter { it.contains(query.trim(), ignoreCase = true) } }
+    val compact = LocalDimens.current.compact
+    // Not an AlertDialog: its default width keeps a text field from settling in tests, as in the currency picker.
+    Dialog(onDismissRequest = { onChoose(null) }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(if (compact) 12.dp else 24.dp)
+                    .widthIn(max = LocalDimens.current.contentMaxWidth),
+        ) {
+            Column(
+                Modifier.heightIn(max = 600.dp).padding(vertical = if (compact) 12.dp else 20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    stringResource(R.string.settings_choose_terminal),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it.take(MAX_TERMINAL_QUERY_LENGTH) },
+                    placeholder = { Text(stringResource(R.string.settings_terminal_search)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Search),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).testTag("terminalSearch"),
+                )
+                LazyColumn(Modifier.weight(1f, fill = false)) {
+                    items(shown, key = { it }) { poiId ->
+                        TextButton({ onChoose(poiId) }, Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("terminal_$poiId")) {
+                            Text(poiId)
+                        }
+                    }
+                    if (shown.isEmpty()) {
+                        item {
+                            Text(
+                                stringResource(R.string.settings_terminal_search_none),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                            )
+                        }
+                    }
+                }
+                TextButton({ onChoose(null) }, Modifier.align(Alignment.End).padding(horizontal = 12.dp)) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        }
+    }
 }
+
+/** Above this many terminals the choice offers a search field. */
+private const val TERMINAL_SEARCH_FROM = 8
+
+private const val MAX_TERMINAL_QUERY_LENGTH = 40
 
 /** Choices of `id to label`, each tagged `<tagPrefix>_<id>`; [onChoose] gets null when the dialog is dismissed. */
 @Composable
@@ -705,8 +801,9 @@ private fun ColumnScope.PaymentsAppStep(
     }
     if (environment != null && environment !in paymentsApps) {
         val context = LocalContext.current
+        // Installing the app is the step's only action, so it leads.
         SettingActions {
-            SecondaryButton(
+            PrimaryButton(
                 stringResource(
                     if (environment ==
                         TerminalEnvironment.TEST

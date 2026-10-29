@@ -67,6 +67,27 @@ class SecurityAndSettingsTest {
         }
 
     @Test
+    fun `only an Adyen API key keeps its last characters as a hint, replaced and cleared with it`() =
+        await {
+            val key = "AQE" + "x".repeat(150) + "k3Xq"
+            secrets.set(Secret.ADYEN_API_KEY, key)
+            secrets.set(Secret.SMTP_PASSWORD, "hunter2-but-much-longer-than-thirty-two")
+            secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple and more words")
+            assertThat(secrets.hints.first()).containsExactly(Secret.ADYEN_API_KEY, "k3Xq")
+            // The hint is the only plain text: the rest of the key stays encrypted.
+            assertThat(env.dir.resolve("secrets.json").readText()).doesNotContain(key.dropLast(4))
+            secrets.setAll(mapOf(Secret.ADYEN_API_KEY to "AQE" + "y".repeat(150) + "Zz90"))
+            assertThat(secrets.hints.first()).containsExactly(Secret.ADYEN_API_KEY, "Zz90")
+            // Too short to be an Adyen key: no part of it is kept in plain text.
+            secrets.set(Secret.ADYEN_API_KEY, "short-key")
+            assertThat(secrets.hints.first()).isEmpty()
+            secrets.set(Secret.ADYEN_API_KEY, key)
+            secrets.set(Secret.ADYEN_API_KEY, null)
+            assertThat(secrets.hints.first()).isEmpty()
+            assertThat(env.dir.resolve("secrets.json").readText()).doesNotContain("k3Xq")
+        }
+
+    @Test
     fun `manager and admin PINs are independent and the Adyen key uses its own name`() =
         await {
             val admin = PinManager(secrets, iterations = 1_000)

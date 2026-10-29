@@ -197,7 +197,6 @@
   <string name="wallet_busy">Un autre paiement est en cours. Revenez à l’écran d’encaissement.</string>
   <string name="wallet_requested">Portefeuille demandé</string>
   <string name="wallet_methods">Portefeuilles scannés</string>
-  <string name="wallet_refresh">Actualiser les portefeuilles scannés</string>
   <string name="wallet_none">Aucun portefeuille scanné disponible pour %1$s.</string>
   <string name="wallet_available">Disponible pour %1$s : %2$s</string>
   <string name="wallet_check_failed">Échec de la vérification du portefeuille : %1$s</string>
@@ -739,7 +738,6 @@
   <string name="settings_secret_not_set">Non défini</string>
   <string name="settings_secret_new">Nouvelle valeur</string>
   <string name="settings_secret_saved">Enregistré</string>
-  <string name="settings_secret_not_saved">Pas encore enregistré</string>
   <string name="settings_secret_replace">Saisir pour remplacer</string>
   <string name="settings_secret_enter">Comme dans le Customer Area</string>
   <string name="settings_secret_show">Afficher</string>
@@ -807,6 +805,8 @@
   <string name="settings_host_hint">Le terminal doit être sur le même réseau que cet appareil.</string>
   <string name="settings_choose_terminal">Choisissez un terminal</string>
   <string name="settings_no_terminals">Aucun terminal correspondant n’est disponible. Saisissez les détails manuellement.</string>
+  <string name="settings_terminal_search">Rechercher par modèle ou numéro de série</string>
+  <string name="settings_terminal_search_none">Aucun terminal ne correspond.</string>
   <string name="settings_save_and_discover">Enregistrer et rechercher un terminal</string>
   <string name="settings_testing_api">Test de l’API…</string>
   <string name="settings_finding_setup">Recherche du terminal…</string>

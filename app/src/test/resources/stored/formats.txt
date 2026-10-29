@@ -150,6 +150,9 @@ secrets.json: app.minimpos.app.data.security.SecretBlob
   boardingRecovery?: string
   keyCreationRecovery?: string
   boardingCredential?: string
+  hints: map
+    key: string
+    value: string
 
 Room column: payment context: app.minimpos.core.payment.PaymentContext
   destination required: string

@@ -54,6 +54,7 @@ import app.minimpos.app.payment.PricingChanges as PricingChangeOperations
  * @property taxRateUsage Number of products using each tax rate, by tax rate id.
  * @property loaded False until the settings, secrets and catalogue have been read.
  * @property sampleReceipt The sample receipt with the current settings, previewed and test-printed; null until loaded.
+ * @property secretHints The plain-text hints of stored secrets that have one ([SecretStore.hints]).
  */
 data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
@@ -62,6 +63,7 @@ data class SettingsUiState(
     val taxRateUsage: Map<Long, Int> = emptyMap(),
     val loaded: Boolean = false,
     val sampleReceipt: ReceiptDocument? = null,
+    val secretHints: Map<Secret, String> = emptyMap(),
 ) {
     /** Whether an admin PIN is set. */
     val pinSet: Boolean get() = Secret.PIN_VERIFIER in secrets
@@ -194,11 +196,11 @@ class SettingsViewModel(
     val state: StateFlow<SettingsUiState> =
         combine(
             pricingChanges.changes,
-            secrets.configured,
+            secrets.configured.combine(secrets.hints, ::Pair),
             catalog.taxRates,
             productCounts,
             sample,
-        ) { appSettings, configured, taxRates, counts, receipt ->
+        ) { appSettings, (configured, hints), taxRates, counts, receipt ->
             SettingsUiState(
                 appSettings,
                 configured,
@@ -206,6 +208,7 @@ class SettingsViewModel(
                 counts,
                 loaded = true,
                 sampleReceipt = receipt,
+                secretHints = hints,
             )
         }.flowOn(cpu).stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
 

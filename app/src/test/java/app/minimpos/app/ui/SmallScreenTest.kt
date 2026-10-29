@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -234,10 +235,12 @@ class SmallScreenTest {
         }
         compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("AQE-secret")
         compose
-            .onNodeWithTag("testApi")
+            .onNodeWithTag("discoverSetup")
             .performScrollTo()
-            .assertTextContains("Save and test API")
+            .assertTextContains("Save and find terminal")
             .performClick()
+        // Finding the terminal's setup tests the API first, then asks for whatever it did not find.
+        compose.waitUntilAtLeastOneExists(hasText(env.context.getString(R.string.settings_discovery_manual)), 15_000)
         waitForTag("keyIdentifier")
         // On the terminal itself its ID, address and environment are known, so they are not asked for.
         compose.onNodeWithTag("host").assertDoesNotExist()
@@ -282,9 +285,9 @@ class SmallScreenTest {
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
-        waitForTag("testApi")
-        compose.onNodeWithTag("testApi").performScrollTo().performClick()
-        waitForTag("apiResult")
+        waitForTag("discoverSetup")
+        compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("step_1") and hasContentDescription(", Done", substring = true), 15_000)
         waitForTag("testConnection")
         compose
             .onNodeWithTag("testConnection")
@@ -636,15 +639,13 @@ class SmallScreenTest {
         ) { container.settingsState.value.terminal.merchantAccount == "HarbourCoffeeCOM" }
         compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("AQE-secret")
         compose
-            .onNodeWithTag("testApi")
+            .onNodeWithTag("discoverSetup")
             .performScrollTo()
-            .assertTextContains("Save and test API")
+            .assertTextContains("Save and find terminal")
             .performClick()
-        // The device certificate supplies TEST before credential validation, without a shared-key probe.
-        compose.waitUntilAtLeastOneExists(
-            hasTestTag("apiResult") and hasText("API key works", substring = true),
-            15_000,
-        )
+        // The device certificate supplies TEST before credential validation, without a shared-key probe. Finding the
+        // terminal's setup tests the key first, without a popup of its own.
+        compose.waitUntilAtLeastOneExists(hasText(env.context.getString(R.string.settings_discovery_manual)), 15_000)
         assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-secret")
         // The live URL prefix is only asked for once the terminal is known to be LIVE.
         compose.onNodeWithTag("livePrefix").assertDoesNotExist()

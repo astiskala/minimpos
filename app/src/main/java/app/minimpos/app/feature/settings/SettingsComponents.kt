@@ -17,8 +17,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Info
@@ -199,7 +199,7 @@ fun SettingSwitch(
 /**
  * A single-choice setting: shows the current value, opens a radio list dialog. With [navigationIcon], uses the
  * settings menu's two-line layout and shows [subtitle] inside the dialog instead. A [blocked] reason prevents changes
- * without overwriting the saved selection.
+ * without overwriting the saved selection. [initiallyOpen] opens the dialog when first shown.
  */
 @Composable
 fun <T : Any> SettingChoice(
@@ -212,8 +212,9 @@ fun <T : Any> SettingChoice(
     tag: String? = null,
     navigationIcon: ImageVector? = null,
     blocked: String? = null,
+    initiallyOpen: Boolean = false,
 ) {
-    var open by rememberSaveable { mutableStateOf(false) }
+    var open by rememberSaveable { mutableStateOf(initiallyOpen) }
     Column(modifier) {
         if (navigationIcon != null) {
             SettingNavRow(
@@ -249,6 +250,10 @@ fun <T : Any> SettingChoice(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                }
+                // Shows the row opens a choice, like the arrow of a dropdown field.
+                if (blocked == null) {
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -317,21 +322,33 @@ private fun PasswordField(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
+    saved: String = "",
 ) {
     val container = LocalAppContainer.current
     var visible by remember { mutableStateOf(false) }
+    var focused by remember { mutableStateOf(false) }
+    // A saved secret shows its masked [saved] text (empty when none is saved) until focused to type a replacement.
+    val showsSaved = saved.isNotEmpty() && !focused && value.isEmpty()
     OutlinedTextField(
-        value = value,
+        value = if (showsSaved) saved else value,
         onValueChange = {
             container.userActivity()
-            onValueChange(it)
+            if (!showsSaved) onValueChange(it)
         },
         label = { Text(label) },
         // On one line, so a long hint cannot make the field grow when it gets the focus.
         placeholder = placeholder?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
         singleLine = true,
-        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        visualTransformation = if (visible || showsSaved) VisualTransformation.None else PasswordVisualTransformation(),
         trailingIcon = {
+            if (showsSaved) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = stringResource(R.string.settings_secret_saved),
+                    tint = LocalStatusColors.current.success,
+                )
+                return@OutlinedTextField
+            }
             IconButton(onClick = { visible = !visible }, modifier = Modifier.testTag("secretVisibility")) {
                 Icon(
                     if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
@@ -341,14 +358,15 @@ private fun PasswordField(
         },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = { onDone() }),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
     )
 }
 
 /**
  * A secret typed straight into the screen (no dialog whose buttons the keyboard could hide): never displayed once
- * saved. The keyboard's Done key calls [onSubmit], as does the caller's own button. [onDraft] reports only whether
- * text is unsaved, then false when the field leaves composition; never reports the secret itself.
+ * saved, except as masked dots and its plain-text [hint] (an API key's last characters) when it has one. The keyboard's
+ * Done key calls [onSubmit], as does the caller's own button. [onDraft] reports only whether text is unsaved, then
+ * false when the field leaves composition; never reports the secret itself.
  */
 @Composable
 fun SecretField(
@@ -360,11 +378,11 @@ fun SecretField(
     modifier: Modifier = Modifier,
     tag: String? = null,
     onDraft: ((Boolean) -> Unit)? = null,
+    hint: String? = null,
 ) {
     val reportDraft by rememberUpdatedState(onDraft)
     LaunchedEffect(value) { reportDraft?.invoke(value.isNotEmpty()) }
     DisposableEffect(Unit) { onDispose { reportDraft?.invoke(false) } }
-    val colors = LocalStatusColors.current
     val compact = LocalDimens.current.compact
     Column(modifier.fillMaxWidth()) {
         PasswordField(
@@ -373,28 +391,21 @@ fun SecretField(
             label = label,
             onDone = onSubmit,
             placeholder = stringResource(if (isSet) R.string.settings_secret_replace else R.string.settings_secret_enter),
+            saved = if (isSet) MASK + MASK + hint.orEmpty() else "",
             modifier =
                 Modifier
                     .padding(
                         start = LocalDimens.current.rowHorizontalPadding,
                         end = LocalDimens.current.rowHorizontalPadding,
                         top = if (compact) 2.dp else 4.dp,
+                        bottom = if (compact) 8.dp else 12.dp,
                     ).tagged(tag),
-        )
-        // Whether it is saved, on its own line at the screen's text edge (not indented like a field's supporting text).
-        FieldNote(
-            if (isSet) Icons.Default.CheckCircle else Icons.Default.ErrorOutline,
-            stringResource(if (isSet) R.string.settings_secret_saved else R.string.settings_secret_not_saved),
-            if (isSet) colors.success else colors.error,
-            Modifier.padding(
-                start = LocalDimens.current.rowHorizontalPadding,
-                end = LocalDimens.current.rowHorizontalPadding,
-                top = 6.dp,
-                bottom = if (compact) 8.dp else 12.dp,
-            ),
         )
     }
 }
+
+/** The dots standing in for a saved secret's hidden characters. */
+private const val MASK = "••••"
 
 /** A secret (password): never displayed, only set, replaced or cleared through a dialog. */
 @Composable

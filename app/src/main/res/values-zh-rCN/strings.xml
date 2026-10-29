@@ -195,7 +195,6 @@
   <string name="wallet_busy">另一笔支付正在进行中。请返回结账。</string>
   <string name="wallet_requested">请求的钱包</string>
   <string name="wallet_methods">扫码钱包</string>
-  <string name="wallet_refresh">刷新扫码钱包</string>
   <string name="wallet_none">没有适用于 %1$s 的扫码钱包。</string>
   <string name="wallet_available">适用于 %1$s：%2$s</string>
   <string name="wallet_check_failed">钱包检查失败：%1$s</string>
@@ -735,7 +734,6 @@
   <string name="settings_secret_not_set">未设置</string>
   <string name="settings_secret_new">新值</string>
   <string name="settings_secret_saved">已保存</string>
-  <string name="settings_secret_not_saved">尚未保存</string>
   <string name="settings_secret_replace">输入以替换</string>
   <string name="settings_secret_enter">与商户后台一致</string>
   <string name="settings_secret_show">显示</string>
@@ -803,6 +801,8 @@
   <string name="settings_host_hint">终端必须与此设备处于同一网络。</string>
   <string name="settings_choose_terminal">选择终端</string>
   <string name="settings_no_terminals">没有可用的匹配终端。请手动输入信息。</string>
+  <string name="settings_terminal_search">按型号或序列号搜索</string>
+  <string name="settings_terminal_search_none">没有匹配的终端。</string>
   <string name="settings_save_and_discover">保存并查找终端</string>
   <string name="settings_testing_api">正在测试 API…</string>
   <string name="settings_finding_setup">正在查找终端…</string>

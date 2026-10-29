@@ -49,7 +49,7 @@ fun OnboardingScreen(
             when (it) {
                 OnboardingChoice.SIMULATOR -> navigator.home()
                 OnboardingChoice.IMPORT -> navigator.push(Route.TransferImport)
-                OnboardingChoice.TERMINAL -> navigator.push(Route.SettingsSection(SettingsSections.TERMINAL))
+                OnboardingChoice.TERMINAL -> navigator.push(Route.SettingsSection(SettingsSections.TERMINAL, chooseDestination = true))
             }
         }
     }

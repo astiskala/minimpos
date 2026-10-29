@@ -30,7 +30,6 @@ import java.util.concurrent.atomic.AtomicBoolean
  * @property cashbackDestination Whether this destination carries Terminal API cashback.
  * @property unreferencedRefundDestination Whether this destination carries unreferenced card refunds.
  * @property simulated Whether the resolved destination supplies offline demos, not a reading of stored payment meaning.
- * @property checking Whether a refresh is running.
  * @property checked Whether a complete discovery answer has been obtained.
  * @property supported Whether the destination supports scanned wallets, independently of configuration.
  * @property problem Setup problem blocking discovery; null when complete.
@@ -49,7 +48,6 @@ data class WalletAvailability(
     val cashbackDestination: Boolean = false,
     val unreferencedRefundDestination: Boolean = false,
     val simulated: Boolean = false,
-    val checking: Boolean = false,
     val checked: Boolean = false,
     val supported: Boolean = false,
     val problem: SetupProblem? = null,
@@ -71,9 +69,6 @@ data class WalletAvailability(
             simulated -> MealVoucherScheme.demonstrable(currency)
             else -> listOfNotNull(MealVoucherScheme.forCountry(storeCountry)?.takeIf { it.currency == currency })
         }
-
-    /** Why a refresh cannot run now: the setup [problem] it would only report again; null when it can. */
-    val refreshBlocked: Failure? get() = problem?.let(Failure::NotSetUp)
 
     /** Explicitly configured wallets for [currency]; the simulator offers offline demos of every requested wallet. */
     fun offered(currency: String): List<ScanWallet> =
@@ -100,7 +95,7 @@ class WalletDiscovery(
 ) {
     private val started = AtomicBoolean()
     private val reading =
-        SetupReading(setups, WalletAvailability(), { it.identity }, { it.context }) { it.copy(checking = false) }
+        SetupReading(setups, WalletAvailability(), { it.identity }, { it.context }) { it }
 
     /** Current non-secret availability and Settings-only diagnostics. */
     val state: StateFlow<WalletAvailability> get() = reading.state
@@ -116,11 +111,6 @@ class WalletDiscovery(
         }
     }
 
-    /** Requests a manual refresh; duplicate taps while checking do not queue additional requests. */
-    fun refreshInBackground() {
-        if (!state.value.checking) scope.launch { refresh() }
-    }
-
     /** Performs one serialized read, retaining cached offers only after a transient failure for unchanged setup. */
     suspend fun refresh() {
         reading.refresh(
@@ -134,21 +124,20 @@ class WalletDiscovery(
                     cashbackDestination = setup.destination.cashback,
                     unreferencedRefundDestination = setup.destination.unreferencedRefunds,
                     simulated = setup.apiSetup == ApiSetup.Simulated,
-                    checking = true,
                 )
             },
         ) { initial ->
             when {
                 !setup.capabilities.scannedWallets -> {
-                    publish(initial.copy(checking = false))
+                    publish(initial)
                 }
 
                 setup.problem != null -> {
-                    publish(initial.copy(checking = false, checked = false, problem = setup.problem))
+                    publish(initial.copy(checked = false, problem = setup.problem))
                 }
 
                 setup.apiSetup == ApiSetup.Simulated -> {
-                    publish(initial.copy(checking = false, checked = true, problem = null, failure = null))
+                    publish(initial.copy(checked = true, problem = null, failure = null))
                 }
 
                 else -> {
@@ -182,7 +171,7 @@ class WalletDiscovery(
             }
 
             is AssignedTerminal.Blocked -> {
-                publish(origin, initial.copy(checking = false, checked = false, problem = assignment.problem))
+                publish(origin, initial.copy(checked = false, problem = assignment.problem))
             }
 
             is AssignedTerminal.Found -> {
@@ -201,7 +190,6 @@ class WalletDiscovery(
                                 mexicanStore = terminal.storeId.isNotBlank() && terminal.countryCode.equals("MX", ignoreCase = true),
                                 storeCountry = terminal.countryCode.uppercase().takeIf { terminal.storeId.isNotBlank() && it.isNotBlank() },
                                 nativeScanner = WalletOffers.nativeScanner(terminal.model, terminal.id),
-                                checking = false,
                                 checked = true,
                                 problem = null,
                                 failure = null,
@@ -223,7 +211,7 @@ class WalletDiscovery(
             reason is Fault.Credential || reason is Fault.Permission || reason is Fault.UnreadableReply ||
                 reason is Fault.Malformed || reason == Fault.ListTooLarge
         val kept = if (discard) initial.copy(offers = emptyList(), checked = false) else initial
-        publish(origin, kept.copy(checking = false, failure = Failure.Remote(reason)))
+        publish(origin, kept.copy(failure = Failure.Remote(reason)))
     }
 
     private suspend fun publish(

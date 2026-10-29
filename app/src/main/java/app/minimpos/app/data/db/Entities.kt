@@ -367,7 +367,11 @@ data class SaleEntity(
     val linkLocale: String? = null,
     /** Frozen country code used to create the payment link; null for none. */
     val linkCountry: String? = null,
-    /** Frozen recurring model used to create the payment link; null when no card is saved. */
+    /**
+     * Recurring model an older version created the payment link with, kept so a retried creation sends the identical
+     * request; null when no card is saved or for links created since the model became fixed, which use
+     * [app.minimpos.app.payment.TokenizationRequest.recurringProcessingModel].
+     */
     val linkRecurringModel: String? = null,
     /** Identity of the latest adjustment, persisted before sending; null before any. */
     val adjustmentKey: String? = null,
@@ -403,7 +407,11 @@ data class SaleEntity(
     @ColumnInfo(defaultValue = "0") val savedCard: Boolean = false,
     /** The saved card ([storedPaymentMethodId] of the token) the [savedCard] sale charges; a request fact kept for retries. */
     val chargedCardId: String? = null,
-    /** Adyen's `recurringProcessingModel` the [savedCard] sale is charged with, frozen when it is opened. */
+    /**
+     * Adyen's `recurringProcessingModel` a [savedCard] sale opened by an older version was charged with, a request fact
+     * kept so a retry sends the identical request; null for sales opened since the model became fixed, which are
+     * charged with [app.minimpos.app.payment.TokenizationRequest.recurringProcessingModel].
+     */
     val chargeRecurringModel: String? = null,
     /**
      * The ServiceID of the transaction a terminal that answered `Busy` said it was busy with, which can be aborted once.

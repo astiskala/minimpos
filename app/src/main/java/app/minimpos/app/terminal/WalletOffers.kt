@@ -64,6 +64,7 @@ internal object WalletOffers {
 
     private fun Set<String>.allowsCurrency(currency: String): Boolean = isEmpty() || "ANY" in this || currency in this
 
+    // A model without a scanner (TEST S1F2, cloud and local) answers Admin ScanBarcode with UnavailableService.
     fun nativeScanner(
         model: String,
         poiId: String,

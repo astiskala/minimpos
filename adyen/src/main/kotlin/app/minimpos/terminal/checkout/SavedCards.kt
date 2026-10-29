@@ -93,7 +93,8 @@ sealed interface StoredCardDeletion {
  * @property amount What to charge.
  * @property reference The merchant reference of the sale.
  * @property recurringProcessingModel Adyen's `recurringProcessingModel` the card was saved with, such as
- *   `UnscheduledCardOnFile`.
+ *   `UnscheduledCardOnFile`; on TEST, these `ContAuth` charges required a CVC (`14_029`) with `Subscription` and
+ *   `CardOnFile` and succeeded only with `UnscheduledCardOnFile`.
  * @property shopperEmail The shopper's email, for Adyen's records; null for none.
  */
 data class CardChargeRequest(

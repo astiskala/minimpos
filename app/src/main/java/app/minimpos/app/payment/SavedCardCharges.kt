@@ -44,7 +44,6 @@ import kotlin.uuid.Uuid
  *
  * @property payment The priced cart, references and shopper reference; an immediate-charge sale with a shopper reference.
  * @property card The saved card to charge.
- * @property recurringModel Adyen's `recurringProcessingModel` to charge it with, frozen with the sale.
  * @property fromCheckout Whether the sale was rung up as a New sale and charged from its checkout, so that session
  *   (rather than Tokens’ own) is cleared once the token is charged.
  * @property lookupContext Original context of the selected listing; null only for context-free tests or direct test starts.
@@ -53,7 +52,6 @@ import kotlin.uuid.Uuid
 data class SavedCardStart(
     val payment: PaymentStart,
     val card: StoredCard,
-    val recurringModel: String,
     val fromCheckout: Boolean = false,
     internal val lookupContext: PaymentContext? = null,
 ) {
@@ -468,7 +466,7 @@ class SavedCardCharges(
                 shopperReference = checkNotNull(sale.shopperReference),
                 amount = ModificationAmount(sale.currency, sale.totalMinor),
                 reference = sale.merchantReference,
-                recurringProcessingModel = checkNotNull(sale.chargeRecurringModel),
+                recurringProcessingModel = sale.chargeRecurringModel ?: TokenizationRequest.recurringProcessingModel.value,
                 shopperEmail = sale.shopperEmail,
             )
 

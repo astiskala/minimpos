@@ -170,62 +170,31 @@ standalone release builds retain release lint by default. R8, signing and packag
 ### Known integration verification gaps
 
 There is no real Adyen test account in CI. JVM checks do not establish Android UI, persistence, process-death
-recovery or final settlement behavior. LIVE software certification requirements remain unverified.
+recovery or final settlement behavior. LIVE software certification requirements remain unverified. Simulator coverage
+is not proof of the behaviors below, and none of them may be tried on LIVE without separate explicit approval.
 
-Still needing real-device/API verification: Payments app InProgress status behavior on physical phones;
-payment-method-specific payment-link line-item validation (Afterpay was offered for the TEST link but failed before
-redirect; direct Checkout returned `952 Configuration Error (acquirerPassword)` even with full synthetic shopper details);
-long-delay token creation when a shopper reference omits
-`recurringProcessingModel`;
-interpretation of the terminal-returned recurring model for `Subscription` tokenization and successful shopper-not-present
-(`ContAuth`) token payments for `CardOnFile` and `Subscription`. TEST returned `CardOnFile` even
-when the production client requested `Subscription`; listing advertised all three models, but `CardOnFile` and
-`Subscription` charges failed with `14_029` (CVC required);
-POS-wallet routing for individually configured GCash, DANA, Kakao Pay and TrueMoney;
-native scanner model reporting and single-scan/end behavior on local/network/cloud terminals;
-TEST WeChat stored-token deactivation and asynchronous saved-token charge/reversal
-finalization (token listings persisted after successful DELETE and Classic disable responses, and the charge remained
-`Received` in the Customer Area). PayMe merchant scanning is intentionally best-effort: Adyen's published wallet guide
-excludes it, and simulator success does not establish support. Also needing real-terminal verification: scoped Management
-`terminalSettings` updates for
-MOTO after Support confirms eligibility (TEST rejected both enabling and disabling with `33_008`);
-audio-guidance Support provisioning, other terminal-language/card combinations,
-signature refusals, long PIN entry, and cancellation/missing-answer recovery while audio guidance is active;
-configuration-based surcharge `TotalFeesAmount`/`AuthorizedAmount` with tips, partial approvals and referenced refunds,
-receipt disclosure and DCC/adjustment restrictions (TEST terminal settings rejected surcharge configuration for Australia
-with `192`);
-gift cards: successful magstripe entry and ValueLink keyed entry (TEST returned `122 declined by host`);
-`TotalFeesAmount` on partial approvals; provider
-enforcement of the most-recent-load/24-hour undo rule; successful full-balance SVS/ValueLink cash-out (TEST balance
-inquiries return EUR, but the terminal accepts only AUD; an SVS partial request returned `InvalidAmount`);
-Intersolve card types and local gift cards still need
-provider onboarding, entry formats and their supported operation replies and status recovery;
-Mexican debit/credit routing and installment issuer agreements, counts, refusal/partial answers, receipt `productType`,
-status recovery and referenced full/partial refunds on local and cloud terminals;
-meal vouchers: Brazilian PAT `selectedAccountType` `MEAL_VOUCHER` requests and the Support-enabled terminal selection
-screen, returned `fundingSource`/`paymentMethodVariant`, short-balance refusals and referenced refunds; European
-Mastercard/Visa voucher recognition, partial approvals and refunds; Titres-restaurant (Conecs) routing, the EUR 25 daily
-limit and Sunday/public-holiday declines; issuer MID/MCC registration declines and status recovery of voucher payments;
-M400 virtual-receipt layout, which uses `virtual_receipt02.xslt` instead of the other
-models' `virtual-receipt.xslt`; `AskGiving` two-step
-`TransactionStatus` (`SaleID=AdyenGiving`) lookups; and offline EMV /
-Store-and-Forward `OnlineFlag`, `offlineAuthCode` and `unconfirmedBatchCount` fields.
+Still unverified on a real terminal or account:
 
-Merchant-scan verification still needs real native hardware scans and wallet/source-switch checks proving late native
-scan data cannot pay. Confirm provider onboarding and
-accepted code formats before LIVE use; do not execute real calls without separate explicit approval.
-Do not describe simulator coverage as proof of these behaviors.
-
-Cashback/cash-out verification remains open: Support enablement for each store/card program, Australian eftpos standalone
-cash-out, girocard and European Visa/Mastercard purchase-linked cashback, issuer limits, purchase-only partial answers,
-unknown-result recovery, receipts, terminal totals and purchase-only referenced refunds.
-
-Unreferenced refund verification remains open for Customer Area limits, merchant-category and excluded-country
-rejections; Payments app support; and `/voidPendingRefund` with a Support-configured refund delay
-and a confirmed `VOID_PENDING_REFUND` outcome.
-
-Idempotency verification remains open for Payments app boarding-token creation and revocation, and the retention
-period for Classic v68 `/voidPendingRefund`.
+- Native scanning: scanner-model reporting, single-scan/end behavior and late-scan protection on a model with a
+  scanner; POS-wallet routing for individually configured GCash, DANA, Kakao Pay and TrueMoney; provider onboarding
+  and accepted code formats. PayMe merchant scanning stays best-effort because Adyen's wallet guide excludes it.
+- Offline EMV and Store-and-Forward answers (`OnlineFlag`, `offlineAuthCode`, `unconfirmedBatchCount`).
+- MOTO `terminalSettings` updates: TEST still rejects them with `33_008` until Support confirms eligibility.
+- Cashback with a card that allows it: Australian eftpos purchase cashback and standalone cash-out, girocard and
+  European Visa/Mastercard cashback, issuer limits, partial answers, recovery, receipts, totals and refunds. A TEST
+  Mastercard reached the card with `GOODS_SERVICES_WITH_CASHBACK` but declined offline (`123`).
+- Surcharge with partial approvals, and a shopper accepting DCC on a surcharged payment.
+- Gift cards: magstripe and ValueLink keyed entry, the most-recent-load/24-hour undo rule, full-balance SVS/ValueLink
+  cash-out, and Intersolve or local card onboarding, entry formats, replies and status recovery.
+- Mexican issuer-specific installment agreements, refusals and partial answers.
+- Meal vouchers with real voucher cards: Brazilian PAT selection screen, `fundingSource`/`paymentMethodVariant`,
+  short-balance refusals and refunds; European voucher recognition, partial approvals and refunds; Titres-restaurant
+  (Conecs) routing, the EUR 25 daily limit and Sunday/public-holiday declines; issuer MID/MCC registration declines.
+- Unreferenced refund limits set in the Customer Area, merchant-category and excluded-country rejections.
+- M400 virtual-receipt layout (`virtual_receipt02.xslt`).
+- Payments app: InProgress status on physical phones, unreferenced refunds, and boarding-token idempotency.
+- Payment-link line-item validation for specific methods (TEST Afterpay failed before redirect with `952`).
+- TEST WeChat stored-token deactivation, and asynchronous saved-token charge/reversal finalization.
 
 ## Make changes that fit
 

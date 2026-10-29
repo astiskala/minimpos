@@ -23,7 +23,6 @@ import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.MexicanPayment
-import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TerminalTipSuggestions
 import com.google.common.truth.Truth.assertThat
@@ -368,7 +367,7 @@ class CheckoutTest {
         assertThat(start.customerReference).isEqualTo("CUST-1")
         assertThat(start.shopperEmail).isEqualTo("a@b.co")
         assertThat(start.shopperReference).isEqualTo("CUST-1")
-        assertThat(start.tokenization).isEqualTo(TokenizationRequest(RecurringModel.UNSCHEDULED_CARD_ON_FILE))
+        assertThat(start.tokenization).isEqualTo(TokenizationRequest)
         assertThat(start.manualCapture).isFalse()
         // A typed reference is kept; without the switch the settings default (off for sales) applies.
         val typed =

@@ -87,8 +87,8 @@ class TerminalClient(
     internal val clock: Clock = Clock.systemUTC(),
     /** Makes the ServiceIDs of requests the caller does not name itself (aborts, prints, diagnoses, status checks). */
     internal val newServiceId: () -> String = ::randomServiceId,
-    /** How long and how often to check the status of a payment or refund whose response went missing. */
-    recovery: RecoveryPolicy = RecoveryPolicy(),
+    /** How long and how often to check the status of a payment or refund whose response went missing, or of a donation. */
+    internal val recovery: RecoveryPolicy = RecoveryPolicy(),
     /** Adyen: check the transaction status if a local payment response has not arrived after 120 seconds. */
     private val transactionTimeout: Duration = DEFAULT_TRANSACTION_TIMEOUT,
     /** The timeout for requests the terminal answers without the shopper: abort, print, diagnosis and status checks. */
@@ -801,7 +801,8 @@ class TerminalClient(
                     response.paymentResult
                         ?.instalment
                         ?.totalNbOfPayments
-                        ?.toString(),
+                        ?.toString()
+                        ?: additional[NexoVocabulary.INSTALLMENTS]?.trim()?.takeIf { count -> count.toIntOrNull()?.let { it > 0 } == true },
                 returnedPlanId = response.paymentResult?.instalment?.planID,
                 amountMinor = minor(response.paymentResult?.amountsResp?.authorizedAmount, response.paymentResult?.amountsResp?.currency),
                 tipMinor = minor(response.paymentResult?.amountsResp?.tipAmount, response.paymentResult?.amountsResp?.currency),

@@ -29,7 +29,6 @@ import java.time.ZoneId
  *
  * @property checkout The saved-card session's checkout: its form holds the shopper reference typed, its cart the sale.
  * @property source What the shopper reference is made from, which decides the field asked for.
- * @property recurringModel Adyen's `recurringProcessingModel` charges use; cards not saved for it cannot be chosen.
  * @property charge The charge running or finished; [TransactionState.Idle] before one starts.
  * @property lookup The current lookup: why it is blocked, whether it is running, the cards found or why it failed, and
  *   which of them can be charged.
@@ -40,7 +39,6 @@ import java.time.ZoneId
 data class SavedCardUiState(
     val checkout: Checkout = Checkout(),
     val source: ShopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE,
-    val recurringModel: String = "",
     val charge: TransactionState = TransactionState.Idle,
     val lookup: SavedCardLookupState = SavedCardLookupState(),
     val deletion: TokenDeletionState = TokenDeletionState(),
@@ -59,7 +57,7 @@ data class SavedCardUiState(
  * @param progress The payment running or finished ([app.minimpos.app.payment.FinancialOperations.paymentProgress]),
  *   which the review screen follows to its result.
  * @param lookup Explicit lookup retained across the reference, cart and review screens.
- * @param settings The current settings, for the shopper reference source and recurring model.
+ * @param settings The current settings, for the shopper reference source.
  * @param currency The currency charged.
  * @param clock Stamps the generated merchant reference.
  * @param zone The time zone of that reference.
@@ -85,7 +83,6 @@ class SavedCardViewModel(
             SavedCardUiState(
                 checkout = current,
                 source = payment.shopperReferenceSource,
-                recurringModel = payment.recurringModel().value,
                 charge = charge,
                 lookup = found,
                 deletion = deletion,

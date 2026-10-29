@@ -47,6 +47,7 @@ import app.minimpos.app.payment.SavedCardLookupState
 import app.minimpos.app.payment.TokenDeletionOffer
 import app.minimpos.app.payment.TokenDeletionState
 import app.minimpos.app.payment.TokenDeletionStatus
+import app.minimpos.app.payment.TokenizationRequest
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.ConfirmDialog
@@ -368,7 +369,8 @@ internal fun cardLabel(
 
 private fun StoredCard.chosen() = ChosenCard(id, brand, lastFour)
 
-private fun ChosenCard.stored(recurringModel: String) = StoredCard(id, brand, lastFour, recurringModels = setOf(recurringModel))
+private fun ChosenCard.stored() =
+    StoredCard(id, brand, lastFour, recurringModels = setOf(TokenizationRequest.recurringProcessingModel.value))
 
 /**
  * Charge saved card, last step: the sale rung up, the card and shopper reference, then the charge, shown as processing
@@ -404,7 +406,7 @@ fun SavedCardReviewScreen(
             if (!charging) {
                 SavedCardChargeBar(state, card, total) {
                     approveCharge(setOf(ManagerAction.SALE, ManagerAction.SAVED_CARD_CHARGE)) {
-                        vm.charge(card.stored(state.recurringModel))
+                        vm.charge(card.stored())
                     }
                 }
             }
@@ -443,7 +445,7 @@ private fun SavedCardChargeBar(
         GatedButton(
             stringResource(R.string.saved_card_charge, total),
             onCharge,
-            blocked = state.lookup.selectionProblem(card.stored(state.recurringModel)),
+            blocked = state.lookup.selectionProblem(card.stored()),
             enabled = state.checkout.canPay && state.shopperReference != null,
             primary = true,
             requiresSetup = true,

@@ -21,7 +21,6 @@ settings.json: app.minimpos.app.data.settings.AppSettings
     tokenizeDefaultOn: boolean
     preAuthTokenizeDefaultOn: boolean
     receiptTipping: enum app.minimpos.app.data.settings.ReceiptTipping [DISABLED, DEFAULT_OFF, DEFAULT_ON]
-    recurringProcessingModel: string
     emailCapture: enum app.minimpos.app.data.settings.EmailCapture [OFF, BEFORE_PAYMENT, AFTER_PAYMENT]
     autoSendEmail: boolean
     shopperReferenceSource: enum app.minimpos.app.data.settings.ShopperReferenceSource [CUSTOMER_REFERENCE, EMAIL, NONE]
@@ -229,7 +228,6 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
       tokenizeDefaultOn: boolean
       preAuthTokenizeDefaultOn: boolean
       receiptTipping: enum app.minimpos.app.data.settings.ReceiptTipping [DISABLED, DEFAULT_OFF, DEFAULT_ON]
-      recurringProcessingModel: string
       emailCapture: enum app.minimpos.app.data.settings.EmailCapture [OFF, BEFORE_PAYMENT, AFTER_PAYMENT]
       autoSendEmail: boolean
       shopperReferenceSource: enum app.minimpos.app.data.settings.ShopperReferenceSource [CUSTOMER_REFERENCE, EMAIL, NONE]

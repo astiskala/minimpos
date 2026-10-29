@@ -1013,11 +1013,6 @@
   <string name="settings_tokenize_default_hint">Sales start with Save card on when there is a shopper reference.</string>
   <string name="settings_pre_auth_tokenize_default">Save cards for pre-authorizations</string>
   <string name="settings_pre_auth_tokenize_default_hint">Pre-authorizations start with Save card on, so later costs can be charged with Charge token.</string>
-  <string name="settings_recurring_model">Recurring processing model</string>
-  <string name="settings_recurring_model_hint">How Adyen may charge saved cards. Choose what the shopper agreed to.</string>
-  <string name="recurring_card_on_file">Card on file</string>
-  <string name="recurring_subscription">Subscription</string>
-  <string name="recurring_unscheduled">Unscheduled card on file</string>
   <string name="settings_shopper_reference_source">Shopper reference</string>
   <string name="settings_source_customer">Customer reference</string>
   <string name="settings_source_customer_hint">Checkout asks for a customer reference and sends it to Adyen as the shopper reference.</string>

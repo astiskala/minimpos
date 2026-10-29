@@ -431,7 +431,7 @@ data class Checkout(
             merchantReference = reference,
             customerReference = customerReference,
             shopperEmail = form.email.trim().takeIf { it.isNotEmpty() },
-            tokenization = TokenizationRequest(payment.recurringModel()).takeIf { tokenize },
+            tokenization = TokenizationRequest.takeIf { tokenize },
             kind = kind,
             tipOnReceipt = tipOnReceipt,
             shopperReference = shopperReference,
@@ -523,7 +523,7 @@ data class Checkout(
 
     /**
      * The saved-card charge to start for [card] at [now] in [zone], or null unless this checkout is an immediate-charge
-     * sale with a [shopperReference] that [canPay] and [card] supports the configured recurring processing model.
+     * sale with a [shopperReference] that [canPay] and [card] supports [TokenizationRequest.recurringProcessingModel].
      */
     fun savedCardStart(
         card: StoredCard,
@@ -531,11 +531,10 @@ data class Checkout(
         zone: ZoneId,
         fromCheckout: Boolean = false,
     ): SavedCardStart? {
-        val model = payment.recurringModel().value
         if (terminalOnly || preAuthorisation) return null
-        if (shopperReference == null || !card.supports(model)) return null
+        if (shopperReference == null || !card.supports(TokenizationRequest.recurringProcessingModel.value)) return null
         val start = paymentStart(now, zone)?.forSavedCard() ?: return null
-        return SavedCardStart(start, card, model, fromCheckout = fromCheckout)
+        return SavedCardStart(start, card, fromCheckout = fromCheckout)
     }
 
     /** Whether scanned wallets are offered, independently of entered-field validation. */

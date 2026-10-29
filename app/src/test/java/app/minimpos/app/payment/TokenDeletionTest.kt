@@ -45,6 +45,7 @@ class TokenDeletionTest {
     private val env = TestEnvironment()
     private val scope = CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher())
     private val card = StoredCard("TOKEN1", "visa", "1111", recurringModels = setOf("Subscription"))
+    private val chargeable = card.copy(recurringModels = setOf("UnscheduledCardOnFile"))
     private var cards = listOf(card)
     private var answer: StoredCardDeletion = StoredCardDeletion.Deleted
     private var listFault: Fault? = null
@@ -331,14 +332,14 @@ class TokenDeletionTest {
 
     @Test
     fun `checkout selections become stale synchronously and a confirmed full purge releases old management evidence`() {
-        checkouts.value = checkouts.value.copy(payment = checkouts.value.payment.copy(recurringProcessingModel = "Subscription"))
+        cards = listOf(chargeable)
         val explicit = listed()
         val automatic = charges.lookup(scope, checkouts, terminal, Duration.ZERO)
-        assertThat(automatic.state.value.chargeable(card)).isTrue()
+        assertThat(automatic.state.value.chargeable(chargeable)).isTrue()
         val selected = start()
         val send = CompletableDeferred<Unit>()
         beforeDelete = { send.await() }
-        explicit.delete(checkNotNull(explicit.removal(card)))
+        explicit.delete(checkNotNull(explicit.removal(chargeable)))
         assertThat(automatic.start(selected)).isNull()
         send.complete(Unit)
         assertThat(automatic.start(selected)).isNull()
@@ -371,7 +372,6 @@ class TokenDeletionTest {
                 shopperReference = "CUST-001",
             ),
             card,
-            "Subscription",
         )
     }
 }

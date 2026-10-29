@@ -273,7 +273,7 @@ private fun ColumnScope.EmailReferenceSettings(
     }
 }
 
-/** Whether checkout offers card saving, its initial selections and recurring processing model. */
+/** Whether checkout offers card saving and its initial selections. */
 @Composable
 private fun ColumnScope.CardSavingSettings(
     payment: PaymentSettings,
@@ -288,23 +288,6 @@ private fun ColumnScope.CardSavingSettings(
     )
     if (!payment.offerCardSaving) return
     SaveCardDefaults(payment, update)
-    SettingChoice(
-        title = stringResource(R.string.settings_recurring_model),
-        options =
-            PaymentSettings.RECURRING_MODELS.map {
-                it to
-                    stringResource(
-                        when (it) {
-                            "CardOnFile" -> R.string.recurring_card_on_file
-                            "Subscription" -> R.string.recurring_subscription
-                            else -> R.string.recurring_unscheduled
-                        },
-                    )
-            },
-        selected = payment.recurringProcessingModel,
-        onSelect = { model -> update { it.copy(recurringProcessingModel = model) } },
-        subtitle = stringResource(R.string.settings_recurring_model_hint),
-    )
 }
 
 /** What supplies the shopper reference; checkout asks for a customer reference only when selected here. */

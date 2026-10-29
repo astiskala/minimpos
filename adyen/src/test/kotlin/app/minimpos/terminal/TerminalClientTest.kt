@@ -1313,6 +1313,7 @@ class ShopperDisplayAndTotalsTest {
                             }
                         transactionStatusResponse =
                             TransactionStatusResponse().apply {
+                                response = result(ResultType.SUCCESS)
                                 repeatedMessageResponse =
                                     RepeatedMessageResponse().apply {
                                         repeatedResponseMessageBody =
@@ -1344,7 +1345,7 @@ class ShopperDisplayAndTotalsTest {
             ).contains("End")
 
             val givReq = captured.mapNotNull { it.transactionStatusRequest }.single()
-            assertThat(givReq.isReceiptReprintFlag).isTrue()
+            assertThat(givReq.isReceiptReprintFlag).isNotEqualTo(true)
             assertThat(givReq.messageReference.messageCategory).isEqualTo(MessageCategoryType.PAYMENT)
             assertThat(givReq.messageReference.saleID).isEqualTo(TerminalClient.GIVING_SALE_ID)
             assertThat(givReq.messageReference.serviceID).isEqualTo("GIV-9")

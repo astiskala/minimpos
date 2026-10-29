@@ -47,11 +47,11 @@ data class SavedCardLookupState(
 
 /**
  * Saved-card listing freshness and selection, shared by checkout's automatic lookup and Tokens’ explicit one.
- * Changed shopper reference, recurring model, readiness or target invalidates the whole reading. Late answers cannot
+ * Changed shopper reference, readiness or target invalidates the whole reading. Late answers cannot
  * revive it, and starts retain the listing's original payment context even if they are queued behind setup changes.
  *
  * @param scope Owns observation and read-only lookups; cancelling it abandons lookups, never a started charge.
- * @param checkouts Coherent session readings; only reference, recurring model and payment kind affect lookup identity.
+ * @param checkouts Coherent session readings; only reference and payment kind affect lookup identity.
  * @param terminal Current lookup readiness.
  * @param targets Current targets, including credential changes.
  * @param charges Lists cards and starts persisted financial operations.
@@ -67,14 +67,13 @@ class SavedCardLookup internal constructor(
 ) {
     private data class Query(
         val reference: String?,
-        val model: String,
         val origin: ApiTarget,
         val blocked: Failure?,
         val revision: Long,
     ) {
         val available: Boolean get() = reference != null && blocked == null
 
-        fun matches(start: SavedCardStart): Boolean = start.payment.shopperReference == reference && start.recurringModel == model
+        fun matches(start: SavedCardStart): Boolean = start.payment.shopperReference == reference
     }
 
     // Each emitted reading is a new object, so identity tells a reading from an equal later one.
@@ -89,7 +88,6 @@ class SavedCardLookup internal constructor(
             combine(checkouts, terminal, targets, charges.tokenRevision) { checkout, status, origin, revision ->
                 Query(
                     checkout.shopperReference.takeUnless { checkout.preAuthorisation },
-                    checkout.payment.recurringModel().value,
                     origin,
                     Failure.NotSetUp(SetupProblem.TOKEN_DELETION_PENDING).takeIf { charges.unresolvedDeletion }
                         ?: SavedCardCharges.blocked(checkout.payment.shopperReferenceSource, status),
@@ -115,7 +113,7 @@ class SavedCardLookup internal constructor(
     }
 
     /**
-     * Starts only a charge made from the current reading's shopper reference, recurring model and eligible card.
+     * Starts only a charge made from the current reading's shopper reference and eligible card.
      * Returns its sale ID, or null while stale, blocked, unlisted or another charge is running.
      */
     fun start(start: SavedCardStart): String? =
@@ -175,7 +173,7 @@ class SavedCardLookup internal constructor(
                         SavedCardLookupState(
                             reference = query.reference,
                             cards = found.cards,
-                            eligible = found.cards.filter { it.supports(query.model) },
+                            eligible = found.cards.filter { it.supports(TokenizationRequest.recurringProcessingModel.value) },
                         )
                     }
 

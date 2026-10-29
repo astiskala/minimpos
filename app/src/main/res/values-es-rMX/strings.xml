@@ -1017,11 +1017,6 @@
   <string name="settings_tokenize_default_hint">Las ventas comienzan con Guardar tarjeta activado cuando hay una referencia del comprador.</string>
   <string name="settings_pre_auth_tokenize_default">Guardar tarjetas para preautorizaciones</string>
   <string name="settings_pre_auth_tokenize_default_hint">Las preautorizaciones comienzan con Guardar tarjeta activado para permitir cobros posteriores con Cobrar token.</string>
-  <string name="settings_recurring_model">Modelo de procesamiento recurrente</string>
-  <string name="settings_recurring_model_hint">Cómo Adyen puede cobrar las tarjetas guardadas. Elija lo que acordó el comprador.</string>
-  <string name="recurring_card_on_file">Tarjeta guardada</string>
-  <string name="recurring_subscription">Suscripción</string>
-  <string name="recurring_unscheduled">Cobro no programado de tarjeta guardada</string>
   <string name="settings_shopper_reference_source">Referencia del comprador</string>
   <string name="settings_source_customer">Referencia del cliente</string>
   <string name="settings_source_customer_hint">El proceso de pago solicita una referencia de cliente y la envía a Adyen como referencia del comprador.</string>

@@ -1017,11 +1017,6 @@
   <string name="settings_tokenize_default_hint">Les ventes commencent avec Enregistrer la carte activé lorsqu’une référence acheteur est présente.</string>
   <string name="settings_pre_auth_tokenize_default">Enregistrez les cartes pour les préautorisations</string>
   <string name="settings_pre_auth_tokenize_default_hint">Les pré-autorisations commencent avec Enregistrer la carte activé pour permettre des débits ultérieurs avec Débiter un jeton.</string>
-  <string name="settings_recurring_model">Modèle de traitement récurrent</string>
-  <string name="settings_recurring_model_hint">Comment Adyen peut facturer les cartes enregistrées. Choisissez ce que l’acheteur a accepté.</string>
-  <string name="recurring_card_on_file">Carte enregistrée</string>
-  <string name="recurring_subscription">Abonnement</string>
-  <string name="recurring_unscheduled">Paiement non programmé sur carte enregistrée</string>
   <string name="settings_shopper_reference_source">Référence acheteur</string>
   <string name="settings_source_customer">Référence client</string>
   <string name="settings_source_customer_hint">Le paiement demande une référence client et l’envoie à Adyen comme référence d’acheteur.</string>

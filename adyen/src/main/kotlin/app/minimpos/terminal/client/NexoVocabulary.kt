@@ -55,6 +55,12 @@ internal object NexoVocabulary {
     /** The [ACQUIRER_RESPONSE_CODE] of an approved synchronous refund, compared without case. */
     const val APPROVED = "Approved"
 
+    /**
+     * Installment count the terminal reports for a credit payment, e.g. `3`. Brazilian terminals let the shopper choose
+     * it and report it only here, without a nexo `Instalment`.
+     */
+    const val INSTALLMENTS = "installments"
+
     /** The kind of transaction the terminal processed, e.g. `REFUND` for an unreferenced refund. */
     const val TRANSACTION_TYPE = "transactionType"
 

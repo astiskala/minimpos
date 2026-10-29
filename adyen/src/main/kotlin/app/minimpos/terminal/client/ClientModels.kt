@@ -142,7 +142,14 @@ data class ApplicationSummary(
     val library: String,
 )
 
-/** How a card stored with a payment may be charged later: Adyen's `recurringProcessingModel`. */
+/**
+ * How a card stored with a payment may be charged later: Adyen's `recurringProcessingModel`.
+ *
+ * Observed on TEST: a terminal payment requesting [SUBSCRIPTION] stored the token as [CARD_ON_FILE]
+ * (`recurringProcessingModel=CardOnFile`, contract types `ONECLICK,RECURRING`), and shopper-not-present (`ContAuth`)
+ * Checkout charges with [SUBSCRIPTION] or [CARD_ON_FILE] failed with `14_029` (CVC required); only
+ * [UNSCHEDULED_CARD_ON_FILE] charged the token without the shopper.
+ */
 enum class RecurringModel(
     /** The value Adyen expects, e.g. `CardOnFile`. */
     val value: String,
@@ -562,15 +569,21 @@ data class TransactionDetails(
     val collectedEmail: String? = null,
     /** Explicit returned installment PaymentType; null for missing/default Normal. Never inferred from the request. */
     val returnedPaymentType: String? = null,
-    /** Returned Instalment.TotalNbOfPayments as a decimal integer; null when omitted. */
+    /**
+     * Returned Instalment.TotalNbOfPayments as a decimal integer, else a positive `installments` additional-data count
+     * (the only report Brazilian terminals give of a shopper-chosen count); null when neither is returned.
+     */
     val returnedInstallments: String? = null,
     /** Returned Instalment.PlanID, verbatim; null when omitted. */
     val returnedPlanId: String? = null,
     /** 0–10 rating collected from the shopper on the terminal after payment (`InputRequest` `GetRating`), if any. */
     val shopperRating: Int? = null,
-    /** ServiceID of the two-step Adyen Giving donation (`adyen_giving_service_id`), when the shopper donated. */
+    /**
+     * ServiceID of the two-step Adyen Giving donation (`adyen_giving_service_id`), when the terminal offered one. It is
+     * returned before the shopper chooses, so it does not mean the shopper donated.
+     */
     val givingServiceId: String? = null,
-    /** Charity donation amount in minor units of [currency] from the two-step Adyen Giving status lookup; null when none. */
+    /** Charity donation amount in minor units of [currency] from the two-step Adyen Giving status lookup; null when none or unconfirmed. */
     val donationMinor: Long? = null,
     /** Whether the transaction was approved online, via Offline EMV, or via Store-and-Forward. */
     val offlineMode: OfflineProcessingMode = OfflineProcessingMode.ONLINE,
@@ -724,7 +737,8 @@ data class DiagnosisResult(
  * How to settle a payment or refund whose response never arrived (Adyen "No result received"): check the transaction
  * status every [intervalMillis]. Checks that get no answer count towards [attempts]; while the terminal reports the
  * transaction as InProgress, checking continues (up to [maxInProgressChecks]). With the defaults that is a minute of
- * unanswered checks, or ten minutes while the shopper is still busy, before the outcome is reported as unknown.
+ * unanswered checks, or ten minutes while the shopper is still busy, before the outcome is reported as unknown. The same
+ * bounds apply while following a two-step Adyen Giving donation after an approved payment.
  *
  * @property attempts How many status checks may go unanswered (connection errors or no usable reply).
  * @property intervalMillis The pause before each status check; Adyen advises every 5 seconds.

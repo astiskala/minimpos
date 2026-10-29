@@ -63,7 +63,7 @@ class SavedCardLookupTest {
     }
 
     @Test
-    fun `explicit and automatic lookups share recurring model eligibility`() {
+    fun `explicit and automatic lookups offer only cards saved for UnscheduledCardOnFile`() {
         val explicit = charges.lookup(scope, checkouts, terminal)
         explicit.find()
         val first = await { explicit.state.first { it.cards != null } }
@@ -72,14 +72,8 @@ class SavedCardLookupTest {
         assertThat(first.selectionProblem(card)).isNull()
         assertThat(first.selectionProblem(subscription)).isEqualTo(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
 
-        checkouts.value = checkouts.value.copy(payment = checkouts.value.payment.copy(recurringProcessingModel = "Subscription"))
-        await { explicit.state.first { it.cards == null } }
-        assertThat(listed).hasSize(1)
-        explicit.find()
-        assertThat(await { explicit.state.first { it.cards != null } }.eligible).containsExactly(subscription)
-
         val automatic = charges.lookup(scope, checkouts, terminal, Duration.ZERO)
-        assertThat(await { automatic.state.first { it.cards != null } }.eligible).containsExactly(subscription)
+        assertThat(await { automatic.state.first { it.cards != null } }.eligible).containsExactly(card)
     }
 
     @Test

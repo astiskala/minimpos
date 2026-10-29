@@ -36,7 +36,6 @@ data class PaymentLinkStart(
             context = context,
             linkLocale = locale.toLanguageTag().takeIf { locale.language.isNotEmpty() },
             linkCountry = locale.country.takeIf { it.matches(Regex("[A-Z]{2}")) },
-            linkRecurringModel = payment.tokenization?.recurringProcessingModel?.value,
         )
 }
 
@@ -51,8 +50,9 @@ object PaymentLinkRequests {
 
     /**
      * The link request for [record], a sale opened for a payment link: its amount, reference, expiry and items, the
-     * shopper's email and reference, the saved recurring model, the customer reference as metadata, and the frozen
-     * payment-page language and country.
+     * shopper's email and reference, the recurring model when a card is saved (one an older version stored, else
+     * [TokenizationRequest.recurringProcessingModel]), the customer reference as metadata, and the frozen payment-page
+     * language and country.
      *
      * @throws IllegalArgumentException if [record] was not opened for a payment link.
      */
@@ -67,7 +67,8 @@ object PaymentLinkRequests {
             lineItems = lineItems(record.sortedLines),
             shopperEmail = sale.shopperEmail,
             shopperReference = sale.shopperReference,
-            recurringProcessingModel = sale.linkRecurringModel.takeIf { sale.tokenizationRequested },
+            recurringProcessingModel =
+                (sale.linkRecurringModel ?: TokenizationRequest.recurringProcessingModel.value).takeIf { sale.tokenizationRequested },
             shopperLocale = sale.linkLocale,
             countryCode = sale.linkCountry,
             metadata = listOfNotNull(sale.customerReference?.let { "customerReference" to it }).toMap(),

@@ -18,7 +18,6 @@ import app.minimpos.core.tax.TaxMode
 import app.minimpos.core.voucher.MealVoucherScheme
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.MexicanPayment
-import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.ScannedPayment
 import app.minimpos.terminal.client.TerminalTipOptions
 import com.google.common.truth.Truth.assertThat
@@ -77,7 +76,7 @@ class CashbackRulesTest {
                 { start.copy(askGiving = true) },
                 { start.copy(audioGuidance = true) },
                 { start.copy(allowPartialAuthorisation = true) },
-                { start.copy(tokenization = TokenizationRequest(RecurringModel.CARD_ON_FILE), shopperReference = "buyer") },
+                { start.copy(tokenization = TokenizationRequest, shopperReference = "buyer") },
                 { start.copy(scannedPayment = ScannedPayment("payme", "123456")) },
                 { start.copy(giftCard = gift) },
                 { start.copy(mealVoucher = MealVoucherScheme.BRAZIL_PAT) },

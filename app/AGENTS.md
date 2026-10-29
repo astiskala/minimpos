@@ -88,8 +88,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   unreferenced or cash flags.
   Terminal reconciliation (recheck unresolved, read or close totals, compare) is one operation in payment
   (`TerminalReconciliation`); screens follow its outcome.
-- \* Only `SavedCardLookup` lists and selects saved cards for a charge. It owns reference/model/target freshness and
-  model eligibility; Checkout still validates pure request facts. Tokens retains its explicit lookup across
+- \* Only `SavedCardLookup` lists and selects saved cards for a charge. It owns reference/target freshness and model
+  eligibility; Checkout still validates pure request facts. Tokens retains its explicit lookup across
   reference/cart/review screens; checkout's automatic lookup stays screen-scoped. Only `SavedCardCharges` deletes tokens,
   serializing with charges/rechecks and invalidating every lookup before sending. Confirmed deletion follows its configured
   Manager permission; admin unlock never authorizes a protected action.

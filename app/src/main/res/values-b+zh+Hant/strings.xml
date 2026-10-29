@@ -1009,11 +1009,6 @@
   <string name="settings_tokenize_default_hint">有顧客參考編號時，銷售預設開啟“儲存卡以供今後支付”。</string>
   <string name="settings_pre_auth_tokenize_default">預授權亦儲存卡</string>
   <string name="settings_pre_auth_tokenize_default_hint">預授權預設開啟儲存卡，之後的費用可透過“代碼扣款”收取。</string>
-  <string name="settings_recurring_model">循環扣款模式</string>
-  <string name="settings_recurring_model_hint">Adyen 可如何使用已儲存的卡扣款。請選擇顧客同意的方式。</string>
-  <string name="recurring_card_on_file">已儲存卡</string>
-  <string name="recurring_subscription">訂閱</string>
-  <string name="recurring_unscheduled">不定期已儲存卡扣款</string>
   <string name="settings_shopper_reference_source">顧客參考編號</string>
   <string name="settings_source_customer">顧客參考編號</string>
   <string name="settings_source_customer_hint">結帳時要求輸入顧客參考編號，並將其作為顧客參考編號發送給 Adyen。</string>

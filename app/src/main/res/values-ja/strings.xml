@@ -1009,11 +1009,6 @@
   <string name="settings_tokenize_default_hint">購入者参照IDがあるとき、販売は「次回の決済用にカードを保存」がオンで始まります。</string>
   <string name="settings_pre_auth_tokenize_default">プリオーソリでもカードを保存</string>
   <string name="settings_pre_auth_tokenize_default_hint">プリオーソリもカード保存がオンで始まり、後の追加費用を「トークンで請求」で請求できます。</string>
-  <string name="settings_recurring_model">継続課金モデル</string>
-  <string name="settings_recurring_model_hint">Adyenが保存済みカードに請求できる方法です。購入者が同意した内容を選んでください。</string>
-  <string name="recurring_card_on_file">カードオンファイル</string>
-  <string name="recurring_subscription">サブスクリプション</string>
-  <string name="recurring_unscheduled">不定期のカードオンファイル</string>
   <string name="settings_shopper_reference_source">購入者参照ID</string>
   <string name="settings_source_customer">購入者参照ID</string>
   <string name="settings_source_customer_hint">会計時に購入者参照IDを入力し、購入者参照IDとしてAdyenに送信します。</string>

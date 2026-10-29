@@ -9,7 +9,6 @@ import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.shopper.EmailReferenceMode
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.core.tax.TaxRates
-import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.transport.CloudRegion
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -362,7 +361,6 @@ enum class ReceiptTipping {
  * @property preAuthTokenizeDefaultOn Whether "Save card" starts switched on at checkout of a pre-authorisation, where a
  *   saved card allows charging late costs after the pre-authorisation has been captured.
  * @property receiptTipping Whether receipt tipping is offered for sales with a printer, and its initial choice.
- * @property recurringProcessingModel Adyen's `recurringProcessingModel` for saved cards, one of [RECURRING_MODELS].
  * @property emailCapture When checkout asks for an email; [effectiveEmailCapture] is what applies.
  * @property autoSendEmail When the shopper gave an email at checkout or on the terminal, send the receipt as soon as the
  *   payment is approved ([AppSettings.emailsReceiptAutomatically]).
@@ -418,7 +416,6 @@ data class PaymentSettings(
     val tokenizeDefaultOn: Boolean = false,
     val preAuthTokenizeDefaultOn: Boolean = true,
     val receiptTipping: ReceiptTipping = ReceiptTipping.DISABLED,
-    val recurringProcessingModel: String = "UnscheduledCardOnFile",
     val emailCapture: EmailCapture = EmailCapture.AFTER_PAYMENT,
     val autoSendEmail: Boolean = true,
     val shopperReferenceSource: ShopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE,
@@ -507,10 +504,6 @@ data class PaymentSettings(
     fun resolvedCurrency(country: String): String =
         AdyenCurrencies[currencyCode]?.code ?: AdyenCurrencies.forCountry(country)?.code ?: FALLBACK_CURRENCY
 
-    /** [recurringProcessingModel] as a [RecurringModel]; an unrecognised stored value falls back to `UnscheduledCardOnFile`. */
-    fun recurringModel(): RecurringModel =
-        RecurringModel.entries.firstOrNull { it.value == recurringProcessingModel } ?: RecurringModel.UNSCHEDULED_CARD_ON_FILE
-
     /** Fixed values the payment settings fall back on or choose from. */
     companion object {
         /** The currency when none is chosen and the device's country has none that Adyen supports. */
@@ -518,9 +511,6 @@ data class PaymentSettings(
 
         /** [FALLBACK_CURRENCY] with Adyen's decimals; states show amounts in it until their settings have been read. */
         val FALLBACK_CURRENCY_SPEC: CurrencySpec = CurrencySpec.of(FALLBACK_CURRENCY)
-
-        /** The values Adyen accepts for `recurringProcessingModel`. */
-        val RECURRING_MODELS: List<String> = RecurringModel.entries.map { it.value }
 
         /** How long a payment link works by default, in hours: Adyen's own default. */
         const val DEFAULT_LINK_EXPIRY_HOURS = 24

@@ -79,7 +79,10 @@ class PaymentLinkRequestsTest {
             PaymentLinkRequests.request(
                 SaleWithLines(sale.copy(tokenizationRequested = true, linkRecurringModel = "CardOnFile", linkLocale = "ja"), lines),
             )
+        // A link stored by an older version keeps its model, so a retried creation sends the same request.
         assertThat(saving.recurringProcessingModel).isEqualTo("CardOnFile")
+        val current = PaymentLinkRequests.request(SaleWithLines(sale.copy(tokenizationRequested = true), lines))
+        assertThat(current.recurringProcessingModel).isEqualTo("UnscheduledCardOnFile")
         assertThat(saving.shopperLocale).isEqualTo("ja")
         assertThat(saving.countryCode).isNull()
         val bare = PaymentLinkRequests.request(SaleWithLines(sale.copy(customerReference = null), emptyList()))

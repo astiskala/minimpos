@@ -1009,11 +1009,6 @@
   <string name="settings_tokenize_default_hint">有购物者识别号时，销售默认开启“保存卡片以供今后支付”。</string>
   <string name="settings_pre_auth_tokenize_default">预授权也保存卡片</string>
   <string name="settings_pre_auth_tokenize_default_hint">预授权默认开启保存卡片，之后的费用可通过“令牌扣款”收取。</string>
-  <string name="settings_recurring_model">循环扣款模式</string>
-  <string name="settings_recurring_model_hint">Adyen 可如何使用已保存的卡片扣款。请选择购物者同意的方式。</string>
-  <string name="recurring_card_on_file">在档卡</string>
-  <string name="recurring_subscription">订阅</string>
-  <string name="recurring_unscheduled">不定期在档卡扣款</string>
   <string name="settings_shopper_reference_source">购物者识别号</string>
   <string name="settings_source_customer">购物者识别号</string>
   <string name="settings_source_customer_hint">结账时要求输入购物者识别号，并将其作为购物者识别号发送给 Adyen。</string>

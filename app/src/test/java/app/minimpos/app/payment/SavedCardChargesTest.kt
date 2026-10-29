@@ -147,7 +147,7 @@ class SavedCardChargesTest {
                 tokenization = null,
                 shopperReference = "CUST-001",
             )
-        return SavedCardStart(payment, card, "UnscheduledCardOnFile")
+        return SavedCardStart(payment, card)
     }
 
     private fun charge(): String {
@@ -183,6 +183,8 @@ class SavedCardChargesTest {
         val sale = sale(id)
         assertThat(sent.single().second).isEqualTo(SavedCardCharges.idempotencyKey(id))
         assertThat(sent.single().first).isEqualTo(SavedCardCharges.request(sale))
+        assertThat(sent.single().first.recurringProcessingModel).isEqualTo("UnscheduledCardOnFile")
+        assertThat(sale.chargeRecurringModel).isNull()
         assertThat(sale.status).isEqualTo(SaleStatus.APPROVED)
         assertThat(sale.savedCard).isTrue()
         assertThat(sale.chargedCardId).isEqualTo("TOKEN1")
@@ -290,6 +292,23 @@ class SavedCardChargesTest {
         assertThat(stored.context).isEqualTo(context)
         assertThat(stored.status).isEqualTo(SaleStatus.FAILED)
         assertThat(stored.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.PAYMENT_CONTEXT)))
+    }
+
+    @Test
+    fun `a charge stored by an older version is retried with its stored model, a new one with UnscheduledCardOnFile`() {
+        answers += CardChargeResult.Failed(Fault.TimedOut)
+        val id = charge()
+        charges.acknowledge()
+        val stored = sale(id)
+        assertThat(stored.chargeRecurringModel).isNull()
+        assertThat(sent.single().first.recurringProcessingModel).isEqualTo("UnscheduledCardOnFile")
+        val legacy = stored.copy(chargeRecurringModel = "Subscription")
+        await { container.database.saleDao().update(legacy) }
+        answers += CardChargeResult.Authorised("PSP9")
+        assertThat(await { charges.recheck(id) }).isEqualTo(Recheck.Settled)
+        assertThat(sent.last().first).isEqualTo(SavedCardCharges.request(legacy))
+        assertThat(sent.last().first.recurringProcessingModel).isEqualTo("Subscription")
+        assertThat(sent.map { it.second }.distinct()).containsExactly(SavedCardCharges.idempotencyKey(id))
     }
 
     @Test

@@ -75,6 +75,10 @@ class StoredFormatTest {
     /** Secrets earlier versions stored that this one no longer has; the next secret write deletes them. */
     private val retiredSecrets = setOf("PAYMENTS_APP_API_KEY")
 
+    /** Settings fields earlier versions stored that this one ignores; the next settings write drops them. */
+    private val retiredSettings =
+        setOf("$.payment.recurringProcessingModel", "$.pricingChange.payment.recurringProcessingModel")
+
     @Test
     fun `stored formats match the reviewed snapshot`() {
         val actual = roots.entries.joinToString("\n") { (root, descriptor) -> "$root:" + StoredFixtures.format(descriptor) }
@@ -152,7 +156,12 @@ class StoredFormatTest {
     ) {
         // Read as the app reads them: an unreadable settings or secrets file would be replaced with the defaults.
         val readSettings = await { JsonDataStoreSerializer(serializer<AppSettings>(), AppSettings()).readFrom(settings.byteInputStream()) }
-        assertKept("$version settings.json", settings, StorageJson.encodeToJsonElement(serializer<AppSettings>(), readSettings))
+        assertKept(
+            "$version settings.json",
+            settings,
+            StorageJson.encodeToJsonElement(serializer<AppSettings>(), readSettings),
+            retiredSettings,
+        )
         val readSecrets = await { JsonDataStoreSerializer(serializer<SecretBlob>(), SecretBlob()).readFrom(secrets.byteInputStream()) }
         assertKept("$version secrets.json", secrets, StorageJson.encodeToJsonElement(serializer<SecretBlob>(), readSecrets))
         val readContext = checkNotNull(PaymentContextConverter().decode(context.trim()))
@@ -197,5 +206,8 @@ class StoredFormatTest {
         what: String,
         stored: String,
         current: JsonElement,
-    ) = assertWithMessage("$what lost stored fields").that(StoredFixtures.lost(Json.parseToJsonElement(stored), current)).isEmpty()
+        retired: Set<String> = emptySet(),
+    ) = assertWithMessage("$what lost stored fields")
+        .that(StoredFixtures.lost(Json.parseToJsonElement(stored), current).filterNot { it.substringBefore(": ") in retired })
+        .isEmpty()
 }

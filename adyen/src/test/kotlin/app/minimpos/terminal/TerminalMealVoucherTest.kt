@@ -145,4 +145,33 @@ class TerminalMealVoucherTest {
             assertThat(refused.details.fundingSource).isNull()
             assertThat(client { Delivery.Answered(null) }.pay(params)).isInstanceOf(TransactionOutcome.Unknown::class.java)
         }
+
+    @Test
+    fun `a terminal-chosen installment count reported only in additional data is read`() =
+        runTest {
+            suspend fun answered(additional: String) =
+                client {
+                    Delivery.Answered(
+                        TerminalAPIResponse().apply {
+                            saleToPOIResponse =
+                                SaleToPOIResponse().apply {
+                                    paymentResponse =
+                                        PaymentResponse().apply {
+                                            response =
+                                                Response().apply {
+                                                    result = ResultType.SUCCESS
+                                                    additionalResponse = additional
+                                                }
+                                        }
+                                }
+                        },
+                    )
+                }.pay(params) as TransactionOutcome.Completed
+            val chosen = answered("installments=3&fundingSource=PREPAID").details
+            assertThat(chosen.returnedInstallments).isEqualTo("3")
+            assertThat(chosen.returnedPaymentType).isNull()
+            listOf("installments=0", "installments=x", "installments=%20", "fundingSource=PREPAID").forEach {
+                assertThat(answered(it).details.returnedInstallments).isNull()
+            }
+        }
 }

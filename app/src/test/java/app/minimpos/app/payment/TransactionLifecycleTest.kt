@@ -79,7 +79,7 @@ class TransactionLifecycleTest {
             merchantReference = "MP-1",
             customerReference = "CUST-1",
             shopperEmail = email,
-            tokenization = TokenizationRequest(RecurringModel.CARD_ON_FILE).takeIf { tokenize },
+            tokenization = TokenizationRequest.takeIf { tokenize },
             shopperReference = "CUST-1",
         )
     }
@@ -302,10 +302,10 @@ class TransactionLifecycleTest {
         assertThat(params.merchantReference).isEqualTo("MP-3")
         assertThat(params.metadata).containsEntry("customerReference", "CUST-1")
         assertThat(params.requestCardAlias).isFalse()
-        val saving = TokenizationRequest(RecurringModel.CARD_ON_FILE)
+        val saving = TokenizationRequest
         val saved = (book.operation(start.copy(tokenization = saving)) as TerminalOperation.Pay).params
         assertThat(saved.shopperReference).isEqualTo("CUST-1")
-        assertThat(saved.recurringProcessingModel).isEqualTo(RecurringModel.CARD_ON_FILE)
+        assertThat(saved.recurringProcessingModel).isEqualTo(RecurringModel.UNSCHEDULED_CARD_ON_FILE)
         assertThat(saved.shopperEmail).isEqualTo("a@b.co")
         assertThat(saved.requestCardAlias).isTrue()
         assertThrows(IllegalArgumentException::class.java) { start.copy(tokenization = saving, shopperReference = null) }

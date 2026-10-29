@@ -22,7 +22,6 @@ import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.terminal.AndroidDeviceInfo
 import app.minimpos.core.money.CurrencySpec
-import app.minimpos.terminal.client.RecurringModel
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -252,10 +251,6 @@ class SecurityAndSettingsTest {
         assertThat(PaymentSettings(currencyCode = "XAU").resolvedCurrency("NZ")).isEqualTo("NZD")
         assertThat(AppContainer.resolveCurrency(PaymentSettings(), Locale.JAPAN)).isEqualTo(CurrencySpec("JPY", 0))
         assertThat(AppContainer.resolveCurrency(PaymentSettings(currencyCode = "ISK"), Locale.US).fractionDigits).isEqualTo(2)
-        assertThat(PaymentSettings().recurringModel()).isEqualTo(RecurringModel.UNSCHEDULED_CARD_ON_FILE)
-        assertThat(PaymentSettings(recurringProcessingModel = "Subscription").recurringModel())
-            .isEqualTo(RecurringModel.SUBSCRIPTION)
-        assertThat(PaymentSettings.RECURRING_MODELS).containsExactly("Subscription", "CardOnFile", "UnscheduledCardOnFile")
         assertThat(AndroidDeviceInfo.POI_ID.matches("S1F2-000158213605014")).isTrue()
         assertThat(AndroidDeviceInfo.POI_ID.matches("AMS1-12345678901")).isTrue()
         assertThat(AndroidDeviceInfo.POI_ID.matches("Pixel 4a")).isFalse()

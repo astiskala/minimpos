@@ -134,7 +134,10 @@ internal sealed interface Sent<out A> {
  * and link expiry ([PaymentLinks]) only store and report what it found.
  */
 internal object OperationIdentity {
-    /** How long after an operation was first sent it may be sent again: Adyen keeps idempotency keys at least this long. */
+    /**
+     * How long after an operation was first sent it may be sent again: Adyen's API idempotency guide keeps keys per
+     * company account for 7 to 14 days after first submission, for every identified endpoint the app calls.
+     */
     val REPLAY_WINDOW: Duration = Duration.ofDays(7)
 
     /**

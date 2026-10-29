@@ -139,29 +139,13 @@ class PaymentLinksTest {
     }
 
     @Test
-    fun `link card-saving facts come from checkout even after settings change`() {
+    fun `link card saving always uses UnscheduledCardOnFile and stores no model`() {
         env.useLinks()
         savingCardsUnderCustomerReference()
-        env.updateSettings { it.copy(payment = it.payment.copy(recurringProcessingModel = "CardOnFile")) }
-        val start = linkStart(tokenize = true)
-        env.updateSettings { it.copy(payment = it.payment.copy(recurringProcessingModel = "Subscription")) }
-        val id = checkNotNull(links.start(start))
-        saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
-        assertThat(
-            api.created
-                .single()
-                .first.recurringProcessingModel,
-        ).isEqualTo("CardOnFile")
-    }
-
-    @Test
-    fun `link card-saving facts use the normalized checkout model`() {
-        env.useLinks()
-        savingCardsUnderCustomerReference()
-        env.updateSettings { it.copy(payment = it.payment.copy(recurringProcessingModel = "Unknown")) }
         val id = checkNotNull(links.start(linkStart(tokenize = true)))
         val sale = saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
-        assertThat(sale.linkRecurringModel).isEqualTo("UnscheduledCardOnFile")
+        assertThat(sale.tokenizationRequested).isTrue()
+        assertThat(sale.linkRecurringModel).isNull()
         assertThat(
             api.created
                 .single()

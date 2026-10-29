@@ -220,13 +220,19 @@ data class PaymentStart(
 
 /**
  * Saving the shopper's card with the payment (Adyen tokenization), under the payment's
- * [PaymentStart.shopperReference].
- *
- * @property recurringProcessingModel How the saved card will be used later.
+ * [PaymentStart.shopperReference]. Every card is saved for, and later charged with, [recurringProcessingModel].
  */
-data class TokenizationRequest(
-    val recurringProcessingModel: RecurringModel,
-)
+data object TokenizationRequest {
+    /**
+     * Adyen's `recurringProcessingModel` for every card the app saves and every saved-card charge it starts; merchants
+     * cannot choose another. Saved cards are charged with the shopper not present (`shopperInteraction=ContAuth`),
+     * which only `UnscheduledCardOnFile` allows: on TEST, a terminal payment asking for `Subscription` was stored as
+     * `CardOnFile` anyway, and `ContAuth` charges with `Subscription` or `CardOnFile` failed with `14_029` (CVC
+     * required), while the same token charged with `UnscheduledCardOnFile` succeeded. Sales stored by older versions
+     * with another model keep it, so their retries send the same request.
+     */
+    val recurringProcessingModel: RecurringModel = RecurringModel.UNSCHEDULED_CARD_ON_FILE
+}
 
 /**
  * Card payments as stored sales ([SaleEntity] with its [SaleLineEntity] items), for the payments' [TransactionLifecycle].
@@ -444,7 +450,7 @@ class SaleBook(
 
         /**
          * [start] as the new PENDING saved-card sale [id] in the original [context], opened at [createdAt] (epoch ms),
-         * with the card and recurring model it charges, before anything is sent.
+         * with the card it charges, before anything is sent.
          */
         internal fun savedCardSale(
             id: String,
@@ -455,7 +461,6 @@ class SaleBook(
             pendingSale(id, start.payment, createdAt).copy(
                 savedCard = true,
                 chargedCardId = start.card.id,
-                chargeRecurringModel = start.recurringModel,
                 paymentBrand = start.card.brand,
                 maskedPan = start.card.lastFour?.let { "**** $it" },
                 context = context,

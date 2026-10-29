@@ -10,6 +10,7 @@ import com.adyen.model.nexo.BarcodeType
 import com.adyen.model.nexo.DeviceType
 import com.adyen.model.nexo.DisplayOutput
 import com.adyen.model.nexo.DisplayRequest
+import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.InfoQualifyType
 import com.adyen.model.nexo.Input
 import com.adyen.model.nexo.InputCommandType
@@ -26,6 +27,7 @@ import com.adyen.model.nexo.PredefinedContent
 import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.TransactionStatusRequest
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.math.BigInteger
 import java.net.URLEncoder
@@ -375,13 +377,47 @@ private inline fun <T : Any> parseInputDelivery(
     return InputOutcome.Failed(Fault.TerminalRejected(ExternalText.of(message)))
 }
 
-/** Queries the two-step Adyen Giving donation status (`SaleID=AdyenGiving`) for [givingServiceId], returning the donated amount. */
+/**
+ * Follows the two-step Adyen Giving donation (`SaleID=AdyenGiving`) for [givingServiceId], returning the donated amount;
+ * null when the shopper did not donate or the donation could not be confirmed within [TerminalClient.recovery].
+ *
+ * The payment answer arrives while the terminal still shows the donation choice (TEST: `InProgress` 1 s after the
+ * payment, the completed donation 12 s later), so checks wait [RecoveryPolicy.intervalMillis] and continue while the
+ * donation is in progress.
+ */
 private suspend fun TerminalClient.givingDonation(givingServiceId: String): Long? {
+    var unanswered = 0
+    var inProgress = 0
+    while (unanswered < recovery.attempts && inProgress < recovery.maxInProgressChecks) {
+        delay(recovery.intervalMillis)
+        when (val check = givingStatus(givingServiceId)) {
+            is GivingCheck.Settled -> return check.donationMinor
+            GivingCheck.InProgress -> inProgress++
+            GivingCheck.NoAnswer -> unanswered++
+        }
+    }
+    return null
+}
+
+/** What one Adyen Giving donation status check found. */
+private sealed interface GivingCheck {
+    /** The donation finished; [donationMinor] is null when nothing was donated. */
+    data class Settled(
+        val donationMinor: Long?,
+    ) : GivingCheck
+
+    /** The shopper is still choosing or paying the donation. */
+    data object InProgress : GivingCheck
+
+    /** No usable status came back. */
+    data object NoAnswer : GivingCheck
+}
+
+private suspend fun TerminalClient.givingStatus(givingServiceId: String): GivingCheck {
     val delivery =
         sendShortMessage(MessageClassType.SERVICE, MessageCategoryType.TRANSACTION_STATUS) {
             transactionStatusRequest =
                 TransactionStatusRequest().apply {
-                    setReceiptReprintFlag(true)
                     messageReference =
                         MessageReference().apply {
                             messageCategory = MessageCategoryType.PAYMENT
@@ -390,20 +426,38 @@ private suspend fun TerminalClient.givingDonation(givingServiceId: String): Long
                         }
                 }
         }
-    val repeated =
-        (
-            readTerminalAnswer(delivery) {
-                it.transactionStatusResponse
-                    ?.repeatedMessageResponse
+    val status =
+        when (val answer = readTerminalAnswer(delivery) { it.transactionStatusResponse }) {
+            is TerminalAnswer.Unread -> return GivingCheck.NoAnswer
+            is TerminalAnswer.Read -> answer.body
+        }
+    return when {
+        status.response?.result == ResultType.SUCCESS -> {
+            val donation =
+                status.repeatedMessageResponse
                     ?.repeatedResponseMessageBody
-                    ?.paymentResponse
-            } as? TerminalAnswer.Read
-        )?.body
-    return repeated
-        ?.takeIf { it.response?.result == ResultType.SUCCESS }
-        ?.paymentResult
-        ?.amountsResp
-        ?.let { money.minor(it.authorizedAmount, it.currency) }
+                    ?.paymentResponse ?: return GivingCheck.NoAnswer
+            GivingCheck.Settled(
+                donation
+                    .takeIf { it.response?.result == ResultType.SUCCESS }
+                    ?.paymentResult
+                    ?.amountsResp
+                    ?.let { money.minor(it.authorizedAmount, it.currency) },
+            )
+        }
+
+        status.response?.errorCondition == ErrorConditionType.IN_PROGRESS -> {
+            GivingCheck.InProgress
+        }
+
+        status.response?.errorCondition == ErrorConditionType.NOT_FOUND -> {
+            GivingCheck.Settled(null)
+        }
+
+        else -> {
+            GivingCheck.NoAnswer
+        }
+    }
 }
 
 internal suspend fun TerminalClient.executeShopperFlow(

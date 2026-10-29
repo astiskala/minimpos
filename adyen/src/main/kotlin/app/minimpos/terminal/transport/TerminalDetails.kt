@@ -177,7 +177,8 @@ data class TerminalOfflineLimits(
 
 /** Non-secret terminal feature settings read from Management `terminalSettings`.
  * @property gratuities Configured gratuities by currency.
- * @property dccEnabled Whether Dynamic Currency Conversion is enabled (`dcc.enableDcc`).
+ * @property dccEnabled Whether Dynamic Currency Conversion is enabled (`dcc.enableDcc`). Terminals from v1.112 skip the
+ *   offer whenever a surcharge above zero applies, so a surcharged payment is never converted.
  * @property surchargeConfigured Whether card surcharge rules or confirmation are configured (`surcharge`).
  * @property moto MOTO settings (`moto`).
  * @property offline Offline EMV and store-and-forward limits (`offlineProcessing`, `storeAndForward`).

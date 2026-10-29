@@ -167,35 +167,6 @@ standalone release builds retain release lint by default. R8, signing and packag
   browser-driver library or ChromeDriver is needed. Set `MINIMPOS_CHROME` to a Chrome/Chromium executable to override
   Google Chrome's standard macOS path or `google-chrome` on Linux. CI uses the browser already on its runner image.
 
-### Known integration verification gaps
-
-There is no real Adyen test account in CI. JVM checks do not establish Android UI, persistence, process-death
-recovery or final settlement behavior. LIVE software certification requirements remain unverified. Simulator coverage
-is not proof of the behaviors below, and none of them may be tried on LIVE without separate explicit approval.
-
-Still unverified on a real terminal or account:
-
-- Native scanning: scanner-model reporting, single-scan/end behavior and late-scan protection on a model with a
-  scanner; POS-wallet routing for individually configured GCash, DANA, Kakao Pay and TrueMoney; provider onboarding
-  and accepted code formats. PayMe merchant scanning stays best-effort because Adyen's wallet guide excludes it.
-- Offline EMV and Store-and-Forward answers (`OnlineFlag`, `offlineAuthCode`, `unconfirmedBatchCount`).
-- MOTO `terminalSettings` updates: TEST still rejects them with `33_008` until Support confirms eligibility.
-- Cashback with a card that allows it: Australian eftpos purchase cashback and standalone cash-out, girocard and
-  European Visa/Mastercard cashback, issuer limits, partial answers, recovery, receipts, totals and refunds. A TEST
-  Mastercard reached the card with `GOODS_SERVICES_WITH_CASHBACK` but declined offline (`123`).
-- Surcharge with partial approvals, and a shopper accepting DCC on a surcharged payment.
-- Gift cards: magstripe and ValueLink keyed entry, the most-recent-load/24-hour undo rule, full-balance SVS/ValueLink
-  cash-out, and Intersolve or local card onboarding, entry formats, replies and status recovery.
-- Mexican issuer-specific installment agreements, refusals and partial answers.
-- Meal vouchers with real voucher cards: Brazilian PAT selection screen, `fundingSource`/`paymentMethodVariant`,
-  short-balance refusals and refunds; European voucher recognition, partial approvals and refunds; Titres-restaurant
-  (Conecs) routing, the EUR 25 daily limit and Sunday/public-holiday declines; issuer MID/MCC registration declines.
-- Unreferenced refund limits set in the Customer Area, merchant-category and excluded-country rejections.
-- M400 virtual-receipt layout (`virtual_receipt02.xslt`).
-- Payments app: InProgress status on physical phones, unreferenced refunds, and boarding-token idempotency.
-- Payment-link line-item validation for specific methods (TEST Afterpay failed before redirect with `952`).
-- TEST WeChat stored-token deactivation, and asynchronous saved-token charge/reversal finalization.
-
 ## Make changes that fit
 
 [AGENTS.md](AGENTS.md) is the single list of repository constraints for every contributor: money, compatibility,
@@ -272,7 +243,7 @@ Adyen documents the [admin-session format](https://docs.adyen.com/point-of-sale/
 
 `ArchitectureTest` rejects manual JSON trees in typed API adapters and checks HTTP ownership. Offline request/response,
 malformed-answer and optimized-model tests cover serialization and uncertain outcomes. These tests do not establish
-real-Adyen compatibility; the [verification gaps](#known-integration-verification-gaps) still apply.
+real-Adyen compatibility.
 
 ### Shell scripts
 

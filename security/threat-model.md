@@ -81,7 +81,7 @@ Likelihood depends on device, credential or repository compromise and is not qua
 Financial spoofing/tampering/escalation can be critical; disclosure and signing compromise can be high severity;
 availability and provenance failures are generally medium. Defense-in-depth remains necessary at every boundary.
 
-Known gaps are documented real-Adyen verification gaps and compromise of an unlocked device.
+Known gaps are untested real-Adyen behavior and compromise of an unlocked device.
 Local encryption is not protection against a fully compromised device. CI simulator tests do not prove real API behavior.
 No new logging, backend or remote credential probes should be added as a mitigation without a separate design decision.
 

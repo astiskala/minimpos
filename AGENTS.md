@@ -23,8 +23,8 @@ Read the module file before changing that module. Read the rest only when the ta
 
 - [CONTEXT.md](CONTEXT.md): domain vocabulary and decision owners. Use its terms; add a new concept there before naming
   a module.
-- [CONTRIBUTING.md](CONTRIBUTING.md): command behavior, test setup, dependency, website and release procedures, and
-  real-Adyen verification gaps. KDoc holds detailed code contracts.
+- [CONTRIBUTING.md](CONTRIBUTING.md): command behavior, test setup, dependency, website and release procedures.
+  KDoc holds detailed code contracts.
 - [minimpos-iteration](.agents/skills/minimpos-iteration/SKILL.md) (change recipes) and
   [minimpos-tests](.agents/skills/minimpos-tests/SKILL.md) (test starters). Use
   [minimpos-security-review](.agents/skills/minimpos-security-review/SKILL.md) for security reviews. Use
@@ -134,7 +134,7 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
   New installations use Customer reference as the shopper reference, no extra transaction reference; automatic printing
   is on.
 - API keys on the device are a documented trade-off, not a bug to solve by adding a backend. Mobile SDK card readers
-  are deliberately not integrated. Real-Adyen verification gaps are listed in CONTRIBUTING.
+  are deliberately not integrated.
 
 ## User text and localization
 

@@ -35,12 +35,12 @@ import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.Spacing
 
 /**
- * A dialog for choosing one of many [options][content] with a search field, such as a currency or one of an account's
- * terminals: [title], an optional [note] under it, the field, the lazy list and a Cancel button.
+ * A dialog for choosing one of many [options] with a search field, such as a currency or one of an account's
+ * terminals: [title], an optional [content] such as a note under it, the field, the lazy list and a Cancel button.
  *
  * The caller keeps the query ([query], [onQueryChange], which should limit its length) and lists the matching options in
- * [content], tagging each for tests. [searchTag] tags the field, and [searchHint] is its hint; keep it to one line, as the
- * field is. While [isEmpty] (nothing matches), [noMatches] is shown after [content]. [selectableOptions] groups
+ * [options], tagging each for tests. [searchTag] tags the field, and [searchHint] is its hint; keep it to one line, as the
+ * field is. While [isEmpty] (nothing matches), [noMatches] is shown after [options]. [selectableOptions] groups
  * radio rows.
  * current choice. [onDismiss] is called by Cancel and by dismissing the dialog.
  *
@@ -56,12 +56,12 @@ fun PickerDialog(
     searchTag: String,
     noMatches: String,
     isEmpty: Boolean,
+    options: LazyListScope.() -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    note: (@Composable () -> Unit)? = null,
     listState: LazyListState = rememberLazyListState(),
     selectableOptions: Boolean = false,
-    content: LazyListScope.() -> Unit,
+    content: @Composable () -> Unit = {},
 ) {
     val compact = LocalDimens.current.compact
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -82,7 +82,7 @@ fun PickerDialog(
                 verticalArrangement = Arrangement.spacedBy(Spacing.Small),
             ) {
                 Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = Spacing.XLarge))
-                note?.invoke()
+                content()
                 OutlinedTextField(
                     value = query,
                     onValueChange = onQueryChange,
@@ -96,7 +96,7 @@ fun PickerDialog(
                     state = listState,
                     modifier = Modifier.weight(1f, fill = false).then(if (selectableOptions) Modifier.selectableGroup() else Modifier),
                 ) {
-                    content()
+                    options()
                     if (isEmpty) {
                         item {
                             Text(

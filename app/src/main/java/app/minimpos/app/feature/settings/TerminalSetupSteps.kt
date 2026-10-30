@@ -743,14 +743,14 @@ internal fun TerminalChoiceDialog(
         noMatches = stringResource(R.string.settings_terminal_search_none),
         isEmpty = shown.isEmpty(),
         onDismiss = { onChoose(null) },
-        note = { SettingNote(stringResource(R.string.settings_terminal_choice_hint)) },
-    ) {
-        items(shown, key = { it }) { poiId ->
-            TextButton({ onChoose(poiId) }, Modifier.fillMaxWidth().padding(horizontal = Spacing.Medium).testTag("terminal_$poiId")) {
-                Text(poiId)
+        options = {
+            items(shown, key = { it }) { poiId ->
+                TextButton({ onChoose(poiId) }, Modifier.fillMaxWidth().padding(horizontal = Spacing.Medium).testTag("terminal_$poiId")) {
+                    Text(poiId)
+                }
             }
-        }
-    }
+        },
+    ) { SettingNote(stringResource(R.string.settings_terminal_choice_hint)) }
 }
 
 /** Above this many terminals the choice offers a search field. */

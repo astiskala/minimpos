@@ -130,13 +130,14 @@ private fun CurrencyPickerDialog(
         onDismiss = onDismiss,
         listState = listState,
         selectableOptions = true,
-    ) {
-        items(options, key = { it }) { code ->
-            CurrencyOption(AdyenCurrencies[code]?.label(locale) ?: autoLabel, code == selectedCode, code.ifEmpty { "auto" }) {
-                onSelect(code)
+        options = {
+            items(options, key = { it }) { code ->
+                CurrencyOption(AdyenCurrencies[code]?.label(locale) ?: autoLabel, code == selectedCode, code.ifEmpty { "auto" }) {
+                    onSelect(code)
+                }
             }
-        }
-    }
+        },
+    )
 }
 
 /** One radio row of the picker, tagged `currency_<tagSuffix>` for tests. */

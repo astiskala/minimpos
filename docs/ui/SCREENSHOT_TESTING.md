@@ -9,7 +9,9 @@ the repository already does.
   version catalog; release builds and R8 are unaffected). `ScreenshotRule` sits beside `createRecordingComposeRule`.
   `DesignGalleryTest` has the component gallery (10 images, compared exactly) and `ScreenGoldensTest` has Home (normal on
   AMS1 and a regular phone, setup required on AMS1), the sale keypad (both sizes) and the approved (both sizes),
-  declined and unknown results (AMS1): 9 screens at 0.1 %. Goldens are in `app/src/test/screenshots/`.
+  declined and unknown results (AMS1): 9 screens at 0.1 %. The results come from simulator payments made in the app,
+  with the reference, time, card and Adyen references the simulator makes up replaced by fixed values in the stored
+  sale. Goldens are in `app/src/test/screenshots/`.
   `scripts/dev check ui-snapshots` compares and `scripts/dev snapshots record` rewrites them; the procedure is in
   [CONTRIBUTING](../../CONTRIBUTING.md#update-the-golden-screenshots).
 - **Not done:** the other groups below (processing, Settings, History, locale, large font, tablet), the S1F2 size, the

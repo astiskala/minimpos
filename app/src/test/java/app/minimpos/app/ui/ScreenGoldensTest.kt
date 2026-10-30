@@ -1,6 +1,9 @@
 package app.minimpos.app.ui
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,17 +16,19 @@ import app.minimpos.app.ScreenshotRule
 import app.minimpos.app.ScreenshotTolerance
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
-import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.clickWhenEnabled
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.sale.SaleResultScreen
+import app.minimpos.app.items
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.MiniMposTheme
-import app.minimpos.core.payment.PaymentContext
+import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.transport.TerminalEnvironment
+import kotlinx.coroutines.flow.first
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -50,6 +55,7 @@ class ScreenGoldensTest {
     val screenshot = ScreenshotRule(compose, ScreenshotTolerance.SCREEN)
 
     private val container = env.container
+    private var resultToShow by mutableStateOf<Pair<Route.SaleResult, Navigator>?>(null)
 
     @Before
     fun setUp() {
@@ -72,45 +78,62 @@ class ScreenGoldensTest {
     }
 
     /**
-     * Shows the result screen of a stored sale with fixed facts. A payment made through the simulator would give the
-     * sale a new reference, time and card each run, which no golden could hold.
+     * Pays 12.50 through the simulator in the app, as a shopper's payment would go, and waits for the result screen.
+     * Then it replaces what differs from run to run (the reference, time, card and Adyen references) with fixed values
+     * in the stored sale, which the open screen follows. A [lost] reply leaves a sale whose outcome the app does not
+     * know, so the answer's facts are cleared too.
      */
-    private fun showResult(
-        status: SaleStatus,
-        refusalReason: String? = null,
+    private fun payWith(
+        outcome: SimulatedOutcome,
+        lost: Boolean = false,
     ) {
-        val result = Route.SaleResult("sale")
-        val approved = status == SaleStatus.APPROVED
+        env.updateSettings { it.copy(simulator = it.simulator.copy(outcome = outcome)) }
+        enterAmount()
+        compose.onNodeWithTag("addCustom").performClick()
+        compose.clickWhenEnabled("charge")
+        waitForTag("pay")
+        compose.onNodeWithTag("pay").performClick()
+        waitForTag("resultStatus")
+        val stored = await { container.history.items().first { it.isNotEmpty() } }.single()
+        val sale = await { container.sales.get(stored.id)!! }.sale
+        val answered = outcome == SimulatedOutcome.APPROVE && !lost
         await {
-            container.database.saleDao().insert(
-                SaleEntity(
-                    id = "sale",
+            container.database.saleDao().update(
+                sale.copy(
                     createdAt = SALE_TIME,
-                    currency = "AUD",
-                    taxMode = "INCLUSIVE",
-                    netMinor = 1136,
-                    taxMinor = 114,
-                    totalMinor = 1250,
-                    status = status,
                     merchantReference = "261030-120000-ABCDE",
-                    context = PaymentContext("SIMULATOR", "SIM", "POS", "", null, simulated = true),
-                    pspReference = "PSP0000000000001".takeIf { approved },
-                    paymentBrand = "mc".takeIf { approved },
-                    maskedPan = "555555 **** 4444".takeIf { approved },
-                    refusalReason = refusalReason,
+                    status = if (lost) SaleStatus.UNKNOWN else sale.status,
+                    pspReference = "PSP0000000000001".takeIf { answered },
+                    paymentBrand = "mc".takeIf { answered },
+                    maskedPan = "555555 **** 4444".takeIf { answered },
+                    authCode = "123456".takeIf { answered },
+                    paymentMethodVariant = null,
+                    poiTransactionId = null,
+                    poiTimestamp = null,
+                    customerReceiptJson = null,
+                    cashierReceiptJson = null,
                 ),
             )
         }
+        val result = Route.SaleResult(sale.id)
         val navigator = Navigator(NavBackStack<NavKey>(Route.Home, result))
+        resultToShow = result to navigator
+        compose.waitForIdle()
+        waitForTag("resultStatus")
+    }
+
+    /** The app, until [payWith] has fixed the sale's facts; then that sale's result screen, which reads them. */
+    private fun showApp() =
         compose.setContent {
-            MiniMposTheme {
-                CompositionLocalProvider(LocalAppContainer provides container) {
-                    SaleResultScreen(result.saleId, navigator)
+            val shown = resultToShow
+            if (shown == null) {
+                MiniMposApp(container)
+            } else {
+                MiniMposTheme {
+                    CompositionLocalProvider(LocalAppContainer provides container) { SaleResultScreen(shown.first.saleId, shown.second) }
                 }
             }
         }
-        waitForTag("resultStatus")
-    }
 
     @Test
     fun home() {
@@ -155,26 +178,30 @@ class ScreenGoldensTest {
 
     @Test
     fun `result approved`() {
-        showResult(SaleStatus.APPROVED)
+        showApp()
+        payWith(SimulatedOutcome.APPROVE)
         screenshot.capture()
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w411dp-h891dp-xhdpi")
     fun `result approved on a regular phone`() {
-        showResult(SaleStatus.APPROVED)
+        showApp()
+        payWith(SimulatedOutcome.APPROVE)
         screenshot.capture()
     }
 
     @Test
     fun `result declined`() {
-        showResult(SaleStatus.DECLINED, refusalReason = "Not enough balance")
+        showApp()
+        payWith(SimulatedOutcome.DECLINE)
         screenshot.capture()
     }
 
     @Test
     fun `result unknown`() {
-        showResult(SaleStatus.UNKNOWN)
+        showApp()
+        payWith(SimulatedOutcome.APPROVE, lost = true)
         screenshot.capture()
     }
 

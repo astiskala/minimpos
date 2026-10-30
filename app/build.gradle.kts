@@ -660,6 +660,9 @@ val listBackportedMethods =
 // and difference images here, with the other reports CI uploads.
 roborazzi {
     outputDir.set(layout.buildDirectory.dir("reports/roborazzi"))
+    compare {
+        outputDir.set(layout.buildDirectory.dir("reports/roborazzi"))
+    }
 }
 
 tasks.withType<Test>().configureEach {

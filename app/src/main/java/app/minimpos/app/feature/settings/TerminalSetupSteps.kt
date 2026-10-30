@@ -1,7 +1,6 @@
 package app.minimpos.app.feature.settings
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,13 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Api
@@ -32,10 +28,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,11 +49,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.minimpos.app.R
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
@@ -79,6 +68,7 @@ import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.LabeledValue
+import app.minimpos.app.ui.components.PickerDialog
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SharedKeyDialog
@@ -742,67 +732,22 @@ internal fun TerminalChoiceDialog(
         )
         return
     }
-    val compact = LocalDimens.current.compact
-    // Not an AlertDialog: its default width keeps a text field from settling in tests, as in the currency picker.
-    Dialog(onDismissRequest = { onChoose(null) }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(if (compact) 12.dp else 24.dp)
-                    .widthIn(max = LocalDimens.current.contentMaxWidth),
-        ) {
-            Column(
-                Modifier.heightIn(max = 600.dp).padding(vertical = if (compact) 12.dp else 20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    stringResource(R.string.settings_choose_terminal),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(horizontal = 24.dp),
-                )
-                SettingNote(stringResource(R.string.settings_terminal_choice_hint))
-                SearchableTerminals(poiIds, onChoose)
-                TextButton({ onChoose(null) }, Modifier.align(Alignment.End).padding(horizontal = 12.dp)) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            }
-        }
-    }
-}
-
-/** Search and lazy choices inside the terminal dialog; query matching ignores case and surrounding spaces. */
-@Composable
-private fun ColumnScope.SearchableTerminals(
-    poiIds: List<String>,
-    onChoose: (String?) -> Unit,
-) {
     var query by rememberSaveable { mutableStateOf("") }
     val shown = remember(poiIds, query) { poiIds.filter { it.contains(query.trim(), ignoreCase = true) } }
-    OutlinedTextField(
-        value = query,
-        onValueChange = { query = it.take(MAX_TERMINAL_QUERY_LENGTH) },
-        placeholder = { Text(stringResource(R.string.settings_terminal_search)) },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Search),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).testTag("terminalSearch"),
-    )
-    LazyColumn(Modifier.weight(1f, fill = false)) {
+    PickerDialog(
+        title = stringResource(R.string.settings_choose_terminal),
+        query = query,
+        onQueryChange = { query = it.take(MAX_TERMINAL_QUERY_LENGTH) },
+        searchHint = stringResource(R.string.settings_terminal_search),
+        searchTag = "terminalSearch",
+        noMatches = stringResource(R.string.settings_terminal_search_none),
+        isEmpty = shown.isEmpty(),
+        onDismiss = { onChoose(null) },
+        note = { SettingNote(stringResource(R.string.settings_terminal_choice_hint)) },
+    ) {
         items(shown, key = { it }) { poiId ->
-            TextButton({ onChoose(poiId) }, Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("terminal_$poiId")) {
+            TextButton({ onChoose(poiId) }, Modifier.fillMaxWidth().padding(horizontal = Spacing.Medium).testTag("terminal_$poiId")) {
                 Text(poiId)
-            }
-        }
-        if (shown.isEmpty()) {
-            item {
-                Text(
-                    stringResource(R.string.settings_terminal_search_none),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                )
             }
         }
     }

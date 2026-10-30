@@ -1,30 +1,18 @@
 package app.minimpos.app.feature.settings
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,12 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.minimpos.app.R
+import app.minimpos.app.ui.components.PickerDialog
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.money.AdyenCurrencies
@@ -134,55 +119,21 @@ private fun CurrencyPickerDialog(
     val options = remember(query, locale) { currencyOptions(query, locale) }
     val initialIndex = remember { options.indexOf(selectedCode).coerceAtLeast(0) }
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            // The same container colour as the app's other (AlertDialog) dialogs.
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        if (LocalDimens.current.compact) 12.dp else 24.dp,
-                    ).widthIn(max = LocalDimens.current.contentMaxWidth),
-        ) {
-            Column(
-                Modifier.heightIn(max = 600.dp).padding(vertical = if (LocalDimens.current.compact) 12.dp else 20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    stringResource(R.string.settings_currency),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(horizontal = 24.dp),
-                )
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it.take(MAX_QUERY_LENGTH) },
-                    placeholder = { Text(stringResource(R.string.settings_currency_search)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Search),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).testTag("currencySearch"),
-                )
-                LazyColumn(state = listState, modifier = Modifier.weight(1f, fill = false).selectableGroup()) {
-                    items(options, key = { it }) { code ->
-                        CurrencyOption(AdyenCurrencies[code]?.label(locale) ?: autoLabel, code == selectedCode, code.ifEmpty { "auto" }) {
-                            onSelect(code)
-                        }
-                    }
-                    if (options.isEmpty()) {
-                        item {
-                            Text(
-                                stringResource(R.string.settings_currency_none),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                            )
-                        }
-                    }
-                }
-                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End).padding(horizontal = 12.dp)) {
-                    Text(stringResource(R.string.action_cancel))
-                }
+    PickerDialog(
+        title = stringResource(R.string.settings_currency),
+        query = query,
+        onQueryChange = { query = it.take(MAX_QUERY_LENGTH) },
+        searchHint = stringResource(R.string.settings_currency_search),
+        searchTag = "currencySearch",
+        noMatches = stringResource(R.string.settings_currency_none),
+        isEmpty = options.isEmpty(),
+        onDismiss = onDismiss,
+        listState = listState,
+        selectableOptions = true,
+    ) {
+        items(options, key = { it }) { code ->
+            CurrencyOption(AdyenCurrencies[code]?.label(locale) ?: autoLabel, code == selectedCode, code.ifEmpty { "auto" }) {
+                onSelect(code)
             }
         }
     }

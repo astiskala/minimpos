@@ -52,13 +52,13 @@ value-preserving change with no visual or behavioural difference, verifiable by 
 | S3 | `Steps.kt` | Top 16/24, bottom 4/8 | Scale values | High | Adopt tokens only | Yes |
 | S4 | `CapabilitiesSettings.kt:276`, `SettingsComponents.kt:331` | Vertical **10 dp** | `Dimens.rowPadding` (12/10/8) | Medium | Probably `rowPadding`; confirm on AMS1 | No |
 | S5 | `Dimens.Medium.tileVerticalPadding` | **6.25 dp**; Regular 6; Compact 5 | 6 | Low | Fractional value looks tuned to fit AMS1/S1F2 two-line tiles; leave | No |
-| S6 | Picker dialogs (`CurrencySetting.kt`, `TerminalSetupSteps.kt`) | 24 dp horizontal, 12/20 vertical, `heightIn(max = 600)` | One shared definition | High | See C1 | No |
+| S6 | Picker dialogs (`CurrencySetting.kt`, `TerminalSetupSteps.kt`) | 24 dp horizontal, 12/20 vertical, `heightIn(max = 600)` | One shared definition | High | **Done** with C1 | No |
 
 ### COMPONENT_DUPLICATION
 
 | # | File / component | Current | Expected | Confidence | Recommended change | Auto-fix |
 | --- | --- | --- | --- | --- | --- | --- |
-| C1 | `CurrencySetting.kt` and `TerminalSetupSteps.kt` (~lines 140-205, 750-840) | Two near-identical searchable picker dialogs (padding, 600 dp max height, `Search`, cancel `TextButton`) | One `PickerDialog` in `ui/components` | High that they duplicate; medium on the right API | Extract after the screenshot baseline exists | No |
+| C1 | `CurrencySetting.kt` and `TerminalSetupSteps.kt` (~lines 140-205, 750-840) | Two near-identical searchable picker dialogs (padding, 600 dp max height, `Search`, cancel `TextButton`) | One `PickerDialog` in `ui/components` | High that they duplicate; medium on the right API | **Done:** `PickerDialog`; the currency and terminal picker goldens match before and after | No |
 | C2 | Dialog cancel `TextButton`s (`TaxSettings`, `ProductsScreens`, `CheckoutScreens`, `SettingsComponents`) | Same cancel/delete slot repeated | Keep; dialog slots are idiomatic | Medium | Optional `DialogCancelButton` helper | No |
 | C3 | `WalletChoice.kt:52`, `TransferScreens.kt:508` | `OutlinedButton` with custom content, bypassing `SecondaryButton` | `SecondaryButton` with a content slot | Medium | Needs a content-slot overload; behavioural risk on tap target | No |
 | C4 | `HomeScreen.kt:244` `Button` | Compact "Download" button in the update banner (not a payment tile) | `PrimaryButton` is full width, so a compact variant would be needed | Medium | Leave; revisit if more compact buttons appear | No |
@@ -129,7 +129,7 @@ migration, dark mode and every medium or low confidence item.
 ## Recommended order
 
 1. Capture screenshot baselines ([SCREENSHOT_TESTING.md](SCREENSHOT_TESTING.md)) so later cleanup is verifiable. The
-   first pass covers components, Home, the sale keypad and the results; add Settings goldens before C1.
+   the goldens cover components, Home, the sale keypad, the results, Settings and the pickers.
 2. Finish T2 and T3 file by file (high confidence, mechanical).
 3. Decide R2, R3 and S1; update `DESIGN.md` and the tokens together.
 4. Extract the picker dialog (C1).

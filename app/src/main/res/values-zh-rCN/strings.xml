@@ -805,7 +805,7 @@
   <string name="settings_choose_terminal">选择终端</string>
   <string name="settings_terminal_choice_hint">选择终端后，如果设置已完整，Mini mPOS 会检查连接。不会进行付款。</string>
   <string name="settings_no_terminals">没有可用的匹配终端。请手动输入信息。</string>
-  <string name="settings_terminal_search">按型号或序列号搜索</string>
+  <string name="settings_terminal_search">搜索终端</string>
   <string name="settings_terminal_search_none">没有匹配的终端。</string>
   <string name="settings_save_and_discover">保存并查找设置</string>
   <string name="settings_testing_api">正在测试 API…</string>
@@ -966,7 +966,7 @@
   <string name="settings_currency">币种</string>
   <string name="settings_currency_auto">自动（%1$s）</string>
   <string name="settings_currency_hint">可使用 Adyen 支持的任何币种。请确认您的商家账户支持使用该币种进行线下支付。</string>
-  <string name="settings_currency_search">按代码或名称搜索</string>
+  <string name="settings_currency_search">搜索币种</string>
   <string name="settings_currency_none">无匹配币种</string>
   <string name="pricing_change_title">确认价格变更</string>
   <string name="pricing_change_message">%1$s → %2$s。保留显示的单价，并按新币种精度四舍五入。下方列出部分转换后的价格。切换含税或不含税价格会改变税费的计算方式。已保存的销售记录不变。</string>

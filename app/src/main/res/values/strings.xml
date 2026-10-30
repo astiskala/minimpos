@@ -807,7 +807,7 @@
   <string name="settings_choose_terminal">Choose a terminal</string>
   <string name="settings_terminal_choice_hint">After selection, Mini mPOS checks the connection if setup is complete. No payment is taken.</string>
   <string name="settings_no_terminals">No matching terminals are available. Enter the details manually.</string>
-  <string name="settings_terminal_search">Search by model or serial number</string>
+  <string name="settings_terminal_search">Search terminals</string>
   <string name="settings_terminal_search_none">No terminals match.</string>
   <string name="settings_save_and_discover">Save and find setup</string>
   <string name="settings_testing_api">Testing API…</string>
@@ -968,7 +968,7 @@
   <string name="settings_currency">Currency</string>
   <string name="settings_currency_auto">Automatic (%1$s)</string>
   <string name="settings_currency_hint">Any currency Adyen processes. Check that your merchant account accepts it for in-person payments.</string>
-  <string name="settings_currency_search">Search by code or name</string>
+  <string name="settings_currency_search">Search currencies</string>
   <string name="settings_currency_none">No matching currency</string>
   <string name="pricing_change_title">Confirm pricing change</string>
   <string name="pricing_change_message">%1$s → %2$s. Keep displayed unit prices, rounding half up to the new currency’s precision. The first converted prices are shown below. Switching tax-inclusive or tax-exclusive pricing changes how tax is added to those prices. Existing stored sales are unchanged.</string>

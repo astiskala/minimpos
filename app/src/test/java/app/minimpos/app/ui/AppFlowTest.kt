@@ -323,6 +323,7 @@ class AppFlowTest {
         compose.onNodeWithTag("back").performClick()
         // Leave Settings only once Security has closed, so the second press is not lost.
         compose.waitUntilDoesNotExist(hasTestTag("setPin"), 15_000)
+        compose.waitForTag("back")
         compose.onNodeWithTag("back").performClick()
 
         compose.waitForTag("settings")

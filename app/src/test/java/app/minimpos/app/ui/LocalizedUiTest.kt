@@ -304,6 +304,7 @@ class LocalizedUiTest {
         ).isEqualTo("Merchant item")
         compose.onNodeWithTag("settings").performClick()
         compose.onNodeWithTag("appLanguage").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasText("跟隨裝置"), 15_000)
         compose.onNodeWithText("跟隨裝置").performClick()
         compose.waitUntilAtLeastOneExists(
             hasText("Language"),

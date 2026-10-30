@@ -310,9 +310,10 @@ for layout and `sp` for text. Token names map to code as follows, and a value in
   reason; an undocumented one is a defect.
 - **Check the spec.** `npx @google/design.md lint DESIGN.md` validates the front matter, references and component
   contrast.
-- **Tests enforce parts of it.** `ThemeContrastTest` checks contrast pairs (add pairs with new tokens); ArchUnit
-  (`HeadingArchitectureTest`, `MaterialArchitectureTest`, `ButtonArchitectureTest`) keeps headings, Material 3 and
-  button frames in `ui.components`; `DesignGalleryTest` checks touch targets.
+- **Tests enforce parts of it.** `ThemeContrastTest` checks contrast pairs (add pairs with new tokens). ArchUnit keeps
+  colour literals and corner shapes in `ui.theme` (`ThemeArchitectureTest`), and headings, Material 3 and button
+  frames in `ui.components` (`HeadingArchitectureTest`, `MaterialArchitectureTest`, `ButtonArchitectureTest`).
+  `DesignGalleryTest` checks touch targets.
 - **Goldens detect regressions.** Android screenshot goldens compare approved Android rendering with future Android
   rendering ([docs/ui/SCREENSHOT_TESTING.md](docs/ui/SCREENSHOT_TESTING.md)). External design renders show intent only
   and are never pixel baselines.

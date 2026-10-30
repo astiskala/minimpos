@@ -9,6 +9,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
 - \* Compose components and themes use Material 3, never Material 2. The `androidx.compose.material.icons` and
   `androidx.compose.material.ripple` packages are shared infrastructure, not Material 2 widgets. The XML window theme
   stays Android-native; it does not style Compose content.
+- \* Colour literals (`Color(…)`) and corner shapes (`RoundedCornerShape`, `CutCornerShape`) are built only in
+  `ui.theme`; other code reads `MaterialTheme` and `LocalStatusColors`. `CircleShape` and `RectangleShape` stay allowed.
 - \* Dependencies go downwards: UI (`feature`, `ui`, `scan`, `qr`, `share`) → `payment` → `email` → `receipt` →
   `history`/`terminal` → `data`, beside the isolated `update` package. Every production class belongs to a listed
   module or the application bootstrap. Only UI reaches `AppContainer`; view models hold no UI types or display text.

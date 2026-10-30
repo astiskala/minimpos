@@ -137,9 +137,10 @@ screen's section header and around picker dialogs; the 20 dp icon is `IconSize.I
 
 | Shape | Used for |
 | --- | --- |
-| `medium` (12) | **Canonical.** Buttons, keypad keys, `Card`, `Notice`, product tiles, dialogs' content (14 uses) |
+| `medium` (12) | **Canonical.** Buttons, keypad keys, `Card`, `Notice` and product tiles |
 | `large` (16) | Home payment tiles, custom-amount dialog, scanner frame |
 | `small` (8) | Receipt preview border |
+| `extraLarge` (24) | Dialog surfaces: the `AlertDialog` family and `PickerDialog` |
 | `CircleShape` | Status badge, step number, PIN dots |
 | `RectangleShape` | Custom-amount dialog on compact screens (full-screen takeover) |
 
@@ -196,6 +197,7 @@ product tiles use `primaryContainer` with a 1 dp primary border. `Notice` is the
 `ConfirmDialog`, `ResultDialog`, `InfoDialog`, `TextInputDialog`, `ActionOptionsDialog`, `EmailReceiptDialog` and
 `SharedKeyDialog` wrap Material `AlertDialog` (12 uses). Result dialogs show a 40 dp `StatusBadge`. Dialog buttons are
 Material `TextButton` slots, an accepted idiom. Settings › Terminal reports setup outcomes in a dialog, one at a time.
+Dialog surfaces use `shapes.extraLarge` and `surfaceContainerHigh`; inner cards retain `shapes.medium`.
 Dialogs containing text fields use `DialogProperties(usePlatformDefaultWidth = false)` in tests.
 
 ### Navigation
@@ -245,7 +247,9 @@ regions on `BlockedReason` and `ActionMessage`; merged semantics on `Notice` and
 buttons; `stateDescription` on cart products; audio guidance for payments; large-text tests at 1.5×.
 
 **Rules:** tap targets at least `MinTouchTarget` 48 dp (rows, icon buttons); never convey status by colour alone;
-announce state changes; new text uses string resources in all seven languages.
+announce state changes; new text uses string resources in all seven languages. Evaluate hit areas with effective
+`touchBoundsInRoot`, not only drawn bounds: Compact buttons and keypad keys may draw at 44 dp with a 48 dp touch area.
+`DesignGalleryTest` checks enabled clickable targets in each gallery capture in both axes.
 
 ## Dark Mode
 

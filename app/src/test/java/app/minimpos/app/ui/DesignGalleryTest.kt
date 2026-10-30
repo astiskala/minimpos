@@ -16,6 +16,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.isEnabled
 import app.minimpos.app.ScreenshotRule
 import app.minimpos.app.ScreenshotTolerance
 import app.minimpos.app.TestEnvironment
@@ -39,8 +41,10 @@ import app.minimpos.app.ui.components.SwitchRow
 import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.theme.Dimens
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.MinTouchTarget
 import app.minimpos.app.ui.theme.MiniMposTheme
 import app.minimpos.app.ui.theme.Spacing
+import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -86,6 +90,19 @@ class DesignGalleryTest {
         content: @Composable ColumnScope.() -> Unit,
     ) = screenshot.setContent { Gallery(dimens, content) }
 
+    /** Check the effective hit area, which Compose can expand beyond a compact control's drawn bounds. */
+    private fun capture(
+        variant: String? = null,
+        screen: Boolean = false,
+    ) {
+        compose.onAllNodes(hasClickAction() and isEnabled()).fetchSemanticsNodes().forEach { node ->
+            val minimum = with(node.layoutInfo.density) { MinTouchTarget.toPx() }
+            assertWithMessage("Touch width: ${node.config}").that(node.touchBoundsInRoot.width).isAtLeast(minimum)
+            assertWithMessage("Touch height: ${node.config}").that(node.touchBoundsInRoot.height).isAtLeast(minimum)
+        }
+        screenshot.capture(variant, screen)
+    }
+
     @Composable
     private fun ColumnScope.Buttons() {
         PrimaryButton("Charge $12.50", {}, icon = Icons.Default.Add)
@@ -100,21 +117,21 @@ class DesignGalleryTest {
     @Test
     fun `buttons in every variant`() {
         show { Buttons() }
-        screenshot.capture()
+        capture()
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
     fun `buttons in every variant on a compact screen`() {
         show(Dimens.Compact) { Buttons() }
-        screenshot.capture("compact")
+        capture("compact")
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w360dp-h600dp-xhdpi")
     fun `buttons in every variant on a medium screen`() {
         show(Dimens.Medium) { Buttons() }
-        screenshot.capture("medium")
+        capture("medium")
     }
 
     @Test
@@ -128,7 +145,7 @@ class DesignGalleryTest {
             Notice("Card payments need the Checkout API to be set up first.")
             Notice("Changing the destination clears the saved terminal.", kind = NoticeKind.WARNING)
         }
-        screenshot.capture()
+        capture()
     }
 
     @Test
@@ -138,7 +155,7 @@ class DesignGalleryTest {
             Subheading("Business details")
             Description("Shown at the top of every receipt, so shoppers know who they paid.")
         }
-        screenshot.capture()
+        capture()
     }
 
     @Test
@@ -152,7 +169,7 @@ class DesignGalleryTest {
                 StatusKind.entries.forEach { StatusBadge(it) }
             }
         }
-        screenshot.capture()
+        capture()
     }
 
     @Test
@@ -162,7 +179,7 @@ class DesignGalleryTest {
                 EmptyState(Icons.AutoMirrored.Filled.ReceiptLong, "No sales yet", "Completed sales appear here.")
             }
         }
-        screenshot.capture()
+        capture()
     }
 
     @Test
@@ -178,7 +195,7 @@ class DesignGalleryTest {
                 supportingText = { Text("Enter a price such as 12.50.") },
             )
         }
-        screenshot.capture()
+        capture()
     }
 
     private val keypad: @Composable ColumnScope.() -> Unit = {
@@ -188,21 +205,21 @@ class DesignGalleryTest {
     @Test
     fun keypad() {
         show(content = keypad)
-        screenshot.capture()
+        capture()
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
     fun `keypad on a compact screen`() {
         show(Dimens.Compact, keypad)
-        screenshot.capture("compact")
+        capture("compact")
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w360dp-h600dp-xhdpi")
     fun `keypad on a medium screen`() {
         show(Dimens.Medium, keypad)
-        screenshot.capture("medium")
+        capture("medium")
     }
 
     @Test
@@ -219,6 +236,6 @@ class DesignGalleryTest {
                 )
             }
         }
-        screenshot.capture(screen = true)
+        capture(screen = true)
     }
 }

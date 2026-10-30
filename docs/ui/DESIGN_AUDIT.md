@@ -146,3 +146,42 @@ migration, dark mode and every medium or low confidence item.
 3. ~~Decide R2, R3 and S1~~ (done: `Spacing.Section`; 18 dp and 10 dp kept as exceptions).
 4. ~~Extract the picker dialog (C1).~~ Done.
 5. Gate `scripts/design-audit --strict` in CI.
+
+## Broader compliance review — October 30, 2026
+
+Reviewed after the Linux golden rollout (`5074d1d6`). This pass considers visual changes as well as mechanical token
+adoption. The current audit reports 0 hard findings, 19 raw Material button uses, 5 feature `sp` literals, 34 feature
+`dp` literals and 19 shared-component `dp` literals. These soft counts include intentional exceptions; reducing the
+counts alone is not a design improvement.
+
+### Implemented protection
+
+`DesignGalleryTest` now checks every enabled clickable node in each capture against `MinTouchTarget`, in both axes,
+using `touchBoundsInRoot`. It covers the rendered buttons, keypad keys, switches, field and confirmation actions.
+Compact buttons and keys may draw at 44 dp while Compose expands their effective touch area to 48 dp. Checking drawn
+bounds would incorrectly require taller controls and could break AMS1 layouts. Home already checks expanded Settings
+hit bounds in `SmallScreenHomeTest`; coverage of other workflow screens remains incremental work.
+
+### Recommended next changes
+
+| Priority | Evidence | Proposed change | Design benefit / validation |
+| --- | --- | --- | --- |
+| 1 | `ProductsScreens.kt` marks an invalid price with `isError`, but unlike a duplicate SKU it supplies no supporting text. The price-error golden shows the unexplained outline. | Add localized validation guidance under the price field, using the selected currency's precision; keep validation rules unchanged. | Satisfies “Tell operators what to do,” including for users who cannot distinguish red. Verify zero-decimal and three-decimal currencies, AMS1, Japanese/Chinese and large text; review the deliberate price-error golden change. |
+| 2 | Both tablet goldens show two top bars, Back controls and simulator banners, because each pane owns a `MiniScaffold`. | Use a shared top bar and one simulator banner for the expanded scene, with a clear detail heading. Preserve phone layouts, admin/Manager gates and Navigation 3 Back behavior. | Gives the two-pane view one navigation frame and more content space. This needs an owner decision about shared versus independent pane headers, then tablet goldens and navigation regression checks. |
+| 3 | Home's update Download uses a default filled capsule; transfer controls already use `medium`; Exact cash uses `labelMedium` rather than the button label role. | Define a compact action variant with the standard shape and label role. Make update Download a secondary action; retain compact placement for transfer and exact-cash controls. | Makes action hierarchy and typography consistent without forcing every inline action to full width. Needs an owner decision on the compact-action appearance, plus new update/split coverage at AMS1 and large text. |
+| 4 | Buttons use 22 dp and 18 dp spinners; both sizes are documented exceptions. | Consider one 20 dp inline spinner only as part of an approved button design pass. | Small consistency gain; lower priority than error feedback and navigation. Changing size also shifts the label, so review loading-state gallery differences. |
+
+### Keep deliberate differences
+
+- The 19 raw Material calls are mostly dialog slots or specialized rows/actions. Wallet choice already has the
+  canonical shape, height and label role; transferring it into a wrapper is maintainability work, not a visual fix.
+- Dialog surfaces are already consistently `extraLarge` (24 dp), including `PickerDialog`. Document the surface
+  separately from the inner cards' `medium` shape; do not flatten every dialog to 12 dp just to match buttons.
+- Keep 6/10/18 dp density exceptions and layout widths until a specific screen demonstrates a problem. Normalizing
+  all rows to one height would undermine the terminal-first design.
+- Keep light-only, Home's tile order, setup gates, the simulator-only mode indicator and current screenshot tolerances.
+- No new general field/dialog/top-bar wrapper is justified solely by repeated names. Extract one when the chosen
+  improvement demonstrates a shared contract; do not add a new `CompositionLocal`.
+
+The next implementation should start with price-validation guidance, then the chosen tablet and compact-action designs.
+The strict design audit remains outside CI until the separate two-clean-weeks condition is met.

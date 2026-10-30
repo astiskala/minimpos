@@ -47,6 +47,9 @@ object IconSize {
     val Large = 40.dp
 }
 
+/** Width of the outline of secondary buttons, bordered action groups and products in the cart. */
+val BorderWidth = 1.dp
+
 /** The smallest touch target Android accessibility guidance allows (48 × 48 dp). */
 val MinTouchTarget = 48.dp
 

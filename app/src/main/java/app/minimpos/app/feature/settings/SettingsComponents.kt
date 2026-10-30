@@ -63,6 +63,7 @@ import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SwitchRow
+import app.minimpos.app.ui.components.fieldErrorIcon
 import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
@@ -126,6 +127,7 @@ fun SettingTextField(
             },
             placeholder = placeholder?.let { { Text(it) } },
             isError = error,
+            trailingIcon = fieldErrorIcon(error),
             singleLine = singleLine,
             minLines = if (singleLine) 1 else 3,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, autoCorrectEnabled = autoCorrect, imeAction = imeAction),
@@ -274,7 +276,8 @@ fun <T : Any> SettingChoice(
                     Text(
                         options.firstOrNull { it.first == selected }?.second.orEmpty(),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (blocked == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        // Grey like a navigation row's value: green is kept for actions and outcomes.
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     subtitle?.let {
                         Text(

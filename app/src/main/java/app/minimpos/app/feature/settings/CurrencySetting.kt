@@ -83,7 +83,7 @@ internal fun CurrencySetting(
             Text(
                 AdyenCurrencies[selectedCode]?.label(locale) ?: autoLabel,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 stringResource(R.string.settings_currency_hint),

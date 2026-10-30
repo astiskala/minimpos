@@ -215,3 +215,14 @@ receipt-import choice rows, and named the split-amount autosize floor (Y2).
 Visual changes are allowed when they improve consistency: record the
 goldens with CI's record option, review them, then commit. Priority 4 is done this way: every button spinner is
 `IconSize.Inline` (20 dp) with the icon's 8 dp gap, and the `BlockedReason` icon is `IconSize.Small`.
+
+## Stitch review — October 31, 2026
+
+A visual review in Stitch (project and decisions in [.stitch/DESIGN.md](../../.stitch/DESIGN.md#revision--october-31-2026))
+found four defects that the static audit cannot see, because each came from a Material default rather than a literal:
+secondary buttons read weaker than tertiary ones, the dialog surface was specified twice, disabled switch rows faded
+only their title, and the blue link colour had no use. The owner approved all of them and five refinements, and they
+are implemented: navy outlined secondary actions, white dialogs, a shared `ActionGroup` list for receipt actions, a
+side-by-side outcome header on height-limited screens, screen-padding margins on the sale screen, one
+`ChoiceChip` for the five former `FilterChip` styles, status glyphs in transaction rows, grey choice values and
+trailing error icons. Every golden changed as a result and was re-recorded for review.

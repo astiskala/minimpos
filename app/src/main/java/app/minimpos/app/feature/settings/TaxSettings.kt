@@ -13,13 +13,9 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -41,13 +37,14 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.ui.components.ActionMessage
+import app.minimpos.app.ui.components.ChoiceChip
 import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
+import app.minimpos.app.ui.components.fieldErrorIcon
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.MinTouchTarget
 import app.minimpos.app.ui.theme.Spacing
@@ -268,6 +265,7 @@ private fun TaxRateField(form: TaxRateFormState) {
             onValueChange = { form.rate = it.take(MAX_RATE_LENGTH) },
             suffix = { Text("%") },
             isError = form.invalidRate,
+            trailingIcon = fieldErrorIcon(form.invalidRate),
             supportingText = {
                 Text(stringResource(if (form.invalidRate) R.string.settings_tax_rate_invalid else R.string.settings_tax_rate_hint))
             },
@@ -312,27 +310,7 @@ private fun TaxNameChip(
     selected: Boolean,
     onClick: () -> Unit,
     tag: String,
-) = FilterChip(
-    selected = selected,
-    onClick = onClick,
-    label = { Text(label) },
-    leadingIcon = if (selected) ({ Icon(Icons.Default.Check, contentDescription = null) }) else null,
-    // The default selected colour matches the dialog background.
-    colors =
-        FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
-        ),
-    border =
-        FilterChipDefaults.filterChipBorder(
-            enabled = true,
-            selected = selected,
-            selectedBorderColor = MaterialTheme.colorScheme.primary,
-            selectedBorderWidth = 1.dp,
-        ),
-    modifier = Modifier.testTag(tag),
-)
+) = ChoiceChip(label, selected, onClick, Modifier.testTag(tag))
 
 private const val MAX_NAME_LENGTH = 30
 private const val MAX_RATE_LENGTH = 8

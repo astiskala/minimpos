@@ -96,6 +96,7 @@ import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SwitchRow
 import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.components.currentSetupGate
+import app.minimpos.app.ui.components.fieldErrorIcon
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -592,6 +593,7 @@ private fun ColumnScope.CheckoutFields(
             label = { Text(stringResource(R.string.checkout_transaction_reference)) },
             placeholder = { Text(stringResource(R.string.checkout_auto)) },
             isError = !state.referenceValid,
+            trailingIcon = fieldErrorIcon(!state.referenceValid),
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth().testTag("transactionReference"),
@@ -610,6 +612,7 @@ private fun ColumnScope.CheckoutFields(
                 }
             },
             isError = !state.customerReferenceValid,
+            trailingIcon = fieldErrorIcon(!state.customerReferenceValid),
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth().testTag("customerReference"),
@@ -628,6 +631,7 @@ private fun ColumnScope.CheckoutFields(
                 }
             },
             isError = !state.emailValid,
+            trailingIcon = fieldErrorIcon(!state.emailValid),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth().testTag("email"),

@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -81,6 +80,7 @@ import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
+import app.minimpos.app.ui.components.ChoiceChip
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.EmptyState
@@ -466,20 +466,16 @@ private fun ColumnScope.AllocationLegs(
     Subheading(stringResource(R.string.split_refund_tenders))
     original.legs.forEach { leg ->
         val tender = leg.tender ?: return@forEach
-        FilterChip(
+        ChoiceChip(
+            stringResource(
+                R.string.split_refund_tender_line,
+                tenderLabel(tender),
+                money.format(state.allocation[tender.id] ?: 0),
+                money.format(leg.remainingMinor),
+            ),
             selected = state.editingLeg == tender.id,
-            modifier = Modifier.fillMaxWidth().testTag("refundTender_${tender.id}"),
             onClick = { onEditLeg(tender.id.takeUnless { it == state.editingLeg }) },
-            label = {
-                Text(
-                    stringResource(
-                        R.string.split_refund_tender_line,
-                        tenderLabel(tender),
-                        money.format(state.allocation[tender.id] ?: 0),
-                        money.format(leg.remainingMinor),
-                    ),
-                )
-            },
+            modifier = Modifier.fillMaxWidth().testTag("refundTender_${tender.id}"),
         )
     }
     val allocated = state.allocation.values.sum()

@@ -25,8 +25,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import app.minimpos.app.R
 import app.minimpos.app.feature.lock.rememberManagerAction
+import app.minimpos.app.ui.components.ActionGroup
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.EmailReceiptDialog
+import app.minimpos.app.ui.components.GroupAction
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ReceiptPreview
 import app.minimpos.app.ui.components.ResultDialog
@@ -35,7 +37,6 @@ import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.receipt.ReceiptCopy
-import app.minimpos.core.receipt.ReceiptDocument
 
 /** What the receipt buttons of [ReceiptActions] ask of one stored sale or refund; [TransactionActions] answers them. */
 interface ReceiptEvents {
@@ -64,8 +65,9 @@ enum class MerchantCopy {
 /**
  * The receipt actions every result and detail screen offers, always in this order: Print receipt (with the merchant
  * copy as [merchantCopy] says), Email receipt (asking for the address, starting with [email]), Share receipt (on
- * phones and tablets) and Show/Hide receipt with the receipt itself. Each appears only while [state] offers it;
- * printing reaches the terminal, so it goes through the setup gate. Outcomes show under their buttons.
+ * phones and tablets) and Show/Hide receipt with the receipt itself, as one [ActionGroup] ([modifier] applies to it).
+ * Each appears only while [state] offers it; printing reaches the terminal, so it goes through the setup gate.
+ * Outcomes show under the group.
  */
 @Composable
 fun ColumnScope.ReceiptActions(
@@ -76,49 +78,21 @@ fun ColumnScope.ReceiptActions(
     email: String = "",
 ) {
     val approve = rememberManagerAction()
-    val gate = currentSetupGate()
     var askEmail by rememberSaveable { mutableStateOf(false) }
     var shown by rememberSaveable { mutableStateOf(false) }
-    if (state.canPrint) {
-        SecondaryButton(
-            stringResource(R.string.result_print),
-            { approve(setOf(ManagerAction.RECEIPT)) { gate.run { events.print(ReceiptCopy.CUSTOMER) } } },
-            loading = state.print.running,
-            icon = Icons.Default.Print,
-            modifier = Modifier.testTag("print"),
-        )
-        val due = merchantCopy == MerchantCopy.WHEN_DUE && state.merchantCopyPending
-        if (due) Text(stringResource(R.string.result_tear_off), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        if (due || merchantCopy == MerchantCopy.ALWAYS) {
-            SecondaryButton(
-                stringResource(R.string.result_print_merchant),
-                { approve(setOf(ManagerAction.RECEIPT)) { gate.run { events.print(ReceiptCopy.MERCHANT) } } },
-                loading = state.print.running,
-                icon = Icons.Default.Print,
-                modifier = Modifier.testTag("printMerchant"),
-            )
-        }
-        OutcomeMessage(state.print)
-    }
-    if (state.canEmail) {
-        SecondaryButton(
-            stringResource(R.string.result_email),
-            { approve(setOf(ManagerAction.RECEIPT)) { askEmail = true } },
-            loading = state.email.running,
-            icon = Icons.Default.Email,
-            modifier = Modifier.testTag("emailReceipt"),
-        )
-        OutcomeMessage(state.email)
-    }
-    if (state.canShare) {
-        SecondaryButton(
-            stringResource(R.string.result_share),
-            { approve(setOf(ManagerAction.RECEIPT), events::share) },
-            icon = Icons.Default.Share,
-            modifier = Modifier.testTag("shareReceipt"),
-        )
-    }
-    ReceiptToggle(state.receipt?.takeIf { shown }, { shown = !shown }, modifier)
+    val due = state.canPrint && merchantCopy == MerchantCopy.WHEN_DUE && state.merchantCopyPending
+    val receipt = state.receipt?.takeIf { shown }
+    val actions =
+        receiptActions(state, events, merchantCopy, due, receipt != null, approve, onEmail = { askEmail = true }, onToggle = {
+            shown =
+                !shown
+        })
+    // Tear off the customer copy before printing the merchant copy.
+    if (due) Text(stringResource(R.string.result_tear_off), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    ActionGroup(actions, modifier)
+    if (state.canPrint) OutcomeMessage(state.print)
+    if (state.canEmail) OutcomeMessage(state.email)
+    receipt?.let { ReceiptPreview(it, Modifier.align(Alignment.CenterHorizontally)) }
     if (askEmail) {
         EmailReceiptDialog(
             onSend = {
@@ -133,22 +107,52 @@ fun ColumnScope.ReceiptActions(
 }
 
 /**
- * "Show receipt" / "Hide receipt" ([modifier] applies to this button) and, while shown, the [receipt] itself (null
- * while hidden).
+ * The [ActionGroup] entries of [ReceiptActions], in their fixed order: print (and the merchant copy when [due] or
+ * always offered), email ([onEmail] asks for the address), share and show/hide receipt ([shown] picks the label,
+ * [onToggle] switches it). Each asks [approve] for the receipt's Manager permission; printing also passes the setup
+ * gate.
  */
 @Composable
-fun ColumnScope.ReceiptToggle(
-    receipt: ReceiptDocument?,
+private fun receiptActions(
+    state: TransactionActionsState,
+    events: ReceiptEvents,
+    merchantCopy: MerchantCopy,
+    due: Boolean,
+    shown: Boolean,
+    approve: (Set<ManagerAction>, () -> Unit) -> Unit,
+    onEmail: () -> Unit,
     onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    SecondaryButton(
-        stringResource(if (receipt != null) R.string.result_hide_receipt else R.string.result_show_receipt),
-        onToggle,
-        icon = Icons.AutoMirrored.Filled.ReceiptLong,
-        modifier = modifier.testTag("toggleReceipt"),
-    )
-    receipt?.let { ReceiptPreview(it, Modifier.align(Alignment.CenterHorizontally)) }
+): List<GroupAction> {
+    val gate = currentSetupGate()
+    val printLabel = stringResource(R.string.result_print)
+    val merchantLabel = stringResource(R.string.result_print_merchant)
+    val emailLabel = stringResource(R.string.result_email)
+    val shareLabel = stringResource(R.string.result_share)
+    val toggleLabel = stringResource(if (shown) R.string.result_hide_receipt else R.string.result_show_receipt)
+    val print = { copy: ReceiptCopy -> approve(setOf(ManagerAction.RECEIPT)) { gate.run { events.print(copy) } } }
+    return buildList {
+        if (state.canPrint) {
+            add(GroupAction(printLabel, Icons.Default.Print, "print", loading = state.print.running) { print(ReceiptCopy.CUSTOMER) })
+            if (due || merchantCopy == MerchantCopy.ALWAYS) {
+                add(
+                    GroupAction(merchantLabel, Icons.Default.Print, "printMerchant", loading = state.print.running) {
+                        print(ReceiptCopy.MERCHANT)
+                    },
+                )
+            }
+        }
+        if (state.canEmail) {
+            add(
+                GroupAction(emailLabel, Icons.Default.Email, "emailReceipt", loading = state.email.running) {
+                    approve(setOf(ManagerAction.RECEIPT), onEmail)
+                },
+            )
+        }
+        if (state.canShare) {
+            add(GroupAction(shareLabel, Icons.Default.Share, "shareReceipt") { approve(setOf(ManagerAction.RECEIPT), events::share) })
+        }
+        add(GroupAction(toggleLabel, Icons.AutoMirrored.Filled.ReceiptLong, "toggleReceipt", onClick = onToggle))
+    }
 }
 
 /**

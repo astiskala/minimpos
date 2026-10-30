@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
@@ -52,6 +54,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -67,8 +70,53 @@ import app.minimpos.app.ui.theme.MinTouchTarget
 import app.minimpos.app.ui.theme.Spacing
 
 /**
+ * Shared chrome above one adaptive scene's [content]. Navigation 3 retains ownership of the content and its transitions.
+ * [title] names the section; [onBack] leaves it, while the content retains its existing system Back handling.
+ */
+@Composable
+fun NavigationFrame(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Column(modifier.fillMaxSize()) {
+        ScreenTopBar(title, onBack) {}
+        Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScreenTopBar(
+    title: String,
+    onBack: (() -> Unit)?,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val dimens = LocalDimens.current
+    Column {
+        CenterAlignedTopAppBar(
+            title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = dimens.titleStyle) },
+            navigationIcon = {
+                if (onBack != null) {
+                    IconButton(onClick = onBack, modifier = Modifier.testTag("back")) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                    }
+                }
+            },
+            actions = content,
+            expandedHeight = dimens.topBarHeight,
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+        )
+        ModeBanner()
+        HorizontalDivider()
+    }
+}
+
+/**
  * The app's screen frame. The content area ends above the keyboard, so focused fields scroll into view; [bottomBar]
  * (usually [BottomActions]) keeps the main action reachable without scrolling and steps aside while typing.
+ * [header] lets panes retain headings and actions beneath a shared [NavigationFrame] without repeating system insets.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -79,6 +127,7 @@ fun MiniScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     snackbarHostState: SnackbarHostState? = null,
     bottomBar: @Composable () -> Unit = {},
+    header: ScreenHeader = ScreenHeader.FULL,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val dimens = LocalDimens.current
@@ -86,29 +135,36 @@ fun MiniScaffold(
     Scaffold(
         modifier = modifier,
         topBar = {
-            Column {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = dimens.titleStyle)
-                    },
-                    navigationIcon = {
-                        if (onBack != null) {
-                            IconButton(onClick = onBack, modifier = Modifier.testTag("back")) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                            }
-                        }
-                    },
-                    actions = actions,
-                    expandedHeight = dimens.topBarHeight,
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
-                )
-                ModeBanner()
-                HorizontalDivider()
+            if (header == ScreenHeader.FULL) {
+                ScreenTopBar(title, onBack, actions)
+            } else {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = dimens.screenPadding),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (header == ScreenHeader.DETAIL_PANE) {
+                        Text(
+                            title,
+                            style = dimens.titleStyle,
+                            modifier = Modifier.weight(1f).padding(vertical = Spacing.Small).semantics { heading() },
+                        )
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    actions()
+                }
             }
         },
         snackbarHost = { snackbarHostState?.let { SnackbarHost(it) } },
         bottomBar = { if (!typing) bottomBar() },
-        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.ime),
+        contentWindowInsets =
+            (
+                if (header == ScreenHeader.FULL) {
+                    ScaffoldDefaults.contentWindowInsets
+                } else {
+                    ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                }
+            ).union(WindowInsets.ime),
         content = content,
     )
 }

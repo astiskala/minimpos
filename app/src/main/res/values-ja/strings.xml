@@ -486,6 +486,11 @@
   <string name="products_edit_category">カテゴリーを編集</string>
   <string name="products_name">名前</string>
   <string name="products_price">価格（%1$s）</string>
+  <string name="products_price_whole_invalid">0より大きい整数の価格を入力してください</string>
+  <string name="products_price_too_large">より小さい価格を入力してください</string>
+  <plurals name="products_price_invalid">
+    <item quantity="other">0より大きい価格を小数点以下%1$d桁以内で入力してください</item>
+  </plurals>
   <string name="products_category">カテゴリー</string>
   <string name="products_no_category">カテゴリーなし</string>
   <string name="products_sku">SKU / バーコード（任意）</string>

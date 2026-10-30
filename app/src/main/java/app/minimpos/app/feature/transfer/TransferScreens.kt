@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarHostState
@@ -76,6 +74,7 @@ import app.minimpos.app.scan.ScannerView
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
+import app.minimpos.app.ui.components.CompactSecondaryButton
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.HistorySwitchDialog
@@ -506,13 +505,10 @@ internal fun CodeControls(
         IconButton(onClick = { onStep(1) }) {
             Icon(Icons.AutoMirrored.Filled.NavigateNext, contentDescription = stringResource(R.string.action_next))
         }
-        OutlinedButton(
-            onClick = onTogglePlay,
-            shape = MaterialTheme.shapes.medium,
-            contentPadding = PaddingValues(horizontal = Spacing.Medium, vertical = Spacing.Small),
-        ) {
-            Text(stringResource(if (playing) R.string.action_pause else R.string.action_play))
-        }
+        CompactSecondaryButton(
+            stringResource(if (playing) R.string.action_pause else R.string.action_play),
+            onTogglePlay,
+        )
     }
 }
 

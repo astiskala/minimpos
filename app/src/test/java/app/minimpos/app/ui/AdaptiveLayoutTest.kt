@@ -1,6 +1,9 @@
 package app.minimpos.app.ui
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -83,6 +86,7 @@ class AdaptiveLayoutTest {
         compose.waitUntilAtLeastOneExists(hasText("first-sale"), 15_000)
         compose.onNodeWithText("first-sale").performClick()
         waitForTag("detailStatus")
+        assertSharedHeader()
         // The list is still there: the next choice replaces the detail beside it.
         compose.onNodeWithText("second-sale").assertIsDisplayed().performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithText("first-sale").fetchSemanticsNodes().size == 1 }
@@ -99,6 +103,78 @@ class AdaptiveLayoutTest {
         compose.onNodeWithTag("section_tax").performScrollTo().performClick()
         waitForTag("chargeTax")
         compose.onNodeWithTag("section_terminal").assertIsDisplayed()
+        assertSharedHeader()
+    }
+
+    @Test
+    fun `system Back retains the existing expanded scene exit`() {
+        lateinit var back: OnBackPressedDispatcher
+        compose.setContent {
+            back = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
+            MiniMposApp(container)
+        }
+        waitForTag("settings")
+        compose.onNodeWithTag("settings").performClick()
+        waitForTag("section_security")
+        compose.onNodeWithTag("section_security").performScrollTo().performClick()
+        waitForTag("setPin")
+        assertSharedHeader()
+        compose.runOnUiThread { back.onBackPressed() }
+        waitForTag("newSale")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w411dp-h891dp-xhdpi")
+    fun `phone system Back closes the detail before leaving Settings`() {
+        lateinit var back: OnBackPressedDispatcher
+        compose.setContent {
+            back = checkNotNull(LocalOnBackPressedDispatcherOwner.current).onBackPressedDispatcher
+            MiniMposApp(container)
+        }
+        waitForTag("settings")
+        compose.onNodeWithTag("settings").performClick()
+        waitForTag("section_security")
+        compose.onNodeWithTag("section_security").performScrollTo().performClick()
+        waitForTag("setPin")
+        compose.runOnUiThread { back.onBackPressed() }
+        compose.waitUntilDoesNotExist(hasTestTag("setPin"), 15_000)
+        compose.onNodeWithTag("section_security").assertIsDisplayed()
+        compose.onAllNodesWithTag("modeBanner").assertCountEquals(1)
+        compose.runOnUiThread { back.onBackPressed() }
+        waitForTag("newSale")
+    }
+
+    private fun assertSharedHeader() {
+        compose.onAllNodesWithTag("back").assertCountEquals(1)
+        compose.onAllNodesWithTag("modeBanner").assertCountEquals(1)
+    }
+
+    @Test
+    fun `locking tablet Settings hides both panes beneath the shared header`() {
+        await { container.pinManager.setPin("1357") }
+        compose.setContent { MiniMposApp(container) }
+        waitForTag("settings")
+        compose.onNodeWithTag("settings").performClick()
+        waitForTag("pin_1")
+        enterAdminPin()
+        waitForTag("section_tax")
+        compose.onNodeWithTag("section_tax").performScrollTo().performClick()
+        waitForTag("chargeTax")
+        assertSharedHeader()
+        compose.runOnUiThread { container.sessionLock.lock() }
+        waitForTag("pin_1")
+        compose.onNodeWithTag("chargeTax").assertDoesNotExist()
+        compose.onNodeWithTag("section_terminal").assertDoesNotExist()
+        assertSharedHeader()
+        enterAdminPin()
+        waitForTag("chargeTax")
+        compose.onNodeWithTag("section_terminal").assertIsDisplayed()
+        assertSharedHeader()
+    }
+
+    private fun enterAdminPin() {
+        listOf(1, 3, 5, 7).forEach { compose.onAllNodesWithTag("pin_$it").onFirst().performClick() }
+        compose.onAllNodesWithTag("pin_OK").onFirst().performClick()
     }
 
     @Test

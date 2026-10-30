@@ -9,7 +9,7 @@ effort; the table distinguishes implemented checks from proposals.
 | Only `ui.components` marks headings; Material 3 only; layering | ArchUnit (`HeadingArchitectureTest`, `MaterialArchitectureTest`) | Existing home for architectural decisions (AGENTS.md requires a rule plus a deliberate-violation check) | Implemented |
 | Text and icon contrast | `ThemeContrastTest` | Pure maths on the scheme | Implemented; add pairs when tokens are added |
 | Feature code uses `Spacing`/`Dimens` instead of `dp` literals | `scripts/design-audit` soft count, then a ratchet | 34 feature literals remain; many are legitimate widths and density exceptions | Report only |
-| Feature code uses `PrimaryButton`/`SecondaryButton`/`TertiaryButton` | ArchUnit rule "feature classes do not call `androidx.compose.material3.ButtonKt`", added once any remaining raw uses have a precise shared contract or deliberate exception | Bytecode check is exact and needs no new tooling | Proposed |
+| Feature buttons use shared full-width or compact frames | `ButtonArchitectureTest` rejects dependencies on Material `ButtonKt`, with deliberate-violation and accepted fixtures | Bytecode check covers custom slots without excluding feature classes | Implemented |
 | Touch targets of at least 48 dp | `DesignGalleryTest` checks enabled clickable nodes' effective `touchBoundsInRoot` in both axes | Compact controls may draw at 44 dp with expanded hit areas; drawn bounds would give false failures | Implemented for the gallery; Home has targeted checks; extend to workflow screens |
 | No `sp` literals outside the theme | Same ArchUnit-free grep (soft count of 5) | Autosize bounds are legitimate | Report only |
 

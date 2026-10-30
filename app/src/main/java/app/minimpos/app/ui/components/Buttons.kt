@@ -1,5 +1,6 @@
 package app.minimpos.app.ui.components
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.MinTouchTarget
 import app.minimpos.app.ui.theme.Spacing
 
 /**
@@ -70,14 +72,29 @@ fun SecondaryButton(
     loading: Boolean = false,
     icon: ImageVector? = null,
 ) {
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled && !loading,
-        modifier = modifier.fillMaxWidth().heightIn(min = LocalDimens.current.secondaryButtonHeight),
-        shape = MaterialTheme.shapes.medium,
-    ) {
+    SecondaryButton(onClick, modifier, enabled = enabled && !loading) {
         ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.primary else null, spinnerSize = 18.dp)
     }
+}
+
+/**
+ * An outlined full-width action with custom [content], using the same size and shape as the text overload.
+ * The slot supports branded wallet artwork without duplicating the button frame. [enabled] controls activation.
+ */
+@Composable
+fun SecondaryButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable RowScope.() -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.fillMaxWidth().heightIn(min = LocalDimens.current.secondaryButtonHeight),
+        shape = MaterialTheme.shapes.medium,
+        content = content,
+    )
 }
 
 /**
@@ -110,6 +127,90 @@ fun TertiaryButton(
     ) {
         ButtonContent(text, icon, spinner = content.takeIf { loading }, spinnerSize = 18.dp)
     }
+}
+
+/**
+ * A secondary action that keeps its natural width for banners and inline controls. The drawn height is at least
+ * [MinTouchTarget]; shape and label typography match the full-width buttons. [enabled] controls activation.
+ */
+@Composable
+fun CompactSecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    CompactSecondaryButton(onClick, modifier, enabled) {
+        Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+    }
+}
+
+/**
+ * A compact outlined frame for custom [content], such as a cart count. Callers may allocate extra width or height
+ * through [modifier]; [contentPadding] can preserve a dense chip's established layout. [enabled] controls activation.
+ */
+@Composable
+fun CompactSecondaryButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(horizontal = Spacing.Medium, vertical = Spacing.Small),
+    content: @Composable RowScope.() -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.heightIn(min = MinTouchTarget),
+        shape = MaterialTheme.shapes.medium,
+        contentPadding = contentPadding,
+        content = content,
+    )
+}
+
+/**
+ * A lesser inline action with the same touch size and label role as [CompactSecondaryButton], without a border.
+ * [destructive] uses the error color for removals. [enabled] controls activation.
+ */
+@Composable
+fun CompactTertiaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    destructive: Boolean = false,
+) {
+    CompactTertiaryButton(onClick, modifier, enabled, destructive) {
+        Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+    }
+}
+
+/**
+ * An inline text action with custom [content], retaining the standard shape and touch height. [contentPadding] may
+ * align an expander's icon with a field edge; labels use the theme's button role. [destructive] marks removals in red.
+ */
+@Composable
+fun CompactTertiaryButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    destructive: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(horizontal = Spacing.Medium, vertical = Spacing.Small),
+    content: @Composable RowScope.() -> Unit,
+) {
+    TextButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.heightIn(min = MinTouchTarget),
+        shape = MaterialTheme.shapes.medium,
+        colors =
+            if (destructive) {
+                ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            } else {
+                ButtonDefaults.textButtonColors()
+            },
+        contentPadding = contentPadding,
+        content = content,
+    )
 }
 
 /**

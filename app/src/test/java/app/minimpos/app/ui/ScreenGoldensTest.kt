@@ -262,6 +262,21 @@ class ScreenGoldensTest {
     }
 
     @Test
+    fun `cash entry with exact cash action`() {
+        compose.setContent { MiniMposApp(container) }
+        waitForTag("newSale")
+        enterAmount()
+        compose.onNodeWithTag("addCustom").performClick()
+        compose.clickWhenEnabled("charge")
+        waitForTag("paymentOptions")
+        compose.onNodeWithTag("paymentOptions").performClick()
+        waitForTag("payCash")
+        compose.onNodeWithTag("payCash").performClick()
+        waitForTag("exactCash")
+        screenshot.capture()
+    }
+
+    @Test
     fun `history with sales`() {
         showHistory()
         screenshot.capture()

@@ -1,14 +1,11 @@
 package app.minimpos.app.feature.sale
 
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -18,7 +15,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.payment.ScanWallet
 import coil3.compose.AsyncImage
@@ -50,11 +47,7 @@ internal fun WalletChoice(
                 .build()
         }
     val fallback = rememberVectorPainter(Icons.Default.AccountBalanceWallet)
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth().heightIn(min = LocalDimens.current.secondaryButtonHeight),
-        shape = MaterialTheme.shapes.medium,
-    ) {
+    SecondaryButton(onClick = onClick, modifier = modifier) {
         AsyncImage(
             model = request,
             contentDescription = null,

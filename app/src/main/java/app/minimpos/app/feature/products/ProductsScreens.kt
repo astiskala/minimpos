@@ -37,7 +37,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,6 +63,7 @@ import app.minimpos.app.scan.ScanMode
 import app.minimpos.app.scan.ScannerDialog
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.EmptyState
 import app.minimpos.app.ui.components.LocalAppContainer
@@ -297,18 +298,19 @@ private fun CategoryDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = {
-                onSave(category.copy(name = name))
-            }, enabled = name.isNotBlank(), modifier = Modifier.testTag("saveCategory")) {
-                Text(stringResource(R.string.action_save))
-            }
+            CompactTertiaryButton(
+                stringResource(R.string.action_save),
+                { onSave(category.copy(name = name)) },
+                Modifier.testTag("saveCategory"),
+                enabled = name.isNotBlank(),
+            )
         },
         dismissButton = {
             Row {
                 if (category.id != 0L) {
-                    TextButton(onClick = onDelete) { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) }
+                    CompactTertiaryButton(stringResource(R.string.action_delete), onDelete, destructive = true)
                 }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+                CompactTertiaryButton(stringResource(R.string.action_cancel), onDismiss)
             }
         },
     )
@@ -395,6 +397,38 @@ private fun DeleteProductDialog(
     onDismiss = onDismiss,
 )
 
+/** Price input and its currency-aware validation message; parsing and eligibility remain on [ProductEditUiState]. */
+@Composable
+private fun ProductPriceField(
+    state: ProductEditUiState,
+    onChange: (String) -> Unit,
+) {
+    val invalid = state.form.price.isNotEmpty() && state.priceMinor == null
+    OutlinedTextField(
+        value = state.form.price,
+        onValueChange = { onChange(it.take(12)) },
+        label = { Text(stringResource(R.string.products_price, state.currency.code)) },
+        isError = invalid,
+        supportingText =
+            if (invalid) {
+                { Text(productPriceError(state), Modifier.testTag("productPriceError")) }
+            } else {
+                null
+            },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        modifier = Modifier.fillMaxWidth().testTag("productPrice"),
+    )
+}
+
+@Composable
+private fun productPriceError(state: ProductEditUiState): String =
+    when {
+        state.priceTooLarge -> stringResource(R.string.products_price_too_large)
+        state.currency.fractionDigits == 0 -> stringResource(R.string.products_price_whole_invalid)
+        else -> pluralStringResource(R.plurals.products_price_invalid, state.currency.fractionDigits, state.currency.fractionDigits)
+    }
+
 /** The product form's fields; [onUpdate] applies a change to the form. */
 @Composable
 private fun ColumnScope.ProductFields(
@@ -411,15 +445,7 @@ private fun ColumnScope.ProductFields(
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
         modifier = Modifier.fillMaxWidth().testTag("productName"),
     )
-    OutlinedTextField(
-        value = form.price,
-        onValueChange = { value -> onUpdate { it.copy(price = value.take(12)) } },
-        label = { Text(stringResource(R.string.products_price, state.currency.code)) },
-        isError = form.price.isNotEmpty() && state.priceMinor == null,
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        modifier = Modifier.fillMaxWidth().testTag("productPrice"),
-    )
+    ProductPriceField(state) { value -> onUpdate { it.copy(price = value) } }
     // Items without tax get a 0% rate (such as No tax) from the same list.
     if (state.chargeTax) {
         TaxRatePicker(

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -30,7 +31,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -67,6 +67,7 @@ import app.minimpos.app.terminal.SetupVisit
 import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.ActionMessage
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.PickerDialog
@@ -76,6 +77,7 @@ import app.minimpos.app.ui.components.SharedKeyDialog
 import app.minimpos.app.ui.components.StepHeader
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.openUrl
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.MinTouchTarget
 import app.minimpos.app.ui.theme.Spacing
@@ -599,7 +601,7 @@ private fun ColumnScope.AdyenApiStep(
 private fun ApiKeyRoles() {
     Column {
         var expanded by rememberSaveable { mutableStateOf(false) }
-        TextButton(
+        CompactTertiaryButton(
             onClick = { expanded = !expanded },
             modifier = Modifier.testTag("apiRoles"),
             contentPadding = PaddingValues(vertical = Spacing.Small),
@@ -607,7 +609,7 @@ private fun ApiKeyRoles() {
             Icon(
                 if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                 contentDescription = null,
-                modifier = Modifier.testTag("apiRolesArrow"),
+                modifier = Modifier.size(IconSize.Inline).testTag("apiRolesArrow"),
             )
             Spacer(Modifier.width(Spacing.Small))
             Text(stringResource(if (expanded) R.string.settings_hide_roles else R.string.settings_show_roles))
@@ -748,7 +750,10 @@ internal fun TerminalChoiceDialog(
         onDismiss = { onChoose(null) },
         options = {
             items(shown, key = { it }) { poiId ->
-                TextButton({ onChoose(poiId) }, Modifier.fillMaxWidth().padding(horizontal = Spacing.Medium).testTag("terminal_$poiId")) {
+                CompactTertiaryButton(
+                    { onChoose(poiId) },
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.Medium).testTag("terminal_$poiId"),
+                ) {
                     Text(poiId)
                 }
             }
@@ -779,11 +784,11 @@ private fun ChoiceDialog(
                 hint?.let { SettingNote(stringResource(it)) }
                 if (choices.isEmpty()) Text(stringResource(empty))
                 choices.forEach { (id, label) ->
-                    TextButton({ onChoose(id) }, Modifier.fillMaxWidth().testTag("${tagPrefix}_$id")) { Text(label) }
+                    CompactTertiaryButton({ onChoose(id) }, Modifier.fillMaxWidth().testTag("${tagPrefix}_$id")) { Text(label) }
                 }
             }
         },
-        confirmButton = { TextButton({ onChoose(null) }) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { CompactTertiaryButton(stringResource(R.string.action_cancel), { onChoose(null) }) },
     )
 }
 

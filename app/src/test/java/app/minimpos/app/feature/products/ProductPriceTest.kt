@@ -16,11 +16,13 @@ class ProductPriceTest {
             val entered = state.copy(form = state.form.copy(price = price))
             assertThat(entered.priceMinor).isEqualTo(minor)
             assertThat(entered.valid).isTrue()
+            assertThat(entered.priceTooLarge).isFalse()
         }
         listOf("1e17", "92233720368547758.08", "0", "-1", "1.001", "$1", "not a price").forEach { price ->
             val entered = state.copy(form = state.form.copy(price = price))
             assertThat(entered.priceMinor).isNull()
             assertThat(entered.valid).isFalse()
+            assertThat(entered.priceTooLarge).isEqualTo(price in listOf("1e17", "92233720368547758.08"))
         }
         val zeroDecimals = state.copy(currency = CurrencySpec.of("JPY"))
         assertThat(zeroDecimals.copy(form = state.form.copy(price = "1.1")).priceMinor).isNull()

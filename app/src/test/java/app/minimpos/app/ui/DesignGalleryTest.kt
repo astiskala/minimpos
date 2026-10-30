@@ -24,6 +24,8 @@ import app.minimpos.app.TestEnvironment
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.Card
+import app.minimpos.app.ui.components.CompactSecondaryButton
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.EmptyState
@@ -132,6 +134,29 @@ class DesignGalleryTest {
     fun `buttons in every variant on a medium screen`() {
         show(Dimens.Medium) { Buttons() }
         capture("medium")
+    }
+
+    @Composable
+    private fun ColumnScope.CompactActions() {
+        CompactSecondaryButton("Download", {})
+        CompactSecondaryButton("Pause", {})
+        CompactTertiaryButton("Exact cash", {})
+        CompactSecondaryButton("Download", {}, enabled = false)
+        CompactTertiaryButton("Remove", {}, destructive = true)
+        CompactTertiaryButton("Exact cash", {}, enabled = false)
+    }
+
+    @Test
+    fun `compact secondary and tertiary actions`() {
+        show { CompactActions() }
+        capture()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `compact actions on the smallest screen`() {
+        show(Dimens.Compact) { CompactActions() }
+        capture()
     }
 
     @Test

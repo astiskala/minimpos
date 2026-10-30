@@ -27,7 +27,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -60,6 +59,7 @@ import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
@@ -517,9 +517,7 @@ private fun ColumnScope.CashEntry(
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.weight(1f),
         )
-        TextButton(onExactCash, Modifier.testTag("exactCash")) {
-            Text(stringResource(R.string.split_cash_exact), style = MaterialTheme.typography.labelMedium)
-        }
+        CompactTertiaryButton(stringResource(R.string.split_cash_exact), onExactCash, Modifier.testTag("exactCash"))
     }
     Text(
         money.format(state.received.minor),

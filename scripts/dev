@@ -4,7 +4,7 @@ set -uo pipefail
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd) || exit "$?"
 runner=(bash "$root/scripts/gradle")
 # The classes that compare with, or record, the golden screenshots; every other test would run again for nothing.
-screenshot_tests=(--tests '*DesignGalleryTest' --tests '*ScreenGoldensTest' --tests '*SettingsGoldensTest' --tests '*LocaleGoldensTest')
+screenshot_tests=(--tests '*DesignGalleryTest' --tests '*ScreenGoldensTest' --tests '*SettingsGoldensTest' --tests '*LocaleGoldensTest' --tests '*UpdateGoldensTest')
 java_command=${JAVA_HOME:+$JAVA_HOME/bin/}java
 javac_command=${JAVA_HOME:+$JAVA_HOME/bin/}javac
 usage() {

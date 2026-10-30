@@ -31,7 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -60,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.ui.components.BlockedReason
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SwitchRow
@@ -342,7 +342,7 @@ private fun <T : Any> ChoiceDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { CompactTertiaryButton(stringResource(R.string.action_cancel), onDismiss) },
     )
 }
 
@@ -502,19 +502,22 @@ fun SettingSecret(
                 )
             },
             confirmButton = {
-                TextButton(onClick = ::save, enabled = value.isNotEmpty(), modifier = Modifier.testTag("secretSave")) {
-                    Text(stringResource(R.string.action_save))
-                }
+                CompactTertiaryButton(
+                    stringResource(R.string.action_save),
+                    ::save,
+                    Modifier.testTag("secretSave"),
+                    enabled = value.isNotEmpty(),
+                )
             },
             dismissButton = {
                 Row {
                     if (isSet) {
-                        TextButton(onClick = {
+                        CompactTertiaryButton(stringResource(R.string.action_clear), {
                             onClear()
                             open = false
-                        }) { Text(stringResource(R.string.action_clear), color = MaterialTheme.colorScheme.error) }
+                        }, destructive = true)
                     }
-                    TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_cancel)) }
+                    CompactTertiaryButton(stringResource(R.string.action_cancel), { open = false })
                 }
             },
         )

@@ -10,11 +10,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
@@ -50,7 +47,7 @@ fun ActionOptionsDialog(
                 content = content,
             )
         },
-        confirmButton = { TextButton(onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { CompactTertiaryButton(stringResource(R.string.action_cancel), onDismiss) },
     )
 }
 
@@ -74,18 +71,11 @@ fun ConfirmDialog(
         title = { Text(title) },
         text = { Text(message, Modifier.verticalScroll(rememberScrollState())) },
         confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                colors =
-                    if (destructive) {
-                        ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    } else {
-                        ButtonDefaults.textButtonColors()
-                    },
-                modifier = Modifier.testTag("confirm"),
-            ) { Text(confirmLabel) }
+            CompactTertiaryButton(confirmLabel, onConfirm, Modifier.testTag("confirm"), destructive = destructive)
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(dismissLabel ?: stringResource(R.string.action_cancel)) } },
+        dismissButton = {
+            CompactTertiaryButton(dismissLabel ?: stringResource(R.string.action_cancel), onDismiss)
+        },
     )
 }
 
@@ -122,7 +112,7 @@ fun ResultDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.testTag("${tag}Ok")) { Text(stringResource(R.string.action_ok)) }
+            CompactTertiaryButton(stringResource(R.string.action_ok), onDismiss, Modifier.testTag("${tag}Ok"))
         },
     )
 }
@@ -143,7 +133,7 @@ fun InfoDialog(
         title = { Text(title) },
         text = { Text(message, Modifier.verticalScroll(rememberScrollState()).testTag(tag)) },
         confirmButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.testTag("${tag}Ok")) { Text(stringResource(R.string.action_ok)) }
+            CompactTertiaryButton(stringResource(R.string.action_ok), onDismiss, Modifier.testTag("${tag}Ok"))
         },
     )
 }
@@ -166,8 +156,8 @@ fun SharedKeyDialog(
         onDismissRequest = onDismiss,
         title = { Text(label) },
         text = { Text(message, Modifier.verticalScroll(rememberScrollState()).testTag("sharedKeyConfirmation")) },
-        confirmButton = { TextButton(onClick = onConfirm, modifier = Modifier.testTag("confirmSharedKey")) { Text(label) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { CompactTertiaryButton(label, onConfirm, Modifier.testTag("confirmSharedKey")) },
+        dismissButton = { CompactTertiaryButton(stringResource(R.string.action_cancel), onDismiss) },
     )
 }
 
@@ -220,11 +210,9 @@ fun TextInputDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(value.trim()) }, enabled = validate(value), modifier = Modifier.testTag("dialogConfirm")) {
-                Text(confirmLabel)
-            }
+            CompactTertiaryButton(confirmLabel, { onConfirm(value.trim()) }, Modifier.testTag("dialogConfirm"), enabled = validate(value))
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { CompactTertiaryButton(stringResource(R.string.action_cancel), onDismiss) },
     )
 }
 

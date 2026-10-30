@@ -486,6 +486,11 @@
   <string name="products_edit_category">编辑分类</string>
   <string name="products_name">名称</string>
   <string name="products_price">价格（%1$s）</string>
+  <string name="products_price_whole_invalid">请输入大于0的整数价格</string>
+  <string name="products_price_too_large">请输入更小的价格</string>
+  <plurals name="products_price_invalid">
+    <item quantity="other">请输入大于0的价格，最多保留%1$d位小数</item>
+  </plurals>
   <string name="products_category">分类</string>
   <string name="products_no_category">无分类</string>
   <string name="products_sku">SKU / 条码（可选）</string>

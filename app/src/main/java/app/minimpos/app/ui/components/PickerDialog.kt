@@ -19,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -113,9 +112,11 @@ fun PickerDialog(
                         }
                     }
                 }
-                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End).padding(horizontal = Spacing.Medium)) {
-                    Text(stringResource(R.string.action_cancel))
-                }
+                CompactTertiaryButton(
+                    stringResource(R.string.action_cancel),
+                    onDismiss,
+                    Modifier.align(Alignment.End).padding(horizontal = Spacing.Medium),
+                )
             }
         }
     }

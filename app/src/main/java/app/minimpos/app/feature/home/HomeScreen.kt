@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -34,7 +33,6 @@ import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +65,7 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.TerminalConnection
+import app.minimpos.app.ui.components.CompactSecondaryButton
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.currentSetupGate
@@ -243,11 +242,11 @@ private fun UpdateCard(
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(dimens.spacing))
-            Button(
-                onClick = { context.openInBrowser(update.apkUrl) },
-                contentPadding = PaddingValues(horizontal = Spacing.Medium),
-                modifier = Modifier.testTag("updateDownload"),
-            ) { Text(stringResource(R.string.update_download)) }
+            CompactSecondaryButton(
+                stringResource(R.string.update_download),
+                { context.openInBrowser(update.apkUrl) },
+                Modifier.testTag("updateDownload"),
+            )
             IconButton(onClick = onDismiss, modifier = Modifier.testTag("updateDismiss")) {
                 Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_close))
             }

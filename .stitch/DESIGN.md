@@ -173,10 +173,14 @@ All in `ui/components/` unless noted. Prefer these over raw Material components 
 | `PrimaryButton` | `Button` | `Dimens.buttonHeight` 56/52/48 | Full width, `medium` shape, optional icon, spinner while `loading` |
 | `SecondaryButton` | `OutlinedButton` | `secondaryButtonHeight` 52/48/44 | Same layout |
 | `TertiaryButton` | `TextButton` | `secondaryButtonHeight` | `destructive` uses the error colour |
+| `CompactSecondaryButton` | `OutlinedButton` | At least 48 dp | Natural width, `medium` shape, `labelLarge`; update action and transfer play/pause |
+| `CompactTertiaryButton` | `TextButton` | At least 48 dp | Natural width, same shape and label role; inline Exact cash |
 | `GatedButton` (`feature/`) | wraps the above | | Use for any action reaching Adyen or a terminal |
 | `QuantityStepper` | `IconButton` | 48 dp target | − qty +, names the item for screen readers |
 
 Labels use `labelLarge`; the icon is 20 dp with an 8 dp gap; the loading spinner replaces the icon with a 12 dp gap.
+Feature buttons use shared frames, enforced by `ButtonArchitectureTest`. Custom content slots retain wallet artwork,
+cart counts and row layouts while sharing shape and touch sizing.
 Removal of saved keys, PINs, registrations or history uses red `ConfirmedRemoval`. **Decision needed:** spinner sizes
 differ by button (22 primary, 18 others).
 
@@ -187,6 +191,9 @@ external title (same style as toggles), then a primary description, then the inp
 information or validation (app/AGENTS.md). No custom field component exists. **Decision needed:** whether to extract
 `AppTextField` (see audit).
 
+Invalid product prices show localized supporting text: positive values and the currency's precision, whole numbers for
+zero-decimal currencies, or a smaller-price instruction on minor-unit overflow. Accepted price syntax is unchanged.
+
 ### Cards
 
 `Card` (not Material's): full width, `surfaceVariant`, `medium` shape, `cardPadding`, no border or elevation. Selected
@@ -196,7 +203,8 @@ product tiles use `primaryContainer` with a 1 dp primary border. `Notice` is the
 
 `ConfirmDialog`, `ResultDialog`, `InfoDialog`, `TextInputDialog`, `ActionOptionsDialog`, `EmailReceiptDialog` and
 `SharedKeyDialog` wrap Material `AlertDialog` (12 uses). Result dialogs show a 40 dp `StatusBadge`. Dialog buttons are
-Material `TextButton` slots, an accepted idiom. Settings › Terminal reports setup outcomes in a dialog, one at a time.
+shared `CompactTertiaryButton` slots, retaining destructive and disabled states. Settings › Terminal reports setup
+outcomes in a dialog, one at a time.
 Dialog surfaces use `shapes.extraLarge` and `surfaceContainerHigh`; inner cards retain `shapes.medium`.
 Dialogs containing text fields use `DialogProperties(usePlatformDefaultWidth = false)` in tests.
 
@@ -205,7 +213,11 @@ Dialogs containing text fields use `DialogProperties(usePlatformDefaultWidth = f
 `MiniScaffold`: `CenterAlignedTopAppBar` on `surface`, height `Dimens.topBarHeight` 64/56/48, back arrow when
 `onBack != null`, `ModeBanner` (simulator only) and a divider under the bar, content above the keyboard.
 Navigation 3 transitions are owned by `AppNavHost`. Home and onboarding are roots. Expanded windows show History and
-Settings details beside the list.
+Settings details beside the list. At the expanded-width breakpoint (840 dp), an active list/detail scene uses one
+`NavigationFrame` app bar and simulator banner. `MiniScaffold` list panes retain actions; detail panes show a semantic
+heading in `Dimens.titleStyle`. Explicit `ScreenHeader` parameters keep presentation separate from access gates.
+The shared Back arrow leaves the section. System Back retains Navigation 3's and each screen's existing behavior;
+expanded Settings exits the scene, while phone Settings closes its detail first.
 
 ### Lists and rows
 
@@ -254,14 +266,14 @@ announce state changes; new text uses string resources in all seven languages. E
 ## Dark Mode
 
 Not supported by design: `MiniMposColors` is `lightColorScheme`, the XML window theme is
-`Theme.Material.Light.NoActionBar` with light status/navigation bars, and `window_background` is white. No dynamic colour.
+`Theme.Material.Light.NoActionBar` with light status/navigation bars, and `window_background` is white. No dynamic
+colour.
 This follows the terminals' own payment screens. The owner has decided to keep light-only on phones and tablets too.
 
 ## Known Exceptions
 
 | Exception | Where | Why |
 | --- | --- | --- |
-| Raw `Button`/`TextButton`/`OutlinedButton` (19 in the audit) | Dialog action slots (settings, tax, products, currency offer), list-row choices (terminal picker, gift-card activities, wallet choice), the update banner's Download, transfer play/pause, the API-roles expander, the cart button, the split-payment exact-cash button | Dialog slot idiom, or a row or chip with its own size and content that is not a full-width action; migrating would change how they look |
 | `RectangleShape` full-screen dialog | `SaleScreen` custom amount, compact only | Keypad takes the whole screen |
 | `Color.White`/`Black` | Scanner and receipt rendering | Camera overlay and print preview are not themed UI |
 | 5 `sp` literals | Home tile autosize bounds, split-payment autosize, product tile line height | Autosize needs concrete bounds |
@@ -275,4 +287,3 @@ This follows the terminals' own payment screens. The owner has decided to keep l
 
 1. Should dialogs be extended with a shared `AppDialog` or stay as the current `ConfirmDialog` family?
 2. Should the non-token `dp` layout widths (340 cart pane, 420 QR, 360 receipt preview) become named constants?
-3. Which raw Material buttons in feature screens should migrate to `PrimaryButton`/`SecondaryButton`/`TertiaryButton`?

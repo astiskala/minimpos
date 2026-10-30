@@ -486,6 +486,11 @@
   <string name="products_edit_category">編輯分類</string>
   <string name="products_name">名稱</string>
   <string name="products_price">價格（%1$s）</string>
+  <string name="products_price_whole_invalid">請輸入大於0的整數價格</string>
+  <string name="products_price_too_large">請輸入較低的價格</string>
+  <plurals name="products_price_invalid">
+    <item quantity="other">請輸入大於0的價格，最多保留%1$d位小數</item>
+  </plurals>
   <string name="products_category">分類</string>
   <string name="products_no_category">無分類</string>
   <string name="products_sku">SKU / 條碼（可選）</string>

@@ -1,13 +1,12 @@
 package app.minimpos.app.feature.settings
 
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.Subheading
 
@@ -28,8 +27,6 @@ internal fun ColumnScope.MerchantCurrencyOffer(
             onChoose,
             modifier = Modifier.testTag("useMerchantCurrency"),
         )
-        TextButton(onClick = onDismiss, modifier = Modifier.testTag("keepCurrency")) {
-            Text(stringResource(R.string.settings_merchant_currency_keep))
-        }
+        CompactTertiaryButton(stringResource(R.string.settings_merchant_currency_keep), onDismiss, Modifier.testTag("keepCurrency"))
     }
 }

@@ -125,6 +125,20 @@ class SettingsGoldensTest {
     }
 
     @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `whole-number price error on the smallest screen`() {
+        env.updateSettings { it.copy(payment = it.payment.copy(currencyCode = "JPY")) }
+        compose.setContent { MiniMposApp(container) }
+        waitForTag("settings")
+        compose.openProducts()
+        waitForTag("addFab")
+        compose.onNodeWithTag("addFab").performClick()
+        waitForTag("productPrice")
+        compose.onNodeWithTag("productPrice").performTextInput("1.5")
+        screenshot.capture()
+    }
+
+    @Test
     fun `tax settings`() {
         openSection("section_tax")
         waitForTag("addTaxRate")

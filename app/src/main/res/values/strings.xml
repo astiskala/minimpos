@@ -487,6 +487,12 @@
   <string name="products_edit_category">Edit category</string>
   <string name="products_name">Name</string>
   <string name="products_price">Price (%1$s)</string>
+  <string name="products_price_whole_invalid">Enter a whole number above 0</string>
+  <string name="products_price_too_large">Enter a smaller price</string>
+  <plurals name="products_price_invalid">
+    <item quantity="one">Enter a price above 0 with up to %1$d decimal place</item>
+    <item quantity="other">Enter a price above 0 with up to %1$d decimal places</item>
+  </plurals>
   <string name="products_category">Category</string>
   <string name="products_no_category">No category</string>
   <string name="products_sku">SKU / barcode (optional)</string>

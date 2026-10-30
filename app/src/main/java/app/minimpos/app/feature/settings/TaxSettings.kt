@@ -23,7 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -46,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.ui.components.ActionMessage
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.theme.LocalDimens
@@ -188,20 +188,24 @@ internal fun TaxRateDialog(
         title = { Text(stringResource(if (taxRate.id == 0L) R.string.settings_tax_add else R.string.settings_tax_edit)) },
         text = { TaxRateForm(form) },
         confirmButton = {
-            TextButton(
-                onClick = { onSave(form.toEntity(), form.makeDefault) },
+            CompactTertiaryButton(
+                stringResource(R.string.action_save),
+                { onSave(form.toEntity(), form.makeDefault) },
+                Modifier.testTag("saveTax"),
                 enabled = form.valid,
-                modifier = Modifier.testTag("saveTax"),
-            ) { Text(stringResource(R.string.action_save)) }
+            )
         },
         dismissButton = {
             Row {
                 if (canDelete) {
-                    TextButton(onClick = onDelete, modifier = Modifier.testTag("deleteTax")) {
-                        Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
-                    }
+                    CompactTertiaryButton(
+                        stringResource(R.string.action_delete),
+                        onDelete,
+                        Modifier.testTag("deleteTax"),
+                        destructive = true,
+                    )
                 }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+                CompactTertiaryButton(stringResource(R.string.action_cancel), onDismiss)
             }
         },
     )

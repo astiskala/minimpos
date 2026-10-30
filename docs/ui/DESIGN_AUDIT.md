@@ -1,6 +1,7 @@
 # Design audit
 
-Initial audit of the Compose UI against [.stitch/DESIGN.md](../../.stitch/DESIGN.md). Source scan: `scripts/design-audit`
+Initial audit of the Compose UI against [.stitch/DESIGN.md](../../.stitch/DESIGN.md). Source scan:
+`scripts/design-audit`
 on the commit where this file was added, plus a read of `ui/theme` and `ui/components`. No visual change was made as a
 result of this audit; the only code edits were the behaviour-neutral token adoption listed under *Changes made*.
 
@@ -80,8 +81,10 @@ and `extraSmall` (0) are in the theme but barely used; keep them as Material com
 
 ### COLOUR_INCONSISTENCY
 
-None confirmed. `onSurfaceVariant` (41 uses) is the secondary text colour everywhere; `error` and `LocalStatusColors` are
-used for outcomes. `Color.White` (15) and `Color.Black` (3) are in the scanner overlay and print/receipt rendering, which
+None confirmed. `onSurfaceVariant` (41 uses) is the secondary text colour everywhere; `error` and `LocalStatusColors`
+are
+used for outcomes. `Color.White` (15) and `Color.Black` (3) are in the scanner overlay and print/receipt rendering,
+which
 are not themed UI. `tertiary` (blue) has no feature-level use besides links. `StatusColors` is a hand-built provider
 because Material lacks success and warning slots: expected.
 
@@ -167,7 +170,7 @@ hit bounds in `SmallScreenHomeTest`; coverage of other workflow screens remains 
 | Priority | Evidence | Proposed change | Design benefit / validation |
 | --- | --- | --- | --- |
 | 1 | `ProductsScreens.kt` marks an invalid price with `isError`, but unlike a duplicate SKU it supplies no supporting text. The price-error golden shows the unexplained outline. | Add localized validation guidance under the price field, using the selected currency's precision; keep validation rules unchanged. | Satisfies “Tell operators what to do,” including for users who cannot distinguish red. Verify zero-decimal and three-decimal currencies, AMS1, Japanese/Chinese and large text; review the deliberate price-error golden change. |
-| 2 | Both tablet goldens show two top bars, Back controls and simulator banners, because each pane owns a `MiniScaffold`. | Use a shared top bar and one simulator banner for the expanded scene, with a clear detail heading. Preserve phone layouts, admin/Manager gates and Navigation 3 Back behavior. | Gives the two-pane view one navigation frame and more content space. This needs an owner decision about shared versus independent pane headers, then tablet goldens and navigation regression checks. |
+| 2 | Both tablet goldens show two top bars, Back controls and simulator banners, because each pane owns a `MiniScaffold`. | Use a shared top bar and one simulator banner for the expanded scene, with a clear detail heading. Preserve phone layouts, admin/Manager gates and Navigation 3 Back behavior. | Gives the two-pane view one navigation frame and a clearer title hierarchy. This needs an owner decision about shared versus independent pane headers, then tablet goldens and navigation regression checks. |
 | 3 | Home's update Download uses a default filled capsule; transfer controls already use `medium`; Exact cash uses `labelMedium` rather than the button label role. | Define a compact action variant with the standard shape and label role. Make update Download a secondary action; retain compact placement for transfer and exact-cash controls. | Makes action hierarchy and typography consistent without forcing every inline action to full width. Needs an owner decision on the compact-action appearance, plus new update/split coverage at AMS1 and large text. |
 | 4 | Buttons use 22 dp and 18 dp spinners; both sizes are documented exceptions. | Consider one 20 dp inline spinner only as part of an approved button design pass. | Small consistency gain; lower priority than error feedback and navigation. Changing size also shifts the label, so review loading-state gallery differences. |
 
@@ -183,5 +186,23 @@ hit bounds in `SmallScreenHomeTest`; coverage of other workflow screens remains 
 - No new general field/dialog/top-bar wrapper is justified solely by repeated names. Extract one when the chosen
   improvement demonstrates a shared contract; do not add a new `CompositionLocal`.
 
-The next implementation should start with price-validation guidance, then the chosen tablet and compact-action designs.
+### Approved implementation
+
+The owner approved priorities 1–3. Product prices now explain positive values and precision in all seven languages;
+otherwise valid input that overflows minor units asks for a smaller price. Parsing and eligibility remain unchanged.
+`ProductValidationUiTest` covers zero/three decimals, decimal commas, overflow, Japanese large text and Chinese.
+
+Expanded Settings and History now share one outer app bar and simulator banner, with an app-bar-style detail heading.
+`NavigationFrame` decorates each list/detail scene through Navigation 3, leaving the display and entry lifetimes intact.
+Each entry retains its own access gates; explicit `ScreenHeader` values carry presentation only. Tests cover one
+header/banner, list selection, relocking both Settings panes and re-entry after unlocking. A targeted test on the
+pre-change checkout confirmed that system Back already leaves the expanded Settings scene; that behavior and phone
+detail-first Back are preserved.
+
+`CompactSecondaryButton` and `CompactTertiaryButton` now own the 12 dp shape, 16 sp label role and 48 dp minimum drawn
+height for compact actions. Dialog actions, row choices, the API-roles expander and wallet/cart controls now use
+shared frames with custom content slots where needed, preserving their roles, callbacks and artwork. The soft
+raw-button count is now zero; `ButtonArchitectureTest` prevents feature-level bypasses with deliberate-violation
+coverage. Hard findings remain zero. Five added goldens cover both
+compact component sizes, AMS1 update/cash screens and an invalid whole-number price. Spinner sizing remains deferred.
 The strict design audit remains outside CI until the separate two-clean-weeks condition is met.

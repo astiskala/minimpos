@@ -95,6 +95,7 @@ import app.minimpos.app.ui.components.Notice
 import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ResultDialog
+import app.minimpos.app.ui.components.ScreenHeader
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.currentSetupGate
@@ -373,11 +374,15 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
         override fun onResultDismiss(result: SetupResult) = setup.dismissResult(result)
     }
 
-/** The list of settings sections, each with a summary of its current value, plus the connection status. */
+/**
+ * The list of settings sections, each with a summary of its current value, plus the connection status.
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
+ */
 @Composable
 fun SettingsScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
+    header: ScreenHeader = ScreenHeader.FULL,
 ) {
     val container = LocalAppContainer.current
     val vm = settingsViewModel()
@@ -388,6 +393,7 @@ fun SettingsScreen(
 
     fun open(section: String) = navigator.openFrom(Route.Settings, Route.SettingsSection(section))
     MiniScaffold(
+        header = header,
         title = stringResource(R.string.settings_title),
         // Beside a section in an expanded window, Back leaves Settings rather than closing that section.
         onBack = { navigator.leave(Route.Settings) },
@@ -600,6 +606,7 @@ data class SectionOpening(
 /**
  * One settings [section] (a [SettingsSections] key; unknown keys show About).
  * [opening] says what the section shows straight away.
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
  */
 @Composable
 fun SettingsSectionScreen(
@@ -607,6 +614,7 @@ fun SettingsSectionScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
     opening: SectionOpening = SectionOpening(),
+    header: ScreenHeader = ScreenHeader.FULL,
 ) {
     val vm = settingsViewModel()
     val sampleData = sampleDataViewModel()
@@ -628,7 +636,7 @@ fun SettingsSectionScreen(
         SetPinScreen(onDone = {
             vm.setPin(it, manager = settingPin == true)
             settingPin = null
-        }, onCancel = { settingPin = null }, modifier = modifier, manager = settingPin == true)
+        }, onCancel = { settingPin = null }, modifier = modifier, manager = settingPin == true, header = header)
         return
     }
     val currencyOffer: @Composable ColumnScope.() -> Unit = {
@@ -641,6 +649,7 @@ fun SettingsSectionScreen(
         )
     }
     MiniScaffold(
+        header = header,
         title = stringResource(sectionTitle(section)),
         onBack = navigator::back,
         modifier = modifier,

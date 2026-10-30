@@ -100,6 +100,7 @@ import app.minimpos.app.ui.components.Notice
 import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.ScreenColumn
+import app.minimpos.app.ui.components.ScreenHeader
 import app.minimpos.app.ui.components.SearchField
 import app.minimpos.app.ui.components.SearchMode
 import app.minimpos.app.ui.components.SearchToggle
@@ -129,16 +130,19 @@ import java.time.format.FormatStyle
 /**
  * Sales and refunds by day, newest first, with each day's totals, filters for sales, refunds and issues, a payment
  * method menu and a search field (behind an app-bar icon on compact screens). Tapping an entry opens its detail.
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
  */
 @Composable
 fun HistoryScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
     vm: HistoryViewModel = historyViewModel(),
+    header: ScreenHeader = ScreenHeader.FULL,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val search = rememberSearchControl(available = state.hasHistory, onRequest = LocalDimens.current.compact, vm::setQuery)
     MiniScaffold(
+        header = header,
         title = stringResource(R.string.history_title),
         // Beside a detail in an expanded window, Back leaves History rather than closing that detail.
         onBack = { navigator.leave(Route.History) },
@@ -501,6 +505,7 @@ private fun paymentMethodText(sale: SaleEntity): String? =
  * amount is not refunded until it is captured: a sale awaiting its tip offers entering the tip, a pre-authorisation
  * capturing it (and adjusting what it holds), and both can be cancelled after the operator confirms. A capture whose
  * outcome is unknown, or that Adyen did not take for a tip, can be sent again.
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
  */
 @Composable
 fun SaleDetailScreen(
@@ -508,6 +513,7 @@ fun SaleDetailScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
     vm: SaleDetailViewModel = saleDetailViewModel(saleId),
+    header: ScreenHeader = ScreenHeader.FULL,
 ) {
     val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
@@ -515,6 +521,7 @@ fun SaleDetailScreen(
     val approve = rememberManagerAction()
     val gate = currentSetupGate()
     MiniScaffold(
+        header = header,
         title = stringResource(saleDetailTitle(state.record?.sale)),
         onBack = navigator::back,
         modifier = modifier,
@@ -559,13 +566,9 @@ fun SaleDetailScreen(
             PaymentDetailsCard(sale)
         }
     }
-    if (cancelling) {
-        state.record?.sale?.let { sale ->
-            CancelHoldDialog(sale, onDismiss = { cancelling = false }) {
-                cancelling = false
-                if (vm.cancel() != null) navigator.push(Route.RefundProcessing)
-            }
-        }
+    CancelHoldDialog(state.record?.sale, cancelling, onDismiss = { cancelling = false }) {
+        cancelling = false
+        if (vm.cancel() != null) navigator.push(Route.RefundProcessing)
     }
     ShareEffect(state.transaction.share, vm.transaction::shared)
 }
@@ -643,13 +646,15 @@ private fun ColumnScope.HoldActions(
     OutcomeMessage(state.retry)
 }
 
-/** Confirms cancelling the hold of [sale] (a pre-authorisation, or a sale awaiting its tip); [onConfirm] cancels it. */
+/** Confirms cancelling the hold of [sale] when [requested] and the sale is available; [onConfirm] cancels it. */
 @Composable
 private fun CancelHoldDialog(
-    sale: SaleEntity,
+    sale: SaleEntity?,
+    requested: Boolean,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
+    if (!requested || sale == null) return
     val held = rememberMoneyFormatter(sale.currency).format(sale.heldMinor)
     ConfirmDialog(
         title = stringResource(if (sale.tipOnReceipt) R.string.tip_cancel_title else R.string.pre_auth_cancel_title),
@@ -803,13 +808,17 @@ private fun saleDetailViewModel(saleId: String): SaleDetailViewModel {
     }
 }
 
-/** One refund from history, shown like the result screen of a refund just made. */
+/**
+ * One refund from history, shown like the result screen of a refund just made.
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
+ */
 @Composable
 @NonRestartableComposable
 fun RefundDetailScreen(
     refundId: String,
     navigator: Navigator,
-) = RefundResultScreen(refundId, navigator, fromHistory = true)
+    header: ScreenHeader = ScreenHeader.FULL,
+) = RefundResultScreen(refundId, navigator, fromHistory = true, header = header)
 
 private fun saleDetailTitle(sale: SaleEntity?): Int =
     when {

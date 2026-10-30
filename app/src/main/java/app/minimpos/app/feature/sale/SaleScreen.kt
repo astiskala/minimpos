@@ -44,7 +44,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -88,6 +87,7 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.scan.ScanMode
 import app.minimpos.app.scan.ScannerDialog
+import app.minimpos.app.ui.components.CompactSecondaryButton
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.EmptyState
 import app.minimpos.app.ui.components.LocalAppContainer
@@ -584,10 +584,9 @@ private fun CheckoutBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (onCart != null) {
-                OutlinedButton(
+                CompactSecondaryButton(
                     onClick = onCart,
                     enabled = itemCount > 0,
-                    shape = MaterialTheme.shapes.medium,
                     contentPadding = PaddingValues(horizontal = Spacing.Medium),
                     modifier = Modifier.heightIn(min = dimens.buttonHeight).testTag("cartButton"),
                 ) {

@@ -488,6 +488,13 @@
   <string name="products_edit_category">Editar categoría</string>
   <string name="products_name">Nombre</string>
   <string name="products_price">Precio (%1$s)</string>
+  <string name="products_price_whole_invalid">Ingresa un precio entero mayor que 0</string>
+  <string name="products_price_too_large">Ingresa un precio menor</string>
+  <plurals name="products_price_invalid">
+    <item quantity="one">Ingresa un precio mayor que 0 con hasta %1$d decimal</item>
+    <item quantity="other">Ingresa un precio mayor que 0 con hasta %1$d decimales</item>
+    <item quantity="many">Ingresa un precio mayor que 0 con hasta %1$d decimales</item>
+  </plurals>
   <string name="products_category">Categoría</string>
   <string name="products_no_category">Sin categoría</string>
   <string name="products_sku">SKU / código de barras (opcional)</string>

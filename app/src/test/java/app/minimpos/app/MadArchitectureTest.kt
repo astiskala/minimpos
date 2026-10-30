@@ -85,6 +85,16 @@ class MadArchitectureTest {
         }
     }
 
+    @Test
+    fun `a scene decorator outside the navigation owner is rejected`() {
+        assertTrue(
+            navigationOwner
+                .evaluate(
+                    fixture("BadSceneFrame", "androidx/navigation3/scene/SceneDecoratorStrategy", "decorateScene", true),
+                ).hasViolation(),
+        )
+    }
+
     private fun fixture(
         name: String,
         dependency: String,
@@ -117,14 +127,14 @@ class MadArchitectureTest {
     }
 
     private companion object {
-        // One scene host keeps forward/pop/predictive animations and adaptive panes coordinated.
+        // One owner keeps scene hosts, strategies and decorators coordinated with forward/pop/predictive transitions.
         val navigationOwner: ArchRule =
             noClasses()
                 .that()
                 .haveNameNotMatching("app\\.minimpos\\.app\\.ui\\.navigation\\.AppNavHostKt.*")
                 .should()
                 .dependOnClassesThat()
-                .haveFullyQualifiedName("androidx.navigation3.ui.NavDisplayKt")
+                .resideInAnyPackage("androidx.navigation3.ui..", "androidx.navigation3.scene..")
 
         // Native Activity overrides bypass AndroidX Back dispatch or replace the system's predictive animations.
         val supportedBack: ArchRule =

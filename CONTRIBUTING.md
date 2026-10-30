@@ -148,8 +148,8 @@ standalone release builds retain release lint by default. R8, signing and packag
   `app/build/reports/ui-failures/<test-task>/`. Passing tests do not capture; directories are unique across workers.
   Capture errors never replace the original assertion. These contain synthetic test data, not merchant screenshots;
   CI includes them in its existing reports artifact. Check timestamps: old failure artifacts may remain.
-- `DesignGalleryTest`, `ScreenGoldensTest`, `SettingsGoldensTest` and `LocaleGoldensTest` compare shared components
-  and whole screens with golden images under `app/src/test/screenshots/` through Roborazzi (test-only).
+- `DesignGalleryTest`, `ScreenGoldensTest`, `SettingsGoldensTest`, `LocaleGoldensTest` and `UpdateGoldensTest` compare
+  shared components and whole screens with golden images under `app/src/test/screenshots/` through Roborazzi (test-only).
   `ScreenshotRule` (rule order 2, after the recording rule) names images from test class, method and window size,
   fixes the locale (`en-AU` unless given another), time zone (UTC) and font scale, and freezes the Compose clock. In
   an ordinary test run it captures nothing; see
@@ -182,7 +182,7 @@ first filters color distances up to `0.007`, so the gallery threshold is not lit
 Stitch output are never baselines. `LocaleGoldensTest` covers French and Japanese, with each capture using a rule given
 its expected locale.
 
-1. `scripts/dev check ui-snapshots` compares the current rendering with the goldens, running only those four classes. A
+1. `scripts/dev check ui-snapshots` compares the current rendering with the goldens, running only those five classes. A
    difference fails the run and leaves the expected, actual and difference images in `app/build/reports/roborazzi/`,
    which the separate `ui-snapshots` CI job uploads as `ui-snapshot-differences` on failure.
 2. Look at the images. A difference you did not intend is a defect: fix the code, not the golden.

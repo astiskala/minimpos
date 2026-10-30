@@ -96,6 +96,7 @@ import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ProcessingContent
 import app.minimpos.app.ui.components.QuantityStepper
 import app.minimpos.app.ui.components.ScreenColumn
+import app.minimpos.app.ui.components.ScreenHeader
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.StatusKind
 import app.minimpos.app.ui.components.Subheading
@@ -791,6 +792,7 @@ fun RefundProcessingScreen(
  * The outcome of refund [refundId], with a status check while it is unknown and the receipt actions once accepted.
  * Just made, Home sits beside "New refund" (Home alone after a cancellation). [fromHistory] opens it as an older
  * refund's detail: nothing is printed automatically, there is no bottom bar and leaving goes back instead of home.
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
  */
 @Composable
 fun RefundResultScreen(
@@ -799,6 +801,7 @@ fun RefundResultScreen(
     modifier: Modifier = Modifier,
     fromHistory: Boolean = false,
     vm: RefundResultViewModel = refundResultViewModel(refundId, fromHistory),
+    header: ScreenHeader = ScreenHeader.FULL,
 ) {
     val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
@@ -809,7 +812,7 @@ fun RefundResultScreen(
         return ManagerApproval(actions = setOf(ManagerAction.UNREFERENCED_REFUND), onApprove = {
             approveCancel = false
             gate.run { vm.cancelRefund() }
-        }, onCancel = { approveCancel = false })
+        }, onCancel = { approveCancel = false }, header = header)
     }
 
     fun done() {
@@ -818,6 +821,7 @@ fun RefundResultScreen(
     }
     BackHandler { done() }
     MiniScaffold(
+        header = header,
         title = stringResource(resultTitle(state.refund?.cancellation == true, fromHistory)),
         onBack = { done() },
         modifier = modifier,

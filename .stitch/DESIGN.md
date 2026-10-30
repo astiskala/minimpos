@@ -258,7 +258,7 @@ scheme; any such change must keep `ThemeContrastTest` passing and Stitch needs a
 
 | Exception | Where | Why |
 | --- | --- | --- |
-| Raw `TextButton`/`OutlinedButton` | Dialog slots, wallet choice, cart button, terminal and currency pickers | Dialog slot idiom or non-standard content; review in the audit |
+| Raw `Button`/`TextButton`/`OutlinedButton` (19 in the audit) | Dialog action slots (settings, tax, products, currency offer), list-row choices (terminal picker, gift-card activities, wallet choice), the update banner's Download, transfer play/pause, the API-roles expander, the cart button, the split-payment exact-cash button | Dialog slot idiom, or a row or chip with its own size and content that is not a full-width action; migrating would change how they look |
 | `RectangleShape` full-screen dialog | `SaleScreen` custom amount, compact only | Keypad takes the whole screen |
 | `Color.White`/`Black` | Scanner and receipt rendering | Camera overlay and print preview are not themed UI |
 | 5 `sp` literals | Home tile autosize bounds, split-payment autosize, product tile line height | Autosize needs concrete bounds |

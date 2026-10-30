@@ -162,9 +162,10 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
 - Prefer `ui.components` (buttons, `Card`, text roles, dialogs, `MiniScaffold`) over raw Material equivalents or copies.
 - Record a deliberate exception in `DESIGN.md` › Known Exceptions with its reason; resolve audit items
   ([docs/ui/DESIGN_AUDIT.md](docs/ui/DESIGN_AUDIT.md)) only when they are marked safe or the owner decides.
-- `scripts/design-audit` reports bypasses; `--strict` fails on colour and shape literals. Materially changed UI updates
-  or adds screenshot coverage once it exists ([strategy](docs/ui/SCREENSHOT_TESTING.md)); until then attach before/after
-  screenshots as CONTRIBUTING asks.
+- `scripts/design-audit` reports bypasses; `--strict` fails on colour and shape literals. Materially changed UI passes
+  `scripts/dev check ui-snapshots`: review any image difference, re-record deliberate ones with
+  `scripts/dev snapshots record` and add goldens for new shared components ([strategy](docs/ui/SCREENSHOT_TESTING.md),
+  [procedure](CONTRIBUTING.md#update-the-golden-screenshots)). The comparison is not part of `scripts/dev finish` yet.
 
 ## Documentation changes
 

@@ -1,6 +1,20 @@
 # Screenshot testing strategy
 
-Proposal only: nothing here is implemented or added as a dependency. It extends what the repository already does.
+The baseline is implemented as described in [Status](#status); the rest of this page is still the plan. It extends what
+the repository already does.
+
+## Status
+
+- **Done:** Roborazzi 1.77.0 (plugin, `roborazzi`, `roborazzi-compose` and `roborazzi-junit-rule`, test-only, through the
+  version catalog; release builds and R8 are unaffected). `ScreenshotRule` sits beside `createRecordingComposeRule`.
+  `DesignGalleryTest` has the component gallery (10 images, compared exactly) and `ScreenGoldensTest` has Home (normal on
+  AMS1 and a regular phone, setup required on AMS1), the sale keypad (both sizes) and the approved (both sizes),
+  declined and unknown results (AMS1): 9 screens at 0.1 %. Goldens are in `app/src/test/screenshots/`.
+  `scripts/dev check ui-snapshots` compares and `scripts/dev snapshots record` rewrites them; the procedure is in
+  [CONTRIBUTING](../../CONTRIBUTING.md#update-the-golden-screenshots).
+- **Not done:** the other groups below (processing, Settings, History, locale, large font, tablet), the S1F2 size, the
+  pinned CI image, the comparison in `qualityGate`, and a CI step that publishes the difference images on their own.
+  Picker dialogs and token cleanup in Settings are therefore not covered yet.
 
 ## Current state
 
@@ -8,7 +22,7 @@ Proposal only: nothing here is implemented or added as a dependency. It extends 
 - `createRecordingComposeRule` already writes unmerged trees and root PNGs on **failure** only
   (`app/build/reports/ui-failures/`). `CompactLayoutTest` and `SmallScreenTest` also save previews at AMS1, P630 and S1F2
   sizes, and `CompactLayoutTest` exercises 1.5× font scale.
-- There are no `@Preview`s, no golden images and no visual-diff dependency.
+- There are no `@Preview`s. Golden images are the new part: see Status.
 - The documentation screenshots (`scripts/docs-capture`) are marketing assets from the AMS1 emulator, not tests.
 
 ## Recommendation
@@ -21,13 +35,14 @@ Use **Roborazzi** (JVM, on top of the existing Robolectric and Compose test rule
 - Android's official Compose Preview Screenshot Testing needs `@Preview` composables (the app has none, and screens take
   `AppContainer`-backed state), and it is still experimental.
 
-New dependency, so justify before adding: `io.github.takahirom.roborazzi` (Gradle plugin + `roborazzi-compose` +
-`roborazzi-junit-rule`), test-only. It does not touch release builds or R8. Check it for a Robolectric 4.17 and Compose
-BOM 2026.09 compatible release at adoption time.
+The dependency is `io.github.takahirom.roborazzi` (Gradle plugin + `roborazzi-compose` + `roborazzi-junit-rule`),
+test-only. It does not touch release builds or R8. Release 1.77.0 declares no Robolectric or Compose BOM pin and works
+with Robolectric 4.17, Compose BOM 2026.09, AGP 9.5, Kotlin 2.4 and Gradle 9.8.
 
 ## What to cover
 
-Aim for about 35 images, not hundreds. Each uses the real theme and shared components with simulator/fake data.
+Aim for about 35 images, not hundreds; the first pass has 19. Each uses the real theme and shared components with
+simulator/fake data.
 
 | Group | Subjects | Variants |
 | --- | --- | --- |
@@ -50,7 +65,7 @@ phone** 411×891, **tablet** 800×1280. Use at most three per screen.
 
 1. A `ScreenshotRule` wrapper next to `createRecordingComposeRule` captures the root node with Roborazzi, name derived
    from test class, method and device.
-2. Goldens are committed; `./gradlew verifyRoborazziDebug` compares, `recordRoborazziDebug` rewrites them. Expose them as
+2. Goldens are committed; `verifyRoborazziDebug` compares, `recordRoborazziDebug` rewrites them. They are exposed as
    `scripts/dev check ui-snapshots` (compare) and `scripts/dev snapshots record` (update).
 3. Keep rendering deterministic: fixed `Locale`, `TimeZone`, `fontScale`, disabled animations, `UnconfinedTestDispatcher`
    per [app/AGENTS.md](../../app/AGENTS.md#tests), `en-rAU` amounts, no live clocks or network, synthetic data only.
@@ -67,9 +82,9 @@ lives under `.stitch/reference/` for human comparison; it is never a pixel basel
 
 ## Rollout
 
-1. Add the plugin and the component gallery test; record the first goldens (about 15 images). Gate by the Gradle
-   `qualityGate` only after two stable CI runs.
-2. Add the Home, Sale and result screens on AMS1 and Regular.
+1. Add the plugin and the component gallery test; record the first goldens. Gate by the Gradle `qualityGate` only after
+   two stable CI runs. (Done.)
+2. Add the Home, Sale and result screens on AMS1 and Regular. (Done, except where the table says fewer.)
 3. Add locale, large-font and tablet variants.
 4. Use the goldens as the safety net for the token cleanup and the picker-dialog extraction listed in
    [DESIGN_AUDIT.md](DESIGN_AUDIT.md).

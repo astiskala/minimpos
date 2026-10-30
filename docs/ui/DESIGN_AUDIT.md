@@ -128,7 +128,8 @@ migration, dark mode and every medium or low confidence item.
 
 ## Recommended order
 
-1. Capture screenshot baselines ([SCREENSHOT_TESTING.md](SCREENSHOT_TESTING.md)) so later cleanup is verifiable.
+1. Capture screenshot baselines ([SCREENSHOT_TESTING.md](SCREENSHOT_TESTING.md)) so later cleanup is verifiable. The
+   first pass covers components, Home, the sale keypad and the results; add Settings goldens before C1.
 2. Finish T2 and T3 file by file (high confidence, mechanical).
 3. Decide R2, R3 and S1; update `DESIGN.md` and the tokens together.
 4. Extract the picker dialog (C1).

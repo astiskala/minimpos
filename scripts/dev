@@ -3,6 +3,8 @@
 set -uo pipefail
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd) || exit "$?"
 runner=(bash "$root/scripts/gradle")
+# The classes that compare with, or record, the golden screenshots; every other test would run again for nothing.
+screenshot_tests=(--tests '*DesignGalleryTest' --tests '*ScreenGoldensTest')
 java_command=${JAVA_HOME:+$JAVA_HOME/bin/}java
 javac_command=${JAVA_HOME:+$JAVA_HOME/bin/}javac
 usage() {
@@ -11,7 +13,8 @@ usage() {
         '  format                         Fix formatting at an edit checkpoint' \
         '  test MODULE PATTERN             Run matching tests (core, adyen, app, website-test, tooling)' \
         '  check AREA                      core, adyen, app, tooling, website, workflows, markdown,' \
-        '                                  architecture, localization, ui, qr, db, payment' \
+        '                                  architecture, localization, ui, ui-snapshots, qr, db, payment' \
+        '  snapshots record                Rewrite the golden screenshots (app/src/test/screenshots)' \
         '  finish                          Format, then full qualityGate --continue' \
         '  preflight                       Check local JDK, SDK 37, Chrome; no downloads or writes' \
         '  warm                            Warm compiler, Robolectric, browser and pinned tool caches' \
@@ -118,12 +121,18 @@ case "$command" in
             architecture) tasks=(:core:test --tests '*ArchitectureTest' :adyen:test --tests '*ArchitectureTest' :app:testDebugUnitTest --tests '*ArchitectureTest' :tooling:test --tests '*ArchitectureTest') ;;
             localization) tasks=(:app:testDebugUnitTest --tests '*LocalizationTest' --tests '*LocalizedUiTest') ;;
             ui) tasks=(:app:testDebugUnitTest --tests '*ui.*' --tests '*ComposeFailureArtifactsTest' :app:detektDebug :app:detektDebugUnitTest) ;;
+            ui-snapshots) tasks=(:app:verifyRoborazziDebug "${screenshot_tests[@]}") ;;
             qr) tasks=(:core:test --tests '*CodecTest' :app:testDebugUnitTest --tests '*SetupTransferTest' --tests '*TransferSealTest' :website-test:test --tests '*SetupHelperTest') ;;
             db) tasks=(:app:testDebugUnitTest --tests '*DatabaseSchemaTest' --tests '*RepositoriesTest' :app:detektDebug) ;;
             payment) tasks=(:app:testDebugUnitTest --tests '*payment.*' --tests '*history.*' --tests '*receipt.*' :app:detektDebug) ;;
             *) invalid "Unknown check area: $area" ;;
         esac
         exec "${runner[@]}" "${tasks[@]}" "$@"
+        ;;
+    snapshots)
+        [[ "${1:-}" == record ]] || invalid 'snapshots requires the subcommand record'
+        shift
+        exec "${runner[@]}" :app:recordRoborazziDebug "${screenshot_tests[@]}" "$@"
         ;;
     finish)
         "${runner[@]}" spotlessApply "$@" || exit "$?"

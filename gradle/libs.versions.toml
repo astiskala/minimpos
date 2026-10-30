@@ -36,6 +36,8 @@ coil = "3.6.3"
 junit = "4.13.2"
 truth = "1.4.5"
 robolectric = "4.17"
+# Golden-image tests on top of Robolectric (test-only; see docs/ui/SCREENSHOT_TESTING.md).
+roborazzi = "1.77.0"
 androidxTestCore = "1.7.0"
 archunit = "1.5.1"
 jsoup = "1.23.2"
@@ -89,6 +91,9 @@ coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version
 junit = { module = "junit:junit", version.ref = "junit" }
 truth = { module = "com.google.truth:truth", version.ref = "truth" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
+roborazzi-junit-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
 androidx-test-core = { module = "androidx.test:core-ktx", version.ref = "androidxTestCore" }
 archunit = { module = "com.tngtech.archunit:archunit-junit4", version.ref = "archunit" }
 kotlin-metadata-jvm = { module = "org.jetbrains.kotlin:kotlin-metadata-jvm", version.ref = "kotlin" }
@@ -111,4 +116,5 @@ detekt = { id = "dev.detekt", version.ref = "detekt" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 android-lint = { id = "com.android.lint", version.ref = "agp" }
 room = { id = "androidx.room", version.ref = "room" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 pitest = { id = "info.solidsoft.pitest", version.ref = "pitest" }

@@ -34,7 +34,7 @@ A coding agent comparing an implementation with the specification should:
 2. Run `scripts/design-audit` and compare the summary with the previous one in
    [DESIGN_AUDIT.md](DESIGN_AUDIT.md); new hard findings are defects, new soft findings need a reason or a token.
 3. Fix only high-confidence, value-preserving findings; list the rest as *REQUIRES_DESIGN_DECISION*.
-4. Run `scripts/dev check ui` and `scripts/dev check architecture`, then the screenshot comparison once it exists.
+4. Run `scripts/dev check ui` and `scripts/dev check architecture`, then `scripts/dev check ui-snapshots`.
 
 ## Suggested CI step
 

@@ -39,6 +39,23 @@ class DevRunnerTest {
     }
 
     @Test
+    fun `screenshot lanes compare or record only the golden image tests`() {
+        val compare = run(fixture(), "check", "ui-snapshots", "--stacktrace")
+        assertThat(compare.code).isEqualTo(0)
+        assertThat(compare.output).contains(
+            "<:app:verifyRoborazziDebug>\n<--tests>\n<*DesignGalleryTest>\n<--tests>\n<*ScreenGoldensTest>\n<--stacktrace>",
+        )
+        val record = run(fixture(), "snapshots", "record", "--stacktrace")
+        assertThat(record.code).isEqualTo(0)
+        assertThat(record.output).contains(
+            "<:app:recordRoborazziDebug>\n<--tests>\n<*DesignGalleryTest>\n<--tests>\n<*ScreenGoldensTest>\n<--stacktrace>",
+        )
+        val unknown = run(fixture(), "snapshots", "verify")
+        assertThat(unknown.code).isEqualTo(2)
+        assertThat(unknown.output).doesNotContain("<")
+    }
+
+    @Test
     fun `finish formats then collects all findings without hiding failure`() {
         val root = fixture("case \"${'$'}*\" in *qualityGate*) exit 37 ;; esac")
         val result = run(root, "finish", "--stacktrace")

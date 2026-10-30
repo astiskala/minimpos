@@ -496,7 +496,11 @@ private fun ColumnScope.CashEntry(
                 money.format(state.amountMinor),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
-                autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = MaterialTheme.typography.titleMedium.fontSize),
+                autoSize =
+                    TextAutoSize.StepBased(
+                        minFontSize = MIN_SPLIT_AMOUNT_SIZE,
+                        maxFontSize = MaterialTheme.typography.titleMedium.fontSize,
+                    ),
                 modifier = Modifier.testTag("cashDue"),
             )
         }
@@ -506,7 +510,11 @@ private fun ColumnScope.CashEntry(
                 state.changeMinor?.let(money::format) ?: stringResource(R.string.split_cash_short),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = if (state.changeMinor != null) 1 else Int.MAX_VALUE,
-                autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = MaterialTheme.typography.titleMedium.fontSize),
+                autoSize =
+                    TextAutoSize.StepBased(
+                        minFontSize = MIN_SPLIT_AMOUNT_SIZE,
+                        maxFontSize = MaterialTheme.typography.titleMedium.fontSize,
+                    ),
                 modifier = Modifier.testTag("cashChange"),
             )
         }
@@ -707,3 +715,6 @@ private fun splitViewModel(
         )
     }
 }
+
+/** The smallest a split amount shrinks to, for large text, before it is ellipsized. */
+private val MIN_SPLIT_AMOUNT_SIZE = 12.sp

@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.ui.theme.IconSize
@@ -58,7 +57,7 @@ fun PrimaryButton(
         shape = MaterialTheme.shapes.medium,
         colors = ButtonDefaults.buttonColors(containerColor = color),
     ) {
-        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.onPrimary else null, spinnerSize = 22.dp)
+        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.onPrimary else null)
     }
 }
 
@@ -73,7 +72,7 @@ fun SecondaryButton(
     icon: ImageVector? = null,
 ) {
     SecondaryButton(onClick, modifier, enabled = enabled && !loading) {
-        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.primary else null, spinnerSize = 18.dp)
+        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.primary else null)
     }
 }
 
@@ -125,7 +124,7 @@ fun TertiaryButton(
                 ButtonDefaults.textButtonColors()
             },
     ) {
-        ButtonContent(text, icon, spinner = content.takeIf { loading }, spinnerSize = 18.dp)
+        ButtonContent(text, icon, spinner = content.takeIf { loading })
     }
 }
 
@@ -222,11 +221,10 @@ private fun RowScope.ButtonContent(
     text: String,
     icon: ImageVector?,
     spinner: Color?,
-    spinnerSize: Dp,
 ) {
     if (spinner != null) {
-        CircularProgressIndicator(modifier = Modifier.size(spinnerSize), strokeWidth = 2.dp, color = spinner)
-        Spacer(Modifier.width(Spacing.Medium))
+        CircularProgressIndicator(modifier = Modifier.size(IconSize.Inline), strokeWidth = 2.dp, color = spinner)
+        Spacer(Modifier.width(Spacing.Small))
     } else if (icon != null) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(IconSize.Inline))
         Spacer(Modifier.width(Spacing.Small))

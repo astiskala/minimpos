@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.minimpos.app.R
@@ -41,6 +40,7 @@ import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.MinTouchTarget
 import app.minimpos.app.ui.theme.Spacing
 
 /**
@@ -132,7 +132,7 @@ private fun BusinessImportChoice(
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = MinTouchTarget)
             .selectable(selected = replace == selected, onClick = onSelect, role = Role.RadioButton)
             .testTag(if (replace) "replaceReceiptBusiness" else "supplementReceiptBusiness"),
         horizontalArrangement = Arrangement.spacedBy(Spacing.Medium),

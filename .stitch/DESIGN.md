@@ -157,7 +157,8 @@ surfaces. **Decision needed:** whether dialogs and sheets should use Material de
 - Material icons (`Icons.Default`, `Outlined`, `AutoMirrored`); icons are decorative (`contentDescription = null`)
   whenever text sits beside them.
 - Observed sizes (dp): 16 compact notice and finished step (`IconSize.Small`), 18 blocked reason, **20 beside button
-  labels (`IconSize.Inline`)**, 24 rows and steps (`IconSize.Standard`), 32 payment tiles, 40 empty state and PIN lock
+  labels (`IconSize.Inline`)**, 24 rows and steps (`IconSize.Standard`), 32 payment tiles
+  (`IconSize.Tile`), 40 empty state and PIN lock
   (`IconSize.Large`; 56 on regular empty state). 18 is the one off-grid size.
 - Status badge glyph is 55% of the badge (88/64/56 dp by size set).
 - The application icon is PNG, not adaptive; `MainActivity` has its own adaptive icon (AGENTS.md).
@@ -178,11 +179,11 @@ All in `ui/components/` unless noted. Prefer these over raw Material components 
 | `GatedButton` (`feature/`) | wraps the above | | Use for any action reaching Adyen or a terminal |
 | `QuantityStepper` | `IconButton` | 48 dp target | − qty +, names the item for screen readers |
 
-Labels use `labelLarge`; the icon is 20 dp with an 8 dp gap; the loading spinner replaces the icon with a 12 dp gap.
+Labels use `labelLarge`; the icon is 20 dp with an 8 dp gap; the loading spinner is the same 20 dp and 8 dp gap,
+so a button's label does not move while it loads.
 Feature buttons use shared frames, enforced by `ButtonArchitectureTest`. Custom content slots retain wallet artwork,
 cart counts and row layouts while sharing shape and touch sizing.
-Removal of saved keys, PINs, registrations or history uses red `ConfirmedRemoval`. **Decision needed:** spinner sizes
-differ by button (22 primary, 18 others).
+Removal of saved keys, PINs, registrations or history uses red `ConfirmedRemoval`.
 
 ### Text fields
 
@@ -277,7 +278,6 @@ This follows the terminals' own payment screens. The owner has decided to keep l
 | `RectangleShape` full-screen dialog | `SaleScreen` custom amount, compact only | Keypad takes the whole screen |
 | `Color.White`/`Black` | Scanner and receipt rendering | Camera overlay and print preview are not themed UI |
 | 5 `sp` literals | Home tile autosize bounds, split-payment autosize, product tile line height | Autosize needs concrete bounds |
-| 18 dp icon and spinners | `BlockedReason` icon, secondary and tertiary button spinners | Kept as is: resizing would change button and notice layout; the primary spinner is 22 dp |
 | 10 dp row padding | `CapabilitiesSettings`, `SettingsComponents` list rows | Kept as is: moving to `rowPadding` would change these rows' height |
 | 6/10/18 dp and one-off layout sizes; 340/420 dp layout widths | Feature layouts and `Dimens` | Deliberate density tuning and layout constraints; token adoption preserves these values |
 | Simulator banner | `ModeBanner`, hidden during first-run setup | The only mode indicator by design |

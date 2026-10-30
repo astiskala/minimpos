@@ -49,6 +49,7 @@ import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.MinTouchTarget
 import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.receipt.label
@@ -227,7 +228,7 @@ internal fun TaxRateForm(form: TaxRateFormState) {
                     .testTag("taxDefault"),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Checkbox(checked = form.makeDefault, onCheckedChange = null, modifier = Modifier.size(48.dp))
+            Checkbox(checked = form.makeDefault, onCheckedChange = null, modifier = Modifier.size(MinTouchTarget))
             Text(stringResource(R.string.settings_tax_default))
         }
         form.parsedRate?.takeIf { form.name.isNotBlank() }?.let {

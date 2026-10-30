@@ -40,6 +40,9 @@ object IconSize {
     /** The numbered marker of a step. */
     val Standard = 24.dp
 
+    /** The artwork of a Home payment tile. */
+    val Tile = 32.dp
+
     /** Empty state on compact screens, and the badge of a result dialog. */
     val Large = 40.dp
 }

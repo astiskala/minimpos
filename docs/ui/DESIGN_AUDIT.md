@@ -206,3 +206,12 @@ raw-button count is now zero; `ButtonArchitectureTest` prevents feature-level by
 coverage. Hard findings remain zero. Five added goldens cover both
 compact component sizes, AMS1 update/cash screens and an invalid whole-number price. Spinner sizing remains deferred.
 The strict design audit remains outside CI until the separate two-clean-weeks condition is met.
+
+### Follow-up pass — October 30, 2026
+
+Behavior-neutral only, because the Linux goldens cannot be re-recorded from a macOS checkout. Added
+`IconSize.Tile` (32 dp) for the Home payment-tile artwork, adopted `MinTouchTarget` for the tax default checkbox and the
+receipt-import choice rows, and named the split-amount autosize floor (Y2).
+Visual changes are allowed when they improve consistency: record the
+goldens with CI's record option, review them, then commit. Priority 4 is done this way: every button spinner is
+`IconSize.Inline` (20 dp) with the icon's 8 dp gap, and the `BlockedReason` icon is `IconSize.Small`.

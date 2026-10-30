@@ -378,7 +378,12 @@ fun BlockedReason(
             .testTag("blockedReason"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Outlined.Info, contentDescription = null, tint = LocalStatusColors.current.warning, modifier = Modifier.size(18.dp))
+        Icon(
+            Icons.Outlined.Info,
+            contentDescription = null,
+            tint = LocalStatusColors.current.warning,
+            modifier = Modifier.size(IconSize.Small),
+        )
         Spacer(Modifier.width(Spacing.Small))
         Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     }

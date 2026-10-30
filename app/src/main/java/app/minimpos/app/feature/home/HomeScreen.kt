@@ -281,7 +281,7 @@ private fun PaymentTile(
             Modifier.padding(horizontal = dimens.screenPadding + Spacing.Small, vertical = dimens.spacing / 2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
+            Icon(icon, contentDescription = null, modifier = Modifier.size(IconSize.Tile))
             Spacer(Modifier.width(dimens.screenPadding))
             Column {
                 Text(

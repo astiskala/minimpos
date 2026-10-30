@@ -107,6 +107,7 @@ import app.minimpos.app.ui.components.rememberSearchControl
 import app.minimpos.app.ui.navigation.ChosenCard
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
+import app.minimpos.app.ui.theme.Elevation
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.CartLine
@@ -574,7 +575,7 @@ private fun CheckoutBar(
 ) {
     val dimens = LocalDimens.current
     // The same frame as the other screens' BottomActions (the scaffold has already made room for the navigation bar).
-    Surface(shadowElevation = 8.dp) {
+    Surface(shadowElevation = Elevation.ActionBar) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = dimens.screenPadding, vertical = dimens.spacing),
             horizontalArrangement = Arrangement.spacedBy(dimens.spacing),

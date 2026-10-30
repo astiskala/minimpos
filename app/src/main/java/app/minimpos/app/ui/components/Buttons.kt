@@ -31,7 +31,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 
 /**
  * A screen's main action: full width, at least the theme's button height, with an optional leading [icon]. While
@@ -123,10 +125,10 @@ private fun RowScope.ButtonContent(
 ) {
     if (spinner != null) {
         CircularProgressIndicator(modifier = Modifier.size(spinnerSize), strokeWidth = 2.dp, color = spinner)
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Spacing.Medium))
     } else if (icon != null) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(8.dp))
+        Icon(icon, contentDescription = null, modifier = Modifier.size(IconSize.Inline))
+        Spacer(Modifier.width(Spacing.Small))
     }
     Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
 }

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.Spacing
 
 /**
  * The upper-case title of a group of rows or fields, the first heading level inside a screen and a heading for screen
@@ -46,8 +47,8 @@ fun SectionHeader(
                 .padding(
                     start = horizontal,
                     end = horizontal,
-                    top = if (compact) 12.dp else 20.dp,
-                    bottom = if (compact) 4.dp else 8.dp,
+                    top = if (compact) Spacing.Medium else 20.dp,
+                    bottom = if (compact) Spacing.XSmall else Spacing.Small,
                 ).semantics { heading() },
     )
 }
@@ -139,7 +140,7 @@ fun Notice(
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {},
     ) {
-        Row(Modifier.padding(if (dimens.compact) 8.dp else dimens.cardPadding)) {
+        Row(Modifier.padding(if (dimens.compact) Spacing.Small else dimens.cardPadding)) {
             Icon(
                 if (warning) Icons.Outlined.WarningAmber else Icons.Outlined.Info,
                 contentDescription = null,

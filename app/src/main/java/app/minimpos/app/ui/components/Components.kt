@@ -59,8 +59,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
+import app.minimpos.app.ui.theme.Elevation
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.MinTouchTarget
+import app.minimpos.app.ui.theme.Spacing
 
 /**
  * The app's screen frame. The content area ends above the keyboard, so focused fields scroll into view; [bottomBar]
@@ -116,7 +119,7 @@ fun BottomActions(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val dimens = LocalDimens.current
-    Surface(shadowElevation = 8.dp, modifier = modifier) {
+    Surface(shadowElevation = Elevation.ActionBar, modifier = modifier) {
         Box(Modifier.fillMaxWidth().navigationBarsPadding(), contentAlignment = Alignment.Center) {
             Column(
                 Modifier
@@ -221,7 +224,7 @@ fun EmptyState(
 ) {
     val compact = LocalDimens.current.compact
     Column(
-        modifier = modifier.fillMaxSize().padding(if (compact) 16.dp else 32.dp),
+        modifier = modifier.fillMaxSize().padding(if (compact) Spacing.Large else Spacing.XXLarge),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -231,12 +234,12 @@ fun EmptyState(
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(if (compact) 40.dp else 56.dp),
         )
-        Spacer(Modifier.height(if (compact) 8.dp else 16.dp))
+        Spacer(Modifier.height(if (compact) Spacing.Small else Spacing.Large))
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Spacing.Small))
         Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         content?.let {
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(Spacing.XLarge))
             it()
         }
     }
@@ -257,7 +260,11 @@ fun SwitchRow(
     subtitleMaxLines: Int = Int.MAX_VALUE,
 ) {
     Row(
-        modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onChange),
+        modifier
+            .fillMaxWidth()
+            .heightIn(
+                min = MinTouchTarget,
+            ).toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -276,7 +283,7 @@ fun SwitchRow(
                 )
             }
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Spacing.Medium))
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
@@ -309,13 +316,13 @@ fun BlockedReason(
     Row(
         modifier
             .fillMaxWidth()
-            .padding(top = 4.dp)
+            .padding(top = Spacing.XSmall)
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
             .testTag("blockedReason"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Icons.Outlined.Info, contentDescription = null, tint = LocalStatusColors.current.warning, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Spacing.Small))
         Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     }
 }
@@ -332,7 +339,7 @@ fun ActionMessage(
         message,
         color = if (isError) colors.error else colors.success,
         style = MaterialTheme.typography.bodyMedium,
-        modifier = modifier.fillMaxWidth().padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
+        modifier = modifier.fillMaxWidth().padding(top = Spacing.XSmall).semantics { liveRegion = LiveRegionMode.Polite },
         textAlign = TextAlign.Center,
     )
 }

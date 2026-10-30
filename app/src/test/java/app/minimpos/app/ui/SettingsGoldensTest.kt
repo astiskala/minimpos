@@ -95,6 +95,34 @@ class SettingsGoldensTest {
         screenshot.capture()
     }
 
+    @Test
+    fun `tax settings`() {
+        openSection("section_tax")
+        waitForTag("addTaxRate")
+        screenshot.capture()
+    }
+
+    @Test
+    fun `email settings`() {
+        openSection("section_email")
+        waitForTag("emailCapture")
+        screenshot.capture()
+    }
+
+    @Test
+    fun `receipt settings`() {
+        openSection("section_receipts")
+        waitForTag("printTest")
+        screenshot.capture()
+    }
+
+    @Test
+    fun `security settings`() {
+        openSection("section_security")
+        waitForTag("setPin")
+        screenshot.capture()
+    }
+
     private fun openCurrencyPicker() {
         openSection("section_payments")
         waitForTag("currency")

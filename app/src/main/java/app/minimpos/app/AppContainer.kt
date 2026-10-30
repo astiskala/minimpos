@@ -136,6 +136,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -255,6 +256,20 @@ class AppContainer(
     /** First-run choice after storage has loaded; null prevents briefly showing either Home or onboarding too early. */
     val onboardingState: StateFlow<Boolean?> =
         settings.onboardingCompleted.stateIn(appScope, SharingStarted.Eagerly, true.takeIf { onboardingCompleted })
+
+    private val firstRunSetupState = MutableStateFlow(false)
+
+    /**
+     * Whether the first-run choice is still open below the current screen: the welcome screen and any setup opened from it.
+     * The device is not set up to simulate anything yet then, so the simulator banner stays hidden. Set by the navigation
+     * host; false after the user returns Home.
+     */
+    val firstRunSetup: StateFlow<Boolean> get() = firstRunSetupState
+
+    /** Records whether the first-run choice is [open] (see [firstRunSetup]). */
+    fun setFirstRunSetup(open: Boolean) {
+        firstRunSetupState.value = open
+    }
 
     /** Encrypted credentials (`secrets.json`). */
     val secrets = SecretStore(secretsStore, cipher, ioDispatcher)

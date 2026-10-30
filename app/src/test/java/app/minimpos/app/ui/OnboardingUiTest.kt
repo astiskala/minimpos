@@ -52,6 +52,22 @@ class OnboardingUiTest {
     }
 
     @Test
+    fun `the simulator banner stays hidden while connecting to Adyen or scanning a setup code`() {
+        compose.setContent { MiniMposApp(env.container) }
+        waitFor("onboardingTerminal")
+        compose.onNodeWithTag("onboardingTerminal").performClick()
+        compose.onNodeWithTag("onboardingContinue").performClick()
+        waitFor("scanSetup")
+        compose.onNodeWithTag("modeBanner").assertDoesNotExist()
+        compose.onNodeWithTag("back").performClick()
+        waitFor("onboardingImport")
+        compose.onNodeWithTag("onboardingImport").performClick()
+        compose.onNodeWithTag("onboardingContinue").performClick()
+        waitFor("manualSetup")
+        compose.onNodeWithTag("modeBanner").assertDoesNotExist()
+    }
+
+    @Test
     fun `welcome is a root and restoration keeps the selected first-run choice`() {
         lateinit var back: OnBackPressedDispatcher
         val restoration = StateRestorationTester(compose)

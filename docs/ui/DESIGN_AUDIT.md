@@ -121,10 +121,10 @@ Behaviour-neutral only; values are identical before and after.
 - Adopted them in `Buttons.kt`, `Components.kt`, `TextRoles.kt`, `Outcomes.kt` and the sale screen's cart bar.
 - Added `scripts/design-audit` (read-only report; `--strict` gates colour and shape literals).
 - After the screenshot baseline: adopted `Spacing` for the equal-value 4/8/12/16/24/32 dp spacing literals in shared
-  components and in the feature screens it touched, and `IconSize.Small`, `Standard` and `Large` (16, 24, 40 dp). About
-  60 equal-value literals remain in screens without goldens (History, PIN, Transfer, Reconciliation, SMTP, Tax and
-  others); adopt them per file once the screen has a golden. Dp literals went from 129/27 to 92/21 (the picker's two
-  private constants count as shared-component literals); the goldens match exactly.
+  components and in the feature screens it touched, and `IconSize.Small`, `Standard` and `Large` (16, 24, 40 dp). The
+  equal-value literals that remain are in screens without goldens (PIN entry, Transfer, Reconciliation, Troubleshooting,
+  unreferenced refunds, products, receipt import); adopt them per file once the screen has a
+  golden. Dp literals went from 129/27 to the counts `scripts/design-audit` prints; the goldens match exactly.
 - Extracted `PickerDialog` for the currency and terminal pickers (C1, S6); the picker goldens match exactly.
 - Reviewed the raw Material buttons (T-class, soft): none was migrated. Each is a dialog action slot, a row or chip
   with its own size (update banner, play/pause, wallet row, API-roles expander, list-row choices), none the full-width

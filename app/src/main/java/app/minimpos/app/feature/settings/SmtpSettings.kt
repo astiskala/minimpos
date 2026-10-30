@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.EmailSettings
 import app.minimpos.app.data.settings.SmtpSecurity
@@ -36,6 +35,7 @@ import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.components.openUrl
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 
 /**
  * The SMTP server, login and password ([onPassword] with null forgets it); the providers' help pages are linked only
@@ -143,9 +143,9 @@ private fun SmtpProviderButtons(
     onFill: (SmtpProvider) -> Unit,
     onOther: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 4.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = Spacing.XSmall)) {
         Description(stringResource(R.string.settings_smtp_providers))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.Small)) {
             SmtpProvider.entries.forEach { provider ->
                 ProviderChip(provider.label, provider == selected, { onFill(provider) }, "smtpProvider_${provider.name}")
             }
@@ -180,7 +180,7 @@ private fun SmtpProviderHelp(
     canOpenLinks: Boolean,
 ) {
     val context = LocalContext.current
-    Column(Modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 4.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = Spacing.XSmall)) {
         Description(stringResource(providerAdvice(provider)), Modifier.testTag("smtpAdvice"))
         if (canOpenLinks) {
             TertiaryButton(

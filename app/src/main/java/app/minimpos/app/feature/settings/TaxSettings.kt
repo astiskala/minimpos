@@ -49,6 +49,7 @@ import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.receipt.label
 import app.minimpos.core.tax.TaxMode
@@ -95,7 +96,7 @@ internal fun ColumnScope.TaxSection(
         ActionMessage(
             pluralStringResource(R.plurals.settings_tax_in_use, count, count),
             isError = true,
-            modifier = Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = Spacing.Small),
         )
     }
     SettingActions {
@@ -208,7 +209,7 @@ internal fun TaxRateDialog(
 
 @Composable
 internal fun TaxRateForm(form: TaxRateFormState) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.Small)) {
         TaxNameField(form)
         TaxNameSuggestions(form.name) { form.name = it }
         TaxRateField(form)
@@ -281,7 +282,7 @@ private fun TaxNameSuggestions(
     val suggestions = stringArrayResource(R.array.tax_name_suggestions)
     val matching = suggestions.firstOrNull { name.trim() == it }
     var otherChosen by rememberSaveable { mutableStateOf(false) }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.Small)) {
         suggestions.forEach { suggestion ->
             TaxNameChip(suggestion, matching == suggestion, {
                 otherChosen = false

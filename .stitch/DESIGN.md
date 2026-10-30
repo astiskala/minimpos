@@ -264,7 +264,7 @@ scheme; any such change must keep `ThemeContrastTest` passing and Stitch needs a
 | 5 `sp` literals | Home tile autosize bounds, split-payment autosize, product tile line height | Autosize needs concrete bounds |
 | 18 dp icon and spinners | `BlockedReason` icon, secondary and tertiary button spinners | Kept as is: resizing would change button and notice layout; the primary spinner is 22 dp |
 | 10 dp row padding | `CapabilitiesSettings`, `SettingsComponents` list rows | Kept as is: moving to `rowPadding` would change these rows' height |
-| Simulator banner | `ModeBanner`, hidden until first-run setup is chosen | The only mode indicator by design |
+| Simulator banner | `ModeBanner`, hidden during first-run setup | The only mode indicator by design |
 | No Home terminal-status line, no TEST banner | Home | Deliberate product choices |
 
 ## Open Questions

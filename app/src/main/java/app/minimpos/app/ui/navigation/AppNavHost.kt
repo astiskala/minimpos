@@ -11,6 +11,7 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -107,6 +108,11 @@ fun AppNavHost() {
         }
     }
 
+    val firstRun = navigator.isOnboarding
+    DisposableEffect(firstRun) {
+        container.setFirstRunSetup(firstRun)
+        onDispose { container.setFirstRunSetup(false) }
+    }
     SetupGateHost(onSetUp = { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }) {
         AppEntries(backStack, navigator)
     }

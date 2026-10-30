@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
 import app.minimpos.app.ui.theme.Spacing
@@ -145,7 +146,7 @@ fun Notice(
                 if (warning) Icons.Outlined.WarningAmber else Icons.Outlined.Info,
                 contentDescription = null,
                 tint = if (warning) status.warning else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(if (dimens.compact) 16.dp else 20.dp),
+                modifier = Modifier.size(if (dimens.compact) IconSize.Small else IconSize.Inline),
             )
             Spacer(Modifier.width(dimens.spacing))
             Text(text, style = explanationStyle(), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))

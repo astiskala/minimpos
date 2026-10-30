@@ -57,6 +57,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.minimpos.app.R
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
@@ -80,7 +81,7 @@ fun ScannerDialog(
         Surface(Modifier.fillMaxSize(), color = Color.Black) {
             Box(Modifier.fillMaxSize()) {
                 ScannerView(mode = mode, onResult = onResult, modifier = Modifier.fillMaxSize())
-                IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+                IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.Small)) {
                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_close), tint = Color.White)
                 }
                 ScanHint(
@@ -107,7 +108,7 @@ fun ScanHint(
             modifier
                 .padding(LocalDimens.current.screenPadding * 2)
                 .background(Color.Black.copy(alpha = HINT_ALPHA), MaterialTheme.shapes.large)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = Spacing.Large, vertical = Spacing.Small),
     )
 }
 
@@ -202,7 +203,7 @@ private fun CameraPreview(
             Text(
                 stringResource(R.string.scan_camera_error),
                 color = Color.White,
-                modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                modifier = Modifier.align(Alignment.Center).padding(Spacing.XLarge),
                 textAlign = TextAlign.Center,
             )
         }
@@ -215,13 +216,13 @@ private fun CameraPermissionPrompt(
     onGrant: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.padding(Spacing.XLarge), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(Icons.Default.NoPhotography, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
         Text(
             stringResource(R.string.scan_permission),
             color = Color.White,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(Spacing.Large),
         )
         PrimaryButton(stringResource(R.string.scan_grant), onGrant, modifier = Modifier.widthIn(max = 320.dp))
     }

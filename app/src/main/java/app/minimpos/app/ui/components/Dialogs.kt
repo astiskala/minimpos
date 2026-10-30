@@ -27,9 +27,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.terminal.SharedKeyOffer
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.shopper.ShopperReferences
 
@@ -105,7 +105,7 @@ fun ResultDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { StatusBadge(if (isError) StatusKind.ERROR else StatusKind.SUCCESS, size = 40.dp) },
+        icon = { StatusBadge(if (isError) StatusKind.ERROR else StatusKind.SUCCESS, size = IconSize.Large) },
         title = { Text(title) },
         text = {
             Column(

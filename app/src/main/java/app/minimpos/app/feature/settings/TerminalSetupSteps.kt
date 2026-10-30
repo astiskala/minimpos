@@ -86,6 +86,8 @@ import app.minimpos.app.ui.components.StepHeader
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.openUrl
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.MinTouchTarget
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.terminal.transport.TerminalEnvironment
 
 /** Changes the terminal settings with a transform of the stored ones. */
@@ -339,13 +341,13 @@ private fun ColumnScope.EnvironmentStep(
                         selected = environment == value,
                         role = Role.RadioButton,
                         onClick = { update { it.selectEnvironment(value) } },
-                    ).heightIn(min = 48.dp)
+                    ).heightIn(min = MinTouchTarget)
                     .padding(horizontal = LocalDimens.current.rowHorizontalPadding)
                     .testTag("environment_$value"),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RadioButton(selected = environment == value, onClick = null)
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(Spacing.Medium))
                 Text(stringResource(if (value == TerminalEnvironment.TEST) R.string.settings_env_test else R.string.settings_env_live))
             }
         }
@@ -608,14 +610,14 @@ private fun ColumnScope.ApiKeyRoles() {
     TextButton(
         onClick = { expanded = !expanded },
         modifier = Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding).testTag("apiRoles"),
-        contentPadding = PaddingValues(vertical = 8.dp),
+        contentPadding = PaddingValues(vertical = Spacing.Small),
     ) {
         Icon(
             if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
             contentDescription = null,
             modifier = Modifier.testTag("apiRolesArrow"),
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Spacing.Small))
         Text(stringResource(if (expanded) R.string.settings_hide_roles else R.string.settings_show_roles))
     }
     if (expanded) {

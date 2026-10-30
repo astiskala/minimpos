@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.payment.ScanWallet
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
@@ -62,7 +63,7 @@ internal fun WalletChoice(
             contentScale = ContentScale.Fit,
             modifier = Modifier.size(40.dp, 26.dp).testTag("wallet_logo_${wallet.brand}"),
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Spacing.Medium))
         Text(
             wallet.displayName,
             modifier = Modifier.weight(1f),

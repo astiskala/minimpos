@@ -100,6 +100,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.payment.PaymentMethods
@@ -572,7 +573,7 @@ private fun CartSummary(
     money: MoneyFormatter,
 ) {
     CartPart(first = state.totals.lines.isEmpty(), last = true) {
-        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(Modifier.padding(vertical = Spacing.Small))
         if (state.showsTax) LabeledValue(stringResource(R.string.checkout_tax), money.format(state.totals.amounts.tax))
         LabeledValue(stringResource(R.string.checkout_total), money.format(state.totals.amounts.gross), emphasize = true)
     }

@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.ui.theme.Elevation
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
 import app.minimpos.app.ui.theme.MinTouchTarget
@@ -201,7 +202,7 @@ fun LabeledValue(
         val valueMax = (maxWidth - 104.dp).coerceAtLeast(maxWidth * 0.5f)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = style, modifier = Modifier.weight(1f))
-            Spacer(Modifier.width(if (compact) 8.dp else 12.dp))
+            Spacer(Modifier.width(if (compact) Spacing.Small else Spacing.Medium))
             Text(
                 value,
                 style = style,
@@ -232,7 +233,7 @@ fun EmptyState(
             icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(if (compact) 40.dp else 56.dp),
+            modifier = Modifier.size(if (compact) IconSize.Large else 56.dp),
         )
         Spacer(Modifier.height(if (compact) Spacing.Small else Spacing.Large))
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)

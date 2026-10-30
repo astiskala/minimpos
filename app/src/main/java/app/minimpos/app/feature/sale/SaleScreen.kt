@@ -108,7 +108,9 @@ import app.minimpos.app.ui.navigation.ChosenCard
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.Elevation
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.CartLine
 import app.minimpos.core.money.AmountEntry
@@ -477,7 +479,7 @@ internal fun ProductBrowser(
                     Text(
                         stringResource(if (state.preAuthorisation) R.string.pre_auth_no_products else R.string.sale_no_products),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(8.dp),
+                        modifier = Modifier.padding(Spacing.Small),
                     )
                 }
             }
@@ -495,8 +497,8 @@ private fun CategoryFilters(
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = gap),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(top = if (LocalDimens.current.compact) 4.dp else 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.Small),
+        modifier = Modifier.padding(top = if (LocalDimens.current.compact) Spacing.XSmall else Spacing.Small),
     ) {
         item {
             FilterChip(selected = selected == null, onClick = {
@@ -586,10 +588,10 @@ private fun CheckoutBar(
                     onClick = onCart,
                     enabled = itemCount > 0,
                     shape = MaterialTheme.shapes.medium,
-                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    contentPadding = PaddingValues(horizontal = Spacing.Medium),
                     modifier = Modifier.heightIn(min = dimens.buttonHeight).testTag("cartButton"),
                 ) {
-                    Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(IconSize.Inline))
                     Spacer(Modifier.width(6.dp))
                     Text(pluralStringResource(R.plurals.sale_items, itemCount, itemCount), style = MaterialTheme.typography.labelLarge)
                 }
@@ -671,7 +673,7 @@ private fun CustomItemDialog(
         // On small screens the keypad takes the whole screen, its keys sharing whatever height is left, so nothing scrolls.
         Surface(
             shape = if (dimens.compact) RectangleShape else MaterialTheme.shapes.large,
-            modifier = if (dimens.compact) Modifier.fillMaxSize() else Modifier.fillMaxWidth().padding(16.dp),
+            modifier = if (dimens.compact) Modifier.fillMaxSize() else Modifier.fillMaxWidth().padding(Spacing.Large),
         ) {
             Column(
                 (

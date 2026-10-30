@@ -28,8 +28,17 @@ object Spacing {
 
 /** Sizes of icons drawn inside text, buttons and rows. */
 object IconSize {
+    /** In compact notices and the tick of a finished step. */
+    val Small = 16.dp
+
     /** Beside a button label. */
     val Inline = 20.dp
+
+    /** The numbered marker of a step. */
+    val Standard = 24.dp
+
+    /** Empty state on compact screens, and the badge of a result dialog. */
+    val Large = 40.dp
 }
 
 /** The smallest touch target Android accessibility guidance allows (48 × 48 dp). */

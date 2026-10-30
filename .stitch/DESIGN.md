@@ -155,8 +155,9 @@ surfaces. **Decision needed:** whether dialogs and sheets should use Material de
 
 - Material icons (`Icons.Default`, `Outlined`, `AutoMirrored`); icons are decorative (`contentDescription = null`)
   whenever text sits beside them.
-- Observed sizes (dp): 16 compact notice, 18 blocked reason, **20 beside button labels (`IconSize.Inline`)**, 24 rows
-  and steps, 32 payment tiles, 40 empty state and PIN lock (56 on regular empty state). 18 is the one off-grid size.
+- Observed sizes (dp): 16 compact notice and finished step (`IconSize.Small`), 18 blocked reason, **20 beside button
+  labels (`IconSize.Inline`)**, 24 rows and steps (`IconSize.Standard`), 32 payment tiles, 40 empty state and PIN lock
+  (`IconSize.Large`; 56 on regular empty state). 18 is the one off-grid size.
 - Status badge glyph is 55% of the badge (88/64/56 dp by size set).
 - The application icon is PNG, not adaptive; `MainActivity` has its own adaptive icon (AGENTS.md).
 

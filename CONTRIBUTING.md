@@ -320,6 +320,10 @@ The snapshot set defaults to `1017` (`SNAPSHOT` overrides it). Create a fresh ow
 never overwritten. Run `start` in a separate terminal; it stays in the foreground. Its read-only emulator session
 discards runtime edits on shutdown, leaving the source and saved fixture archives unchanged.
 
+Snapshots include installation-bound encrypted secrets. If an archive's demo PIN cannot be read on a new clone,
+recreate the demo PINs through Settings on that owned clone before capturing and refresh its snapshots. Keep the
+fixture catalog and history; never apply this fixture repair to a merchant device or the source AVD.
+
 ```sh
 scripts/docs-emulator clone SOURCE_DOCS_AVD MiniMpos_Docs_Disposable_refresh
 scripts/docs-emulator start MiniMpos_Docs_Disposable_refresh 5570

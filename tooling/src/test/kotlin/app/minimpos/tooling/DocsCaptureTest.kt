@@ -12,6 +12,44 @@ class DocsCaptureTest {
     val temporary = TemporaryFolder()
 
     @Test
+    fun `enabling an already checked switch is an idempotent capture step`() {
+        val root = fixture()
+        Files.writeString(
+            root.resolve("ui.xml"),
+            """<node text="保存卡片" bounds="[30,910][550,950]"/>""" +
+                """<node checkable="true" checked="true" bounds="[30,900][690,1000]"/>""",
+        )
+        assertThat(run(root, "enable_switch", "zh-CN", "=保存卡片").code).isEqualTo(0)
+        assertThat(Files.readString(root.resolve("calls"))).doesNotContain("shell input tap")
+    }
+
+    @Test
+    fun `enabling an unchecked switch taps the control beside its label`() {
+        val root = fixture()
+        Files.writeString(
+            root.resolve("ui.xml"),
+            """<node text="保存卡片" bounds="[30,910][550,950]"/>""" +
+                """<node checkable="true" checked="false" bounds="[30,900][690,1000]"/>""",
+        )
+        assertThat(run(root, "enable_switch", "zh-CN", "=保存卡片").code).isEqualTo(0)
+        assertThat(Files.readString(root.resolve("calls"))).contains("shell input tap 360 950")
+    }
+
+    @Test
+    fun `field tap prefers the accessible input over its external title`() {
+        val root = fixture()
+        Files.writeString(
+            root.resolve("ui.xml"),
+            """<node text="税率" bounds="[30,250][690,300]"/>""" +
+                """<node content-desc="税率" bounds="[30,350][690,450]"/>""",
+        )
+        assertThat(run(root, "tap", "zh-CN", "=税率").code).isEqualTo(0)
+        val calls = Files.readString(root.resolve("calls"))
+        assertThat(calls).contains("shell input tap 360 400")
+        assertThat(calls).doesNotContain("shell input tap 360 275")
+    }
+
+    @Test
     fun `Chinese Pay matches the action rather than the simulator disclosure`() {
         val root = fixture()
         val result = run(root, "tap", "zh-CN", "^checkout_pay")
@@ -49,6 +87,7 @@ class DocsCaptureTest {
         assertThat(run(root, "locale", "zh-CN").code).isEqualTo(0)
         val calls = Files.readAllLines(root.resolve("calls"))
         assertThat(calls.indexOf("shell wm size 720x1376")).isGreaterThan(calls.indexOf("shell start"))
+        assertThat(calls.indexOf("shell wm density reset")).isGreaterThan(calls.indexOf("shell start"))
         assertThat(run(root, "finish", reset = true).code).isEqualTo(0)
         assertThat(Files.readAllLines(root.resolve("calls"))).contains("shell wm size reset")
     }
@@ -181,6 +220,7 @@ class DocsCaptureTest {
             |      exit 1
             |    fi ;;
             |  'exec-out cat')
+            |    if [ -f "${'$'}FIXTURE/ui.xml" ]; then cat "${'$'}FIXTURE/ui.xml"; exit 0; fi
             |    printf '%s\n' '<node text="模拟器 — 不会进行真实支付" bounds="[0,160][720,200]"/>'
             |    printf '%s\n' '<node text="支付 ${'$'}33.50" bounds="[30,900][690,1000]"/>'
             |    if [ "${'$'}HOME_READY" = 1 ]; then

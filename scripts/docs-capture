@@ -11,6 +11,7 @@
 #   scripts/docs-capture scroll LANG KEY     swipe up until KEY's node is on screen
 #   scripts/docs-capture settings LANG [KEY] open Settings with the fixtures' admin PIN, then section KEY
 #   scripts/docs-capture shot LANG NAME      raw capture into $SHOTS/LANG-NAME.png
+#   scripts/docs-capture enable_switch LANG KEY  turn a labeled switch on, leaving an enabled switch unchanged
 #   scripts/docs-capture expand_receipt      expand the open simulated printer sheet
 #   scripts/docs-capture close_receipt       close the printer sheet without leaving the underlying screen
 #   scripts/docs-capture manager_fixture LANG  give docs-$SNAPSHOT-LANG.tar the demo Manager PIN (2468), once
@@ -54,6 +55,7 @@ restart_framework() {
     sleep 3
     remote settings put global device_name S1F2-000158213605014
     tall_display
+    remote wm density reset
 }
 
 # The value of string resource $2 in language $1, unescaped as the app shows it.
@@ -93,7 +95,11 @@ centre() {
             # In Chinese, the simulator disclosure also contains the word on the Pay button.
             awk -v t="$text" 'match($0, /text="[^"]*"/) && index(substr($0, RSTART + 6, RLENGTH - 7), t)' | tail -n 1
         else
-            grep -F -e "text=\"$text\"" -e "content-desc=\"$text\"" | head -n 1
+            # External field titles share the input's name: prefer its accessible label over the title text.
+            awk -v t="$text" '
+                index($0, "content-desc=\"" t "\"") && accessible == "" { accessible = $0 }
+                index($0, "text=\"" t "\"") && visible == "" { visible = $0 }
+                END { if (accessible != "") print accessible; else if (visible != "") print visible }'
         fi |
         sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
         awk '{ print int(($1 + $3) / 2), int(($2 + $4) / 2) }'
@@ -435,7 +441,7 @@ enable_switch() {
         exit 1
     }
     remote uiautomator dump /data/local/tmp/ui.xml > /dev/null 2>&1
-    xy=$(device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' | grep 'checkable="true"' | grep 'checked="false"' |
+    xy=$(device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' | awk '/checkable="true"/ && /checked="false"/' |
         sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
         awk -v ly="$label_y" '{ c = int(($2 + $4) / 2); d = c - ly; if (d < 0) d = -d; if (d < 60 && (best == "" || d < bd)) { best = int(($1 + $3) / 2) " " c; bd = d } } END { print best }')
     if [[ -n $xy ]]; then
@@ -719,8 +725,10 @@ flow_ams1() {
     flow_cart "$1"
     remote wm size 480x872
     remote wm density 240
+    remote settings put global device_name AMS1-000168223606144
     sleep 4
     shot "$1" sale-ams1
+    remote settings put global device_name S1F2-000158213605014
     tall_display
     remote wm density reset
     sleep 3
@@ -815,7 +823,7 @@ shutdown() {
 }
 
 case ${1:-} in
-    prepare | locale | snapshot | restore | install | launch | back | tap | scroll | shot | expand_receipt | close_receipt | settings | manager_fixture | flow | batch | process | finish | shutdown)
+    prepare | locale | snapshot | restore | install | launch | back | tap | scroll | shot | enable_switch | expand_receipt | close_receipt | settings | manager_fixture | flow | batch | process | finish | shutdown)
         command=$1
         shift
         "$command" "$@"

@@ -148,10 +148,10 @@ standalone release builds retain release lint by default. R8, signing and packag
   `app/build/reports/ui-failures/<test-task>/`. Passing tests do not capture; directories are unique across workers.
   Capture errors never replace the original assertion. These contain synthetic test data, not merchant screenshots;
   CI includes them in its existing reports artifact. Check timestamps: old failure artifacts may remain.
-- `DesignGalleryTest` and `ScreenGoldensTest` compare shared components and whole screens with golden images under
-  `app/src/test/screenshots/` through Roborazzi (test-only). `ScreenshotRule` (rule order 2, after the recording rule)
-  names images from test class, method and window size, fixes the locale (`en-AU`), time zone (UTC) and font scale, and
-  freezes the Compose clock. In an ordinary test run it captures nothing; see
+- `DesignGalleryTest`, `ScreenGoldensTest` and `SettingsGoldensTest` compare shared components and whole screens with
+  golden images under `app/src/test/screenshots/` through Roborazzi (test-only). `ScreenshotRule` (rule order 2, after
+  the recording rule) names images from test class, method and window size, fixes the locale (`en-AU`), time zone (UTC)
+  and font scale, and freezes the Compose clock. In an ordinary test run it captures nothing; see
   [Update the golden screenshots](#update-the-golden-screenshots).
 - `LocalizationTest` checks resource/format parity and writes receipt samples under
   `app/build/reports/localization/`. `LocalizedUiTest` checks Simplified/Traditional Chinese and Japanese checkout

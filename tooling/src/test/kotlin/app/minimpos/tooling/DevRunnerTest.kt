@@ -43,12 +43,12 @@ class DevRunnerTest {
         val compare = run(fixture(), "check", "ui-snapshots", "--stacktrace")
         assertThat(compare.code).isEqualTo(0)
         assertThat(compare.output).contains(
-            "<:app:verifyRoborazziDebug>\n<--tests>\n<*DesignGalleryTest>\n<--tests>\n<*ScreenGoldensTest>\n<--stacktrace>",
+            "<:app:verifyRoborazziDebug>\n<--tests>\n<*DesignGalleryTest>\n<--tests>\n<*ScreenGoldensTest>\n<--tests>\n<*SettingsGoldensTest>\n<--stacktrace>",
         )
         val record = run(fixture(), "snapshots", "record", "--stacktrace")
         assertThat(record.code).isEqualTo(0)
         assertThat(record.output).contains(
-            "<:app:recordRoborazziDebug>\n<--tests>\n<*DesignGalleryTest>\n<--tests>\n<*ScreenGoldensTest>\n<--stacktrace>",
+            "<:app:recordRoborazziDebug>\n<--tests>\n<*DesignGalleryTest>\n<--tests>\n<*ScreenGoldensTest>\n<--tests>\n<*SettingsGoldensTest>\n<--stacktrace>",
         )
         val unknown = run(fixture(), "snapshots", "verify")
         assertThat(unknown.code).isEqualTo(2)

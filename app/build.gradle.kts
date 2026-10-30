@@ -580,7 +580,7 @@ abstract class BackportedMethodsTask : DefaultTask() {
         BackportedMethodList.run(
             BackportedMethodListCommand
                 .builder()
-                .setMinApiLevel(minSdk.get())
+                .setMinApiLevel(minSdk.get(), 0)
                 .addLibraryFiles(androidJar.get().asFile.toPath())
                 .setOutputPath(list.get().asFile.toPath())
                 .build(),

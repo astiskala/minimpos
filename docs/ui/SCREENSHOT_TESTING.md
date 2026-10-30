@@ -28,8 +28,10 @@ the repository already does.
 - **CI rollout:** the separate `ui-snapshots` job uses `ubuntu-latest` and Temurin 21, with a failure artifact containing
   `app/build/reports/roborazzi/`. Its manual recording option uploads goldens for review. The initial Linux comparison
   failed on two gallery images; all whole screens passed at 0.1 %. The reviewed goldens were re-recorded by CI run
-  `41017912554` on Ubuntu 24.04 image `20261025.353.1`, Temurin `21.0.13+9`. Two clean comparison runs and owner
-  approval are still required before adding the comparison to `qualityGate`. Independent CI recording runs
+  `41017912554` on Ubuntu 24.04 image `20261025.353.1`, Temurin `21.0.13+9`. Fresh comparison runs
+  [41019777329](https://github.com/astiskala/minimpos/actions/runs/41019777329) and
+  [41019780887](https://github.com/astiskala/minimpos/actions/runs/41019780887) both passed all 54 images, with the build
+  cache disabled. The comparison remains outside `qualityGate` pending owner approval. Independent CI recording runs
   `41017912554` and `41018426929` produced byte-identical PNGs for all 54 images. The owner reviewed that evidence on
   October 30, 2026 and chose to keep the existing thresholds and color-distance filter.
 - **Remaining coverage:** checkout review at 1.5×, Japanese results and History's empty state. Scanner already uses

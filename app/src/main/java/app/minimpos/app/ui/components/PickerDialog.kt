@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
@@ -78,10 +80,14 @@ fun PickerDialog(
             Column(
                 Modifier
                     .heightIn(max = PICKER_MAX_HEIGHT)
-                    .padding(vertical = if (compact) Spacing.Medium else PICKER_REGULAR_PADDING),
+                    .padding(vertical = if (compact) Spacing.Medium else Spacing.Section),
                 verticalArrangement = Arrangement.spacedBy(Spacing.Small),
             ) {
-                Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = Spacing.XLarge))
+                Text(
+                    title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(horizontal = Spacing.XLarge).semantics { heading() },
+                )
                 content()
                 OutlinedTextField(
                     value = query,
@@ -116,6 +122,3 @@ fun PickerDialog(
 }
 
 private val PICKER_MAX_HEIGHT = 600.dp
-
-/** The padding above and below the dialog's content on a regular screen; between two steps of [Spacing]. */
-private val PICKER_REGULAR_PADDING = 20.dp

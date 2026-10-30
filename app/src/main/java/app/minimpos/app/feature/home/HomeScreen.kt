@@ -73,8 +73,10 @@ import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.openInBrowser
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.app.update.UpdateCheck
 
 /**
@@ -243,7 +245,7 @@ private fun UpdateCard(
             Spacer(Modifier.width(dimens.spacing))
             Button(
                 onClick = { context.openInBrowser(update.apkUrl) },
-                contentPadding = PaddingValues(horizontal = 12.dp),
+                contentPadding = PaddingValues(horizontal = Spacing.Medium),
                 modifier = Modifier.testTag("updateDownload"),
             ) { Text(stringResource(R.string.update_download)) }
             IconButton(onClick = onDismiss, modifier = Modifier.testTag("updateDismiss")) {
@@ -277,7 +279,7 @@ private fun PaymentTile(
         modifier = modifier,
     ) {
         Row(
-            Modifier.padding(horizontal = dimens.screenPadding + 8.dp, vertical = dimens.spacing / 2),
+            Modifier.padding(horizontal = dimens.screenPadding + Spacing.Small, vertical = dimens.spacing / 2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
@@ -411,7 +413,7 @@ private fun RowScope.HomeTile(
                 icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(IconSize.Standard),
             )
             Text(
                 label,

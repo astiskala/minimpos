@@ -100,8 +100,10 @@ import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.money.AdyenCurrencies
 import app.minimpos.core.money.CurrencySpec
@@ -744,7 +746,7 @@ private fun SettingsSectionLayout(
         Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(Modifier.widthIn(max = LocalDimens.current.listMaxWidth).padding(bottom = 32.dp), content = content)
+        Column(Modifier.widthIn(max = LocalDimens.current.listMaxWidth).padding(bottom = Spacing.XXLarge), content = content)
     }
 }
 
@@ -1069,8 +1071,8 @@ private fun ConnectionStatus(
                 .testTag("connectionStatus"),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(16.dp))
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(IconSize.Standard))
+            Spacer(Modifier.width(Spacing.Large))
             Column(Modifier.weight(1f)) {
                 Text(connectionTitle(connection), style = MaterialTheme.typography.bodyLarge)
                 if (detail.isNotBlank()) {
@@ -1344,7 +1346,7 @@ private fun AboutSection(state: SettingsUiState) {
             terminal.onTerminal -> R.string.settings_mode_terminal
             else -> R.string.settings_mode_network
         }
-    Column(Modifier.padding(16.dp)) {
+    Column(Modifier.padding(Spacing.Large)) {
         LabeledValue(stringResource(R.string.about_version), "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
         LabeledValue(stringResource(R.string.settings_mode), stringResource(mode))
         LabeledValue(stringResource(R.string.settings_poiid), terminal.poiId)
@@ -1362,7 +1364,7 @@ private fun AboutSection(state: SettingsUiState) {
         LabeledValue(stringResource(R.string.about_app_info_integrator), info.integrator)
         LabeledValue(stringResource(R.string.about_app_info_device), info.device)
         LabeledValue(stringResource(R.string.about_app_info_library), info.library)
-        HorizontalDivider(Modifier.padding(vertical = 12.dp))
+        HorizontalDivider(Modifier.padding(vertical = Spacing.Medium))
         Description(stringResource(R.string.about_text))
     }
 }

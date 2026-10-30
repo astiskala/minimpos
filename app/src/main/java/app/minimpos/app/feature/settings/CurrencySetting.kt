@@ -29,6 +29,7 @@ import app.minimpos.app.R
 import app.minimpos.app.ui.components.PickerDialog
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.money.AdyenCurrencies
 import app.minimpos.core.money.AdyenCurrency
 import java.util.Currency
@@ -152,12 +153,12 @@ private fun CurrencyOption(
         Modifier
             .fillMaxWidth()
             .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
-            .padding(horizontal = 24.dp, vertical = 12.dp)
+            .padding(horizontal = Spacing.XLarge, vertical = Spacing.Medium)
             .testTag("currency_$tagSuffix"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = null)
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Spacing.Medium))
         Text(label)
     }
 }

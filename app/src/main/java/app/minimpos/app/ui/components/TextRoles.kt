@@ -48,7 +48,7 @@ fun SectionHeader(
                 .padding(
                     start = horizontal,
                     end = horizontal,
-                    top = if (compact) Spacing.Medium else 20.dp,
+                    top = if (compact) Spacing.Medium else Spacing.Section,
                     bottom = if (compact) Spacing.XSmall else Spacing.Small,
                 ).semantics { heading() },
     )

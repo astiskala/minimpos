@@ -47,10 +47,10 @@ value-preserving change with no visual or behavioural difference, verifiable by 
 
 | # | File / component | Current | Expected | Confidence | Recommended change | Auto-fix |
 | --- | --- | --- | --- | --- | --- | --- |
-| S1 | `SectionHeader` (`TextRoles.kt`) | Top 12 dp compact, **20 dp** regular | Scale step 16 or 24 | Medium | Decide whether 20 is a deliberate half-step; if so add it to `Spacing` | No |
+| S1 | `SectionHeader` (`TextRoles.kt`) | Top 12 dp compact, **20 dp** regular | Scale step 16 or 24 | Medium | **Done:** 20 dp is the deliberate `Spacing.Section` step (also the picker padding) | No |
 | S2 | `Components.kt` `LabeledValue` | Vertical 3 dp compact, 4 dp regular; the simulator banner in `Widgets.kt` uses 2/4 dp | One of 2/4 | Low | Keep; density tuning for AMS1 | No |
 | S3 | `Steps.kt` | Top 16/24, bottom 4/8 | Scale values | High | Adopt tokens only | Yes |
-| S4 | `CapabilitiesSettings.kt:276`, `SettingsComponents.kt:331` | Vertical **10 dp** | `Dimens.rowPadding` (12/10/8) | Medium | Probably `rowPadding`; confirm on AMS1 | No |
+| S4 | `CapabilitiesSettings.kt:276`, `SettingsComponents.kt:331` | Vertical **10 dp** | `Dimens.rowPadding` (12/10/8) | Medium | **Kept:** listed in `DESIGN.md` › Known Exceptions | No |
 | S5 | `Dimens.Medium.tileVerticalPadding` | **6.25 dp**; Regular 6; Compact 5 | 6 | Low | Fractional value looks tuned to fit AMS1/S1F2 two-line tiles; leave | No |
 | S6 | Picker dialogs (`CurrencySetting.kt`, `TerminalSetupSteps.kt`) | 24 dp horizontal, 12/20 vertical, `heightIn(max = 600)` | One shared definition | High | **Done** with C1 | No |
 
@@ -108,8 +108,8 @@ because Material lacks success and warning slots: expected.
 | # | Question | Why it is open |
 | --- | --- | --- |
 | R1 | Dark theme for phones and tablets | Code is light-only; changing it is a product call and doubles the token set |
-| R2 | The 20 dp spacing and icon step | Appears in section header, notice and button icon; not on the 4-8-12-16-24-32 scale |
-| R3 | 18 dp icons and spinners | Only size not on the icon scale |
+| R2 | The 20 dp spacing and icon step | **Decided:** `Spacing.Section` (spacing) and `IconSize.Inline` (icon) |
+| R3 | 18 dp icons and spinners | **Decided:** kept as a documented exception |
 | R4 | Whether raw `TextButton`s in picker rows are intended | They are list rows styled as text buttons |
 | R5 | `AppTextField`, `AppDialog`, `AppTopBar` wrappers | Current `MiniScaffold` and dialog family already cover most uses; wrappers need a concrete duplication to justify them |
 
@@ -142,6 +142,6 @@ migration, dark mode and every medium or low confidence item.
    components, Home, the sale keypad, the results, Settings and the pickers.
 2. ~~Finish T2 and T3 file by file~~ for equal-value literals in covered screens (done); the rest, the 6, 10 and 20 dp
    and one-off sizes remain.
-3. Decide R2, R3 and S1; update `DESIGN.md` and the tokens together.
+3. ~~Decide R2, R3 and S1~~ (done: `Spacing.Section`; 18 dp and 10 dp kept as exceptions).
 4. ~~Extract the picker dialog (C1).~~ Done.
 5. Gate `scripts/design-audit --strict` in CI.

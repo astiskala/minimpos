@@ -19,6 +19,9 @@ object Spacing {
     /** Around empty-state content on compact screens and above a section's first element. */
     val Large = 16.dp
 
+    /** Above a section header on regular screens and around the content of a picker dialog. */
+    val Section = 20.dp
+
     /** Before an empty state's action and between large, separate blocks. */
     val XLarge = 24.dp
 

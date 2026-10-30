@@ -127,9 +127,9 @@ Two layers, both **Observed**.
 
 Widths: `contentMaxWidth` 560, `listMaxWidth` 640, `narrowActionMaxWidth` 320, `homeMaxHeight` 640, `fabClearance` 88.
 
-**Fixed scale (`Spacing`, `Tokens.kt`)**: 4 `XSmall`, 8 `Small`, 12 `Medium`, 16 `Large`, 24 `XLarge`, 32 `XXLarge`.
-Use it for gaps that do not depend on screen size. **Inferred:** a 20 dp step also appears (section header top
-padding, button icon, notice icon) and is not on the scale; see the audit.
+**Fixed scale (`Spacing`, `Tokens.kt`)**: 4 `XSmall`, 8 `Small`, 12 `Medium`, 16 `Large`, 20 `Section`, 24 `XLarge`,
+32 `XXLarge`. Use it for gaps that do not depend on screen size. `Section` is the deliberate half-step above a regular
+screen's section header and around picker dialogs; the 20 dp icon is `IconSize.Inline`.
 
 ## Shapes
 
@@ -262,14 +262,14 @@ scheme; any such change must keep `ThemeContrastTest` passing and Stitch needs a
 | `RectangleShape` full-screen dialog | `SaleScreen` custom amount, compact only | Keypad takes the whole screen |
 | `Color.White`/`Black` | Scanner and receipt rendering | Camera overlay and print preview are not themed UI |
 | 5 `sp` literals | Home tile autosize bounds, split-payment autosize, product tile line height | Autosize needs concrete bounds |
-| Simulator banner | `ModeBanner` | The only mode indicator by design |
+| 18 dp icon and spinners | `BlockedReason` icon, secondary and tertiary button spinners | Kept as is: resizing would change button and notice layout; the primary spinner is 22 dp |
+| 10 dp row padding | `CapabilitiesSettings`, `SettingsComponents` list rows | Kept as is: moving to `rowPadding` would change these rows' height |
+| Simulator banner | `ModeBanner`, hidden until first-run setup is chosen | The only mode indicator by design |
 | No Home terminal-status line, no TEST banner | Home | Deliberate product choices |
 
 ## Open Questions
 
-1. Is the 18 dp icon/spinner size intended, or should it become 20 dp (`IconSize.Inline`)?
-2. Should the 20 dp spacing step become part of `Spacing`, or be replaced by 16 or 24?
-3. Should dialogs be extended with a shared `AppDialog` or stay as the current `ConfirmDialog` family?
-4. Do phone and tablet installs need dark mode, or does light-only stay a product rule?
-5. Should the non-token `dp` layout widths (340 cart pane, 420 QR, 360 receipt preview) become named constants?
-6. Which raw Material buttons in feature screens should migrate to `PrimaryButton`/`SecondaryButton`/`TertiaryButton`?
+1. Should dialogs be extended with a shared `AppDialog` or stay as the current `ConfirmDialog` family?
+2. Do phone and tablet installs need dark mode, or does light-only stay a product rule?
+3. Should the non-token `dp` layout widths (340 cart pane, 420 QR, 360 receipt preview) become named constants?
+4. Which raw Material buttons in feature screens should migrate to `PrimaryButton`/`SecondaryButton`/`TertiaryButton`?

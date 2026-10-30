@@ -63,8 +63,10 @@ import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SwitchRow
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.Spacing
 
 private fun Modifier.tagged(tag: String?) = if (tag != null) testTag(tag) else this
 
@@ -137,7 +139,7 @@ fun SettingTextField(
                 Icons.Outlined.Info,
                 it,
                 if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                Modifier.padding(top = 4.dp),
+                Modifier.padding(top = Spacing.XSmall),
             )
         }
     }
@@ -156,9 +158,9 @@ internal fun SettingFieldHeading(
             title,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 4.dp),
+            modifier = Modifier.padding(bottom = Spacing.XSmall),
         )
-        description?.let { Description(it, Modifier.tagged(descriptionTag).padding(bottom = 4.dp)) }
+        description?.let { Description(it, Modifier.tagged(descriptionTag).padding(bottom = Spacing.XSmall)) }
     }
 }
 
@@ -171,7 +173,7 @@ private fun FieldNote(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier.fillMaxWidth()) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(IconSize.Small))
         Spacer(Modifier.width(6.dp))
         Text(text, style = MaterialTheme.typography.bodySmall, color = tint)
     }
@@ -322,7 +324,7 @@ private fun <T : Any> ChoiceDialog(
         title = { Text(title) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()).selectableGroup()) {
-                note?.let { Description(it, Modifier.padding(bottom = 12.dp)) }
+                note?.let { Description(it, Modifier.padding(bottom = Spacing.Medium)) }
                 options.forEach { (value, label) ->
                     Row(
                         Modifier
@@ -334,7 +336,7 @@ private fun <T : Any> ChoiceDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(selected = value == selected, onClick = null)
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(Spacing.Medium))
                         Text(label)
                     }
                 }
@@ -543,8 +545,8 @@ fun SettingNavRow(
                 .tagged(tag),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(16.dp))
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(IconSize.Standard))
+            Spacer(Modifier.width(Spacing.Large))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.bodyLarge)
                 Text(
@@ -571,7 +573,7 @@ fun SettingIntro(
     modifier: Modifier = Modifier,
 ) {
     val compact = LocalDimens.current.compact
-    SettingNote(text, modifier.testTag("settingIntro").padding(top = if (compact) 8.dp else 16.dp))
+    SettingNote(text, modifier.testTag("settingIntro").padding(top = if (compact) Spacing.Small else Spacing.Large))
 }
 
 /**
@@ -582,4 +584,4 @@ fun SettingIntro(
 fun SettingNote(
     text: String,
     modifier: Modifier = Modifier,
-) = Description(text, modifier.padding(vertical = 4.dp), inset = true)
+) = Description(text, modifier.padding(vertical = Spacing.XSmall), inset = true)

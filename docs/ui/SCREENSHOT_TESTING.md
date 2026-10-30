@@ -14,11 +14,13 @@ the repository already does.
   come from simulator payments made in the app,
   with the reference, time, card and Adyen references the simulator makes up replaced by fixed values in the stored
   sale. `SettingsGoldensTest` adds the Settings list, the Terminal setup, a price field in error and the currency and
-  terminal picker dialogs (AMS1 and regular phone): 7 more at 0.1 %. The golden directory is a declared input of the
+  terminal picker dialogs (AMS1 and regular phone): 7 more at 0.1 %,
+  and `LocaleGoldensTest` has Home and the terminal picker in French on the AMS1 (2 more, with the rule given `fr-FR`).
+  The golden directory is a declared input of the
   test task, so a changed golden always reruns the comparison, never a cached result. Goldens are in `app/src/test/screenshots/`.
   `scripts/dev check ui-snapshots` compares and `scripts/dev snapshots record` rewrites them; the procedure is in
   [CONTRIBUTING](../../CONTRIBUTING.md#update-the-golden-screenshots).
-- **Not done:** the other groups below (processing, History detail, locale, large font, tablet), screens at the
+- **Not done:** the other groups below (processing, History detail, `ja`, large font, tablet), screens at the
   S1F2 size, the
   pinned CI image, the comparison in `qualityGate`, and a CI step that publishes the difference images on their own.
 
@@ -47,7 +49,7 @@ with Robolectric 4.17, Compose BOM 2026.09, AGP 9.5, Kotlin 2.4 and Gradle 9.8.
 
 ## What to cover
 
-Aim for about 35 images, not hundreds; there are 32 so far. Each uses the real theme and shared components with
+Aim for about 35 images, not hundreds; there are 34 so far. Each uses the real theme and shared components with
 simulator/fake data.
 
 | Group | Subjects | Variants |
@@ -59,7 +61,7 @@ simulator/fake data.
 | Processing | `ProcessingContent` | AMS1 |
 | Settings | Main list, one stepped Terminal setup, one field with validation error | Regular, tablet two-pane |
 | History | List, detail, empty state | AMS1, tablet two-pane |
-| Locale | Home and one result screen | `fr-FR` or `ja` (long and CJK text) |
+| Locale | Home and one result screen | `fr-FR` (Home and the terminal picker done) or `ja` |
 | Accessibility | Checkout review, Settings list | 1.5× font scale on AMS1 |
 
 Skip dark mode (unsupported by design) and dynamic colour until the product decision R1 in the audit is made.

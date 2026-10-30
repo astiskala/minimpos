@@ -115,6 +115,7 @@ import app.minimpos.app.ui.components.rememberSearchControl
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.payment.PaymentMethods
@@ -152,12 +153,12 @@ fun HistoryScreen(
                     search.text,
                     stringResource(R.string.history_search),
                     focus = search.mode == SearchMode.REQUESTED,
-                    modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(start = Spacing.Medium, end = Spacing.Medium, top = Spacing.Small),
                 )
             }
             HistoryFilters(state.filter, vm::setFilter, state.methods, state.method, vm::setMethod)
             if (state.hasNewer || state.hasOlder) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.Medium), horizontalArrangement = Arrangement.SpaceBetween) {
                     SecondaryButton(
                         stringResource(R.string.action_previous),
                         vm::newer,
@@ -272,8 +273,8 @@ private fun HistoryFilters(
     Row(
         Modifier
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = if (LocalDimens.current.compact) 4.dp else 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = Spacing.Medium, vertical = if (LocalDimens.current.compact) Spacing.XSmall else Spacing.Medium),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.Small),
     ) {
         if (methods.isNotEmpty() || method != null) PaymentMethodChip(methods, method, onMethod)
         HistoryFilter.entries.forEach { filter ->
@@ -346,7 +347,7 @@ private fun DayHeader(
         Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 8.dp),
+            .padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = Spacing.Small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -381,7 +382,7 @@ private fun DaySummary(
             if (day.refundCount > 0) add(stringResource(R.string.history_day_refunds, totals(day.refundsMinor), day.refundCount))
             if (day.preAuthCount > 0) add(stringResource(R.string.history_day_pre_auths, totals(day.preAuthsMinor), day.preAuthCount))
         }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.Small), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         parts.forEach { part ->
             Text(
                 part.replace(" (", "\u00a0("),

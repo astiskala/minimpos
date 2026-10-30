@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import app.minimpos.app.BuildConfig
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.TerminalMode
@@ -42,6 +41,7 @@ import app.minimpos.app.ui.components.Notice
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import java.time.Instant
 
 /** Help's collapsed support details. Each expansion refreshes checks; sharing uses exactly the displayed non-secret facts. */
@@ -75,7 +75,7 @@ internal fun ColumnScope.IntegrationTroubleshooting(
                 refreshRequested = true
             }
             if (!refreshRequested || setup.checkingDiagnostics) {
-                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxWidth().padding(Spacing.XLarge), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(Modifier.testTag("diagnosticsLoading"))
                 }
             } else {
@@ -96,8 +96,8 @@ private fun ColumnScope.IntegrationDetails(
     val inset = LocalDimens.current.rowHorizontalPadding
     rows.forEach { (name, value) ->
         HorizontalDivider(Modifier.padding(horizontal = inset))
-        Row(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 8.dp)) {
-            Text(name, Modifier.weight(0.45f).padding(end = 12.dp), style = MaterialTheme.typography.labelMedium)
+        Row(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = Spacing.Small)) {
+            Text(name, Modifier.weight(0.45f).padding(end = Spacing.Medium), style = MaterialTheme.typography.labelMedium)
             Text(
                 value,
                 Modifier.weight(0.55f).testTag(if (name == "clientKeyCheck") "tapClientKeyStatus" else "diagnostic_$name"),

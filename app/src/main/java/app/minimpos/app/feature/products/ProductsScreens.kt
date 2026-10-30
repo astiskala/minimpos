@@ -51,7 +51,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
@@ -75,6 +74,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.receipt.label
@@ -122,7 +122,7 @@ fun ProductsScreen(
                     }
                 },
                 containerColor = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).testTag("addFab"),
+                modifier = Modifier.align(Alignment.BottomEnd).padding(Spacing.Large).testTag("addFab"),
             ) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.action_add))
             }

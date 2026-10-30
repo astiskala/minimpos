@@ -20,9 +20,16 @@ the repository already does.
   test task, so a changed golden always reruns the comparison, never a cached result. Goldens are in `app/src/test/screenshots/`.
   `scripts/dev check ui-snapshots` compares and `scripts/dev snapshots record` rewrites them; the procedure is in
   [CONTRIBUTING](../../CONTRIBUTING.md#update-the-golden-screenshots).
-- **Not done:** the other groups below (processing, History detail, `ja`, large font, tablet), screens at the
-  S1F2 size, the
-  pinned CI image, the comparison in `qualityGate`, and a CI step that publishes the difference images on their own.
+- **Added:** 16 images for processing, S1F2 Home, History detail, two-pane History and Settings on a 1000×1280 dp
+  tablet, Settings at 1.5× font scale, Japanese Home, PIN entry at both sizes, Products' FAB, receipt-business review,
+  integration support details and transfer controls/review. There are 54 images in total. The seven files with remaining
+  equal-value spacing literals adopted tokens only after adding their goldens; all 54 macOS PNGs remained byte-identical.
+- **CI rollout:** the separate `ui-snapshots` job uses `ubuntu-latest` and Temurin 21, with a failure artifact containing
+  `app/build/reports/roborazzi/`. Its manual recording option uploads goldens for review. The initial Linux comparison
+  failed on two exact-match gallery images; all whole screens passed at 0.1 %. Two clean comparison runs and owner
+  approval are still required before adding the comparison to `qualityGate`. Tolerance changes need owner approval.
+- **Remaining coverage:** checkout review at 1.5×, Japanese results and History's empty state. Scanner already uses
+  spacing tokens; its camera hardware is outside these JVM goldens.
 
 ## Current state
 
@@ -49,7 +56,7 @@ with Robolectric 4.17, Compose BOM 2026.09, AGP 9.5, Kotlin 2.4 and Gradle 9.8.
 
 ## What to cover
 
-Aim for about 35 images, not hundreds; there are 38 so far. Each uses the real theme and shared components with
+Keep the set focused, not hundreds; there are 54 images so far. Each uses the real theme and shared components with
 simulator/fake data.
 
 | Group | Subjects | Variants |
@@ -64,10 +71,11 @@ simulator/fake data.
 | Locale | Home and one result screen | `fr-FR` (Home and the terminal picker done) or `ja` |
 | Accessibility | Checkout review, Settings list | 1.5× font scale on AMS1 |
 
-Skip dark mode (unsupported by design) and dynamic colour until the product decision R1 in the audit is made.
+Skip dark mode and dynamic colour: the owner has decided to keep the app light-only.
 
 Device matrix (reuse the sizes already in `SmallScreenTest`): **AMS1** `w320dp-h460dp-hdpi`, **S1F2** 360×640, **Regular
-phone** 411×891, **tablet** 800×1280. Use at most three per screen.
+phone** 411×891, **tablet** 1000×1280 for two-pane captures (the expanded-window threshold is 840 dp; 800 dp remains
+single-pane). Use at most three per screen.
 
 ## Mechanics
 
@@ -91,9 +99,9 @@ lives under `.stitch/reference/` for human comparison; it is never a pixel basel
 ## Rollout
 
 1. Add the plugin and the component gallery test; record the first goldens. Gate by the Gradle `qualityGate` only after
-   two stable CI runs. (Done.)
+   two stable CI comparison runs and owner approval. (Plugin and gallery done; gate pending.)
 2. Add the Home, Sale and result screens on AMS1 and Regular. (Done, except where the table says fewer.)
-3. Add locale, large-font and tablet variants.
+3. Add locale, large-font and tablet variants. (Representative variants done; remaining coverage above.)
 4. Use the goldens as the safety net for the token cleanup and the picker-dialog extraction listed in
    [DESIGN_AUDIT.md](DESIGN_AUDIT.md).
 

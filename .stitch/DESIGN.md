@@ -251,8 +251,7 @@ announce state changes; new text uses string resources in all seven languages.
 
 Not supported by design: `MiniMposColors` is `lightColorScheme`, the XML window theme is
 `Theme.Material.Light.NoActionBar` with light status/navigation bars, and `window_background` is white. No dynamic colour.
-This follows the terminals' own payment screens. **Decision needed:** whether phone/tablet installs should get a dark
-scheme; any such change must keep `ThemeContrastTest` passing and Stitch needs a second token set.
+This follows the terminals' own payment screens. The owner has decided to keep light-only on phones and tablets too.
 
 ## Known Exceptions
 
@@ -264,12 +263,12 @@ scheme; any such change must keep `ThemeContrastTest` passing and Stitch needs a
 | 5 `sp` literals | Home tile autosize bounds, split-payment autosize, product tile line height | Autosize needs concrete bounds |
 | 18 dp icon and spinners | `BlockedReason` icon, secondary and tertiary button spinners | Kept as is: resizing would change button and notice layout; the primary spinner is 22 dp |
 | 10 dp row padding | `CapabilitiesSettings`, `SettingsComponents` list rows | Kept as is: moving to `rowPadding` would change these rows' height |
+| 6/10/18 dp and one-off layout sizes; 340/420 dp layout widths | Feature layouts and `Dimens` | Deliberate density tuning and layout constraints; token adoption preserves these values |
 | Simulator banner | `ModeBanner`, hidden during first-run setup | The only mode indicator by design |
 | No Home terminal-status line, no TEST banner | Home | Deliberate product choices |
 
 ## Open Questions
 
 1. Should dialogs be extended with a shared `AppDialog` or stay as the current `ConfirmDialog` family?
-2. Do phone and tablet installs need dark mode, or does light-only stay a product rule?
-3. Should the non-token `dp` layout widths (340 cart pane, 420 QR, 360 receipt preview) become named constants?
-4. Which raw Material buttons in feature screens should migrate to `PrimaryButton`/`SecondaryButton`/`TertiaryButton`?
+2. Should the non-token `dp` layout widths (340 cart pane, 420 QR, 360 receipt preview) become named constants?
+3. Which raw Material buttons in feature screens should migrate to `PrimaryButton`/`SecondaryButton`/`TertiaryButton`?

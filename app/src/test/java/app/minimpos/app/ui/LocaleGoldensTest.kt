@@ -20,8 +20,8 @@ import java.util.Locale
 import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
 /**
- * Golden images in French (`fr-FR`) on the AMS1, where the longest text of the supported languages is most likely to
- * wrap or be cut off; see `docs/ui/SCREENSHOT_TESTING.md`. Everything else in the app is compared in `en-AU`.
+ * Golden images in French (`fr-FR`) and Japanese (`ja-JP`) on the AMS1, checking long text and CJK rendering;
+ * see `docs/ui/SCREENSHOT_TESTING.md`. Each locale has an explicitly configured screenshot rule.
  */
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -35,6 +35,9 @@ class LocaleGoldensTest {
 
     @get:Rule(order = 2)
     val screenshot = ScreenshotRule(compose, ScreenshotTolerance.SCREEN, locale = Locale.forLanguageTag("fr-FR"))
+
+    @get:Rule(order = 3)
+    val japaneseScreenshot = ScreenshotRule(compose, ScreenshotTolerance.SCREEN, locale = Locale.JAPAN)
 
     private val container = env.container
 
@@ -54,6 +57,14 @@ class LocaleGoldensTest {
         compose.setContent { MiniMposApp(container) }
         compose.waitUntilAtLeastOneExists(hasTestTag("newSale"), 15_000)
         screenshot.capture()
+    }
+
+    @Test
+    @Config(qualifiers = "ja-rJP-w320dp-h460dp-hdpi")
+    fun `home in Japanese`() {
+        compose.setContent { MiniMposApp(container) }
+        compose.waitUntilAtLeastOneExists(hasTestTag("newSale"), 15_000)
+        japaneseScreenshot.capture()
     }
 
     @Test

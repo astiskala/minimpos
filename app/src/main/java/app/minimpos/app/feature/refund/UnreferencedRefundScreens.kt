@@ -28,7 +28,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -61,6 +60,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.AmountEntry
 import app.minimpos.core.money.CurrencySpec
@@ -287,7 +287,7 @@ private fun ReasonChoice(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RadioButton(selected = reason == selected, onClick = null)
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(Spacing.Medium))
                 Text(stringResource(unreferencedReasonLabel(reason)))
             }
         }

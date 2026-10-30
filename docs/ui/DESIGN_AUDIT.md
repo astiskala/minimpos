@@ -107,7 +107,7 @@ because Material lacks success and warning slots: expected.
 
 | # | Question | Why it is open |
 | --- | --- | --- |
-| R1 | Dark theme for phones and tablets | Code is light-only; changing it is a product call and doubles the token set |
+| R1 | Dark theme for phones and tablets | **Decided:** owner keeps light-only; no dark mode |
 | R2 | The 20 dp spacing and icon step | **Decided:** `Spacing.Section` (spacing) and `IconSize.Inline` (icon) |
 | R3 | 18 dp icons and spinners | **Decided:** kept as a documented exception |
 | R4 | Whether raw `TextButton`s in picker rows are intended | They are list rows styled as text buttons |
@@ -122,9 +122,10 @@ Behaviour-neutral only; values are identical before and after.
 - Added `scripts/design-audit` (read-only report; `--strict` gates colour and shape literals).
 - After the screenshot baseline: adopted `Spacing` for the equal-value 4/8/12/16/24/32 dp spacing literals in shared
   components and in the feature screens it touched, and `IconSize.Small`, `Standard` and `Large` (16, 24, 40 dp). The
-  equal-value literals that remain are in screens without goldens (PIN entry, Transfer, Reconciliation, Troubleshooting,
-  unreferenced refunds, products, receipt import); adopt them per file once the screen has a
-  golden. Dp literals went from 129/27 to the counts `scripts/design-audit` prints; the goldens match exactly.
+  remaining equal-value spacing literals in PIN entry, Transfer, Reconciliation, Troubleshooting, unreferenced refunds,
+  Products and receipt import were then adopted after adding goldens per file. All 54 macOS goldens remained
+  byte-identical. Scanner already used spacing tokens; SaleScreen retains its layout widths and grid-cell size.
+  Dp literals went from 129/27 to the counts `scripts/design-audit` prints.
 - Extracted `PickerDialog` for the currency and terminal pickers (C1, S6); the picker goldens match exactly.
 - Reviewed the raw Material buttons (T-class, soft): none was migrated. Each is a dialog action slot, a row or chip
   with its own size (update banner, play/pause, wallet row, API-roles expander, list-row choices), none the full-width

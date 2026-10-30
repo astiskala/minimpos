@@ -178,12 +178,12 @@ standalone release builds retain release lint by default. R8, signing and packag
 
 The goldens are the visual safety net for token and component changes. Components in `DesignGalleryTest` must match
 exactly; whole screens in `ScreenGoldensTest` and `SettingsGoldensTest` may differ in up to 0.1 % of their
-pixels. Dark mode and Stitch output are never baselines, and the only locale other than `en-AU` is the French of
-`LocaleGoldensTest`, whose rule is given its locale.
+pixels. Dark mode and Stitch output are never baselines. `LocaleGoldensTest` covers French and Japanese, with each
+capture using a rule given its expected locale.
 
 1. `scripts/dev check ui-snapshots` compares the current rendering with the goldens, running only those four classes. A
    difference fails the run and leaves the expected, actual and difference images in `app/build/reports/roborazzi/`,
-   which CI uploads with the other reports.
+   which the separate `ui-snapshots` CI job uploads as `ui-snapshot-differences` on failure.
 2. Look at the images. A difference you did not intend is a defect: fix the code, not the golden.
 3. For a deliberate change, run `scripts/dev snapshots record`, review the changed PNGs in `git diff`, commit them with
    the code, and update `.stitch/DESIGN.md` when the visual rule changed. Never edit a PNG by hand or record to make a
@@ -194,7 +194,11 @@ pixels. Dark mode and Stitch output are never baselines, and the only locale oth
 
 Renderings are only exactly reproducible on the same operating system and JDK, so record on the platform CI uses. The
 current goldens were recorded on macOS (arm64, JDK 21) and the comparison is not in `qualityGate` until it has passed
-on CI twice, so a Linux difference appears there first. After a Compose or Material 3 upgrade, expect to re-record.
+on CI twice and the owner approves it. The first Linux run found curved-edge rasterization differences in two
+exact-match gallery images (223 and 584 pixels); whole-screen comparisons passed at the existing 0.1 % threshold.
+Use CI’s manual **Record CI-platform goldens for review instead of comparing** option to download the
+`ui-snapshot-goldens` artifact; review it before replacing the checked-in PNGs. Recording does not establish a clean
+comparison run. After a Compose or Material 3 upgrade, expect to re-record.
 
 ## Make changes that fit
 

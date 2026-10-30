@@ -41,6 +41,7 @@ import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 
 /**
  * Explicit Management lookup through the setup gate, followed by review. Confirmation fills missing fields or
@@ -134,7 +135,7 @@ private fun BusinessImportChoice(
             .heightIn(min = 48.dp)
             .selectable(selected = replace == selected, onClick = onSelect, role = Role.RadioButton)
             .testTag(if (replace) "replaceReceiptBusiness" else "supplementReceiptBusiness"),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.Medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = replace == selected, onClick = null)

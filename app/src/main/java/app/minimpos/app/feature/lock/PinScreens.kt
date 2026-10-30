@@ -54,7 +54,9 @@ import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.navigation.Navigator
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.access.ManagerAction
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -254,18 +256,23 @@ fun PinPad(
     val entered = pluralStringResource(R.plurals.pin_digits_entered, pin.length, pin.length)
     CenteredScrollColumn(modifier.fillMaxSize().padding(dimens.screenPadding)) {
         if (!compact) {
-            Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
-            Spacer(Modifier.height(12.dp))
+            Icon(
+                Icons.Default.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(IconSize.Large),
+            )
+            Spacer(Modifier.height(Spacing.Medium))
         }
         Text(title, style = dimens.titleStyle, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(if (compact) 8.dp else 20.dp))
+        Spacer(Modifier.height(if (compact) Spacing.Small else Spacing.Section))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.heightIn(min = 16.dp).testTag("pinDots").clearAndSetSemantics { contentDescription = entered },
+            horizontalArrangement = Arrangement.spacedBy(Spacing.Medium),
+            modifier = Modifier.heightIn(min = Spacing.Large).testTag("pinDots").clearAndSetSemantics { contentDescription = entered },
         ) {
-            repeat(pin.length) { Box(Modifier.size(16.dp).background(MaterialTheme.colorScheme.onSurface, CircleShape)) }
+            repeat(pin.length) { Box(Modifier.size(Spacing.Large).background(MaterialTheme.colorScheme.onSurface, CircleShape)) }
         }
-        Spacer(Modifier.height(if (compact) 4.dp else 12.dp))
+        Spacer(Modifier.height(if (compact) Spacing.XSmall else Spacing.Medium))
         Text(
             error ?: stringResource(R.string.pin_hint, PinManager.MIN_LENGTH, PinManager.MAX_LENGTH),
             color = if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -276,7 +283,7 @@ fun PinPad(
                     .semantics { liveRegion = if (error != null) LiveRegionMode.Assertive else LiveRegionMode.Polite }
                     .testTag("pinMessage"),
         )
-        Spacer(Modifier.height(if (compact) 12.dp else 24.dp))
+        Spacer(Modifier.height(if (compact) Spacing.Medium else Spacing.XLarge))
         PinKeys(canConfirm = PinManager.isValidPin(pin), enabled = !busy) { key ->
             when (key) {
                 BACKSPACE -> pin = pin.dropLast(1)
@@ -284,7 +291,7 @@ fun PinPad(
                 else -> if (pin.length < PinManager.MAX_LENGTH) pin += key
             }
         }
-        Spacer(Modifier.fillMaxWidth().height(8.dp))
+        Spacer(Modifier.fillMaxWidth().height(Spacing.Small))
     }
 }
 

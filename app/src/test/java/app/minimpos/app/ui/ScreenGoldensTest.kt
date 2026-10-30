@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
@@ -25,6 +26,7 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.sale.SaleResultScreen
 import app.minimpos.app.items
 import app.minimpos.app.ui.components.LocalAppContainer
+import app.minimpos.app.ui.components.ProcessingContent
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.MiniMposTheme
@@ -153,6 +155,44 @@ class ScreenGoldensTest {
     }
 
     @Test
+    @Config(qualifiers = "en-rAU-w360dp-h640dp-hdpi")
+    fun `home on S1F2`() {
+        compose.setContent { MiniMposApp(container) }
+        waitForTag("newSale")
+        screenshot.capture()
+    }
+
+    @Test
+    fun processing() {
+        screenshot.setContent { MiniMposTheme { ProcessingContent("$12.50", "Follow the instructions on the terminal") } }
+        screenshot.capture()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w411dp-h891dp-xhdpi")
+    fun `reconciliation totals`() {
+        compose.setContent { MiniMposApp(container) }
+        waitForTag("reconciliation")
+        compose.onNodeWithTag("reconciliation").performClick()
+        waitForTag("reconcileTerminal")
+        compose.onNodeWithTag("reconcileTerminal").performClick()
+        waitForTag("reconciliationCard")
+        screenshot.capture()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w411dp-h891dp-xhdpi")
+    fun `refund without receipt reasons`() {
+        compose.setContent { MiniMposApp(container) }
+        waitForTag("refund")
+        compose.onNodeWithTag("refund").performClick()
+        waitForTag("refundUnreferenced")
+        compose.onNodeWithTag("refundUnreferenced").performClick()
+        waitForTag("unreferencedAmount")
+        screenshot.capture()
+    }
+
+    @Test
     fun `home when setup is required`() {
         env.updateSettings {
             it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST, host = "192.0.2.10"))
@@ -231,6 +271,23 @@ class ScreenGoldensTest {
     @Config(qualifiers = "en-rAU-w411dp-h891dp-xhdpi")
     fun `history with sales on a regular phone`() {
         showHistory()
+        screenshot.capture()
+    }
+
+    @Test
+    fun `history payment detail`() {
+        showHistory()
+        compose.onNodeWithText("261015-091500-AAAAA", substring = true).performClick()
+        waitForTag("detailStatus")
+        screenshot.capture()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w1000dp-h1280dp-xhdpi")
+    fun `tablet history two panes`() {
+        showHistory()
+        compose.onNodeWithText("261015-091500-AAAAA", substring = true).performClick()
+        waitForTag("detailStatus")
         screenshot.capture()
     }
 

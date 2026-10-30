@@ -64,7 +64,7 @@ import org.robolectric.annotation.Config
 import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
 /**
- * Golden images of the shared components in the real theme, one test per group (`docs/ui/SCREENSHOT_TESTING.md`). The
+ * Golden images of the shared components in the real theme, one test per group (`CONTRIBUTING.md`). The
  * text is fixed here, not read from resources, so rewording a screen never changes a golden. Components are compared
  * exactly. The `Regular` gallery sizes the window to its content; [Dimens] is set explicitly because the gallery is not
  * a whole screen. The Compact variants run at the AMS1's size and the Medium ones at the S1F2's, where the app itself

@@ -148,12 +148,9 @@ standalone release builds retain release lint by default. R8, signing and packag
   `app/build/reports/ui-failures/<test-task>/`. Passing tests do not capture; directories are unique across workers.
   Capture errors never replace the original assertion. These contain synthetic test data, not merchant screenshots;
   CI includes them in its existing reports artifact. Check timestamps: old failure artifacts may remain.
-- `DesignGalleryTest`, `ScreenGoldensTest`, `SettingsGoldensTest`, `LocaleGoldensTest` and `UpdateGoldensTest` compare
-  shared components and whole screens with golden images under `app/src/test/screenshots/` through Roborazzi (test-only).
-  `ScreenshotRule` (rule order 2, after the recording rule) names images from test class, method and window size,
-  fixes the locale (`en-AU` unless given another), time zone (UTC) and font scale, and freezes the Compose clock. In
-  an ordinary test run it captures nothing; see
-  [Update the golden screenshots](#update-the-golden-screenshots).
+- `ScreenshotRule` (rule order 2, after the recording rule) names golden images from test class, method and window
+  size, fixes the locale (`en-AU` unless given another), time zone (UTC) and font scale, and freezes the Compose clock.
+  In an ordinary test run it captures nothing; see [Update the golden screenshots](#update-the-golden-screenshots).
 - `LocalizationTest` checks resource/format parity and writes receipt samples under
   `app/build/reports/localization/`. `LocalizedUiTest` checks Simplified/Traditional Chinese and Japanese checkout
   at AMS1 size. `ScreenTextTest` finds text cut off without an ellipsis in all seven languages at AMS1 size, and text
@@ -176,39 +173,42 @@ standalone release builds retain release lint by default. R8, signing and packag
 
 ### Update the golden screenshots
 
-The goldens are the visual safety net for token and component changes. Components in `DesignGalleryTest` must match
-with a 0 % changed-pixel threshold; whole screens may differ in up to 0.1 % of their counted pixels. Roborazzi
-first filters color distances up to `0.007`, so the gallery threshold is not literal pixel equality. Dark mode and
-external design renders are never baselines. `LocaleGoldensTest` covers French and Japanese, with each capture using
-a rule given its expected locale.
+Golden images are the visual safety net for [DESIGN.md](DESIGN.md) tokens and shared components. They compare approved
+Android rendering with future Android rendering; dark mode and renders from external design tools are never baselines.
+Roborazzi (test-only) captures the Robolectric Compose tests, reusing `TestEnvironment`, the fakes and the device-size
+helpers; Paparazzi cannot render `AppContainer`-backed screens and Preview Screenshot Testing needs `@Preview`s, which
+the app does not have. Goldens live in `app/src/test/screenshots/` and are a declared test input.
+
+| Test | Covers | Sizes |
+| --- | --- | --- |
+| `DesignGalleryTest` | Shared components in every variant, plus enabled touch targets | Regular, Medium, AMS1 |
+| `ScreenGoldensTest` | Home, sale, cash entry, results, History, reconciliation, refund reasons | AMS1, S1F2, phone, tablet two-pane |
+| `SettingsGoldensTest` | Settings sections, pickers, PINs, products, transfer, imports | Phone, AMS1, 1.5× font, tablet two-pane |
+| `LocaleGoldensTest` | Home and the terminal picker in French and Japanese | AMS1 |
+| `UpdateGoldensTest` | Home with an update offer | AMS1 |
+
+Sizes reuse `SmallScreenTest`'s: AMS1 `w320dp-h460dp-hdpi`, S1F2 360×640, phone 411×891, tablet 1000×1280 (the
+expanded threshold is 840 dp). Use at most three per screen and keep the set small: each PNG is about 15–60 KB. Not yet
+covered: checkout review at 1.5×, Japanese results and History's empty state.
+
+Components must match with a 0 % changed-pixel threshold; whole screens may differ in up to 0.1 % of their counted
+pixels. Roborazzi first ignores colour distances up to `0.007`, so neither threshold is raw pixel equality. The owner
+keeps these thresholds; tightening or loosening them needs approval. Anti-aliasing differs between operating systems
+and JDKs, so the goldens are recorded on CI's `ubuntu-latest` with Temurin 21, and a local comparison on another
+platform can fail on edges alone. The comparison is not part of `qualityGate`.
 
 1. `scripts/dev check ui-snapshots` compares the current rendering with the goldens, running only those five classes. A
    difference fails the run and leaves the expected, actual and difference images in `app/build/reports/roborazzi/`,
-   which the separate `ui-snapshots` CI job uploads as `ui-snapshot-differences` on failure.
+   which the separate `ui-snapshots` CI job uploads as `ui-snapshot-differences` on failure. CI's manual **Run only UI
+   snapshots** option compares without the full gate.
 2. Look at the images. A difference you did not intend is a defect: fix the code, not the golden.
-3. For a deliberate change, run `scripts/dev snapshots record`, review the changed PNGs in `git diff`, commit them with
-   the code, and update `DESIGN.md` when the visual rule changed. Never edit a PNG by hand or record to make a
-   failure go away.
+3. For a deliberate change, record on the CI platform: CI's manual **Record CI-platform goldens for review instead of
+   comparing** option uploads a `ui-snapshot-goldens` artifact. Review it, replace the checked-in PNGs, commit them with
+   the code, and update `DESIGN.md` when a visual rule changed. `scripts/dev snapshots record` records locally for a
+   quick look. Never edit a PNG by hand or record to make a failure go away. Expect to re-record after a Compose or
+   Material 3 upgrade.
 4. A new component or screen adds a test to the matching class (a gallery group, or a screen with fixed data: store the
    facts, as `showResult` does, instead of paying through the simulator, whose references and times differ each run).
-   Keep the image count low; PNGs are about 15-40 KB each.
-
-Renderings are only exactly reproducible on the same operating system and JDK, so record on the platform CI uses. The
-current goldens were re-recorded on `ubuntu-latest` (Ubuntu 24.04 image `20261025.353.1`, Temurin `21.0.13+9`,
-CI recording run `41017912554`; re-recorded after the spinner and compact-action changes in run
-`41059242185`). The comparison is not in `qualityGate` until it has passed
-on CI twice and the owner approves it. The first Linux run found curved-edge rasterization differences in two
-gallery images (223 and 584 raw pixels); whole-screen comparisons passed at the existing 0.1 % threshold. Raw PNG
-comparison found differences in 50 of 54 images, with at most 2 levels of change per 8-bit color channel, confined to
-rasterized edges. The CI goldens were reviewed before adoption; local macOS comparisons can now fail on those edges.
-Use CI’s manual **Record CI-platform goldens for review instead of comparing** option to download the
-`ui-snapshot-goldens` artifact; review it before replacing the checked-in PNGs. Recording does not establish a clean
-comparison run. The manual **Run only UI snapshots** option compares without repeating the full gate and release build.
-After a Compose or Material 3 upgrade, expect to re-record.
-
-Independent CI recordings `41017912554` and `41018426929` produced byte-identical PNGs for all 54 images. On October 30,
-2026, the owner chose to retain the current thresholds, including the default color-distance filter. Tightening either
-setting still requires approval.
 
 ## Make changes that fit
 
@@ -218,10 +218,8 @@ adds how to meet them.
 
 - Follow existing module patterns. Use the Adyen library for every modeled API payload, crypto and certificate check;
   see [Adyen API model ownership](#adyen-api-model-ownership) and the [Adyen rules](adyen/AGENTS.md).
-- Keep Compose components small. Pass state/callbacks rather than view models below screen level, reuse components,
-  and use `ColumnScope`/`RowScope` extensions for siblings that need parent spacing.
-- Put user text in resources. Group `strings.xml` by feature, keeping the same section and resource order in every
-  language; place new entries beside related strings.
+- Keep Compose components small and follow [DESIGN.md](DESIGN.md) and the [app rules](app/AGENTS.md).
+- Put user text in resources, organized as [User text and localization](AGENTS.md#user-text-and-localization) says.
   Follow the [Adyen partner style guide](https://docs.adyen.com/development-resources/partner-style-guide) for app copy
   and merchant guides: short active sentences, consistent terms and numbered instructions. Name Adyen in documentation
   link text and link to pages, not fragments. Use reserved example domains and IP addresses. Keep exact UI labels,

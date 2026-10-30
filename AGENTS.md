@@ -158,15 +158,12 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
   `app/.../ui/theme` implement it. Read it before changing UI and keep it, the tokens and the screenshots in step.
   It follows the [DESIGN.md format](https://github.com/google-labs-code/design.md): normative YAML tokens (sizes as
   `px`, meaning dp/sp), then its canonical `##` sections in order. A code value change edits the matching token.
-- Use `MaterialTheme.colorScheme`, `shapes` and `typography`, `LocalStatusColors`, `LocalDimens`, `Spacing`, `IconSize`
-  and `Elevation`. Do not add `Color(0x…)`, `RoundedCornerShape` or new fixed text sizes to feature code; add or
-  change a token in the theme and `DESIGN.md` instead.
-- Prefer `ui.components` (buttons, `Card`, text roles, dialogs, `MiniScaffold`) over raw Material equivalents or copies.
-- Record a deliberate exception in `DESIGN.md` › Known Exceptions with its reason.
-- Materially changed UI passes
-  `scripts/dev check ui-snapshots`: review any image difference, re-record deliberate ones with
-  `scripts/dev snapshots record` and add goldens for new shared components ([strategy](docs/ui/SCREENSHOT_TESTING.md),
-  [procedure](CONTRIBUTING.md#update-the-golden-screenshots)). The comparison is not part of `scripts/dev finish` yet.
+- Feature code takes colours, shapes, type and sizes only from the theme and uses `ui.components` instead of raw
+  Material equivalents or copies (DESIGN.md › Do's and Don'ts). A new value is a new token in the theme and
+  `DESIGN.md`; a deliberate deviation goes in its Known Exceptions with a reason.
+- Materially changed UI passes `scripts/dev check ui-snapshots`, which is not part of `scripts/dev finish`. Review every
+  image difference and add goldens for new shared components, following
+  [Update the golden screenshots](CONTRIBUTING.md#update-the-golden-screenshots).
 
 ## Documentation changes
 

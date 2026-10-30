@@ -21,7 +21,7 @@ import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
 /**
  * Golden images in French (`fr-FR`) and Japanese (`ja-JP`) on the AMS1, checking long text and CJK rendering;
- * see `docs/ui/SCREENSHOT_TESTING.md`. Each locale has an explicitly configured screenshot rule.
+ * see `CONTRIBUTING.md`. Each locale has an explicitly configured screenshot rule.
  */
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)

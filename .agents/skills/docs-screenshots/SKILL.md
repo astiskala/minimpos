@@ -40,13 +40,12 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 ## Capture script
 
 `scripts/docs-capture` (Bash, checked by shellcheck) drives the docs emulator by visible text, so one sequence works
-in every language: `prepare`, `locale LANG`, `snapshot`/`restore NAME.tar` (app data in `/data/local/tmp`), `launch
-  LANG`,
-`tap LANG KEY` (a string resource, or `=literal text`), `scroll LANG KEY`, `shot LANG NAME` and `finish`. Raw
-Captures collect in `/tmp/minimpos-shots` as `LANG-NAME.png`; `process` then crops the system bars, scales S1F2 to
-540×960 (AMS1 stays 480×800) and quantizes them into `docs/images[/LANG]/` through `:tooling`'s `screenshots` command
-(`DocsScreenshots`). Keep per-language fixtures as on-device snapshots (`docs-<set>-<lang>.tar`); `flow LANG NAME...`
-restores one before each named flow:
+in every language: `prepare`, `locale LANG`, `snapshot`/`restore NAME.tar` (app data in `/data/local/tmp`),
+`launch LANG`, `tap LANG KEY` (a string resource, or `=literal text`), `scroll LANG KEY`, `shot LANG NAME` and
+`finish`. Raw captures collect in `$SHOTS` (default `/tmp/minimpos-shots`) as `LANG-NAME.png`; `process` then crops
+the system bars, scales S1F2 to 540×960 (AMS1 stays 480×800) and quantizes them into `docs/images[/LANG]/` through
+`:tooling`'s `screenshots` command (`DocsScreenshots`). Keep per-language fixtures as on-device snapshots
+(`docs-<set>-<lang>.tar`); `flow LANG NAME...` restores one before each named flow:
 
 - `home`: home only; `overview`: home, history, history-search; `catalog`: products; `preferences`: settings,
   capabilities.
@@ -60,14 +59,13 @@ restores one before each named flow:
 - `ams1`: sale and the sale-ams1 image (raw 480×872). Both terminal sizes share the raw processing directory.
 
 `settings LANG KEY` opens a Settings section past the admin PIN; `expand_receipt` expands the open simulated printer
-and `close_receipt` closes it without leaving the underlying screen.
-Add a named flow there for each screenshot you
+and `close_receipt` closes it without leaving the underlying screen. Add a named flow there for each screenshot you
 recapture by hand twice, rather than a temporary script. Do not edit the running shell script during a capture.
 Launch waits for localized Home controls; a Home capture checks them again and refuses splash screens.
 For cloning, approved reset opt-in, batch capture, image processing/review and shutdown, use
 [CONTRIBUTING's repeatable workflow](../../../CONTRIBUTING.md#repeatable-screenshot-refresh). Do not recreate those
 steps with temporary Python, Node or shell scripts. Fixture resets refuse non-emulators, unowned AVDs and missing
-  archives.
+archives.
 
 ## Emulator
 
@@ -123,8 +121,7 @@ Seeded before the first launch (debug builds only), piped in with
   (`manager_fixture`), and flows enter it when asked.
 - Back up the database through SQLite, including committed WAL contents, before preparing localized copies. Recompute
   line amounts, net/tax totals, tips, authorizations, captures, tenders, refunds and synthetic card-receipt totals in
-  the
-  selected currency. Validate foreign keys, integrity and summed line totals before installing a disposable fixture.
+  the selected currency. Validate foreign keys, integrity and summed line totals before installing a disposable fixture.
 
 | Page language | Device locale | Currency | Main sale | Item refund | Tip sale + tip | Deposit | Partial sale |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
@@ -141,8 +138,7 @@ Seeded before the first launch (debug builds only), piped in with
 The amounts and customer references below describe the English fixture. Use the table above and the JSON fixture for
 the other languages. CJK fixtures use numeric customer references so input methods do not autocorrect ASCII acronyms.
 In Japanese, send `KEYCODE_EISU` before typing to keep digits half-width. Verify the actual field text after the
-  keyboard
-closes. Always restore the market's device locale when recapturing only part of a flow.
+keyboard closes. Always restore the market's device locale when recapturing only part of a flow.
 
 1. Sale of 2 flat whites, banana bread and beans ($34.00, CUST-1042, save card; `checkout.png` shows Save card on,
    with `payment.receiptTipping = DISABLED`, the default, so there is no tipping switch) → printed receipt (simulated
@@ -156,10 +152,9 @@ closes. Always restore the market's device locale when recapturing only part of 
    "MC Google Pay".
 3. `history-search.png`: History searched for `CUST-1042` (typed with `adb shell input text`, keyboard closed with
    Back), showing that sale and its refund.
-4. In Settings › Tips and donations, set Tip on the receipt to Enabled (default off)
-   (`payment.receiptTipping = DEFAULT_OFF`)
-   before this flow; restore Disabled afterward. Tip on the receipt sale of 2 avocado toast and 2 flat whites ($38.00):
-   `tip-receipt.png` is its merchant copy with
+4. In Settings › Tips and donations, set Tip on the receipt to Enabled (default off,
+   `payment.receiptTipping = DEFAULT_OFF`) before this flow; restore Disabled afterward. Tip on the receipt sale of
+   2 avocado toast and 2 flat whites ($38.00): `tip-receipt.png` is its merchant copy with
    the blank TIP, TOTAL and SIGNATURE lines in the expanded printer sheet, scrolled past the business header without
    clipping the receipt title. `tip.png` is the Enter tip screen with a $7.00
    tip and $45.00 total. The main History fixture shows the accepted capture and Tips $7.00.
@@ -185,8 +180,7 @@ closes. Always restore the market's device locale when recapturing only part of 
     app: the simulator ledger is in memory. Capture matching $34.00 totals together with the offline-sale and
     one-unconfirmed-batch warning. Restore the main fixture afterward.
 11. Other payment options includes Charge token: the main fixture's first sale saved a token under its customer
-    reference, so
-    the button appears once the lookup answers. Localized fixtures need that sale's references in the language's
+    reference, so the button appears once the lookup answers. Localized fixtures need that sale's references in the language's
     numeric form (`1042`, `2077`).
 12. `split.png` and `split-cash.png`: with terminal tipping off, the main cart's checkout › Other payment options ›
     Split payment, then Shares (two equal shares, Pay and Cash offered); then Cash for the first share with the cash received

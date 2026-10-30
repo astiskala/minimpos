@@ -50,7 +50,7 @@ import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
 /**
  * Golden images of Settings and its picker dialogs in the simulator on a regular phone and, for the dialogs, the AMS1; see
- * `docs/ui/SCREENSHOT_TESTING.md`. A change to how they look shows up as a difference.
+ * `CONTRIBUTING.md`. A change to how they look shows up as a difference.
  */
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)

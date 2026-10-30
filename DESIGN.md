@@ -315,8 +315,8 @@ for layout and `sp` for text. Token names map to code as follows, and a value in
   frames in `ui.components` (`HeadingArchitectureTest`, `MaterialArchitectureTest`, `ButtonArchitectureTest`).
   `DesignGalleryTest` checks touch targets.
 - **Goldens detect regressions.** Android screenshot goldens compare approved Android rendering with future Android
-  rendering ([docs/ui/SCREENSHOT_TESTING.md](docs/ui/SCREENSHOT_TESTING.md)). External design renders show intent only
-  and are never pixel baselines.
+  rendering; see [Update the golden screenshots](CONTRIBUTING.md#update-the-golden-screenshots). External design renders
+  show intent only and are never pixel baselines.
 
 ### Design principles
 
@@ -385,9 +385,19 @@ custom font.
 | `body-lg`, `body-md` | Row text, `ActionMessage`, `BlockedReason` |
 | `body-sm` | Explanations on compact screens; secondary lines |
 
-- Text roles are fixed: `SectionHeader` (upper case, groups rows or fields), `Subheading` (sentence case, a block),
-  `SheetTitle`, `Description`, `Notice`, `BlockedReason`, `ActionMessage`, `OutcomeNote`. Only `ui.components` marks
-  headings (ArchUnit).
+- Text roles are fixed, and only `ui.components` marks headings (ArchUnit):
+
+  | Role | Use |
+  | --- | --- |
+  | `SectionHeader` | Upper case; groups rows or fields |
+  | `Subheading` | Sentence case; titles a block, step or card |
+  | `SheetTitle` | Titles a bottom sheet |
+  | `Description` | Explanations (`SettingNote` and `SettingIntro` in Settings) |
+  | `Notice` | Requirements (INFO) and risks (WARNING) |
+  | `BlockedReason` | A disabled action's precondition |
+  | `ActionMessage` | An action's answer, unless it needs a popup |
+  | `OutcomeNote` | Only text under an `OutcomeHeader` |
+
 - Explanations are one size smaller on compact screens (`explanationStyle`).
 - Money is always `Long` minor units formatted by `MoneyFormatter`; amounts use the amount style, other money uses the
   surrounding body role.
@@ -477,14 +487,12 @@ navy `label-lg` label. Inset dividers start at the labels. Rows have no chevron 
 `ReceiptActions` uses it for print, merchant copy, email, share and show/hide receipt.
 Feature buttons use shared frames, enforced by `ButtonArchitectureTest`. Custom content slots retain wallet artwork,
 cart counts and row layouts while sharing shape and touch sizing.
-Removal of saved keys, PINs, registrations or history uses red `ConfirmedRemoval`.
 
 ### Text fields
 
 `OutlinedTextField` with the default Material 3 outline in the `outline` colour. A field that can be invalid passes
 `trailingIcon = fieldErrorIcon(isError)`, unless its trailing slot holds an action such as the SKU scanner. Settings
-fields use an external title (same style as toggles), then a primary description, then the input; notes below hold
-only extra information or validation (app/AGENTS.md). No custom field component exists. **Decision needed:** whether
+fields follow [Screen flows](#screen-flows). No custom field component exists. **Decision needed:** whether
 to extract `AppTextField`.
 
 Invalid product prices show localized supporting text: positive values and the currency's precision, whole numbers for
@@ -499,21 +507,17 @@ tiles already in the cart use `primary-container` with a 1 dp `primary` border. 
 
 `ConfirmDialog`, `ResultDialog`, `InfoDialog`, `TextInputDialog`, `ActionOptionsDialog`, `EmailReceiptDialog` and
 `SharedKeyDialog` wrap Material `AlertDialog`. Result dialogs show a 40 dp `StatusBadge`. Dialog buttons are shared
-`CompactTertiaryButton` slots, retaining destructive and disabled states. Settings › Terminal reports setup outcomes in
-a dialog, one at a time. Dialog surfaces use `xl` and `surface-container-high` (white), so inner cards and notices keep
-their grey; inner cards retain `md`. Dialogs containing text fields use
-`DialogProperties(usePlatformDefaultWidth = false)` in tests.
+`CompactTertiaryButton` slots, retaining destructive and disabled states. Dialog surfaces use `xl` and
+`surface-container-high` (white), so inner cards and notices keep their grey; inner cards retain `md`. Dialogs
+containing text fields use `DialogProperties(usePlatformDefaultWidth = false)` in tests.
 
 ### Navigation
 
 `MiniScaffold`: `CenterAlignedTopAppBar` on `surface`, height `topBarHeight`, back arrow when `onBack != null`,
-`ModeBanner` (simulator only) and a divider under the bar, content above the keyboard. Navigation 3 transitions are
-owned by `AppNavHost`. Home and onboarding are roots. Expanded windows show History and Settings details beside the
-list. At the expanded-width breakpoint (840 dp), an active list/detail scene uses one `NavigationFrame` app bar and
-simulator banner. `MiniScaffold` list panes retain actions; detail panes show a semantic heading in
-`Dimens.titleStyle`. Explicit `ScreenHeader` parameters keep presentation separate from access gates. The shared Back
-arrow leaves the section. System Back retains Navigation 3's and each screen's existing behavior; expanded Settings
-exits the scene, while phone Settings closes its detail first.
+`ModeBanner` (simulator only) and a divider under the bar, content above the keyboard. Expanded windows (840 dp and
+wider) show History and Settings details beside the list under one `NavigationFrame` app bar and simulator banner;
+detail panes show a semantic heading in `Dimens.titleStyle`. Back and transition behaviour belongs to `AppNavHost`
+([app/AGENTS.md](app/AGENTS.md)).
 
 ### Lists and rows
 
@@ -538,13 +542,25 @@ dots.
 - `ProcessingContent`: `CircularProgressIndicator` of `progressSize`, 5 dp stroke, while the terminal works.
 - `EmptyState`: centred 56 dp icon (40 compact), title, description, optional action.
 - `ActionMessage` (success/error) and `BlockedReason` give inline feedback; screen readers announce both.
-- Stepped screens: `StepHeader`/`StepBody`, later steps hidden until unlocked, a tick once done.
 
 ### Home
 
-Two full-width green payment tiles (`lg` shape, `title-lg` with shared autosize), then Tokens/Gift cards,
-Refund/Cashout and History/Reconciliation, row-major. Settings is the top-right icon under the admin lock. Gated tiles
-stay pressable and explain.
+Full-width green payment tiles (`lg` shape, `title-lg` with shared autosize) above the feature tiles, which grow
+together up to `homeMaxHeight`. Which tiles appear, in what order, is a product decision in
+[AGENTS.md](AGENTS.md#payment-and-product-boundaries).
+
+### Screen flows
+
+- **Workflow screens** have one pinned primary "Verb amount" action and confirm before money moves back, then show
+  `ProcessingContent`, then the result.
+- **Stepped screens** use `StepHeader`/`StepBody`: later steps stay hidden until unlocked and show a tick once done;
+  a step's actions go main action, outcome, then removals. Settings › Terminal reports setup outcomes in a dialog
+  instead, one at a time.
+- **Settings** switches and choices have a short title and a one- or two-sentence description. Fields have an external
+  title in the same style, then the primary description, then the input; notes below hold only extra information or
+  validation. Settings actions use `SettingActions` with icons; secret placeholders stay on one line. Local settings
+  save as they change; Adyen-side capability sections edit a draft sent by "Save to Adyen".
+- **Removals** of saved keys, PINs, phone registration or history use red `ConfirmedRemoval`.
 
 ### Icons
 

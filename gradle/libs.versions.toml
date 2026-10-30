@@ -36,7 +36,7 @@ coil = "3.6.3"
 junit = "4.13.2"
 truth = "1.4.5"
 robolectric = "4.17"
-# Golden-image tests on top of Robolectric (test-only; see docs/ui/SCREENSHOT_TESTING.md).
+# Golden-image tests on top of Robolectric (test-only; see CONTRIBUTING.md).
 roborazzi = "1.77.0"
 androidxTestCore = "1.7.0"
 archunit = "1.5.1"

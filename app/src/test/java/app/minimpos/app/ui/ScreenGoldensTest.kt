@@ -43,7 +43,7 @@ import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
 /**
  * Golden images of whole screens in the simulator with synthetic data, on the AMS1 (`w320dp-h460dp-hdpi`, the smallest
- * supported screen) and a regular phone; see `docs/ui/SCREENSHOT_TESTING.md`. Screens are compared with a small tolerance.
+ * supported screen) and a regular phone; see `CONTRIBUTING.md`. Screens are compared with a small tolerance.
  */
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)

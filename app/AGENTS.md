@@ -198,24 +198,13 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   navigation cannot drop them.
   Never put suspending side effects in `MutableStateFlow.update`.
 - detekt does not run compiler plugins: use `serializer<T>()`, not `T.serializer()`.
-- Compose uses `LocalDimens` tiers and shared components. Primary actions stay in `MiniScaffold`'s `BottomActions`;
-  result screens put Home beside the primary action. Split sibling content into scope extensions to preserve spacing.
-- \* Only `ui.components` marks headings: upper-case `SectionHeader` groups rows or fields, sentence-case `Subheading`
-  titles a block, step or card, `SheetTitle` titles a bottom sheet. Explanations use `Description` (`SettingNote` and
-  `SettingIntro` in Settings), requirements and risks an INFO or WARNING `Notice`, a disabled action's precondition
-  `BlockedReason`, an action's answer `ActionMessage` or a popup, and only text under an `OutcomeHeader` `OutcomeNote`.
-- Theme colours keep `ThemeContrastTest` passing (WCAG AA). Content shown in place of a screen (PIN entry, Manager
-  approval) handles system Back like its arrow. History and Settings open details with `Navigator.openFrom` and leave
-  with `leave`, as expanded windows show them beside their detail.
-- Removal of saved keys, PINs, phone registration or history uses red `ConfirmedRemoval`; Settings actions use
-  `SettingActions` and icons. Secret placeholders stay one line.
-- Flows: workflow screen (one pinned primary "Verb amount", confirm before money moves back) → `ProcessingContent` →
-  result. Stepped screens use `StepHeader`/`StepBody`: later steps hidden until unlocked, tick once done, actions as
-  main action → outcome → removals. Settings › Terminal shows setup outcomes in a dialog instead, one at a time.
-- Settings fields use external titles in the same style as toggles, then primary descriptions, then inputs.
-  Notes below fields hold only additional information or validation. Settings switches and choices have a short title
-  plus a 1–2 sentence description. Local settings save as they change; Adyen-side capability sections edit a draft sent
-  by "Save to Adyen".
+- Visual rules, text roles, screen flows and Settings layout are in [DESIGN.md](../DESIGN.md); read it before UI work.
+  Split sibling content into `ColumnScope`/`RowScope` extensions to preserve the parent's spacing.
+- \* Only `ui.components` marks headings (`SectionHeader`, `Subheading`, `SheetTitle`); DESIGN.md › Typography says
+  which text role to use.
+- Content shown in place of a screen (PIN entry, Manager approval) handles system Back like its arrow. History and
+  Settings open details with `Navigator.openFrom` and leave with `leave`, as expanded windows show them beside their
+  detail.
 
 ## Tests
 

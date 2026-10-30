@@ -3,10 +3,7 @@ package app.minimpos.app.ui
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -17,13 +14,19 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
+import app.minimpos.app.TestEnvironment
 import app.minimpos.app.awaitCondition
-import app.minimpos.app.feature.ReceiptToggle
+import app.minimpos.app.feature.MerchantCopy
+import app.minimpos.app.feature.ReceiptActions
+import app.minimpos.app.feature.ReceiptEvents
+import app.minimpos.app.feature.TransactionActionsState
 import app.minimpos.app.receipt.PrintRenderer
 import app.minimpos.app.share.ReceiptImage
+import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.PrintJobsPreview
 import app.minimpos.app.ui.components.ReceiptPreview
 import app.minimpos.app.ui.theme.MiniMposTheme
+import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.receipt.ReceiptElement
 import com.google.common.truth.Truth.assertThat
@@ -37,7 +40,10 @@ import app.minimpos.app.createRecordingComposeRule as createComposeRule
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
 class ReceiptToggleTest {
-    @get:Rule
+    @get:Rule(order = 0)
+    val env = TestEnvironment()
+
+    @get:Rule(order = 1)
     val compose = createComposeRule()
 
     private fun awaitSlips(count: Int = 1) =
@@ -115,10 +121,19 @@ class ReceiptToggleTest {
     @Test
     fun `the receipt action shows and hides the preview on the smallest screen`() {
         val receipt = ReceiptDocument(listOf(ReceiptElement.Text("Receipt preview")))
+        val events =
+            object : ReceiptEvents {
+                override fun print(copy: ReceiptCopy) = Unit
+
+                override fun email(to: String) = Unit
+
+                override fun share() = Unit
+            }
         compose.setContent {
             MiniMposTheme {
-                var shown by remember { mutableStateOf(false) }
-                Column { ReceiptToggle(receipt.takeIf { shown }, { shown = !shown }) }
+                CompositionLocalProvider(LocalAppContainer provides env.container) {
+                    Column { ReceiptActions(TransactionActionsState(receipt = receipt), events, MerchantCopy.NONE) }
+                }
             }
         }
         compose.onNodeWithText("Receipt preview").assertDoesNotExist()

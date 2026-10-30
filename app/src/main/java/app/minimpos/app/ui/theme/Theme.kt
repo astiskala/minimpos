@@ -64,9 +64,6 @@ object AdyenColors {
 
     /** Light orange background of warning containers. */
     val OrangeLight = Color(0xFFFFF1E5)
-
-    /** Links and tertiary accents. */
-    val Blue = Color(0xFF0070F5)
 }
 
 /**
@@ -103,7 +100,6 @@ internal val MiniMposColors =
         onSecondary = Color.White,
         secondaryContainer = AdyenColors.GreyLight,
         onSecondaryContainer = AdyenColors.Navy,
-        tertiary = AdyenColors.Blue,
         background = Color.White,
         onBackground = AdyenColors.Navy,
         surface = Color.White,
@@ -113,7 +109,8 @@ internal val MiniMposColors =
         surfaceContainerLowest = Color.White,
         surfaceContainerLow = Color.White,
         surfaceContainer = AdyenColors.GreyLight,
-        surfaceContainerHigh = AdyenColors.GreyLight,
+        // Dialogs: white, so the tonal cards and notices inside them keep their contrast.
+        surfaceContainerHigh = Color.White,
         surfaceContainerHighest = AdyenColors.Border,
         outline = AdyenColors.Outline,
         outlineVariant = AdyenColors.Border,

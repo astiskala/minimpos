@@ -20,7 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LockOpen
@@ -30,7 +29,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -90,6 +88,7 @@ import app.minimpos.app.history.paidOnline
 import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.Card
+import app.minimpos.app.ui.components.ChoiceChip
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.EmptyState
 import app.minimpos.app.ui.components.LabeledValue
@@ -282,23 +281,19 @@ private fun HistoryFilters(
     ) {
         if (methods.isNotEmpty() || method != null) PaymentMethodChip(methods, method, onMethod)
         HistoryFilter.entries.forEach { filter ->
-            FilterChip(
+            ChoiceChip(
+                stringResource(
+                    when (filter) {
+                        HistoryFilter.ALL -> R.string.history_filter_all
+                        HistoryFilter.SALES -> R.string.history_filter_sales
+                        HistoryFilter.AWAITING_TIP -> R.string.history_filter_awaiting_tip
+                        HistoryFilter.PRE_AUTHS -> R.string.history_filter_pre_auths
+                        HistoryFilter.REFUNDS -> R.string.history_filter_refunds
+                        HistoryFilter.ISSUES -> R.string.history_filter_issues
+                    },
+                ),
                 selected = selected == filter,
                 onClick = { onSelect(filter) },
-                label = {
-                    Text(
-                        stringResource(
-                            when (filter) {
-                                HistoryFilter.ALL -> R.string.history_filter_all
-                                HistoryFilter.SALES -> R.string.history_filter_sales
-                                HistoryFilter.AWAITING_TIP -> R.string.history_filter_awaiting_tip
-                                HistoryFilter.PRE_AUTHS -> R.string.history_filter_pre_auths
-                                HistoryFilter.REFUNDS -> R.string.history_filter_refunds
-                                HistoryFilter.ISSUES -> R.string.history_filter_issues
-                            },
-                        ),
-                    )
-                },
             )
         }
     }
@@ -320,11 +315,11 @@ private fun PaymentMethodChip(
         onMethod(value)
     }
     Box {
-        FilterChip(
+        ChoiceChip(
+            method?.label ?: stringResource(R.string.history_method),
             selected = method != null,
             onClick = { expanded = true },
-            label = { Text(method?.label ?: stringResource(R.string.history_method)) },
-            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+            dropdown = true,
             modifier = Modifier.testTag("paymentMethod"),
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {

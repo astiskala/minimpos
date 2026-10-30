@@ -1,5 +1,6 @@
 package app.minimpos.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -22,6 +23,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
+import app.minimpos.app.ui.theme.BorderWidth
 import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.MinTouchTarget
@@ -72,7 +75,7 @@ fun SecondaryButton(
     icon: ImageVector? = null,
 ) {
     SecondaryButton(onClick, modifier, enabled = enabled && !loading) {
-        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.primary else null)
+        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.onSurface else null)
     }
 }
 
@@ -92,6 +95,8 @@ fun SecondaryButton(
         enabled = enabled,
         modifier = modifier.fillMaxWidth().heightIn(min = LocalDimens.current.secondaryButtonHeight),
         shape = MaterialTheme.shapes.medium,
+        colors = secondaryColors(),
+        border = secondaryBorder(enabled),
         content = content,
     )
 }
@@ -161,10 +166,31 @@ fun CompactSecondaryButton(
         enabled = enabled,
         modifier = modifier.heightIn(min = MinTouchTarget),
         shape = MaterialTheme.shapes.medium,
+        colors = secondaryColors(),
+        border = secondaryBorder(enabled),
         contentPadding = contentPadding,
         content = content,
     )
 }
+
+/**
+ * Navy content on secondary buttons, between the green primary fill and the green text of tertiary actions, so the
+ * three levels read in order.
+ */
+@Composable
+private fun secondaryColors() = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
+
+/** The outline of a secondary button: the field outline colour (3:1 on white), faded like the label when disabled. */
+@Composable
+@ReadOnlyComposable
+private fun secondaryBorder(enabled: Boolean) =
+    BorderStroke(
+        BorderWidth,
+        if (enabled) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_OUTLINE_ALPHA),
+    )
+
+/** Material's opacity for a disabled control's outline. */
+private const val DISABLED_OUTLINE_ALPHA = 0.12f
 
 /**
  * A lesser inline action with the same touch size and label role as [CompactSecondaryButton], without a border.

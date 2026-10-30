@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +26,7 @@ import app.minimpos.app.data.settings.EmailSettings
 import app.minimpos.app.data.settings.SmtpSecurity
 import app.minimpos.app.email.SmtpProvider
 import app.minimpos.app.ui.components.ActionMessage
+import app.minimpos.app.ui.components.ChoiceChip
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.TertiaryButton
@@ -161,13 +158,7 @@ private fun ProviderChip(
     checked: Boolean,
     onClick: () -> Unit,
     tag: String,
-) = FilterChip(
-    selected = checked,
-    onClick = onClick,
-    label = { Text(label) },
-    leadingIcon = if (checked) ({ Icon(Icons.Default.Check, contentDescription = null) }) else null,
-    modifier = Modifier.testTag(tag),
-)
+) = ChoiceChip(label, checked, onClick, Modifier.testTag(tag))
 
 /**
  * What [provider] needs (usually an app password rather than the account's own) and, when [canOpenLinks], a button that

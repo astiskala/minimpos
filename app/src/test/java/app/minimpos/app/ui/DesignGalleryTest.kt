@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -21,18 +24,22 @@ import androidx.compose.ui.test.isEnabled
 import app.minimpos.app.ScreenshotRule
 import app.minimpos.app.ScreenshotTolerance
 import app.minimpos.app.TestEnvironment
+import app.minimpos.app.ui.components.ActionGroup
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.Card
+import app.minimpos.app.ui.components.ChoiceChip
 import app.minimpos.app.ui.components.CompactSecondaryButton
 import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.EmptyState
+import app.minimpos.app.ui.components.GroupAction
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.Notice
 import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.NumericKeypad
+import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
@@ -41,6 +48,8 @@ import app.minimpos.app.ui.components.StatusKind
 import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.components.SwitchRow
 import app.minimpos.app.ui.components.TertiaryButton
+import app.minimpos.app.ui.components.TransactionRow
+import app.minimpos.app.ui.components.fieldErrorIcon
 import app.minimpos.app.ui.theme.Dimens
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.MinTouchTarget
@@ -140,10 +149,10 @@ class DesignGalleryTest {
     private fun ColumnScope.CompactActions() {
         CompactSecondaryButton("Download", {})
         CompactSecondaryButton("Pause", {})
-        CompactTertiaryButton("Exact cash", {})
+        CompactTertiaryButton("Cancel", {})
         CompactSecondaryButton("Download", {}, enabled = false)
         CompactTertiaryButton("Remove", {}, destructive = true)
-        CompactTertiaryButton("Exact cash", {}, enabled = false)
+        CompactTertiaryButton("Cancel", {}, enabled = false)
     }
 
     @Test
@@ -212,15 +221,70 @@ class DesignGalleryTest {
         show {
             SwitchRow("Print automatically", checked = true, onChange = {}, subtitle = "Prints the customer receipt after each sale.")
             SwitchRow("Email receipts", checked = false, onChange = {})
+            SwitchRow("Cash refunds", checked = false, onChange = {}, subtitle = "Require Manager PIN for this action.", enabled = false)
             OutlinedTextField(
                 value = "12,5",
                 onValueChange = {},
                 label = { Text("Price") },
                 isError = true,
+                trailingIcon = fieldErrorIcon(true),
                 supportingText = { Text("Enter a price such as 12.50.") },
             )
         }
         capture()
+    }
+
+    private val receiptActions =
+        listOf(
+            GroupAction("Print receipt", Icons.Default.Print, "print") {},
+            GroupAction("Print merchant copy", Icons.Default.Print, "printMerchant", loading = true) {},
+            GroupAction("Email receipt", Icons.Default.Email, "emailReceipt") {},
+            GroupAction("Share receipt", Icons.Default.Share, "shareReceipt") {},
+            GroupAction("Show receipt", Icons.AutoMirrored.Filled.ReceiptLong, "toggleReceipt") {},
+        )
+
+    @Test
+    fun `action group`() {
+        show { ActionGroup(receiptActions) }
+        capture()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `action group on the smallest screen`() {
+        show(Dimens.Compact) { ActionGroup(receiptActions) }
+        capture("compact")
+    }
+
+    @Test
+    fun `choice chips and transaction rows`() {
+        show {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.Small)) {
+                ChoiceChip("Method", selected = false, onClick = {}, dropdown = true)
+                ChoiceChip("All", selected = true, onClick = {})
+                ChoiceChip("Sales", selected = false, onClick = {})
+            }
+            TransactionRow("261015-101000-CCCCC", "10:05 am", "$6.40", "Declined", StatusKind.ERROR, {})
+            TransactionRow("261015-094000-BBBBB", "9:40 am · VISA", "$23.80", "Approved", StatusKind.SUCCESS, {})
+            TransactionRow("261015-093000-AAAAA", "9:30 am", "$5.00", "Unknown", StatusKind.WARNING, {})
+        }
+        capture()
+    }
+
+    @Test
+    fun `outcome header`() {
+        show { OutcomeHeader(StatusKind.SUCCESS, "Approved", "$12.50") }
+        capture()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `outcome header on the smallest screen`() {
+        show(Dimens.Compact) {
+            OutcomeHeader(StatusKind.SUCCESS, "Approved", "$12.50")
+            OutcomeHeader(StatusKind.WARNING, "Refund requested", "$1,234.50")
+        }
+        capture("compact")
     }
 
     private val keypad: @Composable ColumnScope.() -> Unit = {

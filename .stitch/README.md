@@ -6,10 +6,12 @@ The design-system home for Mini mPOS: one machine-readable specification that pe
 | Path | Contents |
 | --- | --- |
 | [DESIGN.md](DESIGN.md) | The authoritative visual specification: colour, type, spacing, shape, components, known exceptions. |
-| `reference/` | Approved reference images (Stitch exports, native screenshot baselines you choose to keep here). Empty for now. |
+| `reference/` | Approved reference images (Stitch exports, native screenshot baselines you choose to keep here). |
 
-No Stitch project ID or export exists yet; none is recorded here. Add the real ones to this file when you create the
-Stitch project.
+Stitch project: **Mini mPOS — Design Review (Oct 2026)**, ID `14709404705320367655`, design system asset
+`c3bb1a7d0561471ab9737fdb349a5456`. It was seeded from a condensed copy of `DESIGN.md` on October 31, 2026; its exports
+are in `reference/stitch-review-2026-10-31/`. An earlier project, `18295887401793738558` ("MinimPOS Design System"),
+carries a Stitch-generated theme that drifted from the app's tokens; do not use it as a reference.
 
 ## Workflow
 

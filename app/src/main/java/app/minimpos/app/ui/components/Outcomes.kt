@@ -28,6 +28,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
@@ -37,13 +38,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.minimpos.app.ui.theme.Dimens
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
 import app.minimpos.app.ui.theme.Spacing
 
 /**
  * The top of result and detail screens: the outcome's badge and [title], and the [amount], followed by [content] such
- * as why a payment failed. [titleTag] tags the title for tests.
+ * as why a payment failed. [titleTag] tags the title for tests. On height-limited screens ([Dimens.compact]) a smaller
+ * badge sits beside the title and amount instead of above them, which leaves the receipt actions in view on the AMS1.
  */
 @Composable
 fun OutcomeHeader(
@@ -60,19 +64,24 @@ fun OutcomeHeader(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(dimens.spacing),
     ) {
-        StatusBadge(kind)
-        Text(
-            title,
-            style = dimens.outcomeStyle,
-            textAlign = TextAlign.Center,
-            modifier = (if (titleTag != null) Modifier.testTag(titleTag) else Modifier).semantics { heading() },
-        )
-        Text(
-            amount,
-            style = dimens.amountStyle,
-            textAlign = TextAlign.Center,
-            modifier = if (titleTag != null) Modifier.testTag("${titleTag}Amount") else Modifier,
-        )
+        val titleModifier = (if (titleTag != null) Modifier.testTag(titleTag) else Modifier).semantics { heading() }
+        val amountModifier = if (titleTag != null) Modifier.testTag("${titleTag}Amount") else Modifier
+        if (dimens.compact) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.Medium, Alignment.CenterHorizontally),
+            ) {
+                StatusBadge(kind, size = IconSize.Large)
+                Column(Modifier.weight(1f, fill = false)) {
+                    Text(title, style = dimens.outcomeStyle, modifier = titleModifier)
+                    Text(amount, style = dimens.amountStyle, modifier = amountModifier)
+                }
+            }
+        } else {
+            StatusBadge(kind)
+            Text(title, style = dimens.outcomeStyle, textAlign = TextAlign.Center, modifier = titleModifier)
+            Text(amount, style = dimens.amountStyle, textAlign = TextAlign.Center, modifier = amountModifier)
+        }
         content()
     }
 }
@@ -155,7 +164,11 @@ fun TransactionRow(
         Spacer(Modifier.width(Spacing.Small))
         Column(horizontalAlignment = Alignment.End) {
             Text(amount, style = MaterialTheme.typography.titleMedium)
-            Text(status, style = MaterialTheme.typography.labelSmall, color = kind.color())
+            // The outcome's glyph beside its word, so the status does not rely on colour alone.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.XSmall)) {
+                Icon(kind.icon(), contentDescription = null, tint = kind.color(), modifier = Modifier.size(IconSize.Small))
+                Text(status, style = MaterialTheme.typography.labelSmall, color = kind.color())
+            }
         }
     }
 }
@@ -170,6 +183,14 @@ fun StatusKind.color(): Color =
             StatusKind.WARNING -> colors.warning
             StatusKind.ERROR -> colors.error
         }
+    }
+
+/** The glyph of this kind of outcome, on badges and beside statuses in lists. */
+fun StatusKind.icon(): ImageVector =
+    when (this) {
+        StatusKind.SUCCESS -> Icons.Default.Check
+        StatusKind.WARNING -> Icons.Default.PriorityHigh
+        StatusKind.ERROR -> Icons.Default.Close
     }
 
 /** How an outcome is shown: colour and icon. */
@@ -191,16 +212,10 @@ fun StatusBadge(
     modifier: Modifier = Modifier,
     size: Dp = LocalDimens.current.badgeSize,
 ) {
-    val icon =
-        when (kind) {
-            StatusKind.SUCCESS -> Icons.Default.Check
-            StatusKind.WARNING -> Icons.Default.PriorityHigh
-            StatusKind.ERROR -> Icons.Default.Close
-        }
     Box(
         modifier = modifier.size(size).background(kind.color(), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = LocalStatusColors.current.onStatus, modifier = Modifier.size(size * 0.55f))
+        Icon(kind.icon(), contentDescription = null, tint = LocalStatusColors.current.onStatus, modifier = Modifier.size(size * 0.55f))
     }
 }

@@ -21,7 +21,7 @@ class ThemeContrastTest {
     fun `text is legible on the backgrounds it is drawn on`() {
         mapOf(
             "on primary (buttons, payment tiles, badges)" to (scheme.onPrimary to scheme.primary),
-            "primary on surface (text buttons, chosen values)" to (scheme.primary to scheme.surface),
+            "primary on surface (text buttons, links)" to (scheme.primary to scheme.surface),
             "on secondary" to (scheme.onSecondary to scheme.secondary),
             "on surface" to (scheme.onSurface to scheme.surface),
             "secondary text on surface" to (scheme.onSurfaceVariant to scheme.surface),
@@ -30,7 +30,8 @@ class ThemeContrastTest {
             "error on surface" to (scheme.error to scheme.surface),
             "on error" to (scheme.onError to scheme.error),
             "on error container" to (scheme.onErrorContainer to scheme.errorContainer),
-            "links" to (scheme.tertiary to scheme.surface),
+            "dialog text" to (scheme.onSurface to scheme.surfaceContainerHigh),
+            "secondary text in dialogs" to (scheme.onSurfaceVariant to scheme.surfaceContainerHigh),
             "success text" to (status.success to scheme.surface),
             "warning text" to (status.warning to scheme.surface),
             "simulator banner" to (status.warning to status.warningContainer),
@@ -46,7 +47,7 @@ class ThemeContrastTest {
     @Test
     fun `outlines and meaningful icons stand out`() {
         mapOf(
-            "field outlines" to (scheme.outline to scheme.surface),
+            "field and secondary-button outlines" to (scheme.outline to scheme.surface),
             "icons on tiles" to (scheme.primary to scheme.surfaceVariant),
             "outline of a product in the cart" to (scheme.primary to scheme.primaryContainer),
             "warning icons" to (status.warning to scheme.surface),

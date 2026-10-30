@@ -54,6 +54,7 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.qr.QrCodes
 import app.minimpos.app.qr.QrShapes
 import app.minimpos.app.share.ReceiptImage
+import app.minimpos.app.ui.theme.BorderWidth
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
 import app.minimpos.core.logo.LogoFormatException
@@ -306,7 +307,7 @@ fun ReceiptPreview(
                 .widthIn(max = 360.dp)
                 .fillMaxWidth()
                 .aspectRatio(slip.width.toFloat() / slip.height)
-                .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
+                .border(BorderWidth, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
                 .semantics { this[SemanticsProperties.Text] = receiptText }
                 .onGloballyPositioned { coordinates ->
                     val visible = coordinates.boundsInWindow()

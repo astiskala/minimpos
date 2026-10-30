@@ -92,6 +92,7 @@ import app.minimpos.app.ui.components.SharedKeyDialog
 import app.minimpos.app.ui.components.StatusBadge
 import app.minimpos.app.ui.components.StatusKind
 import app.minimpos.app.ui.components.Subheading
+import app.minimpos.app.ui.components.fieldErrorIcon
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
@@ -756,6 +757,7 @@ private fun TransferCodeField(
         Text(stringResource(hint))
     },
     isError = wrong || (code.isNotEmpty() && !TransferSeal.isValidCode(code)),
+    trailingIcon = fieldErrorIcon(wrong || (code.isNotEmpty() && !TransferSeal.isValidCode(code))),
     visualTransformation = TransferCodeTransformation,
     singleLine = true,
     keyboardOptions =

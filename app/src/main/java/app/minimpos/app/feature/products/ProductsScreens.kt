@@ -71,6 +71,7 @@ import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SwitchRow
+import app.minimpos.app.ui.components.fieldErrorIcon
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -409,6 +410,7 @@ private fun ProductPriceField(
         onValueChange = { onChange(it.take(12)) },
         label = { Text(stringResource(R.string.products_price, state.currency.code)) },
         isError = invalid,
+        trailingIcon = fieldErrorIcon(invalid),
         supportingText =
             if (invalid) {
                 { Text(productPriceError(state), Modifier.testTag("productPriceError")) }

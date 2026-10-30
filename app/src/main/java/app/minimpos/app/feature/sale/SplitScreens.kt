@@ -59,7 +59,7 @@ import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
-import app.minimpos.app.ui.components.CompactTertiaryButton
+import app.minimpos.app.ui.components.CompactSecondaryButton
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
@@ -76,6 +76,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.money.AmountEntry
@@ -519,13 +520,15 @@ private fun ColumnScope.CashEntry(
             )
         }
     }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    // A little room above, so the button's outline stays clear of the change amount.
+    Row(Modifier.fillMaxWidth().padding(top = Spacing.XSmall), verticalAlignment = Alignment.CenterVertically) {
         Text(
             stringResource(R.string.split_cash_received),
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.weight(1f),
         )
-        CompactTertiaryButton(stringResource(R.string.split_cash_exact), onExactCash, Modifier.testTag("exactCash"))
+        // Outlined, so it reads as a button beside the label rather than as a link.
+        CompactSecondaryButton(stringResource(R.string.split_cash_exact), onExactCash, Modifier.testTag("exactCash"))
     }
     Text(
         money.format(state.received.minor),

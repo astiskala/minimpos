@@ -324,17 +324,19 @@ fun SwitchRow(
             ).toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Disabled, the title and its description fade together, as Material's disabled content does.
+        val disabled = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
         Column(Modifier.weight(1f)) {
             Text(
                 title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.38f),
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else disabled,
             )
             subtitle?.let {
                 Text(
                     it,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else disabled,
                     maxLines = subtitleMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )

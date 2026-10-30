@@ -38,7 +38,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -87,6 +86,7 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.scan.ScanMode
 import app.minimpos.app.scan.ScannerDialog
+import app.minimpos.app.ui.components.ChoiceChip
 import app.minimpos.app.ui.components.CompactSecondaryButton
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.EmptyState
@@ -107,6 +107,7 @@ import app.minimpos.app.ui.components.rememberSearchControl
 import app.minimpos.app.ui.navigation.ChosenCard
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
+import app.minimpos.app.ui.theme.BorderWidth
 import app.minimpos.app.ui.theme.Elevation
 import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
@@ -439,6 +440,8 @@ internal fun ProductBrowser(
 ) {
     val dimens = LocalDimens.current
     val gap = dimens.spacing
+    // The screen's own margin, so the search, filters, custom item and grid line up with every other screen.
+    val edge = dimens.screenPadding
     val tileHeight = dimens.tileHeight
     val grid = rememberLazyGridState()
     // A new filter starts at its first result, including when clearing it restores products before the old anchor.
@@ -449,22 +452,22 @@ internal fun ProductBrowser(
                 search.text,
                 stringResource(R.string.sale_search),
                 focus = search.mode == SearchMode.REQUESTED,
-                modifier = Modifier.fillMaxWidth().padding(start = gap, end = gap, top = gap),
+                modifier = Modifier.fillMaxWidth().padding(start = edge, end = edge, top = gap),
             )
         }
         if (state.categories.isNotEmpty()) {
-            CategoryFilters(state.categories, state.selectedCategory, onCategory, gap)
+            CategoryFilters(state.categories, state.selectedCategory, onCategory, edge)
         }
         SecondaryButton(
             text = stringResource(R.string.sale_custom_item),
             onClick = onCustom,
             icon = Icons.Default.Add,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = gap, vertical = gap / 2).testTag("customItem"),
+            modifier = Modifier.fillMaxWidth().padding(start = edge, end = edge, top = gap).testTag("customItem"),
         )
         LazyVerticalGrid(
             columns = GridCells.Adaptive(132.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)),
             state = grid,
-            contentPadding = PaddingValues(gap),
+            contentPadding = PaddingValues(horizontal = edge, vertical = gap),
             horizontalArrangement = Arrangement.spacedBy(gap),
             verticalArrangement = Arrangement.spacedBy(gap),
             modifier = Modifier.fillMaxSize().testTag("productGrid"),
@@ -487,28 +490,22 @@ internal fun ProductBrowser(
     }
 }
 
-/** "All" and a chip per category; [selected] is null for all products. */
+/** "All" and a chip per category; [selected] is null for all products. [edge] is the screen's side margin. */
 @Composable
 private fun CategoryFilters(
     categories: List<CategoryEntity>,
     selected: Long?,
     onSelect: (Long?) -> Unit,
-    gap: Dp,
+    edge: Dp,
 ) {
     LazyRow(
-        contentPadding = PaddingValues(horizontal = gap),
+        contentPadding = PaddingValues(horizontal = edge),
         horizontalArrangement = Arrangement.spacedBy(Spacing.Small),
         modifier = Modifier.padding(top = if (LocalDimens.current.compact) Spacing.XSmall else Spacing.Small),
     ) {
-        item {
-            FilterChip(selected = selected == null, onClick = {
-                onSelect(null)
-            }, label = { Text(stringResource(R.string.sale_all)) })
-        }
+        item { ChoiceChip(stringResource(R.string.sale_all), selected = selected == null, onClick = { onSelect(null) }) }
         items(categories, key = { it.id }) { category ->
-            FilterChip(selected = selected == category.id, onClick = {
-                onSelect(category.id)
-            }, label = { Text(category.name) })
+            ChoiceChip(category.name, selected = selected == category.id, onClick = { onSelect(category.id) })
         }
     }
 }
@@ -530,7 +527,7 @@ private fun ProductTile(
         onClick = onClick,
         shape = MaterialTheme.shapes.medium,
         color = if (inCart) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        border = if (inCart) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (inCart) BorderStroke(BorderWidth, MaterialTheme.colorScheme.primary) else null,
         modifier =
             Modifier
                 .fillMaxWidth()

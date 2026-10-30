@@ -200,7 +200,11 @@ class ScreenGoldensTest {
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("newSale").performClick()
         waitForTag("productGrid")
-        ids.take(2).forEach { compose.onNodeWithTag("product_$it").performClick() }
+        // The grid is there before the catalogue has loaded into it.
+        ids.take(2).forEach {
+            waitForTag("product_$it")
+            compose.onNodeWithTag("product_$it").performClick()
+        }
         compose.waitForIdle()
     }
 

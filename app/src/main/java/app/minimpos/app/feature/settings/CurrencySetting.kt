@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.ui.components.PickerDialog
 import app.minimpos.app.ui.components.currentLocale

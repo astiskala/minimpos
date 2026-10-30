@@ -21,6 +21,7 @@ plugins {
     alias(libs.plugins.kover)
     alias(libs.plugins.detekt)
     alias(libs.plugins.dokka)
+    alias(libs.plugins.roborazzi)
 }
 
 val keystoreProperties =
@@ -245,6 +246,9 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.okhttp.mockwebserver)
@@ -623,6 +627,18 @@ abstract class AndroidApiArguments : CommandLineArgumentProvider {
 }
 
 /**
+ * Where `ScreenshotRule` compares and records the golden images; a source folder, not a build output. It is a task
+ * input so that a changed golden reruns the tests instead of being served from the up-to-date check or build cache.
+ */
+abstract class ScreenshotDirectoryArgument : CommandLineArgumentProvider {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val directory: DirectoryProperty
+
+    override fun asArguments() = listOf("-Dminimpos.screenshotDirectory=${directory.get().asFile.absolutePath}")
+}
+
+/**
  * Points `DeadCodeTest` at each production module's `src/main`: their Kotlin files tell hand-written classes from
  * generated ones and show where constants and inline functions, which leave no reference in bytecode, are used; the
  * app's manifest names the classes Android creates.
@@ -644,6 +660,15 @@ val listBackportedMethods =
         list.set(layout.buildDirectory.file("intermediates/backported-methods.txt"))
     }
 
+// The golden images are checked in under src/test/screenshots (see ScreenshotRule); a failed comparison leaves its actual
+// and difference images here, with the other reports CI uploads.
+roborazzi {
+    outputDir.set(layout.buildDirectory.dir("reports/roborazzi"))
+    compare {
+        outputDir.set(layout.buildDirectory.dir("reports/roborazzi"))
+    }
+}
+
 tasks.withType<Test>().configureEach {
     val uiFailures = layout.buildDirectory.dir("reports/ui-failures/$name")
     outputs.dir(uiFailures).withPropertyName("uiFailures")
@@ -655,6 +680,8 @@ tasks.withType<Test>().configureEach {
             uiFailureDirectory.set(uiFailures)
             adyenModelRules.set(layout.projectDirectory.file("proguard-rules.pro"))
         }
+    jvmArgumentProviders +=
+        objects.newInstance<ScreenshotDirectoryArgument>().apply { directory.set(layout.projectDirectory.dir("src/test/screenshots")) }
     val repository = isolated.rootProject.projectDirectory
     jvmArgumentProviders +=
         objects.newInstance<ProductionSourcesArgument>().apply {

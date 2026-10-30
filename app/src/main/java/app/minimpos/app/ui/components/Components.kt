@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
@@ -52,6 +54,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -59,12 +62,61 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
+import app.minimpos.app.ui.theme.Elevation
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.MinTouchTarget
+import app.minimpos.app.ui.theme.Spacing
+
+/**
+ * Shared chrome above one adaptive scene's [content]. Navigation 3 retains ownership of the content and its transitions.
+ * [title] names the section; [onBack] leaves it, while the content retains its existing system Back handling.
+ */
+@Composable
+fun NavigationFrame(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Column(modifier.fillMaxSize()) {
+        ScreenTopBar(title, onBack) {}
+        Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScreenTopBar(
+    title: String,
+    onBack: (() -> Unit)?,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val dimens = LocalDimens.current
+    Column {
+        CenterAlignedTopAppBar(
+            title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = dimens.titleStyle) },
+            navigationIcon = {
+                if (onBack != null) {
+                    IconButton(onClick = onBack, modifier = Modifier.testTag("back")) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                    }
+                }
+            },
+            actions = content,
+            expandedHeight = dimens.topBarHeight,
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+        )
+        ModeBanner()
+        HorizontalDivider()
+    }
+}
 
 /**
  * The app's screen frame. The content area ends above the keyboard, so focused fields scroll into view; [bottomBar]
  * (usually [BottomActions]) keeps the main action reachable without scrolling and steps aside while typing.
+ * [header] lets panes retain headings and actions beneath a shared [NavigationFrame] without repeating system insets.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -75,6 +127,7 @@ fun MiniScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     snackbarHostState: SnackbarHostState? = null,
     bottomBar: @Composable () -> Unit = {},
+    header: ScreenHeader = ScreenHeader.FULL,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val dimens = LocalDimens.current
@@ -82,29 +135,36 @@ fun MiniScaffold(
     Scaffold(
         modifier = modifier,
         topBar = {
-            Column {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = dimens.titleStyle)
-                    },
-                    navigationIcon = {
-                        if (onBack != null) {
-                            IconButton(onClick = onBack, modifier = Modifier.testTag("back")) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
-                            }
-                        }
-                    },
-                    actions = actions,
-                    expandedHeight = dimens.topBarHeight,
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
-                )
-                ModeBanner()
-                HorizontalDivider()
+            if (header == ScreenHeader.FULL) {
+                ScreenTopBar(title, onBack, actions)
+            } else {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = dimens.screenPadding),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (header == ScreenHeader.DETAIL_PANE) {
+                        Text(
+                            title,
+                            style = dimens.titleStyle,
+                            modifier = Modifier.weight(1f).padding(vertical = Spacing.Small).semantics { heading() },
+                        )
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    actions()
+                }
             }
         },
         snackbarHost = { snackbarHostState?.let { SnackbarHost(it) } },
         bottomBar = { if (!typing) bottomBar() },
-        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.ime),
+        contentWindowInsets =
+            (
+                if (header == ScreenHeader.FULL) {
+                    ScaffoldDefaults.contentWindowInsets
+                } else {
+                    ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+                }
+            ).union(WindowInsets.ime),
         content = content,
     )
 }
@@ -116,7 +176,7 @@ fun BottomActions(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val dimens = LocalDimens.current
-    Surface(shadowElevation = 8.dp, modifier = modifier) {
+    Surface(shadowElevation = Elevation.ActionBar, modifier = modifier) {
         Box(Modifier.fillMaxWidth().navigationBarsPadding(), contentAlignment = Alignment.Center) {
             Column(
                 Modifier
@@ -198,7 +258,7 @@ fun LabeledValue(
         val valueMax = (maxWidth - 104.dp).coerceAtLeast(maxWidth * 0.5f)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = style, modifier = Modifier.weight(1f))
-            Spacer(Modifier.width(if (compact) 8.dp else 12.dp))
+            Spacer(Modifier.width(if (compact) Spacing.Small else Spacing.Medium))
             Text(
                 value,
                 style = style,
@@ -221,7 +281,7 @@ fun EmptyState(
 ) {
     val compact = LocalDimens.current.compact
     Column(
-        modifier = modifier.fillMaxSize().padding(if (compact) 16.dp else 32.dp),
+        modifier = modifier.fillMaxSize().padding(if (compact) Spacing.Large else Spacing.XXLarge),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -229,14 +289,14 @@ fun EmptyState(
             icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(if (compact) 40.dp else 56.dp),
+            modifier = Modifier.size(if (compact) IconSize.Large else 56.dp),
         )
-        Spacer(Modifier.height(if (compact) 8.dp else 16.dp))
+        Spacer(Modifier.height(if (compact) Spacing.Small else Spacing.Large))
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Spacing.Small))
         Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         content?.let {
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(Spacing.XLarge))
             it()
         }
     }
@@ -257,7 +317,11 @@ fun SwitchRow(
     subtitleMaxLines: Int = Int.MAX_VALUE,
 ) {
     Row(
-        modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onChange),
+        modifier
+            .fillMaxWidth()
+            .heightIn(
+                min = MinTouchTarget,
+            ).toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -276,7 +340,7 @@ fun SwitchRow(
                 )
             }
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Spacing.Medium))
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
@@ -309,13 +373,18 @@ fun BlockedReason(
     Row(
         modifier
             .fillMaxWidth()
-            .padding(top = 4.dp)
+            .padding(top = Spacing.XSmall)
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
             .testTag("blockedReason"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Outlined.Info, contentDescription = null, tint = LocalStatusColors.current.warning, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
+        Icon(
+            Icons.Outlined.Info,
+            contentDescription = null,
+            tint = LocalStatusColors.current.warning,
+            modifier = Modifier.size(IconSize.Small),
+        )
+        Spacer(Modifier.width(Spacing.Small))
         Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     }
 }
@@ -332,7 +401,7 @@ fun ActionMessage(
         message,
         color = if (isError) colors.error else colors.success,
         style = MaterialTheme.typography.bodyMedium,
-        modifier = modifier.fillMaxWidth().padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
+        modifier = modifier.fillMaxWidth().padding(top = Spacing.XSmall).semantics { liveRegion = LiveRegionMode.Polite },
         textAlign = TextAlign.Center,
     )
 }

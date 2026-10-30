@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.R
 import app.minimpos.app.data.db.Failure
@@ -26,6 +25,7 @@ import app.minimpos.app.feature.OutcomeDialog
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.ReceiptPreview
 import app.minimpos.app.ui.components.SectionHeader
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.tax.TaxRates
 
 /** Receipt content and printing, including reviewed business import and the live sample. */
@@ -63,7 +63,7 @@ internal fun ColumnScope.ReceiptsSection(
     ReceiptPrintingSettings(receipt, printBlocked, ::update)
     SectionHeader(stringResource(R.string.settings_preview))
     state.sampleReceipt?.let { document ->
-        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ReceiptPreview(document) }
+        Box(Modifier.fillMaxWidth().padding(Spacing.Large), contentAlignment = Alignment.Center) { ReceiptPreview(document) }
     }
     SettingActions {
         GatedButton(

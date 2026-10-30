@@ -52,9 +52,12 @@ import app.minimpos.app.ui.components.KeyLabel
 import app.minimpos.app.ui.components.Keypad
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.ScreenHeader
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.navigation.Navigator
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.access.ManagerAction
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -64,11 +67,15 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlin.time.Duration.Companion.seconds
 
-/** Shows [content] when the admin PIN is absent or unlocked. Manager permissions use [ManagerGate]. */
+/**
+ * Shows [content] when the admin PIN is absent or unlocked. Manager permissions use [ManagerGate].
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
+ */
 @Composable
 fun PinGate(
     navigator: Navigator,
     modifier: Modifier = Modifier,
+    header: ScreenHeader = ScreenHeader.FULL,
     content: @Composable () -> Unit,
 ) {
     val container = LocalAppContainer.current
@@ -88,7 +95,7 @@ fun PinGate(
         when {
             pinSet == null -> Box(Modifier.fillMaxSize())
             pinSet == false || unlocked -> content()
-            else -> UnlockScreen(onUnlock = lock::unlock, onCancel = navigator::back)
+            else -> UnlockScreen(onUnlock = lock::unlock, onCancel = navigator::back, header = header)
         }
     }
 }
@@ -96,6 +103,7 @@ fun PinGate(
 /**
  * Runs [onApprove] after the live permission policy for [actions] is satisfied; [onCancel] abandons the pending action. It is shown in
  * place of the screen that asked, so Back cancels it like the app bar's arrow rather than leaving that screen.
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
  */
 @Composable
 fun ManagerApproval(
@@ -103,6 +111,7 @@ fun ManagerApproval(
     onApprove: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    header: ScreenHeader = ScreenHeader.FULL,
 ) {
     val container = LocalAppContainer.current
     val approval = remember(actions) { container.managerApproval.forActions(actions) }
@@ -117,23 +126,32 @@ fun ManagerApproval(
     }
     if (required == true && configured == false) {
         BackHandler(onBack = onCancel)
-        MiniScaffold(title = stringResource(R.string.manager_pin_title), onBack = onCancel, modifier = modifier) { padding ->
+        MiniScaffold(
+            header = header,
+            title = stringResource(R.string.manager_pin_title),
+            onBack = onCancel,
+            modifier = modifier,
+        ) { padding ->
             Text(stringResource(R.string.manager_pin_required), Modifier.padding(padding).padding(LocalDimens.current.screenPadding))
         }
     }
     if (required == true && configured == true && !unlocked) {
         BackHandler(onBack = onCancel)
-        UnlockScreen(onUnlock = container.managerLock::unlock, onCancel = onCancel, manager = true)
+        UnlockScreen(onUnlock = container.managerLock::unlock, onCancel = onCancel, manager = true, header = header)
     }
 }
 
-/** Asks for the Manager PIN when [manager], otherwise the admin PIN; wrong attempts count towards a lockout. */
+/**
+ * Asks for the Manager PIN when [manager], otherwise the admin PIN; wrong attempts count towards a lockout.
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
+ */
 @Composable
 fun UnlockScreen(
     onUnlock: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
     manager: Boolean = false,
+    header: ScreenHeader = ScreenHeader.FULL,
 ) {
     val container = LocalAppContainer.current
     val pins = if (manager) container.managerPin else container.pinManager
@@ -145,6 +163,7 @@ fun UnlockScreen(
     val unreadable = stringResource(R.string.pin_unreadable)
     val locale = currentLocale()
     MiniScaffold(
+        header = header,
         title = stringResource(if (manager) R.string.manager_pin_title else R.string.pin_title),
         onBack = onCancel,
         modifier = modifier,
@@ -191,6 +210,7 @@ fun UnlockScreen(
 /**
  * Two-step "enter new PIN / confirm" flow, for the Manager PIN when [manager], otherwise the admin PIN. It is shown in
  * place of the settings screen, so Back calls [onCancel] like the app bar's arrow rather than leaving that screen.
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
  */
 @Composable
 fun SetPinScreen(
@@ -198,12 +218,14 @@ fun SetPinScreen(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
     manager: Boolean = false,
+    header: ScreenHeader = ScreenHeader.FULL,
 ) {
     var first by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val mismatch = stringResource(R.string.pin_mismatch)
     BackHandler(onBack = onCancel)
     MiniScaffold(
+        header = header,
         title = stringResource(if (manager) R.string.manager_pin_set else R.string.pin_set_title),
         onBack = onCancel,
         modifier = modifier,
@@ -254,18 +276,23 @@ fun PinPad(
     val entered = pluralStringResource(R.plurals.pin_digits_entered, pin.length, pin.length)
     CenteredScrollColumn(modifier.fillMaxSize().padding(dimens.screenPadding)) {
         if (!compact) {
-            Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
-            Spacer(Modifier.height(12.dp))
+            Icon(
+                Icons.Default.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(IconSize.Large),
+            )
+            Spacer(Modifier.height(Spacing.Medium))
         }
         Text(title, style = dimens.titleStyle, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(if (compact) 8.dp else 20.dp))
+        Spacer(Modifier.height(if (compact) Spacing.Small else Spacing.Section))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.heightIn(min = 16.dp).testTag("pinDots").clearAndSetSemantics { contentDescription = entered },
+            horizontalArrangement = Arrangement.spacedBy(Spacing.Medium),
+            modifier = Modifier.heightIn(min = Spacing.Large).testTag("pinDots").clearAndSetSemantics { contentDescription = entered },
         ) {
-            repeat(pin.length) { Box(Modifier.size(16.dp).background(MaterialTheme.colorScheme.onSurface, CircleShape)) }
+            repeat(pin.length) { Box(Modifier.size(Spacing.Large).background(MaterialTheme.colorScheme.onSurface, CircleShape)) }
         }
-        Spacer(Modifier.height(if (compact) 4.dp else 12.dp))
+        Spacer(Modifier.height(if (compact) Spacing.XSmall else Spacing.Medium))
         Text(
             error ?: stringResource(R.string.pin_hint, PinManager.MIN_LENGTH, PinManager.MAX_LENGTH),
             color = if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -276,7 +303,7 @@ fun PinPad(
                     .semantics { liveRegion = if (error != null) LiveRegionMode.Assertive else LiveRegionMode.Polite }
                     .testTag("pinMessage"),
         )
-        Spacer(Modifier.height(if (compact) 12.dp else 24.dp))
+        Spacer(Modifier.height(if (compact) Spacing.Medium else Spacing.XLarge))
         PinKeys(canConfirm = PinManager.isValidPin(pin), enabled = !busy) { key ->
             when (key) {
                 BACKSPACE -> pin = pin.dropLast(1)
@@ -284,7 +311,7 @@ fun PinPad(
                 else -> if (pin.length < PinManager.MAX_LENGTH) pin += key
             }
         }
-        Spacer(Modifier.fillMaxWidth().height(8.dp))
+        Spacer(Modifier.fillMaxWidth().height(Spacing.Small))
     }
 }
 
@@ -311,11 +338,15 @@ private fun PinKeys(
     },
 )
 
-/** Protects an expensive workflow's entry for [actions], preserving the existing navigation and inactivity session. */
+/**
+ * Protects an expensive workflow's entry for [actions], preserving the existing navigation and inactivity session.
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
+ */
 @Composable
 fun ManagerGate(
     actions: Set<ManagerAction>,
     navigator: Navigator,
+    header: ScreenHeader = ScreenHeader.FULL,
     content: @Composable () -> Unit,
 ) {
     val container = LocalAppContainer.current
@@ -335,7 +366,7 @@ fun ManagerGate(
     if (required == false || (required == true && approved)) {
         content()
     } else {
-        ManagerApproval(actions, onApprove = {}, onCancel = navigator::back)
+        ManagerApproval(actions, onApprove = {}, onCancel = navigator::back, header = header)
     }
 }
 

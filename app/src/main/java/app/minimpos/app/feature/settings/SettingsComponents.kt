@@ -2,6 +2,7 @@ package app.minimpos.app.feature.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,7 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -59,11 +59,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.ui.components.BlockedReason
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SwitchRow
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.Spacing
 
 private fun Modifier.tagged(tag: String?) = if (tag != null) testTag(tag) else this
 
@@ -136,7 +139,7 @@ fun SettingTextField(
                 Icons.Outlined.Info,
                 it,
                 if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                Modifier.padding(top = 4.dp),
+                Modifier.padding(top = Spacing.XSmall),
             )
         }
     }
@@ -155,9 +158,9 @@ internal fun SettingFieldHeading(
             title,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 4.dp),
+            modifier = Modifier.padding(bottom = Spacing.XSmall),
         )
-        description?.let { Description(it, Modifier.tagged(descriptionTag).padding(bottom = 4.dp)) }
+        description?.let { Description(it, Modifier.tagged(descriptionTag).padding(bottom = Spacing.XSmall)) }
     }
 }
 
@@ -170,7 +173,7 @@ private fun FieldNote(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier.fillMaxWidth()) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(IconSize.Small))
         Spacer(Modifier.width(6.dp))
         Text(text, style = MaterialTheme.typography.bodySmall, color = tint)
     }
@@ -321,7 +324,7 @@ private fun <T : Any> ChoiceDialog(
         title = { Text(title) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()).selectableGroup()) {
-                note?.let { Description(it, Modifier.padding(bottom = 12.dp)) }
+                note?.let { Description(it, Modifier.padding(bottom = Spacing.Medium)) }
                 options.forEach { (value, label) ->
                     Row(
                         Modifier
@@ -333,13 +336,13 @@ private fun <T : Any> ChoiceDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(selected = value == selected, onClick = null)
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(Spacing.Medium))
                         Text(label)
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { CompactTertiaryButton(stringResource(R.string.action_cancel), onDismiss) },
     )
 }
 
@@ -355,6 +358,7 @@ private fun PasswordField(
     saved: String = "",
     description: String? = null,
     tag: String? = null,
+    content: @Composable ColumnScope.() -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     var visible by remember { mutableStateOf(false) }
@@ -363,6 +367,7 @@ private fun PasswordField(
     val showsSaved = saved.isNotEmpty() && !focused && value.isEmpty()
     Column(modifier.fillMaxWidth()) {
         SettingFieldHeading(label, description = description)
+        content()
         OutlinedTextField(
             value = if (showsSaved) saved else value,
             onValueChange = {
@@ -403,7 +408,8 @@ private fun PasswordField(
  * A secret typed straight into the screen (no dialog whose buttons the keyboard could hide): never displayed once
  * saved, except as masked dots and its plain-text [hint] (an API key's last characters) when it has one. The keyboard's
  * Done key calls [onSubmit], as does the caller's own button. [onDraft] reports only whether text is unsaved, then
- * false when the field leaves composition; never reports the secret itself.
+ * false when the field leaves composition; never reports the secret itself. [content] is shown between the
+ * description and the input, such as an expander for more detail.
  */
 @Composable
 fun SecretField(
@@ -417,6 +423,7 @@ fun SecretField(
     onDraft: ((Boolean) -> Unit)? = null,
     hint: String? = null,
     description: String? = null,
+    content: @Composable ColumnScope.() -> Unit = {},
 ) {
     val reportDraft by rememberUpdatedState(onDraft)
     LaunchedEffect(value) { reportDraft?.invoke(value.isNotEmpty()) }
@@ -436,6 +443,7 @@ fun SecretField(
             placeholder = stringResource(if (isSet) R.string.settings_secret_replace else R.string.settings_secret_enter),
             saved = if (isSet) MASK + MASK + hint.orEmpty() else "",
             tag = tag,
+            content = content,
         )
     }
 }
@@ -494,19 +502,22 @@ fun SettingSecret(
                 )
             },
             confirmButton = {
-                TextButton(onClick = ::save, enabled = value.isNotEmpty(), modifier = Modifier.testTag("secretSave")) {
-                    Text(stringResource(R.string.action_save))
-                }
+                CompactTertiaryButton(
+                    stringResource(R.string.action_save),
+                    ::save,
+                    Modifier.testTag("secretSave"),
+                    enabled = value.isNotEmpty(),
+                )
             },
             dismissButton = {
                 Row {
                     if (isSet) {
-                        TextButton(onClick = {
+                        CompactTertiaryButton(stringResource(R.string.action_clear), {
                             onClear()
                             open = false
-                        }) { Text(stringResource(R.string.action_clear), color = MaterialTheme.colorScheme.error) }
+                        }, destructive = true)
                     }
-                    TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_cancel)) }
+                    CompactTertiaryButton(stringResource(R.string.action_cancel), { open = false })
                 }
             },
         )
@@ -537,8 +548,8 @@ fun SettingNavRow(
                 .tagged(tag),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(16.dp))
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(IconSize.Standard))
+            Spacer(Modifier.width(Spacing.Large))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.bodyLarge)
                 Text(
@@ -565,7 +576,7 @@ fun SettingIntro(
     modifier: Modifier = Modifier,
 ) {
     val compact = LocalDimens.current.compact
-    SettingNote(text, modifier.testTag("settingIntro").padding(top = if (compact) 8.dp else 16.dp))
+    SettingNote(text, modifier.testTag("settingIntro").padding(top = if (compact) Spacing.Small else Spacing.Large))
 }
 
 /**
@@ -576,4 +587,4 @@ fun SettingIntro(
 fun SettingNote(
     text: String,
     modifier: Modifier = Modifier,
-) = Description(text, modifier.padding(vertical = 4.dp), inset = true)
+) = Description(text, modifier.padding(vertical = Spacing.XSmall), inset = true)

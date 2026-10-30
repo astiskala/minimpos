@@ -26,7 +26,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
@@ -72,6 +71,7 @@ import app.minimpos.app.scan.ScannerDialog
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.EmptyState
 import app.minimpos.app.ui.components.LabeledValue
@@ -85,6 +85,7 @@ import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ProcessingContent
 import app.minimpos.app.ui.components.ScreenColumn
+import app.minimpos.app.ui.components.ScreenHeader
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.StatusKind
@@ -432,7 +433,7 @@ private fun ColumnScope.Activities(
         .forEach { (title, activities) ->
             SectionHeader(stringResource(title), inset = false)
             activities.forEach { activity ->
-                TextButton(
+                CompactTertiaryButton(
                     onClick = { onOpen(activity.groupId) },
                     Modifier.fillMaxWidth().testTag("giftCardActivity_${activity.groupId}"),
                 ) {
@@ -445,6 +446,7 @@ private fun ColumnScope.Activities(
 /**
  * One stored-value activity: its requests while they are sent, then its outcome, stages, the checks, confirmations and
  * repairs it still needs, and its receipt. Opened after a start, from Gift cards or from History ([fromHistory]).
+ * [header] selects standalone chrome or a pane beneath the shared navigation frame.
  */
 @Composable
 fun GiftCardActivityScreen(
@@ -453,6 +455,7 @@ fun GiftCardActivityScreen(
     modifier: Modifier = Modifier,
     fromHistory: Boolean = false,
     vm: GiftCardActivityViewModel = giftCardActivityViewModel(groupId, fromHistory),
+    header: ScreenHeader = ScreenHeader.FULL,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val gate = currentSetupGate()
@@ -473,6 +476,7 @@ fun GiftCardActivityScreen(
                 vm.follow(action)
             },
             onCancel = { approved = null },
+            header = header,
         )
     }
     val activity = state.activity
@@ -489,6 +493,7 @@ fun GiftCardActivityScreen(
         activity?.let { FollowUpDialog(action, it, onConfirm = { approved = action }, onDismiss = { pending = null }) }
     }
     MiniScaffold(
+        header = header,
         title = stringResource(R.string.gift_card_activity_title),
         onBack = if (processing) null else ::done,
         modifier = modifier,

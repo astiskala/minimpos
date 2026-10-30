@@ -27,7 +27,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -60,6 +59,7 @@ import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
@@ -496,7 +496,11 @@ private fun ColumnScope.CashEntry(
                 money.format(state.amountMinor),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
-                autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = MaterialTheme.typography.titleMedium.fontSize),
+                autoSize =
+                    TextAutoSize.StepBased(
+                        minFontSize = MIN_SPLIT_AMOUNT_SIZE,
+                        maxFontSize = MaterialTheme.typography.titleMedium.fontSize,
+                    ),
                 modifier = Modifier.testTag("cashDue"),
             )
         }
@@ -506,7 +510,11 @@ private fun ColumnScope.CashEntry(
                 state.changeMinor?.let(money::format) ?: stringResource(R.string.split_cash_short),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = if (state.changeMinor != null) 1 else Int.MAX_VALUE,
-                autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = MaterialTheme.typography.titleMedium.fontSize),
+                autoSize =
+                    TextAutoSize.StepBased(
+                        minFontSize = MIN_SPLIT_AMOUNT_SIZE,
+                        maxFontSize = MaterialTheme.typography.titleMedium.fontSize,
+                    ),
                 modifier = Modifier.testTag("cashChange"),
             )
         }
@@ -517,9 +525,7 @@ private fun ColumnScope.CashEntry(
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.weight(1f),
         )
-        TextButton(onExactCash, Modifier.testTag("exactCash")) {
-            Text(stringResource(R.string.split_cash_exact), style = MaterialTheme.typography.labelMedium)
-        }
+        CompactTertiaryButton(stringResource(R.string.split_cash_exact), onExactCash, Modifier.testTag("exactCash"))
     }
     Text(
         money.format(state.received.minor),
@@ -709,3 +715,6 @@ private fun splitViewModel(
         )
     }
 }
+
+/** The smallest a split amount shrinks to, for large text, before it is ellipsized. */
+private val MIN_SPLIT_AMOUNT_SIZE = 12.sp

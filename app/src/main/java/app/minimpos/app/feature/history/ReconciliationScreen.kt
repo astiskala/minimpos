@@ -54,8 +54,10 @@ import app.minimpos.app.ui.components.StepHeader
 import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.components.rememberMoneyFormatters
 import app.minimpos.app.ui.navigation.Navigator
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.access.ManagerAction
 import java.time.LocalDate
 
@@ -194,14 +196,14 @@ private fun ReconciliationResult(report: TerminalReconciliationReport) {
                 report.poiReconciliationId ?: "—",
             ),
         )
-        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(top = Spacing.XSmall), verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 if (report.allMatch) Icons.Default.CheckCircle else Icons.Default.Warning,
                 contentDescription = null,
                 tint = if (report.allMatch) colors.success else colors.warning,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(IconSize.Standard),
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Spacing.Small))
             Text(
                 stringResource(if (report.allMatch) R.string.reconciliation_matched else R.string.reconciliation_mismatch),
                 style = MaterialTheme.typography.titleMedium,
@@ -223,7 +225,7 @@ private fun ReconciliationResult(report: TerminalReconciliationReport) {
 @Composable
 private fun TotalsTable(currencies: List<CurrencyReconciliation>) {
     val formatters = rememberMoneyFormatters()
-    Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+    Column(Modifier.fillMaxWidth().padding(top = Spacing.Medium)) {
         TableRow(
             "",
             stringResource(R.string.reconciliation_column_local),
@@ -273,4 +275,4 @@ private fun TableRow(
 }
 
 @Composable
-private fun ReportWarning(text: String) = Notice(text, Modifier.padding(top = 8.dp), kind = NoticeKind.WARNING)
+private fun ReportWarning(text: String) = Notice(text, Modifier.padding(top = Spacing.Small), kind = NoticeKind.WARNING)

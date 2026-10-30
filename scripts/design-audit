@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Reports where Compose code bypasses the design system in .stitch/DESIGN.md. Read-only; it never edits files.
+#
+#   scripts/design-audit            summary and findings
+#   scripts/design-audit --strict   same, exit 1 when a hard rule (colours, shapes) is broken
+#
+# Hard rules have a clear owner in ui/theme or ui/components. Soft counts (dp, sp, elevation literals) are
+# triage input: most are layout constants that DESIGN.md allows, so read them against its Spacing section.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+src="$root/app/src/main/java/app/minimpos/app"
+strict=false
+if [[ "${1:-}" == "--strict" ]]; then strict=true; fi
+
+hard=0
+declare -a report=()
+
+# scan LABEL KIND PATTERN [EXCLUDE_REGEX]: prints matches outside theme/ (and EXCLUDE_REGEX), counts them.
+scan() {
+  local label="$1" kind="$2" pattern="$3" exclude="${4:-^$}" matches count
+  matches="$(grep -rnE --include='*.kt' -- "$pattern" "$src" | grep -v '/ui/theme/' | grep -Ev "$exclude" || true)"
+  count=0
+  if [[ -n "$matches" ]]; then count="$(printf '%s\n' "$matches" | wc -l | tr -d ' ')"; fi
+  report+=("$(printf '%-6s %4s  %s' "$kind" "$count" "$label")")
+  if [[ "$count" -gt 0 ]]; then
+    printf '\n## %s (%s)\n' "$label" "$kind"
+    printf '%s\n' "$matches" | sed "s#$root/##" | cut -c1-200 | head -40
+    if [[ "$kind" == "HARD" ]]; then hard=$((hard + count)); fi
+  fi
+}
+
+scan 'Colour literals outside ui/theme (use MaterialTheme.colorScheme or LocalStatusColors)' HARD 'Color\(0x'
+scan 'Corner shapes outside ui/theme (use MaterialTheme.shapes)' HARD 'RoundedCornerShape\(|CutCornerShape\(' '/ui/theme/'
+scan 'Raw Material buttons in feature code (use PrimaryButton, SecondaryButton, TertiaryButton, GatedButton)' SOFT \
+  '\b(Button|OutlinedButton|TextButton)\(' '/ui/components/|/feature/GatedButton|confirmButton|dismissButton'
+scan 'Font sizes in sp outside ui/theme (use a typography role or AmountTextStyle)' SOFT '[0-9]\.sp\b'
+scan 'Elevation literals (use the shared BottomActions or add an elevation token)' SOFT 'shadowElevation *= *[0-9]|tonalElevation *= *[0-9]|\belevation *= *[0-9]'
+scan 'dp literals in feature code (compare with the Spacing and IconSize tokens)' SOFT '[0-9]\.dp\b' '/ui/components/|/ui/navigation/|const val|private val [A-Z_]+ ='
+scan 'dp literals in shared components (should be Spacing or IconSize tokens)' SOFT '[0-9]\.dp\b' '/feature/|/scan/|/qr/|/MainActivity|const val'
+
+printf '\n# Summary\n'
+printf '%s\n' "${report[@]}"
+printf '\nHard-rule findings: %s\n' "$hard"
+if $strict && [[ "$hard" -gt 0 ]]; then
+  exit 1
+fi

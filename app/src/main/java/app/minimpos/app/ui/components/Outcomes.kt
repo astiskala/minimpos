@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.Spacing
 
 /**
  * The top of result and detail screens: the outcome's badge and [title], and the [amount], followed by [content] such
@@ -151,7 +152,7 @@ fun TransactionRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Spacing.Small))
         Column(horizontalAlignment = Alignment.End) {
             Text(amount, style = MaterialTheme.typography.titleMedium)
             Text(status, style = MaterialTheme.typography.labelSmall, color = kind.color())

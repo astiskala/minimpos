@@ -278,6 +278,11 @@ class SetupDiscoveryUiTest {
         val arrow = compose.onNodeWithTag("apiRolesArrow", useUnmergedTree = true).getUnclippedBoundsInRoot()
         val field = compose.onNodeWithTag("apiKey").getUnclippedBoundsInRoot()
         assertThat(arrow.left.value).isWithin(0.1f).of(field.left.value)
+        // The expander sits between the key's description and its input.
+        val description = compose.onNodeWithText(env.context.getString(R.string.settings_adyen_key_hint)).getUnclippedBoundsInRoot()
+        val roles = compose.onNodeWithTag("apiRoles").getUnclippedBoundsInRoot()
+        assertThat(roles.top).isAtLeast(description.bottom)
+        assertThat(roles.bottom).isAtMost(field.top)
         compose.onNodeWithTag("apiRoles").performScrollTo().performClick()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_terminals), substring = true).assertExists()
         compose.onNodeWithText("Checkout webservice role", substring = true).assertDoesNotExist()

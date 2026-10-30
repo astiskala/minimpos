@@ -487,6 +487,12 @@
   <string name="products_edit_category">Edit category</string>
   <string name="products_name">Name</string>
   <string name="products_price">Price (%1$s)</string>
+  <string name="products_price_whole_invalid">Enter a whole number above 0</string>
+  <string name="products_price_too_large">Enter a smaller price</string>
+  <plurals name="products_price_invalid">
+    <item quantity="one">Enter a price above 0 with up to %1$d decimal place</item>
+    <item quantity="other">Enter a price above 0 with up to %1$d decimal places</item>
+  </plurals>
   <string name="products_category">Category</string>
   <string name="products_no_category">No category</string>
   <string name="products_sku">SKU / barcode (optional)</string>
@@ -807,7 +813,7 @@
   <string name="settings_choose_terminal">Choose a terminal</string>
   <string name="settings_terminal_choice_hint">After selection, Mini mPOS checks the connection if setup is complete. No payment is taken.</string>
   <string name="settings_no_terminals">No matching terminals are available. Enter the details manually.</string>
-  <string name="settings_terminal_search">Search by model or serial number</string>
+  <string name="settings_terminal_search">Search terminals</string>
   <string name="settings_terminal_search_none">No terminals match.</string>
   <string name="settings_save_and_discover">Save and find setup</string>
   <string name="settings_testing_api">Testing API…</string>
@@ -968,7 +974,7 @@
   <string name="settings_currency">Currency</string>
   <string name="settings_currency_auto">Automatic (%1$s)</string>
   <string name="settings_currency_hint">Any currency Adyen processes. Check that your merchant account accepts it for in-person payments.</string>
-  <string name="settings_currency_search">Search by code or name</string>
+  <string name="settings_currency_search">Search currencies</string>
   <string name="settings_currency_none">No matching currency</string>
   <string name="pricing_change_title">Confirm pricing change</string>
   <string name="pricing_change_message">%1$s → %2$s. Keep displayed unit prices, rounding half up to the new currency’s precision. The first converted prices are shown below. Switching tax-inclusive or tax-exclusive pricing changes how tax is added to those prices. Existing stored sales are unchanged.</string>

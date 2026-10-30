@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -34,7 +33,6 @@ import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -67,14 +65,17 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.TerminalConnection
+import app.minimpos.app.ui.components.CompactSecondaryButton
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.openInBrowser
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.app.update.UpdateCheck
 
 /**
@@ -241,11 +242,11 @@ private fun UpdateCard(
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(dimens.spacing))
-            Button(
-                onClick = { context.openInBrowser(update.apkUrl) },
-                contentPadding = PaddingValues(horizontal = 12.dp),
-                modifier = Modifier.testTag("updateDownload"),
-            ) { Text(stringResource(R.string.update_download)) }
+            CompactSecondaryButton(
+                stringResource(R.string.update_download),
+                { context.openInBrowser(update.apkUrl) },
+                Modifier.testTag("updateDownload"),
+            )
             IconButton(onClick = onDismiss, modifier = Modifier.testTag("updateDismiss")) {
                 Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_close))
             }
@@ -277,10 +278,10 @@ private fun PaymentTile(
         modifier = modifier,
     ) {
         Row(
-            Modifier.padding(horizontal = dimens.screenPadding + 8.dp, vertical = dimens.spacing / 2),
+            Modifier.padding(horizontal = dimens.screenPadding + Spacing.Small, vertical = dimens.spacing / 2),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(32.dp))
+            Icon(icon, contentDescription = null, modifier = Modifier.size(IconSize.Tile))
             Spacer(Modifier.width(dimens.screenPadding))
             Column {
                 Text(
@@ -411,7 +412,7 @@ private fun RowScope.HomeTile(
                 icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(IconSize.Standard),
             )
             Text(
                 label,

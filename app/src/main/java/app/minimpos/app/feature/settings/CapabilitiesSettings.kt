@@ -46,6 +46,7 @@ import app.minimpos.app.ui.components.SetupRequired
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.Spacing
 
 /** Settings › Capabilities: progressive readiness matrix and scoped Management `terminalSettings` editors. */
 @Composable
@@ -290,7 +291,7 @@ private fun CapabilityStandingRow(
                     )
                 }
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Spacing.Medium))
             val colors = LocalStatusColors.current
             Text(
                 text =

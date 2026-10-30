@@ -1,7 +1,6 @@
 package app.minimpos.app.feature.settings
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,14 +9,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Api
@@ -32,12 +29,8 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -56,11 +49,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.minimpos.app.R
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
@@ -78,14 +67,20 @@ import app.minimpos.app.terminal.SetupVisit
 import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.ActionMessage
+import app.minimpos.app.ui.components.CompactTertiaryButton
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LabeledValue
+import app.minimpos.app.ui.components.PickerDialog
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SharedKeyDialog
 import app.minimpos.app.ui.components.StepHeader
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.openUrl
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.MinTouchTarget
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.terminal.transport.TerminalEnvironment
 
 /** Changes the terminal settings with a transform of the stored ones. */
@@ -339,13 +334,13 @@ private fun ColumnScope.EnvironmentStep(
                         selected = environment == value,
                         role = Role.RadioButton,
                         onClick = { update { it.selectEnvironment(value) } },
-                    ).heightIn(min = 48.dp)
+                    ).heightIn(min = MinTouchTarget)
                     .padding(horizontal = LocalDimens.current.rowHorizontalPadding)
                     .testTag("environment_$value"),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RadioButton(selected = environment == value, onClick = null)
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(Spacing.Medium))
                 Text(stringResource(if (value == TerminalEnvironment.TEST) R.string.settings_env_test else R.string.settings_env_live))
             }
         }
@@ -566,8 +561,6 @@ private fun ColumnScope.AdyenApiStep(
         }
     }
     StepHeader(number, stringResource(R.string.settings_api), done = done)
-    ApiKeyRoles()
-
     SecretField(
         label = stringResource(R.string.settings_api_key),
         description = stringResource(R.string.settings_adyen_key_hint),
@@ -578,6 +571,7 @@ private fun ColumnScope.AdyenApiStep(
         onSubmit = ::saveAndTest,
         tag = "apiKey",
         onDraft = { setupEvents.onSecretDraft(Secret.ADYEN_API_KEY, it) },
+        content = { ApiKeyRoles() },
     )
     ApiFields(api, update)
     SettingActions {
@@ -600,36 +594,39 @@ private fun ColumnScope.AdyenApiStep(
 }
 
 /**
- * The common required roles that new primary credentials lack by default; identical for every real destination.
+ * The common required roles that new primary credentials lack by default; identical for every real destination. It
+ * sits inside the API key field, between its description and the input, so it adds no horizontal inset of its own.
  */
 @Composable
-private fun ColumnScope.ApiKeyRoles() {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    TextButton(
-        onClick = { expanded = !expanded },
-        modifier = Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding).testTag("apiRoles"),
-        contentPadding = PaddingValues(vertical = 8.dp),
-    ) {
-        Icon(
-            if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-            contentDescription = null,
-            modifier = Modifier.testTag("apiRolesArrow"),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(stringResource(if (expanded) R.string.settings_hide_roles else R.string.settings_show_roles))
-    }
-    if (expanded) {
-        SettingNote(stringResource(R.string.settings_adyen_roles_hint))
-        SettingNote(
-            listOf(
-                R.string.settings_adyen_role_cloud,
-                R.string.settings_adyen_role_terminals,
-                R.string.settings_adyen_role_settings,
-                R.string.settings_adyen_role_shared_key,
-                R.string.settings_adyen_role_tokens,
-            ).map { "• " + stringResource(it) }.joinToString("\n"),
-            Modifier.testTag("roleCloud"),
-        )
+private fun ApiKeyRoles() {
+    Column {
+        var expanded by rememberSaveable { mutableStateOf(false) }
+        CompactTertiaryButton(
+            onClick = { expanded = !expanded },
+            modifier = Modifier.testTag("apiRoles"),
+            contentPadding = PaddingValues(vertical = Spacing.Small),
+        ) {
+            Icon(
+                if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier.size(IconSize.Inline).testTag("apiRolesArrow"),
+            )
+            Spacer(Modifier.width(Spacing.Small))
+            Text(stringResource(if (expanded) R.string.settings_hide_roles else R.string.settings_show_roles))
+        }
+        if (expanded) {
+            Description(stringResource(R.string.settings_adyen_roles_hint), Modifier.padding(vertical = Spacing.XSmall))
+            Description(
+                listOf(
+                    R.string.settings_adyen_role_cloud,
+                    R.string.settings_adyen_role_terminals,
+                    R.string.settings_adyen_role_settings,
+                    R.string.settings_adyen_role_shared_key,
+                    R.string.settings_adyen_role_tokens,
+                ).map { "• " + stringResource(it) }.joinToString("\n"),
+                Modifier.padding(vertical = Spacing.XSmall).testTag("roleCloud"),
+            )
+        }
     }
 }
 
@@ -740,70 +737,28 @@ internal fun TerminalChoiceDialog(
         )
         return
     }
-    val compact = LocalDimens.current.compact
-    // Not an AlertDialog: its default width keeps a text field from settling in tests, as in the currency picker.
-    Dialog(onDismissRequest = { onChoose(null) }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(if (compact) 12.dp else 24.dp)
-                    .widthIn(max = LocalDimens.current.contentMaxWidth),
-        ) {
-            Column(
-                Modifier.heightIn(max = 600.dp).padding(vertical = if (compact) 12.dp else 20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    stringResource(R.string.settings_choose_terminal),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(horizontal = 24.dp),
-                )
-                SettingNote(stringResource(R.string.settings_terminal_choice_hint))
-                SearchableTerminals(poiIds, onChoose)
-                TextButton({ onChoose(null) }, Modifier.align(Alignment.End).padding(horizontal = 12.dp)) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            }
-        }
-    }
-}
-
-/** Search and lazy choices inside the terminal dialog; query matching ignores case and surrounding spaces. */
-@Composable
-private fun ColumnScope.SearchableTerminals(
-    poiIds: List<String>,
-    onChoose: (String?) -> Unit,
-) {
     var query by rememberSaveable { mutableStateOf("") }
     val shown = remember(poiIds, query) { poiIds.filter { it.contains(query.trim(), ignoreCase = true) } }
-    OutlinedTextField(
-        value = query,
-        onValueChange = { query = it.take(MAX_TERMINAL_QUERY_LENGTH) },
-        placeholder = { Text(stringResource(R.string.settings_terminal_search)) },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Search),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).testTag("terminalSearch"),
-    )
-    LazyColumn(Modifier.weight(1f, fill = false)) {
-        items(shown, key = { it }) { poiId ->
-            TextButton({ onChoose(poiId) }, Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("terminal_$poiId")) {
-                Text(poiId)
+    PickerDialog(
+        title = stringResource(R.string.settings_choose_terminal),
+        query = query,
+        onQueryChange = { query = it.take(MAX_TERMINAL_QUERY_LENGTH) },
+        searchHint = stringResource(R.string.settings_terminal_search),
+        searchTag = "terminalSearch",
+        noMatches = stringResource(R.string.settings_terminal_search_none),
+        isEmpty = shown.isEmpty(),
+        onDismiss = { onChoose(null) },
+        options = {
+            items(shown, key = { it }) { poiId ->
+                CompactTertiaryButton(
+                    { onChoose(poiId) },
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.Medium).testTag("terminal_$poiId"),
+                ) {
+                    Text(poiId)
+                }
             }
-        }
-        if (shown.isEmpty()) {
-            item {
-                Text(
-                    stringResource(R.string.settings_terminal_search_none),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                )
-            }
-        }
-    }
+        },
+    ) { SettingNote(stringResource(R.string.settings_terminal_choice_hint)) }
 }
 
 /** Above this many terminals the choice offers a search field. */
@@ -829,11 +784,11 @@ private fun ChoiceDialog(
                 hint?.let { SettingNote(stringResource(it)) }
                 if (choices.isEmpty()) Text(stringResource(empty))
                 choices.forEach { (id, label) ->
-                    TextButton({ onChoose(id) }, Modifier.fillMaxWidth().testTag("${tagPrefix}_$id")) { Text(label) }
+                    CompactTertiaryButton({ onChoose(id) }, Modifier.fillMaxWidth().testTag("${tagPrefix}_$id")) { Text(label) }
                 }
             }
         },
-        confirmButton = { TextButton({ onChoose(null) }) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = { CompactTertiaryButton(stringResource(R.string.action_cancel), { onChoose(null) }) },
     )
 }
 

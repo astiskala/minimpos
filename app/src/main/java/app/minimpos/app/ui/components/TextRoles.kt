@@ -21,8 +21,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.Spacing
 
 /**
  * The upper-case title of a group of rows or fields, the first heading level inside a screen and a heading for screen
@@ -46,8 +48,8 @@ fun SectionHeader(
                 .padding(
                     start = horizontal,
                     end = horizontal,
-                    top = if (compact) 12.dp else 20.dp,
-                    bottom = if (compact) 4.dp else 8.dp,
+                    top = if (compact) Spacing.Medium else Spacing.Section,
+                    bottom = if (compact) Spacing.XSmall else Spacing.Small,
                 ).semantics { heading() },
     )
 }
@@ -139,12 +141,12 @@ fun Notice(
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {},
     ) {
-        Row(Modifier.padding(if (dimens.compact) 8.dp else dimens.cardPadding)) {
+        Row(Modifier.padding(if (dimens.compact) Spacing.Small else dimens.cardPadding)) {
             Icon(
                 if (warning) Icons.Outlined.WarningAmber else Icons.Outlined.Info,
                 contentDescription = null,
                 tint = if (warning) status.warning else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(if (dimens.compact) 16.dp else 20.dp),
+                modifier = Modifier.size(if (dimens.compact) IconSize.Small else IconSize.Inline),
             )
             Spacer(Modifier.width(dimens.spacing))
             Text(text, style = explanationStyle(), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))

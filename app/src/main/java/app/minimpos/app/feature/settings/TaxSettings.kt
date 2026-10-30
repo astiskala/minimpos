@@ -23,7 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -46,9 +45,12 @@ import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.ui.components.ActionMessage
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.MinTouchTarget
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.receipt.label
 import app.minimpos.core.tax.TaxMode
@@ -95,7 +97,7 @@ internal fun ColumnScope.TaxSection(
         ActionMessage(
             pluralStringResource(R.plurals.settings_tax_in_use, count, count),
             isError = true,
-            modifier = Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = Spacing.Small),
         )
     }
     SettingActions {
@@ -187,20 +189,24 @@ internal fun TaxRateDialog(
         title = { Text(stringResource(if (taxRate.id == 0L) R.string.settings_tax_add else R.string.settings_tax_edit)) },
         text = { TaxRateForm(form) },
         confirmButton = {
-            TextButton(
-                onClick = { onSave(form.toEntity(), form.makeDefault) },
+            CompactTertiaryButton(
+                stringResource(R.string.action_save),
+                { onSave(form.toEntity(), form.makeDefault) },
+                Modifier.testTag("saveTax"),
                 enabled = form.valid,
-                modifier = Modifier.testTag("saveTax"),
-            ) { Text(stringResource(R.string.action_save)) }
+            )
         },
         dismissButton = {
             Row {
                 if (canDelete) {
-                    TextButton(onClick = onDelete, modifier = Modifier.testTag("deleteTax")) {
-                        Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
-                    }
+                    CompactTertiaryButton(
+                        stringResource(R.string.action_delete),
+                        onDelete,
+                        Modifier.testTag("deleteTax"),
+                        destructive = true,
+                    )
                 }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+                CompactTertiaryButton(stringResource(R.string.action_cancel), onDismiss)
             }
         },
     )
@@ -208,7 +214,7 @@ internal fun TaxRateDialog(
 
 @Composable
 internal fun TaxRateForm(form: TaxRateFormState) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.Small)) {
         TaxNameField(form)
         TaxNameSuggestions(form.name) { form.name = it }
         TaxRateField(form)
@@ -222,7 +228,7 @@ internal fun TaxRateForm(form: TaxRateFormState) {
                     .testTag("taxDefault"),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Checkbox(checked = form.makeDefault, onCheckedChange = null, modifier = Modifier.size(48.dp))
+            Checkbox(checked = form.makeDefault, onCheckedChange = null, modifier = Modifier.size(MinTouchTarget))
             Text(stringResource(R.string.settings_tax_default))
         }
         form.parsedRate?.takeIf { form.name.isNotBlank() }?.let {
@@ -281,7 +287,7 @@ private fun TaxNameSuggestions(
     val suggestions = stringArrayResource(R.array.tax_name_suggestions)
     val matching = suggestions.firstOrNull { name.trim() == it }
     var otherChosen by rememberSaveable { mutableStateOf(false) }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.Small)) {
         suggestions.forEach { suggestion ->
             TaxNameChip(suggestion, matching == suggestion, {
                 otherChosen = false

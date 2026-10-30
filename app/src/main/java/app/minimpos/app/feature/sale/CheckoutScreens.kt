@@ -31,7 +31,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,6 +79,7 @@ import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.ActionOptionsDialog
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
+import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LabeledValue
@@ -100,6 +100,7 @@ import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.payment.PaymentMethods
@@ -517,7 +518,7 @@ private fun TokenChoice(
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { CompactTertiaryButton(stringResource(R.string.action_cancel), onDismiss) },
     )
 }
 
@@ -572,7 +573,7 @@ private fun CartSummary(
     money: MoneyFormatter,
 ) {
     CartPart(first = state.totals.lines.isEmpty(), last = true) {
-        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(Modifier.padding(vertical = Spacing.Small))
         if (state.showsTax) LabeledValue(stringResource(R.string.checkout_tax), money.format(state.totals.amounts.tax))
         LabeledValue(stringResource(R.string.checkout_total), money.format(state.totals.amounts.gross), emphasize = true)
     }

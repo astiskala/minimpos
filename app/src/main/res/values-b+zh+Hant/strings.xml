@@ -486,6 +486,11 @@
   <string name="products_edit_category">編輯分類</string>
   <string name="products_name">名稱</string>
   <string name="products_price">價格（%1$s）</string>
+  <string name="products_price_whole_invalid">請輸入大於0的整數價格</string>
+  <string name="products_price_too_large">請輸入較低的價格</string>
+  <plurals name="products_price_invalid">
+    <item quantity="other">請輸入大於0的價格，最多保留%1$d位小數</item>
+  </plurals>
   <string name="products_category">分類</string>
   <string name="products_no_category">無分類</string>
   <string name="products_sku">SKU / 條碼（可選）</string>
@@ -805,7 +810,7 @@
   <string name="settings_choose_terminal">選擇終端</string>
   <string name="settings_terminal_choice_hint">選擇終端後，如設定已齊全，Mini mPOS 會檢查連接。不會進行付款。</string>
   <string name="settings_no_terminals">沒有可用的相符終端。請手動輸入資訊。</string>
-  <string name="settings_terminal_search">按型號或序號搜尋</string>
+  <string name="settings_terminal_search">搜尋終端</string>
   <string name="settings_terminal_search_none">沒有相符的終端。</string>
   <string name="settings_save_and_discover">儲存並尋找設定</string>
   <string name="settings_testing_api">正在測試 API…</string>
@@ -966,7 +971,7 @@
   <string name="settings_currency">貨幣</string>
   <string name="settings_currency_auto">自動（%1$s）</string>
   <string name="settings_currency_hint">可使用 Adyen 支援的任何貨幣。請確認您的商戶帳戶支援使用該貨幣進行實體店支付。</string>
-  <string name="settings_currency_search">按代碼或名稱搜尋</string>
+  <string name="settings_currency_search">搜尋貨幣</string>
   <string name="settings_currency_none">無相符貨幣</string>
   <string name="pricing_change_title">確認價格變更</string>
   <string name="pricing_change_message">%1$s → %2$s。保留顯示的單價，並按新貨幣精度四捨五入。下方列出部分轉換後的價格。切換含稅或不含稅價格會改變稅費的計算方式。已儲存的銷售紀錄不變。</string>

@@ -1,5 +1,6 @@
 package app.minimpos.app.ui.components
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -28,10 +29,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.MinTouchTarget
+import app.minimpos.app.ui.theme.Spacing
 
 /**
  * A screen's main action: full width, at least the theme's button height, with an optional leading [icon]. While
@@ -54,7 +57,7 @@ fun PrimaryButton(
         shape = MaterialTheme.shapes.medium,
         colors = ButtonDefaults.buttonColors(containerColor = color),
     ) {
-        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.onPrimary else null, spinnerSize = 22.dp)
+        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.onPrimary else null)
     }
 }
 
@@ -68,14 +71,29 @@ fun SecondaryButton(
     loading: Boolean = false,
     icon: ImageVector? = null,
 ) {
+    SecondaryButton(onClick, modifier, enabled = enabled && !loading) {
+        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.primary else null)
+    }
+}
+
+/**
+ * An outlined full-width action with custom [content], using the same size and shape as the text overload.
+ * The slot supports branded wallet artwork without duplicating the button frame. [enabled] controls activation.
+ */
+@Composable
+fun SecondaryButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable RowScope.() -> Unit,
+) {
     OutlinedButton(
         onClick = onClick,
-        enabled = enabled && !loading,
+        enabled = enabled,
         modifier = modifier.fillMaxWidth().heightIn(min = LocalDimens.current.secondaryButtonHeight),
         shape = MaterialTheme.shapes.medium,
-    ) {
-        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.primary else null, spinnerSize = 18.dp)
-    }
+        content = content,
+    )
 }
 
 /**
@@ -106,8 +124,92 @@ fun TertiaryButton(
                 ButtonDefaults.textButtonColors()
             },
     ) {
-        ButtonContent(text, icon, spinner = content.takeIf { loading }, spinnerSize = 18.dp)
+        ButtonContent(text, icon, spinner = content.takeIf { loading })
     }
+}
+
+/**
+ * A secondary action that keeps its natural width for banners and inline controls. The drawn height is at least
+ * [MinTouchTarget]; shape and label typography match the full-width buttons. [enabled] controls activation.
+ */
+@Composable
+fun CompactSecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    CompactSecondaryButton(onClick, modifier, enabled) {
+        Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+    }
+}
+
+/**
+ * A compact outlined frame for custom [content], such as a cart count. Callers may allocate extra width or height
+ * through [modifier]; [contentPadding] can preserve a dense chip's established layout. [enabled] controls activation.
+ */
+@Composable
+fun CompactSecondaryButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(horizontal = Spacing.Medium, vertical = Spacing.Small),
+    content: @Composable RowScope.() -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.heightIn(min = MinTouchTarget),
+        shape = MaterialTheme.shapes.medium,
+        contentPadding = contentPadding,
+        content = content,
+    )
+}
+
+/**
+ * A lesser inline action with the same touch size and label role as [CompactSecondaryButton], without a border.
+ * [destructive] uses the error color for removals. [enabled] controls activation.
+ */
+@Composable
+fun CompactTertiaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    destructive: Boolean = false,
+) {
+    CompactTertiaryButton(onClick, modifier, enabled, destructive) {
+        Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+    }
+}
+
+/**
+ * An inline text action with custom [content], retaining the standard shape and touch height. [contentPadding] may
+ * align an expander's icon with a field edge; labels use the theme's button role. [destructive] marks removals in red.
+ */
+@Composable
+fun CompactTertiaryButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    destructive: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(horizontal = Spacing.Medium, vertical = Spacing.Small),
+    content: @Composable RowScope.() -> Unit,
+) {
+    TextButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.heightIn(min = MinTouchTarget),
+        shape = MaterialTheme.shapes.medium,
+        colors =
+            if (destructive) {
+                ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            } else {
+                ButtonDefaults.textButtonColors()
+            },
+        contentPadding = contentPadding,
+        content = content,
+    )
 }
 
 /**
@@ -119,14 +221,13 @@ private fun RowScope.ButtonContent(
     text: String,
     icon: ImageVector?,
     spinner: Color?,
-    spinnerSize: Dp,
 ) {
     if (spinner != null) {
-        CircularProgressIndicator(modifier = Modifier.size(spinnerSize), strokeWidth = 2.dp, color = spinner)
-        Spacer(Modifier.width(12.dp))
+        CircularProgressIndicator(modifier = Modifier.size(IconSize.Inline), strokeWidth = 2.dp, color = spinner)
+        Spacer(Modifier.width(Spacing.Small))
     } else if (icon != null) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(8.dp))
+        Icon(icon, contentDescription = null, modifier = Modifier.size(IconSize.Inline))
+        Spacer(Modifier.width(Spacing.Small))
     }
     Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
 }

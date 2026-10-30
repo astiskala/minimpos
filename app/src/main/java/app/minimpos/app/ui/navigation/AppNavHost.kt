@@ -8,9 +8,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -26,6 +29,8 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.scene.Scene
+import androidx.navigation3.scene.SceneDecoratorStrategy
 import androidx.navigation3.ui.NavDisplay
 import app.minimpos.app.R
 import app.minimpos.app.data.db.SaleKind
@@ -68,6 +73,8 @@ import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.feature.transfer.TransferExportScreen
 import app.minimpos.app.feature.transfer.TransferImportScreen
 import app.minimpos.app.ui.components.LocalAppContainer
+import app.minimpos.app.ui.components.NavigationFrame
+import app.minimpos.app.ui.components.ScreenHeader
 import app.minimpos.app.ui.components.SetupGateHost
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.access.ManagerAction
@@ -107,6 +114,11 @@ fun AppNavHost() {
         }
     }
 
+    val firstRun = navigator.isOnboarding
+    DisposableEffect(firstRun) {
+        container.setFirstRunSetup(firstRun)
+        onDispose { container.setFirstRunSetup(false) }
+    }
     SetupGateHost(onSetUp = { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }) {
         AppEntries(backStack, navigator)
     }
@@ -122,49 +134,44 @@ private fun AppEntries(
     backStack: NavBackStack<NavKey>,
     navigator: Navigator,
 ) {
-    val historyList = remember { ListDetailSceneStrategy.listPane(HISTORY_PANES) { PanePlaceholder(R.string.history_choose) } }
-    val historyDetail = remember { ListDetailSceneStrategy.detailPane(HISTORY_PANES) }
-    val settingsList = remember { ListDetailSceneStrategy.listPane(SETTINGS_PANES) { PanePlaceholder(R.string.settings_choose) } }
-    val settingsDetail = remember { ListDetailSceneStrategy.detailPane(SETTINGS_PANES) }
+    // Use the same directive for scene layout and its shared chrome, including window posture and insets.
+    val directive = calculatePaneScaffoldDirective(currentWindowAdaptiveInfoV2())
+    val section =
+        (backStack.lastOrNull() as? Route)?.paneRoot?.takeIf {
+            directive.maxHorizontalPartitions > 1 && it in backStack
+        }
+    val listHeader = if (section == null) ScreenHeader.FULL else ScreenHeader.LIST_PANE
+    val detailHeader = if (section == null) ScreenHeader.FULL else ScreenHeader.DETAIL_PANE
+    val frames =
+        remember(navigator, directive.maxHorizontalPartitions) {
+            paneFrames(navigator, directive.maxHorizontalPartitions > 1)
+        }
     // Navigation 3 owns forward, pop and gesture-progress transitions (including system motion scale).
     // Do not wrap the display in a second animation or intercept Back at either root destination.
     NavDisplay(
         backStack = backStack,
         onBack = { navigator.back() },
         entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
-        sceneStrategies = listOf(rememberListDetailSceneStrategy()),
+        sceneStrategies = listOf(rememberListDetailSceneStrategy(directive = directive)),
+        sceneDecoratorStrategies = listOf(frames),
         entryProvider =
             entryProvider {
                 entry<Route.Home> { HomeScreen(navigator) }
                 entry<Route.Onboarding> { OnboardingScreen(navigator) }
                 saleEntries(navigator)
                 moneyEntries(navigator)
-                entry<Route.Reconciliation> { ManagerGate(setOf(ManagerAction.TOTALS), navigator) { ReconciliationScreen(navigator) } }
-                entry<Route.History>(
-                    metadata = historyList,
-                ) { ManagerGate(setOf(ManagerAction.HISTORY), navigator) { HistoryScreen(navigator) } }
-                entry<Route.SaleDetail>(metadata = historyDetail) {
-                    ManagerGate(setOf(ManagerAction.HISTORY), navigator) { SaleDetailScreen(it.saleId, navigator) }
-                }
-                entry<Route.RefundDetail>(metadata = historyDetail) {
-                    ManagerGate(setOf(ManagerAction.HISTORY), navigator) { RefundDetailScreen(it.refundId, navigator) }
-                }
-                entry<Route.GiftCardDetail>(metadata = historyDetail) {
+                entry<Route.Reconciliation> {
                     ManagerGate(
-                        setOf(ManagerAction.HISTORY),
+                        setOf(ManagerAction.TOTALS),
                         navigator,
-                    ) { GiftCardActivityScreen(it.groupId, navigator, fromHistory = true) }
+                    ) { ReconciliationScreen(navigator) }
                 }
+                historyEntries(navigator, listHeader, detailHeader)
                 entry<Route.Products> { PinGate(navigator) { ProductsScreen(navigator) } }
                 entry<Route.ProductEdit> { PinGate(navigator) { ProductEditScreen(it.productId, it.sku, navigator) } }
                 entry<Route.TransferExport> { PinGate(navigator) { TransferExportScreen(navigator) } }
                 entry<Route.TransferImport> { PinGate(navigator) { TransferImportScreen(navigator) } }
-                entry<Route.Settings>(metadata = settingsList) { PinGate(navigator) { SettingsScreen(navigator) } }
-                entry<Route.SettingsSection>(metadata = settingsDetail) {
-                    PinGate(navigator) {
-                        SettingsSectionScreen(it.section, navigator, opening = SectionOpening(it.troubleshooting, it.chooseDestination))
-                    }
-                }
+                settingsEntries(navigator, listHeader, detailHeader)
             },
     )
 }
@@ -258,3 +265,105 @@ private fun EntryProviderScope<NavKey>.moneyEntries(navigator: Navigator) {
     entry<Route.GiftCards> { GiftCardsScreen(navigator) }
     entry<Route.GiftCardActivity> { GiftCardActivityScreen(it.groupId, navigator) }
 }
+
+/** Only list/detail destinations share a frame, and only while their parent list remains on the stack. */
+private val Route.paneRoot: Route?
+    get() =
+        when {
+            this == Route.Settings || this is Route.SettingsSection -> Route.Settings
+            this == Route.History || this is Route.SaleDetail || this is Route.RefundDetail || this is Route.GiftCardDetail -> Route.History
+            else -> null
+        }
+
+/** Entries retain their existing access gates while sharing only their presentation frame. */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+private fun EntryProviderScope<NavKey>.historyEntries(
+    navigator: Navigator,
+    listHeader: ScreenHeader,
+    detailHeader: ScreenHeader,
+) {
+    val historyList =
+        ListDetailSceneStrategy.listPane(HISTORY_PANES) { PanePlaceholder(R.string.history_choose) } +
+            mapOf(PANE_ROOT_METADATA to Route.History)
+    val historyDetail = ListDetailSceneStrategy.detailPane(HISTORY_PANES)
+    entry<Route.History>(
+        metadata = historyList,
+    ) {
+        ManagerGate(
+            setOf(ManagerAction.HISTORY),
+            navigator,
+            header = listHeader,
+        ) { HistoryScreen(navigator, header = listHeader) }
+    }
+    entry<Route.SaleDetail>(metadata = historyDetail) {
+        ManagerGate(setOf(ManagerAction.HISTORY), navigator, header = detailHeader) {
+            SaleDetailScreen(it.saleId, navigator, header = detailHeader)
+        }
+    }
+    entry<Route.RefundDetail>(metadata = historyDetail) {
+        ManagerGate(setOf(ManagerAction.HISTORY), navigator, header = detailHeader) {
+            RefundDetailScreen(it.refundId, navigator, header = detailHeader)
+        }
+    }
+    entry<Route.GiftCardDetail>(metadata = historyDetail) {
+        ManagerGate(
+            setOf(ManagerAction.HISTORY),
+            navigator,
+            header = detailHeader,
+        ) { GiftCardActivityScreen(it.groupId, navigator, fromHistory = true, header = detailHeader) }
+    }
+}
+
+/** Entries retain their existing access gates while sharing only their presentation frame. */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+private fun EntryProviderScope<NavKey>.settingsEntries(
+    navigator: Navigator,
+    listHeader: ScreenHeader,
+    detailHeader: ScreenHeader,
+) {
+    val settingsList =
+        ListDetailSceneStrategy.listPane(SETTINGS_PANES) { PanePlaceholder(R.string.settings_choose) } +
+            mapOf(PANE_ROOT_METADATA to Route.Settings)
+    val settingsDetail = ListDetailSceneStrategy.detailPane(SETTINGS_PANES)
+    entry<Route.Settings>(metadata = settingsList) {
+        PinGate(navigator, header = listHeader) { SettingsScreen(navigator, header = listHeader) }
+    }
+    entry<Route.SettingsSection>(metadata = settingsDetail) {
+        PinGate(navigator, header = detailHeader) {
+            SettingsSectionScreen(
+                it.section,
+                navigator,
+                opening = SectionOpening(it.troubleshooting, it.chooseDestination),
+                header = detailHeader,
+            )
+        }
+    }
+}
+
+/** Chrome belongs to each scene so built-in forward/pop/predictive transitions move its header with its panes. */
+private fun paneFrames(
+    navigator: Navigator,
+    expanded: Boolean,
+): SceneDecoratorStrategy<NavKey> {
+    // Value equality preserves the delegated scene's update semantics when Navigation 3 recalculates it.
+    data class FramedScene(
+        val original: Scene<NavKey>,
+        val root: Route,
+        val navigator: Navigator,
+    ) : Scene<NavKey> by original {
+        override val content: @Composable () -> Unit = {
+            NavigationFrame(
+                stringResource(if (root == Route.Settings) R.string.settings_title else R.string.history_title),
+                onBack = { this.navigator.leave(root) },
+            ) { original.content() }
+        }
+    }
+    return SceneDecoratorStrategy { scene ->
+        if (!expanded) return@SceneDecoratorStrategy scene
+        val root = scene.entries.firstNotNullOfOrNull { it.metadata[PANE_ROOT_METADATA] as? Route } ?: return@SceneDecoratorStrategy scene
+        FramedScene(scene, root, navigator)
+    }
+}
+
+/** Transient entry metadata identifies a list's shared chrome without exposing Navigation 3's private entry keys. */
+private const val PANE_ROOT_METADATA = "minimpos.paneRoot"

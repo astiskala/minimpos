@@ -488,6 +488,13 @@
   <string name="products_edit_category">Editar categoria</string>
   <string name="products_name">Nome</string>
   <string name="products_price">Preço (%1$s)</string>
+  <string name="products_price_whole_invalid">Insira um preço inteiro maior que 0</string>
+  <string name="products_price_too_large">Insira um preço menor</string>
+  <plurals name="products_price_invalid">
+    <item quantity="one">Insira um preço maior que 0 com até %1$d casa decimal</item>
+    <item quantity="other">Insira um preço maior que 0 com até %1$d casas decimais</item>
+    <item quantity="many">Insira um preço maior que 0 com até %1$d casas decimais</item>
+  </plurals>
   <string name="products_category">Categoria</string>
   <string name="products_no_category">Sem categoria</string>
   <string name="products_sku">SKU/código de barras (opcional)</string>
@@ -809,7 +816,7 @@
   <string name="settings_choose_terminal">Escolha um terminal</string>
   <string name="settings_terminal_choice_hint">Após a seleção, o Mini mPOS verifica a conexão se a configuração estiver completa. Nenhum pagamento é realizado.</string>
   <string name="settings_no_terminals">Não há terminais correspondentes disponíveis. Insira os detalhes manualmente.</string>
-  <string name="settings_terminal_search">Pesquisar por modelo ou número de série</string>
+  <string name="settings_terminal_search">Pesquisar terminais</string>
   <string name="settings_terminal_search_none">Nenhum terminal corresponde.</string>
   <string name="settings_save_and_discover">Salvar e buscar configuração</string>
   <string name="settings_testing_api">Testando API…</string>
@@ -970,7 +977,7 @@
   <string name="settings_currency">Moeda</string>
   <string name="settings_currency_auto">Automático (%1$s)</string>
   <string name="settings_currency_hint">Qualquer moeda processada pela Adyen. Verifique se sua conta de comerciante a aceita para pagamentos presenciais.</string>
-  <string name="settings_currency_search">Pesquisa por código ou nome</string>
+  <string name="settings_currency_search">Pesquisar moedas</string>
   <string name="settings_currency_none">Nenhuma moeda correspondente</string>
   <string name="pricing_change_title">Confirmar alteração de preço</string>
   <string name="pricing_change_message">%1$s → %2$s. Mantém os preços unitários exibidos, arredondados à precisão da nova moeda; valores exatamente na metade são arredondados para cima. Os primeiros preços convertidos aparecem abaixo. Alterar entre preços com ou sem imposto muda como ele é adicionado. As vendas já salvas não mudam.</string>

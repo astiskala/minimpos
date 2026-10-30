@@ -70,7 +70,8 @@ scripts/dev finish
 | --- | --- |
 | `format` | Existing `spotlessApply`: ktlint and fixable Markdown, plus text whitespace. Review the diff. |
 | `test MODULE PATTERN` | Matching tests in `core`, `adyen`, `app`, `website-test` or `tooling`; quote the pattern. |
-| `check AREA` | Module `check` for `core`/`adyen`/`app`/`tooling`; focused `website`, `workflows`, `markdown`, `architecture`, `localization`, `ui`, `qr`, `db` or `payment` lanes. |
+| `check AREA` | Module `check` for `core`/`adyen`/`app`/`tooling`; focused `website`, `workflows`, `markdown`, `architecture`, `localization`, `ui`, `ui-snapshots`, `qr`, `db` or `payment` lanes. |
+| `snapshots record` | Rewrite the golden screenshots; see [Update the golden screenshots](#update-the-golden-screenshots). |
 | `finish` | Format, then full `qualityGate --continue`; formatting failure stops the gate, gate failure stays nonzero. |
 | `preflight` | Read-only check of JDK 17+, SDK 37/build tools and Chrome; reports missing cached linters without failing for them. |
 | `warm` | Preflight, then compiler/test/browser/pinned-tool warmup; does not install SDKs or change config. |
@@ -147,6 +148,12 @@ standalone release builds retain release lint by default. R8, signing and packag
   `app/build/reports/ui-failures/<test-task>/`. Passing tests do not capture; directories are unique across workers.
   Capture errors never replace the original assertion. These contain synthetic test data, not merchant screenshots;
   CI includes them in its existing reports artifact. Check timestamps: old failure artifacts may remain.
+- `DesignGalleryTest`, `ScreenGoldensTest`, `SettingsGoldensTest`, `LocaleGoldensTest` and `UpdateGoldensTest` compare
+  shared components and whole screens with golden images under `app/src/test/screenshots/` through Roborazzi (test-only).
+  `ScreenshotRule` (rule order 2, after the recording rule) names images from test class, method and window size,
+  fixes the locale (`en-AU` unless given another), time zone (UTC) and font scale, and freezes the Compose clock. In
+  an ordinary test run it captures nothing; see
+  [Update the golden screenshots](#update-the-golden-screenshots).
 - `LocalizationTest` checks resource/format parity and writes receipt samples under
   `app/build/reports/localization/`. `LocalizedUiTest` checks Simplified/Traditional Chinese and Japanese checkout
   at AMS1 size. `ScreenTextTest` finds text cut off without an ellipsis in all seven languages at AMS1 size, and text
@@ -166,6 +173,42 @@ standalone release builds retain release lint by default. R8, signing and packag
   exercise WebCrypto and async invalidation, and decode generated transfers with JVM implementations. No Node,
   browser-driver library or ChromeDriver is needed. Set `MINIMPOS_CHROME` to a Chrome/Chromium executable to override
   Google Chrome's standard macOS path or `google-chrome` on Linux. CI uses the browser already on its runner image.
+
+### Update the golden screenshots
+
+The goldens are the visual safety net for token and component changes. Components in `DesignGalleryTest` must match
+with a 0 % changed-pixel threshold; whole screens may differ in up to 0.1 % of their counted pixels. Roborazzi
+first filters color distances up to `0.007`, so the gallery threshold is not literal pixel equality. Dark mode and
+Stitch output are never baselines. `LocaleGoldensTest` covers French and Japanese, with each capture using a rule given
+its expected locale.
+
+1. `scripts/dev check ui-snapshots` compares the current rendering with the goldens, running only those five classes. A
+   difference fails the run and leaves the expected, actual and difference images in `app/build/reports/roborazzi/`,
+   which the separate `ui-snapshots` CI job uploads as `ui-snapshot-differences` on failure.
+2. Look at the images. A difference you did not intend is a defect: fix the code, not the golden.
+3. For a deliberate change, run `scripts/dev snapshots record`, review the changed PNGs in `git diff`, commit them with
+   the code, and update `.stitch/DESIGN.md` when the visual rule changed. Never edit a PNG by hand or record to make a
+   failure go away.
+4. A new component or screen adds a test to the matching class (a gallery group, or a screen with fixed data: store the
+   facts, as `showResult` does, instead of paying through the simulator, whose references and times differ each run).
+   Keep the image count low; PNGs are about 15-40 KB each.
+
+Renderings are only exactly reproducible on the same operating system and JDK, so record on the platform CI uses. The
+current goldens were re-recorded on `ubuntu-latest` (Ubuntu 24.04 image `20261025.353.1`, Temurin `21.0.13+9`,
+CI recording run `41017912554`; re-recorded after the spinner and compact-action changes in run
+`41059242185`). The comparison is not in `qualityGate` until it has passed
+on CI twice and the owner approves it. The first Linux run found curved-edge rasterization differences in two
+gallery images (223 and 584 raw pixels); whole-screen comparisons passed at the existing 0.1 % threshold. Raw PNG
+comparison found differences in 50 of 54 images, with at most 2 levels of change per 8-bit color channel, confined to
+rasterized edges. The CI goldens were reviewed before adoption; local macOS comparisons can now fail on those edges.
+Use CI’s manual **Record CI-platform goldens for review instead of comparing** option to download the
+`ui-snapshot-goldens` artifact; review it before replacing the checked-in PNGs. Recording does not establish a clean
+comparison run. The manual **Run only UI snapshots** option compares without repeating the full gate and release build.
+After a Compose or Material 3 upgrade, expect to re-record.
+
+Independent CI recordings `41017912554` and `41018426929` produced byte-identical PNGs for all 54 images. On October 30,
+2026, the owner chose to retain the current thresholds, including the default color-distance filter. Tightening either
+setting still requires approval.
 
 ## Make changes that fit
 

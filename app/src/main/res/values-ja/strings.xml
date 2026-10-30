@@ -486,6 +486,11 @@
   <string name="products_edit_category">カテゴリーを編集</string>
   <string name="products_name">名前</string>
   <string name="products_price">価格（%1$s）</string>
+  <string name="products_price_whole_invalid">0より大きい整数の価格を入力してください</string>
+  <string name="products_price_too_large">より小さい価格を入力してください</string>
+  <plurals name="products_price_invalid">
+    <item quantity="other">0より大きい価格を小数点以下%1$d桁以内で入力してください</item>
+  </plurals>
   <string name="products_category">カテゴリー</string>
   <string name="products_no_category">カテゴリーなし</string>
   <string name="products_sku">SKU / バーコード（任意）</string>
@@ -805,7 +810,7 @@
   <string name="settings_choose_terminal">端末を選択</string>
   <string name="settings_terminal_choice_hint">端末を選択すると、設定が揃っている場合はMini mPOSが接続を確認します。決済は行いません。</string>
   <string name="settings_no_terminals">一致する端末がありません。情報を手動で入力してください。</string>
-  <string name="settings_terminal_search">モデルまたはシリアル番号で検索</string>
+  <string name="settings_terminal_search">端末を検索</string>
   <string name="settings_terminal_search_none">一致する端末がありません。</string>
   <string name="settings_save_and_discover">保存して設定を検索</string>
   <string name="settings_testing_api">APIをテスト中…</string>
@@ -966,7 +971,7 @@
   <string name="settings_currency">通貨</string>
   <string name="settings_currency_auto">自動（%1$s）</string>
   <string name="settings_currency_hint">Adyenが処理するすべての通貨に対応します。マーチャントアカウントがその通貨の対面決済を受け付けるか確認してください。</string>
-  <string name="settings_currency_search">コードまたは名前で検索</string>
+  <string name="settings_currency_search">通貨を検索</string>
   <string name="settings_currency_none">一致する通貨がありません</string>
   <string name="pricing_change_title">価格変更を確認</string>
   <string name="pricing_change_message">%1$s → %2$s。表示単価を維持し、新しい通貨の精度に四捨五入します。変換後の価格の一部を以下に示します。税込・税抜価格の切り替えは税額の計算方法を変更します。保存済みの販売記録は変更しません。</string>

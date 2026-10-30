@@ -33,7 +33,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,6 +49,7 @@ import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.components.openUrl
 import app.minimpos.app.ui.navigation.AppNavHost
 import app.minimpos.app.ui.theme.MiniMposTheme
+import app.minimpos.app.ui.theme.Spacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -197,9 +197,9 @@ private fun VirtualPrinterSheet() {
     if (jobs.isEmpty()) return
     ModalBottomSheet(onDismissRequest = container.virtualPrinter::clear, modifier = Modifier.testTag("virtualPrinter")) {
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(Spacing.Large),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.Medium),
         ) {
             SheetTitle(stringResource(R.string.virtual_printer_title))
             PrintJobsPreview(jobs)
@@ -246,8 +246,8 @@ private fun StorageUnavailable() {
         }
     val guide = "https://minimpos.app/${language}troubleshooting#storage"
     CenteredScrollColumn(
-        Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        Modifier.fillMaxSize().padding(Spacing.XLarge),
+        verticalArrangement = Arrangement.spacedBy(Spacing.Large, Alignment.CenterVertically),
     ) {
         Text(stringResource(R.string.storage_unavailable), modifier = Modifier.testTag("storageUnavailable"))
         // Terminals may have no browser: keep the guide address visible for opening on another device.

@@ -220,7 +220,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
 - [CONTRIBUTING's test setup](../CONTRIBUTING.md#test-setup) owns the test stack and regression suites. `SmallScreenTest`
   checks visible primary actions at AMS1 `w320dp-h460dp-hdpi`, P630 and S1F2 sizes.
 - `TestEnvironment` is rule order 0, `createRecordingComposeRule` order 1 (v2 rule with pre-teardown failure artifacts;
-  CONTRIBUTING owns paths and usage). FakeDevice/FakeTerminal model terminals; FakeCloud,
+  CONTRIBUTING owns paths and usage). `ScreenshotRule` (golden images, CONTRIBUTING)
+  is order 2. FakeDevice/FakeTerminal model terminals; FakeCloud,
   FakePaymentsApp, FakeManagement and FakeLinkApi model external services (`env.useLinks()` enables link setup).
   Call `container.start()` for background connection checks. Use fake DNS; no network in tests.
   Startup tests inject `UnconfinedTestDispatcher` into `TestEnvironment` for eager startup and run the test with a

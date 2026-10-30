@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
 
 /**
  * What the product list shows.
@@ -148,15 +149,21 @@ data class ProductEditUiState(
     val failure: Failure? = null,
     val mealVouchers: Boolean = false,
 ) {
-    /** The typed price in minor units; null on overflow, nonpositive values or too many decimals for the currency. */
-    val priceMinor: Long?
+    /** Positive decimal input at the currency's supported precision, before minor-unit overflow is checked. */
+    private val priceDecimal: BigDecimal?
         get() =
             form.price
                 .trim()
                 .replace(',', '.')
                 .toBigDecimalOrNull()
                 ?.takeIf { it.signum() > 0 && it.scale() <= currency.fractionDigits }
-                ?.let { runCatching { currency.toMinor(it) }.getOrNull() }
+
+    /** The typed price in minor units; null on overflow, nonpositive values or too many decimals for the currency. */
+    val priceMinor: Long?
+        get() = priceDecimal?.let { runCatching { currency.toMinor(it) }.getOrNull() }
+
+    /** Whether otherwise valid positive decimal input exceeds the Long minor-unit range. */
+    val priceTooLarge: Boolean get() = priceDecimal != null && priceMinor == null
 
     /** Whether the product can be saved: a name, a valid price, a tax rate and a SKU no other product has. */
     val valid: Boolean

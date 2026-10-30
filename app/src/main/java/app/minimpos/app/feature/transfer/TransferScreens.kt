@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarHostState
@@ -76,6 +74,7 @@ import app.minimpos.app.scan.ScannerView
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
+import app.minimpos.app.ui.components.CompactSecondaryButton
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.HistorySwitchDialog
@@ -96,6 +95,7 @@ import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.core.catalogue.Catalogue
 import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -505,13 +505,10 @@ internal fun CodeControls(
         IconButton(onClick = { onStep(1) }) {
             Icon(Icons.AutoMirrored.Filled.NavigateNext, contentDescription = stringResource(R.string.action_next))
         }
-        OutlinedButton(
-            onClick = onTogglePlay,
-            shape = MaterialTheme.shapes.medium,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        ) {
-            Text(stringResource(if (playing) R.string.action_pause else R.string.action_play))
-        }
+        CompactSecondaryButton(
+            stringResource(if (playing) R.string.action_pause else R.string.action_play),
+            onTogglePlay,
+        )
     }
 }
 
@@ -548,7 +545,7 @@ private fun TransferSummary(
         }
         logo?.let {
             LabeledValue(stringResource(R.string.transfer_part_logo), stringResource(R.string.transfer_included))
-            ReceiptLogoPreview(it, Modifier.fillMaxWidth().padding(8.dp))
+            ReceiptLogoPreview(it, Modifier.fillMaxWidth().padding(Spacing.Small))
         }
         if (connection) LabeledValue(stringResource(R.string.transfer_part_connection), stringResource(R.string.transfer_included))
     }
@@ -584,7 +581,7 @@ private fun ImportScanning(
         Box(Modifier.weight(1f).fillMaxWidth()) {
             ScannerView(mode = ScanMode.QR, continuous = true, onResult = onCode, modifier = Modifier.fillMaxSize())
         }
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().padding(Spacing.Large), verticalArrangement = Arrangement.spacedBy(Spacing.Small)) {
             if (state.expected > 0) {
                 LinearProgressIndicator(progress = {
                     state.received.toFloat() / state.expected
@@ -726,12 +723,12 @@ private fun CatalogueModeChoice(
                 Modifier
                     .fillMaxWidth()
                     .selectable(selected = mode == selected, onClick = { onSelect(mode) }, role = Role.RadioButton)
-                    .padding(vertical = 8.dp)
+                    .padding(vertical = Spacing.Small)
                     .testTag(if (mode == ImportMode.MERGE) "merge" else "replace"),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RadioButton(selected = mode == selected, onClick = null)
-                Column(Modifier.padding(start = 12.dp)) {
+                Column(Modifier.padding(start = Spacing.Medium)) {
                     Text(stringResource(title), style = MaterialTheme.typography.bodyLarge)
                     Text(
                         stringResource(hint),
@@ -842,7 +839,7 @@ private fun TransferDetail(
     label: String,
     value: String,
 ) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.XSmall)) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, modifier = Modifier.fillMaxWidth())
     }

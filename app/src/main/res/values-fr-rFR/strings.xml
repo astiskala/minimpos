@@ -488,6 +488,13 @@
   <string name="products_edit_category">Modifier la catégorie</string>
   <string name="products_name">Nom</string>
   <string name="products_price">Prix (%1$s)</string>
+  <string name="products_price_whole_invalid">Saisissez un prix entier supérieur à 0</string>
+  <string name="products_price_too_large">Saisissez un prix plus petit</string>
+  <plurals name="products_price_invalid">
+    <item quantity="one">Saisissez un prix supérieur à 0 avec au plus %1$d décimale</item>
+    <item quantity="other">Saisissez un prix supérieur à 0 avec au plus %1$d décimales</item>
+    <item quantity="many">Saisissez un prix supérieur à 0 avec au plus %1$d décimales</item>
+  </plurals>
   <string name="products_category">Catégorie</string>
   <string name="products_no_category">Aucune catégorie</string>
   <string name="products_sku">SKU / code-barres (facultatif)</string>
@@ -809,7 +816,7 @@
   <string name="settings_choose_terminal">Choisissez un terminal</string>
   <string name="settings_terminal_choice_hint">Après la sélection, Mini mPOS vérifie la connexion si la configuration est complète. Aucun paiement n’est effectué.</string>
   <string name="settings_no_terminals">Aucun terminal correspondant n’est disponible. Saisissez les détails manuellement.</string>
-  <string name="settings_terminal_search">Rechercher par modèle ou numéro de série</string>
+  <string name="settings_terminal_search">Chercher un terminal</string>
   <string name="settings_terminal_search_none">Aucun terminal ne correspond.</string>
   <string name="settings_save_and_discover">Enregistrer et rechercher la configuration</string>
   <string name="settings_testing_api">Test de l’API…</string>
@@ -970,7 +977,7 @@
   <string name="settings_currency">Devise</string>
   <string name="settings_currency_auto">Automatique (%1$s)</string>
   <string name="settings_currency_hint">Toute devise traitée par Adyen. Vérifiez que votre compte marchand l’accepte pour les paiements en personne.</string>
-  <string name="settings_currency_search">Rechercher par code ou par nom</string>
+  <string name="settings_currency_search">Chercher une devise</string>
   <string name="settings_currency_none">Aucune devise correspondante</string>
   <string name="pricing_change_title">Confirmer le changement de prix</string>
   <string name="pricing_change_message">%1$s → %2$s. Les prix unitaires affichés sont conservés, arrondis à la précision de la nouvelle devise ; les valeurs exactement à mi-chemin sont arrondies vers le haut. Les premiers prix convertis figurent ci-dessous. Passer de prix TTC à HT, ou inversement, change le calcul des taxes ajoutées. Les ventes déjà enregistrées restent inchangées.</string>

@@ -25,9 +25,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
+import app.minimpos.app.ui.theme.Spacing
 
 /**
  * The heading of one step of a screen done in order, such as Settings › Terminal or Reconciliation: its [number] in a
@@ -53,14 +54,14 @@ fun StepHeader(
             }.padding(
                 start = LocalDimens.current.rowHorizontalPadding,
                 end = LocalDimens.current.rowHorizontalPadding,
-                top = if (compact) 16.dp else 24.dp,
-                bottom = if (compact) 4.dp else 8.dp,
+                top = if (compact) Spacing.Large else Spacing.XLarge,
+                bottom = if (compact) Spacing.XSmall else Spacing.Small,
             ).testTag("step_$number"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             Modifier
-                .size(24.dp)
+                .size(IconSize.Standard)
                 .background(MaterialTheme.colorScheme.primary, CircleShape)
                 .then(if (done) Modifier.testTag("step_${number}_done") else Modifier),
             contentAlignment = Alignment.Center,
@@ -70,13 +71,13 @@ fun StepHeader(
                     Icons.Default.Check,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(IconSize.Small),
                 )
             } else {
                 Text(number.toString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary)
             }
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Spacing.Medium))
         Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
     }
 }

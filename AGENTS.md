@@ -15,6 +15,7 @@ Adyen Payments app (Tap to Pay). There is no backend. The built-in simulator nee
 | `tooling/` | Kotlin/JVM release CLI, signing-property extraction and shell-script regression tests. | |
 | `build-logic/` | Convention plugins with the Kotlin/JVM modules' shared build setup. | |
 | `scripts/` | Gradle/dev runners, CI entry point, docs capture, release verification. | |
+| `.stitch/` | Visual design specification (`DESIGN.md`) for agents and Google Stitch. | [Design system](#design-system) |
 | `security/` | STRIDE threat model. | [minimpos-security-review](.agents/skills/minimpos-security-review/SKILL.md) |
 | `.agents/skills/` | Agent skills (`SKILL.md` with name/description front matter) for any coding agent. | |
 
@@ -150,6 +151,21 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
   Receipt labels are read at delivery, Adyen receipt fields stay verbatim. Keep `StarterTax`'s rates current.
 - Group `strings.xml` by feature with `<!-- ... -->` section comments; keep the same sections and key order in every
   language; add new strings beside related existing strings instead of appending a new block at the end.
+
+## Design system
+
+- [.stitch/DESIGN.md](.stitch/DESIGN.md) is the authoritative visual specification; `Theme.kt` and `Tokens.kt` in
+  `app/.../ui/theme` implement it. Read it before changing UI and keep it, the tokens and the screenshots in step.
+- Use `MaterialTheme.colorScheme`, `shapes` and `typography`, `LocalStatusColors`, `LocalDimens`, `Spacing`, `IconSize`
+  and `Elevation`. Do not add `Color(0x…)`, `RoundedCornerShape` or new fixed text sizes to feature code; add or
+  change a token in the theme and `DESIGN.md` instead.
+- Prefer `ui.components` (buttons, `Card`, text roles, dialogs, `MiniScaffold`) over raw Material equivalents or copies.
+- Record a deliberate exception in `DESIGN.md` › Known Exceptions with its reason; resolve audit items
+  ([docs/ui/DESIGN_AUDIT.md](docs/ui/DESIGN_AUDIT.md)) only when they are marked safe or the owner decides.
+- `scripts/design-audit` reports bypasses; `--strict` fails on colour and shape literals. Materially changed UI passes
+  `scripts/dev check ui-snapshots`: review any image difference, re-record deliberate ones with
+  `scripts/dev snapshots record` and add goldens for new shared components ([strategy](docs/ui/SCREENSHOT_TESTING.md),
+  [procedure](CONTRIBUTING.md#update-the-golden-screenshots)). The comparison is not part of `scripts/dev finish` yet.
 
 ## Documentation changes
 

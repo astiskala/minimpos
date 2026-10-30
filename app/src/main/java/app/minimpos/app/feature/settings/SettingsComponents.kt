@@ -2,6 +2,7 @@ package app.minimpos.app.feature.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -355,6 +356,7 @@ private fun PasswordField(
     saved: String = "",
     description: String? = null,
     tag: String? = null,
+    content: @Composable ColumnScope.() -> Unit = {},
 ) {
     val container = LocalAppContainer.current
     var visible by remember { mutableStateOf(false) }
@@ -363,6 +365,7 @@ private fun PasswordField(
     val showsSaved = saved.isNotEmpty() && !focused && value.isEmpty()
     Column(modifier.fillMaxWidth()) {
         SettingFieldHeading(label, description = description)
+        content()
         OutlinedTextField(
             value = if (showsSaved) saved else value,
             onValueChange = {
@@ -403,7 +406,8 @@ private fun PasswordField(
  * A secret typed straight into the screen (no dialog whose buttons the keyboard could hide): never displayed once
  * saved, except as masked dots and its plain-text [hint] (an API key's last characters) when it has one. The keyboard's
  * Done key calls [onSubmit], as does the caller's own button. [onDraft] reports only whether text is unsaved, then
- * false when the field leaves composition; never reports the secret itself.
+ * false when the field leaves composition; never reports the secret itself. [content] is shown between the
+ * description and the input, such as an expander for more detail.
  */
 @Composable
 fun SecretField(
@@ -417,6 +421,7 @@ fun SecretField(
     onDraft: ((Boolean) -> Unit)? = null,
     hint: String? = null,
     description: String? = null,
+    content: @Composable ColumnScope.() -> Unit = {},
 ) {
     val reportDraft by rememberUpdatedState(onDraft)
     LaunchedEffect(value) { reportDraft?.invoke(value.isNotEmpty()) }
@@ -436,6 +441,7 @@ fun SecretField(
             placeholder = stringResource(if (isSet) R.string.settings_secret_replace else R.string.settings_secret_enter),
             saved = if (isSet) MASK + MASK + hint.orEmpty() else "",
             tag = tag,
+            content = content,
         )
     }
 }

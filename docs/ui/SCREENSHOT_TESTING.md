@@ -7,15 +7,19 @@ the repository already does.
 
 - **Done:** Roborazzi 1.77.0 (plugin, `roborazzi`, `roborazzi-compose` and `roborazzi-junit-rule`, test-only, through the
   version catalog; release builds and R8 are unaffected). `ScreenshotRule` sits beside `createRecordingComposeRule`.
-  `DesignGalleryTest` has the component gallery (10 images, compared exactly) and `ScreenGoldensTest` has Home (normal on
-  AMS1 and a regular phone, setup required on AMS1), the sale keypad (both sizes) and the approved (both sizes),
-  declined and unknown results (AMS1): 9 screens at 0.1 %. The results come from simulator payments made in the app,
+  `DesignGalleryTest` has the component gallery (12 images, compared exactly, buttons and keypad also at the S1F2's Medium
+  dimensions) and `ScreenGoldensTest` has Home (normal on AMS1 and a regular phone, setup required on AMS1), the sale
+  keypad and the product grid with two items in the cart (both sizes), History with three stored sales (both sizes) and
+  the approved (both sizes), declined and unknown results (AMS1): 13 screens at 0.1 %. The results
+  come from simulator payments made in the app,
   with the reference, time, card and Adyen references the simulator makes up replaced by fixed values in the stored
   sale. `SettingsGoldensTest` adds the Settings list, the Terminal setup, a price field in error and the currency and
-  terminal picker dialogs (AMS1 and regular phone): 7 more at 0.1 %. Goldens are in `app/src/test/screenshots/`.
+  terminal picker dialogs (AMS1 and regular phone): 7 more at 0.1 %. The golden directory is a declared input of the
+  test task, so a changed golden always reruns the comparison, never a cached result. Goldens are in `app/src/test/screenshots/`.
   `scripts/dev check ui-snapshots` compares and `scripts/dev snapshots record` rewrites them; the procedure is in
   [CONTRIBUTING](../../CONTRIBUTING.md#update-the-golden-screenshots).
-- **Not done:** the other groups below (processing, History, locale, large font, tablet), the S1F2 size, the
+- **Not done:** the other groups below (processing, History detail, locale, large font, tablet), screens at the
+  S1F2 size, the
   pinned CI image, the comparison in `qualityGate`, and a CI step that publishes the difference images on their own.
 
 ## Current state
@@ -43,7 +47,7 @@ with Robolectric 4.17, Compose BOM 2026.09, AGP 9.5, Kotlin 2.4 and Gradle 9.8.
 
 ## What to cover
 
-Aim for about 35 images, not hundreds; there are 26 so far. Each uses the real theme and shared components with
+Aim for about 35 images, not hundreds; there are 32 so far. Each uses the real theme and shared components with
 simulator/fake data.
 
 | Group | Subjects | Variants |

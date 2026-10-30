@@ -120,9 +120,11 @@ Behaviour-neutral only; values are identical before and after.
 - Added `ui/theme/Tokens.kt`: `Spacing`, `IconSize.Inline`, `MinTouchTarget`, `Elevation.ActionBar`.
 - Adopted them in `Buttons.kt`, `Components.kt`, `TextRoles.kt`, `Outcomes.kt` and the sale screen's cart bar.
 - Added `scripts/design-audit` (read-only report; `--strict` gates colour and shape literals).
-- After the screenshot baseline: adopted `Spacing` for every equal-value 4/8/12/16/24/32 dp spacing literal in shared
-  components and feature screens, and `IconSize.Small`, `Standard` and `Large` (16, 24, 40 dp). Dp literals went from
-  129/27 to 107/19; the goldens match exactly.
+- After the screenshot baseline: adopted `Spacing` for the equal-value 4/8/12/16/24/32 dp spacing literals in shared
+  components and in the feature screens it touched, and `IconSize.Small`, `Standard` and `Large` (16, 24, 40 dp). About
+  60 equal-value literals remain in screens without goldens (History, PIN, Transfer, Reconciliation, SMTP, Tax and
+  others); adopt them per file once the screen has a golden. Dp literals went from 129/27 to 92/21 (the picker's two
+  private constants count as shared-component literals); the goldens match exactly.
 - Extracted `PickerDialog` for the currency and terminal pickers (C1, S6); the picker goldens match exactly.
 - Reviewed the raw Material buttons (T-class, soft): none was migrated. Each is a dialog action slot, a row or chip
   with its own size (update banner, play/pause, wallet row, API-roles expander, list-row choices), none the full-width
@@ -138,7 +140,8 @@ migration, dark mode and every medium or low confidence item.
 
 1. ~~Capture screenshot baselines~~ ([SCREENSHOT_TESTING.md](SCREENSHOT_TESTING.md)): done; the goldens cover
    components, Home, the sale keypad, the results, Settings and the pickers.
-2. ~~Finish T2 and T3 file by file~~ for every equal-value literal (done); the 6, 10 and 20 dp and one-off sizes remain.
+2. ~~Finish T2 and T3 file by file~~ for equal-value literals in covered screens (done); the rest, the 6, 10 and 20 dp
+   and one-off sizes remain.
 3. Decide R2, R3 and S1; update `DESIGN.md` and the tokens together.
 4. ~~Extract the picker dialog (C1).~~ Done.
 5. Gate `scripts/design-audit --strict` in CI.

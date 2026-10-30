@@ -176,10 +176,10 @@ standalone release builds retain release lint by default. R8, signing and packag
 ### Update the golden screenshots
 
 The goldens are the visual safety net for token and component changes. Components in `DesignGalleryTest` must match
-exactly; whole screens in `ScreenGoldensTest` may differ in up to 0.1 % of their pixels. Dark mode, locales other than
-`en-AU` and Stitch output are never baselines.
+exactly; whole screens in `ScreenGoldensTest` and `SettingsGoldensTest` may differ in up to 0.1 % of their
+pixels. Dark mode, locales other than `en-AU` and Stitch output are never baselines.
 
-1. `scripts/dev check ui-snapshots` compares the current rendering with the goldens, running only those two classes. A
+1. `scripts/dev check ui-snapshots` compares the current rendering with the goldens, running only those three classes. A
    difference fails the run and leaves the expected, actual and difference images in `app/build/reports/roborazzi/`,
    which CI uploads with the other reports.
 2. Look at the images. A difference you did not intend is a defect: fix the code, not the golden.

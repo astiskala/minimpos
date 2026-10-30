@@ -52,7 +52,8 @@ import app.minimpos.app.createRecordingComposeRule as createComposeRule
  * Golden images of the shared components in the real theme, one test per group (`docs/ui/SCREENSHOT_TESTING.md`). The
  * text is fixed here, not read from resources, so rewording a screen never changes a golden. Components are compared
  * exactly. The `Regular` gallery sizes the window to its content; [Dimens] is set explicitly because the gallery is not
- * a whole screen. The Compact variants run at the AMS1's size, where the app itself switches to those dimensions.
+ * a whole screen. The Compact variants run at the AMS1's size and the Medium ones at the S1F2's, where the app itself
+ * switches to those dimensions.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "en-rAU-w411dp-h640dp-xhdpi")
@@ -107,6 +108,13 @@ class DesignGalleryTest {
     fun `buttons in every variant on a compact screen`() {
         show(Dimens.Compact) { Buttons() }
         screenshot.capture("compact")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w360dp-h600dp-xhdpi")
+    fun `buttons in every variant on a medium screen`() {
+        show(Dimens.Medium) { Buttons() }
+        screenshot.capture("medium")
     }
 
     @Test
@@ -188,6 +196,13 @@ class DesignGalleryTest {
     fun `keypad on a compact screen`() {
         show(Dimens.Compact, keypad)
         screenshot.capture("compact")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w360dp-h600dp-xhdpi")
+    fun `keypad on a medium screen`() {
+        show(Dimens.Medium, keypad)
+        screenshot.capture("medium")
     }
 
     @Test

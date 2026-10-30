@@ -67,6 +67,7 @@ import app.minimpos.app.terminal.SetupVisit
 import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.ActionMessage
+import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.PickerDialog
 import app.minimpos.app.ui.components.PrimaryButton
@@ -558,8 +559,6 @@ private fun ColumnScope.AdyenApiStep(
         }
     }
     StepHeader(number, stringResource(R.string.settings_api), done = done)
-    ApiKeyRoles()
-
     SecretField(
         label = stringResource(R.string.settings_api_key),
         description = stringResource(R.string.settings_adyen_key_hint),
@@ -570,6 +569,7 @@ private fun ColumnScope.AdyenApiStep(
         onSubmit = ::saveAndTest,
         tag = "apiKey",
         onDraft = { setupEvents.onSecretDraft(Secret.ADYEN_API_KEY, it) },
+        content = { ApiKeyRoles() },
     )
     ApiFields(api, update)
     SettingActions {
@@ -592,36 +592,39 @@ private fun ColumnScope.AdyenApiStep(
 }
 
 /**
- * The common required roles that new primary credentials lack by default; identical for every real destination.
+ * The common required roles that new primary credentials lack by default; identical for every real destination. It
+ * sits inside the API key field, between its description and the input, so it adds no horizontal inset of its own.
  */
 @Composable
-private fun ColumnScope.ApiKeyRoles() {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    TextButton(
-        onClick = { expanded = !expanded },
-        modifier = Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding).testTag("apiRoles"),
-        contentPadding = PaddingValues(vertical = Spacing.Small),
-    ) {
-        Icon(
-            if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-            contentDescription = null,
-            modifier = Modifier.testTag("apiRolesArrow"),
-        )
-        Spacer(Modifier.width(Spacing.Small))
-        Text(stringResource(if (expanded) R.string.settings_hide_roles else R.string.settings_show_roles))
-    }
-    if (expanded) {
-        SettingNote(stringResource(R.string.settings_adyen_roles_hint))
-        SettingNote(
-            listOf(
-                R.string.settings_adyen_role_cloud,
-                R.string.settings_adyen_role_terminals,
-                R.string.settings_adyen_role_settings,
-                R.string.settings_adyen_role_shared_key,
-                R.string.settings_adyen_role_tokens,
-            ).map { "• " + stringResource(it) }.joinToString("\n"),
-            Modifier.testTag("roleCloud"),
-        )
+private fun ApiKeyRoles() {
+    Column {
+        var expanded by rememberSaveable { mutableStateOf(false) }
+        TextButton(
+            onClick = { expanded = !expanded },
+            modifier = Modifier.testTag("apiRoles"),
+            contentPadding = PaddingValues(vertical = Spacing.Small),
+        ) {
+            Icon(
+                if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier.testTag("apiRolesArrow"),
+            )
+            Spacer(Modifier.width(Spacing.Small))
+            Text(stringResource(if (expanded) R.string.settings_hide_roles else R.string.settings_show_roles))
+        }
+        if (expanded) {
+            Description(stringResource(R.string.settings_adyen_roles_hint), Modifier.padding(vertical = Spacing.XSmall))
+            Description(
+                listOf(
+                    R.string.settings_adyen_role_cloud,
+                    R.string.settings_adyen_role_terminals,
+                    R.string.settings_adyen_role_settings,
+                    R.string.settings_adyen_role_shared_key,
+                    R.string.settings_adyen_role_tokens,
+                ).map { "• " + stringResource(it) }.joinToString("\n"),
+                Modifier.padding(vertical = Spacing.XSmall).testTag("roleCloud"),
+            )
+        }
     }
 }
 

@@ -626,9 +626,13 @@ abstract class AndroidApiArguments : CommandLineArgumentProvider {
         )
 }
 
-/** Where `ScreenshotRule` compares and records the golden images; a source folder, not a build output. */
+/**
+ * Where `ScreenshotRule` compares and records the golden images; a source folder, not a build output. It is a task
+ * input so that a changed golden reruns the tests instead of being served from the up-to-date check or build cache.
+ */
 abstract class ScreenshotDirectoryArgument : CommandLineArgumentProvider {
-    @get:Internal
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val directory: DirectoryProperty
 
     override fun asArguments() = listOf("-Dminimpos.screenshotDirectory=${directory.get().asFile.absolutePath}")

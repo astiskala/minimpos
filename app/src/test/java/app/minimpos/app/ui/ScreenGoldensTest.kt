@@ -17,6 +17,8 @@ import app.minimpos.app.ScreenshotTolerance
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.clickWhenEnabled
+import app.minimpos.app.data.db.ProductEntity
+import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.data.settings.TerminalMode
@@ -176,6 +178,91 @@ class ScreenGoldensTest {
         screenshot.capture()
     }
 
+    /** Six products at the first tax rate, in the order a shopper sees them; returns their ids. */
+    private fun seedProducts(): List<Long> =
+        await {
+            val rate =
+                container.catalog.taxRates
+                    .first()
+                    .first()
+            listOf(
+                "Flat white" to 450L,
+                "Cappuccino" to 500L,
+                "Banana bread" to 650L,
+                "Orange juice" to 550L,
+                "Sausage roll" to 700L,
+                "Iced tea" to 600L,
+            ).map { (name, price) -> container.catalog.saveProduct(ProductEntity(name = name, priceMinor = price, taxRateId = rate.id)) }
+        }
+
+    private fun showProductsInCart() {
+        val ids = seedProducts()
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("newSale").performClick()
+        waitForTag("productGrid")
+        ids.take(2).forEach { compose.onNodeWithTag("product_$it").performClick() }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `sale with products in the cart`() {
+        showProductsInCart()
+        screenshot.capture()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w411dp-h891dp-xhdpi")
+    fun `sale with products in the cart on a regular phone`() {
+        showProductsInCart()
+        screenshot.capture()
+    }
+
+    @Test
+    fun `history with sales`() {
+        showHistory()
+        screenshot.capture()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w411dp-h891dp-xhdpi")
+    fun `history with sales on a regular phone`() {
+        showHistory()
+        screenshot.capture()
+    }
+
+    /** Three stored sales on a past day (never "Today"), kept forever so that the retention never removes them. */
+    private fun showHistory() {
+        env.updateSettings { it.copy(history = it.history.copy(retentionDays = 0)) }
+        listOf(
+            Triple("261015-091500-AAAAA", SaleStatus.APPROVED, "mc" to 1_250L),
+            Triple("261015-094000-BBBBB", SaleStatus.APPROVED, "visa" to 2_380L),
+            Triple("261015-101000-CCCCC", SaleStatus.DECLINED, null to 640L),
+        ).forEachIndexed { index, (reference, status, payment) ->
+            val total = payment.second
+            await {
+                container.database.saleDao().insert(
+                    SaleEntity(
+                        id = reference,
+                        createdAt = PAST_SALE_TIME + index * 1_500_000L,
+                        currency = "AUD",
+                        taxMode = "INCLUSIVE",
+                        netMinor = total * 10 / 11,
+                        taxMinor = total - total * 10 / 11,
+                        totalMinor = total,
+                        status = status,
+                        merchantReference = reference,
+                        paymentBrand = payment.first,
+                    ),
+                )
+            }
+        }
+        compose.setContent { MiniMposApp(container) }
+        waitForTag("history")
+        compose.onNodeWithTag("history").performClick()
+        waitForTag("historyList")
+        compose.waitForIdle()
+    }
+
     @Test
     fun `result approved`() {
         showApp()
@@ -208,5 +295,8 @@ class ScreenGoldensTest {
     private companion object {
         /** 30 Oct 2026, 12:00 UTC. */
         const val SALE_TIME = 1_793_361_600_000L
+
+        /** 15 Oct 2026, 09:15 UTC: a day that is never the current one when the golden is compared. */
+        const val PAST_SALE_TIME = 1_792_055_700_000L
     }
 }

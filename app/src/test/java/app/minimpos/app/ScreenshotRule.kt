@@ -28,7 +28,7 @@ enum class ScreenshotTolerance(
 
 /**
  * Compares the Compose test rule's content with golden images under `app/src/test/screenshots/`, or records them.
- * Rule order 2, after `TestEnvironment` (0) and [createRecordingComposeRule] (1), which the rule wraps.
+ * Rule order 2, after `TestEnvironment` (0) and [createRecordingComposeRule] (1), whose rule it is given.
  *
  * Which of the two happens is chosen by the Gradle task (`verifyRoborazziDebug`, `recordRoborazziDebug`); an ordinary
  * test run captures nothing. Images are named `<test class>/<test method>[-<variant>]_<device>.png` after the running

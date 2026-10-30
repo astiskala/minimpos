@@ -41,9 +41,8 @@ import app.minimpos.app.ui.theme.Spacing
  *
  * The caller keeps the query ([query], [onQueryChange], which should limit its length) and lists the matching options in
  * [options], tagging each for tests. [searchTag] tags the field, and [searchHint] is its hint; keep it to one line, as the
- * field is. While [isEmpty] (nothing matches), [noMatches] is shown after [options]. [selectableOptions] groups
- * radio rows.
- * current choice. [onDismiss] is called by Cancel and by dismissing the dialog.
+ * field is. While [isEmpty] (nothing matches), [noMatches] is shown after [options]. [selectableOptions] groups radio
+ * rows, one of which is the current choice. [onDismiss] is called by Cancel and by dismissing the dialog.
  *
  * It is not an [androidx.compose.material3.AlertDialog]: that dialog's default width keeps a text field from settling in
  * tests.

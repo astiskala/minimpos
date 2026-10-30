@@ -3,7 +3,7 @@ package app.minimpos.app.ui.theme
 import androidx.compose.ui.unit.dp
 
 /**
- * The fixed spacing scale for gaps and padding that do not depend on the screen size; `.stitch/DESIGN.md` names each
+ * The fixed spacing scale for gaps and padding that do not depend on the screen size; `DESIGN.md` names each
  * step. Screen-dependent gaps come from [Dimens] instead (`screenPadding`, `spacing`, `cardPadding`).
  */
 object Spacing {

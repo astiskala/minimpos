@@ -179,15 +179,15 @@ standalone release builds retain release lint by default. R8, signing and packag
 The goldens are the visual safety net for token and component changes. Components in `DesignGalleryTest` must match
 with a 0 % changed-pixel threshold; whole screens may differ in up to 0.1 % of their counted pixels. Roborazzi
 first filters color distances up to `0.007`, so the gallery threshold is not literal pixel equality. Dark mode and
-Stitch output are never baselines. `LocaleGoldensTest` covers French and Japanese, with each capture using a rule given
-its expected locale.
+external design renders are never baselines. `LocaleGoldensTest` covers French and Japanese, with each capture using
+a rule given its expected locale.
 
 1. `scripts/dev check ui-snapshots` compares the current rendering with the goldens, running only those five classes. A
    difference fails the run and leaves the expected, actual and difference images in `app/build/reports/roborazzi/`,
    which the separate `ui-snapshots` CI job uploads as `ui-snapshot-differences` on failure.
 2. Look at the images. A difference you did not intend is a defect: fix the code, not the golden.
 3. For a deliberate change, run `scripts/dev snapshots record`, review the changed PNGs in `git diff`, commit them with
-   the code, and update `.stitch/DESIGN.md` when the visual rule changed. Never edit a PNG by hand or record to make a
+   the code, and update `DESIGN.md` when the visual rule changed. Never edit a PNG by hand or record to make a
    failure go away.
 4. A new component or screen adds a test to the matching class (a gallery group, or a screen with fixed data: store the
    facts, as `showResult` does, instead of paying through the simulator, whose references and times differ each run).

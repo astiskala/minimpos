@@ -96,12 +96,12 @@ single-pane). Use at most three per screen.
    anti-aliasing differs between JVMs and operating systems. Record goldens on one pinned CI image and run comparisons
    there for authoritative results; local comparisons can fail on cross-platform rasterization differences.
 5. On mismatch, publish expected/actual/diff images in the existing CI reports artifact (alongside `ui-failures/`).
-6. A PR that changes UI deliberately re-records goldens and updates `.stitch/DESIGN.md` when the visual rule changed.
+6. A PR that changes UI deliberately re-records goldens and updates `DESIGN.md` when the visual rule changed.
 
-## Relation to Stitch
+## Relation to design renders
 
-Android goldens compare approved Android rendering against future Android rendering. Stitch output defines intent and
-lives under `.stitch/reference/` for human comparison; it is never a pixel baseline.
+Android goldens compare approved Android rendering against future Android rendering. Renders from external design
+tools show intent only; they are never pixel baselines.
 
 ## Rollout
 
@@ -109,8 +109,6 @@ lives under `.stitch/reference/` for human comparison; it is never a pixel basel
    two stable CI comparison runs and owner approval. (Plugin and gallery done; gate pending.)
 2. Add the Home, Sale and result screens on AMS1 and Regular. (Done, except where the table says fewer.)
 3. Add locale, large-font and tablet variants. (Representative variants done; remaining coverage above.)
-4. Use the goldens as the safety net for the token cleanup and the picker-dialog extraction listed in
-   [DESIGN_AUDIT.md](DESIGN_AUDIT.md).
 
 Risks: golden churn when Compose or Material 3 is upgraded (the BOM is bumped by Dependabot), and image size in git
 (about 30-60 KB each, roughly 2 MB for 35). Keep image count low and commit PNGs optimized.

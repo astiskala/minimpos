@@ -195,7 +195,8 @@ its expected locale.
 
 Renderings are only exactly reproducible on the same operating system and JDK, so record on the platform CI uses. The
 current goldens were re-recorded on `ubuntu-latest` (Ubuntu 24.04 image `20261025.353.1`, Temurin `21.0.13+9`,
-CI recording run `41017912554`; re-recorded after the spinner and compact-action changes in run `41059242185`). The comparison is not in `qualityGate` until it has passed
+CI recording run `41017912554`; re-recorded after the spinner and compact-action changes in run
+`41059242185`). The comparison is not in `qualityGate` until it has passed
 on CI twice and the owner approves it. The first Linux run found curved-edge rasterization differences in two
 gallery images (223 and 584 raw pixels); whole-screen comparisons passed at the existing 0.1 % threshold. Raw PNG
 comparison found differences in 50 of 54 images, with at most 2 levels of change per 8-bit color channel, confined to

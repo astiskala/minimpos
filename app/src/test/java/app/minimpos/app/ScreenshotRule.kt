@@ -15,14 +15,14 @@ import java.io.File
 import java.util.Locale
 import java.util.TimeZone
 
-/** How many pixels of a screenshot may differ from its golden before the comparison fails. */
+/** How many pixels counted by Roborazzi’s color-distance comparator may differ before the comparison fails. */
 enum class ScreenshotTolerance(
     val changeThreshold: Float,
 ) {
-    /** Component gallery: any changed pixel fails, since a component's rendering is fully deterministic. */
+    /** Component gallery: no changed pixels beyond Roborazzi's default color-distance filter are accepted. */
     EXACT(0f),
 
-    /** Full screens: 0.1 % of the pixels, for anti-aliasing that differs between JVMs and operating systems. */
+    /** Full screens: 0.1 % of counted pixels; Roborazzi first filters small color-distance differences. */
     SCREEN(0.001f),
 }
 

@@ -177,9 +177,10 @@ standalone release builds retain release lint by default. R8, signing and packag
 ### Update the golden screenshots
 
 The goldens are the visual safety net for token and component changes. Components in `DesignGalleryTest` must match
-exactly; whole screens in `ScreenGoldensTest` and `SettingsGoldensTest` may differ in up to 0.1 % of their
-pixels. Dark mode and Stitch output are never baselines. `LocaleGoldensTest` covers French and Japanese, with each
-capture using a rule given its expected locale.
+with a 0 % changed-pixel threshold; whole screens may differ in up to 0.1 % of their counted pixels. Roborazzi
+first filters color distances up to `0.007`, so the gallery threshold is not literal pixel equality. Dark mode and
+Stitch output are never baselines. `LocaleGoldensTest` covers French and Japanese, with each capture using a rule given
+its expected locale.
 
 1. `scripts/dev check ui-snapshots` compares the current rendering with the goldens, running only those four classes. A
    difference fails the run and leaves the expected, actual and difference images in `app/build/reports/roborazzi/`,
@@ -193,12 +194,20 @@ capture using a rule given its expected locale.
    Keep the image count low; PNGs are about 15-40 KB each.
 
 Renderings are only exactly reproducible on the same operating system and JDK, so record on the platform CI uses. The
-current goldens were recorded on macOS (arm64, JDK 21) and the comparison is not in `qualityGate` until it has passed
+current goldens were re-recorded on `ubuntu-latest` (Ubuntu 24.04 image `20261025.353.1`, Temurin `21.0.13+9`,
+CI recording run `41017912554`). The comparison is not in `qualityGate` until it has passed
 on CI twice and the owner approves it. The first Linux run found curved-edge rasterization differences in two
-exact-match gallery images (223 and 584 pixels); whole-screen comparisons passed at the existing 0.1 % threshold.
+gallery images (223 and 584 raw pixels); whole-screen comparisons passed at the existing 0.1 % threshold. Raw PNG
+comparison found differences in 50 of 54 images, with at most 2 levels of change per 8-bit color channel, confined to
+rasterized edges. The CI goldens were reviewed before adoption; local macOS comparisons can now fail on those edges.
 Use CI’s manual **Record CI-platform goldens for review instead of comparing** option to download the
 `ui-snapshot-goldens` artifact; review it before replacing the checked-in PNGs. Recording does not establish a clean
-comparison run. After a Compose or Material 3 upgrade, expect to re-record.
+comparison run. The manual **Run only UI snapshots** option compares without repeating the full gate and release build.
+After a Compose or Material 3 upgrade, expect to re-record.
+
+Independent CI recordings `41017912554` and `41018426929` produced byte-identical PNGs for all 54 images. On October 30,
+2026, the owner chose to retain the current thresholds, including the default color-distance filter. Tightening either
+setting still requires approval.
 
 ## Make changes that fit
 

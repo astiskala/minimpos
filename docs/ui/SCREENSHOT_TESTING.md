@@ -7,8 +7,9 @@ the repository already does.
 
 - **Done:** Roborazzi 1.77.0 (plugin, `roborazzi`, `roborazzi-compose` and `roborazzi-junit-rule`, test-only, through the
   version catalog; release builds and R8 are unaffected). `ScreenshotRule` sits beside `createRecordingComposeRule`.
-  `DesignGalleryTest` has the component gallery (12 images, compared exactly, buttons and keypad also at the S1F2's Medium
-  dimensions) and `ScreenGoldensTest` has Home (normal on AMS1 and a regular phone, setup required on AMS1), the sale
+  `DesignGalleryTest` has the component gallery (12 images, compared at a 0 % changed-pixel threshold, buttons and
+  keypad also at the S1F2's Medium dimensions) and `ScreenGoldensTest` has Home (normal on AMS1 and a regular phone,
+  setup required on AMS1), the sale
   keypad and the product grid with two items in the cart (both sizes), History with three stored sales (both sizes) and
   the approved (both sizes), declined and unknown results (AMS1): 13 screens at 0.1 %. The results
   come from simulator payments made in the app,
@@ -26,8 +27,11 @@ the repository already does.
   equal-value spacing literals adopted tokens only after adding their goldens; all 54 macOS PNGs remained byte-identical.
 - **CI rollout:** the separate `ui-snapshots` job uses `ubuntu-latest` and Temurin 21, with a failure artifact containing
   `app/build/reports/roborazzi/`. Its manual recording option uploads goldens for review. The initial Linux comparison
-  failed on two exact-match gallery images; all whole screens passed at 0.1 %. Two clean comparison runs and owner
-  approval are still required before adding the comparison to `qualityGate`. Tolerance changes need owner approval.
+  failed on two gallery images; all whole screens passed at 0.1 %. The reviewed goldens were re-recorded by CI run
+  `41017912554` on Ubuntu 24.04 image `20261025.353.1`, Temurin `21.0.13+9`. Two clean comparison runs and owner
+  approval are still required before adding the comparison to `qualityGate`. Independent CI recording runs
+  `41017912554` and `41018426929` produced byte-identical PNGs for all 54 images. The owner reviewed that evidence on
+  October 30, 2026 and chose to keep the existing thresholds and color-distance filter.
 - **Remaining coverage:** checkout review at 1.5×, Japanese results and History's empty state. Scanner already uses
   spacing tokens; its camera hardware is outside these JVM goldens.
 
@@ -85,9 +89,11 @@ single-pane). Use at most three per screen.
    `scripts/dev check ui-snapshots` (compare) and `scripts/dev snapshots record` (update).
 3. Keep rendering deterministic: fixed `Locale`, `TimeZone`, `fontScale`, disabled animations, `UnconfinedTestDispatcher`
    per [app/AGENTS.md](../../app/AGENTS.md#tests), `en-rAU` amounts, no live clocks or network, synthetic data only.
-4. Tolerance: 0 % for the component gallery, a small per-image threshold (about 0.1 %) for full screens, because
+4. Tolerance: 0 % changed pixels for the component gallery and 0.1 % for full screens. Roborazzi first ignores color
+   distances up to `0.007`, so these are counted pixels, not every raw RGB difference. The first Linux recording differed
+   from macOS in 50 of 54 images, by at most 2 levels per 8-bit channel, at rasterized edges. This is expected because
    anti-aliasing differs between JVMs and operating systems. Record goldens on one pinned CI image and run comparisons
-   there only; local runs report but do not fail.
+   there for authoritative results; local comparisons can fail on cross-platform rasterization differences.
 5. On mismatch, publish expected/actual/diff images in the existing CI reports artifact (alongside `ui-failures/`).
 6. A PR that changes UI deliberately re-records goldens and updates `.stitch/DESIGN.md` when the visual rule changed.
 

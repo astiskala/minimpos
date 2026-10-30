@@ -6,6 +6,10 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      snapshots-only:
+        description: Run only UI snapshots, skipping the full quality gate and release build
+        type: boolean
+        default: false
       record-snapshots:
         description: Record CI-platform goldens for review instead of comparing
         type: boolean
@@ -20,7 +24,7 @@ concurrency:
 
 jobs:
   quality-gate:
-    if: ${{ !inputs.record-snapshots }}
+    if: ${{ !inputs.record-snapshots && !inputs.snapshots-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

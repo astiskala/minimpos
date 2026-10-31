@@ -5,7 +5,6 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.settings.AppSettings
-import app.minimpos.app.data.settings.CashbackSettings
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
@@ -48,7 +47,6 @@ import kotlin.uuid.Uuid
  * @property cardEntryOverride Selected card entry mode (`NORMAL`, `MOTO` or `MKE`).
  * @property mexicanPayment Shopper-selected Mexican debit/credit routing; null uses ordinary terminal routing.
  * @property cashBackMinor Cash requested beyond merchandise in minor units; zero means none.
- * @property cashbackConfirmation Exact configuration whose card program the operator confirmed; changes require reconfirmation.
  */
 data class CheckoutForm(
     val transactionReference: String = "",
@@ -62,7 +60,6 @@ data class CheckoutForm(
     val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
     val mexicanPayment: MexicanPayment? = null,
     val cashBackMinor: Long = 0,
-    val cashbackConfirmation: CashbackSettings? = null,
 )
 
 /**

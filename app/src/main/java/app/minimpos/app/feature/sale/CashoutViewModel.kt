@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.minimpos.app.data.repo.cashHandover
 import app.minimpos.app.data.settings.AppSettings
-import app.minimpos.app.data.settings.CashbackSettings
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.history.StoredPayments
@@ -35,14 +34,12 @@ internal class CashoutViewModel(
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val amount = MutableStateFlow(AmountEntry())
-    private val confirmed = MutableStateFlow<CashbackSettings?>(null)
     val state =
-        combine(settings, discovery, configured, amount, confirmed) { app, facts, pin, entered, card ->
+        combine(settings, discovery, configured, amount) { app, facts, pin, entered ->
             val code = currency(app).code
             CashoutState(
                 code,
                 entered,
-                card == app.payment.cashback,
                 pin,
                 Cashback.ready(app.payment.cashback, facts, code, true),
                 app.payment.cashback.limitMinor,
@@ -61,18 +58,11 @@ internal class CashoutViewModel(
         amount.value = amount.value.backspace()
     }
 
-    fun confirmCard(value: Boolean) {
-        confirmed.value =
-            settings.value.payment.cashback
-                .takeIf { value }
-    }
-
     fun start(): Boolean {
         val current = state.value
         val app = settings.value
         val facts = discovery.value
         val code = currency(app)
-        if (confirmed.value != app.payment.cashback) return false
         if (!current.ready || code.code != current.currency) return false
         if (!Cashback.ready(app.payment.cashback, facts, code.code, true) ||
             current.amount.minor > app.payment.cashback.limitMinor
@@ -89,12 +79,11 @@ internal class CashoutViewModel(
 internal data class CashoutState(
     val currency: String = "AUD",
     val amount: AmountEntry = AmountEntry(),
-    val cardConfirmed: Boolean = false,
     val managerConfigured: Boolean = false,
     val available: Boolean = false,
     val limitMinor: Long = 0,
 ) {
-    val ready: Boolean get() = available && cardConfirmed && managerConfigured && amount.minor in 1..limitMinor
+    val ready: Boolean get() = available && managerConfigured && amount.minor in 1..limitMinor
 }
 
 internal data class CashHandoverState(

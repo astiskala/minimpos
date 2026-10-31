@@ -397,7 +397,7 @@ data class Checkout(
     /** Selected cash requires a whole immediate card sale; unavailable choices remain selected and block sending. */
     val cashbackReady: Boolean get() =
         form.cashBackMinor == 0L || (
-            managerConfigured && form.cashbackConfirmation == payment.cashback && cashbackAvailable &&
+            managerConfigured && cashbackAvailable &&
                 form.cashBackMinor in 1..payment.cashback.limitMinor &&
                 form.cashBackMinor <= Long.MAX_VALUE - totals.amounts.gross && CardFeatures.allows(CardFeature.CASHBACK, selectedFeatures)
         )

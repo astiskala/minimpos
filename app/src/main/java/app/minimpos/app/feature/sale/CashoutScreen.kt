@@ -32,7 +32,6 @@ import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.StatusKind
-import app.minimpos.app.ui.components.SwitchRow
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
@@ -92,12 +91,6 @@ internal fun CashoutScreen(
             if (state.limitMinor > 0) {
                 Description(stringResource(R.string.unreferenced_limit, money.format(state.limitMinor)), centered = true)
             }
-            SwitchRow(
-                stringResource(R.string.cashback_card_confirm, "eftpos"),
-                state.cardConfirmed,
-                vm::confirmCard,
-                Modifier.testTag("cashoutCard"),
-            )
             NumericKeypad(vm::digit, vm::doubleZero, vm::backspace)
         }
     }

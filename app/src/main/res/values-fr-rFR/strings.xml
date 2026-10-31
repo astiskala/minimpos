@@ -1546,11 +1546,10 @@
   <string name="cashback_requested">Espèces demandées</string>
   <string name="cashback_approved">Espèces autorisées</string>
   <string name="cashback_card_charge">Montant débité sur la carte</string>
-  <string name="cashback_card_confirm">J’ai confirmé que le client présente une carte %1$s éligible</string>
   <string name="cashback_unavailable">Indisponible : vérifiez activation, carte, magasin vérifié, destination et plafond dans Réglages.</string>
   <string name="cashout_manager_note">Le retrait et la remise d’espèces nécessitent un PIN responsable. Définissez-le dans Paramètres › Sécurité.</string>
   <string name="cashout_over_limit">Au-delà de votre plafond local d’espèces.</string>
-  <string name="cashback_conflicts">Confirmez la carte et un montant sous le plafond. Utilisez une vente entière sans fractionnement, autorisation partielle, pourboire, Giving, audio, saisie spéciale ni enregistrement de carte.</string>
+  <string name="cashback_conflicts">Saisissez un montant sous le plafond. Utilisez une vente entière sans fractionnement, autorisation partielle, pourboire, Giving, audio, saisie spéciale ni enregistrement de carte.</string>
   <string name="cashback_handover">Enregistrer la remise d’espèces</string>
   <string name="cashback_handover_amount">Enregistrer la remise de %1$s</string>
   <string name="cashback_handover_confirm">Confirmez après avoir remis les espèces autorisées. Vérifiez les remises précédentes. Reçus et vérifications ne prouvent jamais la remise.</string>

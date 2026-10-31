@@ -25,7 +25,6 @@ import app.minimpos.app.ui.components.Notice
 import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.Subheading
-import app.minimpos.app.ui.components.SwitchRow
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -51,16 +50,6 @@ internal fun ColumnScope.CashbackChoices(
         modifier = Modifier.testTag("cashbackAmount"),
     )
     LabeledValue(stringResource(R.string.cashback_card_charge), money.format(state.requestedCardMinor))
-    SwitchRow(
-        stringResource(
-            R.string.cashback_card_confirm,
-            state.payment.cashback.card
-                ?.name
-                .orEmpty(),
-        ),
-        state.form.cashbackConfirmation == state.payment.cashback,
-        { value -> onUpdate { it.copy(cashbackConfirmation = state.payment.cashback.takeIf { value }) } },
-    )
     if (!state.managerConfigured) Notice(stringResource(R.string.cashout_manager_note), kind = NoticeKind.WARNING)
     if (!state.cashbackAvailable) Notice(stringResource(R.string.cashback_unavailable), kind = NoticeKind.WARNING)
     if (!state.cashbackReady) Notice(stringResource(R.string.cashback_conflicts), kind = NoticeKind.WARNING)

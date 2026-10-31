@@ -51,7 +51,7 @@ class CashbackRulesTest {
     private val totals = Cart().addCustom("Goods", 1000, AppliedTax("Tax", 10_000), "goods").totals(TaxMode.INCLUSIVE)
     private val checkout =
         Checkout(
-            form = CheckoutForm(cashBackMinor = 500, cashbackConfirmation = configured),
+            form = CheckoutForm(cashBackMinor = 500),
             payment = PaymentSettings(cashback = configured, allowPartialAuthorisation = false),
             totals = totals,
             currency = CurrencySpec.of("AUD"),
@@ -190,7 +190,6 @@ class CashbackRulesTest {
             checkout.copy(kind = SaleKind.PRE_AUTHORISATION),
             checkout.copy(form = checkout.form.copy(cashBackMinor = 5001)),
             checkout.copy(form = checkout.form.copy(cashBackMinor = -1)),
-            checkout.copy(form = checkout.form.copy(cashbackConfirmation = null)),
             checkout.copy(
                 form = checkout.form.copy(audioGuidance = true),
                 payment = checkout.payment.copy(audioGuidance = true),

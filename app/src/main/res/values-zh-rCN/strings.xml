@@ -1532,11 +1532,10 @@
   <string name="cashback_requested">请求取现金额</string>
   <string name="cashback_approved">批准取现金额</string>
   <string name="cashback_card_charge">卡扣款金额</string>
-  <string name="cashback_card_confirm">我已确认顾客持有符合条件的 %1$s 卡</string>
   <string name="cashback_unavailable">不可用：请在设置中检查启用状态、卡计划、已验证门店、收款终端和限额。</string>
   <string name="cashout_manager_note">取现和现金返还需要经理PIN。请在设置 › 安全中设置。</string>
   <string name="cashout_over_limit">超过本地取现限额。</string>
-  <string name="cashback_conflicts">请确认符合条件的卡，并输入限额内金额。须整笔刷卡，不可与分单、部分授权、小费、Giving、语音引导、特殊输入或保存卡同时使用。</string>
+  <string name="cashback_conflicts">请输入限额内金额。须整笔刷卡，不可与分单、部分授权、小费、Giving、语音引导、特殊输入或保存卡同时使用。</string>
   <string name="cashback_handover">记录现金已交付</string>
   <string name="cashback_handover_amount">记录已交付%1$s</string>
   <string name="cashback_handover_confirm">仅在将批准的现金交给顾客后确认。请先检查以往交付记录。收据和状态查询并不代表现金已交付。</string>

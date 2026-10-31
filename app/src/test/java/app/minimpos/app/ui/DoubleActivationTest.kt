@@ -144,7 +144,6 @@ class DoubleActivationTest {
         compose.onNodeWithTag("cashout").performScrollTo().performClick()
         waitForTag("startCashout")
         listOf(5, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
-        compose.onNodeWithText("I confirmed the shopper has an eligible eftpos card").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("startCashout") and isEnabled(), 15_000)
         doubleTap("startCashout")
         waitForTag("confirm")

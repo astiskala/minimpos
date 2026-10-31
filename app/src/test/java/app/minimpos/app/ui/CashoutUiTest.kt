@@ -103,7 +103,6 @@ class CashoutUiTest {
             listOf(5, 2).forEach { compose.onNodeWithTag("key_$it").performScrollTo().performClick() }
             compose.onNodeWithTag("key_<").performScrollTo().performClick()
             compose.onNodeWithTag("key_00").performScrollTo().performClick()
-            compose.onNodeWithTag("cashoutCard").performScrollTo().performClick()
             compose.awaitCondition("cashout ready") { vm.state.value.ready }
             compose.onNodeWithTag("startCashout").assertIsDisplayed().assertIsEnabled()
             if (gateBlocked) {

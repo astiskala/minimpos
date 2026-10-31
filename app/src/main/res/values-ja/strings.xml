@@ -1532,11 +1532,10 @@
   <string name="cashback_requested">現金の要求額</string>
   <string name="cashback_approved">現金の承認額</string>
   <string name="cashback_card_charge">カード請求額</string>
-  <string name="cashback_card_confirm">対象の%1$sカードであることを確認しました</string>
   <string name="cashback_unavailable">利用できません。設定で有効化、カード、確認済み店舗、送信先、上限を確認してください。</string>
   <string name="cashout_manager_note">キャッシュアウトとキャッシュバックにはマネージャーPINが必要です。設定 › セキュリティで設定してください。</string>
   <string name="cashout_over_limit">現金引き出し上限を超えています。</string>
-  <string name="cashback_conflicts">対象カードと上限内の金額を確認してください。分割、部分承認、チップ、Giving、音声案内、特殊入力、カード保存は併用できません。</string>
+  <string name="cashback_conflicts">上限内の金額を入力してください。分割、部分承認、チップ、Giving、音声案内、特殊入力、カード保存は併用できません。</string>
   <string name="cashback_handover">現金の引き渡しを記録</string>
   <string name="cashback_handover_amount">%1$sの引き渡しを記録</string>
   <string name="cashback_handover_confirm">承認された現金を渡してから確認してください。過去の引き渡しを先に確認してください。レシートや状況照会は引き渡しを意味しません。</string>

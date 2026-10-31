@@ -1532,11 +1532,10 @@
   <string name="cashback_requested">要求提款金額</string>
   <string name="cashback_approved">批准提款金額</string>
   <string name="cashback_card_charge">卡扣款金額</string>
-  <string name="cashback_card_confirm">我已確認顧客持有合資格的 %1$s 卡</string>
   <string name="cashback_unavailable">未能使用：請在設定中檢查啟用狀態、卡計劃、已驗證門店、收款終端及限額。</string>
   <string name="cashout_manager_note">提款及現金回贈需要經理PIN。請在設定 › 安全中設定。</string>
   <string name="cashout_over_limit">超過本地提款限額。</string>
-  <string name="cashback_conflicts">請確認合資格的卡，並輸入限額內金額。須整筆刷卡，不可與分單、部分授權、小費、Giving、語音指引、特殊輸入或儲存卡同時使用。</string>
+  <string name="cashback_conflicts">請輸入限額內金額。須整筆刷卡，不可與分單、部分授權、小費、Giving、語音指引、特殊輸入或儲存卡同時使用。</string>
   <string name="cashback_handover">記錄現金已交付</string>
   <string name="cashback_handover_amount">記錄已交付%1$s</string>
   <string name="cashback_handover_confirm">僅在將批准的現金交給顧客後確認。請先檢查以往交付記錄。收據及狀態查詢並不代表現金已交付。</string>

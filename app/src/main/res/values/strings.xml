@@ -1539,11 +1539,10 @@
   <string name="cashback_requested">Cash requested</string>
   <string name="cashback_approved">Cash approved</string>
   <string name="cashback_card_charge">Card charge</string>
-  <string name="cashback_card_confirm">I confirmed the shopper has an eligible %1$s card</string>
   <string name="cashback_unavailable">Unavailable: check enablement, card program, verified store, destination and local limit in Settings.</string>
   <string name="cashout_manager_note">Cashout and cashback need a Manager PIN. Set one in Settings › Security.</string>
   <string name="cashout_over_limit">Above your local cash limit.</string>
-  <string name="cashback_conflicts">Confirm an eligible card and enter cash within the local limit. Use a whole card sale without splits, partial authorization, tips, Giving, audio guidance, special entry or card saving.</string>
+  <string name="cashback_conflicts">Enter cash within the local limit. Use a whole card sale without splits, partial authorization, tips, Giving, audio guidance, special entry or card saving.</string>
   <string name="cashback_handover">Record cash handed over</string>
   <string name="cashback_handover_amount">Record %1$s handed over</string>
   <string name="cashback_handover_confirm">Confirm only after handing the approved cash to the shopper. Check earlier handovers first. Receipts and status checks never mean cash was handed over.</string>

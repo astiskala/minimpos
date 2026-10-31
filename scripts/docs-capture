@@ -450,12 +450,12 @@ enable_switch() {
     fi
 }
 
-# The simulated printer's drag handle is the only 8 px-tall node in its window.
+# The simulated printer's drag handle is the only bar 14 px or shorter in its window.
 receipt_handle() {
     remote uiautomator dump /data/local/tmp/ui.xml > /dev/null 2>&1
     device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' |
         sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
-        awk '$4 - $2 == 8 { print int(($1 + $3) / 2), int(($2 + $4) / 2); exit }'
+        awk '$4 - $2 <= 14 { print int(($1 + $3) / 2), int(($2 + $4) / 2); exit }'
 }
 
 expand_receipt() {
@@ -642,7 +642,7 @@ choose_demo_logo() {
     remote uiautomator dump /data/local/tmp/ui.xml > /dev/null 2>&1
     xy=$(device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' | grep -F 'content-desc="minimpos-logo.png,' | head -n 1 |
         sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
-        awk '{ print int(($1 + $3) / 2), int(($2 + $4) / 2) }')
+        awk '{ print int(($1 + $3) / 2), $4 - 12 }')
     [[ -n $xy ]] || {
         printf '%s\n' 'No demo logo in the document picker' >&2
         exit 1

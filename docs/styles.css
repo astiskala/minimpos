@@ -6,6 +6,10 @@
   --grey: #5c687c;
   --grey-light: #f3f6f9;
   --border: #e3e8ee;
+  --outline: #848fa0;
+  --warning: #b35300;
+  --warning-bg: #fff1e5;
+  --error: #d10244;
   --radius: 16px;
   --wrap: 1120px;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -227,7 +231,7 @@ h3 { font-size: 1.15rem; }
 .button {
   display: inline-block;
   padding: 14px 26px;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--green);
   color: #fff;
   font-weight: 700;
@@ -576,7 +580,7 @@ pre {
 
 .callout-important { border-left-color: #2f6fdb; background: #eaf1fd; }
 
-.callout-warning { border-left-color: #b86e00; background: #fff4e0; }
+.callout-warning { border-left-color: var(--warning); background: var(--warning-bg); }
 
 .settings-list dt { font-weight: 700; margin-top: 14px; }
 
@@ -806,7 +810,7 @@ pre {
 .setup-form input:not([type="radio"]):not([type="checkbox"]), .setup-form select, .setup-form textarea {
   width: 100%;
   padding: 11px 12px;
-  border: 1px solid #858fa0;
+  border: 1px solid var(--outline);
   border-radius: 10px;
   font: inherit;
   font-family: var(--mono);
@@ -823,7 +827,7 @@ pre {
 
 .setup-form input:focus, .setup-form select:focus, .setup-form textarea:focus { border-color: var(--green-dark); }
 
-.setup-form input:user-invalid, .setup-form select:user-invalid, .setup-form textarea:user-invalid { border-color: #c62828; }
+.setup-form input:user-invalid, .setup-form select:user-invalid, .setup-form textarea:user-invalid { border-color: var(--error); }
 
 .setup-form input:focus-visible, .setup-form select:focus-visible,
 .setup-form textarea:focus-visible, .setup-form button:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }

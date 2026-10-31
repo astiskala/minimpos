@@ -315,16 +315,26 @@
         <section id="capabilities">
           <p class="task-kicker">可选流程</p>
 <h2>检查并配置 Adyen 功能</h2>
-          <p>连接收款目标后，打开<strong>设置 › Adyen 功能</strong>。页面将功能标为<strong>可用</strong>、<strong>需要配置</strong>或<strong>此收款目标不支持</strong>。这些只是设置状态，不代表商家账户、银行卡或付款方式一定能完成交易。完成收款设置前，此页面会显示<strong>完成收款设置</strong>。</p>
+          <p>连接收款目标后，打开<strong>设置 › Adyen 功能</strong>。
+            此页面只汇总 Adyen 支付和终端功能，不包括应用本身的工具或经理 PIN 设置。
+            四个分组为支付、小费与顾客互动、收据与扫描和终端与结果恢复。</p>
+          <p>每个功能名称下显示<strong>就绪</strong>、<strong>已在 Adyen 配置</strong>、
+            <strong>已关闭</strong>、<strong>需要设置</strong>或
+            <strong>未验证</strong>。<strong>不支持</strong>的功能位于底部折叠列表中。
+            这些只是设置状态，不保证商户账户、银行卡或支付方式一定能获批。若收款尚未设置完成，页面会先引导您完成设置。</p>
           <ol>
-            <li>点按<strong>刷新功能状态</strong>，读取所选终端的设置。检查真实终端需要<a href="quick-start#credentials">快速入门中列出的 Management API 角色
-              </a>。</li>
-            <li>对于支持的终端，可配置付款币种的终端小费、DCC、MOTO 或离线限额，然后点按<strong>保存到 Adyen</strong>。
-              这会更改 Adyen 中的终端设置。</li>
-            <li>在设置的<strong>支付</strong>、<strong>小费与捐款</strong>或<strong>购物者端终端屏幕</strong>中启用所需的结账
-              选项，然后在 TEST 环境中测试。该页面还会列出 Adyen Giving、部分授权、附加费、礼品卡、终端对账和购物者屏幕，
-              但不提供编辑。</li>
+            <li>点按<strong>刷新功能状态</strong>读取所选终端的设置。
+              查询真实终端需要<a href="quick-start#credentials">快速入门中列出的 Management API 角色</a>。</li>
+            <li>选择功能以查看要求。链接会直接打开原有的本地设置项，修改会自动保存，不会产生另一份相同设置。</li>
+            <li>对于支持的终端，在对应功能中编辑终端小费、DCC、MOTO 或离线限额。金额按正常货币单位输入；
+              若要移除自定义限额，请明确选择使用继承限额。每个小费建议都有单独验证的输入行。</li>
+            <li>成功读取后，只有修改过且有效的草稿才能通过<strong>保存到 Adyen</strong>发送。
+              刷新或保存其他功能会保留当前编辑内容。离开时可选择放弃修改或继续编辑。
+              请在 TEST 中测试实际配置，包括 Adyen Giving 和 MKE。</li>
           </ol>
+          <p>结果未知的保存不会自动重试。请成功刷新并检查 Adyen 的值后再决定下一步。
+            保存和回读只确认 Adyen 中的设置，不代表终端已应用。终端可能仍需下载配置并重启；
+            请参阅<a href="https://docs.adyen.com/point-of-sale/automating-terminal-management/configure-terminals-api">Adyen 终端配置更新</a>。</p>
           <p>Tap to Pay 不提供终端小费、购物者屏幕、MOTO/MKE、离线付款或终端对账等实体终端功能。账户启用和支付方式要求请参阅
             <a href="https://docs.adyen.com/point-of-sale">Adyen 线下支付文档</a>。</p>
           <figure class="guide-shot">

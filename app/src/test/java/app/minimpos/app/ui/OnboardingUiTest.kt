@@ -255,7 +255,7 @@ class OnboardingUiTest {
             15_000,
         )
         compose.awaitCondition("import choice is persisted") { env.container.settingsState.value.onboardingCompleted }
-        compose.onNodeWithTag("setupCodesIntro").assertExists()
+        compose.onNodeWithTag("setupCodesIntro", useUnmergedTree = true).assertExists()
         compose.onNodeWithTag("startSetupScan").assertIsDisplayed()
         compose.onNodeWithTag("manualSetup").assertIsDisplayed()
         assertThat(

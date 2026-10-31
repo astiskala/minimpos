@@ -372,6 +372,11 @@ flow_preferences() {
     shot "$1" capabilities
 }
 
+flow_capabilities() {
+    settings "$1" settings_capabilities
+    shot "$1" capabilities
+}
+
 flow_cart() {
     ring_up "$1"
     shot "$1" sale

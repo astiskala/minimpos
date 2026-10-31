@@ -188,10 +188,12 @@ fun SettingNumberField(
     value: Int,
     range: IntRange,
     onCommit: (Int) -> Unit,
+    modifier: Modifier = Modifier,
     description: String? = null,
     supporting: String? = null,
     tag: String? = null,
 ) = SettingTextField(
+    modifier = modifier,
     label = label,
     value = value.toString(),
     onCommit = { it.toIntOrNull()?.let(onCommit) },

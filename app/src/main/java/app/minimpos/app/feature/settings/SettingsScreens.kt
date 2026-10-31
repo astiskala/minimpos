@@ -65,7 +65,6 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.AppSettings
-import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.PricingChange
 import app.minimpos.app.data.settings.SimulatorSettings
 import app.minimpos.app.data.settings.TerminalMode
@@ -157,7 +156,7 @@ private fun terminalSetupViewModel(settings: SettingsViewModel): TerminalSetupVi
 }
 
 @Composable
-private fun capabilitiesViewModel(): CapabilitiesViewModel {
+internal fun capabilitiesViewModel(): CapabilitiesViewModel {
     val container = LocalAppContainer.current
     return viewModel {
         CapabilitiesViewModel(container.capabilityDiscovery, container.walletDiscovery::refresh)
@@ -597,10 +596,14 @@ private fun FirstRunActions(
  *
  * @property troubleshooting Expands Help's table and scrolls it into view, as when opened from a failed payment.
  * @property chooseDestination Opens Terminal's "Payments go to" choice while payments go to the simulator.
+ * @property feature Stable capability key for its focused detail, or null for the hub.
+ * @property setting Exact local control to bring into view.
  */
 data class SectionOpening(
     val troubleshooting: Boolean = false,
     val chooseDestination: Boolean = false,
+    val feature: String? = null,
+    val setting: String? = null,
 )
 
 /**
@@ -616,9 +619,26 @@ fun SettingsSectionScreen(
     opening: SectionOpening = SectionOpening(),
     header: ScreenHeader = ScreenHeader.FULL,
 ) {
+    val feature = CapabilityFeature.entries.firstOrNull { it.name == opening.feature }
+    if (section == SettingsSections.CAPABILITIES && feature != null) {
+        val state by settingsViewModel().state.collectAsStateWithLifecycle()
+        CapabilityDetailScreen(feature, state.settings, state.loaded, navigator, modifier, header)
+        return
+    }
+    LocalSettingsSectionScreen(section, navigator, opening, header, modifier)
+}
+
+@Composable
+private fun LocalSettingsSectionScreen(
+    section: String,
+    navigator: Navigator,
+    opening: SectionOpening,
+    header: ScreenHeader,
+    modifier: Modifier = Modifier,
+) {
     val vm = settingsViewModel()
-    val sampleData = sampleDataViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
+    val sampleData = sampleDataViewModel()
     val actions by vm.actions.collectAsStateWithLifecycle()
     val setup = terminalSetupViewModel(vm)
     val setupActions by setup.actions.collectAsStateWithLifecycle()
@@ -665,7 +685,7 @@ fun SettingsSectionScreen(
             }
             val businessImport by vm.businessImport.state.collectAsStateWithLifecycle()
             SettingsContent(section, state, actions, setupActions, events, setupEvents, navigator, opening, setPin, currencyOffer) {
-                ReceiptsSection(state, actions, businessImport, events)
+                ReceiptsSection(state, actions, businessImport, events, opening.setting)
             }
             if (section == SettingsSections.TERMINAL) {
                 val terminal by LocalAppContainer.current.terminalStatus.state
@@ -677,19 +697,22 @@ fun SettingsSectionScreen(
 }
 
 @Composable
-private fun ColumnScope.CapabilitiesSectionScreen(payment: PaymentSettings) {
+private fun ColumnScope.CapabilitiesSectionScreen(
+    settings: AppSettings,
+    navigator: Navigator,
+) {
     val vm = capabilitiesViewModel()
     val capabilities by vm.state.collectAsStateWithLifecycle()
     val actions by vm.actions.collectAsStateWithLifecycle()
-    val events = remember(vm) { capabilitiesEvents(vm) }
-    val currency = LocalAppContainer.current.currency(AppSettings(payment = payment)).code
+    val currency = LocalAppContainer.current.currency(settings).code
     val terminal by LocalAppContainer.current.terminalStatus.state
         .collectAsStateWithLifecycle()
-    CapabilitiesSection(capabilities, actions, payment, currency, terminal.printingStanding, terminal.receiptSharingStanding, events)
     val wallets by LocalAppContainer.current.walletDiscovery.state
         .collectAsStateWithLifecycle()
-    // What Adyen reports about wallets only means something once payments are set up.
-    if (wallets.supported && !currentSetupGate().pending) WalletOffers(wallets, currency)
+    val catalog = CapabilityCatalog(settings, terminal, capabilities, wallets, currency)
+    CapabilitiesSection(capabilities, catalog.items(), actions.running, vm::refresh) { feature ->
+        navigator.push(Route.SettingsSection(SettingsSections.CAPABILITIES, feature = feature.name))
+    }
 }
 
 @Composable
@@ -745,7 +768,7 @@ private fun SetupScannerAction(
 
 /** Scrollable section content uses the same width and bottom clearance across Settings. */
 @Composable
-private fun SettingsSectionLayout(
+internal fun SettingsSectionLayout(
     padding: PaddingValues,
     loaded: Boolean,
     content: @Composable ColumnScope.() -> Unit,
@@ -782,7 +805,7 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.CAPABILITIES -> {
-            CapabilitiesSectionScreen(state.settings.payment)
+            CapabilitiesSectionScreen(state.settings, navigator)
         }
 
         SettingsSections.SIMULATOR -> {
@@ -791,15 +814,21 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.PAYMENTS -> {
-            PaymentsSection(state, terminal.capabilities, events, currencyOffer)
+            PaymentsSection(state, terminal.capabilities, events, opening.setting, currencyOffer)
         }
 
         SettingsSections.TIPPING -> {
-            TippingSection(state.settings.payment, terminal.capabilities, events::onPaymentUpdate)
+            TippingSection(state.settings.payment, terminal.capabilities, events::onPaymentUpdate, opening.setting)
         }
 
         SettingsSections.SHOPPER_DISPLAY -> {
-            ShopperDisplaySection(state.settings.payment, state.settings.emailReceiptsReady, terminal.capabilities, events::onPaymentUpdate)
+            ShopperDisplaySection(
+                state.settings.payment,
+                state.settings.emailReceiptsReady,
+                terminal.capabilities,
+                events::onPaymentUpdate,
+                opening.setting,
+            )
         }
 
         SettingsSections.TAX -> {
@@ -910,7 +939,7 @@ private fun ColumnScope.TerminalSection(
  * changes and with every capability refresh, so there is no separate refresh.
  */
 @Composable
-private fun ColumnScope.WalletOffers(
+internal fun ColumnScope.WalletOffers(
     state: WalletAvailability,
     currency: String,
 ) {

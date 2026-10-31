@@ -69,13 +69,14 @@ class ConsistentPatternsTest {
         open("capabilities")
         val discovery = env.container.capabilityDiscovery
         compose.awaitCondition("capabilities read") { discovery.state.value.let { it.simulated && !it.checking } }
+        compose.onNodeWithTag("cap_dcc").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("capDccEnable"), 15_000)
         compose.onNodeWithTag("capDccEnable").performScrollTo().performClick()
         assertThat(discovery.state.value.dccEnabled).isFalse()
         compose.onNodeWithTag("saveCapDcc").performScrollTo().performClick()
         compose.awaitCondition("DCC saved") { discovery.state.value.dccEnabled }
         compose.waitUntilAtLeastOneExists(hasTestTag("capabilityResult"), 15_000)
-        compose.onNodeWithTag("capabilityResult").assertTextContains(env.context.getString(R.string.settings_changes_saved))
+        compose.onNodeWithTag("capabilityResult").assertTextContains(env.context.getString(R.string.capability_saved))
         compose.onNodeWithTag("capabilityResultOk").performClick()
         compose.onNodeWithTag("capabilityResult").assertDoesNotExist()
     }

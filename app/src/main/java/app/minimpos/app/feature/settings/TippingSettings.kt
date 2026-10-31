@@ -2,6 +2,7 @@ package app.minimpos.app.feature.settings
 
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.PaymentSettings
@@ -15,6 +16,7 @@ internal fun ColumnScope.TippingSection(
     payment: PaymentSettings,
     capabilities: DestinationCapabilities,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+    anchor: String? = null,
 ) {
     val terminalBlocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures }
     val printBlocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsPrinting }
@@ -32,6 +34,7 @@ internal fun ColumnScope.TippingSection(
         onSelect = { value -> update { it.copy(terminalTipping = value) } },
         subtitle = stringResource(R.string.settings_terminal_tip_hint),
         tag = "terminalTipping",
+        modifier = Modifier.settingAnchor("terminalTipping", anchor),
         blocked = terminalBlocked,
     )
     if (payment.terminalTipping != ReceiptTipping.DISABLED) {
@@ -59,6 +62,7 @@ internal fun ColumnScope.TippingSection(
         onSelect = { value -> update { it.copy(receiptTipping = value) } },
         subtitle = stringResource(R.string.settings_tip_default_hint),
         tag = "receiptTipping",
+        modifier = Modifier.settingAnchor("receiptTipping", anchor),
         blocked = printBlocked,
     )
     SettingChoice(
@@ -68,6 +72,7 @@ internal fun ColumnScope.TippingSection(
         onSelect = { value -> update { it.copy(askGiving = value) } },
         subtitle = stringResource(R.string.settings_ask_giving_hint),
         tag = "askGivingSetting",
+        modifier = Modifier.settingAnchor("askGivingSetting", anchor),
         blocked = terminalBlocked,
     )
 }

@@ -559,7 +559,16 @@ together up to `homeMaxHeight`. Which tiles appear, in what order, is a product 
 - **Settings** switches and choices have a short title and a one- or two-sentence description. Fields have an external
   title in the same style, then the primary description, then the input; notes below hold only extra information or
   validation. Settings actions use `SettingActions` with icons; secret placeholders stay on one line. Local settings
-  save as they change; Adyen-side capability sections edit a draft sent by "Save to Adyen".
+  save as they change; Adyen-side capability details edit a draft sent by "Save to Adyen".
+- **Adyen capabilities** is an Adyen-only feature hub, not a general app-feature or security inventory. Four stable
+  expanded groups contain clickable rows: Payments, Tips and shopper interaction, Receipts and scanning, Terminal and
+  recovery. Unsupported features stay in one collapsed list below the groups. A row's title wraps above its status
+  glyph and label; the chevron opens a focused detail. Ready is green; Off and Unsupported are neutral; Needs setup
+  and Unverified are orange. "Configured at Adyen" distinguishes a remote setting from confirmed terminal activation.
+  Details link to the exact original autosaved local control without duplicating it. The four remote editors require
+  a successful read and valid, changed input. Refresh and other saves retain dirty drafts; leaving requires a choice
+  to discard or keep editing. Amounts use familiar currency units, inherited limits are explicit, and tip choices use
+  separate validated rows. An unknown save uses neutral dialog wording plus a warning, never a success or automatic retry.
 - **Removals** of saved keys, PINs, phone registration or history use red `ConfirmedRemoval`.
 
 ### Icons
@@ -605,7 +614,7 @@ string resources in all seven languages.
 | `RectangleShape` full-screen dialog | `SaleScreen` custom amount, compact only | Keypad takes the whole screen |
 | `Color.White`/`Black` | Scanner and receipt rendering | Camera overlay and print preview are not themed UI |
 | 5 `sp` literals | Home tile autosize bounds, split-payment autosize, product tile line height | Autosize needs concrete bounds |
-| 10 dp row padding | `CapabilitiesSettings`, `SettingsComponents` list rows | Kept as is: moving to `rowPadding` would change these rows' height |
+| 10 dp row padding | `SettingsComponents` list rows | Kept as is: moving to `rowPadding` would change these rows' height |
 | 6/10/18 dp and one-off layout sizes; 340/420 dp layout widths | Feature layouts and `Dimens` | Deliberate density tuning and layout constraints; token adoption preserves these values |
 | Simulator banner | `ModeBanner`, hidden during first-run setup | The only mode indicator by design |
 | No Home terminal-status line, no TEST banner | Home | Deliberate product choices |

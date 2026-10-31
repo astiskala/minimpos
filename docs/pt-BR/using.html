@@ -400,23 +400,33 @@
         <section id="capabilities">
           <p class="task-kicker">Fluxos opcionais</p>
 <h2>Verificar e configurar capacidades da Adyen</h2>
-          <p>Abrir <strong>Configurações › Capacidades da Adyen</strong> após conectar seu destino de pagamento. A tela
-            mostra recursos como <strong>Disponível</strong>, <strong>Necessita configuração</strong> ou <strong>Não
-            suportado neste destino</strong>. Estes são indicadores de configuração e não uma prova de que sua conta de
-            comerciante, cartão ou método de pagamento possa concluir uma transação. Até que os pagamentos sejam
-            configurados, a tela oferece <strong>Concluir a configuração dos pagamentos</strong> em vez disso.</p>
+          <p>Abra <strong>Configurações › Capacidades da Adyen</strong> após conectar o destino de pagamento.
+            Este centro reúne recursos de pagamento e terminal da Adyen, não ferramentas locais ou o PIN de gerente.
+            Os grupos são Pagamentos, Gorjetas e interação, Recibos e leitura de códigos e
+            Terminal e recuperação.</p>
+          <p>Cada recurso mostra <strong>Pronto</strong>,
+            <strong>Configurado na Adyen</strong>, <strong>Desativado</strong>,
+            <strong>Precisa de configuração</strong> ou <strong>Não verificado</strong>
+            abaixo do nome. Os recursos <strong>Não suportado</strong> ficam numa lista recolhida
+            ao final. Esses indicadores não garantem aprovação para uma conta, cartão ou forma de pagamento. Se os
+            pagamentos não estiverem configurados, a tela oferece primeiro concluir a configuração.</p>
           <ol>
-            <li>Toque <strong>Atualizar capacidades</strong> para ler as configurações do terminal selecionado. A
-              inspeção terminal real utiliza o <a href="quick-start#credentials">Funções API de gerenciamento no início
-              rápido</a>.</li>
-            <li>Em terminais compatíveis, configure a gorjeta no terminal para a moeda de pagamento, DCC, MOTO ou limites
-              off-line e toque em <strong>Salvar para Adyen</strong>. Isso altera as configurações do terminal na
-              Adyen.</li>
-            <li>Ative as opções de pagamento necessárias em <strong>Pagamentos</strong>, <strong>Gorjetas e doações</strong>
-              ou <strong>Tela do terminal para o cliente</strong> em Configurações e teste-as em TEST. A tela também
-              mostra Adyen Giving, autorização parcial, sobretaxa, cartões-presente, conciliação do terminal e tela do
-              cliente, sem editá-los.</li>
+            <li>Toque em <strong>Atualizar capacidades</strong> para ler os ajustes do terminal selecionado. A leitura
+              real exige os <a href="quick-start#credentials">papéis da Management API do Início rápido</a>.</li>
+            <li>Escolha um recurso para ver os requisitos. Os links abrem o ajuste local original exato, salvo
+              automaticamente. Não criam uma segunda cópia do ajuste.</li>
+            <li>Em terminais compatíveis, edite gorjetas, DCC, MOTO ou limites off-line dentro do recurso.
+              Digite valores na moeda normalmente e escolha Usar limite herdado para remover um limite
+              personalizado. Cada sugestão de gorjeta tem sua própria linha validada.</li>
+            <li>Toque em <strong>Salvar para Adyen</strong> para enviar um rascunho válido e alterado após uma leitura
+              bem-sucedida. Atualizar ou salvar outro recurso mantém suas edições. Ao sair, escolha descartá-las ou
+              continuar editando. Teste sua configuração real em TEST, incluindo Adyen Giving e MKE.</li>
           </ol>
+          <p>Um salvamento de resultado desconhecido não é repetido automaticamente. Atualize com sucesso e confira os
+            valores da Adyen antes de decidir. Salvar e reler confirma os ajustes na Adyen, não sua aplicação no terminal.
+            Ainda pode ser necessário baixar a configuração e reiniciar; veja as
+            <a href="https://docs.adyen.com/point-of-sale/automating-terminal-management/configure-terminals-api">atualizações
+            da configuração de terminais Adyen</a>.</p>
           <p>O Tap to Pay não oferece recursos de terminal físico como gorjeta no terminal, tela do cliente, MOTO/MKE,
             pagamentos off-line ou conciliação do terminal. Para habilitação da conta e requisitos de métodos de pagamento,
             siga a <a href="https://docs.adyen.com/point-of-sale">documentação de pagamentos presenciais da Adyen</a>.</p>

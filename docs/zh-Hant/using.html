@@ -315,16 +315,26 @@
         <section id="capabilities">
           <p class="task-kicker">選用流程</p>
 <h2>檢查並設定 Adyen 功能</h2>
-          <p>連接收款目標後，開啟<strong>設定 › Adyen 功能</strong>。頁面將功能標為<strong>可用</strong>、<strong>需要設定</strong>或<strong>此收款目標不支援</strong>。這些只是設定狀態，不代表商戶帳戶、銀行卡或付款方式一定能完成交易。完成收款設定前，此頁面會顯示<strong>完成收款設定</strong>。</p>
+          <p>連接收款目標後，開啟<strong>設定 › Adyen 功能</strong>。
+            此頁面只匯總 Adyen 支付及終端功能，不包括應用程式本身的工具或經理 PIN 設定。
+            四個分組為支付、小費與顧客互動、收據與掃描及終端與結果復原。</p>
+          <p>每個功能名稱下顯示<strong>準備就緒</strong>、<strong>已在 Adyen 設定</strong>、
+            <strong>已關閉</strong>、<strong>需要設定</strong>或
+            <strong>未驗證</strong>。<strong>不支援</strong>的功能位於底部摺疊清單中。
+            這些只是設定狀態，不保證商戶帳戶、銀行卡或付款方式一定獲批。若收款尚未設定完成，頁面會先引導您完成設定。</p>
           <ol>
-            <li>點按<strong>重新整理功能狀態</strong>，讀取所選終端的設定。檢查真實終端需要<a href="quick-start#credentials">快速入門中列出的 Management API
-              角色</a>。</li>
-            <li>對於支援的終端，可設定付款貨幣的終端小費、DCC、MOTO 或離線限額，然後點按<strong>儲存至 Adyen</strong>。
-              這會更改 Adyen 中的終端設定。</li>
-            <li>在設定的<strong>支付</strong>、<strong>小費與捐款</strong>或<strong>顧客端終端螢幕</strong>中啟用所需的結帳選項，
-              然後在 TEST 環境中測試。該頁面亦會列出 Adyen Giving、部分授權、附加費、禮品卡、終端對帳和顧客螢幕，
-              但不提供編輯。</li>
+            <li>點按<strong>重新整理功能狀態</strong>讀取所選終端的設定。
+              查詢真實終端需要<a href="quick-start#credentials">快速入門中列出的 Management API 角色</a>。</li>
+            <li>選擇功能以查看要求。連結會直接開啟原有的本機設定項目，修改會自動儲存，不會產生另一份相同設定。</li>
+            <li>對於支援的終端，在對應功能中編輯終端小費、DCC、MOTO 或離線限額。金額按正常貨幣單位輸入；
+              如要移除自訂限額，請明確選擇使用繼承限額。每個小費建議都有獨立驗證的輸入列。</li>
+            <li>成功讀取後，只有修改過且有效的草稿才能透過<strong>儲存至 Adyen</strong>傳送。
+              重新整理或儲存其他功能會保留目前的編輯內容。離開時可選擇放棄修改或繼續編輯。
+              請在 TEST 中測試實際設定，包括 Adyen Giving 及 MKE。</li>
           </ol>
+          <p>結果未知的儲存不會自動重試。請成功重新整理並檢查 Adyen 的值後再決定下一步。
+            儲存及回讀只確認 Adyen 中的設定，不代表終端已套用。終端可能仍需下載設定並重新啟動；
+            請參閱<a href="https://docs.adyen.com/point-of-sale/automating-terminal-management/configure-terminals-api">Adyen 終端設定更新</a>。</p>
           <p>Tap to Pay 不提供終端小費、顧客螢幕、MOTO/MKE、離線付款或終端對帳等實體終端功能。帳戶啟用和付款方式要求請參閱
             <a href="https://docs.adyen.com/point-of-sale">Adyen 實體店付款文件</a>。</p>
           <figure class="guide-shot">

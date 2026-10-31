@@ -397,23 +397,33 @@
         <section id="capabilities">
           <p class="task-kicker">Flujos opcionales</p>
 <h2>Verifique y configure las capacidades de Adyen</h2>
-          <p>Abra <strong>Configuración › Capacidades de Adyen</strong> después de conectar su destino de pago. La
-            pantalla muestra características como <strong>Disponible</strong>, <strong>Necesita configuración</strong> o
-            <strong>No compatible con este destino</strong>. Estos son indicadores de configuración, no pruebas de que
-            su cuenta de comerciante, tarjeta o método de pago puedan completar una transacción. Hasta que se configuren
-            los pagos, la pantalla ofrece <strong>Terminar de configurar los pagos</strong> en cambio.</p>
+          <p>Abre <strong>Configuración › Capacidades de Adyen</strong> después de conectar tu destino de pago.
+            Este centro reúne funciones de pago y terminal de Adyen, no herramientas locales ni ajustes del PIN de
+            gerente. Los grupos son Pagos, Propinas e interacción, Recibos y escaneo y
+            Terminal y recuperación.</p>
+          <p>Cada función muestra <strong>Listo</strong>,
+            <strong>Configurado en Adyen</strong>, <strong>Desactivado</strong>,
+            <strong>Falta configurar</strong> o <strong>Sin verificar</strong>
+            debajo del nombre. Las funciones <strong>No compatible</strong> quedan ocultas en la
+            lista al final hasta que la abras. Estos indicadores no garantizan la aprobación de una cuenta, tarjeta o
+            método de pago. Si faltan ajustes de pago, primero se ofrece completar la configuración.</p>
           <ol>
-            <li>Toque <strong>Actualizar capacidades</strong> para leer la configuración del terminal seleccionado. La
-              inspección terminal real utiliza el <a href="quick-start#credentials">Gestión de roles API en Inicio
-              rápido</a>.</li>
-            <li>En terminales compatibles, configure la propina en el terminal para la moneda de pago, DCC, MOTO o los límites
-              sin conexión y toque <strong>Guardar en Adyen</strong>. Esto cambia la configuración del terminal en
-              Adyen.</li>
-            <li>Active las opciones de pago que necesite en <strong>Pagos</strong>, <strong>Propinas y donaciones</strong> o
-              <strong>Pantalla del terminal para el cliente</strong> en Configuración y pruébelas en TEST. La pantalla
-              también muestra Adyen Giving, autorización parcial, recargo, tarjetas de regalo, conciliación del terminal y
-              pantalla del cliente sin editarlos.</li>
+            <li>Toca <strong>Actualizar capacidades</strong> para leer los ajustes del terminal seleccionado. La
+              consulta real necesita los <a href="quick-start#credentials">roles de Management API de Inicio rápido</a>.</li>
+            <li>Elige una función para ver sus requisitos. Los enlaces abren el ajuste local original exacto, que se
+              guarda automáticamente. No crean una segunda copia del ajuste.</li>
+            <li>En terminales compatibles, edita las propinas, DCC, MOTO o los límites sin conexión dentro de su función.
+              Introduce los importes en moneda normal y elige Usar límite heredado para quitar un límite
+              personalizado. Cada sugerencia de propina tiene una fila validada.</li>
+            <li>Toca <strong>Guardar en Adyen</strong> para enviar un borrador válido y modificado tras una consulta
+              correcta. Actualizar o guardar otra función conserva tus cambios. Al salir, elige descartarlos o seguir
+              editando. Prueba tu configuración real en TEST, incluidos Adyen Giving y MKE.</li>
           </ol>
+          <p>Un guardado de resultado desconocido no se reintenta automáticamente. Actualiza correctamente y revisa los
+            valores de Adyen antes de decidir. Guardar y consultar confirma los ajustes en Adyen, no su aplicación en el
+            terminal. Puede faltar descargar la configuración y reiniciar; consulta las
+            <a href="https://docs.adyen.com/point-of-sale/automating-terminal-management/configure-terminals-api">actualizaciones
+            de configuración del terminal de Adyen</a>.</p>
           <p>Tap to Pay no ofrece funciones de terminal físico como la propina en el terminal, la pantalla del cliente,
             MOTO/MKE, los pagos sin conexión ni la conciliación del terminal. Para la habilitación de la cuenta y los
             requisitos de métodos de pago, siga la <a href="https://docs.adyen.com/point-of-sale">documentación de pagos

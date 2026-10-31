@@ -381,21 +381,33 @@
         <section id="capabilities">
           <p class="task-kicker">Optional workflows</p>
 <h2>Check and configure Adyen capabilities</h2>
-          <p>Open <strong>Settings › Adyen capabilities</strong> after connecting your payment destination. The screen
-            shows features as <strong>Available</strong>, <strong>Needs configuration</strong> or <strong>Unsupported on
-            this destination</strong>. These are setup indicators, not proof that your merchant account, card or payment
-            method can complete a transaction. Until payments are set up, the screen offers <strong>Finish setting up
-            payments</strong> instead.</p>
+          <p>Open <strong>Settings › Adyen capabilities</strong> after connecting your payment destination.
+            This hub covers Adyen payment and terminal features, not app-only tools or Manager PIN settings. Its four
+            groups are Payments, Tips and shopper interaction, Receipts and scanning, and
+            Terminal and recovery.</p>
+          <p>Each feature shows <strong>Ready</strong>,
+            <strong>Configured at Adyen</strong>, <strong>Off</strong>,
+            <strong>Needs setup</strong>, or <strong>Unverified</strong>
+            below its name. <strong>Unsupported</strong> features are collapsed at the bottom.
+            These indicators do not guarantee approval for a merchant account, card, or payment method. Until payments
+            are set up, the screen offers Finish setting up payments instead.</p>
           <ol>
             <li>Tap <strong>Refresh capabilities</strong> to read the selected terminal's settings. Real terminal
-              inspection uses the <a href="quick-start#credentials">Management API roles in Quick start</a>.</li>
-            <li>For supported terminals, configure terminal tipping for the payment currency, DCC, MOTO or offline
-              limits, then tap <strong>Save to Adyen</strong>. This changes the terminal's settings at Adyen.</li>
-            <li>Enable the checkout options you need under <strong>Payments</strong>, <strong>Tips and donations
-              </strong> or <strong>Shopper terminal display</strong> in Settings, then test them in TEST. The screen
-              also lists Adyen Giving, partial authorization, surcharge, gift cards, terminal reconciliation and shopper
-              display without editing them.</li>
+              inspection needs the <a href="quick-start#credentials">Management API roles in Quick start</a>.</li>
+            <li>Choose a feature for its requirements. Links open the exact original local setting, which saves
+              automatically. These links do not create a second copy of the setting.</li>
+            <li>For supported terminals, edit terminal tipping, DCC, MOTO, or offline limits inside that feature.
+              Enter currency amounts normally and explicitly select Use inherited limit to remove a limit
+              override. Tip suggestions have separate validated rows.</li>
+            <li>Tap <strong>Save to Adyen</strong> to send a valid, changed draft after a successful read.
+              Refreshing or saving another feature keeps your edits. Leaving a dirty editor asks whether to discard
+              the edits or keep editing. Test your actual setup in TEST, including Adyen Giving and MKE.</li>
           </ol>
+          <p>An unknown save is not retried automatically. Refresh successfully and review Adyen's values before deciding
+            what to do. A successful save and read-back confirm the settings at Adyen, not that the terminal has applied
+            them. A configuration download and restart may still be needed; see
+            <a href="https://docs.adyen.com/point-of-sale/automating-terminal-management/configure-terminals-api">Adyen
+            terminal configuration updates</a>.</p>
           <p>Tap to Pay does not offer physical-terminal features such as terminal tipping, shopper display, MOTO/MKE,
             offline payments or terminal reconciliation. For account enablement and payment-method requirements, follow
             the <a href="https://docs.adyen.com/point-of-sale">Adyen in-person payments documentation</a>.</p>

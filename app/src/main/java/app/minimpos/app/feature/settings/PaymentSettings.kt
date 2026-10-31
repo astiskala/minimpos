@@ -40,6 +40,7 @@ internal fun ColumnScope.PaymentsSection(
     state: SettingsUiState,
     capabilities: DestinationCapabilities,
     events: SettingsEvents,
+    anchor: String? = null,
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
     val payment = state.settings.payment
@@ -51,6 +52,54 @@ internal fun ColumnScope.PaymentsSection(
         onSelect = { code -> update { it.copy(currencyCode = code) } },
     )
     content()
+    PaymentReferences(payment, update)
+    SectionHeader(stringResource(R.string.settings_card_payments))
+    SettingSwitch(
+        stringResource(R.string.settings_allow_partial_auth),
+        payment.allowPartialAuthorisation,
+        { value -> update { it.copy(allowPartialAuthorisation = value) } },
+        subtitle = stringResource(R.string.settings_allow_partial_auth_hint),
+        tag = "allowPartialAuthorisation",
+        modifier = Modifier.settingAnchor("allowPartialAuthorisation", anchor),
+    )
+    SettingSwitch(
+        stringResource(R.string.settings_allow_moto),
+        payment.allowMoto,
+        { value -> update { it.copy(allowMoto = value) } },
+        subtitle = stringResource(R.string.settings_allow_moto_hint),
+        tag = "allowMoto",
+        modifier = Modifier.settingAnchor("allowMoto", anchor),
+        blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
+    )
+    SettingSwitch(
+        stringResource(R.string.settings_allow_mke),
+        payment.allowMke,
+        { value -> update { it.copy(allowMke = value) } },
+        subtitle = stringResource(R.string.settings_allow_mke_hint),
+        tag = "allowMke",
+        modifier = Modifier.settingAnchor("allowMke", anchor),
+        blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
+    )
+    MarketSettings(payment, update, anchor)
+    CashbackSettings(payment, update, anchor)
+    UnreferencedRefundSection(payment, update, anchor)
+    SectionHeader(stringResource(R.string.settings_tokenization))
+    ShopperReferenceSettings(payment, update, anchor)
+    SectionHeader(stringResource(R.string.settings_payment_links))
+    PaymentLinkSettings(payment, update, anchor)
+    SectionHeader(
+        stringResource(R.string.settings_gift_cards),
+        Modifier.testTag("giftCardsHeader").settingAnchor("giftCardsHeader", anchor),
+    )
+    GiftCardSettings(payment, update)
+    AccessibilitySettings(payment, capabilities, update, anchor)
+}
+
+@Composable
+private fun ColumnScope.PaymentReferences(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
     SectionHeader(stringResource(R.string.settings_references))
     SettingTextField(
         stringResource(R.string.settings_reference_prefix),
@@ -62,40 +111,6 @@ internal fun ColumnScope.PaymentsSection(
     SettingSwitch(stringResource(R.string.settings_ask_transaction_reference), payment.askTransactionReference, { value ->
         update { it.copy(askTransactionReference = value) }
     }, subtitle = stringResource(R.string.settings_ask_transaction_reference_hint))
-    SectionHeader(stringResource(R.string.settings_card_payments))
-    SettingSwitch(
-        stringResource(R.string.settings_allow_partial_auth),
-        payment.allowPartialAuthorisation,
-        { value -> update { it.copy(allowPartialAuthorisation = value) } },
-        subtitle = stringResource(R.string.settings_allow_partial_auth_hint),
-        tag = "allowPartialAuthorisation",
-    )
-    SettingSwitch(
-        stringResource(R.string.settings_allow_moto),
-        payment.allowMoto,
-        { value -> update { it.copy(allowMoto = value) } },
-        subtitle = stringResource(R.string.settings_allow_moto_hint),
-        tag = "allowMoto",
-        blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
-    )
-    SettingSwitch(
-        stringResource(R.string.settings_allow_mke),
-        payment.allowMke,
-        { value -> update { it.copy(allowMke = value) } },
-        subtitle = stringResource(R.string.settings_allow_mke_hint),
-        tag = "allowMke",
-        blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
-    )
-    MarketSettings(payment, update)
-    CashbackSettings(payment, update)
-    UnreferencedRefundSection(payment, update)
-    SectionHeader(stringResource(R.string.settings_tokenization))
-    ShopperReferenceSettings(payment, update)
-    SectionHeader(stringResource(R.string.settings_payment_links))
-    PaymentLinkSettings(payment, update)
-    SectionHeader(stringResource(R.string.settings_gift_cards), Modifier.testTag("giftCardsHeader"))
-    GiftCardSettings(payment, update)
-    AccessibilitySettings(payment, capabilities, update)
 }
 
 /**
@@ -107,6 +122,7 @@ private fun ColumnScope.AccessibilitySettings(
     payment: PaymentSettings,
     capabilities: DestinationCapabilities,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+    anchor: String?,
 ) {
     SectionHeader(stringResource(R.string.settings_accessibility))
     SettingSwitch(
@@ -115,6 +131,7 @@ private fun ColumnScope.AccessibilitySettings(
         { value -> update { it.copy(audioGuidance = value) } },
         subtitle = stringResource(R.string.settings_audio_guidance_hint),
         tag = "audioGuidanceSetting",
+        modifier = Modifier.settingAnchor("audioGuidanceSetting", anchor),
         blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
     )
 }
@@ -127,6 +144,7 @@ private fun ColumnScope.AccessibilitySettings(
 private fun ColumnScope.MarketSettings(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+    anchor: String?,
 ) {
     SettingSwitch(
         stringResource(R.string.mexican_title),
@@ -134,6 +152,7 @@ private fun ColumnScope.MarketSettings(
         { value -> update { it.copy(mexicanInstallments = value) } },
         subtitle = stringResource(R.string.mexican_configuration),
         tag = "mexicanInstallments",
+        modifier = Modifier.settingAnchor("mexicanInstallments", anchor),
     )
     SettingSwitch(
         stringResource(R.string.voucher_title),
@@ -141,6 +160,7 @@ private fun ColumnScope.MarketSettings(
         { value -> update { it.copy(mealVouchers = value) } },
         subtitle = stringResource(R.string.voucher_configuration),
         tag = "mealVouchers",
+        modifier = Modifier.settingAnchor("mealVouchers", anchor),
     )
     if (payment.mealVouchers) {
         SettingSwitch(
@@ -223,6 +243,7 @@ private fun providerHint(provider: GiftCardProvider): Int =
 private fun ColumnScope.PaymentLinkSettings(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+    anchor: String?,
 ) {
     SettingNote(stringResource(R.string.settings_links_hint))
     SettingNumberField(
@@ -232,6 +253,7 @@ private fun ColumnScope.PaymentLinkSettings(
         { hours -> update { it.copy(linkExpiryHours = hours) } },
         supporting = stringResource(R.string.settings_link_expiry_hint),
         tag = "linkExpiry",
+        modifier = Modifier.settingAnchor("linkExpiry", anchor),
     )
 }
 
@@ -240,12 +262,13 @@ private fun ColumnScope.PaymentLinkSettings(
 private fun ColumnScope.ShopperReferenceSettings(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+    anchor: String?,
 ) {
     val source = payment.shopperReferenceSource
-    ShopperReferenceSourceChoice(source) { choice -> update { it.copy(shopperReferenceSource = choice) } }
+    ShopperReferenceSourceChoice(source, anchor) { choice -> update { it.copy(shopperReferenceSource = choice) } }
     if (source == ShopperReferenceSource.NONE) return
     if (source == ShopperReferenceSource.EMAIL) EmailReferenceSettings(payment, update)
-    CardSavingSettings(payment, update)
+    CardSavingSettings(payment, update, anchor)
 }
 
 /** How the shopper's email becomes the shopper reference: hashed (with its salt) or the raw address. */
@@ -280,6 +303,7 @@ private fun ColumnScope.EmailReferenceSettings(
 private fun ColumnScope.CardSavingSettings(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+    anchor: String?,
 ) {
     SettingSwitch(
         stringResource(R.string.settings_offer_card_saving),
@@ -287,6 +311,7 @@ private fun ColumnScope.CardSavingSettings(
         { value -> update { it.copy(offerCardSaving = value) } },
         subtitle = stringResource(R.string.settings_offer_card_saving_hint),
         tag = "offerCardSaving",
+        modifier = Modifier.settingAnchor("offerCardSaving", anchor),
     )
     if (!payment.offerCardSaving) return
     SaveCardDefaults(payment, update)
@@ -296,6 +321,7 @@ private fun ColumnScope.CardSavingSettings(
 @Composable
 private fun ShopperReferenceSourceChoice(
     source: ShopperReferenceSource,
+    anchor: String?,
     onSelect: (ShopperReferenceSource) -> Unit,
 ) = SettingChoice(
     title = stringResource(R.string.settings_shopper_reference_source),
@@ -316,6 +342,7 @@ private fun ShopperReferenceSourceChoice(
             },
         ),
     tag = "referenceSource",
+    modifier = Modifier.settingAnchor("referenceSource", anchor),
 )
 
 /** Whether "Save card" starts switched on at checkout, for sales and for pre-authorisations. */
@@ -345,6 +372,7 @@ private fun ColumnScope.SaveCardDefaults(
 private fun ColumnScope.CashbackSettings(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+    anchor: String?,
 ) {
     val cash = payment.cashback
     val container = LocalAppContainer.current
@@ -363,12 +391,16 @@ private fun ColumnScope.CashbackSettings(
         cash.enabled,
         { value -> change { if (value) confirm(it).copy(enabled = true) else it.copy(enabled = false) } },
         subtitle = stringResource(R.string.cashback_configuration),
+        tag = "cashbackEnable",
+        modifier = Modifier.settingAnchor("cashbackEnable", anchor),
     )
     SettingSwitch(
         stringResource(R.string.cashout_enable),
         cash.standalone,
         { value -> change { if (value) confirm(it).copy(standalone = true) else it.copy(standalone = false) } },
         subtitle = stringResource(R.string.cashout_configuration),
+        tag = "cashoutEnable",
+        modifier = Modifier.settingAnchor("cashoutEnable", anchor),
     )
     CashbackCard.entries.forEach { card ->
         SettingSwitch(
@@ -394,6 +426,7 @@ private fun ColumnScope.CashbackSettings(
 private fun ColumnScope.UnreferencedRefundSection(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+    anchor: String?,
 ) {
     val refunds = payment.unreferencedRefunds
     val container = LocalAppContainer.current
@@ -413,6 +446,7 @@ private fun ColumnScope.UnreferencedRefundSection(
         { value -> change { if (value) confirm(it).copy(enabled = true) else it.copy(enabled = false) } },
         subtitle = stringResource(R.string.unreferenced_settings_enable_hint),
         tag = "unreferencedEnable",
+        modifier = Modifier.settingAnchor("unreferencedEnable", anchor),
     )
     SettingTextField(
         stringResource(R.string.unreferenced_settings_limit),

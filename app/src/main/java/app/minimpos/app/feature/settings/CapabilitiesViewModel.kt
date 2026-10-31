@@ -5,11 +5,10 @@ import androidx.lifecycle.viewModelScope
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.launchWrite
+import app.minimpos.app.feature.runAction
 import app.minimpos.app.terminal.AdyenCapabilitiesState
 import app.minimpos.app.terminal.CapabilityDiscovery
 import app.minimpos.app.terminal.CapabilityPatchResult
-import app.minimpos.app.terminal.GratuityCapability
-import app.minimpos.app.terminal.MotoCapability
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -22,15 +21,29 @@ import kotlinx.coroutines.launch
  * @property dcc Latest DCC `PATCH` outcome.
  * @property moto Latest MOTO `PATCH` outcome.
  * @property offline Latest offline limits `PATCH` outcome.
- * @property revision Increments on remote read/update so local field drafts reload verified values.
+ * @property readRevision Increments only after a successful explicit refresh; never discards another feature's draft.
+ * @property savedRevisions Successful saves by feature, so only that editor adopts its read-back.
  */
 data class CapabilitiesActions(
     val gratuity: ActionState = ActionState(),
     val dcc: ActionState = ActionState(),
     val moto: ActionState = ActionState(),
     val offline: ActionState = ActionState(),
-    val revision: Int = 0,
-)
+    val readRevision: Int = 0,
+    val savedRevisions: Map<CapabilityResult, Int> = emptyMap(),
+) {
+    /** Whether any save is in flight; refreshing or sending another section must wait. */
+    val running: Boolean get() = listOf(gratuity, dcc, moto, offline).any { it.running }
+
+    /** This feature's latest outcome. */
+    fun action(result: CapabilityResult): ActionState =
+        when (result) {
+            CapabilityResult.GRATUITY -> gratuity
+            CapabilityResult.DCC -> dcc
+            CapabilityResult.MOTO -> moto
+            CapabilityResult.OFFLINE -> offline
+        }
+}
 
 /** Explicit Adyen settings save whose completion dialog is being acknowledged. */
 enum class CapabilityResult {
@@ -69,16 +82,15 @@ class CapabilitiesViewModel(
             // being skipped while that refresh is still checking, which would leave the stale reading checking.
             discovery.changes.collectLatest { _ ->
                 discovery.refresh()
-                actions.update { it.copy(revision = it.revision + 1) }
             }
         }
     }
 
     /** Refreshes Management capability inspection; ignored while a refresh is checking. */
     fun refresh() {
-        if (state.value.checking) return
+        if (state.value.checking || actions.value.running) return
         launchWrite({ discovery.refresh().also { refreshAssignments() } }) { _ ->
-            actions.update { it.copy(revision = it.revision + 1) }
+            if (state.value.editable) actions.update { it.copy(readRevision = it.readRevision + 1) }
         }
     }
 
@@ -94,47 +106,67 @@ class CapabilitiesViewModel(
         }
     }
 
-    /** Updates the terminal's gratuity configuration for [currency]. */
-    fun saveGratuity(
+    /** Validates the complete draft again and binds the write to the identity the operator actually edited. */
+    internal fun saveEditor(
+        feature: CapabilityFeature,
+        draft: CapabilityDraft,
         currency: String,
-        gratuity: GratuityCapability?,
-    ) = save({ it.gratuity }, { copy(gratuity = it) }) { discovery.updateGratuity(currency, gratuity) }
-
-    /** Updates the terminal's Dynamic Currency Conversion setting. */
-    fun saveDcc(enabled: Boolean) = save({ it.dcc }, { copy(dcc = it) }) { discovery.updateDcc(enabled) }
-
-    /** Updates the terminal's MOTO configuration. */
-    fun saveMoto(moto: MotoCapability) = save({ it.moto }, { copy(moto = it) }) { discovery.updateMoto(moto) }
-
-    /** Updates the terminal's offline EMV and store-and-forward limits for [currency]. */
-    fun saveOffline(
-        currency: String,
-        chipFloorLimit: Int?,
-        maxStoreAndForwardMinor: Int?,
-        maxPayments: Int?,
-    ) = save({ it.offline }, { copy(offline = it) }) {
-        discovery.updateOffline(
-            currency = currency,
-            chipFloorLimit = chipFloorLimit,
-            maxStoreAndForwardMinor = maxStoreAndForwardMinor,
-            maxPayments = maxPayments,
-        )
-    }
-
-    /** Sends [patch] unless the action in [slot] is running, recording its outcome there with [record]. */
-    private fun save(
-        slot: (CapabilitiesActions) -> ActionState,
-        record: CapabilitiesActions.(ActionState) -> CapabilitiesActions,
-        patch: suspend () -> CapabilityPatchResult,
+        identity: String?,
     ) {
-        if (slot(actions.value).running) return
-        actions.update { it.record(ActionState(running = true)) }
-        launchWrite(patch) { result ->
-            actions.update {
-                val recorded = it.record(result.toActionState())
-                if (result == CapabilityPatchResult.Updated) recorded.copy(revision = recorded.revision + 1) else recorded
+        val result = feature.editorResult ?: return
+        if (!state.value.editable || state.value.identity != identity || !draft.valid(feature, currency)) return
+        if (result == CapabilityResult.MOTO && draft.motoCurrency != state.value.motoCurrency) return
+        save(result) {
+            when (result) {
+                CapabilityResult.GRATUITY -> {
+                    discovery.updateGratuity(currency, draft.gratuity(currency), identity)
+                }
+
+                CapabilityResult.DCC -> {
+                    discovery.updateDcc(draft.enabled, identity)
+                }
+
+                CapabilityResult.MOTO -> {
+                    discovery.updateMoto(draft.moto(), identity)
+                }
+
+                CapabilityResult.OFFLINE -> {
+                    discovery.updateOffline(
+                        currency,
+                        if (draft.chip.inherited) null else checkNotNull(draft.chip.amount(currency)),
+                        if (draft.storeAndForward.inherited) null else checkNotNull(draft.storeAndForward.amount(currency)),
+                        if (draft.count.inherited) null else checkNotNull(draft.count.integer()),
+                        identity,
+                    )
+                }
             }
         }
+    }
+
+    /** Sends one explicit patch through the shared action runner; no result ever triggers a retry. */
+    private fun save(
+        result: CapabilityResult,
+        patch: suspend () -> CapabilityPatchResult,
+    ) {
+        if (actions.value.running) return
+        runAction(
+            actions,
+            { it.action(result) },
+            { action ->
+                val recorded =
+                    when (result) {
+                        CapabilityResult.GRATUITY -> copy(gratuity = action)
+                        CapabilityResult.DCC -> copy(dcc = action)
+                        CapabilityResult.MOTO -> copy(moto = action)
+                        CapabilityResult.OFFLINE -> copy(offline = action)
+                    }
+                if (action.done) {
+                    recorded.copy(savedRevisions = savedRevisions + (result to ((savedRevisions[result] ?: 0) + 1)))
+                } else {
+                    recorded
+                }
+            },
+        ) { patch().toActionState() }
     }
 
     private fun CapabilityPatchResult.toActionState(): ActionState =

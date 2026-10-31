@@ -165,7 +165,7 @@ data class TerminalMotoSettings(
 )
 
 /** Terminal-level offline EMV and store-and-forward limits (`offlineProcessing` and `storeAndForward`).
- * @property chipFloorLimit Maximum chip offline EMV amount in major units, or null when unset.
+ * @property chipFloorLimit Maximum chip offline EMV amount in minor units of the processing currency, or null when unset.
  * @property maxStoreAndForwardMinor Maximum store-and-forward transaction amount in minor units by currency code.
  * @property maxPayments Maximum number of stored offline payments before forwarding, or null when unset.
  */
@@ -182,6 +182,7 @@ data class TerminalOfflineLimits(
  * @property surchargeConfigured Whether card surcharge rules or confirmation are configured (`surcharge`).
  * @property moto MOTO settings (`moto`).
  * @property offline Offline EMV and store-and-forward limits (`offlineProcessing`, `storeAndForward`).
+ * @property motoCurrency Currency of the MOTO limit (`standalone.currencyCode`), or empty when not supplied.
  */
 data class RemoteTerminalCapabilities(
     val gratuities: List<TerminalGratuity> = emptyList(),
@@ -189,6 +190,7 @@ data class RemoteTerminalCapabilities(
     val surchargeConfigured: Boolean = false,
     val moto: TerminalMotoSettings = TerminalMotoSettings(),
     val offline: TerminalOfflineLimits = TerminalOfflineLimits(),
+    val motoCurrency: String = "",
 ) {
     /** The gratuity configuration for [currency], if any. */
     fun gratuityFor(currency: String): TerminalGratuity? = gratuities.firstOrNull { it.currency.equals(currency, ignoreCase = true) }
@@ -244,7 +246,7 @@ sealed interface TerminalCapabilitiesPatch {
 
     /** Updates `offlineProcessing` and `storeAndForward` for [currency], preserving other currencies' store-and-forward limits.
      * @property currency ISO 4217 currency code for [maxStoreAndForwardMinor].
-     * @property chipFloorLimit Chip floor limit in major units, or null to remove the terminal's own limit.
+     * @property chipFloorLimit Chip floor limit in minor units of the processing currency, or null to remove its own limit.
      * @property maxStoreAndForwardMinor Maximum store-and-forward amount in minor units of [currency], or null to remove
      *   [currency]'s entry.
      * @property maxPayments Maximum number of stored payments, or null to remove the terminal's own limit.
@@ -579,6 +581,7 @@ class AdyenTerminalDetails(
             dccEnabled = settings.dcc?.enableDcc == true,
             surchargeConfigured = surcharge?.askConfirmation == true || !surcharge?.configurations.isNullOrEmpty(),
             moto = TerminalMotoSettings(enabled = moto?.enableMoto == true, maxAmount = moto?.maxAmount),
+            motoCurrency = settings.standalone?.currencyCode.orEmpty(),
             offline =
                 TerminalOfflineLimits(
                     chipFloorLimit = settings.offlineProcessing?.chipFloorLimit,

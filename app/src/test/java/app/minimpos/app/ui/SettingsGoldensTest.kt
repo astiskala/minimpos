@@ -105,6 +105,31 @@ class SettingsGoldensTest {
     }
 
     @Test
+    fun `Adyen capabilities grouped hub`() {
+        openSection("section_capabilities")
+        compose.awaitCondition("capabilities loaded") { container.capabilityDiscovery.state.value.editable }
+        screenshot.capture()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `Adyen capabilities grouped hub on AMS1`() {
+        openSection("section_capabilities")
+        compose.awaitCondition("capabilities loaded") { container.capabilityDiscovery.state.value.editable }
+        screenshot.capture()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `Adyen DCC editor on AMS1`() {
+        openSection("section_capabilities")
+        compose.awaitCondition("capabilities loaded") { container.capabilityDiscovery.state.value.editable }
+        compose.onNodeWithTag("cap_dcc").performScrollTo().performClick()
+        waitForTag("capDccEnable")
+        screenshot.capture()
+    }
+
+    @Test
     fun `terminal setup`() {
         openSection("section_terminal")
         waitForTag("quickSetupImport")

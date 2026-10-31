@@ -49,6 +49,7 @@ the system bars, scales S1F2 to 540×960 (AMS1 stays 480×800) and quantizes the
 
 - `home`: home only; `overview`: home, history, history-search; `catalog`: products; `preferences`: settings,
   capabilities.
+- `capabilities`: the Adyen-only grouped hub without recapturing other Settings screens.
 - `cart`: sale; `checkout_choices`: checkout only; `checkout`: sale, checkout, wallets, wallet-scan, processing, approved,
   receipt, refund.
 - `authorize`: pre-auth; `preauth`: pre-auth-detail; `terminal_setup`: terminal-setup;
@@ -164,8 +165,8 @@ keyboard closes. Always restore the market's device locale when recapturing only
 6. `transfer.png` and `export.png`: Settings › Data and transfer › Share with another device (after the PIN is set,
    so passwords and keys are offered) before and after Show QR codes, paused on a complete code. Keep the transfer
    code and its explanation visible; these are disposable demo transfers with no real credentials.
-7. `capabilities.png`: Settings › Adyen capabilities, showing the simulator matrix. Never enter real credentials or
-   imply that simulator availability verifies a real terminal.
+7. `capabilities.png`: Settings › Adyen capabilities, showing the grouped Adyen-only simulator hub. Never enter real
+   credentials or imply that simulator availability verifies a real terminal.
 8. `terminal-tipping.png`: Settings › Tips and donations with terminal tipping Enabled (default on), Dynamic basket
    tip suggestions on, percentage tips before tax off, receipt tipping and Giving Disabled. Restore the defaults
    after this capture.

@@ -17,6 +17,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -329,13 +330,18 @@ private fun EntryProviderScope<NavKey>.settingsEntries(
         PinGate(navigator, header = listHeader) { SettingsScreen(navigator, header = listHeader) }
     }
     entry<Route.SettingsSection>(metadata = settingsDetail) {
+        // Relocking removes protected content. Keep only non-secret capability drafts, including uncertain writes.
+        val capabilityDrafts = rememberSaveableStateHolder()
         PinGate(navigator, header = detailHeader) {
-            SettingsSectionScreen(
-                it.section,
-                navigator,
-                opening = SectionOpening(it.troubleshooting, it.chooseDestination),
-                header = detailHeader,
-            )
+            val section: @Composable () -> Unit = {
+                SettingsSectionScreen(
+                    it.section,
+                    navigator,
+                    opening = SectionOpening(it.troubleshooting, it.chooseDestination, it.feature, it.setting),
+                    header = detailHeader,
+                )
+            }
+            if (it.feature == null) section() else capabilityDrafts.SaveableStateProvider(it.feature) { section() }
         }
     }
 }

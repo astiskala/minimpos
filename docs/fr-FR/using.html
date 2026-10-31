@@ -405,24 +405,33 @@
         <section id="capabilities">
           <p class="task-kicker">Fonctions facultatives</p>
 <h2>Vérifier et configurer les fonctionnalités d'Adyen</h2>
-          <p>Ouvrez <strong>Paramètres › Capacités d’Adyen</strong> après avoir connecté votre destination de paiement.
-            L'écran affiche les fonctionnalités comme <strong>Disponible</strong>, <strong>Configuration nécessaire
-            </strong> ou <strong>Non pris en charge sur cette destination</strong>. Il s'agit d'indicateurs de
-            configuration, et non d'une preuve que votre compte marchand, votre carte ou votre mode de paiement peut
-            effectuer une transaction. Jusqu'à ce que les paiements soient configurés, l'écran propose <strong>Terminer
-            la configuration des paiements</strong> à la place.</p>
+          <p>Ouvrez <strong>Paramètres › Capacités d’Adyen</strong> après avoir connecté votre destination.
+            Ce centre regroupe les fonctions de paiement et de terminal Adyen, pas les outils locaux ni le PIN
+            responsable. Les groupes sont Paiements, Pourboires et interaction, Reçus et lecture de codes et
+            Terminal et récupération.</p>
+          <p>Chaque fonction affiche <strong>Prêt</strong>,
+            <strong>Configuré sur Adyen</strong>, <strong>Désactivé</strong>,
+            <strong>À configurer</strong> ou <strong>Non vérifié</strong>
+            sous son nom. Les fonctions <strong>Non pris en charge</strong> sont dans une liste repliée
+            en bas. Ces indicateurs ne garantissent pas l'approbation pour un compte marchand, une carte ou un moyen de
+            paiement. Si les paiements ne sont pas configurés, l'écran propose d'abord de terminer leur configuration.</p>
           <ol>
-            <li>Appuyez sur <strong>Actualiser les capacités</strong> pour lire les paramètres du terminal sélectionné.
-              L'inspection réelle des terminaux utilise le <a href="quick-start#credentials">Rôles de gestion API dans
-              Démarrage rapide</a>.</li>
-            <li>Pour les terminaux pris en charge, configurez le pourboire sur le terminal pour la devise de paiement, le DCC,
-              le MOTO ou les limites hors ligne, puis touchez <strong>Enregistrer sur Adyen</strong>. Cela modifie les
-              paramètres du terminal chez Adyen.</li>
-            <li>Activez les options d’encaissement nécessaires sous <strong>Paiements</strong>, <strong>Pourboires et
-              dons</strong> ou <strong>Affichage du terminal pour le client</strong> dans les Paramètres, puis testez-les
-              en TEST. L’écran indique aussi Adyen Giving, l’autorisation partielle, le supplément, les cartes cadeaux, le
-              rapprochement du terminal et l’écran client, sans les modifier.</li>
+            <li>Touchez <strong>Actualiser les capacités</strong> pour lire les paramètres du terminal sélectionné.
+              La lecture réelle nécessite les <a href="quick-start#credentials">rôles Management API du Démarrage rapide</a>.</li>
+            <li>Choisissez une fonction pour ses conditions. Les liens ouvrent le réglage local d'origine exact,
+              enregistré automatiquement. Ils ne créent pas une deuxième copie du réglage.</li>
+            <li>Sur un terminal compatible, modifiez les pourboires, DCC, MOTO ou limites hors ligne dans leur fonction.
+              Saisissez les montants dans la devise habituelle et choisissez Utiliser la limite héritée pour retirer
+              une limite personnalisée. Chaque suggestion de pourboire a sa propre ligne validée.</li>
+            <li>Touchez <strong>Enregistrer sur Adyen</strong> pour envoyer un brouillon valide et modifié après une
+              lecture réussie. Actualiser ou enregistrer une autre fonction conserve vos modifications. En quittant,
+              choisissez de les abandonner ou de poursuivre. Testez votre configuration en TEST, Adyen Giving et MKE compris.</li>
           </ol>
+          <p>Un enregistrement au résultat inconnu n'est pas réessayé automatiquement. Actualisez avec succès et vérifiez
+            les valeurs Adyen avant de décider. L'enregistrement et la relecture confirment les paramètres chez Adyen,
+            pas leur application sur le terminal. Un téléchargement et un redémarrage peuvent rester nécessaires ; voir les
+            <a href="https://docs.adyen.com/point-of-sale/automating-terminal-management/configure-terminals-api">mises à
+            jour de configuration des terminaux Adyen</a>.</p>
           <p>Tap to Pay n’offre pas les fonctions de terminal physique comme le pourboire sur le terminal, l’écran client,
             MOTO/MKE, les paiements hors ligne ou le rapprochement du terminal. Pour l’activation du compte et les
             exigences des moyens de paiement, suivez la <a href="https://docs.adyen.com/point-of-sale">documentation

@@ -15,6 +15,7 @@ internal fun ColumnScope.TippingSection(
     payment: PaymentSettings,
     capabilities: DestinationCapabilities,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+    target: String? = null,
 ) {
     val terminalBlocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures }
     val printBlocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsPrinting }
@@ -32,6 +33,7 @@ internal fun ColumnScope.TippingSection(
         onSelect = { value -> update { it.copy(terminalTipping = value) } },
         subtitle = stringResource(R.string.settings_terminal_tip_hint),
         tag = "terminalTipping",
+        target = target,
         blocked = terminalBlocked,
     )
     if (payment.terminalTipping != ReceiptTipping.DISABLED) {
@@ -59,6 +61,7 @@ internal fun ColumnScope.TippingSection(
         onSelect = { value -> update { it.copy(receiptTipping = value) } },
         subtitle = stringResource(R.string.settings_tip_default_hint),
         tag = "receiptTipping",
+        target = target,
         blocked = printBlocked,
     )
     SettingChoice(
@@ -68,6 +71,7 @@ internal fun ColumnScope.TippingSection(
         onSelect = { value -> update { it.copy(askGiving = value) } },
         subtitle = stringResource(R.string.settings_ask_giving_hint),
         tag = "askGivingSetting",
+        target = target,
         blocked = terminalBlocked,
     )
 }

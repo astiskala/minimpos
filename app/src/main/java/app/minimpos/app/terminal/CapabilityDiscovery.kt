@@ -3,7 +3,6 @@ package app.minimpos.app.terminal
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.core.payment.PaymentContext
-import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.RemoteTerminalCapabilities
 import app.minimpos.terminal.transport.TerminalCapabilitiesApi
@@ -12,6 +11,7 @@ import app.minimpos.terminal.transport.TerminalCapabilitiesPatch
 import app.minimpos.terminal.transport.TerminalCapabilitiesUpdate
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalGratuity
+import app.minimpos.terminal.transport.TerminalLimitChange
 import app.minimpos.terminal.transport.TerminalMotoSettings
 import app.minimpos.terminal.transport.TerminalOfflineLimits
 import app.minimpos.terminal.transport.WalletMethod
@@ -57,8 +57,27 @@ data class MotoCapability(
 )
 
 /**
+ * What a save does to one terminal-level limit. Management reads back effective limits, which may be inherited from the
+ * store, merchant account or company, so an unchanged limit is left out rather than written back as the terminal's own.
+ */
+sealed interface LimitUpdate {
+    /** Leaves the limit as it is at Adyen. */
+    data object Keep : LimitUpdate
+
+    /** Removes the terminal's own limit, so it inherits again. */
+    data object Inherit : LimitUpdate
+
+    /** Sets the terminal's own limit.
+     * @property value The limit, in the unit its update parameter documents.
+     */
+    data class Own(
+        val value: Int,
+    ) : LimitUpdate
+}
+
+/**
  * Terminal-level offline EMV and store-and-forward limits.
- * @property chipFloorLimit Maximum chip offline EMV amount in major units, or null when unset.
+ * @property chipFloorLimit Maximum chip offline EMV amount in minor units of the processing currency, or null when unset.
  * @property maxStoreAndForwardMinor Maximum store-and-forward transaction amount in minor units by currency code.
  * @property maxPayments Maximum number of stored offline payments before forwarding, or null when unset.
  */
@@ -81,12 +100,15 @@ data class OfflineCapability(
  *   carries it too); Settings › Capabilities reads its flags from there.
  * @property simulated Whether the resolved destination is the built-in simulator.
  * @property checking Whether a capability refresh is running.
+ * @property checked Whether Management (or the simulator) supplied a successful capability reading for this identity.
  * @property gratuities Configured gratuities by currency.
  * @property dccEnabled Whether Dynamic Currency Conversion is enabled on the terminal.
  * @property surchargeConfigured Whether card surcharge rules are configured on the terminal.
  * @property moto MOTO configuration on the terminal.
  * @property offline Offline EMV and store-and-forward limits on the terminal.
+ * @property motoCurrency Currency of the MOTO limit, or empty when Management did not supply it.
  * @param methods Configured POS payment methods for gift-card and scanned-wallet inspection.
+ * @property methodsChecked Whether the POS payment-method listing succeeded, independently of the settings read.
  * @property storeId Assigned terminal store ID, when known.
  * @property countryCode Assigned terminal country code, when known.
  * @property problem Setup problem blocking Management inspection; null when complete.
@@ -100,12 +122,15 @@ data class AdyenCapabilitiesState(
     val capabilities: DestinationCapabilities = DestinationCapabilities(),
     val simulated: Boolean = false,
     val checking: Boolean = false,
+    val checked: Boolean = false,
     val gratuities: List<GratuityCapability> = emptyList(),
     val dccEnabled: Boolean = false,
     val surchargeConfigured: Boolean = false,
     val moto: MotoCapability = MotoCapability(),
     val offline: OfflineCapability = OfflineCapability(),
+    val motoCurrency: String = "",
     private val methods: List<WalletMethod> = emptyList(),
+    val methodsChecked: Boolean = false,
     val storeId: String = "",
     val countryCode: String = "",
     val problem: SetupProblem? = null,
@@ -113,15 +138,8 @@ data class AdyenCapabilitiesState(
     val cameraAvailable: Boolean = false,
     val nativeScanner: Boolean? = null,
 ) {
-    /** Model support is advisory: Management does not verify accessibility software or Support enablement. */
-    val audioGuidanceStanding: CapabilityStanding
-        get() =
-            when {
-                !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
-                simulated -> CapabilityStanding.AVAILABLE
-                TerminalClient.audioGuidanceMinimumSoftware(context?.poiId) != null -> CapabilityStanding.NEEDS_CONFIGURATION
-                else -> CapabilityStanding.UNSUPPORTED
-            }
+    /** Whether an editor may offer a save based on a successful, current reading, not default values. */
+    val editable: Boolean get() = checked && !checking && problem == null && failure == null
 
     /** Why a refresh cannot run now: the setup [problem] it would only report again; null when it can. */
     val refreshBlocked: Failure? get() = problem?.let(Failure::NotSetUp)
@@ -139,100 +157,9 @@ data class AdyenCapabilitiesState(
             WalletOffers.giftCards(methods, storeId, countryCode, currency)
         }
 
-    /** Native tipping readiness for [currency], with local offer [enabledLocally] and optional [dynamicOverride] tip entries. */
-    fun tippingStanding(
-        currency: String,
-        enabledLocally: Boolean,
-        dynamicOverride: Boolean = false,
-    ): CapabilityStanding =
-        when {
-            !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
-            !enabledLocally -> CapabilityStanding.NEEDS_CONFIGURATION
-            simulated || gratuityFor(currency) != null || dynamicOverride -> CapabilityStanding.AVAILABLE
-            else -> CapabilityStanding.NEEDS_CONFIGURATION
-        }
-
-    /** Standing of Dynamic Currency Conversion (`dcc`). */
-    val dccStanding: CapabilityStanding
-        get() =
-            when {
-                !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
-                dccEnabled -> CapabilityStanding.AVAILABLE
-                else -> CapabilityStanding.NEEDS_CONFIGURATION
-            }
-
-    /** Standing of Adyen Giving (`AskGiving`), given whether it is [enabledLocally]. */
-    fun givingStanding(enabledLocally: Boolean): CapabilityStanding =
-        when {
-            !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
-            enabledLocally -> CapabilityStanding.AVAILABLE
-            else -> CapabilityStanding.NEEDS_CONFIGURATION
-        }
-
-    /** Standing of terminal card surcharging (`surcharge`). */
-    val surchargeStanding: CapabilityStanding
-        get() =
-            when {
-                !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
-                surchargeConfigured -> CapabilityStanding.AVAILABLE
-                else -> CapabilityStanding.NEEDS_CONFIGURATION
-            }
-
-    /** Partial authorization (`AllowPartialAuthorisation`) is supported on all destinations, when [enabledLocally]. */
-    fun partialAuthStanding(enabledLocally: Boolean): CapabilityStanding =
-        if (enabledLocally) CapabilityStanding.AVAILABLE else CapabilityStanding.NEEDS_CONFIGURATION
-
-    /** Standing of POS gift cards for [currency]. */
-    fun giftCardStanding(currency: String): CapabilityStanding =
-        when {
-            !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
-            giftCardsFor(currency).isNotEmpty() -> CapabilityStanding.AVAILABLE
-            else -> CapabilityStanding.NEEDS_CONFIGURATION
-        }
-
-    /** Standing of MOTO / Manual Key Entry, given whether either is [enabledLocally]. */
-    fun motoStanding(enabledLocally: Boolean): CapabilityStanding =
-        when {
-            !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
-            enabledLocally -> CapabilityStanding.AVAILABLE
-            else -> CapabilityStanding.NEEDS_CONFIGURATION
-        }
-
-    /** Standing of local offline payments for [currency]. */
-    fun offlineStanding(currency: String): CapabilityStanding =
-        when {
-            !capabilities.supportsOfflinePayments -> CapabilityStanding.UNSUPPORTED
-            simulated || offline.configuredFor(currency) -> CapabilityStanding.AVAILABLE
-            else -> CapabilityStanding.NEEDS_CONFIGURATION
-        }
-
-    /** Standing of terminal reconciliation (`GetTotals` / `SaleReconciliation`). */
-    val reconciliationStanding: CapabilityStanding
-        get() = if (capabilities.supportsTerminalFeatures) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
-
-    /** Shopper-facing display and input readiness, given whether any interaction is [enabledLocally]. */
-    fun shopperDisplayStanding(enabledLocally: Boolean): CapabilityStanding =
-        when {
-            !capabilities.supportsShopperDisplay -> CapabilityStanding.UNSUPPORTED
-            enabledLocally -> CapabilityStanding.AVAILABLE
-            else -> CapabilityStanding.NEEDS_CONFIGURATION
-        }
-
-    /** Whether the POS can request cancellation; the destination's own Cancel button is independent. */
-    val abortStanding: CapabilityStanding
-        get() = if (capabilities.aborts) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
-
     /** Whether a connection check can send a terminal diagnosis request, rather than only validate setup. */
     val diagnosisStanding: CapabilityStanding
         get() = if (capabilities.diagnoses) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
-
-    /** Whether transaction status is queried remotely, not merely recovered from an already received late reply. */
-    val remoteStatusStanding: CapabilityStanding
-        get() = capabilities.remoteStatus
-
-    /** Device-camera scanning for products, refunds and setup; camera permission is requested only when scanning. */
-    val cameraScanningStanding: CapabilityStanding
-        get() = if (cameraAvailable) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
 
     /** Native terminal scanner support; an undiscovered model is not proof that a scanner is absent. */
     val terminalScannerStanding: CapabilityStanding
@@ -242,45 +169,6 @@ data class AdyenCapabilitiesState(
                 nativeScanner == true -> CapabilityStanding.AVAILABLE
                 else -> CapabilityStanding.NEEDS_CONFIGURATION
             }
-
-    /** Scanned-wallet readiness for [currency], including account configuration and a usable code input source. */
-    fun scannedWalletStanding(currency: String): CapabilityStanding =
-        when {
-            !capabilities.scannedWallets -> {
-                CapabilityStanding.UNSUPPORTED
-            }
-
-            simulated -> {
-                CapabilityStanding.AVAILABLE
-            }
-
-            !cameraAvailable && nativeScanner == false -> {
-                CapabilityStanding.UNSUPPORTED
-            }
-
-            !cameraAvailable && nativeScanner == null -> {
-                CapabilityStanding.NEEDS_CONFIGURATION
-            }
-
-            WalletOffers.forCurrency(WalletOffers.configured(methods, storeId, countryCode), currency).isNotEmpty() -> {
-                CapabilityStanding.AVAILABLE
-            }
-
-            else -> {
-                CapabilityStanding.NEEDS_CONFIGURATION
-            }
-        }
-
-    /** Receipt-tip readiness from local offer [enabledLocally] and the current [printing] readiness. */
-    fun receiptTippingStanding(
-        enabledLocally: Boolean,
-        printing: CapabilityStanding,
-    ): CapabilityStanding =
-        when {
-            !capabilities.supportsPrinting || printing == CapabilityStanding.UNSUPPORTED -> CapabilityStanding.UNSUPPORTED
-            !enabledLocally -> CapabilityStanding.NEEDS_CONFIGURATION
-            else -> printing
-        }
 }
 
 /** Outcome of a scoped Management `terminalSettings` capability update. */
@@ -323,7 +211,8 @@ class CapabilityDiscovery(
             dccEnabled = false,
             surchargeConfigured = false,
             moto = TerminalMotoSettings(enabled = false, maxAmount = null),
-            offline = TerminalOfflineLimits(chipFloorLimit = 50),
+            offline = TerminalOfflineLimits(chipFloorLimit = 5_000),
+            motoCurrency = "EUR",
         )
 
     /** Current non-secret capability state. */
@@ -349,7 +238,12 @@ class CapabilityDiscovery(
         ) { initial ->
             when {
                 setup.apiSetup == ApiSetup.Simulated -> {
-                    publish(initial.withRemote(simulatedCapabilities).copy(checking = false, problem = null, failure = null))
+                    publish(
+                        initial
+                            .withRemote(
+                                simulatedCapabilities,
+                            ).copy(checking = false, methodsChecked = true, problem = null, failure = null),
+                    )
                 }
 
                 !setup.capabilities.discoversTerminals -> {
@@ -366,10 +260,24 @@ class CapabilityDiscovery(
             }
         }
 
-    /** Updates the terminal's gratuity configuration for [currency]. */
+    /**
+     * Refreshes only when no successful reading was made for the setup stored now, as when another capability screen
+     * opens; waits for a refresh already running instead of reading Management again.
+     */
+    suspend fun refreshIfStale(): AdyenCapabilitiesState =
+        reading.locked { state.value.takeIf { it.checked && it.failure == null && reading.madeForCurrent(it) } } ?: refresh()
+
+    /**
+     * Updates the terminal's gratuity configuration for [currency].
+     * @param currency ISO 4217 currency code of the entry to replace.
+     * @param gratuity The new configuration, or null to remove [currency]'s entry.
+     * @param expectedIdentity The setup identity the operator edited; when it is no longer current nothing is sent and
+     *   the result is [CapabilityPatchResult.NotDone] with [SetupProblem.SETUP_CHANGED].
+     */
     suspend fun updateGratuity(
         currency: String,
         gratuity: GratuityCapability?,
+        expectedIdentity: String? = state.value.identity,
     ): CapabilityPatchResult =
         patch(
             TerminalCapabilitiesPatch.Gratuity(
@@ -384,35 +292,76 @@ class CapabilityDiscovery(
                         )
                     },
             ),
+            expectedIdentity,
         )
 
-    /** Updates the terminal's Dynamic Currency Conversion setting. */
-    suspend fun updateDcc(enabled: Boolean): CapabilityPatchResult = patch(TerminalCapabilitiesPatch.Dcc(enabled))
+    /**
+     * Updates the terminal's Dynamic Currency Conversion setting.
+     * @param enabled Whether DCC is offered.
+     * @param expectedIdentity The setup identity the operator edited; when it is no longer current nothing is sent and
+     *   the result is [CapabilityPatchResult.NotDone] with [SetupProblem.SETUP_CHANGED].
+     */
+    suspend fun updateDcc(
+        enabled: Boolean,
+        expectedIdentity: String? = state.value.identity,
+    ): CapabilityPatchResult = patch(TerminalCapabilitiesPatch.Dcc(enabled), expectedIdentity)
 
-    /** Updates the terminal's MOTO configuration. */
-    suspend fun updateMoto(moto: MotoCapability): CapabilityPatchResult =
-        patch(TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = moto.enabled, maxAmount = moto.maxAmount)))
+    /**
+     * Updates the terminal's MOTO configuration.
+     * @param enabled Whether MOTO is enabled on the terminal.
+     * @param maxAmount The terminal's maximum MOTO amount in whole major units of [AdyenCapabilitiesState.motoCurrency].
+     * @param expectedIdentity The setup identity the operator edited; when it is no longer current nothing is sent and
+     *   the result is [CapabilityPatchResult.NotDone] with [SetupProblem.SETUP_CHANGED].
+     */
+    suspend fun updateMoto(
+        enabled: Boolean,
+        maxAmount: LimitUpdate = LimitUpdate.Keep,
+        expectedIdentity: String? = state.value.identity,
+    ): CapabilityPatchResult = patch(TerminalCapabilitiesPatch.Moto(enabled, maxAmount.change()), expectedIdentity)
 
-    /** Updates the terminal's offline EMV and store-and-forward limits for [currency]. */
+    /**
+     * Updates the terminal's offline EMV and store-and-forward limits for [currency].
+     * @param currency ISO 4217 currency code of the store-and-forward limit.
+     * @param chipFloorLimit Chip floor limit in minor units of the processing currency.
+     * @param maxStoreAndForwardMinor Maximum store-and-forward amount in minor units of [currency].
+     * @param maxPayments Maximum number of stored offline payments before forwarding.
+     * @param expectedIdentity The setup identity the operator edited; when it is no longer current nothing is sent and
+     *   the result is [CapabilityPatchResult.NotDone] with [SetupProblem.SETUP_CHANGED].
+     */
     suspend fun updateOffline(
         currency: String,
-        chipFloorLimit: Int?,
-        maxStoreAndForwardMinor: Int?,
-        maxPayments: Int?,
+        chipFloorLimit: LimitUpdate = LimitUpdate.Keep,
+        maxStoreAndForwardMinor: LimitUpdate = LimitUpdate.Keep,
+        maxPayments: LimitUpdate = LimitUpdate.Keep,
+        expectedIdentity: String? = state.value.identity,
     ): CapabilityPatchResult =
         patch(
             TerminalCapabilitiesPatch.Offline(
                 currency = currency,
-                chipFloorLimit = chipFloorLimit,
-                maxStoreAndForwardMinor = maxStoreAndForwardMinor,
-                maxPayments = maxPayments,
+                chipFloorLimit = chipFloorLimit.change(),
+                maxStoreAndForwardMinor = maxStoreAndForwardMinor.change(),
+                maxPayments = maxPayments.change(),
             ),
+            expectedIdentity,
         )
 
-    private suspend fun patch(patch: TerminalCapabilitiesPatch): CapabilityPatchResult =
+    private fun LimitUpdate.change(): TerminalLimitChange =
+        when (this) {
+            LimitUpdate.Keep -> TerminalLimitChange.Keep
+            LimitUpdate.Inherit -> TerminalLimitChange.Remove
+            is LimitUpdate.Own -> TerminalLimitChange.Own(value)
+        }
+
+    private suspend fun patch(
+        patch: TerminalCapabilitiesPatch,
+        expectedIdentity: String?,
+    ): CapabilityPatchResult =
         reading.locked {
             val origin = setups.unlocked()
             val setup = origin.setup
+            if (expectedIdentity != reading.identity(origin)) {
+                return@locked CapabilityPatchResult.NotDone(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
+            }
             if (setup.apiSetup == ApiSetup.Simulated) {
                 simulatedCapabilities = applySimulated(simulatedCapabilities, patch)
                 val next =
@@ -422,6 +371,7 @@ class CapabilityDiscovery(
                             identity = reading.identity(origin),
                             capabilities = setup.capabilities,
                             simulated = true,
+                            methodsChecked = true,
                             checking = false,
                             problem = null,
                             failure = null,
@@ -495,14 +445,15 @@ class CapabilityDiscovery(
                         val methods =
                             when (val listed = walletMethods(key, environment).methods(terminal.merchantAccount, terminal.storeId)) {
                                 is WalletMethodListing.Listed -> listed.methods
-                                is WalletMethodListing.Failed -> emptyList()
+                                is WalletMethodListing.Failed -> null
                             }
                         publish(
                             origin,
                             hardware
                                 .withRemote(caps.capabilities)
                                 .copy(
-                                    methods = methods,
+                                    methods = methods.orEmpty(),
+                                    methodsChecked = methods != null,
                                     storeId = terminal.storeId,
                                     countryCode = terminal.countryCode,
                                     checking = false,
@@ -518,6 +469,7 @@ class CapabilityDiscovery(
 
     private fun AdyenCapabilitiesState.withRemote(remote: RemoteTerminalCapabilities): AdyenCapabilitiesState =
         copy(
+            checked = true,
             gratuities =
                 remote.gratuities.map {
                     GratuityCapability(
@@ -530,6 +482,7 @@ class CapabilityDiscovery(
             dccEnabled = remote.dccEnabled,
             surchargeConfigured = remote.surchargeConfigured,
             moto = MotoCapability(enabled = remote.moto.enabled, maxAmount = remote.moto.maxAmount),
+            motoCurrency = remote.motoCurrency,
             offline =
                 OfflineCapability(
                     chipFloorLimit = remote.offline.chipFloorLimit,
@@ -554,23 +507,19 @@ class CapabilityDiscovery(
             }
 
             is TerminalCapabilitiesPatch.Moto -> {
-                current.copy(moto = patch.settings)
+                current.copy(moto = TerminalMotoSettings(patch.enabled, patch.maxAmount.applyTo(current.moto.maxAmount)))
             }
 
             is TerminalCapabilitiesPatch.Offline -> {
-                val safMax = patch.maxStoreAndForwardMinor
-                val map = current.offline.maxStoreAndForwardMinor.toMutableMap()
-                if (safMax == null) {
-                    map.remove(patch.currency.uppercase())
-                } else {
-                    map[patch.currency.uppercase()] = safMax.toLong()
-                }
+                val code = patch.currency.uppercase()
+                val amounts = current.offline.maxStoreAndForwardMinor
+                val amount = patch.maxStoreAndForwardMinor.applyTo(amounts[code]?.toInt())
                 current.copy(
                     offline =
                         current.offline.copy(
-                            chipFloorLimit = patch.chipFloorLimit,
-                            maxStoreAndForwardMinor = map,
-                            maxPayments = patch.maxPayments,
+                            chipFloorLimit = patch.chipFloorLimit.applyTo(current.offline.chipFloorLimit),
+                            maxStoreAndForwardMinor = if (amount == null) amounts - code else amounts + (code to amount.toLong()),
+                            maxPayments = patch.maxPayments.applyTo(current.offline.maxPayments),
                         ),
                 )
             }

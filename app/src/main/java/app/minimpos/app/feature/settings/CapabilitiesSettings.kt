@@ -1,22 +1,27 @@
 package app.minimpos.app.feature.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.NotInterested
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -24,500 +29,177 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.Role
 import app.minimpos.app.R
-import app.minimpos.app.data.settings.PaymentSettings
-import app.minimpos.app.data.settings.ReceiptTipping
-import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.GatedButton
 import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.AdyenCapabilitiesState
-import app.minimpos.app.terminal.CapabilityStanding
-import app.minimpos.app.terminal.GratuityCapability
-import app.minimpos.app.terminal.MotoCapability
 import app.minimpos.app.ui.components.Notice
 import app.minimpos.app.ui.components.NoticeKind
-import app.minimpos.app.ui.components.ResultDialog
-import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.SetupRequired
+import app.minimpos.app.ui.components.StatusKind
+import app.minimpos.app.ui.components.TertiaryButton
+import app.minimpos.app.ui.components.color
 import app.minimpos.app.ui.components.currentSetupGate
+import app.minimpos.app.ui.components.icon
+import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
-import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.MinTouchTarget
 import app.minimpos.app.ui.theme.Spacing
 
-/** Settings › Capabilities: progressive readiness matrix and scoped Management `terminalSettings` editors. */
+/** One expanded task-grouped hub; unsupported entries remain available in one disclosure at the bottom. */
 @Composable
 internal fun ColumnScope.CapabilitiesSection(
     capabilities: AdyenCapabilitiesState,
-    actions: CapabilitiesActions,
-    payment: PaymentSettings,
-    currency: String,
-    printing: CapabilityStanding,
-    sharing: CapabilityStanding,
-    events: CapabilitiesEvents,
+    items: List<CapabilityItem>,
+    refreshingBlocked: Boolean,
+    onRefresh: () -> Unit,
+    onOpen: (CapabilityFeature) -> Unit,
 ) {
-    CapabilityResults(actions, events::onResultDismiss)
     SettingIntro(stringResource(R.string.capabilities_intro))
-    // Until payments are set up there is nothing at Adyen to inspect or configure yet.
     if (currentSetupGate().pending) {
         SetupRequired()
         return
     }
-    capabilities.failure?.let { Notice(it.text(), kind = NoticeKind.WARNING, inset = true) }
-    if (capabilities.capabilities.discoversTerminals || capabilities.simulated) {
+    CapabilityRefresh(capabilities, refreshingBlocked, onRefresh)
+    CapabilityGroup.entries.forEach { group ->
+        val supported = items.filter { it.feature.group == group && it.status != CapabilityStatus.UNSUPPORTED }
+        if (supported.isNotEmpty()) {
+            SectionHeader(
+                stringResource(
+                    when (group) {
+                        CapabilityGroup.PAYMENTS -> R.string.settings_payments
+                        CapabilityGroup.SHOPPER -> R.string.capability_group_shopper
+                        CapabilityGroup.RECEIPTS -> R.string.capability_group_receipts
+                        CapabilityGroup.TERMINAL -> R.string.capability_group_terminal
+                    },
+                ),
+            )
+            supported.forEach { CapabilityRow(it) { onOpen(it.feature) } }
+        }
+    }
+    val unsupported = items.filter { it.status == CapabilityStatus.UNSUPPORTED }
+    if (unsupported.isNotEmpty()) {
+        var expanded by rememberSaveable { mutableStateOf(false) }
+        SettingActions {
+            TertiaryButton(
+                stringResource(
+                    if (expanded) R.string.capability_hide_unsupported else R.string.capability_show_unsupported,
+                    unsupported.size,
+                ),
+                { expanded = !expanded },
+                Modifier.testTag("unsupportedCapabilities"),
+                icon = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            )
+        }
+        if (expanded) {
+            SettingNote(stringResource(R.string.capability_unsupported_note))
+            unsupported.forEach { CapabilityRow(it) { onOpen(it.feature) } }
+        }
+    }
+}
+
+/** Explicit refresh is also available on a feature detail when its initial read failed. */
+@Composable
+internal fun ColumnScope.CapabilityRefresh(
+    reading: AdyenCapabilitiesState,
+    blocked: Boolean,
+    onRefresh: () -> Unit,
+) {
+    reading.failure?.let { Notice(it.text(), kind = NoticeKind.WARNING, inset = true) }
+    val refreshable = reading.capabilities.discoversTerminals || reading.simulated
+    // The refresh button already explains a setup problem as its blocked reason.
+    if (!refreshable) reading.problem?.let { Notice(it.text(), kind = NoticeKind.WARNING, inset = true) }
+    if (refreshable) {
         SettingActions {
             GatedButton(
                 stringResource(R.string.capabilities_refresh),
-                events::onRefresh,
-                blocked = capabilities.refreshBlocked,
-                loading = capabilities.checking,
+                onRefresh,
+                blocked = reading.refreshBlocked,
+                loading = reading.checking,
+                enabled = !blocked,
                 icon = Icons.Default.Refresh,
                 modifier = Modifier.testTag("refreshCapabilities"),
             )
         }
-    } else {
-        capabilities.problem?.let { Notice(it.text(), kind = NoticeKind.WARNING, inset = true) }
-    }
-
-    SectionHeader(stringResource(R.string.capabilities_matrix_header))
-    CapabilitiesMatrix(capabilities, payment, currency)
-    HardwareCapabilitiesMatrix(capabilities, payment, currency, printing, sharing)
-    InteractionCapabilitiesMatrix(capabilities, payment)
-
-    if ((capabilities.capabilities.discoversTerminals || capabilities.simulated) && capabilities.problem == null) {
-        key(actions.revision, currency) {
-            RemoteGratuityEditor(capabilities, actions.gratuity, currency, events::onSaveGratuity)
-            RemoteDccEditor(capabilities, actions.dcc, events::onSaveDcc)
-            RemoteMotoEditor(capabilities, actions.moto, events::onSaveMoto)
-            if (capabilities.capabilities.supportsOfflinePayments) {
-                RemoteOfflineEditor(capabilities, actions.offline, currency, events::onSaveOffline)
-            }
-        }
     }
 }
 
 @Composable
-private fun CapabilityResults(
-    actions: CapabilitiesActions,
-    onDismiss: (CapabilityResult) -> Unit,
-) {
-    val result =
-        listOf(
-            CapabilityResult.GRATUITY to actions.gratuity,
-            CapabilityResult.DCC to actions.dcc,
-            CapabilityResult.MOTO to actions.moto,
-            CapabilityResult.OFFLINE to actions.offline,
-        ).firstOrNull { (_, action) -> action.done || action.outcome != null }
-    result?.let { (kind, action) ->
-        ResultDialog(
-            title = stringResource(R.string.capability_save),
-            message = action.outcome?.text() ?: stringResource(R.string.settings_changes_saved),
-            isError = action.isError,
-            tag = "capabilityResult",
-            onDismiss = { onDismiss(kind) },
-        )
-    }
-}
-
-@Composable
-private fun ColumnScope.CapabilitiesMatrix(
-    capabilities: AdyenCapabilitiesState,
-    payment: PaymentSettings,
-    currency: String,
-) {
-    CapabilityStandingRow(
-        title = stringResource(R.string.checkout_audio_guidance),
-        standing = capabilities.audioGuidanceStanding,
-        detail = stringResource(R.string.capability_audio_detail),
-        tag = "cap_audio_guidance",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_terminal_tipping),
-        standing =
-            capabilities.tippingStanding(
-                currency,
-                enabledLocally = payment.terminalTipping != ReceiptTipping.DISABLED,
-                dynamicOverride = payment.dynamicTipOverride,
-            ),
-        tag = "cap_tipping",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_dcc),
-        standing = capabilities.dccStanding,
-        tag = "cap_dcc",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_giving),
-        standing = capabilities.givingStanding(enabledLocally = payment.askGiving != ReceiptTipping.DISABLED),
-        tag = "cap_giving",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_surcharge),
-        standing = capabilities.surchargeStanding,
-        tag = "cap_surcharge",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_partial_auth),
-        standing = capabilities.partialAuthStanding(payment.allowPartialAuthorisation),
-        tag = "cap_partial_auth",
-    )
-    val giftCards = capabilities.giftCardsFor(currency)
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_gift_cards),
-        standing = capabilities.giftCardStanding(currency),
-        detail = giftCards.takeIf { it.isNotEmpty() }?.joinToString(),
-        tag = "cap_gift_cards",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_moto_mke),
-        standing = capabilities.motoStanding(enabledLocally = payment.allowMoto || payment.allowMke),
-        tag = "cap_moto",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_offline),
-        standing = capabilities.offlineStanding(currency),
-        tag = "cap_offline",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_reconciliation),
-        standing = capabilities.reconciliationStanding,
-        tag = "cap_reconciliation",
-    )
-}
-
-@Composable
-private fun ColumnScope.HardwareCapabilitiesMatrix(
-    capabilities: AdyenCapabilitiesState,
-    payment: PaymentSettings,
-    currency: String,
-    printing: CapabilityStanding,
-    sharing: CapabilityStanding,
-) {
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_scanned_wallets),
-        standing = capabilities.scannedWalletStanding(currency),
-        tag = "cap_scanned_wallets",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_printing),
-        standing = printing,
-        tag = "cap_printing",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_receipt_sharing),
-        standing = sharing,
-        tag = "cap_receipt_sharing",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_receipt_tipping),
-        standing = capabilities.receiptTippingStanding(payment.receiptTipping != ReceiptTipping.DISABLED, printing),
-        tag = "cap_receipt_tipping",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_camera_scanning),
-        standing = capabilities.cameraScanningStanding,
-        detail = stringResource(R.string.capability_camera_scanning_hint),
-        tag = "cap_camera_scanning",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_terminal_scanner),
-        standing = capabilities.terminalScannerStanding,
-        tag = "cap_terminal_scanner",
-    )
-}
-
-@Composable
-private fun ColumnScope.InteractionCapabilitiesMatrix(
-    capabilities: AdyenCapabilitiesState,
-    payment: PaymentSettings,
-) {
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_shopper_display),
-        standing =
-            capabilities.shopperDisplayStanding(
-                payment.showVirtualReceipt || payment.confirmBasketOnTerminal || payment.collectEmailOnTerminal ||
-                    payment.showTerminalQrReceipt || payment.askShopperRating,
-            ),
-        tag = "cap_shopper_display",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_abort),
-        standing = capabilities.abortStanding,
-        tag = "cap_abort",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_diagnosis),
-        standing = capabilities.diagnosisStanding,
-        tag = "cap_diagnosis",
-    )
-    CapabilityStandingRow(
-        title = stringResource(R.string.capability_remote_status),
-        standing = capabilities.remoteStatusStanding,
-        tag = "cap_remote_status",
-    )
-    if (capabilities.remoteStatusStanding != CapabilityStanding.AVAILABLE) {
-        SettingNote(stringResource(R.string.capability_late_reply_hint))
-    }
-}
-
-@Composable
-private fun CapabilityStandingRow(
-    title: String,
-    standing: CapabilityStanding,
-    detail: String? = null,
-    tag: String? = null,
+private fun CapabilityRow(
+    item: CapabilityItem,
+    onOpen: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 10.dp)
-                .let { if (tag != null) it.testTag(tag) else it },
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .heightIn(min = MinTouchTarget)
+                .clickable(role = Role.Button, onClick = onOpen)
+                .padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding)
+                .testTag(item.feature.tag),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.Medium),
         ) {
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge)
-                detail?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.XSmall)) {
+                Text(stringResource(item.feature.titleRes), style = MaterialTheme.typography.bodyLarge)
+                CapabilityStatusLine(item)
             }
-            Spacer(Modifier.width(Spacing.Medium))
-            val colors = LocalStatusColors.current
-            Text(
-                text =
-                    stringResource(
-                        when (standing) {
-                            CapabilityStanding.AVAILABLE -> R.string.capability_status_available
-                            CapabilityStanding.NEEDS_CONFIGURATION -> R.string.capability_status_needs_config
-                            CapabilityStanding.UNSUPPORTED -> R.string.capability_status_unsupported
-                        },
-                    ),
-                style = MaterialTheme.typography.labelLarge,
-                color =
-                    when (standing) {
-                        CapabilityStanding.AVAILABLE -> colors.success
-                        CapabilityStanding.NEEDS_CONFIGURATION -> colors.warning
-                        CapabilityStanding.UNSUPPORTED -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         HorizontalDivider(Modifier.padding(start = LocalDimens.current.rowHorizontalPadding))
     }
 }
 
+/** Status is below the title, with an outcome glyph, or a neutral one for Off and Unsupported, which are not outcomes. */
 @Composable
-private fun ColumnScope.RemoteGratuityEditor(
-    capabilities: AdyenCapabilitiesState,
-    action: ActionState,
-    currency: String,
-    onSave: (String, GratuityCapability?) -> Unit,
-) {
-    val existing = capabilities.gratuityFor(currency)
-    var enabled by rememberSaveable { mutableStateOf(existing != null) }
-    var predefined by rememberSaveable { mutableStateOf(existing?.usePredefinedEntries != false) }
-    var entriesText by rememberSaveable {
-        mutableStateOf(
-            existing
-                ?.predefinedEntries
-                ?.takeIf { it.isNotEmpty() }
-                ?.joinToString(",")
-                ?: "10%,15%,20%",
-        )
-    }
-    var allowCustom by rememberSaveable { mutableStateOf(existing?.allowCustomAmount != false) }
-
-    SectionHeader(stringResource(R.string.capability_gratuity_section, currency))
-    SettingSwitch(
-        stringResource(R.string.capability_gratuity_enable),
-        enabled,
-        { enabled = it },
-        subtitle = stringResource(R.string.capability_gratuity_enable_hint, currency),
-        tag = "capGratuityEnable",
-    )
-    if (enabled) {
-        SettingSwitch(
-            stringResource(R.string.capability_gratuity_predefined),
-            predefined,
-            { predefined = it },
-            subtitle = stringResource(R.string.capability_gratuity_predefined_hint),
-            tag = "capGratuityPredefined",
-        )
-        if (predefined) {
-            SettingTextField(
-                label = stringResource(R.string.capability_gratuity_entries),
-                value = entriesText,
-                onCommit = { entriesText = it },
-                supporting = stringResource(R.string.capability_gratuity_entries_hint),
-                autoCorrect = false,
-                tag = "capGratuityEntries",
-            )
-            SettingSwitch(
-                stringResource(R.string.capability_gratuity_custom),
-                allowCustom,
-                { allowCustom = it },
-                subtitle = stringResource(R.string.capability_gratuity_custom_hint),
-                tag = "capGratuityCustom",
-            )
+internal fun CapabilityStatusLine(item: CapabilityItem) {
+    val status = item.status
+    val kind =
+        when (status) {
+            CapabilityStatus.READY -> StatusKind.SUCCESS
+            CapabilityStatus.NEEDS_SETUP, CapabilityStatus.UNVERIFIED -> StatusKind.WARNING
+            CapabilityStatus.OFF, CapabilityStatus.UNSUPPORTED -> null
         }
-    }
-    SaveToAdyen(
-        action,
-        { onSave(currency, buildGratuityTarget(currency, enabled, predefined, entriesText, allowCustom)) },
-        "saveCapGratuity",
-    )
-}
+    val color = kind?.color() ?: MaterialTheme.colorScheme.onSurfaceVariant
+    val label =
+        when (status) {
+            CapabilityStatus.READY -> {
+                if (item.feature in setOf(CapabilityFeature.DCC, CapabilityFeature.SURCHARGE, CapabilityFeature.OFFLINE)) {
+                    R.string.capability_status_configured
+                } else {
+                    R.string.capability_status_available
+                }
+            }
 
-private fun buildGratuityTarget(
-    currency: String,
-    enabled: Boolean,
-    predefined: Boolean,
-    entriesText: String,
-    allowCustom: Boolean,
-): GratuityCapability? {
-    if (!enabled) return null
-    val parsed =
-        entriesText
-            .split(',')
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .take(if (allowCustom) 3 else 4)
-    return GratuityCapability(
-        currency = currency,
-        usePredefinedEntries = predefined,
-        predefinedEntries = if (predefined) parsed else emptyList(),
-        allowCustomAmount = predefined && allowCustom,
-    )
-}
+            CapabilityStatus.OFF -> {
+                R.string.capability_status_off
+            }
 
-@Composable
-private fun ColumnScope.RemoteDccEditor(
-    capabilities: AdyenCapabilitiesState,
-    action: ActionState,
-    onSave: (Boolean) -> Unit,
-) {
-    var enabled by rememberSaveable { mutableStateOf(capabilities.dccEnabled) }
-    SectionHeader(stringResource(R.string.capability_dcc))
-    SettingSwitch(
-        title = stringResource(R.string.capability_dcc_enable),
-        checked = enabled,
-        onChange = { enabled = it },
-        subtitle = stringResource(R.string.capability_dcc_enable_hint),
-        tag = "capDccEnable",
-    )
-    SaveToAdyen(action, { onSave(enabled) }, "saveCapDcc")
-}
+            CapabilityStatus.NEEDS_SETUP -> {
+                R.string.capability_status_needs_config
+            }
 
-@Composable
-private fun ColumnScope.RemoteMotoEditor(
-    capabilities: AdyenCapabilitiesState,
-    action: ActionState,
-    onSave: (MotoCapability) -> Unit,
-) {
-    var enabled by rememberSaveable { mutableStateOf(capabilities.moto.enabled) }
-    var maxAmountText by rememberSaveable {
-        mutableStateOf(
-            capabilities.moto.maxAmount
-                ?.toString()
-                .orEmpty(),
+            CapabilityStatus.UNVERIFIED -> {
+                R.string.capability_status_unverified
+            }
+
+            CapabilityStatus.UNSUPPORTED -> {
+                R.string.capability_status_unsupported
+            }
+        }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.XSmall)) {
+        Icon(
+            kind?.icon() ?: if (status == CapabilityStatus.OFF) Icons.Default.RadioButtonUnchecked else Icons.Default.NotInterested,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(IconSize.Small),
         )
-    }
-    SectionHeader(stringResource(R.string.capability_moto_section))
-    SettingSwitch(
-        title = stringResource(R.string.capability_moto_enable),
-        checked = enabled,
-        onChange = { enabled = it },
-        subtitle = stringResource(R.string.capability_moto_enable_hint),
-        tag = "capMotoEnable",
-    )
-    if (enabled) {
-        SettingTextField(
-            label = stringResource(R.string.capability_moto_max_amount),
-            value = maxAmountText,
-            onCommit = { maxAmountText = it },
-            keyboardType = KeyboardType.Number,
-            autoCorrect = false,
-            tag = "capMotoMaxAmount",
-        )
-    }
-    SaveToAdyen(action, {
-        onSave(MotoCapability(enabled = enabled, maxAmount = maxAmountText.trim().toIntOrNull()?.takeIf { it > 0 }))
-    }, "saveCapMoto")
-}
-
-@Composable
-private fun ColumnScope.RemoteOfflineEditor(
-    capabilities: AdyenCapabilitiesState,
-    action: ActionState,
-    currency: String,
-    onSave: (String, Int?, Int?, Int?) -> Unit,
-) {
-    val offline = capabilities.offline
-    var chipFloorText by rememberSaveable { mutableStateOf(offline.chipFloorLimit?.toString().orEmpty()) }
-    var safMaxMinorText by rememberSaveable { mutableStateOf(offline.maxStoreAndForwardMinor[currency]?.toString().orEmpty()) }
-    var maxPaymentsText by rememberSaveable { mutableStateOf(offline.maxPayments?.toString().orEmpty()) }
-
-    SectionHeader(stringResource(R.string.capability_offline_section, currency))
-    SettingTextField(
-        stringResource(R.string.capability_offline_chip_floor),
-        chipFloorText,
-        { chipFloorText = it },
-        keyboardType = KeyboardType.Number,
-        autoCorrect = false,
-        tag = "capOfflineChipFloor",
-    )
-    SettingTextField(
-        stringResource(R.string.capability_offline_saf_max, currency),
-        safMaxMinorText,
-        { safMaxMinorText = it },
-        keyboardType = KeyboardType.Number,
-        autoCorrect = false,
-        tag = "capOfflineSafMax",
-    )
-    SettingTextField(
-        stringResource(R.string.capability_offline_max_payments),
-        maxPaymentsText,
-        { maxPaymentsText = it },
-        keyboardType = KeyboardType.Number,
-        autoCorrect = false,
-        tag = "capOfflineMaxPayments",
-    )
-    SaveToAdyen(action, {
-        onSave(
-            currency,
-            chipFloorText.trim().toIntOrNull()?.takeIf { it >= 0 },
-            safMaxMinorText.trim().toIntOrNull()?.takeIf { it >= 0 },
-            maxPaymentsText.trim().toIntOrNull()?.takeIf { it >= 0 },
-        )
-    }, "saveCapOffline")
-}
-
-/**
- * "Save to Adyen" under an Adyen-side section: unlike local settings, which save as they change, its edits are a draft
- * until [onSave] sends them. The button is tagged [tag]; the section shows [action]'s completion in a dialog.
- */
-@Composable
-private fun SaveToAdyen(
-    action: ActionState,
-    onSave: () -> Unit,
-    tag: String,
-) {
-    SettingActions {
-        SecondaryButton(
-            text = stringResource(R.string.capability_save),
-            onClick = onSave,
-            loading = action.running,
-            icon = Icons.Default.CloudUpload,
-            modifier = Modifier.testTag(tag),
-        )
+        Text(stringResource(label), color = color, style = MaterialTheme.typography.bodyMedium)
     }
 }

@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.modifiers.TextAutoSizeLayoutScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
@@ -30,14 +32,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.minimpos.app.R
 import app.minimpos.app.ui.theme.BorderWidth
 import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.MinTouchTarget
 import app.minimpos.app.ui.theme.Spacing
+import java.text.BreakIterator
 
 /**
  * A screen's main action: full width, at least the theme's button height, with an optional leading [icon]. While
@@ -59,6 +68,7 @@ fun PrimaryButton(
         modifier = modifier.fillMaxWidth().heightIn(min = LocalDimens.current.buttonHeight),
         shape = MaterialTheme.shapes.medium,
         colors = ButtonDefaults.buttonColors(containerColor = color),
+        contentPadding = FullWidthPadding,
     ) {
         ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.onPrimary else null)
     }
@@ -97,9 +107,17 @@ fun SecondaryButton(
         shape = MaterialTheme.shapes.medium,
         colors = secondaryColors(),
         border = secondaryBorder(enabled),
+        contentPadding = FullWidthPadding,
         content = content,
     )
 }
+
+/**
+ * The inside of a full-width button: narrower at the sides than Material's 24 dp, so that two buttons side by side on
+ * the AMS1 (a result screen's Home and next step) leave a label room for a whole word. A centred label that fits is
+ * drawn where Material's padding would put it.
+ */
+private val FullWidthPadding = PaddingValues(horizontal = Spacing.Large, vertical = Spacing.Small)
 
 /**
  * A lesser full-width action as text, such as showing the receipt, with the height of a [SecondaryButton] so every
@@ -145,7 +163,7 @@ fun CompactSecondaryButton(
     enabled: Boolean = true,
 ) {
     CompactSecondaryButton(onClick, modifier, enabled) {
-        Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+        ButtonLabel(text)
     }
 }
 
@@ -205,7 +223,7 @@ fun CompactTertiaryButton(
     destructive: Boolean = false,
 ) {
     CompactTertiaryButton(onClick, modifier, enabled, destructive) {
-        Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+        ButtonLabel(text)
     }
 }
 
@@ -255,7 +273,58 @@ private fun RowScope.ButtonContent(
         Icon(icon, contentDescription = null, modifier = Modifier.size(IconSize.Inline))
         Spacer(Modifier.width(Spacing.Small))
     }
-    Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
+    ButtonLabel(text)
+}
+
+/**
+ * A button's [text] in the button role. It wraps between words, and Japanese between phrases on Android 13 and later;
+ * where even one word is too wide, as a single-word label can be in a narrow button with large text, it shrinks down
+ * to the small label size rather than split the word.
+ */
+@Composable
+private fun ButtonLabel(text: String) {
+    val typography = MaterialTheme.typography
+    Text(
+        text,
+        style = typography.labelLarge.copy(lineBreak = PhraseBreaks),
+        textAlign = TextAlign.Center,
+        autoSize = WholeWords(typography.labelLarge.fontSize, typography.labelMedium.fontSize),
+    )
+}
+
+// Text's default breaking, except that Japanese keeps phrases such as 受け取る whole where the platform supports it.
+private val PhraseBreaks = LineBreak.Simple.copy(wordBreak = LineBreak.WordBreak.Phrase)
+
+/**
+ * Sizes text like [TextAutoSize.StepBased], in 1 sp steps from [maxSize] down to [minSize], at the largest size whose
+ * lines break only where line breaking allows (between words, or between CJK characters). At [minSize] a word that
+ * still does not fit is split, rather than cut off.
+ */
+private data class WholeWords(
+    private val maxSize: TextUnit,
+    private val minSize: TextUnit,
+) : TextAutoSize {
+    override fun TextAutoSizeLayoutScope.getFontSize(
+        constraints: Constraints,
+        text: AnnotatedString,
+    ): TextUnit {
+        var size = maxSize.value
+        while (size > minSize.value) {
+            if (!performLayout(constraints, text, size.sp).splitsWord()) return size.sp
+            size -= 1f
+        }
+        return minSize
+    }
+
+    /** Whether a line of this layout ends where the text has no line-break opportunity, such as inside a word. */
+    private fun TextLayoutResult.splitsWord(): Boolean {
+        val text = layoutInput.text.text
+        val breaks = BreakIterator.getLineInstance().apply { setText(text) }
+        return (0..<lineCount - 1).any { line ->
+            val end = getLineEnd(line)
+            end in 1..<text.length && !breaks.isBoundary(end)
+        }
+    }
 }
 
 /**

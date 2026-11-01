@@ -1,9 +1,11 @@
 package app.minimpos.app.terminal
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import app.minimpos.app.FakeDevice
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
@@ -15,8 +17,12 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
-import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.settings.CapabilitiesViewModel
+import app.minimpos.app.feature.settings.CapabilityDraft
+import app.minimpos.app.feature.settings.CapabilityEdit
+import app.minimpos.app.feature.settings.CapabilityFeature
+import app.minimpos.app.feature.settings.CapabilityLimit
+import app.minimpos.app.feature.settings.CapabilityTip
 import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup
@@ -31,6 +37,7 @@ import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalGratuity
+import app.minimpos.terminal.transport.TerminalLimitChange
 import app.minimpos.terminal.transport.TerminalListing
 import app.minimpos.terminal.transport.TerminalMotoSettings
 import app.minimpos.terminal.transport.TerminalOfflineLimits
@@ -66,6 +73,7 @@ class CapabilityDiscoveryTest {
     private var listedMerchant = "HarbourCoffeeCOM"
     private var lookupOverride: TerminalCapabilitiesLookup? = null
     private var lookupGate: CompletableDeferred<Unit>? = null
+    private var lookups = 0
     private var updateOverride: TerminalCapabilitiesUpdate? = null
 
     private val detailsApi =
@@ -91,6 +99,7 @@ class CapabilityDiscoveryTest {
                 id: String,
                 environment: TerminalEnvironment,
             ): TerminalCapabilitiesLookup {
+                lookups++
                 lookupGate?.await()
                 return lookupOverride ?: TerminalCapabilitiesLookup.Found(currentCapabilities)
             }
@@ -117,20 +126,19 @@ class CapabilityDiscoveryTest {
                         }
 
                         is TerminalCapabilitiesPatch.Moto -> {
-                            currentCapabilities.copy(moto = patch.settings)
+                            val moto = currentCapabilities.moto
+                            currentCapabilities.copy(moto = TerminalMotoSettings(patch.enabled, patch.maxAmount.applyTo(moto.maxAmount)))
                         }
 
                         is TerminalCapabilitiesPatch.Offline -> {
+                            val offline = currentCapabilities.offline
+                            val amount = patch.maxStoreAndForwardMinor.applyTo(offline.maxStoreAndForwardMinor[patch.currency]?.toInt())
                             currentCapabilities.copy(
                                 offline =
                                     TerminalOfflineLimits(
-                                        chipFloorLimit = patch.chipFloorLimit,
-                                        maxStoreAndForwardMinor =
-                                            patch.maxStoreAndForwardMinor
-                                                ?.toLong()
-                                                ?.let { mapOf(patch.currency to it) }
-                                                .orEmpty(),
-                                        maxPayments = patch.maxPayments,
+                                        chipFloorLimit = patch.chipFloorLimit.applyTo(offline.chipFloorLimit),
+                                        maxStoreAndForwardMinor = amount?.let { mapOf(patch.currency to it.toLong()) }.orEmpty(),
+                                        maxPayments = patch.maxPayments.applyTo(offline.maxPayments),
                                     ),
                             )
                         }
@@ -173,23 +181,37 @@ class CapabilityDiscoveryTest {
             it.copy(terminal = conn.copy(merchantAccount = "HarbourCoffeeCOM", poiIdOverride = "S1F2-000158213605014", storeId = "ST1"))
         }
         val state = await { discovery.refresh() }
-        assertThat(state.tippingStanding("AUD", enabledLocally = false)).isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
-        assertThat(state.tippingStanding("AUD", enabledLocally = true)).isEqualTo(CapabilityStanding.AVAILABLE)
-        assertThat(state.dccStanding).isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
-        assertThat(state.surchargeStanding to state.giftCardStanding("AUD"))
-            .isEqualTo(CapabilityStanding.AVAILABLE to CapabilityStanding.AVAILABLE)
+        assertThat(state.checked).isTrue()
+        assertThat(state.editable).isTrue()
+        assertThat(state.dccEnabled).isFalse()
+        assertThat(state.surchargeConfigured).isTrue()
+        assertThat(state.gratuityFor("AUD")?.predefinedEntries).containsExactly("10%", "15%")
         assertThat(state.giftCardsFor("AUD")).containsExactly("svs")
-        assertThat(state.offlineStanding("AUD")).isEqualTo(CapabilityStanding.UNSUPPORTED)
+        assertThat(state.capabilities.supportsOfflinePayments).isFalse()
 
         assertThat(await { discovery.updateDcc(true) }).isEqualTo(CapabilityPatchResult.Updated)
-        assertThat(discovery.state.value.dccStanding).isEqualTo(CapabilityStanding.AVAILABLE)
+        assertThat(discovery.state.value.dccEnabled).isTrue()
         assertThat(patches).containsExactly(TerminalCapabilitiesPatch.Dcc(true))
 
         val grat = GratuityCapability("AUD", usePredefinedEntries = false, allowCustomAmount = true)
         assertThat(await { discovery.updateGratuity("AUD", grat) }).isEqualTo(CapabilityPatchResult.Updated)
         assertThat(await { discovery.updateGratuity("AUD", null) }).isEqualTo(CapabilityPatchResult.Updated)
-        assertThat(await { discovery.updateMoto(MotoCapability(enabled = true, maxAmount = 300)) }).isEqualTo(CapabilityPatchResult.Updated)
-        assertThat(await { discovery.updateOffline("AUD", 25, 2_500, 5) }).isEqualTo(CapabilityPatchResult.Updated)
+        assertThat(await { discovery.updateMoto(true, LimitUpdate.Own(300)) }).isEqualTo(CapabilityPatchResult.Updated)
+        assertThat(
+            await { discovery.updateOffline("AUD", LimitUpdate.Own(25), LimitUpdate.Own(2_500), LimitUpdate.Own(5)) },
+        ).isEqualTo(CapabilityPatchResult.Updated)
+        assertThat(await { discovery.updateOffline("AUD", maxPayments = LimitUpdate.Inherit) }).isEqualTo(CapabilityPatchResult.Updated)
+        assertThat(patches.takeLast(2))
+            .containsExactly(
+                TerminalCapabilitiesPatch.Offline(
+                    "AUD",
+                    TerminalLimitChange.Own(25),
+                    TerminalLimitChange.Own(2_500),
+                    TerminalLimitChange.Own(5),
+                ),
+                TerminalCapabilitiesPatch.Offline("AUD", maxPayments = TerminalLimitChange.Remove),
+            ).inOrder()
+        assertThat(discovery.state.value.offline).isEqualTo(OfflineCapability(25, mapOf("AUD" to 2_500L), null))
 
         updateOverride = TerminalCapabilitiesUpdate.Failed(Fault.TimedOut, uncertain = true)
         assertThat(await { discovery.updateDcc(false) }).isEqualTo(CapabilityPatchResult.Unconfirmed(Failure.Remote(Fault.TimedOut)))
@@ -204,7 +226,7 @@ class CapabilityDiscoveryTest {
         lookupOverride = null
 
         listedMerchant = "OtherMerchant"
-        val blocked = await { discovery.updateMoto(MotoCapability(enabled = true, maxAmount = 300)) }
+        val blocked = await { discovery.updateMoto(true, LimitUpdate.Own(300)) }
         assertThat(blocked).isEqualTo(CapabilityPatchResult.NotDone(Failure.NotSetUp(SetupProblem.SETUP_CHANGED)))
     }
 
@@ -216,34 +238,39 @@ class CapabilityDiscoveryTest {
         val vm = CapabilitiesViewModel(discovery = env.container.capabilityDiscovery)
         try {
             await { vm.state.first { it.simulated && !it.checking } }
-            vm.saveGratuity("EUR", GratuityCapability("EUR", true, listOf("10%"), true))
+            vm.edit(CapabilityFeature.TIPPING, CapabilityDraft(enabled = true, tips = listOf(CapabilityTip(text = "10")), custom = true))
             await { vm.actions.first { it.gratuity.done } }
-            vm.saveGratuity("EUR", null)
+            vm.edit(CapabilityFeature.TIPPING, CapabilityDraft())
             await { vm.state.first { it.gratuityFor("EUR") == null } }
 
-            vm.saveDcc(true)
+            vm.edit(CapabilityFeature.DCC, CapabilityDraft(enabled = true))
             await { vm.actions.first { it.dcc.done } }
             assertThat(vm.state.value.dccEnabled).isTrue()
 
-            vm.saveMoto(MotoCapability(enabled = true, maxAmount = 150))
+            vm.edit(CapabilityFeature.MOTO, CapabilityDraft(enabled = true, motoLimit = CapabilityLimit(false, "150")))
             await { vm.actions.first { it.moto.done } }
             assertThat(vm.state.value.moto).isEqualTo(MotoCapability(enabled = true, maxAmount = 150))
 
-            vm.saveOffline("EUR", chipFloorLimit = 30, maxStoreAndForwardMinor = 4_000, maxPayments = 8)
+            vm.edit(
+                CapabilityFeature.OFFLINE,
+                CapabilityDraft(
+                    chip = CapabilityLimit(false, "0.30"),
+                    storeAndForward = CapabilityLimit(false, "40"),
+                    count = CapabilityLimit(false, "8"),
+                ),
+            )
             await { vm.actions.first { it.offline.done } }
             assertThat(vm.state.value.offline.maxStoreAndForwardMinor).containsEntry("EUR", 4_000L)
 
-            vm.saveOffline("EUR", chipFloorLimit = null, maxStoreAndForwardMinor = null, maxPayments = null)
+            vm.edit(CapabilityFeature.OFFLINE, CapabilityDraft())
             await { vm.state.first { it.offline.maxStoreAndForwardMinor.isEmpty() } }
 
             // Non-discoverable destination (Payments app) rejects remote capability writes.
             env.updateSettings { it.copy(terminal = it.terminal.withConnection(TerminalMode.PAYMENTS_APP, TerminalEnvironment.TEST)) }
             await { vm.state.first { !it.capabilities.supportsTerminalFeatures } }
-            assertUnsupportedAndStandings(vm.state.value)
-
-            vm.saveDcc(false)
-            val failedDcc = await { vm.actions.first { it.dcc.isError } }
-            assertThat(failedDcc.dcc.outcome).isEqualTo(ActionOutcome.Failed(Failure.Remote(Fault.Unsupported)))
+            assertThat(vm.state.value.giftCardsFor("AUD")).isEmpty()
+            assertThat(await { env.container.capabilityDiscovery.updateDcc(false) })
+                .isEqualTo(CapabilityPatchResult.NotDone(Failure.Remote(Fault.Unsupported)))
 
             // Incomplete cloud setup reports setup problem on refresh and patch.
             env.updateSettings {
@@ -296,6 +323,31 @@ class CapabilityDiscoveryTest {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `another capability screen reuses a current reading instead of reading Management again`() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        await { env.container.secrets.set(Secret.ADYEN_API_KEY, "api-key") }
+        env.updateSettings {
+            val conn = it.terminal.withConnection(TerminalMode.CLOUD, TerminalEnvironment.TEST)
+            it.copy(terminal = conn.copy(merchantAccount = "HarbourCoffeeCOM", poiIdOverride = "S1F2-000158213605014", storeId = "ST1"))
+        }
+        val discovery = env.container.capabilityDiscovery
+        val first = CapabilitiesViewModel(discovery = discovery)
+        val second = CapabilitiesViewModel(discovery = discovery)
+        try {
+            await { first.state.first { it.checked && !it.checking } }
+            assertThat(await { discovery.refreshIfStale() }.failure).isNull()
+            assertThat(lookups).isEqualTo(1)
+
+            first.refresh()
+            await { first.state.first { lookups == 2 && !it.checking } }
+        } finally {
+            closeViewModels(listOf(first, second))
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test
     fun `cancelling a refresh clears checking and permits another refresh`() =
         runTest {
@@ -319,42 +371,18 @@ class CapabilityDiscoveryTest {
             assertThat(next.surchargeConfigured).isTrue()
         }
 
-    private fun assertUnsupportedAndStandings(unsupportedState: AdyenCapabilitiesState) {
-        assertThat(unsupportedState.giftCardsFor("AUD")).isEmpty()
-        assertThat(unsupportedState.tippingStanding("AUD", true)).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(unsupportedState.dccStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(unsupportedState.givingStanding(true)).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(unsupportedState.surchargeStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(unsupportedState.partialAuthStanding(true)).isEqualTo(CapabilityStanding.AVAILABLE)
-        assertThat(unsupportedState.giftCardStanding("AUD")).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(unsupportedState.motoStanding(true)).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(unsupportedState.offlineStanding("AUD")).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(unsupportedState.reconciliationStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(unsupportedState.shopperDisplayStanding(true)).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(
-            AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsShopperDisplay = true)).shopperDisplayStanding(true),
-        ).isEqualTo(CapabilityStanding.AVAILABLE)
-        assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsTerminalFeatures = true)).givingStanding(false))
-            .isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
-        assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsTerminalFeatures = true)).givingStanding(true))
-            .isEqualTo(CapabilityStanding.AVAILABLE)
-        assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsTerminalFeatures = true)).motoStanding(false))
-            .isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
-        assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsTerminalFeatures = true)).motoStanding(true))
-            .isEqualTo(CapabilityStanding.AVAILABLE)
-        assertThat(
-            AdyenCapabilitiesState(
-                capabilities = DestinationCapabilities(supportsOfflinePayments = true),
-                offline = OfflineCapability(maxStoreAndForwardMinor = mapOf("AUD" to 1_000L), maxPayments = 5),
-            ).offlineStanding("AUD"),
-        ).isEqualTo(CapabilityStanding.AVAILABLE)
-        assertThat(
-            AdyenCapabilitiesState(
-                capabilities = DestinationCapabilities(supportsOfflinePayments = true),
-                offline = OfflineCapability(maxStoreAndForwardMinor = mapOf("AUD" to 1_000L), maxPayments = 0),
-            ).offlineStanding("AUD"),
-        ).isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
-    }
+    private fun CapabilitiesViewModel.edit(
+        feature: CapabilityFeature,
+        draft: CapabilityDraft,
+    ) = saveEditor(
+        feature,
+        CapabilityEdit(
+            CapabilityDraft.from(feature, state.value, "EUR"),
+            if (feature == CapabilityFeature.MOTO) draft.copy(motoCurrency = state.value.motoCurrency) else draft,
+            identity = state.value.identity,
+        ),
+        "EUR",
+    )
 
     @Test
     fun `capabilities screen displays standing matrix and saves simulator updates`() {
@@ -368,8 +396,26 @@ class CapabilityDiscoveryTest {
         }
         compose.onNodeWithTag("cap_tipping").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("cap_partial_auth").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("cap_dcc").performScrollTo().performClick()
         compose.onNodeWithTag("capDccEnable").performScrollTo().performClick()
         compose.onNodeWithTag("saveCapDcc").performScrollTo().performClick()
         compose.awaitCondition("DCC enabled in simulator") { env.container.capabilityDiscovery.state.value.dccEnabled }
+    }
+
+    @Test
+    fun `an overflowing MOTO limit cannot be saved as an inherited limit`() {
+        env.useSimulator()
+        compose.setContent { MiniMposApp(env.container) }
+        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("section_capabilities").performScrollTo().performClick()
+        compose.awaitCondition("capabilities loaded") {
+            env.container.capabilityDiscovery.state.value
+                .let { it.simulated && !it.checking }
+        }
+        compose.onNodeWithTag("cap_moto").performScrollTo().performClick()
+        compose.onNodeWithTag("capMotoEnable").performScrollTo().performClick()
+        compose.onNodeWithTag("capMotoMaxAmountInherited").performScrollTo().performClick()
+        compose.onNodeWithTag("capMotoMaxAmount").performScrollTo().performTextInput("2147483648")
+        compose.onNodeWithTag("saveCapMoto").performScrollTo().assertIsNotEnabled()
     }
 }

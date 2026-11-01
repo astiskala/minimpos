@@ -165,7 +165,7 @@ data class TerminalMotoSettings(
 )
 
 /** Terminal-level offline EMV and store-and-forward limits (`offlineProcessing` and `storeAndForward`).
- * @property chipFloorLimit Maximum chip offline EMV amount in major units, or null when unset.
+ * @property chipFloorLimit Maximum chip offline EMV amount in minor units of the processing currency, or null when unset.
  * @property maxStoreAndForwardMinor Maximum store-and-forward transaction amount in minor units by currency code.
  * @property maxPayments Maximum number of stored offline payments before forwarding, or null when unset.
  */
@@ -182,6 +182,7 @@ data class TerminalOfflineLimits(
  * @property surchargeConfigured Whether card surcharge rules or confirmation are configured (`surcharge`).
  * @property moto MOTO settings (`moto`).
  * @property offline Offline EMV and store-and-forward limits (`offlineProcessing`, `storeAndForward`).
+ * @property motoCurrency Currency of the MOTO limit (`standalone.currencyCode`), or empty when not supplied.
  */
 data class RemoteTerminalCapabilities(
     val gratuities: List<TerminalGratuity> = emptyList(),
@@ -189,6 +190,7 @@ data class RemoteTerminalCapabilities(
     val surchargeConfigured: Boolean = false,
     val moto: TerminalMotoSettings = TerminalMotoSettings(),
     val offline: TerminalOfflineLimits = TerminalOfflineLimits(),
+    val motoCurrency: String = "",
 ) {
     /** The gratuity configuration for [currency], if any. */
     fun gratuityFor(currency: String): TerminalGratuity? = gratuities.firstOrNull { it.currency.equals(currency, ignoreCase = true) }
@@ -236,25 +238,55 @@ sealed interface TerminalCapabilitiesPatch {
     ) : TerminalCapabilitiesPatch
 
     /** Updates `moto`.
-     * @property settings New MOTO settings; a null [TerminalMotoSettings.maxAmount] removes the terminal's own limit.
+     * @property enabled Whether MOTO is enabled on the terminal.
+     * @property maxAmount The terminal's maximum MOTO amount in whole major units.
      */
     data class Moto(
-        val settings: TerminalMotoSettings,
+        val enabled: Boolean,
+        val maxAmount: TerminalLimitChange = TerminalLimitChange.Keep,
     ) : TerminalCapabilitiesPatch
 
     /** Updates `offlineProcessing` and `storeAndForward` for [currency], preserving other currencies' store-and-forward limits.
      * @property currency ISO 4217 currency code for [maxStoreAndForwardMinor].
-     * @property chipFloorLimit Chip floor limit in major units, or null to remove the terminal's own limit.
-     * @property maxStoreAndForwardMinor Maximum store-and-forward amount in minor units of [currency], or null to remove
+     * @property chipFloorLimit Chip floor limit in minor units of the processing currency.
+     * @property maxStoreAndForwardMinor Maximum store-and-forward amount in minor units of [currency]; removing it removes
      *   [currency]'s entry.
-     * @property maxPayments Maximum number of stored payments, or null to remove the terminal's own limit.
+     * @property maxPayments Maximum number of stored payments.
      */
     data class Offline(
         val currency: String,
-        val chipFloorLimit: Int?,
-        val maxStoreAndForwardMinor: Int?,
-        val maxPayments: Int?,
+        val chipFloorLimit: TerminalLimitChange = TerminalLimitChange.Keep,
+        val maxStoreAndForwardMinor: TerminalLimitChange = TerminalLimitChange.Keep,
+        val maxPayments: TerminalLimitChange = TerminalLimitChange.Keep,
     ) : TerminalCapabilitiesPatch
+}
+
+/**
+ * How a scoped update treats one terminal-level limit. Management reads back effective values, which may be inherited
+ * from the store, merchant account or company, so a limit the operator did not change is left out of the update rather
+ * than written back as the terminal's own.
+ */
+sealed interface TerminalLimitChange {
+    /** Leaves the limit out of the update. */
+    data object Keep : TerminalLimitChange
+
+    /** Removes the terminal's own limit, so it inherits again. */
+    data object Remove : TerminalLimitChange
+
+    /** Sets the terminal's own limit.
+     * @property value The limit, in the unit its patch field documents.
+     */
+    data class Own(
+        val value: Int,
+    ) : TerminalLimitChange
+
+    /** The terminal's own limit after this change to [current], its own limit before; null when it has none. */
+    fun applyTo(current: Int?): Int? =
+        when (this) {
+            Keep -> current
+            Remove -> null
+            is Own -> value
+        }
 }
 
 /** Result of a scoped capability `PATCH` and read-back verification. */
@@ -498,45 +530,75 @@ class AdyenTerminalDetails(
             }
 
             is TerminalCapabilitiesPatch.Moto -> {
-                TerminalSettings()
-                    .moto(Moto().includeNullValues(true).enableMoto(patch.settings.enabled).maxAmount(patch.settings.maxAmount))
-                    .toJson()
+                val moto = Moto().includeNullValues(true).enableMoto(patch.enabled)
+                patch.maxAmount.write { moto.maxAmount = it }
+                TerminalSettings().moto(moto).toJson()
             }
 
             is TerminalCapabilitiesPatch.Offline -> {
-                val retained =
-                    before
-                        ?.storeAndForward
-                        ?.maxAmount
-                        .orEmpty()
-                        .filterNotNull()
-                        .filterNot { it.currencyCode.equals(patch.currency, ignoreCase = true) }
-                val updated =
-                    patch.maxStoreAndForwardMinor?.let { amount ->
-                        MinorUnitsMonetaryValue().currencyCode(patch.currency.uppercase()).amount(amount)
-                    }
-                val amounts = if (updated == null) retained else retained + updated
-                val cardTypes =
-                    before?.storeAndForward?.supportedCardTypes
-                        ?: SupportedCardTypes()
-                            .credit(true)
-                            .debit(true)
-                            .prepaid(true)
-                            .takeIf { amounts.isNotEmpty() }
-                TerminalSettings()
-                    .offlineProcessing(OfflineProcessing().includeNullValues(true).chipFloorLimit(patch.chipFloorLimit))
-                    .storeAndForward(
-                        StoreAndForward()
-                            .includeNullValues(true)
-                            .maxAmount(amounts)
-                            .maxPayments(patch.maxPayments)
-                            .supportedCardTypes(cardTypes),
-                    ).toJson()
+                offlinePatch(patch, before).toJson()
             }
         }
 
+    // Only explicitly set fields are serialized, so a kept limit is absent from the PATCH body and Adyen leaves it alone.
+    private fun offlinePatch(
+        patch: TerminalCapabilitiesPatch.Offline,
+        before: TerminalSettings?,
+    ): TerminalSettings {
+        val settings = TerminalSettings()
+        if (patch.chipFloorLimit != TerminalLimitChange.Keep) {
+            val offline = OfflineProcessing().includeNullValues(true)
+            patch.chipFloorLimit.write { offline.chipFloorLimit = it }
+            settings.offlineProcessing(offline)
+        }
+        if (patch.maxStoreAndForwardMinor == TerminalLimitChange.Keep && patch.maxPayments == TerminalLimitChange.Keep) {
+            return settings
+        }
+        val storeAndForward = StoreAndForward().includeNullValues(true)
+        patch.maxPayments.write { storeAndForward.maxPayments = it }
+        if (patch.maxStoreAndForwardMinor != TerminalLimitChange.Keep) {
+            val retained =
+                before
+                    ?.storeAndForward
+                    ?.maxAmount
+                    .orEmpty()
+                    .filterNotNull()
+                    .filterNot { it.currencyCode.equals(patch.currency, ignoreCase = true) }
+            val updated =
+                (patch.maxStoreAndForwardMinor as? TerminalLimitChange.Own)?.let { own ->
+                    MinorUnitsMonetaryValue().currencyCode(patch.currency.uppercase()).amount(own.value)
+                }
+            val amounts = if (updated == null) retained else retained + updated
+            storeAndForward.maxAmount(amounts).supportedCardTypes(
+                before?.storeAndForward?.supportedCardTypes
+                    ?: SupportedCardTypes()
+                        .credit(true)
+                        .debit(true)
+                        .prepaid(true)
+                        .takeIf { amounts.isNotEmpty() },
+            )
+        }
+        return settings.storeAndForward(storeAndForward)
+    }
+
+    private fun TerminalLimitChange.write(set: (Int?) -> Unit) {
+        when (this) {
+            TerminalLimitChange.Keep -> {}
+
+            TerminalLimitChange.Remove -> {
+                set(null)
+            }
+
+            is TerminalLimitChange.Own -> {
+                set(value)
+            }
+        }
+    }
+
+    private fun TerminalLimitChange.matches(actual: Int?): Boolean = this !is TerminalLimitChange.Own || actual == value
+
     // A removed MOTO or offline limit reads back as whatever the terminal inherits, so only limits that were set can be
-    // compared.
+    // compared; a currency's removed store-and-forward entry must be absent.
     private fun matchesPatch(
         patch: TerminalCapabilitiesPatch,
         actual: RemoteTerminalCapabilities,
@@ -560,14 +622,18 @@ class AdyenTerminalDetails(
             }
 
             is TerminalCapabilitiesPatch.Moto -> {
-                actual.moto.enabled == patch.settings.enabled &&
-                    (patch.settings.maxAmount == null || actual.moto.maxAmount == patch.settings.maxAmount)
+                actual.moto.enabled == patch.enabled && patch.maxAmount.matches(actual.moto.maxAmount)
             }
 
             is TerminalCapabilitiesPatch.Offline -> {
-                (patch.chipFloorLimit == null || actual.offline.chipFloorLimit == patch.chipFloorLimit) &&
-                    actual.offline.maxStoreAndForwardMinor[patch.currency.uppercase()] == patch.maxStoreAndForwardMinor?.toLong() &&
-                    (patch.maxPayments == null || actual.offline.maxPayments == patch.maxPayments)
+                val storeAndForward = actual.offline.maxStoreAndForwardMinor[patch.currency.uppercase()]
+                patch.chipFloorLimit.matches(actual.offline.chipFloorLimit) &&
+                    when (val change = patch.maxStoreAndForwardMinor) {
+                        TerminalLimitChange.Keep -> true
+                        TerminalLimitChange.Remove -> storeAndForward == null
+                        is TerminalLimitChange.Own -> storeAndForward == change.value.toLong()
+                    } &&
+                    patch.maxPayments.matches(actual.offline.maxPayments)
             }
         }
 
@@ -579,6 +645,7 @@ class AdyenTerminalDetails(
             dccEnabled = settings.dcc?.enableDcc == true,
             surchargeConfigured = surcharge?.askConfirmation == true || !surcharge?.configurations.isNullOrEmpty(),
             moto = TerminalMotoSettings(enabled = moto?.enableMoto == true, maxAmount = moto?.maxAmount),
+            motoCurrency = settings.standalone?.currencyCode.orEmpty(),
             offline =
                 TerminalOfflineLimits(
                     chipFloorLimit = settings.offlineProcessing?.chipFloorLimit,

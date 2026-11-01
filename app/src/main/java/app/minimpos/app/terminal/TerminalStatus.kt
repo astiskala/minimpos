@@ -97,10 +97,6 @@ data class TerminalState(
      */
     val canShare: Boolean get() = !onTerminal
 
-    /** Receipt sharing needs another app on this device; Adyen terminals use email instead. */
-    val receiptSharingStanding: CapabilityStanding
-        get() = if (canShare) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
-
     /** What must still be entered before the Checkout API can be used ([ApiSetup.problem]); null when nothing is. */
     val apiProblem: SetupProblem? get() = apiSetup.problem
 

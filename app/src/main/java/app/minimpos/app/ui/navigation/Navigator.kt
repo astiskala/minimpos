@@ -7,36 +7,42 @@ import androidx.navigation3.runtime.NavKey
 class Navigator(
     private val backStack: NavBackStack<NavKey>,
 ) {
+    private var leaving: Leaving? = null
+
     /** The screen on top of the back stack. */
     val current: Route? get() = backStack.lastOrNull() as? Route
 
     /** Opens [route] on top of the current screen. */
-    fun push(route: Route) {
-        if (current != route) backStack.add(route)
-    }
+    fun push(route: Route) =
+        navigate {
+            if (current != route) backStack.add(route)
+        }
 
     /** Closes the current screen; the root (Home or first-run onboarding) is never removed. */
-    fun back() {
-        if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
-    }
+    fun back() =
+        navigate {
+            if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+        }
 
     /** Replaces the top of the stack (e.g. scan -> refund, payment -> result). */
-    fun replace(route: Route) {
-        if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex)
-        backStack.add(route)
-    }
+    fun replace(route: Route) =
+        navigate {
+            if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex)
+            backStack.add(route)
+        }
 
     /** Pops back to [route] if it is on the stack (pushing it otherwise), dropping everything above it. */
-    fun popTo(route: Route) {
-        val index = backStack.indexOfLast { it == route }
-        if (index < 0) {
-            backStack.clear()
-            backStack.add(Route.Home)
-            if (route != Route.Home) backStack.add(route)
-        } else {
-            while (backStack.lastIndex > index) backStack.removeAt(backStack.lastIndex)
+    fun popTo(route: Route) =
+        navigate {
+            val index = backStack.indexOfLast { it == route }
+            if (index < 0) {
+                backStack.clear()
+                backStack.add(Route.Home)
+                if (route != Route.Home) backStack.add(route)
+            } else {
+                while (backStack.lastIndex > index) backStack.removeAt(backStack.lastIndex)
+            }
         }
-    }
 
     /** Whether an active first-run choice remains below setup; false after explicitly returning Home. */
     val isOnboarding: Boolean get() = Route.Onboarding in backStack
@@ -52,7 +58,7 @@ class Navigator(
     fun openFrom(
         list: Route,
         route: Route,
-    ) {
+    ) = navigate {
         val index = backStack.indexOfLast { it == list }
         if (index >= 0) while (backStack.lastIndex > index) backStack.removeAt(backStack.lastIndex)
         push(route)
@@ -62,9 +68,45 @@ class Navigator(
      * Closes [route] and everything opened above it, as a list's Back does while its detail is beside it; Home is never
      * removed. Without [route] on the stack, this is [back].
      */
-    fun leave(route: Route) {
-        val index = backStack.indexOfLast { it == route }
-        if (index < 0) return back()
-        while (backStack.size > maxOf(index, 1)) backStack.removeAt(backStack.lastIndex)
+    fun leave(route: Route) =
+        navigate {
+            val index = backStack.indexOfLast { it == route }
+            if (index < 0) return@navigate back()
+            while (backStack.size > maxOf(index, 1)) backStack.removeAt(backStack.lastIndex)
+        }
+
+    /**
+     * Lets [route] review any attempted navigation, including a different selection in an expanded list. The callback
+     * receives the exact pending navigation to continue after confirmation. Returns a disposer that removes only this
+     * registration, so an outgoing composition cannot clear a newer guard.
+     */
+    fun reviewLeaving(
+        route: Route,
+        review: (() -> Unit) -> Unit,
+    ): () -> Unit {
+        val registered = Leaving(route, review)
+        leaving = registered
+        return { if (leaving === registered) leaving = null }
     }
+
+    private fun navigate(action: () -> Unit) {
+        val guard = leaving?.takeIf { it.route == current }
+        if (guard == null) {
+            action()
+        } else {
+            var continued = false
+            guard.review {
+                if (!continued && current == guard.route && leaving === guard) {
+                    continued = true
+                    leaving = null
+                    action()
+                }
+            }
+        }
+    }
+
+    private class Leaving(
+        val route: Route,
+        val review: (() -> Unit) -> Unit,
+    )
 }

@@ -87,9 +87,27 @@ class DocsCaptureTest {
         assertThat(run(root, "locale", "zh-CN").code).isEqualTo(0)
         val calls = Files.readAllLines(root.resolve("calls"))
         assertThat(calls.indexOf("shell wm size 720x1376")).isGreaterThan(calls.indexOf("shell start"))
-        assertThat(calls.indexOf("shell wm density reset")).isGreaterThan(calls.indexOf("shell start"))
+        assertThat(calls.indexOf("shell wm density 320")).isGreaterThan(calls.indexOf("shell start"))
+        assertThat(calls).doesNotContain("shell wm density reset")
         assertThat(run(root, "finish", reset = true).code).isEqualTo(0)
         assertThat(Files.readAllLines(root.resolve("calls"))).contains("shell wm size reset")
+    }
+
+    @Test
+    fun `captures refuse a display other than the terminal's size and density`() {
+        val root = fixture()
+        Files.writeString(root.resolve("wm-density"), "Physical density: 440\n")
+        val wrong = run(root, "shot", "zh-CN", "sale")
+        assertThat(wrong.code).isEqualTo(1)
+        assertThat(wrong.output).contains("Display is 720x1376@440, not 720x1376@320")
+        assertThat(Files.readString(root.resolve("calls"))).doesNotContain("exec-out screencap")
+        Files.writeString(root.resolve("wm-density"), "Physical density: 440\nOverride density: 320\n")
+        assertThat(run(root, "shot", "zh-CN", "sale").code).isEqualTo(0)
+        assertThat(run(root, "shot", "zh-CN", "sale-ams1").code).isEqualTo(1)
+        Files.writeString(root.resolve("wm-size"), "Physical size: 720x1280\nOverride size: 480x872\n")
+        Files.writeString(root.resolve("wm-density"), "Physical density: 320\nOverride density: 240\n")
+        assertThat(run(root, "shot", "zh-CN", "sale-ams1").code).isEqualTo(0)
+        assertThat(Files.exists(root.resolve("shots/zh-CN-sale-ams1.png"))).isTrue()
     }
 
     @Test
@@ -178,6 +196,8 @@ class DocsCaptureTest {
         Files.writeString(root.resolve("qemu"), "1")
         Files.writeString(root.resolve("device-state"), "device")
         Files.writeString(root.resolve("settings.json"), """{"terminal":{"mode":"SIMULATOR"}}""")
+        Files.writeString(root.resolve("wm-size"), "Physical size: 720x1280\nOverride size: 720x1376\n")
+        Files.writeString(root.resolve("wm-density"), "Physical density: 320\n")
         val clone = Files.createDirectories(root.resolve("avds/MiniMpos_Docs_Disposable_test.avd"))
         Files.writeString(clone.resolve("minimpos-docs-disposable"), "synthetic test clone")
         val scripts = Files.createDirectories(root.resolve("scripts"))
@@ -232,6 +252,8 @@ class DocsCaptureTest {
             |  'shell cat') cat "${'$'}FIXTURE/settings.json" ;;
             |  'emu avd') echo "${'$'}AVD_NAME"; echo OK ;;
             |  'shell stat') cat "${'$'}FIXTURE/uid" ;;
+            |  'shell wm')
+            |    if [ "${'$'}#" = 3 ]; then cat "${'$'}FIXTURE/wm-${'$'}3"; fi ;;
             |  'shell test') test -f "${'$'}FIXTURE/snapshot-present" ;;
             |  'shell cmd')
             |    if [ "${'$'}3" = package ]; then

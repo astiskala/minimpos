@@ -28,7 +28,11 @@ case ${1:-help} in
             Linux) cp --reflink=auto -R "$source" "$target" ;;
             *) cp -R "$source" "$target" ;;
         esac
-        sed -i.bak -e "s/^AvdId=.*/AvdId=$3/" -e "s/^avd.ini.displayname=.*/avd.ini.displayname=$3/" "$target/config.ini"
+        # Clones get the S1F2's physical display (720×1280 xhdpi), whatever the source's, so the emulator's own system
+        # bars and density match the terminal screenshots' (see docs-screenshots SKILL.md › Emulator).
+        sed -i.bak -e "s/^AvdId=.*/AvdId=$3/" -e "s/^avd.ini.displayname=.*/avd.ini.displayname=$3/" \
+            -e '/^hw\.lcd\.width=/d' -e '/^hw\.lcd\.height=/d' -e '/^hw\.lcd\.density=/d' "$target/config.ini"
+        printf 'hw.lcd.width=720\nhw.lcd.height=1280\nhw.lcd.density=320\n' >> "$target/config.ini"
         printf 'avd.ini.encoding=UTF-8\npath=%s\n' "$target" > "$avds/$3.ini"
         printf 'Disposable screenshot clone of %s\n' "$2" > "$target/minimpos-docs-disposable"
         printf '%s\n' "Created $3. Source untouched."

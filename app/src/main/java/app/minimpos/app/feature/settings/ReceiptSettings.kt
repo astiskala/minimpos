@@ -35,6 +35,7 @@ internal fun ColumnScope.ReceiptsSection(
     actions: SettingsActions,
     businessImport: ReceiptBusinessImportState,
     events: SettingsEvents,
+    target: String? = null,
 ) {
     val receipt = state.settings.receipt
     val terminal by LocalAppContainer.current.terminalStatus.state
@@ -60,7 +61,7 @@ internal fun ColumnScope.ReceiptsSection(
         { value -> update { it.copy(showRefundQr = value) } },
         subtitle = stringResource(R.string.settings_show_qr_hint),
     )
-    ReceiptPrintingSettings(receipt, printBlocked, ::update)
+    ReceiptPrintingSettings(receipt, printBlocked, ::update, target)
     SectionHeader(stringResource(R.string.settings_preview))
     state.sampleReceipt?.let { document ->
         Box(Modifier.fillMaxWidth().padding(Spacing.Large), contentAlignment = Alignment.Center) { ReceiptPreview(document) }
@@ -153,6 +154,7 @@ private fun ColumnScope.ReceiptPrintingSettings(
     receipt: ReceiptSettings,
     blocked: String?,
     update: ((ReceiptSettings) -> ReceiptSettings) -> Unit,
+    target: String?,
 ) {
     SectionHeader(stringResource(R.string.settings_printing))
     SettingChoice(
@@ -168,10 +170,22 @@ private fun ColumnScope.ReceiptPrintingSettings(
         subtitle = stringResource(R.string.settings_printer_hint),
         tag = "receiptPrinter",
         blocked = blocked,
+        target = target,
     )
-    SettingSwitch(stringResource(R.string.settings_auto_print), receipt.autoPrint, { value ->
-        update { it.copy(autoPrint = value) }
-    }, subtitle = stringResource(R.string.settings_auto_print_hint), tag = "autoPrint", blocked = blocked)
+    SettingSwitch(
+        stringResource(R.string.settings_auto_print),
+        receipt.autoPrint,
+        { value ->
+            update { it.copy(autoPrint = value) }
+        },
+        subtitle =
+            stringResource(
+                R.string.settings_auto_print_hint,
+            ),
+        tag = "autoPrint",
+        blocked = blocked,
+        target = target,
+    )
     SettingChoice(
         title = stringResource(R.string.settings_merchant_copy),
         options =

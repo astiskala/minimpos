@@ -7,7 +7,6 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
-import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -143,14 +142,16 @@ class DestinationSettingsTest {
     }
 
     @Test
-    fun `capabilities explain all Tap to Pay limits without marking device camera unsupported`() {
-        open("capabilities", "cap_tipping")
+    fun `capabilities explain Tap to Pay limits and exclude app-only features`() {
+        open("capabilities", "unsupportedCapabilities")
         compose.awaitCondition("capabilities refreshed") {
             val state = env.container.capabilityDiscovery.state.value
             !state.checking && !state.capabilities.supportsTerminalFeatures
         }
         val context = ApplicationProvider.getApplicationContext<Context>()
         val unsupported = context.getString(R.string.capability_status_unsupported)
+        compose.onNodeWithTag("cap_tipping").assertDoesNotExist()
+        compose.onNodeWithTag("unsupportedCapabilities").performScrollTo().performClick()
         listOf(
             "cap_tipping",
             "cap_dcc",
@@ -168,14 +169,16 @@ class DestinationSettingsTest {
             "cap_abort",
             "cap_diagnosis",
         ).forEach { tag ->
-            compose.onNodeWithTag(tag).performScrollTo().assert(hasAnyDescendant(hasText(unsupported)))
+            compose.onNodeWithTag(tag).performScrollTo().assert(hasText(unsupported))
         }
         compose.onNodeWithTag("cap_remote_status").performScrollTo().assert(
-            hasAnyDescendant(hasText(context.getString(R.string.capability_status_needs_config))),
+            hasText(context.getString(R.string.capability_status_unverified)),
         )
-        val available = context.getString(R.string.capability_status_available)
-        listOf("cap_partial_auth", "cap_camera_scanning", "cap_receipt_sharing").forEach { tag ->
-            compose.onNodeWithTag(tag).performScrollTo().assert(hasAnyDescendant(hasText(available)))
+        compose.onNodeWithTag("cap_partial_auth").performScrollTo().assert(
+            hasText(context.getString(R.string.capability_status_available)),
+        )
+        listOf("cap_camera_scanning", "cap_receipt_sharing", "cap_cash", "cap_split", "openSetting_setManagerPin").forEach { tag ->
+            compose.onNodeWithTag(tag).assertDoesNotExist()
         }
         assertThat(unsupported).isEqualTo("Unsupported")
     }

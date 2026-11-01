@@ -17,6 +17,7 @@ internal fun ColumnScope.ShopperDisplaySection(
     emailReceiptsReady: Boolean,
     capabilities: DestinationCapabilities,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+    target: String? = null,
 ) {
     val blocked =
         stringResource(
@@ -33,6 +34,7 @@ internal fun ColumnScope.ShopperDisplaySection(
         { value -> update { it.copy(showVirtualReceipt = value) } },
         subtitle = stringResource(R.string.settings_show_virtual_receipt_hint),
         tag = "showVirtualReceipt",
+        target = target,
         blocked = blocked,
     )
     SettingSwitch(
@@ -41,6 +43,7 @@ internal fun ColumnScope.ShopperDisplaySection(
         { value -> update { it.copy(confirmBasketOnTerminal = value) } },
         subtitle = stringResource(R.string.settings_confirm_basket_terminal_hint),
         tag = "confirmBasketOnTerminal",
+        target = target,
         blocked = blocked,
     )
     SettingSwitch(
@@ -49,6 +52,7 @@ internal fun ColumnScope.ShopperDisplaySection(
         { value -> update { it.copy(collectEmailOnTerminal = value) } },
         subtitle = stringResource(R.string.settings_collect_email_terminal_hint),
         tag = "collectEmailOnTerminal",
+        target = target,
         blocked = blocked ?: stringResource(R.string.settings_email_receipts_first).takeUnless { emailReceiptsReady },
     )
     SettingSwitch(
@@ -57,6 +61,7 @@ internal fun ColumnScope.ShopperDisplaySection(
         { value -> update { it.copy(showTerminalQrReceipt = value) } },
         subtitle = stringResource(R.string.settings_show_terminal_qr_hint),
         tag = "showTerminalQrReceipt",
+        target = target,
         blocked = blocked,
     )
     SettingSwitch(
@@ -65,6 +70,7 @@ internal fun ColumnScope.ShopperDisplaySection(
         { value -> update { it.copy(askShopperRating = value) } },
         subtitle = stringResource(R.string.settings_ask_shopper_rating_hint),
         tag = "askShopperRating",
+        target = target,
         blocked = blocked,
     )
 }

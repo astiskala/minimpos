@@ -480,6 +480,10 @@ are the Regular set; [Layout](#layout) has the Medium and Compact values.
 
 Labels use `label-lg`; the icon is 20 dp with an 8 dp gap; the loading spinner is the same 20 dp and 8 dp gap, so a
 button's label does not move while it loads. The three levels read in order: green fill, navy outline, green text.
+Full-width primary and secondary buttons pad their content 16 dp at the sides, so Home and the next step side by side
+on the AMS1 leave room for a word. Labels wrap only between words, and Japanese between phrases on Android 13 and
+later: where a single word is too wide, as with large text in a narrow button, the label shrinks, down to
+`label-md`'s size, rather than split it.
 
 `ActionGroup` keeps its actions in order, as one white group at every screen size. It has a 1 dp `outline-variant`
 border and `md` shape, with rows of `secondaryButtonHeight` (at least 48 dp): a 20 dp navy icon, a 12 dp gap, then the
@@ -559,7 +563,19 @@ together up to `homeMaxHeight`. Which tiles appear, in what order, is a product 
 - **Settings** switches and choices have a short title and a one- or two-sentence description. Fields have an external
   title in the same style, then the primary description, then the input; notes below hold only extra information or
   validation. Settings actions use `SettingActions` with icons; secret placeholders stay on one line. Local settings
-  save as they change; Adyen-side capability sections edit a draft sent by "Save to Adyen".
+  save as they change; Adyen-side capability details edit a draft sent by "Save to Adyen".
+- **Adyen capabilities** is an Adyen-only feature hub, not a general app-feature or security inventory. Supported
+  features sit as clickable rows in four stable expanded groups, in this order: Payments, Tips and shopper interaction,
+  Receipts and scanning, Terminal and recovery; a group with no supported feature is left out rather than shown empty.
+  Unsupported features stay in one collapsed list below the groups. A row's title wraps above its status glyph and
+  label; the chevron opens a focused detail. Ready uses the success tick, Needs setup and Unverified the warning
+  glyph (`StatusKind`); Off and Unsupported have neutral grey glyphs because they are not outcomes. "Configured at
+  Adyen" distinguishes a remote setting from confirmed terminal activation. Details link to the exact original
+  autosaved local control without duplicating it. The four remote editors require a successful read and valid,
+  changed input, and send only the limits that changed, so a limit inherited at Adyen is never pinned to the terminal.
+  Refresh and other saves retain dirty drafts; leaving requires a choice to discard or keep editing. Amounts use
+  familiar currency units, inherited limits are explicit, and tip choices use separate validated rows. An unknown
+  save uses neutral dialog wording plus a warning, never a success or automatic retry.
 - **Removals** of saved keys, PINs, phone registration or history use red `ConfirmedRemoval`.
 
 ### Icons
@@ -605,7 +621,7 @@ string resources in all seven languages.
 | `RectangleShape` full-screen dialog | `SaleScreen` custom amount, compact only | Keypad takes the whole screen |
 | `Color.White`/`Black` | Scanner and receipt rendering | Camera overlay and print preview are not themed UI |
 | 5 `sp` literals | Home tile autosize bounds, split-payment autosize, product tile line height | Autosize needs concrete bounds |
-| 10 dp row padding | `CapabilitiesSettings`, `SettingsComponents` list rows | Kept as is: moving to `rowPadding` would change these rows' height |
+| 10 dp row padding | `SettingsComponents` list rows | Kept as is: moving to `rowPadding` would change these rows' height |
 | 6/10/18 dp and one-off layout sizes; 340/420 dp layout widths | Feature layouts and `Dimens` | Deliberate density tuning and layout constraints; token adoption preserves these values |
 | Simulator banner | `ModeBanner`, hidden during first-run setup | The only mode indicator by design |
 | No Home terminal-status line, no TEST banner | Home | Deliberate product choices |

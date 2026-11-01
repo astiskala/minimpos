@@ -9,6 +9,54 @@ import org.junit.Test
 
 class NavigatorTest {
     @Test
+    fun `a confirmed navigation continuation cannot be replayed after reopening the same editor`() {
+        val editor = Route.SettingsSection("capabilities", feature = "DCC")
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, editor))
+        lateinit var pending: () -> Unit
+        val dispose = navigator.reviewLeaving(editor) { pending = it }
+        navigator.back()
+        pending()
+        navigator.push(editor)
+        pending()
+        assertThat(navigator.current).isEqualTo(editor)
+        dispose()
+    }
+
+    @Test
+    fun `dirty editor reviews Back and expanded pane choices without first mutating the stack`() {
+        val editor = Route.SettingsSection("capabilities", feature = "MOTO")
+        val stack = NavBackStack<NavKey>(Route.Home, Route.Settings, Route.SettingsSection("capabilities"), editor)
+        val navigator = Navigator(stack)
+        var pending: (() -> Unit)? = null
+        val dispose = navigator.reviewLeaving(editor) { pending = it }
+        navigator.back()
+        assertThat(navigator.current).isEqualTo(editor)
+        assertThat(pending).isNotNull()
+        pending = null // Keep editing.
+        navigator.openFrom(Route.Settings, Route.SettingsSection("payments"))
+        assertThat(navigator.current).isEqualTo(editor)
+        checkNotNull(pending).invoke()
+        assertThat(stack).containsExactly(Route.Home, Route.Settings, Route.SettingsSection("payments")).inOrder()
+        dispose()
+    }
+
+    @Test
+    fun `outgoing editor disposal cannot remove a newer navigation review`() {
+        val editor = Route.SettingsSection("capabilities", feature = "DCC")
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, editor))
+        var reviewed = false
+        val dispose = navigator.reviewLeaving(editor) { error("Old review") }
+        val disposeCurrent = navigator.reviewLeaving(editor) { reviewed = true }
+        dispose()
+        navigator.home()
+        assertThat(reviewed).isTrue()
+        assertThat(navigator.current).isEqualTo(editor)
+        disposeCurrent()
+        navigator.home()
+        assertThat(navigator.current).isEqualTo(Route.Home)
+    }
+
+    @Test
     fun `setup Back retains onboarding while finishing at Home removes it`() {
         val stack = NavBackStack<NavKey>(Route.Onboarding)
         val navigator = Navigator(stack)

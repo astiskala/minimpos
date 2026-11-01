@@ -339,18 +339,29 @@
         <section id="capabilities">
           <p class="task-kicker">任意の機能</p>
 <h2>Adyen機能を確認・設定する</h2>
-          <p>決済先に接続したら、<strong>設定 › Adyen機能</strong>を開きます。各機能が<strong>利用可能</strong>、<strong>要設定</strong>、<strong>
-            この決済先では非対応</strong>のいずれかで表示されます。これは設定の目安であり、マーチャントアカウント、カード、決済方法で実際に取引できる保証ではありません。決済の設定が完了するまでは、<strong>
-            決済の設定を完了</strong>が表示されます。</p>
+          <p>決済先に接続したら、<strong>設定 › Adyen機能</strong>を開きます。
+            Adyen の決済・端末機能をまとめた画面で、アプリ内だけの機能やマネージャー PIN の設定は含みません。
+            決済、チップと購入者とのやり取り、レシートとスキャン、端末と結果の復旧の4つのグループがあります。</p>
+          <p>各機能名の下に<strong>準備完了</strong>、<strong>Adyen で設定済み</strong>、
+            <strong>オフ</strong>、<strong>要設定</strong>、
+            <strong>未確認</strong>を表示します。<strong>非対応</strong>の機能は
+            末尾の折りたたまれた一覧にあります。これらは設定の目安で、アカウント、カード、決済方法の承認を保証しません。
+            決済の設定が未完了の場合は、まず設定の完了を案内します。</p>
           <ol>
-            <li><strong>機能を再確認</strong>をタップし、選択した端末の設定を読み取ります。実際の端末の確認には、<a href="quick-start#credentials">
-              クイックスタートに記載のManagement APIロール</a>が必要です。</li>
-            <li>対応端末では、決済通貨の端末チップ、DCC、MOTO、オフライン上限を設定し、<strong>Adyenに保存</strong>を
-              タップします。これによりAdyen上の端末設定が変更されます。</li>
-            <li>必要な決済オプションを設定の<strong>決済</strong>、<strong>チップと寄付</strong>、<strong>購入者向け端末画面</strong>で
-              オンにし、TESTで試します。この画面にはAdyen Giving、一部承認、サーチャージ、ギフトカード、端末の照合、
-              購入者向け画面も表示されますが、編集はできません。</li>
+            <li><strong>機能を再確認</strong>をタップして選択した端末の設定を読み取ります。
+              実際の端末の確認には<a href="quick-start#credentials">クイックスタートに記載の Management API ロール</a>が必要です。</li>
+            <li>機能を選んで必要条件を確認します。リンクは元のローカル設定項目を直接開き、変更は自動保存されます。
+              同じ設定を別の場所に複製することはありません。</li>
+            <li>対応端末では各機能の画面で端末チップ、DCC、MOTO、オフライン上限を編集します。
+              金額は通常の通貨単位で入力し、独自の上限を解除するには継承した上限を使うを明示的に選びます。
+              チップ候補は1行ずつ検証されます。</li>
+            <li>読み取りに成功し、変更した下書きが有効な場合に<strong>Adyenに保存</strong>をタップして送信します。
+              再確認や別機能の保存で編集中の値は失われません。画面を離れる際は破棄するか編集を続けるかを選びます。
+              Adyen Giving や MKE を含め、実際の設定を TEST で試してください。</li>
           </ol>
+          <p>結果不明の保存は自動再送しません。再確認に成功してから Adyen の値を確認し、次の操作を判断してください。
+            保存と読み戻しで確認できるのは Adyen 上の設定で、端末への反映ではありません。設定のダウンロードや再起動が必要な場合があります。
+            <a href="https://docs.adyen.com/point-of-sale/automating-terminal-management/configure-terminals-api">Adyen の端末設定の更新</a>をご覧ください。</p>
           <p>Tap to Payでは、端末チップ、購入者向け画面、MOTO/MKE、オフライン決済、端末の照合など物理端末の機能は使えません。
             アカウントの有効化や支払方法の要件は、<a href="https://docs.adyen.com/point-of-sale">Adyenの対面決済
             ドキュメント</a>に従ってください。</p>

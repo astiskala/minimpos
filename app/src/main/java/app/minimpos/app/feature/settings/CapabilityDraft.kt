@@ -48,7 +48,8 @@ internal data class CapabilityTip(
     }
 }
 
-private fun managementMinor(
+/** Converts exact currency input to nonnegative Management minor units, or null for invalid text or Int overflow. */
+internal fun managementMinor(
     text: String,
     currency: String,
 ): Int? =

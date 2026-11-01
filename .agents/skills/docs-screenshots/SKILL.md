@@ -76,6 +76,8 @@ archives.
   on a stopped source, then `start` on the new owned disposable clone; never reset another emulator's data. Headless:
   `-no-window -no-snapshot -gpu swiftshader_indirect`. A
   `-read-only` boot of the Pixel 4a AVD from its snapshot stayed `offline` in adb.
+- Verify the disposable clone's physical `config.ini` display settings above before starting it. `wm` overrides alone
+  can leave source-sized system bars in the cropped images. Change only the owned clone, never its source.
 - Disable the Pixel 4a emulation overlays (`cmd overlay disable com.android.internal.emulation.pixel_4a` and
   `com.android.systemui.emulation.pixel_4a`, then `stop`/`start`): they add a hole-punch cutout, a 68 dp status bar
   and rounded corners that clip the clock. Wait for Package Manager after restarting the framework before launching

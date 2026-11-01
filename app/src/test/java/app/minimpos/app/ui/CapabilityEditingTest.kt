@@ -11,7 +11,6 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -80,16 +79,56 @@ class CapabilityEditingTest {
 
     @Test
     fun `explicit refresh preserves a dirty DCC draft without sending it`() {
-        open("cap_dcc")
+        env.useSimulator()
+        val reading =
+            mutableStateOf(
+                AdyenCapabilitiesState(
+                    checked = true,
+                    identity = "test-refresh",
+                    simulated = true,
+                    capabilities = DestinationCapabilities(supportsTerminalFeatures = true),
+                ),
+            )
+        val actions = mutableStateOf(CapabilitiesActions())
+        var refreshes = 0
+        var sends = 0
+        compose.setContent {
+            MiniMposTheme {
+                CompositionLocalProvider(LocalAppContainer provides env.container) {
+                    val edit = rememberCapabilityEdit(CapabilityFeature.DCC, reading.value, actions.value, "AUD")
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        CapabilityEditor(
+                            CapabilityFeature.DCC,
+                            reading.value,
+                            actions.value,
+                            "AUD",
+                            edit.value,
+                            { edit.value = it },
+                            onRefresh = {
+                                refreshes++
+                                reading.value = reading.value.copy(checking = true)
+                            },
+                            onDismissResult = {},
+                            onSave = { sends++ },
+                        )
+                    }
+                }
+            }
+        }
         compose.onNodeWithTag("saveCapDcc").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag("capDccEnable").performScrollTo().performClick()
         compose.onNodeWithTag("refreshCapabilities").performScrollTo().performClick()
         compose.onNodeWithTag("capDccEnable").performScrollTo().assertIsOn()
-        compose.awaitCondition("refresh completes without discarding the changed draft") {
-            isEnabled().matches(compose.onNodeWithTag("saveCapDcc").fetchSemanticsNode())
+        compose.onNodeWithTag("saveCapDcc").performScrollTo().assertIsNotEnabled()
+        compose.runOnUiThread {
+            reading.value = reading.value.copy(checking = false)
+            actions.value = actions.value.copy(readRevision = actions.value.readRevision + 1)
         }
         compose.onNodeWithTag("saveCapDcc").performScrollTo().assertIsEnabled()
-        assertThat(env.container.capabilityDiscovery.state.value.dccEnabled).isFalse()
+        compose.onNodeWithTag("capDccEnable").performScrollTo().assertIsOn()
+        assertThat(reading.value.dccEnabled).isFalse()
+        assertThat(refreshes).isEqualTo(1)
+        assertThat(sends).isEqualTo(0)
     }
 
     @Test

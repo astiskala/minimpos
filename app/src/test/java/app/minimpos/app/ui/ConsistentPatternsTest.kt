@@ -4,9 +4,11 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -68,12 +70,20 @@ class ConsistentPatternsTest {
         env.useSimulator()
         open("capabilities")
         val discovery = env.container.capabilityDiscovery
-        compose.awaitCondition("capabilities read") { discovery.state.value.let { it.simulated && !it.checking } }
+        compose.awaitCondition("capabilities read") { discovery.state.value.editable }
         compose.onNodeWithTag("cap_dcc").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("capDccEnable"), 15_000)
         compose.onNodeWithTag("capDccEnable").performScrollTo().performClick()
+        compose.onNodeWithTag("capDccEnable").assertIsOn()
         assertThat(discovery.state.value.dccEnabled).isFalse()
-        compose.onNodeWithTag("saveCapDcc").performScrollTo().performClick()
+        compose.awaitCondition("changed DCC draft ready to save") {
+            discovery.state.value.editable && isEnabled().matches(compose.onNodeWithTag("saveCapDcc").fetchSemanticsNode())
+        }
+        compose
+            .onNodeWithTag("saveCapDcc")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
         compose.awaitCondition("DCC saved") { discovery.state.value.dccEnabled }
         compose.waitUntilAtLeastOneExists(hasTestTag("capabilityResult"), 15_000)
         compose.onNodeWithTag("capabilityResult").assertTextContains(env.context.getString(R.string.capability_saved))

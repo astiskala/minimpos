@@ -358,8 +358,9 @@ visible content changes.
 
 Use a stopped, pre-seeded docs AVD containing `docs-<set>-<language>.tar` snapshots for all requested languages.
 The snapshot set defaults to `1017` (`SNAPSHOT` overrides it). Create a fresh owned clone; existing destinations are
-never overwritten. Run `start` in a separate terminal; it stays in the foreground. Its read-only emulator session
-discards runtime edits on shutdown, leaving the source and saved fixture archives unchanged.
+never overwritten. The clone gets the S1F2's 720×1280 xhdpi display whatever the source's, and captures refuse any
+other display size or density. Run `start` in a separate terminal; it stays in the foreground. Its read-only emulator
+session discards runtime edits on shutdown, leaving the source and saved fixture archives unchanged.
 
 Snapshots include installation-bound encrypted secrets. If an archive's demo PIN cannot be read on a new clone,
 recreate the demo PINs through Settings on that owned clone before capturing and refresh its snapshots. Keep the

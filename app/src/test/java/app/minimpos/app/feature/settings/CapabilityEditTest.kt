@@ -74,6 +74,18 @@ class CapabilityEditTest {
     }
 
     @Test
+    fun `a restored draft waits for a settled reading and only another setup starts again`() {
+        val restored = CapabilityEdit(baseline, incomplete, identity = "setup")
+        val current = baseline.copy(enabled = true)
+        assertThat(restored.follow(AdyenCapabilitiesState(), baseline, 0)).isEqualTo(restored)
+        val checking = AdyenCapabilitiesState(identity = "setup", checked = true, checking = true)
+        assertThat(restored.follow(checking, current, 0)).isEqualTo(restored)
+        assertThat(restored.follow(checking.copy(checking = false), current, 0)).isEqualTo(restored)
+        val other = AdyenCapabilitiesState(identity = "other", checked = true)
+        assertThat(restored.follow(other, current, 0)).isEqualTo(CapabilityEdit(current, identity = "other"))
+    }
+
+    @Test
     fun `recreated action counter cannot discard newer unsaved text`() {
         val restored = CapabilityEdit(baseline, incomplete, savedRevision = 2)
         val read = restored.read(baseline, 0)

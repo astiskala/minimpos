@@ -11,6 +11,7 @@ import app.minimpos.terminal.transport.TerminalCapabilitiesPatch
 import app.minimpos.terminal.transport.TerminalCapabilitiesUpdate
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalGratuity
+import app.minimpos.terminal.transport.TerminalLimitChange
 import app.minimpos.terminal.transport.TerminalMotoSettings
 import app.minimpos.terminal.transport.TerminalOfflineLimits
 import app.minimpos.terminal.transport.WalletMethod
@@ -54,6 +55,25 @@ data class MotoCapability(
     val enabled: Boolean = false,
     val maxAmount: Int? = null,
 )
+
+/**
+ * What a save does to one terminal-level limit. Management reads back effective limits, which may be inherited from the
+ * store, merchant account or company, so an unchanged limit is left out rather than written back as the terminal's own.
+ */
+sealed interface LimitUpdate {
+    /** Leaves the limit as it is at Adyen. */
+    data object Keep : LimitUpdate
+
+    /** Removes the terminal's own limit, so it inherits again. */
+    data object Inherit : LimitUpdate
+
+    /** Sets the terminal's own limit.
+     * @property value The limit, in the unit its update parameter documents.
+     */
+    data class Own(
+        val value: Int,
+    ) : LimitUpdate
+}
 
 /**
  * Terminal-level offline EMV and store-and-forward limits.
@@ -240,7 +260,20 @@ class CapabilityDiscovery(
             }
         }
 
-    /** Updates the terminal's gratuity configuration for [currency]. */
+    /**
+     * Refreshes only when no successful reading was made for the setup stored now, as when another capability screen
+     * opens; waits for a refresh already running instead of reading Management again.
+     */
+    suspend fun refreshIfStale(): AdyenCapabilitiesState =
+        reading.locked { state.value.takeIf { it.checked && it.failure == null && reading.madeForCurrent(it) } } ?: refresh()
+
+    /**
+     * Updates the terminal's gratuity configuration for [currency].
+     * @param currency ISO 4217 currency code of the entry to replace.
+     * @param gratuity The new configuration, or null to remove [currency]'s entry.
+     * @param expectedIdentity The setup identity the operator edited; when it is no longer current nothing is sent and
+     *   the result is [CapabilityPatchResult.NotDone] with [SetupProblem.SETUP_CHANGED].
+     */
     suspend fun updateGratuity(
         currency: String,
         gratuity: GratuityCapability?,
@@ -262,36 +295,62 @@ class CapabilityDiscovery(
             expectedIdentity,
         )
 
-    /** Updates the terminal's Dynamic Currency Conversion setting. */
+    /**
+     * Updates the terminal's Dynamic Currency Conversion setting.
+     * @param enabled Whether DCC is offered.
+     * @param expectedIdentity The setup identity the operator edited; when it is no longer current nothing is sent and
+     *   the result is [CapabilityPatchResult.NotDone] with [SetupProblem.SETUP_CHANGED].
+     */
     suspend fun updateDcc(
         enabled: Boolean,
         expectedIdentity: String? = state.value.identity,
     ): CapabilityPatchResult = patch(TerminalCapabilitiesPatch.Dcc(enabled), expectedIdentity)
 
-    /** Updates the terminal's MOTO configuration. */
+    /**
+     * Updates the terminal's MOTO configuration.
+     * @param enabled Whether MOTO is enabled on the terminal.
+     * @param maxAmount The terminal's maximum MOTO amount in whole major units of [AdyenCapabilitiesState.motoCurrency].
+     * @param expectedIdentity The setup identity the operator edited; when it is no longer current nothing is sent and
+     *   the result is [CapabilityPatchResult.NotDone] with [SetupProblem.SETUP_CHANGED].
+     */
     suspend fun updateMoto(
-        moto: MotoCapability,
+        enabled: Boolean,
+        maxAmount: LimitUpdate = LimitUpdate.Keep,
         expectedIdentity: String? = state.value.identity,
-    ): CapabilityPatchResult =
-        patch(TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = moto.enabled, maxAmount = moto.maxAmount)), expectedIdentity)
+    ): CapabilityPatchResult = patch(TerminalCapabilitiesPatch.Moto(enabled, maxAmount.change()), expectedIdentity)
 
-    /** Updates the terminal's offline EMV and store-and-forward limits for [currency]. */
+    /**
+     * Updates the terminal's offline EMV and store-and-forward limits for [currency].
+     * @param currency ISO 4217 currency code of the store-and-forward limit.
+     * @param chipFloorLimit Chip floor limit in minor units of the processing currency.
+     * @param maxStoreAndForwardMinor Maximum store-and-forward amount in minor units of [currency].
+     * @param maxPayments Maximum number of stored offline payments before forwarding.
+     * @param expectedIdentity The setup identity the operator edited; when it is no longer current nothing is sent and
+     *   the result is [CapabilityPatchResult.NotDone] with [SetupProblem.SETUP_CHANGED].
+     */
     suspend fun updateOffline(
         currency: String,
-        chipFloorLimit: Int?,
-        maxStoreAndForwardMinor: Int?,
-        maxPayments: Int?,
+        chipFloorLimit: LimitUpdate = LimitUpdate.Keep,
+        maxStoreAndForwardMinor: LimitUpdate = LimitUpdate.Keep,
+        maxPayments: LimitUpdate = LimitUpdate.Keep,
         expectedIdentity: String? = state.value.identity,
     ): CapabilityPatchResult =
         patch(
             TerminalCapabilitiesPatch.Offline(
                 currency = currency,
-                chipFloorLimit = chipFloorLimit,
-                maxStoreAndForwardMinor = maxStoreAndForwardMinor,
-                maxPayments = maxPayments,
+                chipFloorLimit = chipFloorLimit.change(),
+                maxStoreAndForwardMinor = maxStoreAndForwardMinor.change(),
+                maxPayments = maxPayments.change(),
             ),
             expectedIdentity,
         )
+
+    private fun LimitUpdate.change(): TerminalLimitChange =
+        when (this) {
+            LimitUpdate.Keep -> TerminalLimitChange.Keep
+            LimitUpdate.Inherit -> TerminalLimitChange.Remove
+            is LimitUpdate.Own -> TerminalLimitChange.Own(value)
+        }
 
     private suspend fun patch(
         patch: TerminalCapabilitiesPatch,
@@ -448,23 +507,19 @@ class CapabilityDiscovery(
             }
 
             is TerminalCapabilitiesPatch.Moto -> {
-                current.copy(moto = patch.settings)
+                current.copy(moto = TerminalMotoSettings(patch.enabled, patch.maxAmount.applyTo(current.moto.maxAmount)))
             }
 
             is TerminalCapabilitiesPatch.Offline -> {
-                val safMax = patch.maxStoreAndForwardMinor
-                val map = current.offline.maxStoreAndForwardMinor.toMutableMap()
-                if (safMax == null) {
-                    map.remove(patch.currency.uppercase())
-                } else {
-                    map[patch.currency.uppercase()] = safMax.toLong()
-                }
+                val code = patch.currency.uppercase()
+                val amounts = current.offline.maxStoreAndForwardMinor
+                val amount = patch.maxStoreAndForwardMinor.applyTo(amounts[code]?.toInt())
                 current.copy(
                     offline =
                         current.offline.copy(
-                            chipFloorLimit = patch.chipFloorLimit,
-                            maxStoreAndForwardMinor = map,
-                            maxPayments = patch.maxPayments,
+                            chipFloorLimit = patch.chipFloorLimit.applyTo(current.offline.chipFloorLimit),
+                            maxStoreAndForwardMinor = if (amount == null) amounts - code else amounts + (code to amount.toLong()),
+                            maxPayments = patch.maxPayments.applyTo(current.offline.maxPayments),
                         ),
                 )
             }

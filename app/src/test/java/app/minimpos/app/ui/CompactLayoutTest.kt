@@ -36,6 +36,8 @@ import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.awaitCondition
 import app.minimpos.app.data.db.ProductEntity
+import app.minimpos.app.feature.ResultAction
+import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.sale.ProductBrowser
 import app.minimpos.app.feature.sale.SaleUiState
 import app.minimpos.app.feature.settings.BusinessReviewScreen
@@ -56,6 +58,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
+import java.text.BreakIterator
 import java.util.Locale
 import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
@@ -286,6 +289,30 @@ class CompactLayoutTest {
         savePreview("sale-$fontScale")
         action.performClick()
         assertThat(custom).isTrue()
+    }
+
+    @Test
+    @Config(qualifiers = "fr-rFR-w320dp-h460dp-hdpi")
+    fun `side-by-side result actions keep whole words with large text`() {
+        val next = "Nouvelle vente"
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 1.5f)) {
+                MiniMposTheme { ResultBar(onHome = {}, next = ResultAction(next, "next") {}) }
+            }
+        }
+        val home = env.context.getString(R.string.action_home)
+        assertThat(home).isEqualTo("Accueil")
+        for (label in listOf(home, next)) {
+            val layouts = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithText(label, useUnmergedTree = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) {
+                it(layouts)
+            }
+            val layout = layouts.single()
+            val breaks = BreakIterator.getLineInstance().apply { setText(label) }
+            val splits = (0..<layout.lineCount - 1).any { !breaks.isBoundary(layout.getLineEnd(it)) }
+            assertWithMessage(label).that(splits).isFalse()
+        }
+        savePreview("result-bar")
     }
 
     @Test

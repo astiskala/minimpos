@@ -16,12 +16,15 @@ class ReleaseScriptsTest {
         val root = fixture()
         val avds = Files.createDirectories(root.resolve("avds"))
         val source = Files.createDirectories(avds.resolve("Source.avd"))
-        val config = "AvdId=Source\navd.ini.displayname=Source\n"
+        val config = "AvdId=Source\navd.ini.displayname=Source\nhw.lcd.width=1080\nhw.lcd.density=440\n"
         Files.writeString(source.resolve("config.ini"), config)
         val name = "MiniMpos_Docs_Disposable_test"
         assertThat(run(root, "docs-emulator", "clone", "Source", name).code).isEqualTo(0)
         assertThat(Files.readString(source.resolve("config.ini"))).isEqualTo(config)
-        assertThat(Files.readString(avds.resolve("$name.avd/config.ini"))).contains("AvdId=$name")
+        val cloned = Files.readAllLines(avds.resolve("$name.avd/config.ini"))
+        assertThat(cloned).contains("AvdId=$name")
+        assertThat(cloned.filter { it.startsWith("hw.lcd.") })
+            .containsExactly("hw.lcd.width=720", "hw.lcd.height=1280", "hw.lcd.density=320")
         assertThat(Files.readString(avds.resolve("$name.ini"))).contains("path=${avds.resolve("$name.avd")}")
         assertThat(run(root, "docs-emulator", "clone", "Source", name).code).isEqualTo(1)
         assertThat(run(root, "docs-emulator", "clone", "Source", "Unsafe").code).isEqualTo(2)

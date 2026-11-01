@@ -374,7 +374,7 @@ data class Checkout(
         get() = !audioGuidance || CardFeatures.allows(CardFeature.AUDIO_GUIDANCE, chosenFeatures)
 
     /** Whether explicit configuration and verified store facts permit asking for Mexican card routing. */
-    val offersMexicanRouting: Boolean get() = payment.mexicanInstallments && mexicanRoutingAvailable && currency.code == "MXN"
+    val offersMexicanRouting: Boolean get() = offersMexicanRouting(payment, mexicanRoutingAvailable, currency.code)
 
     /** Selected routing stays visible and blocks payment when setup or a conflicting choice changes. */
     val mexicanRoutingReady: Boolean get() =
@@ -572,6 +572,16 @@ data class Checkout(
 
     /** Checkout limits and continuation of stored partially paid sales. */
     companion object {
+        /**
+         * Whether Mexican card routing may be asked for: switched on in [payment], with [routingAvailable] verified
+         * Mexican store facts (or the offline demo), in Mexican pesos ([currency] is an ISO 4217 code).
+         */
+        fun offersMexicanRouting(
+            payment: PaymentSettings,
+            routingAvailable: Boolean,
+            currency: String,
+        ): Boolean = payment.mexicanInstallments && routingAvailable && currency == "MXN"
+
         /**
          * Standalone cash-out from explicitly configured and verified [availability], in [currency], for [cashMinor]
          * minor units at [now], including its time zone. No merchandise, tax or unrelated checkout session is attached. Manager PIN

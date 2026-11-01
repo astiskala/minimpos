@@ -2,7 +2,6 @@ package app.minimpos.app.feature.settings
 
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.PaymentSettings
@@ -18,7 +17,7 @@ internal fun ColumnScope.ShopperDisplaySection(
     emailReceiptsReady: Boolean,
     capabilities: DestinationCapabilities,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
-    anchor: String? = null,
+    target: String? = null,
 ) {
     val blocked =
         stringResource(
@@ -35,7 +34,7 @@ internal fun ColumnScope.ShopperDisplaySection(
         { value -> update { it.copy(showVirtualReceipt = value) } },
         subtitle = stringResource(R.string.settings_show_virtual_receipt_hint),
         tag = "showVirtualReceipt",
-        modifier = Modifier.settingAnchor("showVirtualReceipt", anchor),
+        target = target,
         blocked = blocked,
     )
     SettingSwitch(
@@ -44,7 +43,7 @@ internal fun ColumnScope.ShopperDisplaySection(
         { value -> update { it.copy(confirmBasketOnTerminal = value) } },
         subtitle = stringResource(R.string.settings_confirm_basket_terminal_hint),
         tag = "confirmBasketOnTerminal",
-        modifier = Modifier.settingAnchor("confirmBasketOnTerminal", anchor),
+        target = target,
         blocked = blocked,
     )
     SettingSwitch(
@@ -53,7 +52,7 @@ internal fun ColumnScope.ShopperDisplaySection(
         { value -> update { it.copy(collectEmailOnTerminal = value) } },
         subtitle = stringResource(R.string.settings_collect_email_terminal_hint),
         tag = "collectEmailOnTerminal",
-        modifier = Modifier.settingAnchor("collectEmailOnTerminal", anchor),
+        target = target,
         blocked = blocked ?: stringResource(R.string.settings_email_receipts_first).takeUnless { emailReceiptsReady },
     )
     SettingSwitch(
@@ -62,7 +61,7 @@ internal fun ColumnScope.ShopperDisplaySection(
         { value -> update { it.copy(showTerminalQrReceipt = value) } },
         subtitle = stringResource(R.string.settings_show_terminal_qr_hint),
         tag = "showTerminalQrReceipt",
-        modifier = Modifier.settingAnchor("showTerminalQrReceipt", anchor),
+        target = target,
         blocked = blocked,
     )
     SettingSwitch(
@@ -71,7 +70,7 @@ internal fun ColumnScope.ShopperDisplaySection(
         { value -> update { it.copy(askShopperRating = value) } },
         subtitle = stringResource(R.string.settings_ask_shopper_rating_hint),
         tag = "askShopperRating",
-        modifier = Modifier.settingAnchor("askShopperRating", anchor),
+        target = target,
         blocked = blocked,
     )
 }

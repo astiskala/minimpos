@@ -48,7 +48,7 @@ internal fun ColumnScope.CapabilityEditor(
     onEdit: (CapabilityEdit) -> Unit,
     onRefresh: () -> Unit,
     onDismissResult: (CapabilityResult) -> Unit,
-    onSave: (CapabilityDraft) -> Unit,
+    onSave: (CapabilityEdit) -> Unit,
 ) {
     val result = checkNotNull(feature.editorResult)
     val action = actions.action(result)
@@ -69,7 +69,7 @@ internal fun ColumnScope.CapabilityEditor(
     SectionHeader(stringResource(R.string.capability_at_adyen))
     SettingNote(stringResource(R.string.capability_remote_draft))
     SettingNote(stringResource(R.string.capability_apply_note))
-    CapabilityEditorFields(feature, edit.draft, currency, edit.draft.motoCurrency, !actions.running) { onEdit(edit.copy(draft = it)) }
+    CapabilityEditorFields(feature, edit.draft, currency, !actions.running) { onEdit(edit.copy(draft = it)) }
     CapabilityEditorActions(feature, reading, actions, currency, edit, onEdit, onSave)
 }
 
@@ -84,10 +84,10 @@ internal fun rememberCapabilityEdit(
     val result = checkNotNull(feature.editorResult)
     val revision = actions.savedRevisions[result] ?: 0
     val state =
-        rememberSaveable(reading.identity, currency, feature, stateSaver = CapabilityEditSaver) {
-            mutableStateOf(CapabilityEdit(current, savedRevision = revision))
+        rememberSaveable(currency, feature, stateSaver = CapabilityEditSaver) {
+            mutableStateOf(CapabilityEdit(current, savedRevision = revision, identity = reading.identity))
         }
-    LaunchedEffect(current, revision) { state.value = state.value.read(current, revision) }
+    LaunchedEffect(reading, current, revision) { state.value = state.value.follow(reading, current, revision) }
     val outcome = actions.action(result).outcome
     LaunchedEffect(outcome) {
         if (outcome is ActionOutcome.Unconfirmed) state.value = state.value.copy(unconfirmed = true)
@@ -103,7 +103,7 @@ private fun ColumnScope.CapabilityEditorActions(
     currency: String,
     edit: CapabilityEdit,
     onEdit: (CapabilityEdit) -> Unit,
-    onSave: (CapabilityDraft) -> Unit,
+    onSave: (CapabilityEdit) -> Unit,
 ) {
     val result = checkNotNull(feature.editorResult)
     val current = CapabilityDraft.from(feature, reading, currency)
@@ -123,7 +123,7 @@ private fun ColumnScope.CapabilityEditorActions(
     SettingActions {
         GatedButton(
             stringResource(R.string.capability_save),
-            { onSave(edit.draft) },
+            { onSave(edit) },
             blocked = null,
             enabled = edit.dirty && valid && reading.editable && !edit.unconfirmed && !changedAtAdyen && !actions.running,
             loading = actions.action(result).running,
@@ -134,9 +134,7 @@ private fun ColumnScope.CapabilityEditorActions(
         if (edit.dirty || edit.unconfirmed) {
             TertiaryButton(
                 stringResource(R.string.capability_reload),
-                {
-                    onEdit(CapabilityEdit(current, savedRevision = edit.savedRevision))
-                },
+                { onEdit(edit.reload(current)) },
                 enabled = !actions.running && reading.editable && !edit.unconfirmed,
                 modifier = Modifier.testTag("reloadCapabilityDraft"),
             )

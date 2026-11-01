@@ -1,6 +1,7 @@
 package app.minimpos.app.feature.settings
 
 import app.minimpos.app.terminal.AdyenCapabilitiesState
+import app.minimpos.app.terminal.LimitUpdate
 import app.minimpos.app.terminal.OfflineCapability
 import com.google.common.truth.Truth.assertThat
 import kotlinx.serialization.json.Json
@@ -16,8 +17,19 @@ class CapabilityDraftTest {
         }
         val inherited = CapabilityDraft(enabled = true, motoLimit = CapabilityLimit(true, "invalid"))
         assertThat(inherited.valid(CapabilityFeature.MOTO, "EUR")).isTrue()
-        assertThat(inherited.moto().maxAmount).isNull()
         assertThat(CapabilityLimit(false, "2147483647.00").moto()).isEqualTo(Int.MAX_VALUE)
+    }
+
+    @Test
+    fun `only a changed limit is sent, so an inherited effective value is never pinned`() {
+        val read = CapabilityLimit(false, "500")
+        assertThat(read.update(read, CapabilityLimit::moto)).isEqualTo(LimitUpdate.Keep)
+        assertThat(CapabilityLimit(false, "500.00").update(read, CapabilityLimit::moto)).isEqualTo(LimitUpdate.Keep)
+        assertThat(CapabilityLimit(true, "500").update(read, CapabilityLimit::moto)).isEqualTo(LimitUpdate.Inherit)
+        assertThat(CapabilityLimit(false, "600").update(read, CapabilityLimit::moto)).isEqualTo(LimitUpdate.Own(600))
+        val inherited = CapabilityLimit(true)
+        assertThat(CapabilityLimit(true, "1").update(inherited, CapabilityLimit::integer)).isEqualTo(LimitUpdate.Keep)
+        assertThat(CapabilityLimit(false, "0").update(inherited, CapabilityLimit::integer)).isEqualTo(LimitUpdate.Own(0))
     }
 
     @Test

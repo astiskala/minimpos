@@ -30,7 +30,6 @@ internal fun ColumnScope.CapabilityEditorFields(
     feature: CapabilityFeature,
     draft: CapabilityDraft,
     currency: String,
-    motoCurrency: String,
     enabled: Boolean,
     onChange: (CapabilityDraft) -> Unit,
 ) {
@@ -51,7 +50,7 @@ internal fun ColumnScope.CapabilityEditorFields(
         }
 
         CapabilityResult.MOTO -> {
-            MotoFields(draft, motoCurrency, enabled, onChange)
+            MotoFields(draft, enabled, onChange)
         }
 
         CapabilityResult.OFFLINE -> {
@@ -65,7 +64,6 @@ internal fun ColumnScope.CapabilityEditorFields(
 @Composable
 private fun ColumnScope.MotoFields(
     draft: CapabilityDraft,
-    motoCurrency: String,
     enabled: Boolean,
     onChange: (CapabilityDraft) -> Unit,
 ) {
@@ -80,7 +78,7 @@ private fun ColumnScope.MotoFields(
     SettingNote(
         stringResource(
             R.string.capability_moto_units,
-            motoCurrency.ifBlank { stringResource(R.string.capability_terminal_currency) },
+            draft.motoCurrency.ifBlank { stringResource(R.string.capability_terminal_currency) },
         ),
     )
     LimitField(
@@ -191,12 +189,9 @@ private fun ColumnScope.TipOption(
         stringResource(R.string.capability_tip_type),
         listOf(true to stringResource(R.string.capability_percent), false to currency),
         tip.percentage,
-        {
-            if (enabled) {
-                onChange(tip.copy(percentage = it))
-            }
-        },
+        { onChange(tip.copy(percentage = it)) },
         tag = "capTipType_$index",
+        enabled = enabled,
     )
     DraftField(
         stringResource(if (tip.percentage) R.string.capability_percent else R.string.capability_amount),

@@ -79,9 +79,10 @@ class CapabilitiesViewModel(
     init {
         viewModelScope.launch {
             // A later setup change cancels the refresh it supersedes (whose result would not be published) instead of
-            // being skipped while that refresh is still checking, which would leave the stale reading checking.
+            // being skipped while that refresh is still checking, which would leave the stale reading checking. Each
+            // capability screen has its own view model, so one opening on a current reading does not read it again.
             discovery.changes.collectLatest { _ ->
-                discovery.refresh()
+                discovery.refreshIfStale()
             }
         }
     }
@@ -106,14 +107,19 @@ class CapabilitiesViewModel(
         }
     }
 
-    /** Validates the complete draft again and binds the write to the identity the operator actually edited. */
+    /**
+     * Validates the complete draft again and binds the write to the identity of the reading it was edited from. Limits
+     * are sent only where the draft differs from that reading.
+     */
     internal fun saveEditor(
         feature: CapabilityFeature,
-        draft: CapabilityDraft,
+        edit: CapabilityEdit,
         currency: String,
-        identity: String?,
     ) {
         val result = feature.editorResult ?: return
+        val draft = edit.draft
+        val baseline = edit.baseline
+        val identity = edit.identity
         if (!state.value.editable || state.value.identity != identity || !draft.valid(feature, currency)) return
         if (result == CapabilityResult.MOTO && draft.motoCurrency != state.value.motoCurrency) return
         save(result) {
@@ -127,15 +133,15 @@ class CapabilitiesViewModel(
                 }
 
                 CapabilityResult.MOTO -> {
-                    discovery.updateMoto(draft.moto(), identity)
+                    discovery.updateMoto(draft.enabled, draft.motoLimit.update(baseline.motoLimit, CapabilityLimit::moto), identity)
                 }
 
                 CapabilityResult.OFFLINE -> {
                     discovery.updateOffline(
                         currency,
-                        if (draft.chip.inherited) null else checkNotNull(draft.chip.amount(currency)),
-                        if (draft.storeAndForward.inherited) null else checkNotNull(draft.storeAndForward.amount(currency)),
-                        if (draft.count.inherited) null else checkNotNull(draft.count.integer()),
+                        draft.chip.update(baseline.chip) { amount(currency) },
+                        draft.storeAndForward.update(baseline.storeAndForward) { amount(currency) },
+                        draft.count.update(baseline.count, CapabilityLimit::integer),
                         identity,
                     )
                 }

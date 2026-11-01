@@ -10,15 +10,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.NotInterested
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,11 +38,13 @@ import app.minimpos.app.ui.components.Notice
 import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.SetupRequired
+import app.minimpos.app.ui.components.StatusKind
 import app.minimpos.app.ui.components.TertiaryButton
+import app.minimpos.app.ui.components.color
 import app.minimpos.app.ui.components.currentSetupGate
+import app.minimpos.app.ui.components.icon
 import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
-import app.minimpos.app.ui.theme.LocalStatusColors
 import app.minimpos.app.ui.theme.MinTouchTarget
 import app.minimpos.app.ui.theme.Spacing
 
@@ -109,8 +108,10 @@ internal fun ColumnScope.CapabilityRefresh(
     onRefresh: () -> Unit,
 ) {
     reading.failure?.let { Notice(it.text(), kind = NoticeKind.WARNING, inset = true) }
-    reading.problem?.let { Notice(it.text(), kind = NoticeKind.WARNING, inset = true) }
-    if (reading.capabilities.discoversTerminals || reading.simulated) {
+    val refreshable = reading.capabilities.discoversTerminals || reading.simulated
+    // The refresh button already explains a setup problem as its blocked reason.
+    if (!refreshable) reading.problem?.let { Notice(it.text(), kind = NoticeKind.WARNING, inset = true) }
+    if (refreshable) {
         SettingActions {
             GatedButton(
                 stringResource(R.string.capabilities_refresh),
@@ -155,17 +156,17 @@ private fun CapabilityRow(
     }
 }
 
-/** Status is below the title, with a glyph and neutral Off distinct from missing setup. */
+/** Status is below the title, with an outcome glyph, or a neutral one for Off and Unsupported, which are not outcomes. */
 @Composable
 internal fun CapabilityStatusLine(item: CapabilityItem) {
     val status = item.status
-    val colors = LocalStatusColors.current
-    val color =
+    val kind =
         when (status) {
-            CapabilityStatus.READY -> colors.success
-            CapabilityStatus.NEEDS_SETUP, CapabilityStatus.UNVERIFIED -> colors.warning
-            CapabilityStatus.OFF, CapabilityStatus.UNSUPPORTED -> MaterialTheme.colorScheme.onSurfaceVariant
+            CapabilityStatus.READY -> StatusKind.SUCCESS
+            CapabilityStatus.NEEDS_SETUP, CapabilityStatus.UNVERIFIED -> StatusKind.WARNING
+            CapabilityStatus.OFF, CapabilityStatus.UNSUPPORTED -> null
         }
+    val color = kind?.color() ?: MaterialTheme.colorScheme.onSurfaceVariant
     val label =
         when (status) {
             CapabilityStatus.READY -> {
@@ -194,13 +195,7 @@ internal fun CapabilityStatusLine(item: CapabilityItem) {
         }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.XSmall)) {
         Icon(
-            when (status) {
-                CapabilityStatus.READY -> Icons.Default.CheckCircle
-                CapabilityStatus.OFF -> Icons.Default.RadioButtonUnchecked
-                CapabilityStatus.NEEDS_SETUP -> Icons.Default.Warning
-                CapabilityStatus.UNVERIFIED -> Icons.AutoMirrored.Filled.HelpOutline
-                CapabilityStatus.UNSUPPORTED -> Icons.Default.NotInterested
-            },
+            kind?.icon() ?: if (status == CapabilityStatus.OFF) Icons.Default.RadioButtonUnchecked else Icons.Default.NotInterested,
             contentDescription = null,
             tint = color,
             modifier = Modifier.size(IconSize.Small),

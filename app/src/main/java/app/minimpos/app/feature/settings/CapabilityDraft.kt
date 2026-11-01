@@ -2,7 +2,7 @@ package app.minimpos.app.feature.settings
 
 import app.minimpos.app.terminal.AdyenCapabilitiesState
 import app.minimpos.app.terminal.GratuityCapability
-import app.minimpos.app.terminal.MotoCapability
+import app.minimpos.app.terminal.LimitUpdate
 import app.minimpos.core.money.CurrencySpec
 import kotlinx.serialization.Serializable
 
@@ -22,6 +22,20 @@ internal data class CapabilityLimit(
     fun moto(): Int? =
         text.trim().takeIf { it.matches(Regex("[0-9]+([.,][0-9]+)?")) }?.replace(',', '.')?.toBigDecimalOrNull()?.let { amount ->
             runCatching { amount.intValueExact() }.getOrNull()?.takeIf { it > 0 }
+        }
+
+    /**
+     * What saving this limit changes from [baseline], the reading it was edited from: nothing while it still means the
+     * same, so an effective limit inherited at Adyen is never pinned as the terminal's own. Only after validation.
+     */
+    fun update(
+        baseline: CapabilityLimit,
+        value: CapabilityLimit.() -> Int?,
+    ): LimitUpdate =
+        when {
+            inherited -> if (baseline.inherited) LimitUpdate.Keep else LimitUpdate.Inherit
+            !baseline.inherited && baseline.value() == value() -> LimitUpdate.Keep
+            else -> LimitUpdate.Own(checkNotNull(value()))
         }
 }
 
@@ -126,9 +140,6 @@ internal data class CapabilityDraft(
                 predefined && custom,
             )
         }
-
-    /** Target MOTO settings, only after [valid] has succeeded. */
-    fun moto(): MotoCapability = MotoCapability(enabled, if (motoLimit.inherited) null else checkNotNull(motoLimit.moto()))
 
     companion object {
         private const val MAX_TIPS = 4

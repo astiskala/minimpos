@@ -181,7 +181,10 @@ private fun FieldNote(
     }
 }
 
-/** A whole-number setting; [onCommit] only gets values in [range], and others are shown as an error. */
+/**
+ * A whole-number setting; [onCommit] only gets values in [range], and others are shown as an error. It is brought into
+ * view once when its [tag] is the section's [target].
+ */
 @Composable
 fun SettingNumberField(
     label: String,
@@ -192,8 +195,9 @@ fun SettingNumberField(
     description: String? = null,
     supporting: String? = null,
     tag: String? = null,
+    target: String? = null,
 ) = SettingTextField(
-    modifier = modifier,
+    modifier = modifier.settingAnchor(tag, target),
     label = label,
     value = value.toString(),
     onCommit = { it.toIntOrNull()?.let(onCommit) },
@@ -207,7 +211,8 @@ fun SettingNumberField(
 /**
  * An on/off setting as a row that toggles when tapped anywhere: a short [title], then a [subtitle] saying in a sentence
  * or two what it does (the guides hold the details). While [blocked] says what to set up first, the switch shows off and
- * cannot change, with that reason under it; the saved choice is kept for when it applies again.
+ * cannot change, with that reason under it; the saved choice is kept for when it applies again. It is brought into view
+ * once when its [tag] is the section's [target].
  */
 @Composable
 fun SettingSwitch(
@@ -219,8 +224,13 @@ fun SettingSwitch(
     tag: String? = null,
     enabled: Boolean = true,
     blocked: String? = null,
+    target: String? = null,
 ) {
-    Column(modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding - 2.dp)) {
+    Column(
+        modifier
+            .settingAnchor(tag, target)
+            .padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding - 2.dp),
+    ) {
         SwitchRow(
             title = title,
             checked = checked && blocked == null,
@@ -236,7 +246,9 @@ fun SettingSwitch(
 /**
  * A single-choice setting: shows the current value, opens a radio list dialog. With [navigationIcon], uses the
  * settings menu's two-line layout and shows [subtitle] inside the dialog instead. A [blocked] reason prevents changes
- * without overwriting the saved selection. [initiallyOpen] opens the dialog when first shown.
+ * without overwriting the saved selection; so does [enabled] false, without a reason, while the screen is busy.
+ * [initiallyOpen] opens the dialog when first shown. It is brought into view once when its [tag] is the section's
+ * [target].
  */
 @Composable
 fun <T : Any> SettingChoice(
@@ -250,53 +262,20 @@ fun <T : Any> SettingChoice(
     navigationIcon: ImageVector? = null,
     blocked: String? = null,
     initiallyOpen: Boolean = false,
+    enabled: Boolean = true,
+    target: String? = null,
 ) {
     var open by rememberSaveable { mutableStateOf(initiallyOpen) }
-    Column(modifier) {
+    val changeable = enabled && blocked == null
+    val value = options.firstOrNull { it.first == selected }?.second.orEmpty()
+    Column(modifier.settingAnchor(tag, target)) {
         if (navigationIcon != null) {
-            SettingNavRow(
-                navigationIcon,
-                title,
-                options.firstOrNull { it.first == selected }?.second.orEmpty(),
-                { open = true },
-                Modifier,
-                tag,
-                enabled = blocked == null,
-            )
+            SettingNavRow(navigationIcon, title, value, { open = true }, Modifier, tag, enabled = changeable)
         } else {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = blocked == null) {
-                        open = true
-                    }.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding)
-                    .tagged(tag),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        options.firstOrNull { it.first == selected }?.second.orEmpty(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        // Grey like a navigation row's value: green is kept for actions and outcomes.
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    subtitle?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                // Shows the row opens a choice, like the arrow of a dropdown field.
-                if (blocked == null) {
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+            ChoiceRow(title, value, subtitle, changeable, tag) { open = true }
         }
         blocked?.let { BlockedReason(it, Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding)) }
-        if (open && blocked == null) {
+        if (open && changeable) {
             ChoiceDialog(
                 title,
                 options,
@@ -309,6 +288,41 @@ fun <T : Any> SettingChoice(
                 note = subtitle.takeIf { navigationIcon != null },
                 tag = tag,
             )
+        }
+    }
+}
+
+/** A choice setting's row: [title], the current [value] and [subtitle], with a dropdown arrow while [changeable]. */
+@Composable
+private fun ChoiceRow(
+    title: String,
+    value: String,
+    subtitle: String?,
+    changeable: Boolean,
+    tag: String?,
+    onOpen: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = changeable, onClick = onOpen)
+            .padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding)
+            .tagged(tag),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyMedium,
+                // Grey like a navigation row's value: green is kept for actions and outcomes.
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        // Shows the row opens a choice, like the arrow of a dropdown field.
+        if (changeable) {
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

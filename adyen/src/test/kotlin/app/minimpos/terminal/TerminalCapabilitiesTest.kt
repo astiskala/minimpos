@@ -12,6 +12,7 @@ import app.minimpos.terminal.transport.TerminalCapabilitiesPatch
 import app.minimpos.terminal.transport.TerminalCapabilitiesUpdate
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalGratuity
+import app.minimpos.terminal.transport.TerminalLimitChange
 import app.minimpos.terminal.transport.TerminalListing
 import app.minimpos.terminal.transport.TerminalMotoSettings
 import app.minimpos.terminal.transport.TerminalOfflineLimits
@@ -99,7 +100,7 @@ class TerminalCapabilitiesTest {
         runBlocking {
             reply("{}")
             reply("""{"moto":{"enableMoto":true,"maxAmount":500}}""")
-            val motoPatch = TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = true, maxAmount = 500))
+            val motoPatch = TerminalCapabilitiesPatch.Moto(true, TerminalLimitChange.Own(500))
             val updatedMoto = api.updateCapabilities("ID", TerminalEnvironment.TEST, motoPatch) as TerminalCapabilitiesUpdate.Ready
             assertThat(updatedMoto.capabilities.moto).isEqualTo(TerminalMotoSettings(enabled = true, maxAmount = 500))
             assertThat(checkNotNull(server.takeRequest().body).utf8()).isEqualTo("""{"moto":{"enableMoto":true,"maxAmount":500}}""")
@@ -113,7 +114,13 @@ class TerminalCapabilitiesTest {
                 "storeAndForward":{"maxAmount":[{"currencyCode":"USD","amount":10000},{"currencyCode":"EUR","amount":5000}],"maxPayments":15}}
                 """.trimIndent(),
             )
-            val offlineReq = TerminalCapabilitiesPatch.Offline("EUR", chipFloorLimit = 75, maxStoreAndForwardMinor = 5000, maxPayments = 15)
+            val offlineReq =
+                TerminalCapabilitiesPatch.Offline(
+                    "EUR",
+                    TerminalLimitChange.Own(75),
+                    TerminalLimitChange.Own(5000),
+                    TerminalLimitChange.Own(15),
+                )
             val updatedOffline = api.updateCapabilities("ID", TerminalEnvironment.TEST, offlineReq) as TerminalCapabilitiesUpdate.Ready
             assertThat(updatedOffline.capabilities.offline.chipFloorLimit).isEqualTo(75)
             server.takeRequest()
@@ -223,7 +230,12 @@ class TerminalCapabilitiesTest {
                 api.updateCapabilities(
                     "ID",
                     TerminalEnvironment.TEST,
-                    TerminalCapabilitiesPatch.Offline("EUR", chipFloorLimit = null, maxStoreAndForwardMinor = 5000, maxPayments = null),
+                    TerminalCapabilitiesPatch.Offline(
+                        "EUR",
+                        TerminalLimitChange.Remove,
+                        TerminalLimitChange.Own(5000),
+                        TerminalLimitChange.Remove,
+                    ),
                 ),
             ).isInstanceOf(TerminalCapabilitiesUpdate.Ready::class.java)
             server.takeRequest()
@@ -244,7 +256,12 @@ class TerminalCapabilitiesTest {
                 api.updateCapabilities(
                     "ID",
                     TerminalEnvironment.TEST,
-                    TerminalCapabilitiesPatch.Offline("EUR", chipFloorLimit = null, maxStoreAndForwardMinor = null, maxPayments = null),
+                    TerminalCapabilitiesPatch.Offline(
+                        "EUR",
+                        TerminalLimitChange.Remove,
+                        TerminalLimitChange.Remove,
+                        TerminalLimitChange.Remove,
+                    ),
                 ),
             ).isInstanceOf(TerminalCapabilitiesUpdate.Ready::class.java)
             server.takeRequest()
@@ -262,7 +279,7 @@ class TerminalCapabilitiesTest {
                 api.updateCapabilities(
                     "ID",
                     TerminalEnvironment.TEST,
-                    TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = true)),
+                    TerminalCapabilitiesPatch.Moto(true, TerminalLimitChange.Remove),
                 ),
             ).isEqualTo(TerminalCapabilitiesUpdate.Ready(RemoteTerminalCapabilities(moto = TerminalMotoSettings(true, 300))))
             assertThat(checkNotNull(server.takeRequest().body).utf8()).isEqualTo("""{"moto":{"enableMoto":true,"maxAmount":null}}""")
@@ -280,7 +297,12 @@ class TerminalCapabilitiesTest {
                 api.updateCapabilities(
                     "ID",
                     TerminalEnvironment.TEST,
-                    TerminalCapabilitiesPatch.Offline("USD", chipFloorLimit = null, maxStoreAndForwardMinor = null, maxPayments = null),
+                    TerminalCapabilitiesPatch.Offline(
+                        "USD",
+                        TerminalLimitChange.Remove,
+                        TerminalLimitChange.Remove,
+                        TerminalLimitChange.Remove,
+                    ),
                 ),
             ).isEqualTo(TerminalCapabilitiesUpdate.Ready(RemoteTerminalCapabilities(offline = TerminalOfflineLimits(40, emptyMap(), 30))))
             server.takeRequest()
@@ -295,6 +317,59 @@ class TerminalCapabilitiesTest {
                 )
             server.takeRequest()
         }
+
+    @Test
+    fun `kept limits are left out of the update so inherited values are never pinned`(): Unit =
+        runBlocking {
+            reply("{}")
+            reply("""{"moto":{"enableMoto":true,"maxAmount":300}}""")
+            assertThat(api.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Moto(enabled = true)))
+                .isEqualTo(TerminalCapabilitiesUpdate.Ready(RemoteTerminalCapabilities(moto = TerminalMotoSettings(true, 300))))
+            assertThat(checkNotNull(server.takeRequest().body).utf8()).isEqualTo("""{"moto":{"enableMoto":true}}""")
+            server.takeRequest()
+
+            reply("""{"offlineProcessing":{"chipFloorLimit":50},"storeAndForward":{"maxAmount":[{"currencyCode":"USD","amount":10000}]}}""")
+            reply("{}")
+            reply(
+                """
+                {"offlineProcessing":{"chipFloorLimit":50},
+                "storeAndForward":{"maxAmount":[{"currencyCode":"USD","amount":10000}],"maxPayments":7}}
+                """.trimIndent(),
+            )
+            assertThat(
+                api.updateCapabilities(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    TerminalCapabilitiesPatch.Offline("USD", maxPayments = TerminalLimitChange.Own(7)),
+                ),
+            ).isInstanceOf(TerminalCapabilitiesUpdate.Ready::class.java)
+            server.takeRequest()
+            assertThat(JsonParser.parseString(checkNotNull(server.takeRequest().body).utf8()))
+                .isEqualTo(JsonParser.parseString("""{"storeAndForward":{"maxPayments":7}}"""))
+            server.takeRequest()
+
+            reply("""{"offlineProcessing":{"chipFloorLimit":50},"storeAndForward":{"maxPayments":7}}""")
+            reply("{}")
+            reply("""{"offlineProcessing":{"chipFloorLimit":60},"storeAndForward":{"maxPayments":7}}""")
+            assertThat(
+                api.updateCapabilities(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    TerminalCapabilitiesPatch.Offline("USD", chipFloorLimit = TerminalLimitChange.Own(60)),
+                ),
+            ).isInstanceOf(TerminalCapabilitiesUpdate.Ready::class.java)
+            server.takeRequest()
+            assertThat(JsonParser.parseString(checkNotNull(server.takeRequest().body).utf8()))
+                .isEqualTo(JsonParser.parseString("""{"offlineProcessing":{"chipFloorLimit":60}}"""))
+            server.takeRequest()
+        }
+
+    @Test
+    fun `a limit change keeps, removes or replaces the terminal's own limit`() {
+        assertThat(TerminalLimitChange.Keep.applyTo(5)).isEqualTo(5)
+        assertThat(TerminalLimitChange.Remove.applyTo(5)).isNull()
+        assertThat(TerminalLimitChange.Own(9).applyTo(null)).isEqualTo(9)
+    }
 
     @Test
     fun `offline settings can be cleared after the server adds supported card defaults`(): Unit =
@@ -318,7 +393,12 @@ class TerminalCapabilitiesTest {
                 api.updateCapabilities(
                     "ID",
                     TerminalEnvironment.TEST,
-                    TerminalCapabilitiesPatch.Offline("AUD", chipFloorLimit = null, maxStoreAndForwardMinor = null, maxPayments = null),
+                    TerminalCapabilitiesPatch.Offline(
+                        "AUD",
+                        TerminalLimitChange.Remove,
+                        TerminalLimitChange.Remove,
+                        TerminalLimitChange.Remove,
+                    ),
                 ),
             ).isEqualTo(
                 TerminalCapabilitiesUpdate.Ready(
@@ -356,7 +436,7 @@ class TerminalCapabilitiesTest {
                 api.updateCapabilities(
                     "ID",
                     TerminalEnvironment.TEST,
-                    TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = true, maxAmount = 1)),
+                    TerminalCapabilitiesPatch.Moto(true, TerminalLimitChange.Own(1)),
                 ),
             ).isEqualTo(
                 TerminalCapabilitiesUpdate.Failed(
@@ -380,7 +460,7 @@ class TerminalCapabilitiesTest {
                 api.updateCapabilities(
                     "ID",
                     TerminalEnvironment.TEST,
-                    TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = true, maxAmount = 500)),
+                    TerminalCapabilitiesPatch.Moto(true, TerminalLimitChange.Own(500)),
                 ),
             ).isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
 
@@ -390,7 +470,7 @@ class TerminalCapabilitiesTest {
                 api.updateCapabilities(
                     "ID",
                     TerminalEnvironment.TEST,
-                    TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = true, maxAmount = null)),
+                    TerminalCapabilitiesPatch.Moto(true, TerminalLimitChange.Remove),
                 ),
             ).isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
 
@@ -401,7 +481,12 @@ class TerminalCapabilitiesTest {
                 api.updateCapabilities(
                     "ID",
                     TerminalEnvironment.TEST,
-                    TerminalCapabilitiesPatch.Offline("EUR", chipFloorLimit = 20, maxStoreAndForwardMinor = null, maxPayments = 5),
+                    TerminalCapabilitiesPatch.Offline(
+                        "EUR",
+                        TerminalLimitChange.Own(20),
+                        TerminalLimitChange.Remove,
+                        TerminalLimitChange.Own(5),
+                    ),
                 ),
             ).isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
 
@@ -412,7 +497,12 @@ class TerminalCapabilitiesTest {
                 api.updateCapabilities(
                     "ID",
                     TerminalEnvironment.TEST,
-                    TerminalCapabilitiesPatch.Offline("EUR", chipFloorLimit = 20, maxStoreAndForwardMinor = null, maxPayments = 5),
+                    TerminalCapabilitiesPatch.Offline(
+                        "EUR",
+                        TerminalLimitChange.Own(20),
+                        TerminalLimitChange.Remove,
+                        TerminalLimitChange.Own(5),
+                    ),
                 ),
             ).isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
         }

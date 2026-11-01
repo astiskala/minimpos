@@ -27,10 +27,11 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 - Full screen, no system bars: Adyen terminals show no clock or gesture bar, so the app fills their whole screen. The
   emulator cannot hide its bars (SystemUI is persistent, and `policy_control` is gone since Android 11), so captures use
   a logical display taller than the terminal's by exactly one status bar and one gesture bar (24 dp each): the app
-  lays out between them as it would on the terminal, and `process` crops the bars off. S1F2: `wm size 720x1376`, bars
-  48 px each (raw 720×1376 → 720×1280 → 540×960). AMS1: `wm size 480x872` at `wm density 240`, bars 36 px each (raw
-  480×872 → 480×800). Never paint over the bars or stretch: the crop keeps the layout the app draws. `scripts/docs-capture`
-  sets the sizes; check the bars with `dumpsys window displays | grep InsetsSource`.
+  lays out between them as it would on the terminal, and `process` crops the bars off. S1F2: `wm size 720x1376` at
+  `wm density 320`, bars 48 px each (raw 720×1376 → 720×1280 → 540×960). AMS1: `wm size 480x872` at `wm density 240`,
+  bars 36 px each (raw 480×872 → 480×800). Never paint over the bars or stretch: the crop keeps the layout the app
+  draws. `scripts/docs-capture` sets both, and `shot` refuses any other size or density, because a Pixel 4a's 440 dpi
+  lays out a smaller screen with wrapped labels. Check the bars with `dumpsys window displays | grep InsetsSource`.
 - Size classes follow the window between the bars (`Dimens.forWindow`). The S1F2 frame's full 640 dp gives `Regular`,
   where an S1F2 that keeps its own bars (about 568 dp, `DimensTest`) gets `Medium`; the AMS1 is `Compact` either way
   (under 360 dp wide). S1F2 screenshots therefore show the Regular layout, filling the frame.
@@ -76,8 +77,9 @@ archives.
   on a stopped source, then `start` on the new owned disposable clone; never reset another emulator's data. Headless:
   `-no-window -no-snapshot -gpu swiftshader_indirect`. A
   `-read-only` boot of the Pixel 4a AVD from its snapshot stayed `offline` in adb.
-- Verify the disposable clone's physical `config.ini` display settings above before starting it. `wm` overrides alone
-  can leave source-sized system bars in the cropped images. Change only the owned clone, never its source.
+- `scripts/docs-emulator clone` gives the clone those physical display settings, whatever the source's; `wm`
+  overrides alone can leave source-sized system bars in the cropped images. Verify the clone's `config.ini` before
+  starting it. Change only the owned clone, never its source.
 - Disable the Pixel 4a emulation overlays (`cmd overlay disable com.android.internal.emulation.pixel_4a` and
   `com.android.systemui.emulation.pixel_4a`, then `stop`/`start`): they add a hole-punch cutout, a 68 dp status bar
   and rounded corners that clip the clock. Wait for Package Manager after restarting the framework before launching

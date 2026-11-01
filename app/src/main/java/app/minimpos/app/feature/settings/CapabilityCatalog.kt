@@ -5,13 +5,13 @@ import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.payment.Cashback
+import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.UnreferencedRefundBlock
 import app.minimpos.app.payment.UnreferencedRefunds
 import app.minimpos.app.terminal.AdyenCapabilitiesState
 import app.minimpos.app.terminal.CapabilityStanding
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
-import kotlinx.serialization.Serializable
 
 /** Stable task groups; changing a feature's status never moves another supported feature. */
 internal enum class CapabilityGroup {
@@ -26,7 +26,6 @@ internal enum class CapabilityGroup {
  * @property group Stable task group.
  * @property editorResult Scoped save action, or null for features configured elsewhere.
  */
-@Serializable
 internal enum class CapabilityFeature(
     val group: CapabilityGroup = CapabilityGroup.PAYMENTS,
     val editorResult: CapabilityResult? = null,
@@ -228,7 +227,7 @@ internal class CapabilityCatalog(
             when {
                 !payment.mexicanInstallments -> off()
                 !storeChecked -> unverified()
-                !wallets.mexicanRouting || currency != "MXN" -> needs(CapabilityRequirement.STORE)
+                !Checkout.offersMexicanRouting(payment, wallets.mexicanRouting, currency) -> needs(CapabilityRequirement.STORE)
                 else -> ready()
             }
         }
@@ -275,9 +274,9 @@ internal class CapabilityCatalog(
     private fun audioGuidance() =
         supported(terminal.capabilities.supportsTerminalFeatures) {
             when {
+                !remote.simulated && terminal.audioGuidanceMinimumSoftware == null -> unsupported()
                 !payment.audioGuidance -> off()
                 remote.simulated -> ready()
-                terminal.audioGuidanceMinimumSoftware == null -> unsupported()
                 else -> CapabilityStatus.UNVERIFIED to CapabilityRequirement.SUPPORT
             }
         }

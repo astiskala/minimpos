@@ -77,7 +77,7 @@ internal fun CapabilityDetailScreen(
                         { memory.value = it },
                         vm::refresh,
                         vm::dismissResult,
-                        { draft -> vm.saveEditor(feature, draft, currency, remote.identity) },
+                        { edited -> vm.saveEditor(feature, edited, currency) },
                     )
                 } else {
                     CapabilityRefresh(remote, actions.running, vm::refresh)

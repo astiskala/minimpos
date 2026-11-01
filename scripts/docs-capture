@@ -36,9 +36,24 @@ remote() { device shell "$@"; }
 
 # Adyen terminals show no system bars, so the app fills their screen. The emulator keeps its bars, so captures use a
 # logical display taller than the terminal's by one status bar and one gesture bar (24 dp each): the app lays out
-# between them as on the terminal and `process` crops the bars off. See DocsScreenshots.
+# between them as on the terminal and `process` crops the bars off. See DocsScreenshots. The density is set too, so the
+# layout matches the S1F2's xhdpi whatever the AVD's own density.
 tall_display() {
     remote wm size 720x1376
+    remote wm density 320
+}
+
+# The display a capture named $1 needs: the AMS1's for sale-ams1, else the tall S1F2 display.
+expected_display() {
+    if [[ $1 == *-ams1 ]]; then printf '%s' 480x872@240; else printf '%s' 720x1376@320; fi
+}
+
+# The current logical display as WIDTHxHEIGHT@DPI: the override when one is set, else the physical value.
+current_display() {
+    local size density
+    size=$(remote wm size | tr -d '\r' | awk -F': *' 'NF > 1 { value = $2 } END { print value }')
+    density=$(remote wm density | tr -d '\r' | awk -F': *' 'NF > 1 { value = $2 } END { print value }')
+    printf '%s@%s' "$size" "$density"
 }
 
 restart_framework() {
@@ -55,7 +70,6 @@ restart_framework() {
     sleep 3
     remote settings put global device_name S1F2-000158213605014
     tall_display
-    remote wm density reset
 }
 
 # The value of string resource $2 in language $1, unescaped as the app shows it.
@@ -261,6 +275,13 @@ scroll() {
 }
 
 shot() {
+    local expected actual
+    expected=$(expected_display "$2")
+    actual=$(current_display)
+    [[ $actual == "$expected" ]] || {
+        printf '%s\n' "Display is $actual, not $expected; $1-$2 not captured." >&2
+        exit 1
+    }
     if [[ $2 == home ]]; then
         ready "$1" home_new_sale
         ready "$1" home_settings
@@ -372,8 +393,11 @@ flow_preferences() {
     shot "$1" capabilities
 }
 
+# Capabilities reads Adyen when it opens, so the tap waits for the simulated answer.
 flow_capabilities() {
-    settings "$1" settings_capabilities
+    settings "$1"
+    scroll "$1" settings_capabilities
+    tap "$1" settings_capabilities 8
     shot "$1" capabilities
 }
 
@@ -386,7 +410,9 @@ flow_cart() {
 ring_up() {
     tap "$1" home_new_sale 2
     local product
+    # The grid is ordered by sales, or by name without any, so some languages put a product below the fold.
     for product in "Flat white" "Flat white" "Banana bread" "Coffee beans 250 g"; do
+        scroll "$1" "=$(item "$1" "$product")"
         tap "$1" "=$(item "$1" "$product")" 0.5
     done
 }
@@ -455,12 +481,13 @@ enable_switch() {
     fi
 }
 
-# The simulated printer's drag handle is the only bar 14 px or shorter in its window.
+# The simulated printer's drag handle is the only short, narrow bar in its window; a grid tile clipped at the screen's
+# edge can be as short but is wider.
 receipt_handle() {
     remote uiautomator dump /data/local/tmp/ui.xml > /dev/null 2>&1
     device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' |
         sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
-        awk '$4 - $2 <= 14 { print int(($1 + $3) / 2), int(($2 + $4) / 2); exit }'
+        awk '$4 - $2 <= 14 && $3 - $1 <= 120 { print int(($1 + $3) / 2), int(($2 + $4) / 2); exit }'
 }
 
 expand_receipt() {
@@ -475,12 +502,14 @@ expand_receipt() {
     sleep 2
 }
 
-# Back may collapse the sheet or dismiss it; stop as soon as its handle disappears.
+# Back may collapse the sheet or dismiss it; stop as soon as its handle disappears. The extra wait lets a dismissing
+# sheet finish sliding away, so a further Back cannot leave the screen underneath.
 close_receipt() {
     local _
     for _ in 1 2 3; do
         [[ -n $(receipt_handle) ]] || return 0
         back
+        sleep 1.5
     done
     [[ -z $(receipt_handle) ]] || {
         printf '%s\n' 'The receipt sheet did not close.' >&2
@@ -489,7 +518,7 @@ close_receipt() {
 }
 
 flow_checkout_choices() {
-    demo_settings "$1" 's/"payment":{/"payment":{"tokenizeDefaultOn":true,/'
+    demo_settings "$1" "s/\"payment\":{/\"payment\":{\"tokenizeDefaultOn\":true,/;$no_receipt_tips"
     ring_up "$1"
     tap "$1" ^sale_charge 2
     enter_reference "$1" customerReference
@@ -501,6 +530,7 @@ flow_checkout_choices() {
 }
 
 flow_checkout() {
+    demo_settings "$1" "$no_receipt_tips"
     save_demo_logo "$1"
     flow_cart "$1"
     tap "$1" ^sale_charge 2
@@ -575,6 +605,10 @@ fixture_number() {
     market "$1" | sed -n "s/^[^}]*\"$2\": *\\([0-9.]*\\).*/\\1/p"
 }
 
+# A demo_settings edit that turns receipt tipping off. The fixtures default it on, and once the simulated printer is
+# known it would hold card payments for a tip and block split payments; only the gratuity flow shows it.
+no_receipt_tips='s/"receiptTipping":"[A-Z_]*"/"receiptTipping":"DISABLED"/'
+
 # Patch only this restored, disposable demo fixture, before launching the app again.
 demo_settings() {
     remote am force-stop "$package"
@@ -601,7 +635,7 @@ flow_partial() {
 # Splits the main cart into two shares, then takes the first share in cash, rounded up to the next 10 major units
 # (1,000 minor units), so the change shows.
 flow_split() {
-    demo_settings "$1" 's/"payment":{/"payment":{"terminalTipping":"DISABLED",/'
+    demo_settings "$1" "s/\"payment\":{/\"payment\":{\"terminalTipping\":\"DISABLED\",/;$no_receipt_tips"
     ring_up "$1"
     tap "$1" ^sale_charge 2
     tap "$1" checkout_options
@@ -632,6 +666,10 @@ flow_refund_start() {
 
 # Chooses the text-free sample-data logo through the document picker by its file name, which no language translates.
 choose_demo_logo() {
+    # Some fixtures already have a logo, which renames the action to Change; start without one.
+    remote am force-stop "$package"
+    remote rm -f "/data/data/$package/files/datastore/receipt-logo.bin"
+    launch "$1"
     device push "$root/app/src/main/assets/sample-logo.png" /sdcard/Download/minimpos-logo.png > /dev/null
     remote am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/minimpos-logo.png > /dev/null
     # Japanese also has a 領収書 section header, so open Receipts by its summary, the fixture's business name.
@@ -713,10 +751,13 @@ flow_gratuity() {
     shot "$1" tip
 }
 
+# Opens the default tax rate by its row's marker: fixtures may name their rates differently from sample data. Rates
+# show only while tax is charged, which the zh-Hant fixture leaves off.
 flow_tax_dialog() {
     settings "$1" settings_tax
-    tap "$1" "=$(market "$1" | grep -o '"taxRates": *\[[^]]*' | grep -o '"name": *"[^"]*"' |
-        head -n 1 | sed 's/"name": *"//;s/"$//')" 2
+    enable_switch "$1" settings_charge_tax
+    sleep 1
+    tap "$1" ^settings_tax_is_default 2
     tap "$1" settings_tax_rate
     remote input keyevent KEYCODE_MOVE_END
     remote input keyevent --longpress KEYCODE_DEL
@@ -735,19 +776,18 @@ flow_ams1() {
     shot "$1" sale-ams1
     remote settings put global device_name S1F2-000158213605014
     tall_display
-    remote wm density reset
     sleep 3
 }
 
-# Empties the history and turns on simulated offline approvals in the stopped app's data, then sells the main cart.
+# Empties the history, turns on simulated offline approvals and turns off receipt tipping (see no_receipt_tips) in the
+# stopped app's data, then sells the main cart.
 flow_offline() {
     remote am force-stop "$package"
     remote "cd /data/data/$package/databases && sqlite3 minimpos.db 'DELETE FROM sale_tenders; DELETE FROM sale_lines; DELETE FROM refunds; DELETE FROM sales;'"
-    remote "sed -i 's/\"simulator\":{[^}]*}/\"simulator\":{\"delayMillis\":1500,\"hasPrinter\":true,\"offlineMode\":true}/' /data/data/$package/files/datastore/settings.json"
+    remote "sed -i -e 's/\"simulator\":{[^}]*}/\"simulator\":{\"delayMillis\":1500,\"hasPrinter\":true,\"offlineMode\":true}/' \
+        -e '$no_receipt_tips' /data/data/$package/files/datastore/settings.json"
     launch "$1"
-    tap "$1" home_new_sale 2
-    local product
-    for product in "Flat white" "Flat white" "Banana bread" "Coffee beans 250 g"; do tap "$1" "=$(item "$1" "$product")" 0.8; done
+    ring_up "$1"
     tap "$1" ^sale_charge 2.5
     tap "$1" ^checkout_pay 12
     tap "$1" action_home 2.5

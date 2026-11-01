@@ -35,7 +35,7 @@ internal fun ColumnScope.ReceiptsSection(
     actions: SettingsActions,
     businessImport: ReceiptBusinessImportState,
     events: SettingsEvents,
-    anchor: String? = null,
+    target: String? = null,
 ) {
     val receipt = state.settings.receipt
     val terminal by LocalAppContainer.current.terminalStatus.state
@@ -61,7 +61,7 @@ internal fun ColumnScope.ReceiptsSection(
         { value -> update { it.copy(showRefundQr = value) } },
         subtitle = stringResource(R.string.settings_show_qr_hint),
     )
-    ReceiptPrintingSettings(receipt, printBlocked, ::update, anchor)
+    ReceiptPrintingSettings(receipt, printBlocked, ::update, target)
     SectionHeader(stringResource(R.string.settings_preview))
     state.sampleReceipt?.let { document ->
         Box(Modifier.fillMaxWidth().padding(Spacing.Large), contentAlignment = Alignment.Center) { ReceiptPreview(document) }
@@ -154,7 +154,7 @@ private fun ColumnScope.ReceiptPrintingSettings(
     receipt: ReceiptSettings,
     blocked: String?,
     update: ((ReceiptSettings) -> ReceiptSettings) -> Unit,
-    anchor: String?,
+    target: String?,
 ) {
     SectionHeader(stringResource(R.string.settings_printing))
     SettingChoice(
@@ -170,7 +170,7 @@ private fun ColumnScope.ReceiptPrintingSettings(
         subtitle = stringResource(R.string.settings_printer_hint),
         tag = "receiptPrinter",
         blocked = blocked,
-        modifier = Modifier.settingAnchor("receiptPrinter", anchor),
+        target = target,
     )
     SettingSwitch(
         stringResource(R.string.settings_auto_print),
@@ -184,7 +184,7 @@ private fun ColumnScope.ReceiptPrintingSettings(
             ),
         tag = "autoPrint",
         blocked = blocked,
-        modifier = Modifier.settingAnchor("autoPrint", anchor),
+        target = target,
     )
     SettingChoice(
         title = stringResource(R.string.settings_merchant_copy),

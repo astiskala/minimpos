@@ -142,7 +142,10 @@ class ShopperReferenceFlowTest {
         awaitSetting("Customer reference") {
             container.settingsState.value.payment.shopperReferenceSource == ShopperReferenceSource.CUSTOMER_REFERENCE
         }
-        compose.onNodeWithTag("referenceSource").assertTextContains("Checkout asks for a customer reference", substring = true)
+        compose.waitUntilAtLeastOneExists(
+            hasTestTag("referenceSource") and hasText("Checkout asks for a customer reference", substring = true),
+            15_000,
+        )
         compose.onNodeWithText("No separate customer reference", substring = true).assertDoesNotExist()
     }
 

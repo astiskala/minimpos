@@ -51,6 +51,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.util.concurrent.CopyOnWriteArrayList
 
 /** Settings through its view model: settings, secrets, tax rates, and the connection, email and print checks. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -296,8 +297,18 @@ class SettingsViewModelTest {
             assertThat(await { onTerminal.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery staple")
             vm.setSecret(Secret.SMTP_PASSWORD, "hunter2")
             vm.setPin("2468")
-            await { vm.actions.first { it.secretError != null } }
-            assertThat(onTerminal.container.sessionLock.unlocked.value).isFalse()
+            // The session opens before the PIN is stored and closes again once the save has failed.
+            await {
+                onTerminal.container.sessionLock.unlocked
+                    .first { !it }
+            }
+            assertThat(vm.actions.value.secretError).isNotNull()
+            assertThat(
+                await {
+                    onTerminal.container.pinManager.pinConfigured
+                        .first()
+                },
+            ).isFalse()
             onTerminal.cipher.failEncrypt = false
             vm.setSecret(Secret.SMTP_PASSWORD, "hunter2")
             await { vm.actions.first { it.secretError == null } }
@@ -305,6 +316,23 @@ class SettingsViewModelTest {
             closeViewModels(viewModels)
             onTerminal.close()
         }
+    }
+
+    @Test
+    fun `setting the first admin PIN opens the session before the PIN is stored`() {
+        val vm = settingsViewModel()
+        await { vm.state.first { it.loaded } }
+        assertThat(container.sessionLock.unlocked.value).isFalse()
+        val unlockedWhileStoring = CopyOnWriteArrayList<Boolean>()
+        env.cipher.beforeEncrypt = { unlockedWhileStoring += container.sessionLock.unlocked.value }
+
+        vm.setPin("2468")
+        await { vm.state.first { it.pinSet } }
+
+        // A stored PIN in a locked session makes PinGate replace Security with the unlock screen.
+        assertThat(unlockedWhileStoring).isNotEmpty()
+        assertThat(unlockedWhileStoring).doesNotContain(false)
+        assertThat(container.sessionLock.unlocked.value).isTrue()
     }
 
     @Test

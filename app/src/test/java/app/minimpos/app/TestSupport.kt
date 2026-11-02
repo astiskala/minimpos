@@ -142,7 +142,11 @@ class FakeCipher : SecretCipher {
     /** Makes [encrypt] fail as if the Keystore were unavailable. */
     var failEncrypt = false
 
+    /** Runs at the start of every [encrypt], on the encrypting thread, so tests can observe what precedes a write. */
+    @Volatile var beforeEncrypt: () -> Unit = {}
+
     override fun encrypt(plaintext: ByteArray): ByteArray {
+        beforeEncrypt()
         if (failEncrypt) throw ProviderException("Keystore unavailable")
         return byteArrayOf(1) + plaintext.map { it xor KEY }.toByteArray()
     }

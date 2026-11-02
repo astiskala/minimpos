@@ -276,9 +276,25 @@ class SettingsViewModel(
         pin: String,
         manager: Boolean = false,
     ) {
-        if (manager && !state.value.pinSet) return
-        val target = if (manager) managerPins else pins
-        launchWrite({ if (storeSecret { target.setPin(pin) } && !manager) sessionLock.unlock() })
+        if (manager) {
+            if (state.value.pinSet) launchWrite({ storeSecret { managerPins.setPin(pin) } })
+            return
+        }
+        // PinGate asks for a stored PIN whenever the session is locked, so a new PIN stored before the session opens
+        // briefly replaces Security with the unlock screen. A failed save restores the lock before it is reported.
+        val wasUnlocked = sessionLock.unlocked.value
+        sessionLock.unlock()
+        launchWrite({
+            storeSecret {
+                var stored = false
+                try {
+                    pins.setPin(pin)
+                    stored = true
+                } finally {
+                    if (!stored && !wasUnlocked) sessionLock.lock()
+                }
+            }
+        })
     }
 
     /** Removes admin protection and the Manager PIN it protects, after the screen confirms both removals. */

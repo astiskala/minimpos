@@ -571,6 +571,7 @@
   <string name="transfer_settings_note">这些设置将替换此设备的设置。支付目标及其所用终端的地址和 ID 保持不变。</string>
   <string name="transfer_import_action">导入</string>
   <string name="transfer_imported">已导入</string>
+  <string name="transfer_store">门店</string>
   <string name="transfer_verify">验证并导入</string>
   <string name="transfer_verifying">正在检查凭据和连接…</string>
   <string name="transfer_board_first">请设置 Tap to Pay 以验证本次导入。验证成功前不会保存其他内容。</string>

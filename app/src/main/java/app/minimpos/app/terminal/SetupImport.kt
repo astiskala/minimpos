@@ -6,6 +6,7 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.ConnectionSetup
+import app.minimpos.app.data.transfer.ConnectedTerminal
 import app.minimpos.app.data.transfer.ImportOutcome
 import app.minimpos.app.data.transfer.PreparedTransfer
 import app.minimpos.app.data.transfer.ReceivedTransfer
@@ -116,7 +117,9 @@ class SetupImport internal constructor(
                 if (switch != null && !switch.wasConfirmedBy(confirmedHistorySwitch)) {
                     return@withLock SetupImportOutcome.HistoryConfirmation(switch)
                 }
-                SetupImportOutcome.Committed(transfer.commit(verified, mode, purgeHistory = switch != null, verified = ::remember))
+                SetupImportOutcome.Committed(
+                    transfer.commit(verified, mode, purgeHistory = switch != null, verified = ::remember).naming(verified),
+                )
             } catch (ignored: SecretStoreException) {
                 SetupImportOutcome.Committed(ImportOutcome.StorageFailed(DeviceFault.SECURE_STORAGE))
             }
@@ -127,6 +130,22 @@ class SetupImport internal constructor(
             if (busy()) return@withLock ImportOutcome.Rejected(SetupProblem.SETUP_CHANGED)
             transfer.recover(::remember)
         }
+
+    private fun ImportOutcome.naming(prepared: PreparedTransfer): ImportOutcome {
+        val result = (this as? ImportOutcome.Imported)?.result?.takeIf { it.connection } ?: return this
+        val terminal = prepared.settings.terminal
+        val setup = candidate(prepared).setup
+        return ImportOutcome.Imported(
+            result.copy(
+                connectedTo =
+                    ConnectedTerminal(
+                        terminal.merchantAccount.trim(),
+                        terminal.storeId.trim(),
+                        setup.poiId.takeUnless { setup.boardsPhone }.orEmpty(),
+                    ),
+            ),
+        )
+    }
 
     private suspend fun recoverResult(): SetupImportOutcome =
         SetupImportOutcome.Committed(transfer.recover(::remember) ?: ImportOutcome.Rejected(SetupProblem.TRANSFER_PENDING))

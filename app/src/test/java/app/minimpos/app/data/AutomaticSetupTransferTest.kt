@@ -16,6 +16,7 @@ import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.TransferSeal
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.data.transfer.ConnectedTerminal
 import app.minimpos.app.data.transfer.ImportOutcome
 import app.minimpos.app.data.transfer.ReceivedTransfer
 import app.minimpos.app.items
@@ -267,6 +268,8 @@ class AutomaticSetupTransferTest {
     fun `verified automatic setup imports assigned store details and survives repeated checks without Management`() {
         // The QR declares LIVE, but this terminal's verified certificate is TEST and cannot be overridden.
         val outcome = import("""{"destination":"thisTerminal","environment":"LIVE","automatic":true}""") as SetupImportOutcome.Committed
+        val imported = (outcome.outcome as ImportOutcome.Imported).result
+        assertThat(imported.connectedTo).isEqualTo(ConnectedTerminal("Merchant", "ST1", poiId))
         assertThat(outcome.outcome).isInstanceOf(ImportOutcome.Imported::class.java)
         val saved = await { env.container.settings.current() }
         assertThat(saved.terminal.environment).isEqualTo(TerminalEnvironment.TEST)

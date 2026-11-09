@@ -573,6 +573,7 @@
   <string name="transfer_settings_note">This replaces the settings on this device. Its payment destination, terminal address and terminal ID stay unchanged.</string>
   <string name="transfer_import_action">Import</string>
   <string name="transfer_imported">Imported</string>
+  <string name="transfer_store">Store</string>
   <string name="transfer_verify">Verify and import</string>
   <string name="transfer_verifying">Checking credentials and connection…</string>
   <string name="transfer_board_first">Set up Tap to Pay to verify this import. Nothing else is saved until verification succeeds.</string>

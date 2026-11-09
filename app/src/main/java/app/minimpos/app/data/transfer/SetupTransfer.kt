@@ -228,6 +228,19 @@ private class PendingSetupImport(
 )
 
 /**
+ * Where a verified import connected this device, for the operator to check.
+ *
+ * @property merchantAccount The terminal's merchant account.
+ * @property storeId Its store ID, blank when not assigned to a store.
+ * @property poiId The terminal's ID, blank for Tap to Pay, which has no terminal.
+ */
+data class ConnectedTerminal(
+    val merchantAccount: String,
+    val storeId: String,
+    val poiId: String,
+)
+
+/**
  * What an import changed.
  *
  * @property catalogue What the catalogue import added and updated; null when no catalogue was imported.
@@ -238,6 +251,7 @@ private class PendingSetupImport(
  *   unchanged.
  * @property paymentsAppChecked Whether phone registration and supported setup checks passed, without a diagnostic key test.
  * @property logo Whether a receipt logo was durably replaced.
+ * @property connectedTo Where a verified connection points; null when none was applied or after resuming an interrupted save.
  */
 data class TransferResult(
     val catalogue: ImportSummary?,
@@ -247,6 +261,7 @@ data class TransferResult(
     val businessWarning: Boolean = false,
     val paymentsAppChecked: Boolean = false,
     val logo: Boolean = false,
+    val connectedTo: ConnectedTerminal? = null,
 )
 
 /**

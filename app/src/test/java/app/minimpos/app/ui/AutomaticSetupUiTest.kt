@@ -199,11 +199,9 @@ class AutomaticSetupUiTest {
     }
 
     private fun finishImport(register: Boolean) {
-        if (register) {
-            waitForTag("importDone")
-            compose.onNodeWithText(env.context.getString(R.string.transfer_tap_checked)).performScrollTo().assertIsDisplayed()
-            compose.onNodeWithTag("importFinished").performClick()
-        }
+        waitForTag("importDone")
+        if (register) compose.onNodeWithText(env.context.getString(R.string.transfer_tap_checked)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("importFinished").performClick()
         compose.awaitCondition("Verified setup returns Home") { navigator.current == Route.Home }
         waitForTag("newSale")
         compose.onNodeWithTag("importFinished").assertDoesNotExist()
@@ -395,7 +393,9 @@ class AutomaticSetupUiTest {
         ).isTrue()
         terminal.passphrase = checkNotNull(generatedKey).passphrase
         compose.onNodeWithTag("import").performClick()
-        compose.awaitCondition("Updated terminal completes setup directly Home") { navigator.current == Route.Home }
+        waitForTag("importFinished")
+        compose.onNodeWithTag("importFinished").performClick()
+        compose.awaitCondition("Updated terminal completes setup and returns Home") { navigator.current == Route.Home }
         assertThat(creations).isEqualTo(1)
         assertThat(
             await {

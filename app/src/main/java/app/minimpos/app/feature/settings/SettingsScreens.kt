@@ -69,6 +69,7 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PricingChange
 import app.minimpos.app.data.settings.SimulatorSettings
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.OutcomeDialog
 import app.minimpos.app.feature.labels
@@ -920,7 +921,7 @@ private fun ColumnScope.TerminalSection(
         SectionHeader(stringResource(R.string.settings_manual_setup))
     }
     if (mode != TerminalMode.SIMULATOR && status.connection !is TerminalConnection.NotSetUp) {
-        ConnectionStatus(status.connection, status.poiId, status.environment, status.setupProblem)
+        ConnectionStatus(status.connection, status.poiId, status.environment, status.setupProblem, terminal)
     }
     val selectMode: (TerminalMode) -> Unit = { choice ->
         manualSetup = true
@@ -1092,6 +1093,7 @@ private fun ConnectionStatus(
     poiId: String?,
     environment: TerminalEnvironment?,
     problem: SetupProblem?,
+    terminal: TerminalSettings,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalStatusColors.current
@@ -1104,10 +1106,26 @@ private fun ConnectionStatus(
         }
     val detail =
         when (connection) {
-            is TerminalConnection.Connected -> listOfNotNull(poiId, environmentLabel(environment)).joinToString(" · ")
-            is TerminalConnection.NotSetUp -> problem?.text() ?: stringResource(R.string.settings_status_not_set_up_hint)
-            is TerminalConnection.Failed -> connection.failure.text()
-            TerminalConnection.Unknown, TerminalConnection.Checking -> poiId.orEmpty()
+            is TerminalConnection.Connected -> {
+                listOfNotNull(
+                    terminal.merchantAccount.trim().ifBlank { null },
+                    terminal.storeId.trim().ifBlank { null },
+                    poiId,
+                    environmentLabel(environment),
+                ).joinToString(" · ")
+            }
+
+            is TerminalConnection.NotSetUp -> {
+                problem?.text() ?: stringResource(R.string.settings_status_not_set_up_hint)
+            }
+
+            is TerminalConnection.Failed -> {
+                connection.failure.text()
+            }
+
+            TerminalConnection.Unknown, TerminalConnection.Checking -> {
+                poiId.orEmpty()
+            }
         }
     Column(modifier.fillMaxWidth()) {
         Row(

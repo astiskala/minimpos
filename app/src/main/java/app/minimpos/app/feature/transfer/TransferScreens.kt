@@ -62,6 +62,7 @@ import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.TransferSeal
 import app.minimpos.app.data.settings.ConnectionDestination
+import app.minimpos.app.data.transfer.ConnectedTerminal
 import app.minimpos.app.data.transfer.ReceivedTransfer
 import app.minimpos.app.data.transfer.TransferContents
 import app.minimpos.app.data.transfer.TransferExport
@@ -301,7 +302,7 @@ fun TransferImportScreen(
     fun back() {
         when {
             scanning -> scanStarted = false
-            state is ImportUiState.Done && navigator.isOnboarding -> navigator.home()
+            state is ImportUiState.Done && (navigator.isOnboarding || (state as ImportUiState.Done).result.connection) -> navigator.home()
             else -> navigator.back()
         }
     }
@@ -309,7 +310,7 @@ fun TransferImportScreen(
     var confirmReplace by rememberSaveable { mutableStateOf(false) }
     val importing = state == ImportUiState.Importing
     val snackbar = remember { SnackbarHostState() }
-    ImportNavigation(state, navigator, snackbar)
+    ImportNavigation(state, snackbar)
     MiniScaffold(
         title = stringResource(R.string.settings_quick_setup_import),
         onBack = ::back.takeUnless { importing },
@@ -358,17 +359,12 @@ fun TransferImportScreen(
     )
 }
 
-/** Verified setup returns Home; in-progress imports intercept system Back until their durable work finishes. */
+/** In-progress imports intercept system Back until their durable work finishes. */
 @Composable
 private fun ImportNavigation(
     state: ImportUiState,
-    navigator: Navigator,
     snackbar: SnackbarHostState,
 ) {
-    val returnHome = (state as? ImportUiState.Done)?.result?.let { it.connection && !it.businessWarning && !it.paymentsAppChecked } == true
-    LaunchedEffect(returnHome) {
-        if (returnHome) navigator.home()
-    }
     val scope = rememberCoroutineScope()
     val wait = stringResource(R.string.processing_wait)
     BackHandler(enabled = state == ImportUiState.Importing) { scope.launch { snackbar.showSnackbar(wait) } }
@@ -791,6 +787,14 @@ internal object TransferCodeTransformation : VisualTransformation {
     }
 }
 
+/** Which account, store and terminal the device now uses, leaving out what does not apply. */
+@Composable
+private fun ConnectedRows(connected: ConnectedTerminal) {
+    LabeledValue(stringResource(R.string.settings_merchant_account), connected.merchantAccount)
+    if (connected.storeId.isNotBlank()) LabeledValue(stringResource(R.string.transfer_store), connected.storeId)
+    if (connected.poiId.isNotBlank()) LabeledValue(stringResource(R.string.settings_poiid), connected.poiId)
+}
+
 /** What the import added and updated, under a success badge like the other results. */
 @Composable
 private fun ImportDone(
@@ -812,6 +816,7 @@ private fun ImportDone(
             modifier = Modifier.testTag("importDone"),
         )
         Card(Modifier.widthIn(max = LocalDimens.current.contentMaxWidth)) {
+            result.connectedTo?.let { ConnectedRows(it) }
             result.catalogue?.let { summary ->
                 LabeledValue(stringResource(R.string.transfer_added), summary.productsAdded.toString())
                 LabeledValue(stringResource(R.string.transfer_updated), summary.productsUpdated.toString())

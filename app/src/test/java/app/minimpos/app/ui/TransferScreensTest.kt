@@ -217,7 +217,7 @@ class TransferScreensTest {
         compose.onNodeWithText("Ready to import").assertIsDisplayed()
         compose.onNodeWithTag("merge").assertDoesNotExist()
         compose.onNodeWithTag("import").assertIsDisplayed()
-        compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput("2222 2222 2222")
+        compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput("AAAA AAAA AAAA")
         compose.onNodeWithTag("import").performClick()
         compose.waitUntilAtLeastOneExists(hasText("That transfer code is wrong", substring = true), 15_000)
         compose.onNodeWithText("Scan again").assertDoesNotExist()
@@ -297,6 +297,9 @@ class TransferScreensTest {
         assertImportSummary()
         compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput(code)
         compose.onNodeWithTag("import").performClick()
+        waitForTag("importFinished")
+        compose.onNodeWithText("HarbourCoffeeCOM").assertExists()
+        compose.onNodeWithTag("importFinished").performClick()
         compose.awaitCondition("Verified helper setup returns Home") { navigator.current == Route.Home }
         compose.awaitCondition("Applying the connection") { container.settingsState.value.terminal.merchantAccount == "HarbourCoffeeCOM" }
         // The other settings stay as they were.

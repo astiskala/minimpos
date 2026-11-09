@@ -575,6 +575,7 @@
   <string name="transfer_settings_note">Esto reemplaza la configuración de este dispositivo. Su destino de pago, dirección de terminal e ID de terminal permanecen sin cambios.</string>
   <string name="transfer_import_action">Importar</string>
   <string name="transfer_imported">Importado</string>
+  <string name="transfer_store">Tienda</string>
   <string name="transfer_verify">Verificar e importar</string>
   <string name="transfer_verifying">Comprobando credenciales y conexión…</string>
   <string name="transfer_board_first">Configure Tap to Pay para verificar esta importación. No se guarda nada más hasta que la verificación sea exitosa.</string>

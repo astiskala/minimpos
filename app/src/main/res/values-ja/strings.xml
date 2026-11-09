@@ -571,6 +571,7 @@
   <string name="transfer_settings_note">このデバイスの設定を置き換えます。決済先と、その端末のアドレス・IDは変更しません。</string>
   <string name="transfer_import_action">インポート</string>
   <string name="transfer_imported">インポート済み</string>
+  <string name="transfer_store">店舗</string>
   <string name="transfer_verify">確認してインポート</string>
   <string name="transfer_verifying">認証情報と接続を確認中…</string>
   <string name="transfer_board_first">このインポートを確認するため Tap to Pay を設定してください。確認成功まで他の内容は保存しません。</string>

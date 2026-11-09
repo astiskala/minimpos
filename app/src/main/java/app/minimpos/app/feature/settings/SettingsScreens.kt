@@ -1080,7 +1080,10 @@ private fun TerminalModeChoice(
         title = stringResource(R.string.settings_mode),
         options =
             if (onTerminal) {
-                listOf(TerminalMode.TERMINAL to stringResource(R.string.settings_mode_terminal))
+                listOf(
+                    TerminalMode.TERMINAL to stringResource(R.string.settings_mode_terminal),
+                    TerminalMode.CLOUD to stringResource(R.string.settings_mode_terminal_cloud),
+                )
             } else {
                 listOf(
                     TerminalMode.TERMINAL to stringResource(R.string.settings_mode_network),

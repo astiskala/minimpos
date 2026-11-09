@@ -777,6 +777,7 @@
   <string name="settings_mode">決済先</string>
   <string name="settings_mode_hint">Mini mPOSが決済を送る先です。</string>
   <string name="settings_mode_terminal">この端末</string>
+  <string name="settings_mode_terminal_cloud">この端末(インターネット経由、クラウド)</string>
   <string name="settings_mode_network">ネットワーク上の端末</string>
   <string name="settings_mode_cloud">インターネット経由の端末（クラウド）</string>
   <string name="settings_mode_payments_app">このスマートフォンでTap to Pay</string>

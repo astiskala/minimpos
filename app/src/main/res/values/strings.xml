@@ -780,6 +780,7 @@
   <string name="settings_mode">Payments go to</string>
   <string name="settings_mode_hint">Where Mini mPOS sends payments.</string>
   <string name="settings_mode_terminal">This terminal</string>
+  <string name="settings_mode_terminal_cloud">This terminal, over the internet (cloud)</string>
   <string name="settings_mode_network">A terminal on your network</string>
   <string name="settings_mode_cloud">A terminal over the internet (cloud)</string>
   <string name="settings_mode_payments_app">Tap to Pay on this phone</string>

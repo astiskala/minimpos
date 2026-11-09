@@ -299,7 +299,7 @@ class SetupDiscovery(
             val api = connect(key)
             val credential = api.credential(environment)
             if (credential is CredentialLookup.Failed) return@withLock SetupDiscoverySearch.Failed(Failure.Remote(credential.fault))
-            val onDevice = setup.onTerminal && setup.mode == TerminalMode.TERMINAL
+            val onDevice = setup.onTerminal
             val terminals =
                 when (val found = TerminalAssignments.listOffered(api, environment, onDevice, setup.poiId)) {
                     is DiscoveredTerminals.Found -> found.terminals
@@ -450,9 +450,7 @@ class SetupDiscovery(
                 terminal =
                     it.terminal.copy(
                         poiIdOverride =
-                            if (selected.setup.onTerminal &&
-                                selected.setup.mode == TerminalMode.TERMINAL
-                            ) {
+                            if (selected.setup.onTerminal) {
                                 it.terminal.poiIdOverride
                             } else {
                                 terminal.id

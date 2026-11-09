@@ -419,7 +419,7 @@ internal class CloudTerminal(
 
     /**
      * The rules of a terminal in the cloud ([TerminalMode.CLOUD]): the merchant account, the API key and its configured
-     * POIID, no shared key or address; payments wait [AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT], as Adyen requires.
+     * POIID, or on a terminal its own, which then needs no shared key or configuration update; no address; payments wait [AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT], as Adyen requires.
      */
     companion object : DestinationRules {
         override val mode: TerminalMode get() = TerminalMode.CLOUD
@@ -430,7 +430,11 @@ internal class CloudTerminal(
         override fun selectsEnvironment(onTerminal: Boolean): Boolean = true
 
         override fun setupSteps(onTerminal: Boolean): List<SetupStepKind> =
-            listOf(SetupStepKind.ENVIRONMENT, SetupStepKind.ADYEN_API, SetupStepKind.CLOUD_TERMINAL, SetupStepKind.CONNECTION)
+            if (onTerminal) {
+                listOf(SetupStepKind.ENVIRONMENT, SetupStepKind.ADYEN_API, SetupStepKind.CONNECTION)
+            } else {
+                listOf(SetupStepKind.ENVIRONMENT, SetupStepKind.ADYEN_API, SetupStepKind.CLOUD_TERMINAL, SetupStepKind.CONNECTION)
+            }
 
         override fun learnedEnvironment(
             setup: TerminalSetup,
@@ -447,7 +451,7 @@ internal class CloudTerminal(
         override fun poiId(
             terminal: TerminalSettings,
             device: DeviceInfo,
-        ): String? = configuredPoiId(terminal)
+        ): String? = device.detectedPoiId ?: configuredPoiId(terminal)
 
         override fun problem(
             terminal: TerminalSettings,

@@ -193,7 +193,7 @@ class TerminalSetupViewModel(
             when (val discovered = discovery.find()) {
                 is SetupDiscoverySearch.Found -> {
                     val current = status.state.value
-                    if (current.onTerminal && current.mode == TerminalMode.TERMINAL && discovered.ids.size == 1) {
+                    if (current.onTerminal && discovered.ids.size == 1) {
                         chooseTerminal(discovered.ids.single())
                     } else {
                         actions.update { it.copy(terminals = ActionState(done = true), connectedTerminals = discovered.terminals) }

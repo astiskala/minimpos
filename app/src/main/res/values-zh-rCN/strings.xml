@@ -777,6 +777,7 @@
   <string name="settings_mode">支付目标</string>
   <string name="settings_mode_hint">Mini mPOS 将支付发送到哪里。</string>
   <string name="settings_mode_terminal">此终端</string>
+  <string name="settings_mode_terminal_cloud">此终端,通过互联网(云端)</string>
   <string name="settings_mode_network">同一网络中的终端</string>
   <string name="settings_mode_cloud">通过互联网连接的终端（云端）</string>
   <string name="settings_mode_payments_app">在本手机上使用 Tap to Pay</string>

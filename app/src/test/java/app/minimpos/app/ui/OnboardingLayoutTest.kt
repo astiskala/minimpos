@@ -73,10 +73,10 @@ class OnboardingLayoutTest {
         listOf("onboardingSimulator", "onboardingImport", "onboardingTerminal", "onboardingContinue").forEach {
             compose.onNodeWithTag(it).assertIsDisplayed()
         }
-        compose.onNodeWithTag("onboardingTerminal").assertIsSelected()
+        compose.onNodeWithTag("onboardingImport").assertIsSelected()
         assertThat(chosen).isNull()
         compose.onNodeWithTag("onboardingContinue").performClick()
-        assertThat(chosen).isEqualTo(OnboardingChoice.TERMINAL)
+        assertThat(chosen).isEqualTo(OnboardingChoice.IMPORT)
 
         codes = true
         compose.waitForIdle()

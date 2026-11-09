@@ -120,12 +120,12 @@
           <div id="complete-fields">
           <fieldset>
             <legend>Mini mPOS をどこで動かし、決済をどこに送りますか？</legend>
-            <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>
+            <label class="choice"><input type="radio" id="destination-thisTerminal" name="destination" value="thisTerminal" checked> <span><strong>
               Adyen 端末で動かす</strong>：その端末自体で決済を受け付けます</span></label>
-            <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>
+            <label class="choice"><input type="radio" id="destination-network" name="destination" value="network"> <span><strong>
               タブレットやスマートフォンで動かす</strong>：同じネットワーク上の端末を使います</span></label>
-            <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>タブレットやスマートフォンで動かす</strong>：インターネット経由の端末（クラウド）を使います</span></label>
-            <label class="choice"><input type="radio" name="destination" value="tapToPay"> <span><strong>スマートフォンで動かす</strong>：Adyen Payments アプリの Tap to Pay を使います</span></label>
+            <label class="choice"><input type="radio" id="destination-cloud" name="destination" value="cloud"> <span><strong>タブレットやスマートフォンで動かす</strong>：インターネット経由の端末（クラウド）を使います</span></label>
+            <label class="choice"><input type="radio" id="destination-tapToPay" name="destination" value="tapToPay"> <span><strong>スマートフォンで動かす</strong>：Adyen Payments アプリの Tap to Pay を使います</span></label>
           </fieldset>
 
           <fieldset>

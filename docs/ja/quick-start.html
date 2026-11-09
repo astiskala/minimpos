@@ -195,7 +195,7 @@
           <dl class="settings-list">
             <dt id="install-terminal">Adyen 端末</dt><dd><ol><li>Customer Area で APK をアップロードし、端末に配布します。
               <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen のアプリ配布ガイド</a>
-              を参照してください。ユーザーにはアプリのアップロード・配布権限が必要です。</li><li>端末で Mini mPOS を開き、<strong>Adyen に接続</strong>を選んで<strong>続ける
+              を参照してください。ユーザーにはアプリのアップロード・配布権限が必要です。</li><li>端末で Mini mPOS を開き、<strong>設定コードを読み取る</strong>を選んで<strong>続ける
               </strong>をタップします。</li></ol></dd>
             <dt id="install-mobile">タブレットやスマートフォン</dt><dd><ol><li>デバイスで APK を開き、Android の案内に従ってブラウザーやファイルマネージャーからのインストールを許可します。</li><li>Mini
               mPOS を開き、<strong>Adyen に接続</strong>を選んで<strong>続ける</strong>をタップします。</li></ol></dd>
@@ -246,7 +246,7 @@
   LIVE に移行</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>セットアップヘルパー（推奨）</dt>
-            <dd><a href="setup">セットアップヘルパー</a>で<strong>Adyen 端末で動かす</strong>、端末の <strong>TEST</strong> または <strong>LIVE
+            <dd><a href="setup#destination-thisTerminal">セットアップヘルパー</a>で<strong>Adyen 端末で動かす</strong>、端末の <strong>TEST</strong> または <strong>LIVE
               </strong> 環境、<strong>自動</strong>を選びます。APIキーを入力し、<a href="#helper">コードを読み取ります</a>。</dd>
           </dl>
           <details class="manual-setup">
@@ -275,7 +275,7 @@
   に移行</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>セットアップヘルパー（推奨）</dt>
-            <dd><a href="setup">セットアップヘルパー</a>で<strong>タブレットやスマートフォンで動かす</strong>（同じネットワーク上の端末）、端末の <strong>TEST
+            <dd><a href="setup#destination-network">セットアップヘルパー</a>で<strong>タブレットやスマートフォンで動かす</strong>（同じネットワーク上の端末）、端末の <strong>TEST
               </strong> または <strong>LIVE</strong> 環境、<strong>自動</strong>を選びます。APIキーを入力し、<a href="#helper">コードを読み取ります</a>
               。複数の端末が見つかった場合は、使う端末を選びます。</dd>
           </dl>
@@ -307,7 +307,7 @@
   に移行</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>セットアップヘルパー（推奨）</dt>
-            <dd><a href="setup">セットアップヘルパー</a>で<strong>タブレットやスマートフォンで動かす</strong>（インターネット経由の端末（クラウド））、端末の <strong>TEST
+            <dd><a href="setup#destination-cloud">セットアップヘルパー</a>で<strong>タブレットやスマートフォンで動かす</strong>（インターネット経由の端末（クラウド））、端末の <strong>TEST
               </strong> または <strong>LIVE</strong> 環境、<strong>自動</strong>を選びます。APIキーを入力し、<a href="#helper">コードを読み取ります</a>
               。複数の端末が見つかった場合は、使う端末を選びます。</dd>
           </dl>
@@ -348,7 +348,7 @@
           </ol>
           <dl class="settings-list setup-route">
             <dt>セットアップヘルパー（推奨）</dt>
-            <dd><a href="setup">セットアップヘルパー</a>で<strong>スマートフォンで動かす</strong>（Adyen Payments アプリの Tap to Pay）と、<strong>
+            <dd><a href="setup#destination-tapToPay">セットアップヘルパー</a>で<strong>スマートフォンで動かす</strong>（Adyen Payments アプリの Tap to Pay）と、<strong>
               TEST</strong> または <strong>LIVE</strong> 環境を選びます。その環境の Adyen APIキー、マーチャントアカウント、共有キー、任意で店舗IDを入力します。
               <a href="#helper">コードを読み取り</a>、<strong>確認してインポート</strong>をタップします。Mini mPOS が登録用認証情報を作成し、Payments
               アプリを開いてインポート中に登録を完了します。</dd>

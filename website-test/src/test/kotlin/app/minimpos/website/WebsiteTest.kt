@@ -1125,7 +1125,7 @@ class SetupGuideTest {
             val options = following.first { it.tagName() == "dl" }
             assertThat(options.select("dt")).hasSize(1)
             assertThat(options.select("dd")).hasSize(1)
-            assertThat(options.select("a").map { it.attr("href") }).containsExactly("setup", "#helper").inOrder()
+            assertThat(options.select("a").map { it.attr("href") }).containsExactly("setup#destination-tapToPay", "#helper").inOrder()
             assertThat(following.single { it.hasClass("manual-setup") }.text()).doesNotContain("Adyen Payments App role")
         }
         val english =
@@ -1161,7 +1161,8 @@ class SetupGuideTest {
                     .isEqualTo(helperLabels.getValue(language))
                 assertThat(helper.select("dd")).hasSize(1)
                 assertThat(helper.parents().any { it.tagName() == "details" }).isFalse()
-                assertThat(helper.select("a").map { it.attr("href") }).containsExactly("setup", "#helper").inOrder()
+                val linked = mapOf("on-terminal" to "thisTerminal", "tap-to-pay" to "tapToPay").getOrDefault(destination, destination)
+                assertThat(helper.select("a").map { it.attr("href") }).containsExactly("setup#destination-$linked", "#helper").inOrder()
                 val flowLabels =
                     if (destination == "tap-to-pay") {
                         listOf(registrationLabels.getValue(language))

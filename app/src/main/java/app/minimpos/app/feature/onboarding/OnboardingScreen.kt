@@ -67,7 +67,8 @@ private fun onboardingViewModel(): OnboardingViewModel {
     }
 }
 
-/** Compact intent choices with one pinned action; terminals initially select Adyen, other devices the offline demo. */
+/** Compact intent choices with one pinned action; terminals, where nobody wants to type an API key, initially select scanning,
+ * other devices the offline demo. */
 @Composable
 internal fun OnboardingContent(
     state: SampleDataState,
@@ -76,7 +77,7 @@ internal fun OnboardingContent(
 ) {
     val choices =
         if (onTerminal) {
-            listOf(OnboardingChoice.TERMINAL, OnboardingChoice.SIMULATOR, OnboardingChoice.IMPORT)
+            listOf(OnboardingChoice.IMPORT, OnboardingChoice.TERMINAL, OnboardingChoice.SIMULATOR)
         } else {
             listOf(OnboardingChoice.SIMULATOR, OnboardingChoice.TERMINAL, OnboardingChoice.IMPORT)
         }

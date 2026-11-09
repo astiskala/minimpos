@@ -35,6 +35,12 @@ class SetupHelperTest {
     }
 
     @Test
+    fun `a link to one destination opens the helper with it chosen`() {
+        script.executeScript("location.hash = 'destination-cloud'; location.reload();")
+        waitFor("return document.getElementById('destination-cloud').checked === true")
+    }
+
+    @Test
     fun `Make QR codes needs the required fields and fires no form submit`() {
         field("setupMode", "automatic")
         field("apiKey", "")

@@ -608,6 +608,10 @@
     results.scrollIntoView({ block: "start" });
   });
 
+  // Each Quick start route links here with its destination already chosen.
+  const linked = document.getElementById(location.hash.slice(1));
+  if (linked?.name === "destination") linked.checked = true;
+
   form.hidden = false;
   document.getElementById("setup-loading")?.remove();
   refresh();

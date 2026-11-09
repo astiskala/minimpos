@@ -14,7 +14,7 @@ import javax.crypto.spec.SecretKeySpec
  * the QR codes and typed on the receiving device. The QR codes alone do not reveal secrets; possession of both the
  * codes and the transfer code permits decryption again, without expiration or a single-use check.
  *
- * A code is [CODE_LENGTH] characters from an alphabet without look-alikes (no 0, O, 1, I or L), about 59 bits, shown in
+ * A code is [CODE_LENGTH] letters from an alphabet without I or O, about 55 bits, shown in
  * groups of four. The key is PBKDF2-HMAC-SHA256 of the code with a random salt, and the secrets are encrypted with
  * AES-256-GCM with the canonical public transfer sections as authenticated data. Sealed format version 2:
  * `version(1) | iterations(4) | salt(16) | iv(12) | ciphertext and tag`.
@@ -28,7 +28,7 @@ class TransferSeal(
     private val random: SecureRandom = SecureRandom(),
     private val iterations: Int = DEFAULT_ITERATIONS,
 ) {
-    /** A new random transfer code, formatted in groups of four such as "K7PQ-8Z3D-2RXM". */
+    /** A new random transfer code, formatted in groups of four such as "KMPQ-HZRD-WRXM". */
     fun newCode(): String =
         List(CODE_LENGTH) { ALPHABET[random.nextInt(ALPHABET.length)] }
             .chunked(GROUP)
@@ -102,8 +102,8 @@ class TransferSeal(
         /** Characters in a transfer code, not counting the separators. */
         const val CODE_LENGTH = 12
 
-        /** Codes use digits and upper-case letters that cannot be mistaken for one another. */
-        const val ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
+        /** Codes use only upper-case letters, so they can be typed on a keyboard with no number row. I and O are left out. */
+        const val ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ"
         private const val GROUP = 4
         private const val VERSION: Byte = 2
         private const val DEFAULT_ITERATIONS = 150_000

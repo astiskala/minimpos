@@ -147,7 +147,7 @@ class TransferViewModelsTest {
         import.setCode("abc")
         import.import()
         assertThat((import.state.value as ImportUiState.Ready).wrongCode).isTrue()
-        import.setCode("2222-2222-2222")
+        import.setCode("AAAA-AAAA-AAAA")
         assertThat((import.state.value as ImportUiState.Ready).wrongCode).isFalse()
         import.import()
         settled(import) { it is ImportUiState.Ready && it.wrongCode }

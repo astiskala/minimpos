@@ -66,7 +66,7 @@ class TransferScreensTest {
     val compose = createComposeRule()
 
     private val container = env.container
-    private val fixtureCode = "K7PQ-8Z3D-2RXM"
+    private val fixtureCode = "KMPQ-HZRD-WRXM"
 
     private fun protect(
         transfer: Transfer,

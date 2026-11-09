@@ -13,16 +13,16 @@ class TransferSealTest {
     private val seal = TransferSeal(SecureRandom(), iterations = 1_000)
 
     @Test
-    fun `codes are twelve unambiguous characters in groups of four, typed loosely`() {
+    fun `codes are twelve unambiguous letters in groups of four, typed loosely`() {
         val codes = List(50) { seal.newCode() }
         codes.forEach { code ->
-            assertThat(code).matches("[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}")
+            assertThat(code).matches("[A-HJ-NP-Z]{4}-[A-HJ-NP-Z]{4}-[A-HJ-NP-Z]{4}")
             assertThat(TransferSeal.isValidCode(code)).isTrue()
         }
         assertThat(codes.toSet().size).isEqualTo(50)
-        assertThat(TransferSeal.normalize(" k7pq-8z3d 2rxm ")).isEqualTo("K7PQ8Z3D2RXM")
-        assertThat(TransferSeal.isValidCode("k7pq 8z3d 2rxm")).isTrue()
-        listOf("", "K7PQ-8Z3D", "K7PQ-8Z3D-2RXM-A", "K7PQ-8Z3D-2RX0", "O7PQ-8Z3D-2RXM").forEach {
+        assertThat(TransferSeal.normalize(" kmpq-hzrd wrxm ")).isEqualTo("KMPQHZRDWRXM")
+        assertThat(TransferSeal.isValidCode("kmpq hzrd wrxm")).isTrue()
+        listOf("", "KMPQ-HZRD", "KMPQ-HZRD-WRXM-A", "KMPQ-HZRD-WRX0", "OMPQ-HZRD-WRXM", "K7PQ-HZRD-WRXM").forEach {
             assertThat(TransferSeal.isValidCode(it)).isFalse()
         }
     }
@@ -38,7 +38,7 @@ class TransferSealTest {
         // A seal with the default (slower) iterations opens too: the count travels with the data.
         assertThat(TransferSeal().open(sealed, code)).isEqualTo("hunter2".toByteArray())
 
-        assertThat(seal.open(sealed, "2222-2222-2222")).isNull()
+        assertThat(seal.open(sealed, "AAAA-AAAA-AAAA")).isNull()
         assertThat(seal.open(sealed, "short")).isNull()
         assertThat(seal.open(sealed.copyOf(10), code)).isNull()
         assertThat(seal.open(sealed.copyOf().also { it[it.size - 1] = (it.last() + 1).toByte() }, code)).isNull()
@@ -60,7 +60,7 @@ class TransferSealTest {
 
     @Test
     fun `code normalization does not silently discard punctuation or expand Unicode letters`() {
-        listOf("K7PQ/8Z3D/2RXM", "K7PQ_8Z3D_2RXM", "K7PQ8Z3D2RXM!", "K7PQ8Z3D2Rß").forEach {
+        listOf("K7PQ/8Z3D/2RXM", "K7PQ_8Z3D_2RXM", "KMPQHZRDWRXM!", "K7PQ8Z3D2Rß").forEach {
             assertThat(TransferSeal.isValidCode(it)).isFalse()
         }
     }

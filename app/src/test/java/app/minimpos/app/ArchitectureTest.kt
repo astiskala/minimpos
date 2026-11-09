@@ -808,7 +808,7 @@ class ArchitectureTest {
         suspend fun import(
             transfer: SetupTransfer,
             received: ReceivedTransfer,
-        ) = transfer.import(received, ImportMode.MERGE, "2222-2222-2222")
+        ) = transfer.import(received, ImportMode.MERGE, "AAAA-AAAA-AAAA")
 
         fun receive(
             transfer: SetupTransfer,

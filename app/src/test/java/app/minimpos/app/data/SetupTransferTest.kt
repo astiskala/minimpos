@@ -314,7 +314,7 @@ class SetupTransferTest {
         val received = receiving.receive(TransferCodec.decode(export.payload))
         assertThat(received.accepts("")).isFalse()
         assertThat(await { receiving.import(received, ImportMode.MERGE) }).isEqualTo(ImportOutcome.WrongCode)
-        assertThat(await { receiving.import(received, ImportMode.MERGE, "2222-2222-2222") }).isEqualTo(ImportOutcome.WrongCode)
+        assertThat(await { receiving.import(received, ImportMode.MERGE, "AAAA-AAAA-AAAA") }).isEqualTo(ImportOutcome.WrongCode)
         assertThat(
             await {
                 receiving.import(received, ImportMode.MERGE, export.code)
@@ -346,7 +346,7 @@ class SetupTransferTest {
         assertThat(received.currencyMatches("NZD")).isTrue()
         assertThat(received.accepts("abc")).isFalse()
         assertThat(await { receiving.import(received, ImportMode.MERGE, "abc") }).isEqualTo(ImportOutcome.WrongCode)
-        assertThat(await { receiving.import(received, ImportMode.MERGE, "2222-2222-2222") }).isEqualTo(ImportOutcome.WrongCode)
+        assertThat(await { receiving.import(received, ImportMode.MERGE, "AAAA-AAAA-AAAA") }).isEqualTo(ImportOutcome.WrongCode)
         assertThat(
             await {
                 target.container.catalog.products
@@ -573,26 +573,24 @@ class SetupTransferTest {
         // Made by docs/js/setup.js (Settings: a terminal on the network), so the page and the app keep one format.
         val chunks =
             listOf(
-                "MPC1:0000:1/3:D\$0MK77Y07I28/T3R1X50200SF9000000000000000000000000000000000000000000L-S939+\$5+MP-%14" +
-                    "+3UX88BV3CN7\$SXG92L8U0H\$XR:MRQ*JXRM6LS1.EEW5IKGZQDSLC8\$UAWV5CF1H2*F8L66P+MYP92QS\$\$ECQ3PLS:IN" +
-                    "827I7AN/62W1ZFV9C6F2QY/OSG22UAT9MZ10DWALC8E-0SM4MDS60E.Q4087F.U**FY2VDERE2HUS8Z7BU8KIG310Q+YTIY4T" +
-                    "-8LVSMPF6VC QEZEDIEC EDO-DWF71/DPWE04ELOD3Q51\$CS/E0LE9/D1\$CUUEWF7ITA2OAIE4XF414EUUEWF71A6LF6/96" +
-                    "R47Z96NF6IE4-F4 3ENC9WE4CF4EA6KF6646746YW6OF6FL6B46746QQ63Q5/PD:EF6VCG/DREDQEDDJEWF7 QE04EQZC/PD5EF3Q" +
-                    "5F\$DXKE 8D",
-                "MPC1:0000:2/3:G/D:B8UPC2%EUUEWF7Y69WKE34E1KEX3EN.C3 C61AIE4:F4U\$DY8E14EUUEWF7TQEIWE.%5\$9FQ\$DTVD+%5" +
-                    "+3EIE4:F4U\$D09EZ C6%E-ED5EFWF71OA5S93Q5TQEIWE5 A5\$C..DF\$DWE4:F459DQ8EB\$CBECP9ERZCUPC%ZD3Q5TQEIWE" +
-                    "Y+8+3E0C8JVC6\$C:OEWF7ZKEKPC\$EDLWEF68\$9FQ\$DTVD+%5+3EIE4:F4U\$DW8E0LE\$ DBECFZCWF79Z8BECP9EDZCOQE/3" +
-                    "EIE4/F4Z C- CX9E3I8PQE1/DZQE++9F\$DWE4FF4Z CHWEBJEOQE/3EIE4/F4Z C- CX9E0C8JVC6\$C-PEZED6\$CWE4NE4" +
-                    "Y347ECM-DYOA\$UB*OAFVCC\$CIE4/F4Z C- CX9EJ7A-3EFZCWF7WK5QF6IE4/F4Z C- CX9E1UAD9FTTCWF7ETAW6BQF6IE4/" +
-                    "F4Z C- CX9E9UA",
-                "MPC1:0000:3/3:EWEFZCWF7FOATVDQ44Z C- CX9EIE4/F4Z C- CX9EV+824E5\$CWE4DF4 8D7/D:OE3Q5YEDS9E5LEXIAKPC" +
-                    "\$EDTVEBECFZCAH7AECLQE3Q5YEDS9E5LEXIAKPC\$EDGVE5VCZKEZQEWE4J.C/VDPZCYF4Q\$D04EXVEZ C- CX9EJ7A-3EFZCA" +
-                    "H7AECLQE3Q5/PDCFF5\$CPQE-3EWE4JF6:F4U\$D.8E04EUUE5G7H%6Z2",
+                "MPC1:0000:1/3:Q 02F6I0N7I28/T3R1X50200SF9000000000000000000000000000000000000000000CO8A%8:C4WI3C:FFY" +
+                    "SPS2 %A6TNV0N1PV2Z02K2*HJ:DMQZQPBG.BFL8P+HNWP54OOUI0MEWI6R0CTODAM:OR\$G%I5+P9ZG7-E64LF9OVBG3-NTMAH8*D" +
+                    "4QSL/FC.6HY3+8BCV4RI2FY26U3NDV5CFGIOGFHYVKF09FPNG11*P0\$0CSW9APS+:4/M02-4V IW6H6CUX FDJ1+KDLVSMPF6VC " +
+                    "QEZEDIEC EDO-DWF71/DPWE04ELOD3Q51\$CS/E0LE9/D1\$CUUEWF7ITA2OAIE4XF414EUUEWF71A6LF6/96R47Z96NF6IE4-F4 3" +
+                    "ENC9WE4CF4EA6KF6646746YW6OF6FL6B46746QQ63Q5/PD:EF6VCG/DREDQEDDJEWF7 QE04EQZC/PD5EF3Q5F\$DXKE 8D",
+                "MPC1:0000:2/3:G/D:B8UPC2%EUUEWF7Y69WKE34E1KEX3EN.C3 C61AIE4:F4U\$DY8E14EUUEWF7TQEIWE.%5\$9FQ\$DTVD+%5+3" +
+                    "EIE4:F4U\$D09EZ C6%E-ED5EFWF71OA5S93Q5TQEIWE5 A5\$C..DF\$DWE4:F459DQ8EB\$CBECP9ERZCUPC%ZD3Q5TQEIWEY+8+3E" +
+                    "0C8JVC6\$C:OEWF7ZKEKPC\$EDLWEF68\$9FQ\$DTVD+%5+3EIE4:F4U\$DW8E0LE\$ DBECFZCWF79Z8BECP9EDZCOQE/3EIE4/F4Z C-" +
+                    " CX9E3I8PQE1/DZQE++9F\$DWE4FF4Z CHWEBJEOQE/3EIE4/F4Z C- CX9E0C8JVC6\$C-PEZED6\$CWE4NE4Y347ECM-DYOA\$UB*O" +
+                    "AFVCC\$CIE4/F4Z C- CX9EJ7A-3EFZCWF7WK5QF6IE4/F4Z C- CX9E1UAD9FTTCWF7ETAW6BQF6IE4/F4Z C- CX9E9UA",
+                "MPC1:0000:3/3:EWEFZCWF7FOATVDQ44Z C- CX9EIE4/F4Z C- CX9EV+824E5\$CWE4DF4 8D7/D:OE3Q5YEDS9E5LEXIAKPC\$E" +
+                    "DTVEBECFZCAH7AECLQE3Q5YEDS9E5LEXIAKPC\$EDGVE5VCZKEZQEWE4J.C/VDPZCYF4Q\$D04EXVEZ C- CX9EJ7A-3EFZCAH7AEC" +
+                    "LQE3Q5/PDCFF5\$CPQE-3EWE4JF6:F4U\$D.8E04EUUE5G7H%6Z2",
             )
         val assembler = QrChunkAssembler()
         chunks.forEach { assembler.add(checkNotNull(QrChunks.parse(it))) }
         val received = receive(TransferCodec.decode(assembler.assemble()))
-        val outcome = await { setup(target).import(received, ImportMode.MERGE, "2222-2222-2222") } as ImportOutcome.Imported
+        val outcome = await { setup(target).import(received, ImportMode.MERGE, "AAAA-AAAA-AAAA") } as ImportOutcome.Imported
         assertThat(outcome.result.secrets).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.ADYEN_API_KEY, Secret.SMTP_PASSWORD)
         val settings = await { target.container.settings.current() }
         val terminal = settings.terminal

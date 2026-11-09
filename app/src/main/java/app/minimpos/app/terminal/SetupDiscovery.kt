@@ -6,6 +6,7 @@ import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.CredentialRoles
+import app.minimpos.terminal.transport.CredentialRolesApi
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyApi
 import app.minimpos.terminal.transport.SharedKeyLookup
@@ -174,6 +175,7 @@ internal sealed interface SharedKeyConnection {
  * @param sharedKeys Owns separately confirmed key creation and encrypted recovery.
  * @param verifyConnection Checks saved setup and records its verified identity through TerminalStatus.
  * @param stores Read-only store listing for the selected credential and environment.
+ * @param roles Adds the roles the API key lacks, only after the operator agrees.
  */
 class SetupDiscovery(
     private val setups: TerminalSetupSource,
@@ -183,10 +185,29 @@ class SetupDiscovery(
     private val sharedKeys: SharedKeySetup,
     private val verifyConnection: suspend () -> TerminalConnection,
     private val stores: (String, TerminalEnvironment) -> StoreDetailsApi,
+    private val roles: (String) -> CredentialRolesApi = { object : CredentialRolesApi {} },
 ) {
     private var selection: Selection? = null
     private var storeSelection: StoreSelection? = null
     private val mutex = Mutex()
+
+    /** Roles the saved API key lacks and can be given; null when it has them all or cannot be changed from here. */
+    suspend fun keyRolesOffer(): KeyRolesOffer? =
+        mutex.withLock {
+            val unlocked = setups.unlocked()
+            val key = unlocked.apiKey ?: return@withLock null
+            val environment = unlocked.setup.environment ?: return@withLock null
+            (connect(key).credential(environment) as? CredentialLookup.Failed)?.let(KeyRoles::offer)
+        }
+
+    /** Adds [offer] to the saved API key; whether Adyen confirmed it. */
+    suspend fun addKeyRoles(offer: KeyRolesOffer): Boolean =
+        mutex.withLock {
+            val unlocked = setups.unlocked()
+            val key = unlocked.apiKey ?: return@withLock false
+            val environment = unlocked.setup.environment ?: return@withLock false
+            KeyRoles.add(roles(key), environment, offer) == null
+        }
 
     /** Lists stores for the saved account; missing setup and stale responses return typed failures. */
     suspend fun findStores(): SetupStoreSearch =

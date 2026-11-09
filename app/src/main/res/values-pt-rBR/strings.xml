@@ -805,6 +805,10 @@
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
+  <string name="settings_key_roles_title">Adicionar as funções que faltam à chave de API?</string>
+  <string name="settings_key_roles_message">Faltam estas funções a esta chave de API:\n%1$s\n\nO Mini mPOS pode adicioná-las à chave na sua conta Adyen.</string>
+  <string name="settings_key_roles_add">Adicionar funções</string>
+  <string name="settings_key_roles_added">Funções adicionadas. Teste a chave de API novamente.</string>
   <string name="settings_live_prefix">Prefixo de URL LIVE</string>
   <string name="settings_live_prefix_hint">Digite o prefixo da URL LIVE da Checkout API, disponível em Developers › API URLs.</string>
   <string name="settings_test_api">Teste API</string>

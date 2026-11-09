@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import app.minimpos.app.R
 import app.minimpos.app.terminal.AccountMismatch
+import app.minimpos.app.terminal.KeyRolesOffer
 import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
@@ -136,6 +137,33 @@ fun InfoDialog(
         confirmButton = {
             CompactTertiaryButton(stringResource(R.string.action_ok), onDismiss, Modifier.testTag("${tag}Ok"))
         },
+    )
+}
+
+/** Names the roles [offer] would add to the API key, which widens what the key can do. */
+@Composable
+fun KeyRolesDialog(
+    offer: KeyRolesOffer,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_key_roles_title)) },
+        text = {
+            Text(
+                stringResource(R.string.settings_key_roles_message, offer.names.joinToString("\n")),
+                Modifier.verticalScroll(rememberScrollState()).testTag("keyRoles"),
+            )
+        },
+        confirmButton = {
+            CompactTertiaryButton(
+                stringResource(R.string.settings_key_roles_add),
+                onConfirm,
+                Modifier.testTag("addKeyRoles"),
+            )
+        },
+        dismissButton = { CompactTertiaryButton(stringResource(R.string.action_cancel), onDismiss) },
     )
 }
 

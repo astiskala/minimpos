@@ -12,6 +12,7 @@ import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.feature.persisting
+import app.minimpos.app.terminal.KeyRolesOffer
 import app.minimpos.app.terminal.SetupDiagnostics
 import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SetupDiscoveryChoice
@@ -43,6 +44,8 @@ import kotlin.time.Duration.Companion.seconds
  * @property terminals The latest search for terminals connected in the cloud.
  * @property connectedTerminals The terminals that search found, to choose from; null while none is offered.
  * @property accountMismatch A chosen terminal assigned to another merchant account, for the operator to accept; null otherwise.
+ * @property keyRolesOffer Roles the API key lacks that it could be given, awaiting the operator; null otherwise.
+ * @property keyRolesAdded Whether the latest addition of roles was confirmed, so the key can be tested again.
  * @property tapToPay The latest setup or removal of Tap to Pay.
  * @property apiKeyStored Whether the API key given to the latest search was stored (so the field can be cleared).
  * @property manualDetails Whether optional details need manual entry.
@@ -61,6 +64,8 @@ data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
     val connectedTerminals: List<SetupTerminalChoice>? = null,
     val accountMismatch: SetupDiscoveryChoice.AccountDiffers? = null,
+    val keyRolesOffer: KeyRolesOffer? = null,
+    val keyRolesAdded: Boolean = false,
     val tapToPay: ActionState = ActionState(),
     val apiKeyStored: Boolean = false,
     val manualDetails: Boolean = false,
@@ -235,6 +240,26 @@ class TerminalSetupViewModel(
                 if (result.keyMissing || discovery.pendingKey() != null) keyAction(null)
             }
         })
+    }
+
+    /** Looks for roles the saved API key lacks and could be given, after a test found a role missing. */
+    fun offerKeyRoles() {
+        launchWrite({
+            val offer = discovery.keyRolesOffer()
+            actions.update { it.copy(keyRolesOffer = offer, keyRolesAdded = false) }
+        })
+    }
+
+    /** Adds the offered roles to the API key, or leaves the key as it is. */
+    fun reviewKeyRoles(accept: Boolean) {
+        val offer = actions.value.keyRolesOffer ?: return
+        actions.update { it.copy(keyRolesOffer = null) }
+        if (accept) {
+            launchWrite({
+                val added = discovery.addKeyRoles(offer)
+                actions.update { it.copy(keyRolesAdded = added) }
+            })
+        }
     }
 
     /** Accepts the chosen terminal's merchant account, or leaves everything as it is. */

@@ -432,7 +432,7 @@ class AppContainer(
     val setupDiscovery =
         SetupDiscovery(terminalSetup, {
             secrets.set(Secret.TERMINAL_PASSPHRASE, it)
-        }, terminalDetails, gateway::readEnvironment, sharedKeys, terminalStatus::check, storeDetails)
+        }, terminalDetails, gateway::readEnvironment, sharedKeys, terminalStatus::check, storeDetails, terminalDetails)
 
     /**
      * The startup check for a newer GitHub release, which Home offers to download in the browser; never started on an
@@ -714,7 +714,7 @@ class AppContainer(
             gateway,
             api,
             tapToPay,
-            SetupImportChecks(receiptBusinessDetails, terminalDetails, sharedKeys),
+            SetupImportChecks(receiptBusinessDetails, terminalDetails, sharedKeys, terminalDetails),
             historySwitches,
         ) { operations.running }
 

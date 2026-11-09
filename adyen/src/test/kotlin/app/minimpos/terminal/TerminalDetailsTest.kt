@@ -5,6 +5,7 @@ import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.CredentialRoles
+import app.minimpos.terminal.transport.CredentialRolesUpdate
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MalformedPart
@@ -148,6 +149,33 @@ class TerminalDetailsTest {
             assertThat(listed.terminals.first().inventory).isTrue()
             assertThat(listed.terminals.last().lastActivity).isNull()
             assertThat(listed.terminals.last().inventory).isFalse()
+        }
+
+    @Test
+    fun `missing roles are patched onto the credential at its own address and confirmed`() =
+        runBlocking {
+            val held = AdyenRole.required().filterNot { it == AdyenRole.CLOUD_DEVICE }.map { it.displayName }
+            val rolesJson = held.joinToString(",") { "\"$it\"" }
+            val self = "https://elsewhere.example/v3/companies/ACME/apiCredentials/CRED"
+            reply("""{"id":"CRED","roles":[$rolesJson],"active":true,"_links":{"self":{"href":"$self"}}}""")
+            reply("{}")
+            val all = AdyenRole.required().joinToString(",") { "\"${it.displayName}\"" }
+            reply("""{"id":"CRED","roles":[$all],"active":true}""")
+            assertThat(api.addRoles(TerminalEnvironment.TEST, listOf(AdyenRole.CLOUD_DEVICE))).isEqualTo(CredentialRolesUpdate.Added)
+            server.takeRequest()
+            val patch = server.takeRequest()
+            assertThat(patch.method).isEqualTo("PATCH")
+            assertThat(patch.url.encodedPath).endsWith("/companies/ACME/apiCredentials/CRED")
+            assertThat(patch.body?.utf8()).contains(AdyenRole.CLOUD_DEVICE.displayName)
+        }
+
+    @Test
+    fun `roles are not sent to an address the credential's self link cannot prove`() =
+        runBlocking {
+            reply("""{"id":"CRED","roles":[],"active":true,"_links":{"self":{"href":"https://x.example/v3/me"}}}""")
+            assertThat(api.addRoles(TerminalEnvironment.TEST, listOf(AdyenRole.CLOUD_DEVICE)))
+                .isEqualTo(CredentialRolesUpdate.Failed(Fault.UnreadableReply()))
+            assertThat(server.requestCount).isEqualTo(1)
         }
 
     @Test

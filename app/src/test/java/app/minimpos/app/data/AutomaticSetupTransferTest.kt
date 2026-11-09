@@ -33,6 +33,7 @@ import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.CredentialRoles
+import app.minimpos.terminal.transport.CredentialRolesUpdate
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
@@ -64,11 +65,20 @@ class AutomaticSetupTransferTest {
     private val storeDetails =
         FakeStoreDetails(StoreLookup.Found(StoreDetails("Cafe", "1 Main St", "+61212345678")))
     private var credentialReads = 0
+    private val rolesAdded = mutableListOf<AdyenRole>()
     private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
             override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
                 credentialReads++
                 return credential
+            }
+
+            override suspend fun addRoles(
+                environment: TerminalEnvironment,
+                roles: List<AdyenRole>,
+            ): CredentialRolesUpdate {
+                rolesAdded += roles
+                return CredentialRolesUpdate.Added
             }
 
             override suspend fun terminals(
@@ -304,6 +314,30 @@ class AutomaticSetupTransferTest {
         assertThat(saved.keyIdentifier).isEqualTo("typed")
         assertThat(saved.keyVersion).isEqualTo(3)
         assertThat(saved.merchantAccount).isEqualTo("Merchant")
+    }
+
+    @Test
+    fun `roles the key lacks are added only after the operator agrees and the import continues`() {
+        val missing = listOf(AdyenRole.TERMINAL_SETTINGS_ADVANCED, AdyenRole.CLOUD_DEVICE)
+        credential =
+            CredentialLookup.Failed(
+                Fault.Permission(ApiKey.ADYEN, AdyenRole.names(missing)),
+                CredentialRoles(AdyenRole.required(), missing),
+            )
+        val offered = import() as SetupImportOutcome.RolesMissing
+        assertThat(offered.offer.roles).isEqualTo(missing)
+        assertThat(rolesAdded).isEmpty()
+        val outcome = await { env.container.setupImport.import(received(), ImportMode.MERGE, code, confirmedRoles = offered.offer) }
+        assertThat(rolesAdded).containsExactlyElementsIn(missing)
+        assertThat(outcome).isInstanceOf(SetupImportOutcome.Committed::class.java)
+    }
+
+    @Test
+    fun `a key that cannot edit credentials gets the named roles rather than an offer`() {
+        val missing = listOf(AdyenRole.API_CREDENTIALS, AdyenRole.CLOUD_DEVICE)
+        val fault = Fault.Permission(ApiKey.ADYEN, AdyenRole.names(missing))
+        credential = CredentialLookup.Failed(fault, CredentialRoles(AdyenRole.required(), missing))
+        assertThat(import()).isEqualTo(SetupImportOutcome.Failed(Failure.Remote(fault)))
     }
 
     @Test

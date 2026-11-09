@@ -80,6 +80,7 @@ import app.minimpos.app.ui.components.CompactSecondaryButton
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.HistorySwitchDialog
+import app.minimpos.app.ui.components.KeyRolesDialog
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
@@ -357,6 +358,7 @@ fun TransferImportScreen(
         onTerminal = vm::chooseTerminal,
         onReview = vm::reviewSetup,
         onAccount = vm::reviewAccount,
+        onRoles = vm::reviewKeyRoles,
         onConfirm = {
             confirmReplace = false
             if ((state as? ImportUiState.Ready)?.boardingRequired == true) vm.setUpTapToPay() else vm.import()
@@ -384,11 +386,13 @@ private fun ImportReviewDialogs(
     onTerminal: (String?) -> Unit,
     onReview: (Boolean) -> Unit,
     onAccount: (Boolean) -> Unit,
+    onRoles: (Boolean) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     state?.terminalChoices?.let { TerminalChoiceDialog(it, onTerminal) }
     state?.accountMismatch?.let { AccountMismatchDialog(it, { onAccount(true) }, { onAccount(false) }) }
+    state?.keyRolesOffer?.let { KeyRolesDialog(it, { onRoles(true) }, { onRoles(false) }) }
     state?.historySwitch?.let {
         HistorySwitchDialog(it.unfinished, { onReview(true) }, { onReview(false) })
     }

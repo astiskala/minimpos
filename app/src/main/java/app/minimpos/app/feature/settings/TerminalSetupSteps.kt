@@ -599,6 +599,7 @@ private fun ColumnScope.AdyenApiStep(
             )
         }
         actions.secretError?.let { ActionMessage(it.text(), isError = true) }
+        if (setup.keyRolesAdded) SettingNote(stringResource(R.string.settings_key_roles_added))
         if (discovers) KeyDiscoveryActions(api, setup, actions.api.running, onFind)
         if (api.keySaved) ForgetApiKey(events)
     }

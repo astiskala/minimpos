@@ -43,6 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +71,7 @@ import app.minimpos.app.data.settings.PricingChange
 import app.minimpos.app.data.settings.SimulatorSettings
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
+import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.OutcomeDialog
 import app.minimpos.app.feature.labels
@@ -84,11 +86,13 @@ import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
+import app.minimpos.app.terminal.lacksKeyRoles
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.Description
 import app.minimpos.app.ui.components.HistorySwitchDialog
+import app.minimpos.app.ui.components.KeyRolesDialog
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
@@ -248,6 +252,12 @@ internal interface TerminalSetupEvents {
     /** Accepts the chosen terminal's merchant account, or leaves it ([TerminalSetupViewModel.reviewAccount]). */
     fun onAccountReview(accept: Boolean)
 
+    /** Looks for roles the API key lacks and could be given ([TerminalSetupViewModel.offerKeyRoles]). */
+    fun onKeyRolesOffer()
+
+    /** Adds the offered roles, or leaves the key ([TerminalSetupViewModel.reviewKeyRoles]). */
+    fun onKeyRolesReview(accept: Boolean)
+
     /** Lists stores for the saved Tap to Pay account. */
     fun onStoresFind()
 
@@ -366,6 +376,10 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
         override fun onTerminalChoose(poiId: String?) = setup.chooseTerminal(poiId)
 
         override fun onAccountReview(accept: Boolean) = setup.reviewAccount(accept)
+
+        override fun onKeyRolesOffer() = setup.offerKeyRoles()
+
+        override fun onKeyRolesReview(accept: Boolean) = setup.reviewKeyRoles(accept)
 
         override fun onStoresFind() = setup.findStores()
 
@@ -987,6 +1001,16 @@ private fun TerminalResults(
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
 ) {
+    val lacksRoles =
+        listOf(actions.api.outcome, setup.terminals.outcome).any {
+            (it as? ActionOutcome.Failed)?.failure?.lacksKeyRoles() ==
+                true
+        }
+    LaunchedEffect(lacksRoles) { if (lacksRoles) setupEvents.onKeyRolesOffer() }
+    setup.keyRolesOffer?.let {
+        KeyRolesDialog(it, { setupEvents.onKeyRolesReview(true) }, { setupEvents.onKeyRolesReview(false) })
+        return
+    }
     when {
         actions.connection.outcome != null -> {
             ConnectionResultDialog(actions.connection, actions.api, status, state.settings, setup.diagnostics, events::onTestResultDismiss)

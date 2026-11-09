@@ -14,6 +14,7 @@ import app.minimpos.app.data.transfer.ReceivedTransfer
 import app.minimpos.app.data.transfer.SetupTransfer
 import app.minimpos.core.codec.Transfer
 import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRolesApi
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyApi
 import app.minimpos.terminal.transport.SharedKeyLookup
@@ -33,6 +34,10 @@ internal sealed interface SetupImportOutcome {
 
     data class AccountDiffers(
         val mismatch: AccountMismatch,
+    ) : SetupImportOutcome
+
+    data class RolesMissing(
+        val offer: KeyRolesOffer,
     ) : SetupImportOutcome
 
     data class KeyConfirmation(
@@ -65,6 +70,8 @@ class SetupImportChecks(
     val terminals: (String) -> SharedKeyApi,
     /** Owns key creation only after explicit consent, without changing active import configuration. */
     val sharedKeys: SharedKeySetup,
+    /** Adds the roles a candidate API key lacks, only after the operator agrees. */
+    val roles: (String) -> CredentialRolesApi,
 )
 
 /** Verifies a scanned setup without replacing active configuration, then commits it with durable recovery.
@@ -103,6 +110,7 @@ class SetupImport internal constructor(
         confirmedKey: SharedKeyOffer? = null,
         confirmedAccount: String? = null,
         host: String? = null,
+        confirmedRoles: KeyRolesOffer? = null,
     ): SetupImportOutcome =
         mutex.withLock {
             if (busy()) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
@@ -110,7 +118,7 @@ class SetupImport internal constructor(
             val prepared = transfer.prepare(received, code) ?: return@withLock SetupImportOutcome.Committed(ImportOutcome.WrongCode)
             if (!prepared.original.acceptsSetupImport) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
             try {
-                val choices = Choices(terminalId, board, confirmedHistorySwitch, confirmedKey, confirmedAccount, host)
+                val choices = Choices(terminalId, board, confirmedHistorySwitch, confirmedKey, confirmedAccount, host, confirmedRoles)
                 val verified =
                     when (val step = verify(prepared, choices)) {
                         is Step.Halted -> return@withLock step.outcome
@@ -164,6 +172,7 @@ class SetupImport internal constructor(
         val confirmedKey: SharedKeyOffer?,
         val confirmedAccount: String?,
         val host: String?,
+        val confirmedRoles: KeyRolesOffer?,
     )
 
     private data class Candidate(
@@ -194,7 +203,7 @@ class SetupImport internal constructor(
         val start = Candidate(initial)
         if (!initial.changesSetup || candidate(initial).setup.apiSetup == ApiSetup.Simulated) return Step.Next(start)
         return environment(start)
-            .andThen { credential(it) }
+            .andThen { credential(it, choices.confirmedRoles) }
             .andThen { discovery(it, choices.terminalId, choices.confirmedAccount, choices.host) }
             .andThen { requiredFields(it, allowMissingKey = it.missingKey) }
             .andThen { checkout(it) }
@@ -213,14 +222,28 @@ class SetupImport internal constructor(
         return Step.Next(current.copy(prepared = prepared.withTerminal(prepared.settings.terminal.selectEnvironment(environment))))
     }
 
-    private suspend fun credential(current: Candidate): Step {
+    private suspend fun credential(
+        current: Candidate,
+        confirmedRoles: KeyRolesOffer?,
+    ): Step {
         val unlocked = candidate(current.prepared)
         val key = unlocked.apiKey ?: return Step.Halted(SetupImportOutcome.Failed(SetupProblem.API_KEY, incomplete = true))
         val environment =
             unlocked.setup.environment ?: return Step.Halted(SetupImportOutcome.Failed(SetupProblem.ENVIRONMENT, incomplete = true))
         return when (val result = checks.terminals(key).credential(environment)) {
-            is CredentialLookup.Allowed -> Step.Next(current)
-            is CredentialLookup.Failed -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(result.fault)))
+            is CredentialLookup.Allowed -> {
+                Step.Next(current)
+            }
+
+            is CredentialLookup.Failed -> {
+                val offer = KeyRoles.offer(result)
+                when {
+                    offer == null -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(result.fault)))
+                    offer != confirmedRoles -> Step.Halted(SetupImportOutcome.RolesMissing(offer))
+                    KeyRoles.add(checks.roles(key), environment, offer) == null -> Step.Next(current)
+                    else -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(result.fault)))
+                }
+            }
         }
     }
 

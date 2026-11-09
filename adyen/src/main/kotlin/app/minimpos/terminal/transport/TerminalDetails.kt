@@ -14,10 +14,12 @@ import com.adyen.model.management.SupportedCardTypes
 import com.adyen.model.management.Terminal
 import com.adyen.model.management.TerminalAssignment
 import com.adyen.model.management.TerminalSettings
+import com.adyen.model.management.UpdateCompanyApiCredentialRequest
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import java.time.Instant
 import java.util.Locale
@@ -367,13 +369,36 @@ interface TerminalCapabilitiesApi : TerminalListingApi {
     ): TerminalCapabilitiesUpdate = TerminalCapabilitiesUpdate.Failed(Fault.Unsupported)
 }
 
+/** Result of adding roles to the API key in use, confirmed by reading the credential back. */
+sealed interface CredentialRolesUpdate {
+    /** Every required role is now on the credential. */
+    data object Added : CredentialRolesUpdate
+
+    /** The roles were not confirmed; repeating is safe, because the roles sent are the complete list.
+     * @property fault Why, including Adyen refusing a role the company's own credential does not hold.
+     */
+    data class Failed(
+        val fault: Fault,
+    ) : CredentialRolesUpdate
+}
+
+/** Widening the API key in use; only ever after the operator has agreed to it. */
+interface CredentialRolesApi {
+    /** Adds [roles] to the credential of this API key, keeping the ones it has. */
+    suspend fun addRoles(
+        environment: TerminalEnvironment,
+        roles: List<AdyenRole>,
+    ): CredentialRolesUpdate = CredentialRolesUpdate.Failed(Fault.Unsupported)
+}
+
 /**
  * Every Management terminal job for one API key, as [AdyenTerminalDetails] implements them; the app's container hands
  * each task only the narrow interface its job needs ([TerminalListingApi], [SharedKeyApi] or [TerminalCapabilitiesApi]).
  */
 interface TerminalDetailsApi :
     SharedKeyApi,
-    TerminalCapabilitiesApi
+    TerminalCapabilitiesApi,
+    CredentialRolesApi
 
 /** Management v3 terminal discovery with bounded pagination and no automatic request retries.
  * @param apiKey Credential sent only in the authentication header.
@@ -406,6 +431,48 @@ class AdyenTerminalDetails(
         } else {
             CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, AdyenRole.names(missing)), reading)
         }
+    }
+
+    override suspend fun addRoles(
+        environment: TerminalEnvironment,
+        roles: List<AdyenRole>,
+    ): CredentialRolesUpdate {
+        val me = http.get(baseUrl(environment).newBuilder().addPathSegment("me").build(), TIMEOUT)
+        if (me !is AdyenReply.Answered || !me.ok) return CredentialRolesUpdate.Failed(managementFault(me))
+        val credential = decodeAdyenModel(me.body, MeApiCredential::class.java)
+        val url = credential?.let { credentialUrl(environment, it) } ?: return CredentialRolesUpdate.Failed(Fault.UnreadableReply())
+        val held = credential.roles.orEmpty().filterNotNull()
+        val body = UpdateCompanyApiCredentialRequest().roles(held + (roles.map { it.displayName } - held.toSet())).toJson()
+        val reply = http.patch(url, body, TIMEOUT)
+        if (reply !is AdyenReply.Answered || !reply.ok) return CredentialRolesUpdate.Failed(managementFault(reply))
+        return when (val check = credential(environment)) {
+            is CredentialLookup.Allowed -> CredentialRolesUpdate.Added
+            is CredentialLookup.Failed -> CredentialRolesUpdate.Failed(check.fault)
+        }
+    }
+
+    /** The credential's own Management address, built from the ids in its self link; nothing else about that link is used. */
+    private fun credentialUrl(
+        environment: TerminalEnvironment,
+        credential: MeApiCredential,
+    ): HttpUrl? {
+        val path =
+            credential.links
+                ?.self
+                ?.href
+                ?.toHttpUrlOrNull()
+                ?.pathSegments
+                .orEmpty()
+        val at = path.indexOf("apiCredentials")
+        val valid = at >= 2 && path.getOrNull(at + 1) == credential.id && path[at - 2] in CREDENTIAL_OWNERS
+        if (!valid) return null
+        return baseUrl(environment)
+            .newBuilder()
+            .addPathSegment(path[at - 2])
+            .addPathSegment(path[at - 1])
+            .addPathSegment("apiCredentials")
+            .addPathSegment(credential.id)
+            .build()
     }
 
     override suspend fun terminals(
@@ -828,6 +895,7 @@ class AdyenTerminalDetails(
     private companion object {
         private val TIMEOUT = 15.seconds
         private val KEY_VERSIONS = 1..9_999
+        private val CREDENTIAL_OWNERS = setOf("companies", "merchants")
     }
 }
 

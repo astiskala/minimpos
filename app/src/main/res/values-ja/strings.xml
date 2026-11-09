@@ -799,6 +799,10 @@
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
+  <string name="settings_key_roles_title">不足している API キーのロールを追加しますか?</string>
+  <string name="settings_key_roles_message">この API キーには次のロールがありません:\n%1$s\n\nMini mPOS が Adyen アカウントのキーに追加できます。</string>
+  <string name="settings_key_roles_add">ロールを追加</string>
+  <string name="settings_key_roles_added">ロールを追加しました。API キーをもう一度テストしてください。</string>
   <string name="settings_live_prefix">LIVE URLプレフィックス</string>
   <string name="settings_live_prefix_hint">CheckoutライブURLプレフィックスを入力してください。「Developers › API URLs」で確認できます。</string>
   <string name="settings_test_api">APIをテスト</string>

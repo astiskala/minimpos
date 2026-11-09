@@ -17,6 +17,7 @@ import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.terminal.AccountMismatch
 import app.minimpos.app.terminal.HistorySwitchPlan
+import app.minimpos.app.terminal.KeyRolesOffer
 import app.minimpos.app.terminal.SetupImport
 import app.minimpos.app.terminal.SetupImportOutcome
 import app.minimpos.app.terminal.SetupTerminalChoice
@@ -143,6 +144,7 @@ sealed interface ImportUiState {
      * @property terminalHost The network terminal's address, to correct and retry after a failed connection; null otherwise.
      * @property terminalChoices Eligible terminals offered only for an ambiguous destination; null when not selecting.
      * @property accountMismatch A terminal assigned to another merchant account, for the operator to accept; null otherwise.
+     * @property keyRolesOffer Roles the API key lacks that it could be given, awaiting the operator; null otherwise.
      * @property boardingRequired Whether explicit phone registration must run before this import can commit.
      * @property historySwitch Destructive history confirmation for this exact candidate; null before verification.
      * @property sharedKeyOffer Explicit key-creation/recovery confirmation; null when not offered.
@@ -160,6 +162,7 @@ sealed interface ImportUiState {
         val terminalHost: String? = null,
         val terminalChoices: List<SetupTerminalChoice>? = null,
         val accountMismatch: AccountMismatch? = null,
+        val keyRolesOffer: KeyRolesOffer? = null,
         val boardingRequired: Boolean = false,
         /** Destructive environment-change confirmation; null until authenticated setup validation succeeds. */
         val historySwitch: HistorySwitchPlan? = null,
@@ -216,6 +219,7 @@ class TransferImportViewModel(
     private var selectedTerminal: String? = null
     private var confirmedHistory: HistorySwitchPlan? = null
     private var confirmedAccount: String? = null
+    private var confirmedRoles: KeyRolesOffer? = null
     private var keyFollow: Job? = null
 
     init {
@@ -322,6 +326,16 @@ class TransferImportViewModel(
     /** Changes the network terminal's address tried by the next attempt; ignored unless one is offered for correction. */
     fun setTerminalHost(host: String) = updateReady { if (it.terminalHost == null) it else it.copy(terminalHost = host) }
 
+    /** Adds the offered roles to the API key and verifies again, or leaves the import as it is. */
+    fun reviewKeyRoles(accept: Boolean) {
+        val offer = (state.value as? ImportUiState.Ready)?.keyRolesOffer ?: return
+        updateReady { it.copy(keyRolesOffer = null) }
+        if (accept) {
+            confirmedRoles = offer
+            import()
+        }
+    }
+
     /** Accepts the terminal's merchant account for this import and verifies again, or leaves the import as it is. */
     fun reviewAccount(accept: Boolean) {
         val mismatch = (state.value as? ImportUiState.Ready)?.accountMismatch ?: return
@@ -386,6 +400,7 @@ class TransferImportViewModel(
                 confirmedKey,
                 confirmedAccount,
                 ready.terminalHost?.trim()?.ifBlank { null },
+                confirmedRoles,
             )
         }) { result ->
             state.value = finished(ready, result)
@@ -403,6 +418,10 @@ class TransferImportViewModel(
 
             is SetupImportOutcome.Terminals -> {
                 ready.copy(terminalChoices = result.terminals, outcome = null, keyUnread = false)
+            }
+
+            is SetupImportOutcome.RolesMissing -> {
+                ready.copy(keyRolesOffer = result.offer, outcome = null)
             }
 
             is SetupImportOutcome.AccountDiffers -> {

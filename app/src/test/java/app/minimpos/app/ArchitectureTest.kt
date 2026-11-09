@@ -109,6 +109,7 @@ import app.minimpos.terminal.parse.ReceiptField
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CloudRegion
+import app.minimpos.terminal.transport.CredentialRolesApi
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
@@ -466,6 +467,16 @@ class ArchitectureTest {
             api: TerminalDetailsApi,
             key: DiscoveredKey,
         ) = api.createSharedKey("ID", TerminalEnvironment.TEST, key)
+    }
+
+    @Test
+    fun `only key roles can widen an API key`() = keyRolesOwnership.check(app)
+
+    @Test
+    fun `key roles ownership rejects an unconfirmed widening`() = reject(listOf(keyRolesOwnership), KeyRolesViolation::class.java)
+
+    private class KeyRolesViolation {
+        suspend fun widen(api: TerminalDetailsApi) = api.addRoles(TerminalEnvironment.TEST, emptyList())
     }
 
     @Test
@@ -1170,6 +1181,16 @@ class ArchitectureTest {
                 .should()
                 .callMethodWhere(
                     callToSubtypeOf(SharedKeyApi::class.java, "createSharedKey"),
+                )
+
+        // Adding roles widens what a stored key can do, so it stays with the one owner that asks the operator first.
+        val keyRolesOwnership: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within("app.minimpos.app.terminal.KeyRoles"))
+                .should()
+                .callMethodWhere(
+                    callToSubtypeOf(CredentialRolesApi::class.java, "addRoles"),
                 )
 
         // Only explicit switch confirmation and its authenticated import journal may discard recovery identities.

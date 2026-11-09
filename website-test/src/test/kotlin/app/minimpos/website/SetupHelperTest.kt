@@ -27,6 +27,26 @@ class SetupHelperTest {
     fun resetPage() = openPage()
 
     @Test
+    fun `masked secrets cannot be copied out of their fields`() {
+        assertThat(script.executeScript("return document.getElementById('apiKey').type")).isEqualTo("text")
+        val copy = "return document.getElementById('apiKey').dispatchEvent(new ClipboardEvent('copy', {cancelable: true}))"
+        assertThat(script.executeScript(copy)).isEqualTo(false)
+    }
+
+    @Test
+    fun `Make QR codes needs the required fields and fires no form submit`() {
+        field("setupMode", "automatic")
+        field("apiKey", "")
+        script.executeScript("window.__submits = 0; document.addEventListener('submit', () => window.__submits++, true);")
+        script.executeScript("document.getElementById('setup-make').click();")
+        assertThat(script.executeScript("return document.getElementById('setup-codes').hidden")).isEqualTo(true)
+        field("apiKey", "demo-key")
+        script.executeScript("document.getElementById('setup-make').click();")
+        ready()
+        assertThat(script.executeScript("return window.__submits")).isEqualTo(0L)
+    }
+
+    @Test
     fun `every language loads offline and generates genuine SVG QR codes with WebCrypto`() {
         for (language in listOf("", "zh-CN/", "zh-Hant/", "ja/", "pt-BR/", "es-MX/", "fr-FR/")) {
             openPage(language)
@@ -392,8 +412,10 @@ class SetupHelperTest {
         )
     }
 
+    /** Makes the codes without the browser's required-field check, so a test fills in only the fields it is about. */
     private fun submit() {
-        script.executeScript("document.getElementById('setup-form').dispatchEvent(new Event('submit', {cancelable:true}));")
+        script.executeScript("document.getElementById('setup-form').reportValidity = () => true;")
+        script.executeScript("document.getElementById('setup-make').click();")
     }
 
     private fun ready() {

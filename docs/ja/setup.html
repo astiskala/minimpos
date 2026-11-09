@@ -156,7 +156,7 @@
               と登録用認証情報の自動作成に使います。</span>すべての構成で、メインの認証情報に同じロールが必要です。<a href="quick-start#credentials">認証情報の要件</a>
               を参照してください。</p>
             <label for="apiKey">APIキー</label>
-            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+            <input id="apiKey" name="apiKey" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" required spellcheck="false">
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
@@ -189,7 +189,7 @@
             <label for="keyIdentifier">キー識別子</label>
             <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
             <label for="passphrase">キーのパスフレーズ</label>
-            <input id="passphrase" name="passphrase" type="password" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
+            <input id="passphrase" name="passphrase" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
             <label for="keyVersion">キーバージョン</label>
             <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required data-required-for="thisTerminal network tapToPay">
           </fieldset>
@@ -281,7 +281,7 @@
               <label for="smtpUsername">ユーザー名（任意）</label>
               <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
               <label for="smtpPassword">パスワードまたはアプリパスワード（任意）</label>
-              <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
+              <input id="smtpPassword" name="smtpPassword" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" spellcheck="false">
               <label for="smtpFromAddress">差出人メールアドレス</label>
               <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
               <label for="smtpFromName">差出人名（任意）</label>
@@ -313,7 +313,7 @@
             <p id="logo-status" class="hint" role="status"></p>
           </fieldset>
           <div class="setup-actions">
-            <button class="button" type="submit">QRコードを作成</button>
+            <button class="button" id="setup-make" type="button">QRコードを作成</button>
             <button class="button button-ghost" type="reset">クリア</button>
           </div>
           <p class="hint" id="setup-status" role="status" aria-live="polite"></p>

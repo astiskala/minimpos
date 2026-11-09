@@ -74,7 +74,7 @@ class SetupLogoTest {
             window.__codes = [];
             const original = qrcodegen.QrCode.encodeText;
             qrcodegen.QrCode.encodeText = (text, level) => { window.__codes.push(text); return original(text, level); };
-            document.getElementById('setup-form').requestSubmit();
+            document.getElementById('setup-make').click();
             """.trimIndent(),
         )
         browser.await { browser.executeScript("return !document.getElementById('setup-codes').hidden") == true }
@@ -101,7 +101,7 @@ class SetupLogoTest {
     fun `choosing another image clears codes before decoding and a stale decode cannot restore them`() {
         chooseLogoOnly()
         uploadLogo()
-        browser.executeScript("document.getElementById('setup-form').requestSubmit();")
+        browser.executeScript("document.getElementById('setup-make').click();")
         browser.await { browser.executeScript("return !document.getElementById('setup-codes').hidden") == true }
         browser.executeScript(
             """
@@ -157,7 +157,7 @@ class SetupLogoTest {
     fun `threshold edits coalesce without preparing the source again and submit flushes the latest edit`() {
         chooseLogoOnly()
         uploadLogo()
-        browser.executeScript("document.getElementById('setup-form').requestSubmit();")
+        browser.executeScript("document.getElementById('setup-make').click();")
         browser.await { browser.executeScript("return !document.getElementById('setup-codes').hidden") == true }
         instrumentLogo()
         browser.executeScript(
@@ -179,7 +179,7 @@ class SetupLogoTest {
             """
             const input = document.getElementById('logoThreshold');
             input.value = 80; input.dispatchEvent(new Event('input'));
-            document.getElementById('setup-form').requestSubmit();
+            document.getElementById('setup-make').click();
             """.trimIndent(),
         )
         assertThat(browser.executeScript("return window.__quantizations")).isEqualTo(listOf(60L, 80L))
@@ -271,7 +271,7 @@ class SetupLogoTest {
             window.__codes = [];
             const original = qrcodegen.QrCode.encodeText;
             qrcodegen.QrCode.encodeText = (text, level) => { window.__codes.push(text); return original(text, level); };
-            document.getElementById('setup-form').requestSubmit();
+            document.getElementById('setup-make').click();
             """.trimIndent(),
         )
         browser.await { browser.executeScript("return !document.getElementById('setup-codes').hidden") == true }

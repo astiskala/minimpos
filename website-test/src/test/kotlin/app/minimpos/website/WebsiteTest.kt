@@ -1188,6 +1188,23 @@ class SetupGuideTest {
     }
 
     @Test
+    fun `the setup helper gives password managers nothing to offer to save in every language`() {
+        LANGUAGES.forEach { language ->
+            val document = pages.getValue(language to Kind.SETUP).document
+            assertWithMessage("$language: password fields").that(document.select("input[type=password]")).isEmpty()
+            assertWithMessage("$language: submit buttons").that(document.select("#setup-form [type=submit]")).isEmpty()
+            listOf("apiKey", "passphrase", "smtpPassword").forEach { id ->
+                val field = document.select("#$id").single()
+                assertWithMessage("$language: $id").that(field.hasClass("masked")).isTrue()
+                assertWithMessage("$language: $id").that(field.attr("autocomplete")).isEqualTo("off")
+                listOf("data-1p-ignore", "data-lpignore", "data-bwignore", "data-form-type").forEach { attribute ->
+                    assertWithMessage("$language: $id $attribute").that(field.hasAttr(attribute)).isTrue()
+                }
+            }
+        }
+    }
+
+    @Test
     fun `SMTP setup is optional secured and links to email testing in every language`() {
         LANGUAGES.forEach { language ->
             val helper = pages.getValue(language to Kind.SETUP)
@@ -1206,7 +1223,7 @@ class SetupGuideTest {
             listOf("smtpUsername", "smtpPassword", "smtpFromName").forEach { id ->
                 assertWithMessage("$language: $id").that(fields.select("#$id").single().hasAttr("required")).isFalse()
             }
-            assertThat(fields.select("#smtpPassword").single().attr("type")).isEqualTo("password")
+            assertThat(fields.select("#smtpPassword").single().attr("type")).isEqualTo("text")
             val security = fields.select("input[name=smtpSecurity]")
             assertThat(security.map { it.attr("value") }).containsExactly("STARTTLS", "SSL", "NONE").inOrder()
             assertThat(security.first()!!.hasAttr("checked")).isTrue()

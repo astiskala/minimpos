@@ -805,6 +805,8 @@ pre {
 
 .setup-form fieldset fieldset > legend { font-size: 1rem; }
 
+.setup-form input.masked { -webkit-text-security: disc; }
+
 .setup-form label:not(.choice) { display: block; margin: 16px 0 6px; font-weight: 600; }
 
 .setup-form input:not([type="radio"]):not([type="checkbox"]), .setup-form select, .setup-form textarea {

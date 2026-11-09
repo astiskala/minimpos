@@ -153,7 +153,7 @@
               Developers › API credentials</a> 中建立憑據並生成 API 密鑰。<span data-only="tapToPay" hidden>此密鑰用於 Checkout
               和自動建立註冊憑據。</span>所有設定都需要相同的主憑據角色；參見<a href="quick-start#credentials">憑據要求</a>。</p>
             <label for="apiKey">API 密鑰</label>
-            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+            <input id="apiKey" name="apiKey" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" required spellcheck="false">
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
@@ -186,7 +186,7 @@
             <label for="keyIdentifier">密鑰識別碼</label>
             <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
             <label for="passphrase">密鑰口令</label>
-            <input id="passphrase" name="passphrase" type="password" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
+            <input id="passphrase" name="passphrase" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
             <label for="keyVersion">密鑰版本</label>
             <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required data-required-for="thisTerminal network tapToPay">
           </fieldset>
@@ -278,7 +278,7 @@
               <label for="smtpUsername">用戶名稱（可選）</label>
               <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
               <label for="smtpPassword">密碼或應用程式密碼（可選）</label>
-              <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
+              <input id="smtpPassword" name="smtpPassword" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" spellcheck="false">
               <label for="smtpFromAddress">寄件人電郵</label>
               <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
               <label for="smtpFromName">寄件人名稱（可選）</label>
@@ -309,7 +309,7 @@
             <p id="logo-status" class="hint" role="status"></p>
           </fieldset>
           <div class="setup-actions">
-            <button class="button" type="submit">生成二維碼</button>
+            <button class="button" id="setup-make" type="button">生成二維碼</button>
             <button class="button button-ghost" type="reset">清空</button>
           </div>
           <p class="hint" id="setup-status" role="status" aria-live="polite"></p>

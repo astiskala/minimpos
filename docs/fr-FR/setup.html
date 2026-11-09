@@ -163,7 +163,7 @@
               Chaque configuration nécessite les mêmes rôles d'identification principaux ; voir le
                 <a href="quick-start#credentials">rôles et accès requis</a>.</p>
             <label for="apiKey">Clé API</label>
-            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+            <input id="apiKey" name="apiKey" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" required spellcheck="false">
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
@@ -198,7 +198,7 @@
             <label for="keyIdentifier">Identificateur de clé</label>
             <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
             <label for="passphrase">Phrase secrète</label>
-            <input id="passphrase" name="passphrase" type="password" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
+            <input id="passphrase" name="passphrase" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
             <label for="keyVersion">Version</label>
             <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required data-required-for="thisTerminal network tapToPay">
           </fieldset>
@@ -297,7 +297,7 @@
               <label for="smtpUsername">Nom d'utilisateur, facultatif</label>
               <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
               <label for="smtpPassword">Mot de passe ou mot de passe de l'application, facultatif</label>
-              <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
+              <input id="smtpPassword" name="smtpPassword" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" spellcheck="false">
               <label for="smtpFromAddress">Adresse email de l'expéditeur</label>
               <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
               <label for="smtpFromName">Nom de l'expéditeur, facultatif</label>
@@ -330,7 +330,7 @@
             <p id="logo-status" class="hint" role="status"></p>
           </fieldset>
           <div class="setup-actions">
-            <button class="button" type="submit">Créer des codes QR</button>
+            <button class="button" id="setup-make" type="button">Créer des codes QR</button>
             <button class="button button-ghost" type="reset">Effacer</button>
           </div>
           <p class="hint" id="setup-status" role="status" aria-live="polite"></p>

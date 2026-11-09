@@ -523,8 +523,24 @@
     }
   });
 
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
+  // Text fields so password managers leave them alone, but as private as a password field: a browser that cannot mask
+  // text gets a password field instead, and what was typed cannot be copied back out.
+  for (const input of form.querySelectorAll("input.masked")) {
+    if (!CSS.supports("-webkit-text-security", "disc")) input.type = "password";
+    for (const name of ["copy", "cut"]) input.addEventListener(name, (event) => event.preventDefault());
+  }
+
+  // Password managers offer to save what a submitted form held, so the codes are made without a submit event.
+  form.addEventListener("submit", (event) => event.preventDefault());
+  const makeButton = document.getElementById("setup-make");
+  form.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.target.matches("input:not([type=radio]):not([type=checkbox]):not([type=file])")) {
+      event.preventDefault();
+      makeButton.click();
+    }
+  });
+  makeButton.addEventListener("click", async () => {
+    if (!form.reportValidity()) return;
     flushLogoConversion();
     if (!window.crypto?.subtle || typeof qrcodegen === "undefined") {
       status.textContent = message("msgUnsupported");

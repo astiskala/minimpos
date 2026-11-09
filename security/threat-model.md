@@ -72,6 +72,9 @@ Receipt-logo decoding bounds the longest side at 4096 pixels before conversion. 
 length and zero padding; the PNG reader accepts only the bounded 1-bit format written by the app. Only the final
 monochrome bitmap is stored, behind storage-health protection; corrupt files remain intact and block protected work.
 The helper decodes local SVG through a blob image under its CSP; image data and transfer contents are never logged.
+
+With the operator's confirmation, `KeyRoles` can add roles a stored API key lacks. That needs the role that edits
+credentials, which a stolen key would already hold, and Adyen limits the roles to those its company credential has.
 Recovery reads the original message category and rejects conflicting echoed or repeated identities. Approval must hold
 after setup/persistence and before each network stage, including a capture following an adjustment. Active recovery,
 link operations, captures and whole multi-leg returns hold setup and history maintenance steady.

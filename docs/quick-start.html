@@ -198,6 +198,7 @@
               </ul>
             </li>
           </ol>
+<p class="hint">Missing a role? When Mini mPOS first checks a key that lacks one, it offers to add it for you, if your company’s <code>ws</code> credential holds that role.</p>
 <details class="role-checklist"><summary>Check the complete credential requirements</summary><p>Keep the default payment
   and Management API roles below enabled as well as the five additional roles above. Existing credentials may have had
   defaults removed. The app checks the same primary credential for every destination; the separate phone registration
@@ -401,8 +402,7 @@
           <dl class="settings-list setup-route">
             <dt>Setup helper (recommended)</dt>
             <dd>In the <a href="setup#destination-tapToPay">setup helper</a>, choose <strong>On a phone, with Tap to Pay in the Adyen
-              Payments app</strong> and <strong>TEST</strong> or <strong>LIVE</strong>. Enter the matching Adyen API
-              key, merchant account and shared key, and optionally a store ID. <a href="#helper">Scan the codes</a> and
+              Payments app</strong> and <strong>TEST</strong> or <strong>LIVE</strong>. Enter the matching Adyen API key and, optionally, a store ID. Automatic finds the merchant account and shared key; choose Manual to enter them yourself. <a href="#helper">Scan the codes</a> and
               tap <strong>Verify and import</strong>. Mini mPOS creates the registration credential and opens the
               Payments app to complete registration as part of the import.</dd>
           </dl>

@@ -52,6 +52,7 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   account/access and supported connection verification precede activation writes. Its encrypted journal resumes commits
   without replaying catalog replacement or phone registration. Only it and `TerminalStatus` record verified identities
   through `TerminalSetupSource`, which automatically completes pending shared-key recovery records in `SharedKeySetup`.
+- \* Only `KeyRoles` adds roles to an API key, after the operator agrees: it widens what a stored key can do.
 - \* Only `SharedKeySetup` creates terminal-specific keys at Adyen, after explicit confirmation and encrypted recovery
   persistence. Discovery stays read-only; existing effective keys are reused, never deliberately replaced.
   Raw `SharedKeySetupOutcome` stays in `terminal`; `SetupDiscovery` owns saved-key persistence through connection

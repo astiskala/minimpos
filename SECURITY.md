@@ -57,7 +57,7 @@ increasing lockout periods. The two PINs protect separate actions; neither repla
 
 ### Transfers and the setup helper
 
-Secrets in QR transfers are encrypted with AES-256-GCM using a PBKDF2-derived key from a 12-character transfer code.
+Secrets in QR transfers are encrypted with AES-256-GCM using a PBKDF2-derived key from a 12-letter transfer code.
 Every transfer needs the code, even without secrets. The code is displayed separately; the QR images alone do not
 reveal the secrets. Anyone with both can decrypt them,
 so keep the code private and generate a fresh transfer when needed. Transfers are protected by admin access when an

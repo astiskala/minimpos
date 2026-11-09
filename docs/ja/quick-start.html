@@ -171,6 +171,7 @@
               </ul>
             </li>
           </ol>
+<p class="hint">ロールが不足している場合は、Mini mPOS が最初にキーを確認するときに、会社の <code>ws</code> 認証情報がそのロールを持っていれば追加を提案します。</p>
 <details class="role-checklist"><summary>必要なロールをすべて確認する</summary><p>上記の追加ロール 5 つに加え、以下の初期設定の決済・Management API
   ロールも有効にしてください。既存の認証情報では、初期設定のロールが削除されている場合があります。主認証情報に必要なロールは全構成で共通です。Adyen Payments App role
   が必要なのは、別途作成するスマートフォン登録用の認証情報だけです。</p><ul><li><strong>Merchant PAL webservice role</strong></li><li><strong>Checkout
@@ -354,7 +355,7 @@
           <dl class="settings-list setup-route">
             <dt>セットアップヘルパー（推奨）</dt>
             <dd><a href="setup#destination-tapToPay">セットアップヘルパー</a>で<strong>スマートフォンで動かす</strong>（Adyen Payments アプリの Tap to Pay）と、<strong>
-              TEST</strong> または <strong>LIVE</strong> 環境を選びます。その環境の Adyen APIキー、マーチャントアカウント、共有キー、任意で店舗IDを入力します。
+              TEST</strong> または <strong>LIVE</strong> 環境を選びます。その環境の Adyen APIキーと、任意で店舗IDを入力します。自動ではマーチャントアカウントと共有キーを検索します。手動で入力する場合は手動を選びます。
               <a href="#helper">コードを読み取り</a>、<strong>確認してインポート</strong>をタップします。Mini mPOS が登録用認証情報を作成し、Payments
               アプリを開いてインポート中に登録を完了します。</dd>
           </dl>

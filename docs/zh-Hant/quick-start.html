@@ -163,6 +163,7 @@
               </ul>
             </li>
           </ol>
+<p class="hint">缺少角色？Mini mPOS 首次檢查缺少角色的密鑰時，如果貴公司的 <code>ws</code> 憑據擁有該角色，會提議為您新增。</p>
 <details class="role-checklist"><summary>核對完整的憑據要求</summary><p>除上述五個額外角色外，亦須保留下列預設付款及 Management API
   角色。現有憑據可能已移除部分預設角色。所有配置的主憑據要求相同；只有手機註冊使用的獨立憑據需要 Adyen Payments App role。</p><ul><li><strong>Merchant PAL webservice
   role</strong></li><li><strong>Checkout webservice role</strong></li><li><strong>Management API - API credentials read
@@ -340,7 +341,7 @@
           <dl class="settings-list setup-route">
             <dt>設定助手（建議）</dt>
             <dd>在<a href="setup#destination-tapToPay">設定助手</a>中選擇<strong>在手機上運行</strong>、使用 Adyen Payments 應用程式的 Tap to Pay，以及 <strong>TEST
-              </strong> 或 <strong>LIVE</strong> 環境。輸入對應環境的 Adyen API 密鑰、商戶帳戶和共享密鑰，可選填店舖 ID。<a href="#helper">掃描二維碼</a>
+              </strong> 或 <strong>LIVE</strong> 環境。輸入對應環境的 Adyen API 密鑰，可選填店舖 ID。「自動」會尋找商戶帳戶和共享密鑰；如需自行輸入，請選擇「手動」。<a href="#helper">掃描二維碼</a>
               後點按<strong>驗證並匯入</strong>。Mini mPOS 會建立註冊憑據並開啟 Payments 應用程式，在匯入過程中完成註冊。</dd>
           </dl>
           <details class="manual-setup">

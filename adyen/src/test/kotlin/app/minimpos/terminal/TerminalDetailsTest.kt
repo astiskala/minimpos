@@ -385,7 +385,9 @@ class TerminalDetailsTest {
     fun `a malformed key value is still reported rather than read as missing`() =
         runBlocking {
             reply("""{"nexo":{"encryptionKey":{"identifier":123,"version":2,"passphrase":"secret"}}}""")
-            assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(Fault.Malformed(MalformedPart.SETTINGS)))
+            assertThat(
+                api.sharedKey("ID", TerminalEnvironment.TEST),
+            ).isEqualTo(SharedKeyLookup.Failed(Fault.Malformed(MalformedPart.SETTINGS)))
         }
 
     @Test

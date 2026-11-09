@@ -19,6 +19,7 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.transfer.ImportOutcome
 import app.minimpos.app.data.transfer.ReceivedTransfer
 import app.minimpos.app.items
+import app.minimpos.app.terminal.AccountMismatch
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.SetupImportOutcome
 import app.minimpos.app.terminal.TerminalConnection
@@ -252,10 +253,14 @@ class AutomaticSetupTransferTest {
     }
 
     @Test
-    fun `explicit account mismatch is rejected without correcting the imported account`() {
-        assertThat(import("""{"destination":"thisTerminal","automatic":true,"merchantAccount":"OtherMerchant"}"""))
-            .isEqualTo(SetupImportOutcome.Failed(SetupProblem.MERCHANT_MISMATCH))
+    fun `an explicit account mismatch waits for the operator and then imports the terminal's account`() {
+        val mismatched = """{"destination":"thisTerminal","automatic":true,"merchantAccount":"OtherMerchant"}"""
+        assertThat(import(mismatched)).isEqualTo(SetupImportOutcome.AccountDiffers(AccountMismatch("OtherMerchant", "Merchant")))
         assertThat(await { env.container.settings.current() }.terminal.merchantAccount).isEmpty()
+        val outcome =
+            await { env.container.setupImport.import(received(mismatched), ImportMode.MERGE, code, confirmedAccount = "Merchant") }
+        assertThat(outcome).isInstanceOf(SetupImportOutcome.Committed::class.java)
+        assertThat(await { env.container.settings.current() }.terminal.merchantAccount).isEqualTo("Merchant")
     }
 
     @Test

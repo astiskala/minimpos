@@ -232,6 +232,9 @@
     for (const input of form.querySelectorAll("[data-required-for]")) {
       input.required = input.dataset.requiredFor.split(" ").includes(destination());
     }
+    for (const input of form.querySelectorAll("[data-optional-for]")) {
+      input.required = !input.dataset.optionalFor.split(" ").includes(destination());
+    }
     for (const text of form.querySelectorAll("[data-only]")) text.hidden = !text.dataset.only.split(" ").includes(destination());
     for (const link of document.querySelectorAll("a[data-ca]")) link.href = CUSTOMER_AREA[environment()] + link.dataset.ca;
   };

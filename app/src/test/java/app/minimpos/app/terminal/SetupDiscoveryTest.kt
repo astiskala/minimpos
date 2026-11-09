@@ -360,15 +360,17 @@ class SetupDiscoveryTest {
     }
 
     @Test
-    fun `account mismatch is reported without importing fields`() {
+    fun `a terminal in another account changes nothing until its account is accepted`() {
         ready()
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Other")) }
         val before = await { container.settings.current() }
         await { container.setupDiscovery.find() }
         val result = await { container.setupDiscovery.choose("S1F2-123456789") }
-        assertThat(result).isEqualTo(SetupDiscoveryChoice.Failed(Failure.NotSetUp(SetupProblem.MERCHANT_MISMATCH)))
+        assertThat(result).isEqualTo(SetupDiscoveryChoice.AccountDiffers("S1F2-123456789", AccountMismatch("Other", "Merchant")))
         assertThat(result.manualDetails).isFalse()
         assertThat(await { container.settings.current() }).isEqualTo(before)
+        assertThat(await { container.setupDiscovery.choose("S1F2-123456789", "Merchant") }).isEqualTo(SetupDiscoveryChoice.Complete)
+        assertThat(await { container.settings.current() }.terminal.merchantAccount).isEqualTo("Merchant")
     }
 
     @Test

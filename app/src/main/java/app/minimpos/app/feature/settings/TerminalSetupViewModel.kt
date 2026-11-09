@@ -14,6 +14,7 @@ import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.feature.persisting
 import app.minimpos.app.terminal.SetupDiagnostics
 import app.minimpos.app.terminal.SetupDiscovery
+import app.minimpos.app.terminal.SetupDiscoveryChoice
 import app.minimpos.app.terminal.SetupDiscoverySearch
 import app.minimpos.app.terminal.SetupStoreChoice
 import app.minimpos.app.terminal.SetupStoreSearch
@@ -36,6 +37,7 @@ import kotlinx.coroutines.launch
  *
  * @property terminals The latest search for terminals connected in the cloud.
  * @property connectedTerminals The POIIDs that search found, to choose from; null while none is offered.
+ * @property accountMismatch A chosen terminal assigned to another merchant account, for the operator to accept; null otherwise.
  * @property tapToPay The latest setup or removal of Tap to Pay.
  * @property apiKeyStored Whether the API key given to the latest search was stored (so the field can be cleared).
  * @property manualDetails Whether optional details need manual entry.
@@ -53,6 +55,7 @@ import kotlinx.coroutines.launch
 data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
     val connectedTerminals: List<String>? = null,
+    val accountMismatch: SetupDiscoveryChoice.AccountDiffers? = null,
     val tapToPay: ActionState = ActionState(),
     val apiKeyStored: Boolean = false,
     val manualDetails: Boolean = false,
@@ -201,11 +204,16 @@ class TerminalSetupViewModel(
     }
 
     /** Takes [poiId] (one of [TerminalSetupActions.connectedTerminals]) as the terminal in the cloud; null only closes the list. */
-    fun chooseTerminal(poiId: String?) {
-        actions.update { it.copy(connectedTerminals = null, terminals = ActionState()) }
+    fun chooseTerminal(
+        poiId: String?,
+        confirmedAccount: String? = null,
+    ) {
+        actions.update { it.copy(connectedTerminals = null, accountMismatch = null, terminals = ActionState()) }
         launchWrite({
-            val result = discovery.choose(poiId)
-            if (poiId != null) {
+            val result = discovery.choose(poiId, confirmedAccount)
+            if (result is SetupDiscoveryChoice.AccountDiffers) {
+                actions.update { it.copy(accountMismatch = result) }
+            } else if (poiId != null) {
                 val terminal = settings.current().terminal
                 observedTerminal.first { it == terminal }
                 actions.update {
@@ -220,6 +228,16 @@ class TerminalSetupViewModel(
                 if (result.keyMissing || discovery.pendingKey() != null) keyAction(null)
             }
         })
+    }
+
+    /** Accepts the chosen terminal's merchant account, or leaves everything as it is. */
+    fun reviewAccount(accept: Boolean) {
+        val differs = actions.value.accountMismatch ?: return
+        if (accept) {
+            chooseTerminal(differs.poiId, differs.mismatch.assigned)
+        } else {
+            actions.update { it.copy(accountMismatch = null) }
+        }
     }
 
     /** Confirms only the currently offered terminal/environment; never triggered by discovery or startup. */

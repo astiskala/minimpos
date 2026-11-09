@@ -29,6 +29,10 @@ internal sealed interface SetupImportOutcome {
         val ids: List<String>,
     ) : SetupImportOutcome
 
+    data class AccountDiffers(
+        val mismatch: AccountMismatch,
+    ) : SetupImportOutcome
+
     data class KeyConfirmation(
         val offer: SharedKeyOffer,
     ) : SetupImportOutcome
@@ -94,6 +98,7 @@ class SetupImport internal constructor(
         board: Boolean = false,
         confirmedHistorySwitch: HistorySwitchPlan? = null,
         confirmedKey: SharedKeyOffer? = null,
+        confirmedAccount: String? = null,
     ): SetupImportOutcome =
         mutex.withLock {
             if (busy()) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
@@ -101,7 +106,7 @@ class SetupImport internal constructor(
             val prepared = transfer.prepare(received, code) ?: return@withLock SetupImportOutcome.Committed(ImportOutcome.WrongCode)
             if (!prepared.original.acceptsSetupImport) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
             try {
-                val choices = Choices(terminalId, board, confirmedHistorySwitch, confirmedKey)
+                val choices = Choices(terminalId, board, confirmedHistorySwitch, confirmedKey, confirmedAccount)
                 val verified =
                     when (val step = verify(prepared, choices)) {
                         is Step.Halted -> return@withLock step.outcome
@@ -135,6 +140,7 @@ class SetupImport internal constructor(
         val board: Boolean,
         val confirmedHistory: HistorySwitchPlan?,
         val confirmedKey: SharedKeyOffer?,
+        val confirmedAccount: String?,
     )
 
     private data class Candidate(
@@ -166,7 +172,7 @@ class SetupImport internal constructor(
         if (!initial.changesSetup || candidate(initial).setup.apiSetup == ApiSetup.Simulated) return Step.Next(start)
         return environment(start)
             .andThen { credential(it) }
-            .andThen { discovery(it, choices.terminalId) }
+            .andThen { discovery(it, choices.terminalId, choices.confirmedAccount) }
             .andThen { requiredFields(it, allowMissingKey = it.missingKey) }
             .andThen { checkout(it) }
             .andThen { phone(it, choices.board || initial.received.hasConnection, choices.confirmedHistory) }
@@ -198,6 +204,7 @@ class SetupImport internal constructor(
     private suspend fun discovery(
         current: Candidate,
         selected: String?,
+        confirmedAccount: String?,
     ): Step {
         val prepared = current.prepared
         val unlocked = candidate(prepared)
@@ -223,19 +230,36 @@ class SetupImport internal constructor(
             }
 
             is DiscoveredAssignment.Assigned -> {
-                val terminal = assignment.terminal
-                val assigned = applyAssignment(prepared, setup, terminal)
-                val keySupplied = !prepared.received.connection?.keyIdentifier.isNullOrBlank()
-                if (!prepared.received.automatic || !setup.needsSharedKey || keySupplied) {
-                    Step.Next(current.copy(prepared = assigned))
+                assigned(current, setup, assignment.terminal, management)
+            }
+
+            is DiscoveredAssignment.Mismatched -> {
+                if (assignment.terminal.merchantAccount == confirmedAccount) {
+                    assigned(current, setup, assignment.terminal, management)
                 } else {
-                    when (val found = management.sharedKey(terminal.id, environment)) {
-                        is SharedKeyLookup.Found -> Step.Next(current.copy(prepared = assigned.withSharedKey(found.key)))
-                        SharedKeyLookup.Missing -> Step.Next(Candidate(assigned, missingKey = true))
-                        is SharedKeyLookup.Failed -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(found.fault), keyUnread = true))
-                    }
+                    Step.Halted(SetupImportOutcome.AccountDiffers(AccountMismatch(assignment.entered, assignment.terminal.merchantAccount)))
                 }
             }
+        }
+    }
+
+    private suspend fun assigned(
+        current: Candidate,
+        setup: TerminalSetup,
+        terminal: TerminalDetails,
+        management: SharedKeyApi,
+    ): Step {
+        val prepared = current.prepared
+        val assigned = applyAssignment(prepared, setup, terminal)
+        val keySupplied =
+            !prepared.received.connection
+                ?.keyIdentifier
+                .isNullOrBlank()
+        if (!prepared.received.automatic || !setup.needsSharedKey || keySupplied) return Step.Next(current.copy(prepared = assigned))
+        return when (val found = management.sharedKey(terminal.id, checkNotNull(setup.environment))) {
+            is SharedKeyLookup.Found -> Step.Next(current.copy(prepared = assigned.withSharedKey(found.key)))
+            SharedKeyLookup.Missing -> Step.Next(Candidate(assigned, missingKey = true))
+            is SharedKeyLookup.Failed -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(found.fault), keyUnread = true))
         }
     }
 

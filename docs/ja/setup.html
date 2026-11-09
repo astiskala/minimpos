@@ -162,7 +162,8 @@
           <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
             <legend>マーチャントアカウント</legend>
             <label for="merchantAccount">マーチャントアカウント</label>
-            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
+            <input id="merchantAccount" name="merchantAccount" type="text" required data-optional-for="thisTerminal network cloud" spellcheck="false">
+            <p class="hint" data-only="thisTerminal network cloud" hidden>任意。Mini mPOS が端末から読み取ります。</p>
           </fieldset>
 
           <fieldset data-for="network" data-mode="manual">

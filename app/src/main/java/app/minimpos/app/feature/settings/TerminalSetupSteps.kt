@@ -66,6 +66,7 @@ import app.minimpos.app.terminal.SetupStoreChoice
 import app.minimpos.app.terminal.SetupVisit
 import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.TerminalState
+import app.minimpos.app.ui.components.AccountMismatchDialog
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.Description
@@ -591,6 +592,9 @@ private fun ColumnScope.AdyenApiStep(
         if (api.keySaved) ForgetApiKey(events)
     }
     setup.connectedTerminals?.let { TerminalChoiceDialog(it, setupEvents::onTerminalChoose) }
+    setup.accountMismatch?.let {
+        AccountMismatchDialog(it.mismatch, { setupEvents.onAccountReview(true) }, { setupEvents.onAccountReview(false) })
+    }
 }
 
 /**

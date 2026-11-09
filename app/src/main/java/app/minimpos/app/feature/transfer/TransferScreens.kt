@@ -71,6 +71,7 @@ import app.minimpos.app.feature.settings.TerminalChoiceDialog
 import app.minimpos.app.feature.text
 import app.minimpos.app.scan.ScanMode
 import app.minimpos.app.scan.ScannerView
+import app.minimpos.app.ui.components.AccountMismatchDialog
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
@@ -348,6 +349,7 @@ fun TransferImportScreen(
         confirmReplace = confirmReplace,
         onTerminal = vm::chooseTerminal,
         onReview = vm::reviewSetup,
+        onAccount = vm::reviewAccount,
         onConfirm = {
             confirmReplace = false
             if ((state as? ImportUiState.Ready)?.boardingRequired == true) vm.setUpTapToPay() else vm.import()
@@ -379,10 +381,12 @@ private fun ImportReviewDialogs(
     confirmReplace: Boolean,
     onTerminal: (String?) -> Unit,
     onReview: (Boolean) -> Unit,
+    onAccount: (Boolean) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     state?.terminalChoices?.let { TerminalChoiceDialog(it, onTerminal) }
+    state?.accountMismatch?.let { AccountMismatchDialog(it, { onAccount(true) }, { onAccount(false) }) }
     state?.historySwitch?.let {
         HistorySwitchDialog(it.unfinished, { onReview(true) }, { onReview(false) })
     }

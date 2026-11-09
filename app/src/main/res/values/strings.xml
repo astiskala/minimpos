@@ -1317,7 +1317,10 @@
   <string name="step_done">Done</string>
   <string name="setup_transfer_pending">Setup import needs to finish saving. Retry to resume.</string>
   <string name="setup_terminal_access">This API key cannot access this terminal. Check that it belongs to the terminal’s company account and has access to this terminal.</string>
-  <string name="setup_merchant_mismatch">The merchant account does not match this terminal’s current assignment. Correct the account or boarding before continuing.</string>
+  <string name="setup_merchant_mismatch">The merchant account does not match this terminal’s assignment. In Settings › Terminal, tap Find terminal setup to use the terminal’s account.</string>
+  <string name="setup_account_mismatch_title">Use the terminal’s merchant account?</string>
+  <string name="setup_account_mismatch_message">This terminal is assigned to %1$s. You entered %2$s.</string>
+  <string name="setup_account_mismatch_use">Use this account</string>
   <string name="setup_terminal_settings_unreadable">Adyen returned terminal settings Mini mPOS cannot read: unsupported fields or invalid values. Shared-key creation is blocked. Check the terminal settings response in Adyen API logs.</string>
   <string name="setup_shared_key_incomplete">Adyen returned an incomplete shared key: identifier, version or passphrase is missing. Check the encryption key and Advanced settings permission in your Customer Area. Mini mPOS will not replace an unverified key.</string>
   <string name="setup_shared_key_invalid">Adyen returned a shared-key version outside 1–9999. Check the encryption key in your Customer Area. Mini mPOS will not replace it.</string>

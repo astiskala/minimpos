@@ -19,13 +19,13 @@ class TerminalAssignmentsTest {
     private val settings = TerminalSettings(merchantAccount = " Merchant ", storeId = "Store")
 
     @Test
-    fun `discovery fills a blank account but never replaces an explicit mismatched account`() {
+    fun `discovery fills a blank account and leaves a mismatched account for the operator to accept`() {
         assertThat(TerminalAssignments.discover(listOf(terminal), null, "")).isEqualTo(TerminalAssignment.Assigned(terminal))
         assertThat(
             TerminalAssignments.discover(listOf(terminal), terminal.id, " Merchant "),
         ).isEqualTo(TerminalAssignment.Assigned(terminal))
         assertThat(TerminalAssignments.discover(listOf(terminal), terminal.id, "Other")).isEqualTo(
-            TerminalAssignment.Blocked(SetupProblem.MERCHANT_MISMATCH),
+            TerminalAssignment.Mismatched(terminal, "Other"),
         )
         assertThat(TerminalAssignments.select(listOf(terminal), terminal.id, "")).isEqualTo(TerminalAssignment.Assigned(terminal))
         assertThat(TerminalAssignments.select(listOf(other), terminal.id, "")).isEqualTo(

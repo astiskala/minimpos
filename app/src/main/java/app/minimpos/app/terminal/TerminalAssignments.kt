@@ -15,6 +15,12 @@ internal sealed interface TerminalAssignment {
         val terminal: TerminalDetails,
     ) : TerminalMatch
 
+    /** The terminal is assigned to another account than the one [entered]; only the operator can accept its account. */
+    data class Mismatched(
+        val terminal: TerminalDetails,
+        val entered: String,
+    ) : TerminalSelection
+
     data class Choices(
         val ids: List<String>,
     ) : TerminalAssignment
@@ -24,8 +30,11 @@ internal sealed interface TerminalAssignment {
     ) : TerminalMatch
 }
 
-/** An explicit POIID's reading, which can never offer choices: [TerminalAssignment.Assigned] or [TerminalAssignment.Blocked]. */
-internal sealed interface TerminalMatch : TerminalAssignment
+/** An explicit POIID's reading, which can never offer choices. */
+internal sealed interface TerminalSelection : TerminalAssignment
+
+/** A POIID's exact reading, which accepts no other account: [TerminalAssignment.Assigned] or [TerminalAssignment.Blocked]. */
+internal sealed interface TerminalMatch : TerminalSelection
 
 /** Verified terminal listing for interactive setup discovery. */
 internal sealed interface DiscoveredTerminals {
@@ -46,6 +55,11 @@ internal sealed interface DiscoveredAssignment {
 
     data class Choices(
         val ids: List<String>,
+    ) : DiscoveredAssignment
+
+    data class Mismatched(
+        val terminal: TerminalDetails,
+        val entered: String,
     ) : DiscoveredAssignment
 
     data class Failed(
@@ -113,6 +127,7 @@ internal object TerminalAssignments {
                 when (val assignment = discover(listed.terminals, poiId, merchantAccount)) {
                     is TerminalAssignment.Assigned -> DiscoveredAssignment.Assigned(assignment.terminal)
                     is TerminalAssignment.Choices -> DiscoveredAssignment.Choices(assignment.ids)
+                    is TerminalAssignment.Mismatched -> DiscoveredAssignment.Mismatched(assignment.terminal, assignment.entered)
                     is TerminalAssignment.Blocked -> DiscoveredAssignment.Failed(Failure.NotSetUp(assignment.problem))
                 }
             }
@@ -215,16 +230,16 @@ internal object TerminalAssignments {
         }
     }
 
-    /** Selects [poiId]'s first match; a blank [merchantAccount] is filled from it, a different one is a mismatch. */
+    /** Selects [poiId]'s first match; a blank [merchantAccount] is filled from it, a different one is for the operator to accept. */
     fun select(
         terminals: List<TerminalDetails>,
         poiId: String,
         merchantAccount: String,
-    ): TerminalMatch {
+    ): TerminalSelection {
         val terminal = offered(terminals, poiId).firstOrNull() ?: return TerminalAssignment.Blocked(SetupProblem.TERMINAL_ACCESS)
         val account = merchantAccount.trim()
         return if (account.isNotBlank() && account != terminal.merchantAccount) {
-            TerminalAssignment.Blocked(SetupProblem.MERCHANT_MISMATCH)
+            TerminalAssignment.Mismatched(terminal, account)
         } else {
             TerminalAssignment.Assigned(terminal)
         }

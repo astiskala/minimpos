@@ -1324,7 +1324,10 @@
   <string name="step_done">Terminé</string>
   <string name="setup_transfer_pending">L’importation de la configuration doit terminer l’enregistrement. Réessayez de reprendre.</string>
   <string name="setup_terminal_access">Cette clé API ne peut pas accéder à ce terminal. Vérifiez qu’il appartient au compte entreprise du terminal et qu’il a accès à ce terminal.</string>
-  <string name="setup_merchant_mismatch">Le compte marchand ne correspond pas à l’affectation actuelle du terminal. Corrigez le compte ou l’enregistrement avant de continuer.</string>
+  <string name="setup_merchant_mismatch">Le compte marchand ne correspond pas à l’affectation de ce terminal. Dans Paramètres › Terminal, touchez Rechercher la configuration du terminal pour utiliser le compte du terminal.</string>
+  <string name="setup_account_mismatch_title">Utiliser le compte marchand du terminal ?</string>
+  <string name="setup_account_mismatch_message">Ce terminal est affecté à %1$s. Vous avez saisi %2$s.</string>
+  <string name="setup_account_mismatch_use">Utiliser ce compte</string>
   <string name="setup_terminal_settings_unreadable">Adyen a renvoyé les paramètres du terminal. Mini mPOS ne peut pas lire : champs non pris en charge ou valeurs non valides. La création de clé partagée est bloquée. Vérifiez la réponse des paramètres du terminal dans les journaux Adyen API.</string>
   <string name="setup_shared_key_incomplete">Adyen a renvoyé une clé partagée incomplète : l’identifiant, la version ou la phrase secrète est manquant. Vérifiez la clé de cryptage et l’autorisation des paramètres avancés dans votre Customer Area. Mini mPOS ne remplacera pas une clé non vérifiée.</string>
   <string name="setup_shared_key_invalid">Adyen a renvoyé une version à clé partagée en dehors de 1–9999. Vérifiez la clé de cryptage de votre Customer Area. Mini mPOS ne le remplacera pas.</string>

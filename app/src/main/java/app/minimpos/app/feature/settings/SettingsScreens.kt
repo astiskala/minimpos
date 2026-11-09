@@ -244,6 +244,9 @@ internal interface TerminalSetupEvents {
     /** Takes [poiId] as the terminal in the cloud; null only closes the list ([TerminalSetupViewModel.chooseTerminal]). */
     fun onTerminalChoose(poiId: String?)
 
+    /** Accepts the chosen terminal's merchant account, or leaves it ([TerminalSetupViewModel.reviewAccount]). */
+    fun onAccountReview(accept: Boolean)
+
     /** Lists stores for the saved Tap to Pay account. */
     fun onStoresFind()
 
@@ -357,6 +360,8 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
         override fun onTerminalsFind(apiKey: String) = setup.findTerminals(apiKey)
 
         override fun onTerminalChoose(poiId: String?) = setup.chooseTerminal(poiId)
+
+        override fun onAccountReview(accept: Boolean) = setup.reviewAccount(accept)
 
         override fun onStoresFind() = setup.findStores()
 

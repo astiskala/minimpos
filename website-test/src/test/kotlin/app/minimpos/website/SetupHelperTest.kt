@@ -4,6 +4,7 @@ import app.minimpos.core.codec.QrChunkAssembler
 import app.minimpos.core.codec.QrChunks
 import app.minimpos.core.codec.TransferCodec
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import org.junit.AfterClass
@@ -361,6 +362,17 @@ class SetupHelperTest {
                     )
             }
         }
+    }
+
+    @Test
+    fun `Manual asks for the merchant account only where no terminal can supply it`() {
+        val required = "return document.getElementById('merchantAccount').required"
+        for (destination in listOf("thisTerminal", "network", "cloud")) {
+            field("destination", destination)
+            assertWithMessage(destination).that(script.executeScript(required)).isEqualTo(false)
+        }
+        field("destination", "tapToPay")
+        assertThat(script.executeScript(required)).isEqualTo(true)
     }
 
     @Test

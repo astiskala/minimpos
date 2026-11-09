@@ -1324,7 +1324,10 @@
   <string name="step_done">Concluído</string>
   <string name="setup_transfer_pending">A importação da configuração precisa terminar de salvar. Tente novamente para retomar.</string>
   <string name="setup_terminal_access">Esta chave API não pode acessar este terminal. Verifique se pertence à conta corporativa do terminal e tem acesso a este terminal.</string>
-  <string name="setup_merchant_mismatch">A conta de comerciante não corresponde à atribuição atual deste terminal. Corrija a conta ou o registro antes de continuar.</string>
+  <string name="setup_merchant_mismatch">A conta de comerciante não corresponde à atribuição deste terminal. Em Configurações › Terminal, toque em Buscar configuração do terminal para usar a conta do terminal.</string>
+  <string name="setup_account_mismatch_title">Usar a conta de comerciante do terminal?</string>
+  <string name="setup_account_mismatch_message">Este terminal está atribuído a %1$s. Você inseriu %2$s.</string>
+  <string name="setup_account_mismatch_use">Usar esta conta</string>
   <string name="setup_terminal_settings_unreadable">Adyen retornou as configurações do terminal Mini mPOS não pode ler: campos não suportados ou valores inválidos. A criação de chave compartilhada está bloqueada. Verifique a resposta das configurações do terminal nos registros Adyen API.</string>
   <string name="setup_shared_key_incomplete">Adyen retornou uma chave compartilhada incompleta: falta identificador, versão ou senha. Verifique a chave de criptografia e a permissão de configurações avançadas em seu Customer Area. Mini mPOS não substituirá uma chave não verificada.</string>
   <string name="setup_shared_key_invalid">Adyen retornou uma versão de chave compartilhada fora de 1–9999. Verifique a chave de criptografia em seu Customer Area. Mini mPOS não o substituirá.</string>

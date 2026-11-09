@@ -15,6 +15,7 @@ import app.minimpos.app.data.transfer.TransferExport
 import app.minimpos.app.data.transfer.TransferResult
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.launchWrite
+import app.minimpos.app.terminal.AccountMismatch
 import app.minimpos.app.terminal.HistorySwitchPlan
 import app.minimpos.app.terminal.SetupImport
 import app.minimpos.app.terminal.SetupImportOutcome
@@ -136,6 +137,7 @@ sealed interface ImportUiState {
      * @property incomplete Whether required connection fields are missing and the helper must generate complete codes.
      * @property keyUnread Whether Automatic setup could not read the shared key, which the helper can supply instead.
      * @property terminalChoices Eligible IDs offered only for an ambiguous destination; null when not selecting.
+     * @property accountMismatch A terminal assigned to another merchant account, for the operator to accept; null otherwise.
      * @property boardingRequired Whether explicit phone registration must run before this import can commit.
      * @property historySwitch Destructive history confirmation for this exact candidate; null before verification.
      * @property sharedKeyOffer Explicit key-creation/recovery confirmation; null when not offered.
@@ -151,6 +153,7 @@ sealed interface ImportUiState {
         val incomplete: Boolean = false,
         val keyUnread: Boolean = false,
         val terminalChoices: List<String>? = null,
+        val accountMismatch: AccountMismatch? = null,
         val boardingRequired: Boolean = false,
         /** Destructive environment-change confirmation; null until authenticated setup validation succeeds. */
         val historySwitch: HistorySwitchPlan? = null,
@@ -206,6 +209,7 @@ class TransferImportViewModel(
         field = MutableStateFlow<ImportUiState>(ImportUiState.Importing)
     private var selectedTerminal: String? = null
     private var confirmedHistory: HistorySwitchPlan? = null
+    private var confirmedAccount: String? = null
 
     init {
         retryRecovery()
@@ -308,6 +312,16 @@ class TransferImportViewModel(
         }
     }
 
+    /** Accepts the terminal's merchant account for this import and verifies again, or leaves the import as it is. */
+    fun reviewAccount(accept: Boolean) {
+        val mismatch = (state.value as? ImportUiState.Ready)?.accountMismatch ?: return
+        updateReady { it.copy(accountMismatch = null) }
+        if (accept) {
+            confirmedAccount = mismatch.assigned
+            import()
+        }
+    }
+
     /** Reviews permanent history loss for this import; cancellation leaves current settings and history untouched. */
     fun reviewSetup(confirm: Boolean) {
         val ready = state.value as? ImportUiState.Ready ?: return
@@ -346,6 +360,7 @@ class TransferImportViewModel(
                 board,
                 confirmedHistorySwitch ?: confirmedHistory,
                 confirmedKey,
+                confirmedAccount,
             )
         }) { result ->
             state.value = finished(ready, result)
@@ -363,6 +378,10 @@ class TransferImportViewModel(
 
             is SetupImportOutcome.Terminals -> {
                 ready.copy(terminalChoices = result.ids, outcome = null, keyUnread = false)
+            }
+
+            is SetupImportOutcome.AccountDiffers -> {
+                ready.copy(accountMismatch = result.mismatch, outcome = null, keyUnread = false)
             }
 
             is SetupImportOutcome.HistoryConfirmation -> {

@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import app.minimpos.app.R
+import app.minimpos.app.terminal.AccountMismatch
 import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
@@ -135,6 +136,29 @@ fun InfoDialog(
         confirmButton = {
             CompactTertiaryButton(stringResource(R.string.action_ok), onDismiss, Modifier.testTag("${tag}Ok"))
         },
+    )
+}
+
+/** Offers the terminal's own merchant account instead of the one entered; [mismatch] names both. */
+@Composable
+fun AccountMismatchDialog(
+    mismatch: AccountMismatch,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.setup_account_mismatch_title)) },
+        text = {
+            Text(
+                stringResource(R.string.setup_account_mismatch_message, mismatch.assigned, mismatch.entered),
+                Modifier.verticalScroll(rememberScrollState()).testTag("accountMismatch"),
+            )
+        },
+        confirmButton = {
+            CompactTertiaryButton(stringResource(R.string.setup_account_mismatch_use), onConfirm, Modifier.testTag("useTerminalAccount"))
+        },
+        dismissButton = { CompactTertiaryButton(stringResource(R.string.action_cancel), onDismiss) },
     )
 }
 

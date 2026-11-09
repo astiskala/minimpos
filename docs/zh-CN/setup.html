@@ -159,7 +159,8 @@
           <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
             <legend>商家账户</legend>
             <label for="merchantAccount">商家账户</label>
-            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
+            <input id="merchantAccount" name="merchantAccount" type="text" required data-optional-for="thisTerminal network cloud" spellcheck="false">
+            <p class="hint" data-only="thisTerminal network cloud" hidden>可选。Mini mPOS 会从终端读取。</p>
           </fieldset>
 
           <fieldset data-for="network" data-mode="manual">

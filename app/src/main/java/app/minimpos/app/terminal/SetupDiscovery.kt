@@ -29,6 +29,16 @@ data class SetupStoreChoice(
     val description: String,
 )
 
+/**
+ * A terminal assigned to another merchant account than the one entered, for the operator to accept or leave.
+ * @property entered The account that was entered.
+ * @property assigned The account the terminal is assigned to.
+ */
+data class AccountMismatch(
+    val entered: String,
+    val assigned: String,
+)
+
 /** Store discovery for a saved Tap to Pay setup, without changing registration. */
 sealed interface SetupStoreSearch {
     /**
@@ -83,6 +93,16 @@ sealed interface SetupDiscoveryChoice {
     data object Ignored : SetupDiscoveryChoice {
         override val manualDetails: Boolean get() = true
     }
+
+    /**
+     * The terminal belongs to another account; nothing changed. Choosing it again with the assigned account accepts it.
+     * @property poiId The terminal that was chosen.
+     * @property mismatch The two accounts.
+     */
+    data class AccountDiffers(
+        val poiId: String,
+        val mismatch: AccountMismatch,
+    ) : SetupDiscoveryChoice
 
     /** Selected fields and required optional details were imported. */
     data object Complete : SetupDiscoveryChoice
@@ -211,11 +231,15 @@ class SetupDiscovery(
             SetupDiscoverySearch.Found(terminals.map { it.id })
         }
 
-    /** Applies only a currently offered ID; null dismisses the list, and stale selections are ignored.
+    /** Applies only a currently offered ID; null dismisses the list, and stale selections are ignored. A terminal assigned
+     * to another account than the one saved is applied only with that account as [confirmedAccount].
      * The outcome distinguishes missing optional details from lookup failures. Missing fields preserve saved values,
      * and unavailable encryption or storage never blocks importing the account and address. Local devices keep their detected identity.
      */
-    suspend fun choose(id: String?): SetupDiscoveryChoice =
+    suspend fun choose(
+        id: String?,
+        confirmedAccount: String? = null,
+    ): SetupDiscoveryChoice =
         mutex.withLock {
             val selected = selection ?: return@withLock SetupDiscoveryChoice.Ignored
             selection = null
@@ -231,6 +255,18 @@ class SetupDiscovery(
                 ) {
                     is TerminalAssignment.Assigned -> {
                         assignment.terminal
+                    }
+
+                    is TerminalAssignment.Mismatched -> {
+                        if (assignment.terminal.merchantAccount == confirmedAccount) {
+                            assignment.terminal
+                        } else {
+                            selection = selected
+                            return@withLock SetupDiscoveryChoice.AccountDiffers(
+                                id,
+                                AccountMismatch(assignment.entered, assignment.terminal.merchantAccount),
+                            )
+                        }
                     }
 
                     // An ID that this search did not offer is a stale or unknown selection, not an access failure.

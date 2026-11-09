@@ -1310,7 +1310,10 @@
   <string name="step_done">完了</string>
   <string name="setup_transfer_pending">設定のインポートは保存途中です。再試行して続行してください。</string>
   <string name="setup_terminal_access">この API キーは端末にアクセスできません。端末の Company アカウントに属し、この端末へのアクセス権があることを確認してください。</string>
-  <string name="setup_merchant_mismatch">マーチャントアカウントが端末の現在の割り当てと一致しません。アカウントまたは端末登録を修正してから続行してください。</string>
+  <string name="setup_merchant_mismatch">マーチャントアカウントがこの端末の割り当てと一致しません。設定 › 端末で「端末の設定を検索」をタップすると、端末のアカウントを使用できます。</string>
+  <string name="setup_account_mismatch_title">端末のマーチャントアカウントを使用しますか?</string>
+  <string name="setup_account_mismatch_message">この端末は %1$s に割り当てられています。入力された値は %2$s です。</string>
+  <string name="setup_account_mismatch_use">このアカウントを使用</string>
   <string name="setup_terminal_settings_unreadable">Adyen の端末設定に未対応のフィールドまたは無効な値があり、Mini mPOS で読み取れません。共有キーの作成は停止しています。Adyen API ログの端末設定レスポンスを確認してください。</string>
   <string name="setup_shared_key_incomplete">Adyen の共有キーが不完全です。識別子、バージョン、またはパスフレーズがありません。Customer Area で暗号化キーと Advanced 設定の権限を確認してください。Mini mPOS は未確認のキーを置き換えません。</string>
   <string name="setup_shared_key_invalid">Adyen の共有キーバージョンが 1–9999 の範囲外です。Customer Area で暗号化キーを確認してください。Mini mPOS はこのキーを置き換えません。</string>

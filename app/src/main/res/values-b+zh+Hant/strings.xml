@@ -1310,7 +1310,10 @@
   <string name="step_done">已完成</string>
   <string name="setup_transfer_pending">設定匯入尚未儲存完成。請重試以繼續。</string>
   <string name="setup_terminal_access">此 API 密鑰無法存取本終端。請確認密鑰屬於終端的 Company 帳戶，並具有存取本終端的權限。</string>
-  <string name="setup_merchant_mismatch">商戶帳戶與終端目前分配的帳戶不一致。請更正帳戶或終端註冊後再繼續。</string>
+  <string name="setup_merchant_mismatch">商戶帳戶與此終端的分配不一致。請在「設定 › 終端」中點按「尋找終端設定」，以使用終端的帳戶。</string>
+  <string name="setup_account_mismatch_title">使用終端的商戶帳戶?</string>
+  <string name="setup_account_mismatch_message">此終端已分配給 %1$s。您輸入的是 %2$s。</string>
+  <string name="setup_account_mismatch_use">使用此帳戶</string>
   <string name="setup_terminal_settings_unreadable">Adyen 返回的終端設定包含不支援的欄位或無效值，Mini mPOS 無法讀取。已阻止建立共享密鑰。請檢查 Adyen API 日誌中的終端設定回應。</string>
   <string name="setup_shared_key_incomplete">Adyen 返回的共享密鑰不完整：缺少識別碼、版本或口令。請在 商戶後台 檢查加密密鑰及高級設定權限。Mini mPOS 不會替換未經驗證的密鑰。</string>
   <string name="setup_shared_key_invalid">Adyen 返回的共享密鑰版本不在 1–9999 範圍內。請在 商戶後台 檢查加密密鑰。Mini mPOS 不會替換此密鑰。</string>

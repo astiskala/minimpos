@@ -171,7 +171,8 @@
           <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
             <legend>Merchant account</legend>
             <label for="merchantAccount">Merchant account</label>
-            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
+            <input id="merchantAccount" name="merchantAccount" type="text" required data-optional-for="thisTerminal network cloud" spellcheck="false">
+            <p class="hint" data-only="thisTerminal network cloud" hidden>Optional. Mini mPOS reads it from the terminal.</p>
           </fieldset>
 
           <fieldset data-for="network" data-mode="manual">

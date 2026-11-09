@@ -1310,7 +1310,10 @@
   <string name="step_done">已完成</string>
   <string name="setup_transfer_pending">设置导入尚未保存完成。请重试以继续。</string>
   <string name="setup_terminal_access">此 API 密钥无法访问本终端。请确认密钥属于终端的 Company 账户，并具有访问本终端的权限。</string>
-  <string name="setup_merchant_mismatch">商家账户与终端当前分配的账户不一致。请更正账户或终端注册后再继续。</string>
+  <string name="setup_merchant_mismatch">商家账户与此终端的分配不一致。请在“设置 › 终端”中点按“查找终端设置”，以使用终端的账户。</string>
+  <string name="setup_account_mismatch_title">使用终端的商家账户?</string>
+  <string name="setup_account_mismatch_message">此终端已分配给 %1$s。您输入的是 %2$s。</string>
+  <string name="setup_account_mismatch_use">使用此账户</string>
   <string name="setup_terminal_settings_unreadable">Adyen 返回的终端设置包含不支持的字段或无效值，Mini mPOS 无法读取。已阻止创建共享密钥。请检查 Adyen API 日志中的终端设置响应。</string>
   <string name="setup_shared_key_incomplete">Adyen 返回的共享密钥不完整：缺少标识符、版本或口令。请在 商户后台 检查加密密钥及高级设置权限。Mini mPOS 不会替换未经验证的密钥。</string>
   <string name="setup_shared_key_invalid">Adyen 返回的共享密钥版本不在 1–9999 范围内。请在 商户后台 检查加密密钥。Mini mPOS 不会替换此密钥。</string>

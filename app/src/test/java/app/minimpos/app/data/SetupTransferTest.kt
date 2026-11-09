@@ -326,7 +326,7 @@ class SetupTransferTest {
     fun `a new terminal gets the catalogue, the shared settings and, with the code, the secrets`() {
         configureSource()
         val export = await { setup(source).export(TransferContents(), "EUR") }
-        assertThat(export.code).matches("[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}")
+        assertThat(export.code).matches("[A-HJ-NP-Z]{4}-[A-HJ-NP-Z]{4}-[A-HJ-NP-Z]{4}")
         assertThat(
             export.secrets,
         ).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.SMTP_PASSWORD, Secret.ADYEN_API_KEY, Secret.PIN_VERIFIER)

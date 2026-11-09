@@ -419,7 +419,8 @@ internal class CloudTerminal(
 
     /**
      * The rules of a terminal in the cloud ([TerminalMode.CLOUD]): the merchant account, the API key and its configured
-     * POIID, or on a terminal its own, which then needs no shared key or configuration update; no address; payments wait [AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT], as Adyen requires.
+     * POIID, or on a terminal its own, which then needs no shared key or configuration update; no address;
+     * payments wait [AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT], as Adyen requires.
      */
     companion object : DestinationRules {
         override val mode: TerminalMode get() = TerminalMode.CLOUD

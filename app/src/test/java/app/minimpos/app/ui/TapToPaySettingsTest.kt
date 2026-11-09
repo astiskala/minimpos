@@ -355,7 +355,7 @@ class TapToPaySettingsTest {
         await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "manual secret") }
         boardPhone()
         compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("manual-key", substring = true)
-        compose.onNodeWithTag("findSharedKey").assertDoesNotExist()
+        compose.onNodeWithTag("findSharedKey").assertExists()
         assertThat(container.settingsState.value.terminal.keyVersion).isEqualTo(2)
         assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("manual secret")
     }
@@ -370,7 +370,7 @@ class TapToPaySettingsTest {
         }
         compose.onNodeWithTag("passphrase").performScrollTo().assertExists()
         compose.onNodeWithTag("keyVersion").assertExists()
-        compose.onNodeWithTag("findSharedKey").assertDoesNotExist()
+        compose.onNodeWithTag("findSharedKey").assertExists()
         assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
     }
 }

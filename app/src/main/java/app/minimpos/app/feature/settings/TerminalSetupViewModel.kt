@@ -6,7 +6,6 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.settings.SettingsRepository
-import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState

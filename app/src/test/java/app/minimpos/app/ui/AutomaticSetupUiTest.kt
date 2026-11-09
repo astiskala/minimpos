@@ -426,7 +426,7 @@ class AutomaticSetupUiTest {
     @Test
     fun `incomplete Tap to Pay QR does not open registration or save partial setup`() {
         device.paymentsApps = setOf(TerminalEnvironment.TEST)
-        importAutomatic("tapToPay", succeeds = false)
+        importAutomatic("tapToPay", automatic = false, succeeds = false)
         assertThat(paymentsApp.opened).isEmpty()
         assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isNull()
         compose.onNodeWithText(env.context.getString(R.string.transfer_missing_fields)).performScrollTo().assertIsDisplayed()

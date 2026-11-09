@@ -820,6 +820,8 @@
   <string name="settings_no_terminals">沒有可用的相符終端。請手動輸入資訊。</string>
   <string name="settings_terminal_search">搜尋終端</string>
   <string name="settings_terminal_search_none">沒有相符的終端。</string>
+  <string name="settings_terminal_last_active">最近活動:%1$s</string>
+  <string name="settings_terminal_inventory">庫存中</string>
   <string name="settings_save_and_discover">儲存並尋找設定</string>
   <string name="settings_testing_api">正在測試 API…</string>
   <string name="settings_finding_setup">正在尋找終端…</string>

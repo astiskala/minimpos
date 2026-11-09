@@ -16,6 +16,7 @@ import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalListingApi
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.Instant
 
 /**
  * Non-secret store choice offered by setup discovery.
@@ -37,6 +38,22 @@ data class SetupStoreChoice(
 data class AccountMismatch(
     val entered: String,
     val assigned: String,
+)
+
+/**
+ * A terminal offered for an operator to choose, with what tells it apart across accounts.
+ * @property id Terminal POIID.
+ * @property merchantAccount Assigned merchant account, blank when unknown.
+ * @property storeId Assigned store ID, blank when not assigned to a store.
+ * @property lastActivity When it was last active; null when Adyen does not say.
+ * @property inventory Whether it sits in inventory, where it cannot take payments.
+ */
+data class SetupTerminalChoice(
+    val id: String,
+    val merchantAccount: String = "",
+    val storeId: String = "",
+    val lastActivity: Instant? = null,
+    val inventory: Boolean = false,
 )
 
 /** Store discovery for a saved Tap to Pay setup, without changing registration. */
@@ -63,12 +80,15 @@ sealed interface SetupDiscoverySearch {
     /** Discovery is not available for the current credentials, environment or destination; manual entry can continue. */
     data object Unavailable : SetupDiscoverySearch
 
-    /** Offered terminal IDs, in Management order.
-     * @property ids Nonempty POIID choices from this search.
+    /** Offered terminals, the most recently active first.
+     * @property terminals Nonempty choices from this search.
      */
     data class Found(
-        val ids: List<String>,
-    ) : SetupDiscoverySearch
+        val terminals: List<SetupTerminalChoice>,
+    ) : SetupDiscoverySearch {
+        /** The offered terminal IDs. */
+        val ids: List<String> get() = terminals.map { it.id }
+    }
 
     /** Discovery was attempted but could not offer terminals.
      * @property failure Why, including an empty permitted listing ([SetupProblem.TERMINAL_ACCESS]).
@@ -228,7 +248,7 @@ class SetupDiscovery(
                     is DiscoveredTerminals.Failed -> return@withLock SetupDiscoverySearch.Failed(found.failure)
                 }
             selection = Selection(setups.SetupFence(unlocked, SetupFreshness.CREDENTIAL), setup, api, environment, terminals)
-            SetupDiscoverySearch.Found(terminals.map { it.id })
+            SetupDiscoverySearch.Found(TerminalAssignments.choices(terminals))
         }
 
     /** Applies only a currently offered ID; null dismisses the list, and stale selections are ignored. A terminal assigned

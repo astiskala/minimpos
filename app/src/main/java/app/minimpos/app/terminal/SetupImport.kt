@@ -26,7 +26,7 @@ internal sealed interface SetupImportOutcome {
     ) : SetupImportOutcome
 
     data class Terminals(
-        val ids: List<String>,
+        val terminals: List<SetupTerminalChoice>,
     ) : SetupImportOutcome
 
     data class AccountDiffers(
@@ -222,7 +222,7 @@ class SetupImport internal constructor(
                 )
         ) {
             is DiscoveredAssignment.Choices -> {
-                Step.Halted(SetupImportOutcome.Terminals(assignment.ids))
+                Step.Halted(SetupImportOutcome.Terminals(assignment.terminals))
             }
 
             is DiscoveredAssignment.Failed -> {

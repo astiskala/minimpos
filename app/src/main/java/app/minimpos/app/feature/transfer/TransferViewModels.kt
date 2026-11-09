@@ -19,6 +19,7 @@ import app.minimpos.app.terminal.AccountMismatch
 import app.minimpos.app.terminal.HistorySwitchPlan
 import app.minimpos.app.terminal.SetupImport
 import app.minimpos.app.terminal.SetupImportOutcome
+import app.minimpos.app.terminal.SetupTerminalChoice
 import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.core.codec.QrChunkAssembler
 import app.minimpos.core.codec.QrChunks
@@ -136,7 +137,7 @@ sealed interface ImportUiState {
      * @property outcome Current typed validation or storage error; null before checking or after correction.
      * @property incomplete Whether required connection fields are missing and the helper must generate complete codes.
      * @property keyUnread Whether Automatic setup could not read the shared key, which the helper can supply instead.
-     * @property terminalChoices Eligible IDs offered only for an ambiguous destination; null when not selecting.
+     * @property terminalChoices Eligible terminals offered only for an ambiguous destination; null when not selecting.
      * @property accountMismatch A terminal assigned to another merchant account, for the operator to accept; null otherwise.
      * @property boardingRequired Whether explicit phone registration must run before this import can commit.
      * @property historySwitch Destructive history confirmation for this exact candidate; null before verification.
@@ -152,7 +153,7 @@ sealed interface ImportUiState {
         val outcome: ActionOutcome? = null,
         val incomplete: Boolean = false,
         val keyUnread: Boolean = false,
-        val terminalChoices: List<String>? = null,
+        val terminalChoices: List<SetupTerminalChoice>? = null,
         val accountMismatch: AccountMismatch? = null,
         val boardingRequired: Boolean = false,
         /** Destructive environment-change confirmation; null until authenticated setup validation succeeds. */
@@ -272,7 +273,7 @@ class TransferImportViewModel(
     /** Chooses only an offered terminal, or dismisses the selector for null; no fields have been imported yet. */
     fun chooseTerminal(id: String?) {
         val ready = state.value as? ImportUiState.Ready ?: return
-        if (id != null && id !in ready.terminalChoices.orEmpty()) return
+        if (id != null && ready.terminalChoices.orEmpty().none { it.id == id }) return
         updateReady { it.copy(terminalChoices = null) }
         if (id != null) {
             selectedTerminal = id
@@ -377,7 +378,7 @@ class TransferImportViewModel(
             }
 
             is SetupImportOutcome.Terminals -> {
-                ready.copy(terminalChoices = result.ids, outcome = null, keyUnread = false)
+                ready.copy(terminalChoices = result.terminals, outcome = null, keyUnread = false)
             }
 
             is SetupImportOutcome.AccountDiffers -> {

@@ -826,6 +826,8 @@
   <string name="settings_no_terminals">Não há terminais correspondentes disponíveis. Insira os detalhes manualmente.</string>
   <string name="settings_terminal_search">Pesquisar terminais</string>
   <string name="settings_terminal_search_none">Nenhum terminal corresponde.</string>
+  <string name="settings_terminal_last_active">Última atividade: %1$s</string>
+  <string name="settings_terminal_inventory">Em estoque</string>
   <string name="settings_save_and_discover">Salvar e buscar configuração</string>
   <string name="settings_testing_api">Testando API…</string>
   <string name="settings_finding_setup">Buscando terminal…</string>

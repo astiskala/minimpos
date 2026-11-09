@@ -18,6 +18,7 @@ import app.minimpos.app.terminal.SetupDiscoveryChoice
 import app.minimpos.app.terminal.SetupDiscoverySearch
 import app.minimpos.app.terminal.SetupStoreChoice
 import app.minimpos.app.terminal.SetupStoreSearch
+import app.minimpos.app.terminal.SetupTerminalChoice
 import app.minimpos.app.terminal.SharedKeyConnection
 import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.app.terminal.TapToPayCheck
@@ -36,7 +37,7 @@ import kotlinx.coroutines.launch
  * Where the search for terminals in the cloud and the Tap to Pay setup stand.
  *
  * @property terminals The latest search for terminals connected in the cloud.
- * @property connectedTerminals The POIIDs that search found, to choose from; null while none is offered.
+ * @property connectedTerminals The terminals that search found, to choose from; null while none is offered.
  * @property accountMismatch A chosen terminal assigned to another merchant account, for the operator to accept; null otherwise.
  * @property tapToPay The latest setup or removal of Tap to Pay.
  * @property apiKeyStored Whether the API key given to the latest search was stored (so the field can be cleared).
@@ -54,7 +55,7 @@ import kotlinx.coroutines.launch
  */
 data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
-    val connectedTerminals: List<String>? = null,
+    val connectedTerminals: List<SetupTerminalChoice>? = null,
     val accountMismatch: SetupDiscoveryChoice.AccountDiffers? = null,
     val tapToPay: ActionState = ActionState(),
     val apiKeyStored: Boolean = false,
@@ -184,7 +185,7 @@ class TerminalSetupViewModel(
                     if (current.onTerminal && current.mode == TerminalMode.TERMINAL && discovered.ids.size == 1) {
                         chooseTerminal(discovered.ids.single())
                     } else {
-                        actions.update { it.copy(terminals = ActionState(done = true), connectedTerminals = discovered.ids) }
+                        actions.update { it.copy(terminals = ActionState(done = true), connectedTerminals = discovered.terminals) }
                     }
                 }
 

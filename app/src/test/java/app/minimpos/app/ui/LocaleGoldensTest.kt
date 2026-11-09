@@ -9,6 +9,7 @@ import app.minimpos.app.ScreenshotTolerance
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.feature.settings.TerminalChoiceDialog
+import app.minimpos.app.terminal.SetupTerminalChoice
 import app.minimpos.app.ui.theme.MiniMposTheme
 import org.junit.Before
 import org.junit.Rule
@@ -70,7 +71,7 @@ class LocaleGoldensTest {
     @Test
     fun `terminal picker in French`() {
         val poiIds = (1..300).map { "AMS1-000168" + it.toString().padStart(9, '0') }
-        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds) {} } }
+        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds.map { SetupTerminalChoice(it) }) {} } }
         compose.waitUntilAtLeastOneExists(hasTestTag("terminalSearch"), 15_000)
         screenshot.capture(screen = true)
     }

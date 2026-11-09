@@ -28,6 +28,7 @@ import app.minimpos.app.feature.transfer.ImportUiState
 import app.minimpos.app.feature.transfer.TransferImportScreen
 import app.minimpos.app.feature.transfer.TransferImportViewModel
 import app.minimpos.app.terminal.ReceiptBusiness
+import app.minimpos.app.terminal.SetupTerminalChoice
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.navigation.Navigator
@@ -317,7 +318,7 @@ class SettingsGoldensTest {
 
     @Test
     fun `terminal picker`() {
-        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds) {} } }
+        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds.map { SetupTerminalChoice(it) }) {} } }
         waitForTag("terminalSearch")
         screenshot.capture(screen = true)
     }
@@ -325,7 +326,7 @@ class SettingsGoldensTest {
     @Test
     @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
     fun `terminal picker on the smallest screen`() {
-        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds) {} } }
+        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds.map { SetupTerminalChoice(it) }) {} } }
         waitForTag("terminalSearch")
         screenshot.capture(screen = true)
     }

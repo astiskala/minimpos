@@ -111,7 +111,7 @@ class TerminalSetupViewModelTest {
 
         setup.findTerminals()
         val found = await { setup.actions.first { it.connectedTerminals != null } }
-        assertThat(found.connectedTerminals).containsExactly("AMS1-000168223606144", "S1F2-000158213605014").inOrder()
+        assertThat(found.connectedTerminals!!.map { it.id }).containsExactly("AMS1-000168223606144", "S1F2-000158213605014").inOrder()
         setup.chooseTerminal("S1F2-000158213605014")
         assertThat(setup.actions.value.connectedTerminals).isNull()
         awaitTerminalSelection("S1F2-000158213605014")

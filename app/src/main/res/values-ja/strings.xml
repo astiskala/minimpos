@@ -820,6 +820,8 @@
   <string name="settings_no_terminals">一致する端末がありません。情報を手動で入力してください。</string>
   <string name="settings_terminal_search">端末を検索</string>
   <string name="settings_terminal_search_none">一致する端末がありません。</string>
+  <string name="settings_terminal_last_active">最終アクティビティ: %1$s</string>
+  <string name="settings_terminal_inventory">在庫</string>
   <string name="settings_save_and_discover">保存して設定を検索</string>
   <string name="settings_testing_api">APIをテスト中…</string>
   <string name="settings_finding_setup">端末を検索中…</string>

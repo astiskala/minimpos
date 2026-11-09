@@ -216,7 +216,7 @@ class SetupDiscoveryTest {
         assertThat(reads).isEqualTo(0)
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.LIVE)) }
         listing = (listing as TerminalListing.Listed).copy(environment = TerminalEnvironment.LIVE)
-        assertThat(await { container.setupDiscovery.find() }).isEqualTo(SetupDiscoverySearch.Found(listOf("S1F2-123456789")))
+        assertThat((await { container.setupDiscovery.find() } as SetupDiscoverySearch.Found).ids).containsExactly("S1F2-123456789")
         assertThat(environments).containsExactly(TerminalEnvironment.LIVE)
     }
 
@@ -225,7 +225,7 @@ class SetupDiscoveryTest {
         env.close()
         env = TestEnvironment(FakeDevice(detectedPoiId = "S1F2-123456789"), terminalDetails = api)
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
-        assertThat(await { container.setupDiscovery.find() }).isEqualTo(SetupDiscoverySearch.Found(listOf("S1F2-123456789")))
+        assertThat((await { container.setupDiscovery.find() } as SetupDiscoverySearch.Found).ids).containsExactly("S1F2-123456789")
         assertThat(await { container.settings.current() }.terminal.environment).isEqualTo(TerminalEnvironment.TEST)
         assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
         assertThat(environments).containsExactly(TerminalEnvironment.TEST)
@@ -235,7 +235,7 @@ class SetupDiscoveryTest {
     @Test
     fun `saving an API key enables discovery without a merchant account or working terminal connection`() {
         ready()
-        assertThat(await { container.setupDiscovery.find() }).isEqualTo(SetupDiscoverySearch.Found(listOf("S1F2-123456789")))
+        assertThat((await { container.setupDiscovery.find() } as SetupDiscoverySearch.Found).ids).containsExactly("S1F2-123456789")
         assertThat(container.settingsState.value.terminal.merchantAccount).isEmpty()
         assertThat(await { container.setupDiscovery.choose("S1F2-123456789") }).isEqualTo(SetupDiscoveryChoice.Complete)
         val saved = await { container.settings.current() }.terminal
@@ -297,7 +297,7 @@ class SetupDiscoveryTest {
         env.close()
         env = TestEnvironment(FakeDevice(detectedPoiId = "S1F2-123456789"), terminalDetails = api)
         ready()
-        assertThat(await { container.setupDiscovery.find() }).isEqualTo(SetupDiscoverySearch.Found(listOf("S1F2-123456789")))
+        assertThat((await { container.setupDiscovery.find() } as SetupDiscoverySearch.Found).ids).containsExactly("S1F2-123456789")
         await { container.setupDiscovery.choose("S1F2-123456789") }
         assertThat(await { container.settings.current() }.terminal.host).isEmpty()
         assertThat(await { container.settings.current() }.terminal.poiIdOverride).isEmpty()

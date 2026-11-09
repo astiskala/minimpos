@@ -8,6 +8,7 @@ import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalListing
 import app.minimpos.terminal.transport.TerminalListingApi
+import java.time.Instant
 
 /** Pure reading of a terminal listing, without credentials, storage or remote calls. */
 internal sealed interface TerminalAssignment {
@@ -22,7 +23,7 @@ internal sealed interface TerminalAssignment {
     ) : TerminalSelection
 
     data class Choices(
-        val ids: List<String>,
+        val terminals: List<TerminalDetails>,
     ) : TerminalAssignment
 
     data class Blocked(
@@ -54,7 +55,7 @@ internal sealed interface DiscoveredAssignment {
     ) : DiscoveredAssignment
 
     data class Choices(
-        val ids: List<String>,
+        val terminals: List<SetupTerminalChoice>,
     ) : DiscoveredAssignment
 
     data class Mismatched(
@@ -126,7 +127,7 @@ internal object TerminalAssignments {
             is ListingResult.Listed -> {
                 when (val assignment = discover(listed.terminals, poiId, merchantAccount)) {
                     is TerminalAssignment.Assigned -> DiscoveredAssignment.Assigned(assignment.terminal)
-                    is TerminalAssignment.Choices -> DiscoveredAssignment.Choices(assignment.ids)
+                    is TerminalAssignment.Choices -> DiscoveredAssignment.Choices(choices(assignment.terminals))
                     is TerminalAssignment.Mismatched -> DiscoveredAssignment.Mismatched(assignment.terminal, assignment.entered)
                     is TerminalAssignment.Blocked -> DiscoveredAssignment.Failed(Failure.NotSetUp(assignment.problem))
                 }
@@ -208,6 +209,12 @@ internal object TerminalAssignments {
         }
     }
 
+    /** [terminals] as an operator chooses among them: the most recently active first, those without activity last. */
+    fun choices(terminals: List<TerminalDetails>): List<SetupTerminalChoice> =
+        terminals
+            .sortedWith(compareBy(nullsLast(reverseOrder<Instant>())) { it.lastActivity })
+            .map { SetupTerminalChoice(it.id, it.merchantAccount, it.storeId, it.lastActivity, it.inventory) }
+
     /** Listed terminals with identity [poiId], in listing order; null keeps all without filtering merchant accounts. */
     fun offered(
         terminals: List<TerminalDetails>,
@@ -225,7 +232,7 @@ internal object TerminalAssignments {
         val eligible = terminals.filter { it.merchantAccount.isNotBlank() && (account.isBlank() || it.merchantAccount == account) }
         return when {
             eligible.size == 1 -> TerminalAssignment.Assigned(eligible.single())
-            eligible.size > 1 -> TerminalAssignment.Choices(eligible.map { it.id })
+            eligible.size > 1 -> TerminalAssignment.Choices(eligible)
             else -> TerminalAssignment.Blocked(SetupProblem.TERMINAL_ACCESS)
         }
     }

@@ -601,7 +601,7 @@ class AutomaticSetupTransferTest {
         val received = received("""{"destination":"network","environment":"TEST","automatic":true}""")
         val before = await { env.container.settings.current() }
         val terminals = await { env.container.setupImport.import(received, ImportMode.MERGE, code) }
-        assertThat(terminals).isEqualTo(SetupImportOutcome.Terminals(available.map { it.id }))
+        assertThat((terminals as SetupImportOutcome.Terminals).terminals.map { it.id }).containsExactlyElementsIn(available.map { it.id })
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
         val complete = await { env.container.setupImport.import(received, ImportMode.MERGE, code, terminalId = poiId) }
         assertThat(complete).isInstanceOf(SetupImportOutcome.Committed::class.java)

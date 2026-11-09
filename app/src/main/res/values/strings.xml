@@ -823,6 +823,8 @@
   <string name="settings_no_terminals">No matching terminals are available. Enter the details manually.</string>
   <string name="settings_terminal_search">Search terminals</string>
   <string name="settings_terminal_search_none">No terminals match.</string>
+  <string name="settings_terminal_last_active">Last active %1$s</string>
+  <string name="settings_terminal_inventory">In inventory</string>
   <string name="settings_save_and_discover">Save and find setup</string>
   <string name="settings_testing_api">Testing API…</string>
   <string name="settings_finding_setup">Finding terminal…</string>

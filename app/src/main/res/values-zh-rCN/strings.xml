@@ -820,6 +820,8 @@
   <string name="settings_no_terminals">没有可用的匹配终端。请手动输入信息。</string>
   <string name="settings_terminal_search">搜索终端</string>
   <string name="settings_terminal_search_none">没有匹配的终端。</string>
+  <string name="settings_terminal_last_active">最近活动:%1$s</string>
+  <string name="settings_terminal_inventory">库存中</string>
   <string name="settings_save_and_discover">保存并查找设置</string>
   <string name="settings_testing_api">正在测试 API…</string>
   <string name="settings_finding_setup">正在查找终端…</string>

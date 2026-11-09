@@ -30,6 +30,7 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Test
+import java.time.Instant
 
 class TerminalDetailsTest {
     private val server = MockWebServer().apply { start() }
@@ -133,6 +134,20 @@ class TerminalDetailsTest {
             assertThat(first.headers["x-api-key"]).isEqualTo("secret")
             assertThat(first.method).isEqualTo("GET")
             assertThat(server.takeRequest().url.queryParameter("pageNumber")).isEqualTo("2")
+        }
+
+    @Test
+    fun `last activity and inventory status are read from the listing`() =
+        runBlocking {
+            reply(
+                """{"data":[{"id":"S1F2-1","lastActivityAt":"2026-11-09T06:00:00+00:00","assignment":{"merchantId":"M","status":"inventory"}},
+                    {"id":"S1F2-2","assignment":{"merchantId":"M","status":"boarded"}}]}""",
+            )
+            val listed = api.terminals(TerminalEnvironment.TEST) as TerminalListing.Listed
+            assertThat(listed.terminals.first().lastActivity).isEqualTo(Instant.parse("2026-11-09T06:00:00Z"))
+            assertThat(listed.terminals.first().inventory).isTrue()
+            assertThat(listed.terminals.last().lastActivity).isNull()
+            assertThat(listed.terminals.last().inventory).isFalse()
         }
 
     @Test

@@ -7,6 +7,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import app.minimpos.app.createRecordingComposeRule
 import app.minimpos.app.feature.settings.TerminalChoiceDialog
+import app.minimpos.app.terminal.SetupTerminalChoice
 import app.minimpos.app.ui.theme.MiniMposTheme
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
@@ -28,7 +29,7 @@ class TerminalChoiceDialogTest {
     @Test
     fun `a search finds a terminal among hundreds by part of its serial number`() {
         var chosen: String? = null
-        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds) { chosen = it } } }
+        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds.map { SetupTerminalChoice(it) }) { chosen = it } } }
         compose
             .onNodeWithText(
                 "After selection, Mini mPOS checks the connection if setup is complete. No payment is taken.",
@@ -40,7 +41,7 @@ class TerminalChoiceDialogTest {
 
     @Test
     fun `a search ignores case and says when nothing matches`() {
-        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds) {} } }
+        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds.map { SetupTerminalChoice(it) }) {} } }
         compose.onNodeWithTag("terminalSearch").performTextInput("s1f2")
         compose.onNodeWithTag("terminal_S1F2-000158204502740").assertIsDisplayed()
         compose.onNodeWithTag("terminalSearch").performTextInput("x")
@@ -48,8 +49,17 @@ class TerminalChoiceDialogTest {
     }
 
     @Test
+    fun `a row names its account and store, and a search finds a terminal by account`() {
+        val terminals =
+            poiIds.map { SetupTerminalChoice(it, "OtherAccount") } + SetupTerminalChoice("S1F2-1", "DemoAccount", "ST1", inventory = true)
+        compose.setContent { MiniMposTheme { TerminalChoiceDialog(terminals) {} } }
+        compose.onNodeWithTag("terminalSearch").performTextInput("demoacc")
+        compose.onNodeWithText("DemoAccount · ST1 · In inventory").assertIsDisplayed()
+    }
+
+    @Test
     fun `a few terminals are listed without a search field`() {
-        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds.takeLast(3)) {} } }
+        compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds.takeLast(3).map { SetupTerminalChoice(it) }) {} } }
         compose.onNodeWithTag("terminal_S1F2-000158204502740").assertIsDisplayed()
         compose.onNodeWithTag("terminalSearch").assertDoesNotExist()
         compose

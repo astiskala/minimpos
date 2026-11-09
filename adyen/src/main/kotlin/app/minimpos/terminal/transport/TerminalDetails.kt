@@ -12,12 +12,14 @@ import com.adyen.model.management.OfflineProcessing
 import com.adyen.model.management.StoreAndForward
 import com.adyen.model.management.SupportedCardTypes
 import com.adyen.model.management.Terminal
+import com.adyen.model.management.TerminalAssignment
 import com.adyen.model.management.TerminalSettings
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import java.time.Instant
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
 
@@ -28,6 +30,8 @@ import kotlin.time.Duration.Companion.seconds
  * @property storeId Currently assigned store ID, never the pending reassignment target; blank when not assigned to a store.
  * @property model Hardware model reported by Management; blank when absent, never inferred as a scanner-equipped variant.
  * @property countryCode Terminal country code; blank when absent, never replaced with the POS device's locale.
+ * @property lastActivity When the terminal was last active; null when Adyen leaves it out, after 14 days of inactivity.
+ * @property inventory Whether the terminal sits in inventory, where it cannot take payments.
  */
 data class TerminalDetails(
     val id: String,
@@ -36,6 +40,8 @@ data class TerminalDetails(
     val storeId: String = "",
     val model: String = "",
     val countryCode: String = "",
+    val lastActivity: Instant? = null,
+    val inventory: Boolean = false,
 )
 
 /** A discovered encryption key, kept only in memory until encrypted storage; string conversion never reveals it.
@@ -814,6 +820,8 @@ class AdyenTerminalDetails(
                 .orEmpty(),
             terminal.model?.trim().orEmpty(),
             terminal.countryCode?.trim().orEmpty(),
+            terminal.lastActivityAt?.toInstant(),
+            terminal.assignment?.status == TerminalAssignment.StatusEnum.INVENTORY,
         )
     }
 

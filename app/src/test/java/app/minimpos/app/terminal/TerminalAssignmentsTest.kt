@@ -12,6 +12,7 @@ import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalListing
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
+import java.time.Instant
 
 class TerminalAssignmentsTest {
     private val terminal = TerminalDetails("S1F2-1", "Merchant", "192.168.1.42", "Store")
@@ -34,10 +35,21 @@ class TerminalAssignmentsTest {
     }
 
     @Test
+    fun `choices put the most recently active terminal first and keep the listing order otherwise`() {
+        val older = terminal.copy(id = "A", lastActivity = Instant.parse("2026-01-01T00:00:00Z"))
+        val newer = terminal.copy(id = "B", lastActivity = Instant.parse("2026-02-01T00:00:00Z"), inventory = true)
+        val silent = terminal.copy(id = "C")
+        val listed = TerminalAssignments.choices(listOf(silent, older, newer))
+        assertThat(listed.map { it.id }).containsExactly("B", "A", "C").inOrder()
+        assertThat(listed.first().inventory).isTrue()
+        assertThat(listed.first().merchantAccount).isEqualTo(terminal.merchantAccount)
+    }
+
+    @Test
     fun `automatic discovery offers eligible choices in listing order and rejects absent identities`() {
         val second = terminal.copy(id = "S1F2-3")
         assertThat(TerminalAssignments.discover(listOf(other, terminal, second), null, "Merchant")).isEqualTo(
-            TerminalAssignment.Choices(listOf(terminal.id, second.id)),
+            TerminalAssignment.Choices(listOf(terminal, second)),
         )
         assertThat(TerminalAssignments.discover(listOf(other, terminal), null, "Merchant")).isEqualTo(TerminalAssignment.Assigned(terminal))
         assertThat(TerminalAssignments.discover(listOf(terminal), "missing", "Merchant")).isEqualTo(

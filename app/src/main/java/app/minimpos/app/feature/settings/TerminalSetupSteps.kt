@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
@@ -63,6 +65,7 @@ import app.minimpos.app.terminal.SetupProgress
 import app.minimpos.app.terminal.SetupStep
 import app.minimpos.app.terminal.SetupStepKind
 import app.minimpos.app.terminal.SetupStoreChoice
+import app.minimpos.app.terminal.SetupTerminalChoice
 import app.minimpos.app.terminal.SetupVisit
 import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.TerminalState
@@ -83,6 +86,9 @@ import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.MinTouchTarget
 import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.terminal.transport.TerminalEnvironment
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 /** Changes the terminal settings with a transform of the stored ones. */
 private typealias TerminalUpdate = ((TerminalSettings) -> TerminalSettings) -> Unit
@@ -727,22 +733,30 @@ private fun ColumnScope.CloudTerminalStep(
  */
 @Composable
 internal fun TerminalChoiceDialog(
-    poiIds: List<String>,
+    terminals: List<SetupTerminalChoice>,
     onChoose: (poiId: String?) -> Unit,
 ) {
-    if (poiIds.size <= TERMINAL_SEARCH_FROM) {
+    val details = terminals.associate { it.id to terminalDetail(it) }
+    if (terminals.size <= TERMINAL_SEARCH_FROM) {
         ChoiceDialog(
             R.string.settings_choose_terminal,
             R.string.settings_no_terminals,
-            poiIds.map { it to it },
+            terminals.map { it.id to it.id },
             "terminal",
             onChoose,
             hint = R.string.settings_terminal_choice_hint,
+            detail = details::get,
         )
         return
     }
     var query by rememberSaveable { mutableStateOf("") }
-    val shown = remember(poiIds, query) { poiIds.filter { it.contains(query.trim(), ignoreCase = true) } }
+    val shown =
+        remember(terminals, query) {
+            val text = query.trim()
+            terminals.filter { terminal ->
+                listOf(terminal.id, terminal.merchantAccount, terminal.storeId).any { it.contains(text, ignoreCase = true) }
+            }
+        }
     PickerDialog(
         title = stringResource(R.string.settings_choose_terminal),
         query = query,
@@ -753,16 +767,41 @@ internal fun TerminalChoiceDialog(
         isEmpty = shown.isEmpty(),
         onDismiss = { onChoose(null) },
         options = {
-            items(shown, key = { it }) { poiId ->
+            items(shown, key = { it.id }) { terminal ->
                 CompactTertiaryButton(
-                    { onChoose(poiId) },
-                    Modifier.fillMaxWidth().padding(horizontal = Spacing.Medium).testTag("terminal_$poiId"),
+                    { onChoose(terminal.id) },
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.Medium).testTag("terminal_${terminal.id}"),
                 ) {
-                    Text(poiId)
+                    ChoiceLabel(terminal.id, details[terminal.id])
                 }
             }
         },
     ) { SettingNote(stringResource(R.string.settings_terminal_choice_hint)) }
+}
+
+/** What tells [terminal] apart beyond its ID: account, store, last activity and whether it is in inventory. */
+@Composable
+private fun terminalDetail(terminal: SetupTerminalChoice): String? {
+    val locale = LocalConfiguration.current.locales[0]
+    val active =
+        terminal.lastActivity?.let {
+            val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withLocale(locale).withZone(ZoneId.systemDefault())
+            stringResource(R.string.settings_terminal_last_active, formatter.format(it))
+        }
+    val inventory = stringResource(R.string.settings_terminal_inventory).takeIf { terminal.inventory }
+    return listOfNotNull(terminal.merchantAccount.ifBlank { null }, terminal.storeId.ifBlank { null }, active, inventory)
+        .joinToString(" · ")
+        .ifBlank { null }
+}
+
+/** A choice's name with its optional [detail] beneath. */
+@Composable
+private fun ChoiceLabel(
+    label: String,
+    detail: String?,
+) = Column {
+    Text(label)
+    detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }
 
 /** Above this many terminals the choice offers a search field. */
@@ -779,6 +818,7 @@ private fun ChoiceDialog(
     tagPrefix: String,
     onChoose: (id: String?) -> Unit,
     @StringRes hint: Int? = null,
+    detail: (String) -> String? = { null },
 ) {
     AlertDialog(
         onDismissRequest = { onChoose(null) },
@@ -788,7 +828,10 @@ private fun ChoiceDialog(
                 hint?.let { SettingNote(stringResource(it)) }
                 if (choices.isEmpty()) Text(stringResource(empty))
                 choices.forEach { (id, label) ->
-                    CompactTertiaryButton({ onChoose(id) }, Modifier.fillMaxWidth().testTag("${tagPrefix}_$id")) { Text(label) }
+                    CompactTertiaryButton(
+                        { onChoose(id) },
+                        Modifier.fillMaxWidth().testTag("${tagPrefix}_$id"),
+                    ) { ChoiceLabel(label, detail(id)) }
                 }
             }
         },

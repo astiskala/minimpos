@@ -141,7 +141,7 @@
               Un terminal Adyen utilise toujours son certificat d'appareil pour la connexion.</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud">
+          <fieldset data-for="thisTerminal network cloud tapToPay">
             <legend>Comment voulez-vous vous installer ?</legend>
             <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>
               Automatique (recommandé)</strong>: rechercher la configuration du terminal sur l'appareil</span></label>
@@ -151,7 +151,7 @@
 
           <p class="hint" data-only="tapToPay" hidden>Suivez le <a href="quick-start#tap-to-pay">Prérequis Tap to Pay
             </a> et installez d'abord l'application Adyen Payments. Mini mPOS utilise votre clé API Adyen pour créer
-            automatiquement les informations d'identification du téléphone. Entrez la clé partagée ici ; Mini mPOS ne la récupère pas. L'enregistrement est une action explicite sur le téléphone avant la fin de l'importation.</p>
+            automatiquement les informations d'identification du téléphone. L'enregistrement est une action explicite sur le téléphone avant la fin de l'importation.</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Clé Adyen API</legend>
@@ -190,7 +190,7 @@
               Terminaux dans le Customer Area.</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network" data-mode="automatic">
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="automatic">
             <legend>D’où provient la clé partagée ?</legend>
             <label class="choice"><input type="radio" name="keySource" value="lookup" checked> <span><strong>La rechercher sur l’appareil (recommandé)</strong></span></label>
             <label class="choice"><input type="radio" name="keySource" value="enter"> <span><strong>La saisir ici</strong>, si l’appareil n’a pas pu la lire</span></label>

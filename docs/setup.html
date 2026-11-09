@@ -142,7 +142,7 @@
               An Adyen terminal still uses its device certificate for the connection.</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud">
+          <fieldset data-for="thisTerminal network cloud tapToPay">
             <legend>How do you want to set up?</legend>
             <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>
               Automatic (recommended)</strong>: look up terminal setup on the device</span></label>
@@ -152,8 +152,7 @@
 
           <p class="hint" data-only="tapToPay" hidden>Follow the <a href="quick-start#tap-to-pay">Tap to Pay
             prerequisites</a> and install the Payments app first. Mini mPOS uses your Adyen API key to create the
-            phone’s registration credential automatically. Enter the shared key here; Mini mPOS does not look it up.
-            Registration is an explicit action on the phone before import finishes.</p>
+            phone’s registration credential automatically. Registration is an explicit action on the phone before import finishes.</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API key</legend>
@@ -192,7 +191,7 @@
               </p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network" data-mode="automatic">
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="automatic">
             <legend>Where does the shared key come from?</legend>
             <label class="choice"><input type="radio" name="keySource" value="lookup" checked> <span><strong>Look it up on the device (recommended)</strong></span></label>
             <label class="choice"><input type="radio" name="keySource" value="enter"> <span><strong>Enter it here</strong>, if the device could not read it</span></label>

@@ -9,6 +9,8 @@ import app.minimpos.terminal.transport.CredentialRolesUpdate
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MalformedPart
+import app.minimpos.terminal.transport.MerchantAccount
+import app.minimpos.terminal.transport.MerchantAccountListing
 import app.minimpos.terminal.transport.RemoteTerminalCapabilities
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.SharedKeyUpdate
@@ -176,6 +178,22 @@ class TerminalDetailsTest {
             assertThat(api.addRoles(TerminalEnvironment.TEST, listOf(AdyenRole.CLOUD_DEVICE)))
                 .isEqualTo(CredentialRolesUpdate.Failed(Fault.UnreadableReply()))
             assertThat(server.requestCount).isEqualTo(1)
+        }
+
+    @Test
+    fun `merchant accounts are listed and a store key is read from the store`() =
+        runBlocking {
+            reply("""{"data":[{"id":"M1","name":"First"},{"id":"M2"}]}""")
+            val listed = api.merchantAccounts(TerminalEnvironment.TEST) as MerchantAccountListing.Listed
+            assertThat(listed.accounts).containsExactly(MerchantAccount("M1", "First"), MerchantAccount("M2", "")).inOrder()
+            server.takeRequest()
+            val key = """{"nexo":{"encryptionKey":{"identifier":"k","version":1,"passphrase":"p"}}}"""
+            reply(key)
+            assertThat(api.accountKey("M1", "ST1", TerminalEnvironment.TEST)).isInstanceOf(SharedKeyLookup.Found::class.java)
+            assertThat(server.takeRequest().url.encodedPath).endsWith("/stores/ST1/terminalSettings")
+            reply(key)
+            api.accountKey("M1", null, TerminalEnvironment.TEST)
+            assertThat(server.takeRequest().url.encodedPath).endsWith("/merchants/M1/terminalSettings")
         }
 
     @Test

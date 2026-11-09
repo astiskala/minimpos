@@ -828,6 +828,8 @@
   <string name="settings_host_placeholder">Par exemple, 192.0.2.1</string>
   <string name="settings_host_hint">Le terminal doit être sur le même réseau que cet appareil.</string>
   <string name="settings_choose_terminal">Choisissez un terminal</string>
+  <string name="settings_choose_merchant">Choisissez un compte marchand</string>
+  <string name="settings_no_merchants">Aucun compte marchand n’est disponible pour cette clé API.</string>
   <string name="settings_terminal_choice_hint">Après la sélection, Mini mPOS vérifie la connexion si la configuration est complète. Aucun paiement n’est effectué.</string>
   <string name="settings_no_terminals">Aucun terminal correspondant n’est disponible. Saisissez les détails manuellement.</string>
   <string name="settings_terminal_search">Chercher un terminal</string>
@@ -841,7 +843,8 @@
   <string name="settings_discovery_manual">Passez en revue les détails ci-dessous et entrez tout ce qui manque. Terminez par Test de connexion pour vérifier l’accès à l’API et la connexion.</string>
   <string name="settings_shared_key">Clé partagée</string>
   <string name="settings_shared_key_hint">Copiez ces données depuis votre Customer Area : Devices › Device settings › Integrations › Terminal API › Encryption key (sélectionnez le crayon pour les afficher).</string>
-  <string name="settings_payments_app_shared_key_hint">Entrez la clé partagée ici ou incluez-la dans l’assistant de configuration. L’enregistrement du téléphone ne le récupère pas.</string>
+  <string name="settings_payments_app_shared_key_hint">Saisissez la clé partagée ou touchez Rechercher la clé partagée pour la lire depuis Adyen.</string>
+  <string name="settings_find_shared_key">Rechercher la clé partagée</string>
   <string name="settings_key_identifier">Identificateur de clé</string>
   <string name="settings_key_version">Version de la clé</string>
   <string name="settings_passphrase">Phrase secrète de la clé</string>

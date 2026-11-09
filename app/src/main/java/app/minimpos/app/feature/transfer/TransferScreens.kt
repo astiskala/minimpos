@@ -66,6 +66,7 @@ import app.minimpos.app.data.transfer.ConnectedTerminal
 import app.minimpos.app.data.transfer.ReceivedTransfer
 import app.minimpos.app.data.transfer.TransferContents
 import app.minimpos.app.data.transfer.TransferExport
+import app.minimpos.app.feature.settings.MerchantChoiceDialog
 import app.minimpos.app.feature.settings.SettingSwitch
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.feature.settings.TerminalChoiceDialog
@@ -359,6 +360,7 @@ fun TransferImportScreen(
         onReview = vm::reviewSetup,
         onAccount = vm::reviewAccount,
         onRoles = vm::reviewKeyRoles,
+        onMerchant = vm::chooseMerchant,
         onConfirm = {
             confirmReplace = false
             if ((state as? ImportUiState.Ready)?.boardingRequired == true) vm.setUpTapToPay() else vm.import()
@@ -387,12 +389,14 @@ private fun ImportReviewDialogs(
     onReview: (Boolean) -> Unit,
     onAccount: (Boolean) -> Unit,
     onRoles: (Boolean) -> Unit,
+    onMerchant: (String?) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     state?.terminalChoices?.let { TerminalChoiceDialog(it, onTerminal) }
     state?.accountMismatch?.let { AccountMismatchDialog(it, { onAccount(true) }, { onAccount(false) }) }
     state?.keyRolesOffer?.let { KeyRolesDialog(it, { onRoles(true) }, { onRoles(false) }) }
+    state?.merchantChoices?.let { MerchantChoiceDialog(it, onMerchant) }
     state?.historySwitch?.let {
         HistorySwitchDialog(it.unfinished, { onReview(true) }, { onReview(false) })
     }

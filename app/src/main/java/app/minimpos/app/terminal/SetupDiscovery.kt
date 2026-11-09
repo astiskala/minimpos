@@ -57,6 +57,16 @@ data class SetupTerminalChoice(
     val inventory: Boolean = false,
 )
 
+/**
+ * A merchant account offered for an operator to choose.
+ * @property id The merchant account's identifier.
+ * @property name Its name, blank when absent.
+ */
+data class SetupMerchantChoice(
+    val id: String,
+    val name: String,
+)
+
 /** Store discovery for a saved Tap to Pay setup, without changing registration. */
 sealed interface SetupStoreSearch {
     /**
@@ -190,6 +200,33 @@ class SetupDiscovery(
     private var selection: Selection? = null
     private var storeSelection: StoreSelection? = null
     private val mutex = Mutex()
+
+    /** Reads the shared key of the saved Tap to Pay account and saves it; null once saved, else why it could not be. */
+    suspend fun findPhoneKey(): Failure? =
+        mutex.withLock {
+            val unlocked = setups.unlocked(forValidation = true)
+            val owner = setups.owner(unlocked)
+            if (owner is BoardingOwner.Blocked) return@withLock Failure.NotSetUp(owner.problem)
+            owner as BoardingOwner.Ready
+            val storeId =
+                unlocked.setup.settings.terminal.storeId
+                    .trim()
+                    .ifEmpty { null }
+            val fence = setups.SetupFence(unlocked, SetupFreshness.CREDENTIAL)
+            when (val found = connect(owner.apiKey).accountKey(owner.merchantAccount, storeId, owner.environment)) {
+                is SharedKeyLookup.Found -> {
+                    if (saveKey(fence, found.key) == null) Failure.NotSetUp(SetupProblem.SETUP_CHANGED) else null
+                }
+
+                SharedKeyLookup.Missing -> {
+                    Failure.NotSetUp(SetupProblem.KEY_IDENTIFIER)
+                }
+
+                is SharedKeyLookup.Failed -> {
+                    Failure.Remote(found.fault)
+                }
+            }
+        }
 
     /** Roles the saved API key lacks and can be given; null when it has them all or cannot be changed from here. */
     suspend fun keyRolesOffer(): KeyRolesOffer? =

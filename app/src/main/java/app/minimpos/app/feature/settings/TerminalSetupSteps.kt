@@ -62,6 +62,7 @@ import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.PaymentsAppDestination
+import app.minimpos.app.terminal.SetupMerchantChoice
 import app.minimpos.app.terminal.SetupProgress
 import app.minimpos.app.terminal.SetupStep
 import app.minimpos.app.terminal.SetupStepKind
@@ -288,6 +289,16 @@ private fun ColumnScope.ConnectionSteps(
     }
     step(SetupStepKind.SHARED_KEY)?.let { key ->
         SharedKeyStep(key.number, key.done, state, events, setupEvents, update, passphrase, { passphrase = it }, ::testConnection)
+        if (terminal.mode == TerminalMode.PAYMENTS_APP) {
+            SettingActions {
+                SecondaryButton(
+                    stringResource(R.string.settings_find_shared_key),
+                    setupEvents::onPhoneKeyFind,
+                    loading = setup.keyResult.running,
+                    modifier = Modifier.testTag("findSharedKey"),
+                )
+            }
+        }
     }
     SharedKeyActions(setup, setupEvents)
     step(SetupStepKind.CONNECTION)?.let {
@@ -809,6 +820,20 @@ private fun ChoiceLabel(
     Text(label)
     detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }
+
+/** Offers the merchant accounts an API key can reach, for a phone that has no terminal to read one from. */
+@Composable
+internal fun MerchantChoiceDialog(
+    merchants: List<SetupMerchantChoice>,
+    onChoose: (id: String?) -> Unit,
+) = ChoiceDialog(
+    R.string.settings_choose_merchant,
+    R.string.settings_no_merchants,
+    merchants.map { it.id to it.id },
+    "merchant",
+    onChoose,
+    detail = { id -> merchants.firstOrNull { it.id == id }?.name?.ifBlank { null } },
+)
 
 /** Above this many terminals the choice offers a search field. */
 private const val TERMINAL_SEARCH_FROM = 8

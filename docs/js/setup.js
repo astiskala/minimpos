@@ -207,7 +207,7 @@
 
   const destination = () => form.elements.destination.value;
   const environment = () => form.elements.environment.value;
-  const setupMode = () => destination() === "tapToPay" ? "manual" : form.elements.setupMode.value;
+  const setupMode = () => form.elements.setupMode.value;
 
   /** Hidden destination, environment and mode fields are disabled, so they are neither checked nor read. */
   const logoOnly = () => form.elements.make.value === "logo";
@@ -601,7 +601,6 @@
     for (const [name, value] of Object.entries(summary)) {
       value.textContent = form.querySelector(`input[name="${name}"]:checked`).closest("label").textContent.trim().replace(/\s+/g, " ");
     }
-    summary.setupMode.parentElement.hidden = destination() === "tapToPay";
     status.textContent = message("msgReady", { total: codes.length });
     show(0);
     play(true);

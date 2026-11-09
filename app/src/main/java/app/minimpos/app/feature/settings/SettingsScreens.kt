@@ -270,6 +270,9 @@ internal interface TerminalSetupEvents {
     /** Reads key settings and retries connection verification without granting permission to PATCH. */
     fun onSharedKeyCheck()
 
+    /** Reads the Tap to Pay account's shared key from Adyen ([TerminalSetupViewModel.findPhoneKey]). */
+    fun onPhoneKeyFind()
+
     /** Starts or stops checking a pending key again by itself ([TerminalSetupViewModel.followSharedKey]). */
     fun onSharedKeyFollow(following: Boolean)
 
@@ -388,6 +391,8 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
         override fun onSharedKeyConfirm(offer: SharedKeyOffer) = setup.createSharedKey(offer)
 
         override fun onSharedKeyCheck() = setup.checkSharedKey()
+
+        override fun onPhoneKeyFind() = setup.findPhoneKey()
 
         override fun onSharedKeyFollow(following: Boolean) = setup.followSharedKey(following)
 

@@ -137,7 +137,7 @@
               端末の接続には引き続きデバイスの証明書を使用します。</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud">
+          <fieldset data-for="thisTerminal network cloud tapToPay">
             <legend>どの方法で設定しますか？</legend>
             <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自動（推奨）</strong>：デバイスで端末設定を取得</span></label>
             <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手動</strong>
@@ -145,8 +145,7 @@
           </fieldset>
 
           <p class="hint" data-only="tapToPay" hidden>先に<a href="quick-start#tap-to-pay">Tap to Payの準備手順</a>
-            に従い、Paymentsアプリをインストールしてください。Mini mPOS が Adyen API キーで登録用認証情報を自動作成します。共有キーはここで入力してください。Mini mPOS
-            は共有キーを取得しません。インポート完了前にスマートフォンで明示的な登録操作が必要です。</p>
+            に従い、Paymentsアプリをインストールしてください。Mini mPOS が Adyen API キーで登録用認証情報を自動作成します。インポート完了前にスマートフォンで明示的な登録操作が必要です。</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen APIキー</legend>
@@ -182,7 +181,7 @@
             <p class="hint">端末のDevice info画面またはCustomer AreaのDevices › Terminalsで確認できます。</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network" data-mode="automatic">
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="automatic">
             <legend>共有キーの取得方法</legend>
             <label class="choice"><input type="radio" name="keySource" value="lookup" checked> <span><strong>デバイスで検索する(推奨)</strong></span></label>
             <label class="choice"><input type="radio" name="keySource" value="enter"> <span><strong>ここに入力する</strong>(デバイスで読み取れなかった場合)</span></label>

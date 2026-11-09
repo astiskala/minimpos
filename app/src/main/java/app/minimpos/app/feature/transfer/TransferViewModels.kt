@@ -20,6 +20,7 @@ import app.minimpos.app.terminal.HistorySwitchPlan
 import app.minimpos.app.terminal.KeyRolesOffer
 import app.minimpos.app.terminal.SetupImport
 import app.minimpos.app.terminal.SetupImportOutcome
+import app.minimpos.app.terminal.SetupMerchantChoice
 import app.minimpos.app.terminal.SetupTerminalChoice
 import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.core.codec.QrChunkAssembler
@@ -145,6 +146,7 @@ sealed interface ImportUiState {
      * @property terminalChoices Eligible terminals offered only for an ambiguous destination; null when not selecting.
      * @property accountMismatch A terminal assigned to another merchant account, for the operator to accept; null otherwise.
      * @property keyRolesOffer Roles the API key lacks that it could be given, awaiting the operator; null otherwise.
+     * @property merchantChoices Merchant accounts to choose among for Tap to Pay; null when not selecting.
      * @property boardingRequired Whether explicit phone registration must run before this import can commit.
      * @property historySwitch Destructive history confirmation for this exact candidate; null before verification.
      * @property sharedKeyOffer Explicit key-creation/recovery confirmation; null when not offered.
@@ -163,6 +165,7 @@ sealed interface ImportUiState {
         val terminalChoices: List<SetupTerminalChoice>? = null,
         val accountMismatch: AccountMismatch? = null,
         val keyRolesOffer: KeyRolesOffer? = null,
+        val merchantChoices: List<SetupMerchantChoice>? = null,
         val boardingRequired: Boolean = false,
         /** Destructive environment-change confirmation; null until authenticated setup validation succeeds. */
         val historySwitch: HistorySwitchPlan? = null,
@@ -217,6 +220,7 @@ class TransferImportViewModel(
     val state: StateFlow<ImportUiState>
         field = MutableStateFlow<ImportUiState>(ImportUiState.Importing)
     private var selectedTerminal: String? = null
+    private var selectedMerchant: String? = null
     private var confirmedHistory: HistorySwitchPlan? = null
     private var confirmedAccount: String? = null
     private var confirmedRoles: KeyRolesOffer? = null
@@ -287,6 +291,17 @@ class TransferImportViewModel(
         updateReady { it.copy(terminalChoices = null) }
         if (id != null) {
             selectedTerminal = id
+            import()
+        }
+    }
+
+    /** Chooses only an offered merchant account, or dismisses the selector for null; nothing has been imported yet. */
+    fun chooseMerchant(id: String?) {
+        val ready = state.value as? ImportUiState.Ready ?: return
+        if (id != null && ready.merchantChoices.orEmpty().none { it.id == id }) return
+        updateReady { it.copy(merchantChoices = null) }
+        if (id != null) {
+            selectedMerchant = id
             import()
         }
     }
@@ -401,6 +416,7 @@ class TransferImportViewModel(
                 confirmedAccount,
                 ready.terminalHost?.trim()?.ifBlank { null },
                 confirmedRoles,
+                selectedMerchant,
             )
         }) { result ->
             state.value = finished(ready, result)
@@ -418,6 +434,10 @@ class TransferImportViewModel(
 
             is SetupImportOutcome.Terminals -> {
                 ready.copy(terminalChoices = result.terminals, outcome = null, keyUnread = false)
+            }
+
+            is SetupImportOutcome.Merchants -> {
+                ready.copy(merchantChoices = result.accounts, outcome = null)
             }
 
             is SetupImportOutcome.RolesMissing -> {

@@ -822,6 +822,8 @@
   <string name="settings_host_placeholder">例如 192.0.2.1</string>
   <string name="settings_host_hint">終端必須與此設備處於同一網絡。</string>
   <string name="settings_choose_terminal">選擇終端</string>
+  <string name="settings_choose_merchant">選擇商戶帳戶</string>
+  <string name="settings_no_merchants">此 API 密鑰沒有可用的商戶帳戶。</string>
   <string name="settings_terminal_choice_hint">選擇終端後，如設定已齊全，Mini mPOS 會檢查連接。不會進行付款。</string>
   <string name="settings_no_terminals">沒有可用的相符終端。請手動輸入資訊。</string>
   <string name="settings_terminal_search">搜尋終端</string>
@@ -835,7 +837,8 @@
   <string name="settings_discovery_manual">請檢查下方資料並補充缺失項。最後點按「測試連接」，驗證 API 存取和連接。</string>
   <string name="settings_shared_key">共享密鑰</string>
   <string name="settings_shared_key_hint">從商戶後台的“Devices › Device settings › Integrations › Terminal API › Encryption key”複製（點按鉛筆圖示查看）。</string>
-  <string name="settings_payments_app_shared_key_hint">請在此輸入共享密鑰，或在設定助手中填寫。手機註冊不會取得共享密鑰。</string>
+  <string name="settings_payments_app_shared_key_hint">請輸入共享密鑰，或點按「尋找共享密鑰」從 Adyen 讀取。</string>
+  <string name="settings_find_shared_key">尋找共享密鑰</string>
   <string name="settings_key_identifier">密鑰識別碼</string>
   <string name="settings_key_version">密鑰版本</string>
   <string name="settings_passphrase">密鑰口令</string>

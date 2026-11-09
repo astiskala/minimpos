@@ -3,6 +3,7 @@ package app.minimpos.terminal.transport
 import com.adyen.model.management.Dcc
 import com.adyen.model.management.Gratuity
 import com.adyen.model.management.Key
+import com.adyen.model.management.ListMerchantResponse
 import com.adyen.model.management.ListTerminalsResponse
 import com.adyen.model.management.MeApiCredential
 import com.adyen.model.management.MinorUnitsMonetaryValue
@@ -129,6 +130,32 @@ sealed interface SharedKeyLookup {
     data class Failed(
         val fault: Fault,
     ) : SharedKeyLookup
+}
+
+/** A merchant account an API key can reach.
+ * @property id The merchant account's identifier.
+ * @property name Its name, blank when absent.
+ */
+data class MerchantAccount(
+    val id: String,
+    val name: String,
+)
+
+/** Every merchant account an API key can reach, or why they could not all be read. */
+sealed interface MerchantAccountListing {
+    /** All pages of accounts.
+     * @property accounts The accounts, in Management order.
+     */
+    data class Listed(
+        val accounts: List<MerchantAccount>,
+    ) : MerchantAccountListing
+
+    /** The listing did not complete.
+     * @property fault Why.
+     */
+    data class Failed(
+        val fault: Fault,
+    ) : MerchantAccountListing
 }
 
 /** Result of an explicitly requested terminal-specific key creation. */
@@ -342,6 +369,17 @@ interface SharedKeyApi : TerminalListingApi {
         environment: TerminalEnvironment,
     ): SharedKeyLookup
 
+    /** Reads the key set for [storeId], or for [merchantAccount] when null, for a phone that has no terminal to ask. */
+    suspend fun accountKey(
+        merchantAccount: String,
+        storeId: String?,
+        environment: TerminalEnvironment,
+    ): SharedKeyLookup = SharedKeyLookup.Failed(Fault.Unsupported)
+
+    /** Lists the merchant accounts this API key can reach. */
+    suspend fun merchantAccounts(environment: TerminalEnvironment): MerchantAccountListing =
+        MerchantAccountListing.Failed(Fault.Unsupported)
+
     /** Creates [key] only after a fresh settings read finds no existing key; preserves the complete nexo object.
      * The caller must confirm the terminal/environment and persist recovery before calling. No atomic compare-and-set
      * is available, so another administrator must not edit the same settings concurrently.
@@ -511,6 +549,55 @@ class AdyenTerminalDetails(
         val settings = decodeEncryptionKeySettings(reply.body) ?: return SharedKeyLookup.Failed(Fault.Malformed(MalformedPart.SETTINGS))
         return lookup(settings)
     }
+
+    override suspend fun accountKey(
+        merchantAccount: String,
+        storeId: String?,
+        environment: TerminalEnvironment,
+    ): SharedKeyLookup {
+        val path = if (storeId != null) listOf("stores", storeId) else listOf("merchants", merchantAccount)
+        val url =
+            baseUrl(environment)
+                .newBuilder()
+                .apply { path.forEach { addPathSegment(it) } }
+                .addPathSegment("terminalSettings")
+                .build()
+        val reply = http.get(url, TIMEOUT)
+        if (reply !is AdyenReply.Answered || !reply.ok) return SharedKeyLookup.Failed(managementFault(reply))
+        val settings = decodeEncryptionKeySettings(reply.body) ?: return SharedKeyLookup.Failed(Fault.Malformed(MalformedPart.SETTINGS))
+        return lookup(settings)
+    }
+
+    override suspend fun merchantAccounts(environment: TerminalEnvironment): MerchantAccountListing =
+        when (val pages = collectManagementPages(fetch = { merchantPage(environment, it) }, parse = ::parseMerchants)) {
+            is ManagementPages.Failed -> MerchantAccountListing.Failed(pages.fault)
+            is ManagementPages.Listed -> MerchantAccountListing.Listed(pages.items.distinctBy { it.id })
+        }
+
+    private suspend fun merchantPage(
+        environment: TerminalEnvironment,
+        number: Int,
+    ): AdyenReply =
+        http.get(
+            baseUrl(environment)
+                .newBuilder()
+                .addPathSegment("merchants")
+                .addQueryParameter("pageSize", MANAGEMENT_PAGE_SIZE.toString())
+                .addQueryParameter("pageNumber", number.toString())
+                .build(),
+            TIMEOUT,
+        )
+
+    private fun parseMerchants(body: String): Pair<List<MerchantAccount>, Boolean>? =
+        runCatching {
+            val response = requireNotNull(decodeAdyenModel(body, ListMerchantResponse::class.java))
+            val accounts = requireNotNull(response.data).map { MerchantAccount(requireNotNull(it.id), it.name.orEmpty()) }
+            accounts to
+                !response.links
+                    ?.next
+                    ?.href
+                    .isNullOrBlank()
+        }.getOrNull()
 
     override suspend fun createSharedKey(
         id: String,

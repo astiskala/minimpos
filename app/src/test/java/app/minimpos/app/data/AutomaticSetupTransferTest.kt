@@ -37,6 +37,8 @@ import app.minimpos.terminal.transport.CredentialRolesUpdate
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.MerchantAccount
+import app.minimpos.terminal.transport.MerchantAccountListing
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.SharedKeyUpdate
@@ -66,11 +68,24 @@ class AutomaticSetupTransferTest {
         FakeStoreDetails(StoreLookup.Found(StoreDetails("Cafe", "1 Main St", "+61212345678")))
     private var credentialReads = 0
     private val rolesAdded = mutableListOf<AdyenRole>()
+    private var merchants = emptyList<MerchantAccount>()
+    private var accountKeyMerchant: String? = null
     private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
             override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
                 credentialReads++
                 return credential
+            }
+
+            override suspend fun merchantAccounts(environment: TerminalEnvironment) = MerchantAccountListing.Listed(merchants)
+
+            override suspend fun accountKey(
+                merchantAccount: String,
+                storeId: String?,
+                environment: TerminalEnvironment,
+            ): SharedKeyLookup {
+                accountKeyMerchant = merchantAccount
+                return key?.let(SharedKeyLookup::Found) ?: SharedKeyLookup.Missing
             }
 
             override suspend fun addRoles(
@@ -662,6 +677,60 @@ class AutomaticSetupTransferTest {
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
         val complete = await { env.container.setupImport.import(received, ImportMode.MERGE, code, terminalId = poiId) }
         assertThat(complete).isInstanceOf(SetupImportOutcome.Committed::class.java)
+    }
+
+    private fun tapToPayEnvironment() {
+        env.close()
+        env =
+            TestEnvironment(
+                FakeDevice(paymentsApps = setOf(TerminalEnvironment.TEST)),
+                paymentsApp = phone,
+                management = management,
+                terminalDetails = details,
+                verifiedSetup = false,
+            )
+    }
+
+    @Test
+    fun `Automatic Tap to Pay finds the only merchant account and its shared key`() {
+        tapToPayEnvironment()
+        merchants = listOf(MerchantAccount("OnlyMerchant", "Only"))
+        val connection = """{"destination":"tapToPay","environment":"TEST","automatic":true}"""
+        val outcome = await { env.container.setupImport.import(received(connection), ImportMode.MERGE, code, board = true) }
+        assertThat(outcome).isInstanceOf(SetupImportOutcome.Committed::class.java)
+        val saved = await { env.container.settings.current() }.terminal
+        assertThat(saved.merchantAccount).isEqualTo("OnlyMerchant")
+        assertThat(saved.keyIdentifier).isEqualTo("store-key")
+        assertThat(accountKeyMerchant).isEqualTo("OnlyMerchant")
+    }
+
+    @Test
+    fun `Automatic Tap to Pay asks which merchant account when the key reaches several`() {
+        tapToPayEnvironment()
+        merchants = listOf(MerchantAccount("A", "First"), MerchantAccount("B", "Second"))
+        val connection = """{"destination":"tapToPay","environment":"TEST","automatic":true}"""
+        val choices =
+            await {
+                env.container.setupImport.import(
+                    received(connection),
+                    ImportMode.MERGE,
+                    code,
+                )
+            } as SetupImportOutcome.Merchants
+        assertThat(choices.accounts.map { it.id }).containsExactly("A", "B").inOrder()
+        val chosen =
+            await { env.container.setupImport.import(received(connection), ImportMode.MERGE, code, board = true, merchantAccount = "B") }
+        assertThat(chosen).isInstanceOf(SetupImportOutcome.Committed::class.java)
+        assertThat(await { env.container.settings.current() }.terminal.merchantAccount).isEqualTo("B")
+    }
+
+    @Test
+    fun `Automatic Tap to Pay without a readable key says to enter it in the helper`() {
+        tapToPayEnvironment()
+        merchants = listOf(MerchantAccount("OnlyMerchant", "Only"))
+        key = null
+        val outcome = import("""{"destination":"tapToPay","environment":"TEST","automatic":true}""") as SetupImportOutcome.Failed
+        assertThat(outcome.keyUnread).isTrue()
     }
 
     @Test

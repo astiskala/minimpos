@@ -16,6 +16,7 @@ import app.minimpos.core.codec.Transfer
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.CredentialRolesApi
 import app.minimpos.terminal.transport.DiscoveredKey
+import app.minimpos.terminal.transport.MerchantAccountListing
 import app.minimpos.terminal.transport.SharedKeyApi
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetails
@@ -40,6 +41,10 @@ internal sealed interface SetupImportOutcome {
         val offer: KeyRolesOffer,
     ) : SetupImportOutcome
 
+    data class Merchants(
+        val accounts: List<SetupMerchantChoice>,
+    ) : SetupImportOutcome
+
     data class KeyConfirmation(
         val offer: SharedKeyOffer,
     ) : SetupImportOutcome
@@ -56,7 +61,8 @@ internal sealed interface SetupImportOutcome {
         val keyUnread: Boolean = false,
         val terminalHost: String? = null,
     ) : SetupImportOutcome {
-        constructor(problem: SetupProblem, incomplete: Boolean = false) : this(Failure.NotSetUp(problem), incomplete)
+        constructor(problem: SetupProblem, incomplete: Boolean = false, keyUnread: Boolean = false) :
+            this(Failure.NotSetUp(problem), incomplete, keyUnread)
 
         val keyPending: Boolean get() = failure == Failure.NotSetUp(SetupProblem.KEY_CONNECTION_PENDING)
     }
@@ -111,6 +117,7 @@ class SetupImport internal constructor(
         confirmedAccount: String? = null,
         host: String? = null,
         confirmedRoles: KeyRolesOffer? = null,
+        merchantAccount: String? = null,
     ): SetupImportOutcome =
         mutex.withLock {
             if (busy()) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
@@ -118,7 +125,17 @@ class SetupImport internal constructor(
             val prepared = transfer.prepare(received, code) ?: return@withLock SetupImportOutcome.Committed(ImportOutcome.WrongCode)
             if (!prepared.original.acceptsSetupImport) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
             try {
-                val choices = Choices(terminalId, board, confirmedHistorySwitch, confirmedKey, confirmedAccount, host, confirmedRoles)
+                val choices =
+                    Choices(
+                        terminalId,
+                        board,
+                        confirmedHistorySwitch,
+                        confirmedKey,
+                        confirmedAccount,
+                        host,
+                        confirmedRoles,
+                        merchantAccount,
+                    )
                 val verified =
                     when (val step = verify(prepared, choices)) {
                         is Step.Halted -> return@withLock step.outcome
@@ -173,6 +190,7 @@ class SetupImport internal constructor(
         val confirmedAccount: String?,
         val host: String?,
         val confirmedRoles: KeyRolesOffer?,
+        val merchantAccount: String?,
     )
 
     private data class Candidate(
@@ -205,6 +223,7 @@ class SetupImport internal constructor(
         return environment(start)
             .andThen { credential(it, choices.confirmedRoles) }
             .andThen { discovery(it, choices.terminalId, choices.confirmedAccount, choices.host) }
+            .andThen { phoneAccount(it, choices.merchantAccount) }
             .andThen { requiredFields(it, allowMissingKey = it.missingKey) }
             .andThen { checkout(it) }
             .andThen { phone(it, choices.board || initial.received.hasConnection, choices.confirmedHistory) }
@@ -310,6 +329,56 @@ class SetupImport internal constructor(
             is SharedKeyLookup.Failed -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(found.fault), keyUnread = true))
         }
     }
+
+    /** Finds what Automatic setup needs for Tap to Pay, which has no terminal to ask: its merchant account and shared key. */
+    private suspend fun phoneAccount(
+        current: Candidate,
+        selected: String?,
+    ): Step {
+        val prepared = current.prepared
+        val unlocked = candidate(prepared)
+        val setup = unlocked.setup
+        if (!setup.boardsPhone || !prepared.received.automatic) return Step.Next(current)
+        val management = checks.terminals(checkNotNull(unlocked.apiKey))
+        val environment = checkNotNull(setup.environment)
+        val entered =
+            prepared.settings.terminal.merchantAccount
+                .trim()
+                .ifEmpty { selected }
+        val merchant =
+            entered ?: when (val listed = management.merchantAccounts(environment)) {
+                is MerchantAccountListing.Failed -> {
+                    return Step.Halted(SetupImportOutcome.Failed(Failure.Remote(listed.fault)))
+                }
+
+                is MerchantAccountListing.Listed -> {
+                    listed.accounts.singleOrNull()?.id ?: return Step.Halted(merchantChoice(listed))
+                }
+            }
+        val withAccount = prepared.withTerminal(prepared.settings.terminal.copy(merchantAccount = merchant))
+        if (!prepared.received.connection
+                ?.keyIdentifier
+                .isNullOrBlank()
+        ) {
+            return Step.Next(current.copy(prepared = withAccount))
+        }
+        val store =
+            prepared.settings.terminal.storeId
+                .trim()
+                .ifEmpty { null }
+        return when (val found = management.accountKey(merchant, store, environment)) {
+            is SharedKeyLookup.Found -> Step.Next(current.copy(prepared = withAccount.withSharedKey(found.key)))
+            SharedKeyLookup.Missing -> Step.Halted(SetupImportOutcome.Failed(SetupProblem.KEY_IDENTIFIER, keyUnread = true))
+            is SharedKeyLookup.Failed -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(found.fault), keyUnread = true))
+        }
+    }
+
+    private fun merchantChoice(listed: MerchantAccountListing.Listed): SetupImportOutcome =
+        if (listed.accounts.isEmpty()) {
+            SetupImportOutcome.Failed(SetupProblem.MERCHANT_ACCOUNT)
+        } else {
+            SetupImportOutcome.Merchants(listed.accounts.map { SetupMerchantChoice(it.id, it.name) })
+        }
 
     private fun applyAssignment(
         prepared: PreparedTransfer,

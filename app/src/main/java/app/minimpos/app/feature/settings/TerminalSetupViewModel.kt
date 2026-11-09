@@ -294,6 +294,25 @@ class TerminalSetupViewModel(
             }
     }
 
+    /** Reads the Tap to Pay account's shared key from Adyen and saves it. */
+    fun findPhoneKey() {
+        if (actions.value.keyResult.running) return
+        actions.update { it.copy(keyResult = ActionState(running = true)) }
+        launchWrite({
+            val failure = runSecretWrite { discovery.findPhoneKey()?.let { ActionOutcome.Failed(it) } }
+            if (failure == null) {
+                val terminal = settings.current().terminal
+                observedTerminal.first { it == terminal }
+            }
+            actions.update {
+                it.copy(
+                    keyResult = failure?.let { outcome -> ActionState(outcome = outcome, isError = true) } ?: ActionState(done = true),
+                    revision = if (failure == null) it.revision + 1 else it.revision,
+                )
+            }
+        })
+    }
+
     /** Reads existing settings and checks communication again; any required PATCH needs a new explicit confirmation. */
     fun checkSharedKey() = keyAction(null)
 

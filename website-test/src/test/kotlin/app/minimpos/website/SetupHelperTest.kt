@@ -280,7 +280,7 @@ class SetupHelperTest {
                 ).forEach(::field)
                 submit()
                 ready()
-                val automatic = if (mode == "automatic" && destination != "tapToPay") ""","automatic":true""" else ""
+                val automatic = if (mode == "automatic") ""","automatic":true""" else ""
                 val expected =
                     """{"destination":"$destination"$automatic,"environment":"TEST","smtpHost":"smtp.example.com","smtpPort":465,
                     |"smtpSecurity":"SSL","smtpUsername":"shop@example.com","smtpFromAddress":"receipts@example.com",
@@ -309,14 +309,14 @@ class SetupHelperTest {
 
     @Test
     fun `Tap to Pay transfers primary credential and shared key without a boarding key`() {
-        for (mode in listOf("automatic", "manual")) {
+        run {
             openPage()
-            field("setupMode", mode)
+            field("setupMode", "manual")
             field("destination", "tapToPay")
             assertThat(script.executeScript("return document.getElementById('paymentsAppApiKey')")).isNull()
             assertThat(script.executeScript("return document.querySelector('[data-mode]').disabled")).isEqualTo(false)
             assertThat(script.executeScript("return document.querySelector('[name=setupMode]').closest('fieldset').hidden"))
-                .isEqualTo(true)
+                .isEqualTo(false)
             mapOf(
                 "merchantAccount" to " Merchant ",
                 "storeId" to " ST1 ",
@@ -327,7 +327,7 @@ class SetupHelperTest {
             submit()
             ready()
             assertThat(script.executeScript("return document.getElementById('setup-summary-mode').parentElement.hidden"))
-                .isEqualTo(true)
+                .isEqualTo(false)
             assertThat(readTransfer())
                 .isEqualTo(
                     receiptUnchanged(
@@ -354,7 +354,7 @@ class SetupHelperTest {
                 field("setupMode", "automatic")
                 submit()
                 ready()
-                val automatic = if (destination == "tapToPay") "" else ""","automatic":true"""
+                val automatic = ""","automatic":true"""
                 assertThat(readTransfer())
                     .isEqualTo(
                         receiptUnchanged("""{"destination":"$destination"$automatic,"environment":"LIVE"}""") to

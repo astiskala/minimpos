@@ -893,7 +893,7 @@ class WebsitePresentationTest {
                     .parent()!!
                     .parent()!!
                     .attr("data-for"),
-            ).isEqualTo("thisTerminal network cloud")
+            ).isEqualTo("thisTerminal network cloud tapToPay")
             listOf("merchantAccount", "host", "poiId", "cloudPoiId", "keyIdentifier", "keyVersion", "passphrase").forEach { id ->
                 val field = page.document.getElementById(id)!!
                 assertWithMessage("$language: $id").that(field.parent()!!.attr("data-mode")).isEqualTo("manual")

@@ -103,6 +103,41 @@ class CapabilityCatalogTest {
     }
 
     @Test
+    fun `a local switch that is off says when Adyen already has the feature set up`() {
+        val remote =
+            AdyenCapabilitiesState(checked = true, gratuities = listOf(GratuityCapability("EUR")), moto = MotoCapability(enabled = true))
+        listOf(CapabilityFeature.TIPPING, CapabilityFeature.MOTO).forEach {
+            assertThat(
+                catalog(remote = remote).item(it),
+            ).isEqualTo(CapabilityItem(it, CapabilityStatus.OFF, CapabilityRequirement.LOCAL_ONLY))
+            assertThat(catalog(remote = AdyenCapabilitiesState(checked = true)).item(it).requirement).isEqualTo(CapabilityRequirement.LOCAL)
+            // A failed reading never claims that Adyen's side is ready.
+            val failed = remote.copy(failure = Failure.Remote(Fault.TimedOut))
+            assertThat(catalog(remote = failed).item(it).requirement).isEqualTo(CapabilityRequirement.LOCAL)
+        }
+        assertThat(
+            catalog(remote = remote.copy(gratuities = listOf(GratuityCapability("AUD")))).item(CapabilityFeature.TIPPING).requirement,
+        ).isEqualTo(CapabilityRequirement.LOCAL)
+        val listed = AdyenCapabilitiesState(checked = true, simulated = true, methodsChecked = true)
+        assertThat(catalog(remote = listed).item(CapabilityFeature.GIFT_CARDS))
+            .isEqualTo(CapabilityItem(CapabilityFeature.GIFT_CARDS, CapabilityStatus.OFF, CapabilityRequirement.LOCAL_ONLY))
+        assertThat(catalog(remote = listed.copy(methodsChecked = false)).item(CapabilityFeature.GIFT_CARDS).requirement)
+            .isEqualTo(CapabilityRequirement.LOCAL)
+    }
+
+    @Test
+    fun `the simulator's surcharge setting stands in for Adyen's surcharge rules`() {
+        val simulated = AdyenCapabilitiesState(checked = true, simulated = true)
+        assertThat(catalog(remote = simulated).item(CapabilityFeature.SURCHARGE))
+            .isEqualTo(CapabilityItem(CapabilityFeature.SURCHARGE, CapabilityStatus.OFF, CapabilityRequirement.LOCAL))
+        val surcharged = settings.copy(simulator = settings.simulator.copy(surchargeMinor = 50))
+        assertThat(catalog(surcharged, remote = simulated).item(CapabilityFeature.SURCHARGE).status).isEqualTo(CapabilityStatus.READY)
+        // A real terminal's surcharge comes from Adyen, whatever the simulator setting says.
+        assertThat(catalog(surcharged, remote = AdyenCapabilitiesState(checked = true)).item(CapabilityFeature.SURCHARGE))
+            .isEqualTo(CapabilityItem(CapabilityFeature.SURCHARGE, CapabilityStatus.OFF, CapabilityRequirement.ADYEN))
+    }
+
+    @Test
     fun `saving cards and Giving do not infer readiness from a switch alone`() {
         val enabled =
             settings.copy(

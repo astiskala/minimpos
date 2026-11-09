@@ -428,6 +428,11 @@
           <p>付款連結無需 API 憑據即可離線使用，其頁面和收據都標為演示。這些二維碼無法收款；點按<strong>模擬支付</strong>即可完成演示。</p>
           <p>模擬器展示的是 Mini mPOS 的運作方式，而不是您的終端或 Adyen 帳戶支援甚麼。語音引導、離線批准和 Adyen 功能等只是模擬，
             請在真實的 TEST 終端上測試後再使用。</p>
+          <p>示範亦會在結帳時提供終端小費和 <strong>Adyen Giving</strong>（開關預設關閉），並在<strong>禮品卡</strong>中提供
+            SVS 禮品卡。示例交易紀錄包含小費、捐款、離線批准，以及為客戶參考編號 CUST-1042 儲存的卡，可在<strong>代碼</strong>中
+            扣款。在<strong>設定 › 模擬器</strong>中設定<strong>附加費</strong>，或將<strong>部分批准（%）</strong>設為低於
+            100，即可試用這些流程；為 100 時，金額末尾為 139 的付款會部分批准，與 Adyen 測試卡相同。設定真實付款時，除非您選擇
+            保留，Mini mPOS 會提示關閉這些示範功能。</p>
           <p>準備連接時，在<strong>設定 › 模擬器</strong>中依次點按<strong>設定真實付款</strong>和<strong>繼續設定</strong>。確認 TEST
             或 LIVE 會刪除所有本機記錄；示例商品和收據資料會保留，因此請在真實付款前移除示例並檢查商戶資料。先使用 TEST 測試。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>

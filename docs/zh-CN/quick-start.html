@@ -427,6 +427,11 @@
           <p>付款链接无需 API 凭据即可离线使用，其页面和收据都标为演示。这些二维码无法收款；点按<strong>模拟支付</strong>即可完成演示。</p>
           <p>模拟器展示的是 Mini mPOS 的行为，而不是您的终端或 Adyen 账户支持什么。语音引导、离线批准和 Adyen 功能等只是模拟，
             请在真实的 TEST 终端上测试后再使用。</p>
+          <p>演示还会在结账时提供终端小费和 <strong>Adyen Giving</strong>（开关默认关闭），并在<strong>礼品卡</strong>中提供
+            SVS 礼品卡。示例交易记录包含小费、捐赠、离线批准，以及为客户参考号 CUST-1042 保存的银行卡，可在<strong>令牌</strong>中
+            扣款。在<strong>设置 › 模拟器</strong>中设置<strong>附加费</strong>，或将<strong>部分批准（%）</strong>设为低于
+            100，即可试用这些流程；为 100 时，金额末尾为 139 的付款会部分批准，与 Adyen 测试卡相同。设置真实支付时，除非您选择
+            保留，Mini mPOS 会提示关闭这些演示功能。</p>
           <p>准备连接时，在<strong>设置 › 模拟器</strong>中依次点按<strong>设置真实支付</strong>和<strong>继续设置</strong>。确认 TEST
             或 LIVE 会删除所有本地交易记录；示例商品和收据信息会保留，因此请在真实付款前移除示例并检查商户信息。先使用 TEST 测试。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>

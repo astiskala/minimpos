@@ -56,6 +56,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -98,6 +99,7 @@ import app.minimpos.app.ui.components.ScreenHeader
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.currentSetupGate
+import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.IconSize
@@ -809,8 +811,8 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.SIMULATOR -> {
-            DemoExit { target -> navigator.openFrom(Route.Settings, Route.SettingsSection(target)) }
-            SimulatorSection(state, events)
+            DemoExit(state.settings, events::onUpdate) { target -> navigator.openFrom(Route.Settings, Route.SettingsSection(target)) }
+            SimulatorSection(state, events, opening.setting)
         }
 
         SettingsSections.PAYMENTS -> {
@@ -906,6 +908,8 @@ private fun ColumnScope.TerminalSection(
         terminal.mode in setOf(TerminalMode.AUTO, TerminalMode.SIMULATOR) &&
             !TerminalSetupPlan.savedConnectionDetails(terminal, state.secrets)
     val quickSetup = status.loaded && untouched && !manualSetup && setup.unsavedSecrets.isEmpty()
+    // Leaving the demo here rather than through its review still offers to turn off what the demo turned on.
+    if (status.loaded && mode != TerminalMode.SIMULATOR) DemoFeaturesReview(state.settings, events::onUpdate)
     if (quickSetup) {
         QuickSetup { navigator.push(Route.TransferImport) }
         SectionHeader(stringResource(R.string.settings_manual_setup))
@@ -1172,10 +1176,12 @@ private fun ConnectionResultDialog(
     )
 }
 
+/** How the simulator answers; [target] is the tagged control a capability detail opened the section to show. */
 @Composable
 private fun SimulatorSection(
     state: SettingsUiState,
     events: SettingsEvents,
+    target: String?,
 ) {
     val simulator = state.settings.simulator
 
@@ -1219,6 +1225,39 @@ private fun SimulatorSection(
         { value -> update { it.copy(offlineMode = value) } },
         subtitle = stringResource(R.string.settings_sim_offline_hint),
         tag = "simOffline",
+    )
+    SettingNumberField(
+        stringResource(R.string.settings_sim_partial),
+        simulator.partialApprovalPercent,
+        SimulatorSettings.PARTIAL_APPROVAL_PERCENT,
+        { percent -> update { it.copy(partialApprovalPercent = percent) } },
+        description = stringResource(R.string.settings_sim_partial_hint),
+        tag = "simPartial",
+        target = target,
+    )
+    SimulatorSurcharge(state.settings, target) { minor -> update { it.copy(surchargeMinor = minor) } }
+}
+
+/** The simulated surcharge in the payment currency's units; blank means none. */
+@Composable
+private fun SimulatorSurcharge(
+    settings: AppSettings,
+    target: String?,
+    onChange: (Long) -> Unit,
+) {
+    val currency = LocalAppContainer.current.currency(settings)
+    val money = rememberMoneyFormatter(currency.code)
+
+    fun parse(text: String) = currency.parseMinor(text.ifBlank { "0" })?.takeIf { it >= 0 }
+    SettingTextField(
+        stringResource(R.string.settings_sim_surcharge),
+        money.formatPlain(settings.simulator.surchargeMinor),
+        { text -> parse(text)?.let(onChange) },
+        modifier = Modifier.settingAnchor("simSurcharge", target),
+        description = stringResource(R.string.settings_sim_surcharge_hint, currency.code),
+        isError = { parse(it) == null },
+        keyboardType = KeyboardType.Decimal,
+        tag = "simSurcharge",
     )
 }
 

@@ -18,6 +18,8 @@ import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
 import app.minimpos.app.data.db.ProductEntity
+import app.minimpos.app.data.settings.DemoFeatures
+import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.sales
 import com.google.common.truth.Truth.assertThat
@@ -181,6 +183,52 @@ class OnboardingUiTest {
                     .first()
             },
         ).isEqualTo(sales)
+    }
+
+    @Test
+    fun `leaving the demo offers to turn off the checkout options it turned on`() {
+        compose.setContent { MiniMposApp(env.container) }
+        waitFor("onboardingContinue")
+        compose.onNodeWithTag("onboardingContinue").performClick()
+        waitFor("settings")
+        compose.awaitCondition("demo features recorded") {
+            env.container.settingsState.value.demoFeatures
+                .isNotEmpty()
+        }
+        compose.onNodeWithTag("settings").performClick()
+        waitFor("section_simulator")
+        compose.onNodeWithTag("section_simulator").performScrollTo().performClick()
+        waitFor("exitDemo")
+        compose.onNodeWithTag("exitDemo").performClick()
+        compose.onNodeWithTag("demoFeatures").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("turnOffDemoFeatures").performScrollTo().performClick()
+        compose.onNodeWithTag("confirm").performClick()
+        compose.awaitCondition("demo features turned off") {
+            env.container.settingsState.value.demoFeatures
+                .isEmpty()
+        }
+        val payment = env.container.settingsState.value.payment
+        assertThat(payment.terminalTipping).isEqualTo(ReceiptTipping.DISABLED)
+        assertThat(payment.askGiving).isEqualTo(ReceiptTipping.DISABLED)
+        assertThat(payment.giftCards).isEmpty()
+        compose.onNodeWithTag("demoFeatures").assertDoesNotExist()
+    }
+
+    @Test
+    fun `kept demo options stop being offered for turning off outside the simulator`() {
+        env.updateSettings { DemoFeatures.applyTo(it.copy(terminal = it.terminal.copy(mode = TerminalMode.CLOUD))) }
+        compose.setContent { MiniMposApp(env.container) }
+        waitFor("onboardingContinue")
+        compose.onNodeWithTag("onboardingTerminal").performClick()
+        compose.onNodeWithTag("onboardingContinue").performClick()
+        waitFor("demoFeatures")
+        compose.onNodeWithTag("keepDemoFeatures").performScrollTo().performClick()
+        compose.awaitCondition("demo features kept") {
+            env.container.settingsState.value.demoFeatures
+                .isEmpty()
+        }
+        assertThat(env.container.settingsState.value.payment.terminalTipping).isEqualTo(ReceiptTipping.DEFAULT_OFF)
+        compose.onNodeWithTag("demoFeatures").assertDoesNotExist()
     }
 
     @Test

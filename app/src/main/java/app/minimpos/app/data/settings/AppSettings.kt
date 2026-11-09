@@ -35,6 +35,8 @@ import kotlinx.serialization.Serializable
  * @property verifiedSetup Opaque fingerprint of locally verified connection fields and encrypted payment secrets; null until verified.
  * @property languageTag Supported app-language tag, or empty to follow Android; device-local and unrelated to pricing.
  * @property boardingIdentity Device-local evidence of a new Payments app boarding credential; null when none was recorded.
+ * @property demoFeatures Checkout options the first-run demo turned on ([DemoFeatures]), so leaving the demo can turn off
+ *   those still unchanged; device-local, never shared, and empty once they were kept or turned off.
  */
 @Serializable
 data class AppSettings(
@@ -51,6 +53,7 @@ data class AppSettings(
     val verifiedSetup: String? = null,
     val languageTag: String = "",
     val boardingIdentity: BoardingIdentity? = null,
+    val demoFeatures: Set<DemoFeature> = emptySet(),
 ) {
     internal val acceptsSetupImport: Boolean get() = pricingChange == null
 
@@ -103,6 +106,7 @@ data class AppSettings(
             verifiedSetup = device.verifiedSetup,
             languageTag = device.languageTag,
             boardingIdentity = device.boardingIdentity,
+            demoFeatures = device.demoFeatures,
         )
 
     /**
@@ -114,7 +118,8 @@ data class AppSettings(
     /**
      * [other]'s [shared] settings in place of these, keeping what belongs to this device ([withDeviceFieldsOf]), except
      * that the default tax rate is [defaultTaxRateId], the row of this device that matches the one [other] named.
-     * Receipt business name, address and phone only fill blank fields; saved merchant text remains unchanged.
+     * Receipt business name, address and phone only fill blank fields; saved merchant text remains unchanged. The
+     * imported payment settings are the merchant's own, so no [demoFeatures] are recorded for them.
      */
     fun takingOver(
         other: AppSettings,
@@ -127,6 +132,7 @@ data class AppSettings(
                     addressLines = receipt.addressLines.ifBlank { other.receipt.addressLines },
                     phone = receipt.phone.ifBlank { other.receipt.phone },
                 ),
+            demoFeatures = emptySet(),
         )
 
     /**
@@ -704,6 +710,11 @@ data class SecuritySettings(
  * @property hasPrinter Whether the simulated terminal has a printer (prints are shown on screen).
  * @property signatureRequired Whether simulated approvals ask for a signature, which affects the merchant copy.
  * @property offlineMode Whether simulated approvals are processed offline (`Store-and-Forward`).
+ * @property surchargeMinor Surcharge the simulated terminal adds to approved card payments, as one configured at Adyen
+ *   would be, in minor units of the payment currency; 0 adds none. Never negative.
+ * @property partialApprovalPercent Share of the requested amount the simulated issuer approves when a payment allows
+ *   partial approval, within [PARTIAL_APPROVAL_PERCENT]; 100 approves in full, except amounts ending in 139, as with
+ *   Adyen's test card.
  */
 @Serializable
 data class SimulatorSettings(
@@ -712,14 +723,24 @@ data class SimulatorSettings(
     val hasPrinter: Boolean = true,
     val signatureRequired: Boolean = false,
     val offlineMode: Boolean = false,
+    val surchargeMinor: Long = 0,
+    val partialApprovalPercent: Int = 100,
 ) {
-    /** These settings with [delayMillis] within [DELAY_MILLIS]. */
-    fun normalized(): SimulatorSettings = copy(delayMillis = delayMillis.coerceIn(DELAY_MILLIS.first.toLong(), DELAY_MILLIS.last.toLong()))
+    /** These settings with [delayMillis], [surchargeMinor] and [partialApprovalPercent] within their limits. */
+    fun normalized(): SimulatorSettings =
+        copy(
+            delayMillis = delayMillis.coerceIn(DELAY_MILLIS.first.toLong(), DELAY_MILLIS.last.toLong()),
+            surchargeMinor = surchargeMinor.coerceAtLeast(0),
+            partialApprovalPercent = partialApprovalPercent.coerceIn(PARTIAL_APPROVAL_PERCENT),
+        )
 
     /** The limits of the numbers. */
     companion object {
         /** The allowed range of [delayMillis], in milliseconds. */
         val DELAY_MILLIS = 0..60_000
+
+        /** The allowed range of [partialApprovalPercent]; its last value approves in full. */
+        val PARTIAL_APPROVAL_PERCENT = 1..100
     }
 }
 

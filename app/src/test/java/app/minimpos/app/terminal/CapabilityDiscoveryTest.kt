@@ -238,6 +238,9 @@ class CapabilityDiscoveryTest {
         val vm = CapabilitiesViewModel(discovery = env.container.capabilityDiscovery)
         try {
             await { vm.state.first { it.simulated && !it.checking } }
+            // The simulated terminal starts in the payment currency (AUD here), not a fixed one.
+            assertThat(vm.state.value.gratuityFor("AUD")).isNotNull()
+            assertThat(vm.state.value.motoCurrency).isEqualTo("AUD")
             vm.edit(CapabilityFeature.TIPPING, CapabilityDraft(enabled = true, tips = listOf(CapabilityTip(text = "10")), custom = true))
             await { vm.actions.first { it.gratuity.done } }
             vm.edit(CapabilityFeature.TIPPING, CapabilityDraft())

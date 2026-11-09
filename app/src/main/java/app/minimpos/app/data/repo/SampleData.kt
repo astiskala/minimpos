@@ -12,6 +12,10 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.tax.TaxRates
+import app.minimpos.terminal.client.OfflineProcessingMode
+import app.minimpos.terminal.client.Tokenization
+import app.minimpos.terminal.client.TransactionDetails
+import java.math.BigDecimal
 import kotlin.uuid.Uuid
 
 /**
@@ -53,7 +57,12 @@ class SampleData(
     suspend fun populate(replaceReceiptDetails: Boolean = true): Boolean =
         withSettings(replaceReceiptDetails, ::populate).also { logo?.add() }
 
-    /** Adds samples priced in [settings]'s currency/tax style; returns false if samples already exist. */
+    /**
+     * Adds samples priced in [settings]'s currency/tax style; returns false if samples already exist. Besides an approved,
+     * a declined and a cancelled sale, the history shows completed approvals with a terminal tip and shopper rating, an
+     * Adyen Giving donation, an offline store-and-forward approval and a card saved for [SAMPLE_CUSTOMER], which Tokens
+     * finds. Nothing in it awaits an action, since sample history offers none.
+     */
     suspend fun populate(settings: AppSettings): Boolean =
         db.withTransaction {
             if (catalog.samples.exists() || history.hasSamples()) return@withTransaction false
@@ -61,7 +70,7 @@ class SampleData(
             val tax = checkNotNull(settings.payment.defaultTaxRate(catalog.reader.taxRates()))
             val currency = CurrencySpec.of(settings.payment.resolvedCurrency(country))
             val products = catalog.samples.add(fixture().products(currency, tax.id), tax.id)
-            products.filter { it.kind == SaleKind.SALE }.take(SAMPLE_STATUSES.size).forEachIndexed { index, product ->
+            products.filter { it.kind == SaleKind.SALE }.take(SampleSale.entries.size).forEachIndexed { index, product ->
                 createSale(settings, currency, tax, product, index)
             }
             true
@@ -83,6 +92,8 @@ class SampleData(
         val id = Uuid.random().toString()
         val rate = if (settings.payment.chargeTax) tax.rateMilliPercent else 0
         val amounts = TaxRates.apply(product.priceMinor, rate, settings.payment.taxMode)
+        val sample = SampleSale.entries[index]
+        val customer = SAMPLE_CUSTOMER.takeIf { sample == SampleSale.SAVED_CARD }
         sales.createPending(
             SaleEntity(
                 id = id,
@@ -95,6 +106,9 @@ class SampleData(
                 totalMinor = amounts.gross,
                 status = SaleStatus.PENDING,
                 merchantReference = "DEMO-${index + 1}",
+                customerReference = customer,
+                shopperReference = customer,
+                tokenizationRequested = customer != null,
                 context = PaymentContext("SIMULATOR", "SAMPLE", "SAMPLE", "", null, simulated = true),
             ),
             listOf(
@@ -114,12 +128,95 @@ class SampleData(
                 ),
             ),
         )
-        val status = SAMPLE_STATUSES[index]
-        sales.record(id, SaleEvent.Settled(status, null, null, processedAt = now() - index * HOUR_MILLIS))
+        sales.record(
+            id,
+            SaleEvent.Settled(
+                sample.status,
+                null,
+                sample.details(amounts.gross, currency),
+                processedAt =
+                    now() - index * HOUR_MILLIS,
+            ),
+        )
     }
 
-    private companion object {
-        val SAMPLE_STATUSES = listOf(SaleStatus.APPROVED, SaleStatus.DECLINED, SaleStatus.CANCELLED)
-        const val HOUR_MILLIS = 60L * 60 * 1000
+    /** The sample sales, newest first, each showing one outcome or completed Adyen feature. */
+    private enum class SampleSale(
+        val status: SaleStatus = SaleStatus.APPROVED,
+    ) {
+        APPROVED,
+        DECLINED(SaleStatus.DECLINED),
+        CANCELLED(SaleStatus.CANCELLED),
+        TIP,
+        GIVING,
+        OFFLINE,
+        SAVED_CARD,
+        ;
+
+        /** What a simulated terminal would have answered for [totalMinor] in [currency]; null for the plain outcomes. */
+        fun details(
+            totalMinor: Long,
+            currency: CurrencySpec,
+        ): TransactionDetails? =
+            when (this) {
+                APPROVED, DECLINED, CANCELLED -> {
+                    null
+                }
+
+                TIP -> {
+                    val tip = ((totalMinor * TIP_PERCENT + PERCENT / 2) / PERCENT).coerceAtLeast(1)
+                    card(Math.addExact(totalMinor, tip), currency).copy(tipMinor = tip, shopperRating = RATING)
+                }
+
+                GIVING -> {
+                    card(totalMinor, currency).copy(donationMinor = currency.toMinor(BigDecimal.ONE))
+                }
+
+                OFFLINE -> {
+                    card(totalMinor, currency).copy(offlineMode = OfflineProcessingMode.STORE_AND_FORWARD, unconfirmedBatchCount = 1)
+                }
+
+                SAVED_CARD -> {
+                    card(totalMinor, currency).copy(tokenization = Tokenization(SAMPLE_TOKEN))
+                }
+            }
+
+        private fun card(
+            amountMinor: Long,
+            currency: CurrencySpec,
+        ) = TransactionDetails(
+            success = true,
+            errorCondition = null,
+            message = null,
+            refusalReason = null,
+            poiTransactionId = null,
+            poiTimestamp = null,
+            pspReference = null,
+            merchantReference = null,
+            amountMinor = amountMinor,
+            surchargeMinor = 0,
+            currency = currency.code,
+            paymentBrand = "mc",
+            maskedPan = "541333 **** 9999",
+            entryMode = "Contactless",
+            approvalCode = null,
+            customerReceipt = emptyList(),
+            cashierReceipt = emptyList(),
+            signatureRequired = false,
+            additionalData = emptyMap(),
+            tokenization = null,
+        )
+    }
+
+    /** The sample shopper whose saved card Tokens finds. */
+    companion object {
+        /** Customer reference, and so shopper reference, of the sample sale that saved a card. */
+        const val SAMPLE_CUSTOMER = "CUST-1042"
+
+        private const val SAMPLE_TOKEN = "DEMOTOKEN1042"
+        private const val HOUR_MILLIS = 60L * 60 * 1000
+        private const val TIP_PERCENT = 10L
+        private const val PERCENT = 100L
+        private const val RATING = 9
     }
 }

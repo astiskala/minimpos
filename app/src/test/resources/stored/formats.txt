@@ -121,6 +121,8 @@ settings.json: app.minimpos.app.data.settings.AppSettings
     hasPrinter: boolean
     signatureRequired: boolean
     offlineMode: boolean
+    surchargeMinor: long
+    partialApprovalPercent: int
   history: app.minimpos.app.data.settings.HistorySettings
     retentionDays: int
   pricingChange?: app.minimpos.app.data.settings.PricingChange
@@ -141,6 +143,8 @@ settings.json: app.minimpos.app.data.settings.AppSettings
     credentialId? required: string
     username? required: string
     boardedAt required: long
+  demoFeatures: list of
+    - enum app.minimpos.app.data.settings.DemoFeature [TERMINAL_TIPPING, GIVING, SVS_GIFT_CARDS]
 
 secrets.json: app.minimpos.app.data.security.SecretBlob
   values: map
@@ -331,6 +335,8 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
       hasPrinter: boolean
       signatureRequired: boolean
       offlineMode: boolean
+      surchargeMinor: long
+      partialApprovalPercent: int
     history: app.minimpos.app.data.settings.HistorySettings
       retentionDays: int
     pricingChange?: app.minimpos.app.data.settings.PricingChange
@@ -351,6 +357,8 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
       credentialId? required: string
       username? required: string
       boardedAt required: long
+    demoFeatures: list of
+      - enum app.minimpos.app.data.settings.DemoFeature [TERMINAL_TIPPING, GIVING, SVS_GIFT_CARDS]
   secrets required: map
     key: string
     value: string

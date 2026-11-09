@@ -572,7 +572,8 @@ together up to `homeMaxHeight`. Which tiles appear, in what order, is a product 
   Unsupported features stay in one collapsed list below the groups. A row's title wraps above its status glyph and
   label; the chevron opens a focused detail. Ready uses the success tick, Needs setup and Unverified the warning
   glyph (`StatusKind`); Off and Unsupported have neutral grey glyphs because they are not outcomes. "Configured at
-  Adyen" distinguishes a remote setting from confirmed terminal activation. Details link to the exact original
+  Adyen" distinguishes a remote setting from confirmed terminal activation; "Off · configured at Adyen" keeps the Off
+  glyph for a local switch whose Adyen side a successful read shows set up. Details link to the exact original
   autosaved local control without duplicating it. The four remote editors require a successful read and valid,
   changed input, and send only the limits that changed, so a limit inherited at Adyen is never pinned to the terminal.
   Refresh and other saves retain dirty drafts; leaving requires a choice to discard or keep editing. Amounts use

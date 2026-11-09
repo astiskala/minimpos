@@ -17,7 +17,9 @@ import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.StoredPayment
+import app.minimpos.app.history.issues
 import app.minimpos.app.history.terminalOperation
+import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.sales
 import app.minimpos.core.logo.ArgbImage
 import app.minimpos.core.logo.LogoConverter
@@ -58,7 +60,15 @@ class SampleDataTest {
                     .saleDao()
                     .sales()
                     .first()
-            assertThat(sales.map { it.status }).containsExactly(SaleStatus.APPROVED, SaleStatus.DECLINED, SaleStatus.CANCELLED)
+            assertThat(sales.map { it.status }).containsExactly(
+                SaleStatus.APPROVED,
+                SaleStatus.DECLINED,
+                SaleStatus.CANCELLED,
+                SaleStatus.APPROVED,
+                SaleStatus.APPROVED,
+                SaleStatus.APPROVED,
+                SaleStatus.APPROVED,
+            )
             sales.forEach {
                 assertThat(it.sample).isTrue()
                 assertThat(it.context!!.simulated).isTrue()
@@ -74,6 +84,29 @@ class SampleDataTest {
             }
             assertThat(container.settings.current()).isEqualTo(settings)
             assertThat(container.secrets.configured.first()).isEmpty()
+        }
+
+    @Test
+    fun `sample history shows completed Adyen features and a saved card that Tokens finds`() =
+        await {
+            container.sampleData.populate(container.settings.current())
+            val sales =
+                container.database
+                    .saleDao()
+                    .sales()
+                    .first()
+            val tipped = sales.single { it.tipMinor != null }
+            assertThat(tipped.amountMinor).isEqualTo(tipped.totalMinor + checkNotNull(tipped.tipMinor))
+            assertThat(tipped.shopperRating).isEqualTo(9)
+            assertThat(sales.single { it.donationMinor != null }.donationMinor).isEqualTo(100)
+            assertThat(sales.single { it.offlineMode != null }.offlineMode).isEqualTo("STORE_AND_FORWARD")
+            val saved = sales.single { it.storedPaymentMethodId != null }
+            assertThat(saved.customerReference).isEqualTo(SampleData.SAMPLE_CUSTOMER)
+            assertThat(saved.shopperReference).isEqualTo(SampleData.SAMPLE_CUSTOMER)
+            assertThat(SavedCardCharges.simulatedCards(sales, SampleData.SAMPLE_CUSTOMER).map { it.lastFour }).containsExactly("9999")
+            // Nothing awaits an action, which sample history cannot offer.
+            assertThat(sales.flatMap { it.issues }).isEmpty()
+            assertThat(sales.none { it.isPartiallyPaid || it.manualCapture }).isTrue()
         }
 
     @Test

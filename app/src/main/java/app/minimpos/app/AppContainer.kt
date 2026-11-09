@@ -354,7 +354,7 @@ class AppContainer(
     val merchantCurrency = MerchantCurrency(terminalSetup, storeDetails)
 
     /** The built-in simulator, which stands in for the terminal and the Checkout API alike. */
-    private val simulator = SimulatedTerminal(virtualPrinter)
+    private val simulator = SimulatedTerminal(virtualPrinter) { currency(it) }
 
     /** The App Links to the Adyen Payments app, which the activity opens and answers. */
     val paymentsApp = PaymentsAppBridge()
@@ -408,7 +408,7 @@ class AppContainer(
     val walletDiscovery = WalletDiscovery(terminalSetup, appScope, terminalDetails, walletMethods)
 
     /** Progressive terminal capability inspection and scoped Management updates for Settings › Capabilities. */
-    val capabilityDiscovery = CapabilityDiscovery(terminalSetup, terminalDetails, walletMethods)
+    val capabilityDiscovery = CapabilityDiscovery(terminalSetup, terminalDetails, walletMethods) { currency(it).code }
 
     private val sharedKeys: SharedKeySetup = SharedKeySetup(terminalSetup, terminalDetails, api::verify, ::financialOperationRunning)
 

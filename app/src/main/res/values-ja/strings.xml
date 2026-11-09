@@ -28,6 +28,13 @@
   <string name="demo_exit_receipts_hint">レシートの店舗情報は残ります。実際の決済前に、架空の店舗名・住所・電話番号を確認してください。</string>
   <string name="demo_exit_continue">設定に進む</string>
   <string name="demo_exit_unchanged">設定を開くだけではデータは変わりません。LIVE の前に Adyen TEST で検証してください。</string>
+  <string name="demo_features_title">デモ機能</string>
+  <string name="demo_features_hint">デモで次の機能を有効にしました。Adyen で使用する場合を除き、実際の決済の前に無効にしてください：</string>
+  <string name="demo_feature_svs">SVS ギフトカード</string>
+  <string name="demo_features_turn_off">デモ機能を無効にする</string>
+  <string name="demo_features_turn_off_confirm">無効にする</string>
+  <string name="demo_features_keep">このまま使う</string>
+  <string name="demo_features_confirm">これらの機能は無効に戻ります。デモ後に変更した設定はそのままです。</string>
   <string name="action_add">追加</string>
   <string name="action_back">戻る</string>
   <string name="action_backspace">1桁削除</string>
@@ -907,6 +914,7 @@
   <string name="capability_status_off">オフ</string>
   <string name="capability_status_unsupported">非対応</string>
   <string name="capability_status_configured">Adyen で設定済み</string>
+  <string name="capability_status_off_configured">オフ · Adyen で設定済み</string>
   <string name="settings_unavailable_tap_to_pay">Tap to Pay では利用できません。</string>
   <string name="settings_unavailable_destination">この決済先では利用できません。</string>
   <string name="settings_software_check_required">設定 › 決済端末で接続を確認し、ソフトウェアの対応状況を確認してください。</string>
@@ -944,6 +952,7 @@
   <string name="capability_diagnosis_detail">接続確認では端末の診断を要求できます。任意の決済機能を有効にするものではありません。</string>
   <string name="capability_ready_note">設定の状態は決済の承認を保証しません。各決済で必要条件を改めて確認します。</string>
   <string name="capability_need_local">下のアプリ設定で機能を有効にするか、設定を完了してください。</string>
+  <string name="capability_need_turn_on">Adyen 側の設定は完了しています。使用するには下のアプリ設定を有効にしてください。</string>
   <string name="capability_need_adyen">Adyen 側の設定が必要です。下に編集欄があれば使用し、それ以外は Customer Area で Adyen と設定を確認してください。</string>
   <string name="capability_need_refresh">機能を再確認して現在の設定を検証してください。読み取りに失敗した場合や未完了の場合は保存できません。</string>
   <string name="capability_need_store">確認済みの対応 Adyen 店舗と一致する通貨が必要です。通貨やデバイス言語だけでは対応を判断できません。</string>
@@ -1013,6 +1022,10 @@
   <string name="settings_sim_signature_hint">シミュレーションのカード決済で加盟店控えへの署名が必要になります。</string>
   <string name="settings_sim_offline">オフライン承認</string>
   <string name="settings_sim_offline_hint">PSP参照IDなしでオフライン承認をシミュレートし、未確認バッチを報告します。</string>
+  <string name="settings_sim_partial">一部承認（%）</string>
+  <string name="settings_sim_partial_hint">100 未満の場合、一部承認を許可するカード決済はこの割合で承認されます。100 の場合、Adyen のテストカードと同様に、末尾が 139 の金額のみ一部承認されます。</string>
+  <string name="settings_sim_surcharge">サーチャージ</string>
+  <string name="settings_sim_surcharge_hint">Adyen で設定したサーチャージと同様に、承認されたカード決済に %1$s で加算されます。0 の場合は加算されません。</string>
 
   <!-- Settings: payments, pricing, and tax -->
   <string name="settings_pricing">価格設定</string>

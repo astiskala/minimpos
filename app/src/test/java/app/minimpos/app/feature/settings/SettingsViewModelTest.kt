@@ -27,6 +27,7 @@ import app.minimpos.app.terminal.SimulatedTerminal
 import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.app.terminal.VirtualPrinter
 import app.minimpos.core.logo.MonoBitmap
+import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.tax.TaxRates
 import app.minimpos.terminal.checkout.CheckoutApi
@@ -115,7 +116,12 @@ class SettingsViewModelTest {
                     return null
                 }
             }
-        val checkout = CheckoutApi.of(modifications, FakeLinkApi(), SimulatedTerminal(VirtualPrinter()).savedCards { emptyList() })
+        val checkout =
+            CheckoutApi.of(
+                modifications,
+                FakeLinkApi(),
+                SimulatedTerminal(VirtualPrinter()) { CurrencySpec.of("AUD") }.savedCards { emptyList() },
+            )
         val api =
             AdyenApi(
                 TerminalSetupSource(container.settings, container.secrets, container.device),

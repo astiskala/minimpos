@@ -62,6 +62,8 @@ import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.feature.outcomeNote
+import app.minimpos.app.feature.settings.CapabilityFeature
+import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.feature.text
 import app.minimpos.app.payment.GiftCardBalanceResult
 import app.minimpos.app.payment.GiftCardFunding
@@ -143,12 +145,7 @@ fun GiftCardsScreen(
         },
     ) { padding ->
         if (state.loaded && state.settings.isEmpty()) {
-            EmptyState(
-                Icons.Default.CardGiftcard,
-                stringResource(R.string.gift_card_none_title),
-                stringResource(R.string.gift_card_none_message),
-                Modifier.padding(padding),
-            )
+            NoGiftCards(navigator, Modifier.padding(padding))
             return@MiniScaffold
         }
         ScreenColumn(padding) {
@@ -170,6 +167,27 @@ fun GiftCardsScreen(
             Activities(state, money) { navigator.push(Route.GiftCardActivity(it)) }
         }
     }
+}
+
+/**
+ * No provider is set up yet: the Adyen capabilities hub says whether Adyen already lists a gift card for the store, and
+ * links to the provider switches.
+ */
+@Composable
+private fun NoGiftCards(
+    navigator: Navigator,
+    modifier: Modifier = Modifier,
+) = EmptyState(
+    Icons.Default.CardGiftcard,
+    stringResource(R.string.gift_card_none_title),
+    stringResource(R.string.gift_card_none_message),
+    modifier,
+) {
+    SecondaryButton(
+        stringResource(R.string.settings_capabilities),
+        { navigator.push(Route.SettingsSection(SettingsSections.CAPABILITIES, feature = CapabilityFeature.GIFT_CARDS.name)) },
+        modifier = Modifier.testTag("giftCardCapabilities"),
+    )
 }
 
 /** The pinned secondary action for reviewing a value change; balance runs directly from its list button. */

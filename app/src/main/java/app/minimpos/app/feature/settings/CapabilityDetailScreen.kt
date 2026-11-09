@@ -87,7 +87,7 @@ internal fun CapabilityDetailScreen(
                 }
                 if (feature == CapabilityFeature.SCANNED_WALLETS && wallets.supported) WalletOffers(wallets, currency)
                 if (item.status != CapabilityStatus.UNSUPPORTED) {
-                    CapabilityLocalLinks(feature, settings, navigator)
+                    CapabilityLocalLinks(feature, settings, remote.simulated, navigator)
                 }
                 SettingNote(stringResource(R.string.capability_ready_note))
             }
@@ -153,9 +153,10 @@ private fun CapabilityLeaveReview(
 private fun ColumnScope.CapabilityLocalLinks(
     feature: CapabilityFeature,
     settings: AppSettings,
+    simulated: Boolean,
     navigator: Navigator,
 ) {
-    val links = feature.localLinks(settings)
+    val links = feature.localLinks(settings, simulated)
     if (links.isNotEmpty()) {
         SectionHeader(stringResource(R.string.capability_local_settings))
         SettingNote(stringResource(R.string.capability_local_autosave))
@@ -178,7 +179,16 @@ private data class CapabilityLocalLink(
     val tag: String,
 )
 
-private fun CapabilityFeature.localLinks(settings: AppSettings): List<CapabilityLocalLink> {
+private fun CapabilityFeature.localLinks(
+    settings: AppSettings,
+    simulated: Boolean,
+): List<CapabilityLocalLink> {
+    // Only the simulator's surcharge is a local setting; a real terminal's comes from Adyen's rules.
+    if (this == CapabilityFeature.SURCHARGE) {
+        return listOfNotNull(
+            CapabilityLocalLink(R.string.settings_sim_surcharge, SettingsSections.SIMULATOR, "simSurcharge").takeIf { simulated },
+        )
+    }
     if (this == CapabilityFeature.CARD_SAVING) {
         return listOfNotNull(
             CapabilityLocalLink(R.string.settings_shopper_reference_source, SettingsSections.PAYMENTS, "referenceSource"),

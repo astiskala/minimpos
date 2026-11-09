@@ -8,6 +8,7 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.core.money.AdyenCurrencies
+import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.SavedCardApi
@@ -177,9 +178,11 @@ internal class Reused<K, V : Any> {
  * [virtualPrinter] and simulates the Checkout API for its own payments ([modifications]), from one shared ledger.
  *
  * @param virtualPrinter Receives what it prints.
+ * @param currency The payment currency of the given settings, whose Adyen decimals the simulated surcharge is read in.
  */
 class SimulatedTerminal(
     virtualPrinter: VirtualPrinter,
+    private val currency: (AppSettings) -> CurrencySpec,
 ) : Destination {
     @Volatile private var config = SimulatorConfig()
     private val simulator = TerminalSimulator(config = { config }, onPrint = virtualPrinter::print)
@@ -217,14 +220,17 @@ class SimulatedTerminal(
     }
 
     override suspend fun open(unlocked: UnlockedSetup): Opening {
-        val sim = unlocked.setup.settings.simulator
+        val settings = unlocked.setup.settings
+        val sim = settings.simulator
         config =
             SimulatorConfig(
                 outcome = sim.outcome,
                 delayMillis = sim.delayMillis,
                 hasPrinter = sim.hasPrinter,
                 signatureRequired = sim.signatureRequired,
+                partialApprovalPercent = sim.partialApprovalPercent,
                 offlineMode = if (sim.offlineMode) OfflineProcessingMode.STORE_AND_FORWARD else OfflineProcessingMode.ONLINE,
+                surchargeAmount = currency(settings).toMajor(sim.surchargeMinor),
             )
         return Opening.Transport(simulator)
     }

@@ -6,6 +6,8 @@ import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.closeViewModels
 import app.minimpos.app.data.repo.SampleData
+import app.minimpos.app.data.settings.DemoFeature
+import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.sampleDataWrite
 import app.minimpos.app.feature.settings.SampleDataViewModel
@@ -63,6 +65,11 @@ class OnboardingViewModelTest {
         assertThat(stored.receipt).isEqualTo(receipt)
         assertThat(stored.shared().onboardingCompleted).isFalse()
         assertThat(stored.shared().withDeviceFieldsOf(stored).onboardingCompleted).isTrue()
+        // The demo offers its checkout options with their switches off, and records them on this device only.
+        assertThat(stored.demoFeatures).containsExactlyElementsIn(DemoFeature.entries)
+        assertThat(stored.payment.terminalTipping).isEqualTo(ReceiptTipping.DEFAULT_OFF)
+        assertThat(stored.payment.askGiving).isEqualTo(ReceiptTipping.DEFAULT_OFF)
+        assertThat(stored.shared().demoFeatures).isEmpty()
     }
 
     @Test
@@ -75,6 +82,7 @@ class OnboardingViewModelTest {
             assertThat(await { done.await() }).isEqualTo(choice)
             await { vm.state.first { !it.running } }
             assertThat(await { env.container.settings.current() }.terminal.mode).isEqualTo(TerminalMode.TERMINAL)
+            assertThat(await { env.container.settings.current() }.demoFeatures).isEmpty()
             assertThat(
                 await {
                     env.container.catalog.products

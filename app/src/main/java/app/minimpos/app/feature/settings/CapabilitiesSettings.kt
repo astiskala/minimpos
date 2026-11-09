@@ -178,7 +178,11 @@ internal fun CapabilityStatusLine(item: CapabilityItem) {
             }
 
             CapabilityStatus.OFF -> {
-                R.string.capability_status_off
+                if (item.requirement == CapabilityRequirement.LOCAL_ONLY) {
+                    R.string.capability_status_off_configured
+                } else {
+                    R.string.capability_status_off
+                }
             }
 
             CapabilityStatus.NEEDS_SETUP -> {

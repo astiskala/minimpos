@@ -28,6 +28,13 @@
   <string name="demo_exit_receipts_hint">收據商戶資料會保留。進行真實付款前，請檢查虛構的名稱、地址及電話。</string>
   <string name="demo_exit_continue">繼續設定</string>
   <string name="demo_exit_unchanged">開啟設定不會更改任何資料。使用 LIVE 前，請先透過 Adyen TEST 測試。</string>
+  <string name="demo_features_title">示範功能</string>
+  <string name="demo_features_hint">示範已開啟以下功能。除非您在 Adyen 使用這些功能，否則請在真實收款前關閉：</string>
+  <string name="demo_feature_svs">SVS 禮品卡</string>
+  <string name="demo_features_turn_off">關閉示範功能</string>
+  <string name="demo_features_turn_off_confirm">關閉</string>
+  <string name="demo_features_keep">保留</string>
+  <string name="demo_features_confirm">這些功能會回復為關閉。示範後您更改過的設定保持不變。</string>
   <string name="action_add">新增</string>
   <string name="action_back">返回</string>
   <string name="action_backspace">刪除一位</string>
@@ -907,6 +914,7 @@
   <string name="capability_status_off">已關閉</string>
   <string name="capability_status_unsupported">不支援</string>
   <string name="capability_status_configured">已在 Adyen 設定</string>
+  <string name="capability_status_off_configured">已關閉 · 已在 Adyen 設定</string>
   <string name="settings_unavailable_tap_to_pay">使用 Tap to Pay 時無法使用。</string>
   <string name="settings_unavailable_destination">此收款目標無法使用。</string>
   <string name="settings_software_check_required">請在設定 › 支付終端中檢查連線，以確認軟件是否支援此功能。</string>
@@ -944,6 +952,7 @@
   <string name="capability_diagnosis_detail">連線檢查可要求終端診斷，但不會啟用可選支付功能。</string>
   <string name="capability_ready_note">設定狀態不保證支付獲批。每筆支付仍會檢查各自的要求。</string>
   <string name="capability_need_local">使用下方本機設定啟用功能或完成設定。</string>
+  <string name="capability_need_turn_on">Adyen 已完成此項設定。請開啟下方本機設定以使用。</string>
   <string name="capability_need_adyen">仍需在 Adyen 設定。若下方提供編輯器，請使用它；否則請在 Customer Area 與 Adyen 確認設定。</string>
   <string name="capability_need_refresh">重新整理功能狀態以驗證目前設定。讀取失敗或未完成時不能儲存設定。</string>
   <string name="capability_need_store">需要已驗證且符合條件的 Adyen 門店及匹配貨幣。不能僅憑貨幣或裝置語言判斷是否支援。</string>
@@ -1013,6 +1022,10 @@
   <string name="settings_sim_signature_hint">模擬卡付款需要持卡人在商戶副本上簽名。</string>
   <string name="settings_sim_offline">離線批准</string>
   <string name="settings_sim_offline_hint">在無 PSP 參考編號的情況下離線批准模擬交易，並報告未確認批次。</string>
+  <string name="settings_sim_partial">部分批准（%）</string>
+  <string name="settings_sim_partial_hint">低於 100 時，允許部分批准的卡付款會按此比例批准。為 100 時，只有金額末尾為 139 的付款會部分批准，與 Adyen 測試卡相同。</string>
+  <string name="settings_sim_surcharge">附加費</string>
+  <string name="settings_sim_surcharge_hint">以 %1$s 加入已批准的卡付款，如同在 Adyen 設定的附加費。0 表示不加收。</string>
 
   <!-- Settings: payments, pricing, and tax -->
   <string name="settings_pricing">定價</string>

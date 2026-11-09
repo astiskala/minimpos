@@ -28,6 +28,13 @@
   <string name="demo_exit_receipts_hint">Receipt business details stay. Review any fictional name, address and phone before real payments.</string>
   <string name="demo_exit_continue">Continue to setup</string>
   <string name="demo_exit_unchanged">Opening setup changes no data. Start with Adyen TEST before LIVE.</string>
+  <string name="demo_features_title">Demo features</string>
+  <string name="demo_features_hint">The demo turned these on. Turn them off before real payments unless you use them with Adyen:</string>
+  <string name="demo_feature_svs">SVS gift cards</string>
+  <string name="demo_features_turn_off">Turn off demo features</string>
+  <string name="demo_features_turn_off_confirm">Turn off</string>
+  <string name="demo_features_keep">Keep them</string>
+  <string name="demo_features_confirm">They go back to off. Settings you changed since the demo stay as they are.</string>
   <string name="action_add">Add</string>
   <string name="action_back">Back</string>
   <string name="action_backspace">Delete digit</string>
@@ -910,6 +917,7 @@
   <string name="capability_status_off">Off</string>
   <string name="capability_status_unsupported">Unsupported</string>
   <string name="capability_status_configured">Configured at Adyen</string>
+  <string name="capability_status_off_configured">Off · configured at Adyen</string>
   <string name="settings_unavailable_tap_to_pay">Not available with Tap to Pay.</string>
   <string name="settings_unavailable_destination">Not available on this destination.</string>
   <string name="settings_software_check_required">Check the terminal connection in Settings › Terminal to verify software support.</string>
@@ -947,6 +955,7 @@
   <string name="capability_diagnosis_detail">The connection check can ask the terminal for a diagnosis. It does not enable optional payment features.</string>
   <string name="capability_ready_note">Setup indicators do not guarantee payment approval. Each payment still checks its own requirements.</string>
   <string name="capability_need_local">Use the local setting below to turn this feature on or complete its setup.</string>
+  <string name="capability_need_turn_on">Adyen already has this set up. Turn on the local setting below to use it.</string>
   <string name="capability_need_adyen">Adyen configuration is still needed. Use the editor below when available, or confirm setup in Customer Area with Adyen.</string>
   <string name="capability_need_refresh">Refresh capabilities to verify the current setup. A failed or incomplete read cannot be used to save settings.</string>
   <string name="capability_need_store">Needs a verified, eligible Adyen store and matching currency. Currency or device language alone does not establish support.</string>
@@ -1016,6 +1025,10 @@
   <string name="settings_sim_signature_hint">Simulated card payments need the cardholder’s signature on the merchant copy.</string>
   <string name="settings_sim_offline">Offline approvals</string>
   <string name="settings_sim_offline_hint">Approve simulated payments offline without a PSP reference and report an unconfirmed batch.</string>
+  <string name="settings_sim_partial">Partial approval (%)</string>
+  <string name="settings_sim_partial_hint">Below 100, card payments that allow partial approval are approved for this share. At 100, only amounts ending in 139 are, as with Adyen’s test card.</string>
+  <string name="settings_sim_surcharge">Surcharge</string>
+  <string name="settings_sim_surcharge_hint">Added to approved card payments in %1$s, as a surcharge configured at Adyen would be. 0 adds none.</string>
 
   <!-- Settings: payments, pricing, and tax -->
   <string name="settings_pricing">Pricing</string>

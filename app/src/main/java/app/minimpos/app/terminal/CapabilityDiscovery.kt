@@ -2,6 +2,7 @@ package app.minimpos.app.terminal
 
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.RemoteTerminalCapabilities
@@ -197,23 +198,31 @@ sealed interface CapabilityPatchResult {
  * @param setups Resolves setup and decrypts credentials once per operation.
  * @param terminals Reads terminal assignments and capability settings.
  * @param walletMethods Reads POS payment-method settings for gift-card inspection.
+ * @param currency The ISO 4217 payment currency of the given settings, which the simulated terminal settings start in.
  */
 class CapabilityDiscovery(
     private val setups: TerminalSetupSource,
     private val terminals: (String) -> TerminalCapabilitiesApi,
     private val walletMethods: (String, TerminalEnvironment) -> WalletMethodsApi,
+    private val currency: (AppSettings) -> String,
 ) {
     private val reading =
         SetupReading(setups, AdyenCapabilitiesState(), { it.identity }, { it.context }) { it.copy(checking = false) }
-    private var simulatedCapabilities =
-        RemoteTerminalCapabilities(
-            gratuities = listOf(TerminalGratuity("EUR", true, listOf("10%", "15%", "20%"), true)),
-            dccEnabled = false,
-            surchargeConfigured = false,
-            moto = TerminalMotoSettings(enabled = false, maxAmount = null),
-            offline = TerminalOfflineLimits(chipFloorLimit = 5_000),
-            motoCurrency = "EUR",
-        )
+
+    // What the simulated terminal's settings were edited to; until then they follow the payment currency.
+    private var simulatedEdits: RemoteTerminalCapabilities? = null
+
+    private fun simulatedCapabilities(settings: AppSettings): RemoteTerminalCapabilities =
+        simulatedEdits ?: currency(settings).let { code ->
+            RemoteTerminalCapabilities(
+                gratuities = listOf(TerminalGratuity(code, true, listOf("10%", "15%", "20%"), true)),
+                dccEnabled = false,
+                surchargeConfigured = false,
+                moto = TerminalMotoSettings(enabled = false, maxAmount = null),
+                offline = TerminalOfflineLimits(chipFloorLimit = 5_000),
+                motoCurrency = code,
+            )
+        }
 
     /** Current non-secret capability state. */
     val state: StateFlow<AdyenCapabilitiesState> get() = reading.state
@@ -241,7 +250,7 @@ class CapabilityDiscovery(
                     publish(
                         initial
                             .withRemote(
-                                simulatedCapabilities,
+                                simulatedCapabilities(setup.settings),
                             ).copy(checking = false, methodsChecked = true, problem = null, failure = null),
                     )
                 }
@@ -363,7 +372,8 @@ class CapabilityDiscovery(
                 return@locked CapabilityPatchResult.NotDone(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
             }
             if (setup.apiSetup == ApiSetup.Simulated) {
-                simulatedCapabilities = applySimulated(simulatedCapabilities, patch)
+                val edited = applySimulated(simulatedCapabilities(setup.settings), patch)
+                simulatedEdits = edited
                 val next =
                     state.value
                         .copy(
@@ -375,7 +385,7 @@ class CapabilityDiscovery(
                             checking = false,
                             problem = null,
                             failure = null,
-                        ).withRemote(simulatedCapabilities)
+                        ).withRemote(edited)
                 reading.publish(origin, next)
                 return@locked CapabilityPatchResult.Updated
             }

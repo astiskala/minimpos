@@ -28,6 +28,13 @@
   <string name="demo_exit_receipts_hint">Les coordonnées de l’entreprise sur les reçus sont conservées. Vérifiez les noms, adresses et téléphones fictifs avant d’accepter des paiements réels.</string>
   <string name="demo_exit_continue">Continuer la configuration</string>
   <string name="demo_exit_unchanged">Ouvrir la configuration ne modifie aucune donnée. Commencez par Adyen TEST avant LIVE.</string>
+  <string name="demo_features_title">Fonctions de la démo</string>
+  <string name="demo_features_hint">La démo les a activées. Désactivez-les avant les vrais paiements, sauf si vous les utilisez avec Adyen :</string>
+  <string name="demo_feature_svs">Cartes cadeaux SVS</string>
+  <string name="demo_features_turn_off">Désactiver les fonctions de la démo</string>
+  <string name="demo_features_turn_off_confirm">Désactiver</string>
+  <string name="demo_features_keep">Les conserver</string>
+  <string name="demo_features_confirm">Elles repassent à l’état désactivé. Les réglages modifiés depuis la démo restent inchangés.</string>
   <string name="action_add">Ajouter</string>
   <string name="action_back">Retour</string>
   <string name="action_backspace">Supprimer le chiffre</string>
@@ -913,6 +920,7 @@
   <string name="capability_status_off">Désactivé</string>
   <string name="capability_status_unsupported">Non pris en charge</string>
   <string name="capability_status_configured">Configuré sur Adyen</string>
+  <string name="capability_status_off_configured">Désactivé · configuré sur Adyen</string>
   <string name="settings_unavailable_tap_to_pay">Non disponible avec Tap to Pay.</string>
   <string name="settings_unavailable_destination">Non disponible sur cette destination.</string>
   <string name="settings_software_check_required">Vérifiez la connexion dans Paramètres › Terminal pour confirmer la compatibilité du logiciel.</string>
@@ -950,6 +958,7 @@
   <string name="capability_diagnosis_detail">Le test de connexion peut demander un diagnostic au terminal. Il n’active aucune fonction de paiement facultative.</string>
   <string name="capability_ready_note">Les indicateurs de configuration ne garantissent pas l’approbation. Chaque paiement vérifie ses propres conditions.</string>
   <string name="capability_need_local">Utilisez le réglage local ci-dessous pour activer la fonction ou terminer sa configuration.</string>
+  <string name="capability_need_turn_on">Adyen a déjà configuré cette fonction. Activez le réglage local ci-dessous pour l’utiliser.</string>
   <string name="capability_need_adyen">La configuration Adyen reste nécessaire. Utilisez l’éditeur ci-dessous si disponible ou vérifiez Customer Area avec Adyen.</string>
   <string name="capability_need_refresh">Actualisez les capacités pour vérifier la configuration. Une lecture échouée ou incomplète ne permet pas d’enregistrer.</string>
   <string name="capability_need_store">Nécessite un magasin Adyen vérifié et éligible, avec la devise correspondante. La devise ou la langue de l’appareil ne prouve pas la prise en charge.</string>
@@ -1019,6 +1028,10 @@
   <string name="settings_sim_signature_hint">Les paiements par carte simulée nécessitent la signature du titulaire de la carte sur la copie du commerçant.</string>
   <string name="settings_sim_offline">Approbations hors ligne</string>
   <string name="settings_sim_offline_hint">Approuvez les paiements simulés hors ligne sans référence PSP et signalez un lot non confirmé.</string>
+  <string name="settings_sim_partial">Approbation partielle (%)</string>
+  <string name="settings_sim_partial_hint">En dessous de 100, les paiements par carte qui autorisent une approbation partielle sont approuvés pour cette part. À 100, seuls les montants se terminant par 139 le sont, comme avec la carte de test Adyen.</string>
+  <string name="settings_sim_surcharge">Supplément</string>
+  <string name="settings_sim_surcharge_hint">Ajouté aux paiements par carte approuvés en %1$s, comme le ferait un supplément configuré sur Adyen. 0 n’ajoute rien.</string>
 
   <!-- Settings: payments, pricing, and tax -->
   <string name="settings_pricing">Tarifs</string>

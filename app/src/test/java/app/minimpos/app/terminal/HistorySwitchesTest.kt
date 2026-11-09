@@ -188,12 +188,23 @@ class HistorySwitchesTest {
                     .first { it.sale.status == SaleStatus.APPROVED }
             val date = Instant.ofEpochMilli(checkNotNull(sample.sale.processedAt)).atZone(ZoneOffset.UTC).toLocalDate()
             val before = HistoryAccounting.report(container.history.items().first(), date, ZoneOffset.UTC, now)
+            // Every approved sample processed that day counts as demo activity, however many the sample history holds.
+            val approvedThatDay =
+                container.history
+                    .items()
+                    .first()
+                    .filterIsInstance<HistoryItem.Sale>()
+                    .count {
+                        it.sale.status == SaleStatus.APPROVED &&
+                            Instant.ofEpochMilli(checkNotNull(it.sale.processedAt)).atZone(ZoneOffset.UTC).toLocalDate() == date
+                    }
+            assertThat(approvedThatDay).isAtLeast(1)
             assertThat(
                 before.sections
                     .first { it.scope == HistoryScope.DEMO }
                     .totals.values
                     .sumOf { it.saleCount },
-            ).isEqualTo(1)
+            ).isEqualTo(approvedThatDay)
             val own = sale.copy(context = checkNotNull(sale.context).copy(simulated = false, environment = "LIVE"))
             container.sales.createPending(own, emptyList())
             container.sampleData.purge()

@@ -28,6 +28,13 @@
   <string name="demo_exit_receipts_hint">Los datos del negocio en los recibos se conservan. Revise los nombres, direcciones y teléfonos ficticios antes de aceptar pagos reales.</string>
   <string name="demo_exit_continue">Continuar con la configuración</string>
   <string name="demo_exit_unchanged">Abrir la configuración no cambia los datos. Empiece con Adyen TEST antes de LIVE.</string>
+  <string name="demo_features_title">Funciones de demostración</string>
+  <string name="demo_features_hint">La demostración activó estas funciones. Desactívelas antes de cobrar pagos reales, salvo que las use con Adyen:</string>
+  <string name="demo_feature_svs">Tarjetas de regalo SVS</string>
+  <string name="demo_features_turn_off">Desactivar funciones de demostración</string>
+  <string name="demo_features_turn_off_confirm">Desactivar</string>
+  <string name="demo_features_keep">Conservarlas</string>
+  <string name="demo_features_confirm">Vuelven a quedar desactivadas. Los ajustes que cambió desde la demostración se mantienen.</string>
   <string name="action_add">Añadir</string>
   <string name="action_back">Atrás</string>
   <string name="action_backspace">Eliminar dígito</string>
@@ -913,6 +920,7 @@
   <string name="capability_status_off">Desactivado</string>
   <string name="capability_status_unsupported">No compatible</string>
   <string name="capability_status_configured">Configurado en Adyen</string>
+  <string name="capability_status_off_configured">Desactivado · configurado en Adyen</string>
   <string name="settings_unavailable_tap_to_pay">No disponible con Tap to Pay.</string>
   <string name="settings_unavailable_destination">No disponible en este destino.</string>
   <string name="settings_software_check_required">Verifica la conexión en Configuración › Terminal para confirmar la compatibilidad del software.</string>
@@ -950,6 +958,7 @@
   <string name="capability_diagnosis_detail">La prueba de conexión puede solicitar un diagnóstico al terminal. No habilita funciones opcionales de pago.</string>
   <string name="capability_ready_note">Los estados de configuración no garantizan la aprobación. Cada pago comprueba sus propios requisitos.</string>
   <string name="capability_need_local">Usa el ajuste local de abajo para activar la función o completar su configuración.</string>
+  <string name="capability_need_turn_on">Adyen ya lo tiene configurado. Active el ajuste local de abajo para usarlo.</string>
   <string name="capability_need_adyen">Falta configurar Adyen. Usa el editor si está disponible o confirma la configuración de tu cuenta con Adyen.</string>
   <string name="capability_need_refresh">Actualiza las capacidades para verificar la configuración. Una consulta fallida o incompleta no permite guardar ajustes.</string>
   <string name="capability_need_store">Requiere una tienda Adyen verificada y elegible, y la moneda correspondiente. La moneda o el idioma del dispositivo no prueban la compatibilidad.</string>
@@ -1019,6 +1028,10 @@
   <string name="settings_sim_signature_hint">Los pagos con tarjeta simulada necesitan la firma del titular de la tarjeta en la copia del comerciante.</string>
   <string name="settings_sim_offline">Aprobaciones sin conexión</string>
   <string name="settings_sim_offline_hint">Apruebe pagos simulados fuera de línea sin una referencia PSP e informe un lote no confirmado.</string>
+  <string name="settings_sim_partial">Aprobación parcial (%)</string>
+  <string name="settings_sim_partial_hint">Con menos de 100, los pagos con tarjeta que permiten aprobación parcial se aprueban por esta parte. Con 100, solo los montos que terminan en 139, como con la tarjeta de prueba de Adyen.</string>
+  <string name="settings_sim_surcharge">Recargo</string>
+  <string name="settings_sim_surcharge_hint">Se suma a los pagos con tarjeta aprobados en %1$s, como lo haría un recargo configurado en Adyen. 0 no suma nada.</string>
 
   <!-- Settings: payments, pricing, and tax -->
   <string name="settings_pricing">Precios</string>

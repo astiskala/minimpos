@@ -93,6 +93,7 @@ internal val CapabilityRequirement.textRes: Int
         when (this) {
             CapabilityRequirement.NONE -> R.string.capability_ready_note
             CapabilityRequirement.LOCAL -> R.string.capability_need_local
+            CapabilityRequirement.LOCAL_ONLY -> R.string.capability_need_turn_on
             CapabilityRequirement.ADYEN -> R.string.capability_need_adyen
             CapabilityRequirement.REFRESH -> R.string.capability_need_refresh
             CapabilityRequirement.STORE -> R.string.capability_need_store

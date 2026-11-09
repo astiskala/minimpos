@@ -2,6 +2,7 @@ package app.minimpos.app.feature.onboarding
 
 import androidx.lifecycle.ViewModel
 import app.minimpos.app.data.repo.SampleData
+import app.minimpos.app.data.settings.DemoFeatures
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.SampleDataState
 import app.minimpos.app.feature.launchWrite
@@ -12,7 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /** The first-run path; selecting import or terminal setup creates no samples and changes no connection settings. */
 enum class OnboardingChoice {
-    /** Use the offline simulator with sample catalog/history. */
+    /** Use the offline simulator with sample catalog/history and the demo's checkout options ([DemoFeatures]). */
     SIMULATOR,
 
     /** Open QR setup import. */
@@ -49,15 +50,14 @@ class OnboardingViewModel(
                 pricing.recover()
                 if (choice == OnboardingChoice.SIMULATOR) samples.populate(replaceReceiptDetails = false)
                 pricing.update {
-                    it.copy(
-                        onboardingCompleted = true,
-                        terminal =
-                            if (choice == OnboardingChoice.SIMULATOR) {
-                                it.terminal.selectDestination(TerminalMode.SIMULATOR, automaticMode)
-                            } else {
-                                it.terminal
-                            },
-                    )
+                    val completed = it.copy(onboardingCompleted = true)
+                    if (choice == OnboardingChoice.SIMULATOR) {
+                        DemoFeatures.applyTo(
+                            completed.copy(terminal = it.terminal.selectDestination(TerminalMode.SIMULATOR, automaticMode)),
+                        )
+                    } else {
+                        completed
+                    }
                 }
             }
         }) { result ->

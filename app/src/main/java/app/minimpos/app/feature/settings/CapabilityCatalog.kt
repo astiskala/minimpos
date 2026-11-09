@@ -12,6 +12,10 @@ import app.minimpos.app.terminal.AdyenCapabilitiesState
 import app.minimpos.app.terminal.CapabilityStanding
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
+import app.minimpos.core.giftcard.GiftCardProvider
+
+/** The gift-card types Adyen lists that a provider sends without a merchant-configured code. */
+private val FIXED_GIFT_CARD_TYPES = GiftCardProvider.entries.mapNotNull(GiftCardProvider::wireCode).toSet()
 
 /** Stable task groups; changing a feature's status never moves another supported feature. */
 internal enum class CapabilityGroup {
@@ -72,10 +76,11 @@ internal enum class CapabilityStatus {
     UNSUPPORTED,
 }
 
-/** The next setup task, kept typed until presentation. */
+/** The next setup task, kept typed until presentation; [LOCAL_ONLY] is a local switch whose Adyen side is already set up. */
 internal enum class CapabilityRequirement {
     NONE,
     LOCAL,
+    LOCAL_ONLY,
     ADYEN,
     REFRESH,
     STORE,
@@ -113,6 +118,10 @@ internal class CapabilityCatalog(
     private val discovered get() = remote.checked && remote.problem == null && remote.failure == null
     private val storeChecked get() = wallets.checked && wallets.problem == null && wallets.failure == null
 
+    /** Whether Adyen lists a gift-card type for the store that one of the fixed-code providers sends. */
+    private val giftCardsAtAdyen: Boolean
+        get() = discovered && remote.methodsChecked && remote.giftCardsFor(currency).any { it in FIXED_GIFT_CARD_TYPES }
+
     // Keep the catalog explicit and complete: the catalog tests enumerate every navigation key.
     private val readings: Map<CapabilityFeature, () -> Pair<CapabilityStatus, CapabilityRequirement>> =
         mapOf(
@@ -130,7 +139,7 @@ internal class CapabilityCatalog(
             CapabilityFeature.MOTO to ::moto,
             CapabilityFeature.MKE to ::mke,
             CapabilityFeature.DCC to { remoteSwitch(remote.dccEnabled) },
-            CapabilityFeature.SURCHARGE to { remoteSwitch(remote.surchargeConfigured) },
+            CapabilityFeature.SURCHARGE to ::surcharge,
             CapabilityFeature.TIPPING to ::tipping,
             CapabilityFeature.RECEIPT_TIPPING to ::receiptTipping,
             CapabilityFeature.GIVING to ::giving,
@@ -186,7 +195,7 @@ internal class CapabilityCatalog(
     private fun giftCards() =
         supported(terminal.capabilities.giftCards) {
             when {
-                payment.giftCards.isEmpty() -> off()
+                payment.giftCards.isEmpty() -> offUnless(giftCardsAtAdyen)
 
                 payment.giftCards.any { !it.complete } -> needs(CapabilityRequirement.PROVIDER)
 
@@ -235,7 +244,7 @@ internal class CapabilityCatalog(
     private fun moto() =
         supported(terminal.capabilities.supportsTerminalFeatures) {
             when {
-                !payment.allowMoto -> off()
+                !payment.allowMoto -> offUnless(discovered && remote.moto.enabled)
                 !discovered -> unverified()
                 !remote.moto.enabled -> needs(CapabilityRequirement.ADYEN)
                 else -> ready()
@@ -245,7 +254,7 @@ internal class CapabilityCatalog(
     private fun tipping() =
         supported(terminal.capabilities.supportsTerminalFeatures) {
             when {
-                payment.terminalTipping == ReceiptTipping.DISABLED -> off()
+                payment.terminalTipping == ReceiptTipping.DISABLED -> offUnless(discovered && remote.gratuityFor(currency) != null)
                 payment.dynamicTipOverride && terminal.tipOptionsAvailable -> ready()
                 !discovered -> unverified()
                 remote.gratuityFor(currency) == null -> needs(CapabilityRequirement.ADYEN)
@@ -351,6 +360,14 @@ internal class CapabilityCatalog(
             }
         }
 
+    // The simulator stands in for Adyen's surcharge rules with its own setting, so the demo can show a reported fee.
+    private fun surcharge() =
+        if (remote.simulated) {
+            supported(terminal.capabilities.supportsTerminalFeatures) { local(settings.simulator.surchargeMinor > 0) }
+        } else {
+            remoteSwitch(remote.surchargeConfigured)
+        }
+
     private fun remoteSwitch(enabled: Boolean): Pair<CapabilityStatus, CapabilityRequirement> =
         supported(terminal.capabilities.supportsTerminalFeatures) {
             if (!discovered) {
@@ -379,6 +396,10 @@ internal class CapabilityCatalog(
     private fun ready() = CapabilityStatus.READY to CapabilityRequirement.NONE
 
     private fun off(requirement: CapabilityRequirement = CapabilityRequirement.LOCAL) = CapabilityStatus.OFF to requirement
+
+    /** Off locally; when [configuredAtAdyen], only the local switch is missing. */
+    private fun offUnless(configuredAtAdyen: Boolean) =
+        off(if (configuredAtAdyen) CapabilityRequirement.LOCAL_ONLY else CapabilityRequirement.LOCAL)
 
     private fun needs(requirement: CapabilityRequirement) = CapabilityStatus.NEEDS_SETUP to requirement
 

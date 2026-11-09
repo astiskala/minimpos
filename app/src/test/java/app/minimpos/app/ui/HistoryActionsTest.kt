@@ -22,7 +22,9 @@ import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleKind
-import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.history.HistoryAccounting
+import app.minimpos.app.history.HistoryScope
+import app.minimpos.app.items
 import app.minimpos.app.sales
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
@@ -36,6 +38,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.LocalDate
+import java.time.ZoneId
 import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
 @OptIn(ExperimentalTestApi::class)
@@ -146,16 +149,9 @@ class HistoryActionsTest {
         compose.onNodeWithTag("history").performClick()
         val date = LocalDate.now()
         waitForTag("printDay_$date")
-        val approved =
-            await {
-                container.database
-                    .saleDao()
-                    .sales()
-                    .first()
-                    .single { it.status == SaleStatus.APPROVED }
-            }
-        val amount = MoneyFormatter(CurrencySpec.of("AUD"), env.context.resources.configuration.locales[0]).format(approved.totalMinor)
-        val sales = env.context.getString(R.string.history_day_sales, amount, 1).replace(" (", "\u00a0(")
+        val today = demoTotalsToday()
+        val amount = MoneyFormatter(CurrencySpec.of("AUD"), env.context.resources.configuration.locales[0]).format(today.salesMinor)
+        val sales = env.context.getString(R.string.history_day_sales, amount, today.saleCount).replace(" (", "\u00a0(")
         val textLayouts = mutableListOf<TextLayoutResult>()
         compose.onNodeWithText(sales).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(textLayouts) }
         assertThat(textLayouts.single().lineCount).isEqualTo(1)
@@ -174,6 +170,17 @@ class HistoryActionsTest {
         assertThat(totals.right).isAtMost(print.left)
         assertThat(totals.top).isLessThan(print.bottom)
     }
+
+    /** Today's demo sales as the day header and daily report total them, however many samples fall on today. */
+    private fun demoTotalsToday() =
+        await {
+            HistoryAccounting
+                .report(container.history.items().first(), LocalDate.now(), ZoneId.systemDefault(), System.currentTimeMillis())
+                .sections
+                .first { it.scope == HistoryScope.DEMO }
+                .totals
+                .getValue("AUD")
+        }
 
     private fun seedReportHistory() =
         await {
@@ -209,12 +216,13 @@ class HistoryActionsTest {
         compose.onNodeWithTag("printDay_$date").assertIsDisplayed().performClick()
         waitForTag("virtualPrinter")
         compose.waitUntilAtLeastOneExists(hasText("Local daily summary"), 15_000)
+        val saleCount = demoTotalsToday().saleCount
         compose.runOnIdle {
             val printed =
                 container.virtualPrinter.jobs.value
                     .toString()
             assertThat(printed).contains("DEMO")
-            assertThat(printed).contains("Sales (1)")
+            assertThat(printed).contains("Sales ($saleCount)")
             assertThat(printed).contains("Accepted refunds (1)")
             assertThat(printed).doesNotContain("DEMO-1")
         }

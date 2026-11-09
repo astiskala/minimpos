@@ -104,6 +104,7 @@ class PublishedReleaseTest {
         temporary.newFolder().toPath().also { directory ->
             Files.writeString(directory.resolve("version.properties"), "versionName=1.3.0\nversionCode=30\n")
             Files.writeString(directory.resolve("minimpos-1.3.0.apk"), "synthetic APK; signature checked separately by apksigner")
+            Files.writeString(directory.resolve("minimpos.apk"), "synthetic APK; signature checked separately by apksigner")
             Release.writeJson(directory.resolve("update.json"), Release.updateMetadata(directory.resolve("version.properties")))
             Release.writeJson(directory.resolve("release.json"), metadata(directory))
         }
@@ -120,7 +121,7 @@ class PublishedReleaseTest {
             put(
                 "assets",
                 JsonArray(
-                    listOf("minimpos-1.3.0.apk", "update.json").map { name ->
+                    listOf("minimpos-1.3.0.apk", "minimpos.apk", "update.json").map { name ->
                         buildJsonObject {
                             put("name", name)
                             put(

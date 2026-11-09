@@ -184,11 +184,16 @@
           <h2>安裝應用程式</h2>
           <p>從<a href="https://github.com/astiskala/minimpos/releases/latest">最新發佈版本</a>下載已簽名的 <code>minimpos-&lt;version&gt;.apk</code>。</p>
           <dl class="settings-list">
-            <dt id="install-terminal">Adyen 終端</dt><dd><ol><li>在商戶後台上傳 APK 並部署到終端；參見
-              <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen 應用程式部署指南</a>
-              。用戶需有上傳和部署應用程式的權限。</li><li>在終端上打開 Mini mPOS，選擇<strong>掃描設定二維碼</strong>，點按<strong>繼續</strong>。</li></ol>
+            <dt id="install-terminal">Adyen 終端</dt><dd><ol>
+              <li>在商戶後台打開 <strong>Devices › Terminal apps</strong>，上傳 APK，並等待狀態變為 <strong>Ready</strong>；參見<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps/upload">Adyen 上傳指南</a>。用戶需要 <strong>Merchant POS Terminal Management Admin</strong> 角色。</li>
+              <li>選擇應用程式，然後選擇 <strong>Install</strong>。選擇版本和 <strong>Schedule now</strong>，選擇您的終端並確認 <strong>Schedule installation</strong>。參見<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps/schedule">Adyen 排程安裝指南</a>。</li>
+              <li>保持終端開機並連線。它會在下一次維護呼叫時安裝應用程式，預設三小時內。若想盡快取得，請嘗試在終端上打開 <strong>Settings › Configuration</strong>，輸入密碼並選擇 <strong>Update</strong>。</li>
+              <li>在終端上打開 Mini mPOS，選擇<strong>掃描設定二維碼</strong>，點按<strong>繼續</strong>。</li></ol>
               </dd>
-            <dt id="install-mobile">平板或手機</dt><dd><ol><li>在設備上打開 APK，按 Android 提示允許瀏覽器或檔案管理器安裝應用程式。</li><li>打開 Mini mPOS，選擇<strong>連接 Adyen</strong>，點按<strong>繼續</strong>。</li></ol></dd>
+            <dt id="install-mobile">平板或手機</dt><dd><ol>
+              <li>在裝置上打開<a href="https://github.com/astiskala/minimpos/releases/latest/download/minimpos.apk">直接下載連結</a>，或用相機掃描此二維碼：
+                <img class="qr" src="../images/apk-qr.svg" alt="APK 直接下載的二維碼" width="160" height="160"></li>
+              <li>在設備上打開 APK，按 Android 提示允許瀏覽器或檔案管理器安裝應用程式。</li><li>打開 Mini mPOS，選擇<strong>連接 Adyen</strong>，點按<strong>繼續</strong>。</li></ol></dd>
           </dl>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>

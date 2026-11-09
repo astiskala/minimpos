@@ -300,9 +300,11 @@ jobs:
         run: |
           # The app reads this small metadata asset to compare the release's versionCode with its own.
           java -jar "$RUNNER_TEMP/release-artifact/minimpos-tooling.jar" release update --out "$RUNNER_TEMP/update.json"
+          # The same APK under a fixed name, so releases/latest/download/minimpos.apk always works.
+          cp "$RUNNER_TEMP/minimpos-$VERSION.apk" "$RUNNER_TEMP/minimpos.apk"
           printf '%s\n\n**Full Changelog**: %s/compare/%s...v%s\n' \
               "$RELEASE_NOTES" "$REPOSITORY_URL" "$PREVIOUS_TAG" "$VERSION" > "$RUNNER_TEMP/release-notes.md"
-          gh release create "v$VERSION" "$RUNNER_TEMP/minimpos-$VERSION.apk" "$RUNNER_TEMP/update.json" \
+          gh release create "v$VERSION" "$RUNNER_TEMP/minimpos-$VERSION.apk" "$RUNNER_TEMP/minimpos.apk" "$RUNNER_TEMP/update.json" \
               --verify-tag --title "Mini mPOS $VERSION" --notes-file "$RUNNER_TEMP/release-notes.md"
 
       - name: Remove signing material

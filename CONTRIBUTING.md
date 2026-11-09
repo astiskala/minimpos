@@ -528,7 +528,7 @@ Both require approved GitHub access and the authenticated `gh` CLI. They only re
 they never commit, push, dispatch, tag or publish. The optional previous tag enables signing-certificate continuity
 checks. SDK `apksigner`, `zipalign` and `aapt2` verify the released APK's signature at API 28, 16 KB alignment,
 application ID, version and minimum SDK. `MINIMPOS_BUILD_TOOLS` overrides the detected SDK build-tools directory.
-Kotlin tooling checks the two GitHub SHA-256 asset digests and exact `update.json` contract against the release tag's
+Kotlin tooling checks the three GitHub SHA-256 asset digests and exact `update.json` contract against the release tag's
 version file. Verification files stay in a fresh `build/release-check.*` directory; the checkout and refs stay unchanged.
 
 ### Release-note style

@@ -58,7 +58,7 @@ if [[ -n ${run:-} ]]; then gh run watch "$run" --interval 30 --exit-status; fi
 work=$(mktemp -d "$root/build/release-check.XXXXXX")
 printf '%s\n' "Verification files: $work"
 gh release view "$tag" --json tagName,isDraft,isPrerelease,publishedAt,url,assets > "$work/release.json"
-gh release download "$tag" --pattern "minimpos-${tag#v}.apk" --pattern update.json --dir "$work"
+gh release download "$tag" --pattern "minimpos-${tag#v}.apk" --pattern minimpos.apk --pattern update.json --dir "$work"
 # Read the tag directly from GitHub: verification does not fetch refs or alter the checkout.
 gh api "repos/{owner}/{repo}/contents/version.properties?ref=$tag" -H 'Accept: application/vnd.github.raw+json' > "$work/version.properties"
 java -jar "$root/tooling/build/libs/minimpos-tooling.jar" release published \

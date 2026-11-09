@@ -230,11 +230,16 @@
           <p>Baixe o APK assinado <code>minimpos-&lt;version&gt;.apk</code> na
             <a href="https://github.com/astiskala/minimpos/releases/latest">versão mais recente</a>.</p>
           <dl class="settings-list">
-            <dt id="install-terminal">Terminal Adyen</dt><dd><ol><li>No Customer Area, carregue o APK e implante-o em seus terminais; veja o
-              <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Guia de implantação do
-              aplicativo Adyen</a>. Seu usuário precisa de permissão para fazer upload e implantar aplicativos.</li><li>
+            <dt id="install-terminal">Terminal Adyen</dt><dd><ol>
+              <li>No Customer Area, abra <strong>Devices › Terminal apps</strong>, envie o APK e aguarde até aparecer <strong>Ready</strong>; veja o <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps/upload">guia de upload da Adyen</a>. Seu usuário precisa da função <strong>Merchant POS Terminal Management Admin</strong>.</li>
+              <li>Selecione o aplicativo e depois <strong>Install</strong>. Escolha a versão e <strong>Schedule now</strong>, selecione seu terminal e confirme <strong>Schedule installation</strong>. Veja o <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps/schedule">guia de agendamento da Adyen</a>.</li>
+              <li>Mantenha o terminal ligado e on-line. Ele instala o aplicativo na próxima chamada de manutenção, por padrão em até três horas. Para tentar obtê-lo antes, abra <strong>Ajustes › Configuração</strong> no terminal, insira o código e selecione <strong>Atualizar</strong>.</li>
+              <li>
               Abra Mini mPOS no terminal, selecione <strong>Digitalizar códigos de configuração</strong> e toque em <strong>Continuar</strong>.</li></ol></dd>
-            <dt id="install-mobile">Tablet ou telefone</dt><dd><ol><li>Abra o APK no dispositivo e permita a instalação a partir do seu
+            <dt id="install-mobile">Tablet ou telefone</dt><dd><ol>
+              <li>No dispositivo, abra o <a href="https://github.com/astiskala/minimpos/releases/latest/download/minimpos.apk">link de download direto</a> ou leia este código com a câmera:
+                <img class="qr" src="../images/apk-qr.svg" alt="Código QR do download direto do APK" width="160" height="160"></li>
+              <li>Abra o APK no dispositivo e permita a instalação a partir do seu
               navegador ou gerenciador de arquivos quando o Android solicitar.</li><li>Abra Mini mPOS, selecione
               <strong>Conectar-se à Adyen</strong> e toque em <strong>Continuar</strong>.</li></ol></dd>
           </dl>

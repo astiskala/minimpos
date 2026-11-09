@@ -232,11 +232,15 @@
           <p>Téléchargez l’APK signé <code>minimpos-&lt;version&gt;.apk</code> depuis la
             <a href="https://github.com/astiskala/minimpos/releases/latest">dernière version</a>.</p>
           <dl class="settings-list">
-            <dt id="install-terminal">Terminal Adyen</dt><dd><ol><li>Dans le Customer Area, téléchargez l’APK et déployez-le sur vos terminaux
-              ; voir le <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Guide de
-              déploiement de l'application Adyen</a>. Votre utilisateur a besoin d'une autorisation pour télécharger et
-              déployer des applications.</li><li>Ouvrez Mini mPOS sur le terminal, sélectionnez <strong>Scanner les codes de configuration</strong> et appuyez sur <strong>Continuer</strong>.</li></ol></dd>
-            <dt id="install-mobile">Tablette ou téléphone</dt><dd><ol><li>Ouvrez l’APK sur l'appareil et autorisez l'installation à partir
+            <dt id="install-terminal">Terminal Adyen</dt><dd><ol>
+              <li>Dans le Customer Area, ouvrez <strong>Devices › Terminal apps</strong>, téléchargez l’APK et attendez qu’il affiche <strong>Ready</strong> ; voir le <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps/upload">guide de téléchargement Adyen</a>. Votre utilisateur doit avoir le rôle <strong>Merchant POS Terminal Management Admin</strong>.</li>
+              <li>Sélectionnez l’application, puis <strong>Install</strong>. Choisissez la version et <strong>Schedule now</strong>, sélectionnez votre terminal et confirmez <strong>Schedule installation</strong>. Voir le <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps/schedule">guide de planification Adyen</a>.</li>
+              <li>Laissez le terminal allumé et en ligne. Il installe l’application lors de son prochain appel de maintenance, par défaut sous trois heures. Pour essayer de l’obtenir plus tôt, ouvrez <strong>Réglages › Configuration</strong> sur le terminal, saisissez le code et sélectionnez <strong>Mettre à jour</strong>.</li>
+              <li>Ouvrez Mini mPOS sur le terminal, sélectionnez <strong>Scanner les codes de configuration</strong> et appuyez sur <strong>Continuer</strong>.</li></ol></dd>
+            <dt id="install-mobile">Tablette ou téléphone</dt><dd><ol>
+              <li>Sur l’appareil, ouvrez le <a href="https://github.com/astiskala/minimpos/releases/latest/download/minimpos.apk">lien de téléchargement direct</a> ou scannez ce code avec son appareil photo :
+                <img class="qr" src="../images/apk-qr.svg" alt="Code QR du téléchargement direct de l’APK" width="160" height="160"></li>
+              <li>Ouvrez l’APK sur l'appareil et autorisez l'installation à partir
               de votre navigateur ou de votre gestionnaire de fichiers lorsque Android vous le demande.</li><li>Ouvrez
               Mini mPOS, sélectionnez <strong>Connectez-vous à Adyen</strong> et appuyez sur <strong>Continuer</strong>.
               </li></ol></dd>

@@ -158,8 +158,8 @@ internal object Release {
                 release["isDraft"] == JsonPrimitive(false) && release["isPrerelease"] == JsonPrimitive(false),
         ) { "Expected a published stable release for this version" }
         val assets = release["assets"] as? JsonArray
-        val expected = setOf("minimpos-${current.name}.apk", "update.json")
-        require(assets?.size == expected.size) { "Expected exactly the APK and update.json assets" }
+        val expected = setOf("minimpos-${current.name}.apk", "minimpos.apk", "update.json")
+        require(assets?.size == expected.size) { "Expected exactly the two APK names and update.json" }
         val objects = assets.map { requireNotNull(it as? JsonObject) { "Invalid published asset" } }
         require(objects.map { it.string("name") }.toSet() == expected) { "Wrong or duplicate published assets" }
         objects.forEach { asset ->

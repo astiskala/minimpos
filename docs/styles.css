@@ -588,6 +588,8 @@ pre {
 
 .settings-list dd ol { padding-left: 1.2em; }
 
+.settings-list dd img.qr { display: block; margin: 8px 0; }
+
 /* Troubleshooting: what you see, why, and what to do. */
 .fixes > div { padding: 14px 0; border-top: 1px solid var(--border); }
 

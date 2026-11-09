@@ -27,6 +27,7 @@ class ReleaseNotesWorkflowTest {
     fun `publication preserves Markdown as literal text and appends the release comparison`() {
         val root = temporary.newFolder().toPath()
         val marker = root.resolve("executed")
+        Files.writeString(root.resolve("minimpos-1.6.0.apk"), "synthetic APK")
         val notes = "- Keep `code`, quotes \"like this\", and \$values.\n- Literal \$(touch $marker) and %s."
         val stubs =
             """
@@ -50,6 +51,7 @@ class ReleaseNotesWorkflowTest {
         )
         val arguments = Files.readAllLines(root.resolve("arguments"))
         assertThat(arguments).containsAtLeast("release", "create", "v1.6.0", "--notes-file", root.resolve("release-notes.md").toString())
+        assertThat(arguments).contains(root.resolve("minimpos.apk").toString())
         assertThat(arguments).doesNotContain("--generate-notes")
         assertThat(Files.exists(marker)).isFalse()
     }

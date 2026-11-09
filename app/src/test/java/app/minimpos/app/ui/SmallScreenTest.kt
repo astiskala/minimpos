@@ -94,6 +94,7 @@ class SmallScreenTest {
     @Test
     fun `physical AMS1 audio guidance enabled in Settings needs no confirmation and keeps Pay visible`() {
         configureKey()
+        await { container.terminalStatus.check() }
         env.updateSettings { it.copy(payment = it.payment.copy(audioGuidance = true)) }
         container.session(SaleKind.SALE).addCustom("Item", 1200, TaxRateEntity(name = "No tax", rateMilliPercent = 0))
         compose.setContent { MiniMposApp(container) }

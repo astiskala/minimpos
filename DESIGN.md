@@ -563,7 +563,9 @@ together up to `homeMaxHeight`. Which tiles appear, in what order, is a product 
 - **Settings** switches and choices have a short title and a one- or two-sentence description. Fields have an external
   title in the same style, then the primary description, then the input; notes below hold only extra information or
   validation. Settings actions use `SettingActions` with icons; secret placeholders stay on one line. Local settings
-  save as they change; Adyen-side capability details edit a draft sent by "Save to Adyen".
+  save as they change; Adyen-side capability details edit a draft sent by "Save to Adyen". Software-dependent switches
+  stay off and disabled until a connection check establishes support; their blocked reason names the required and
+  installed versions, or asks for a connection check. Saved preferences remain unchanged.
 - **Adyen capabilities** is an Adyen-only feature hub, not a general app-feature or security inventory. Supported
   features sit as clickable rows in four stable expanded groups, in this order: Payments, Tips and shopper interaction,
   Receipts and scanning, Terminal and recovery; a group with no supported feature is left out rather than shown empty.

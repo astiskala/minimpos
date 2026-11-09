@@ -7,6 +7,9 @@ package app.minimpos.terminal.client
  * what the client writes rather than a copy, so a key renamed on one side no longer compiles on the other.
  */
 internal object NexoVocabulary {
+    /** Installed terminal software reported by a successful diagnosis. */
+    const val FIRMWARE_VERSION = "firmwareVersion"
+
     /** The terminal's or acquirer's own text about a refusal or rejection, shown verbatim. */
     const val MESSAGE = "message"
 

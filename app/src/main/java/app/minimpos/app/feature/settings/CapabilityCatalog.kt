@@ -246,7 +246,7 @@ internal class CapabilityCatalog(
         supported(terminal.capabilities.supportsTerminalFeatures) {
             when {
                 payment.terminalTipping == ReceiptTipping.DISABLED -> off()
-                payment.dynamicTipOverride -> ready()
+                payment.dynamicTipOverride && terminal.tipOptionsAvailable -> ready()
                 !discovered -> unverified()
                 remote.gratuityFor(currency) == null -> needs(CapabilityRequirement.ADYEN)
                 else -> ready()
@@ -274,10 +274,21 @@ internal class CapabilityCatalog(
     private fun audioGuidance() =
         supported(terminal.capabilities.supportsTerminalFeatures) {
             when {
-                !remote.simulated && terminal.audioGuidanceMinimumSoftware == null -> unsupported()
-                !payment.audioGuidance -> off()
-                remote.simulated -> ready()
-                else -> CapabilityStatus.UNVERIFIED to CapabilityRequirement.SUPPORT
+                !remote.simulated && !terminal.audioGuidanceAvailable -> {
+                    if (terminal.audioGuidanceMinimumSoftware != null && terminal.softwareVersion == null) unverified() else unsupported()
+                }
+
+                !payment.audioGuidance -> {
+                    off()
+                }
+
+                remote.simulated -> {
+                    ready()
+                }
+
+                else -> {
+                    CapabilityStatus.UNVERIFIED to CapabilityRequirement.SUPPORT
+                }
             }
         }
 

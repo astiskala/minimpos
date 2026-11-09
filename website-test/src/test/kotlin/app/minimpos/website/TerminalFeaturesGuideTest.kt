@@ -140,6 +140,22 @@ class TerminalFeaturesGuideTest {
     }
 
     @Test
+    fun `software dependent tip and voucher settings document their current payload minimums in every language`() {
+        val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
+        resources.keys.forEach { language ->
+            val directory = docs.resolve(if (language == "en") "" else language)
+            val using = Jsoup.parse(directory.resolve("using.html").readText())
+            assertWithMessage("$language tip override software").that(using.select("#terminal-tips").text()).contains("1.101")
+            val voucher = checkNotNull(using.getElementById("meal-vouchers"))
+            val voucherText =
+                generateSequence(voucher.nextElementSibling()) { it.nextElementSibling() }
+                    .takeWhile { it.tagName() != "h3" }
+                    .joinToString(" ") { it.text() }
+            assertWithMessage("$language Brazilian account software").that(voucherText).contains("1.129")
+        }
+    }
+
+    @Test
     fun `audio guidance documents hardware software limits and provider requirements in every language`() {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         resources.keys.forEach { language ->

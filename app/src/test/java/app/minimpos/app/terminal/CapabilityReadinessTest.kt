@@ -14,13 +14,45 @@ class CapabilityReadinessTest {
 
     @Test
     fun `audio guidance distinguishes model eligibility from software and Support enablement`() {
-        val physical = TerminalState(poiId = "AMS1-123", apiSetup = ApiSetup.Incomplete(SetupProblem.API_KEY))
+        val physical = TerminalState(mode = TerminalMode.TERMINAL, poiId = "AMS1-123", apiSetup = ApiSetup.Incomplete(SetupProblem.API_KEY))
         assertThat(physical.audioGuidanceMinimumSoftware).isEqualTo("1.117")
         assertThat(physical.copy(poiId = "P630-123").audioGuidanceMinimumSoftware).isEqualTo("1.124")
         assertThat(physical.copy(poiId = "S1E-123").audioGuidanceMinimumSoftware).isNull()
         assertThat(
             physical.copy(capabilities = DestinationCapabilities(supportsTerminalFeatures = false)).audioGuidanceMinimumSoftware,
         ).isNull()
+    }
+
+    @Test
+    fun `software dependent features fail closed without changing ordinary terminal capabilities`() {
+        val terminal = TerminalState(mode = TerminalMode.TERMINAL, poiId = "S1F2-123")
+        listOf(null, "unknown", "1.95.1", "1.97.0", "1.100.9").forEach { version ->
+            val old = terminal.copy(softwareVersion = version)
+            assertThat(old.tipOptionsAvailable).isFalse()
+            assertThat(old.audioGuidanceAvailable).isFalse()
+            assertThat(old.mealVoucherAccountAvailable).isFalse()
+            assertThat(old.capabilities.supportsTerminalFeatures).isTrue()
+        }
+        assertThat(terminal.copy(softwareVersion = "1.101.0").tipOptionsAvailable).isTrue()
+        assertThat(terminal.copy(softwareVersion = "1.116.9").audioGuidanceAvailable).isFalse()
+        assertThat(terminal.copy(softwareVersion = "1.117.0").audioGuidanceAvailable).isTrue()
+        assertThat(terminal.copy(poiId = "P630-123", softwareVersion = "1.123.9").audioGuidanceAvailable).isFalse()
+        assertThat(terminal.copy(poiId = "P630-123", softwareVersion = "1.124.0").audioGuidanceAvailable).isTrue()
+        assertThat(terminal.copy(poiId = "UNKNOWN-123", softwareVersion = "1.137.0").audioGuidanceAvailable).isFalse()
+        assertThat(terminal.copy(softwareVersion = "1.128.9").mealVoucherAccountAvailable).isFalse()
+        assertThat(terminal.copy(softwareVersion = "1.129.0").mealVoucherAccountAvailable).isTrue()
+        val simulated = TerminalState()
+        assertThat(simulated.tipOptionsAvailable).isTrue()
+        assertThat(simulated.audioGuidanceAvailable).isTrue()
+        assertThat(simulated.mealVoucherAccountAvailable).isTrue()
+        val unsupported =
+            terminal.copy(
+                softwareVersion = "1.137.0",
+                capabilities = DestinationCapabilities(supportsTerminalFeatures = false),
+            )
+        assertThat(unsupported.tipOptionsAvailable).isFalse()
+        assertThat(unsupported.audioGuidanceAvailable).isFalse()
+        assertThat(unsupported.mealVoucherAccountAvailable).isFalse()
     }
 
     @Test

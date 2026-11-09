@@ -912,6 +912,8 @@
   <string name="capability_status_configured">Configured at Adyen</string>
   <string name="settings_unavailable_tap_to_pay">Not available with Tap to Pay.</string>
   <string name="settings_unavailable_destination">Not available on this destination.</string>
+  <string name="settings_software_check_required">Check the terminal connection in Settings › Terminal to verify software support.</string>
+  <string name="settings_software_required">Requires terminal software %1$s or later. Installed: %2$s.</string>
   <string name="capability_group_shopper">Tips and shopper interaction</string>
   <string name="capability_group_receipts">Receipts and scanning</string>
   <string name="capability_group_terminal">Terminal and recovery</string>

@@ -422,6 +422,7 @@ class TerminalClient(
             fault = Fault.TerminalRejected(ExternalText.of(additional[NexoVocabulary.MESSAGE])).takeUnless { reachable },
             globalStatus = response.poiStatus?.globalStatus?.value(),
             printerStatus = response.poiStatus?.printerStatus?.value(),
+            softwareVersion = additional[NexoVocabulary.FIRMWARE_VERSION]?.trim()?.takeIf { reachable && it.isNotEmpty() },
         )
     }
 
@@ -662,6 +663,12 @@ class TerminalClient(
 
         /** Covers the default two-minute payment and five-minute PIN screens, plus transitions; timeout still means unknown. */
         val ACCESSIBLE_TRANSACTION_TIMEOUT: Duration = 600.seconds
+
+        /** First terminal software supporting the current `TipOptions` payload, including pre-tax tipping. */
+        const val TIP_OPTIONS_MINIMUM_SOFTWARE = "1.101"
+
+        /** First terminal software supporting `selectedAccountType=MEAL_VOUCHER`. */
+        const val MEAL_VOUCHER_MINIMUM_SOFTWARE = "1.129"
 
         /**
          * Minimum Adyen software for POS-requested audio guidance on [poiId], or null for an unlisted/unknown model.

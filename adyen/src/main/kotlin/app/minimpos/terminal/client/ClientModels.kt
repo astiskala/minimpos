@@ -723,12 +723,14 @@ sealed interface TerminalTotalsOutcome {
  * @property globalStatus The terminal's nexo `GlobalStatus`, e.g. `OK` or `Busy`; null if not reported.
  * @property printerStatus The nexo `PrinterStatus`, e.g. `OK` or `PaperLow`; null when the terminal has no printer (or
  *   is unreachable).
+ * @property softwareVersion Installed Adyen terminal software from diagnosis; null when absent or diagnosis failed.
  */
 data class DiagnosisResult(
     val reachable: Boolean,
     val fault: Fault?,
     val globalStatus: String? = null,
     val printerStatus: String? = null,
+    val softwareVersion: String? = null,
 ) {
     /** True when the terminal reported a printer status, i.e. it has a printer. */
     val hasPrinter: Boolean get() = printerStatus != null

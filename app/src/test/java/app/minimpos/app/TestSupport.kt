@@ -225,6 +225,7 @@ class FakeTerminal(
     var passphrase: String = "correct horse battery staple",
     private val beforeSend: suspend () -> Unit = {},
     private val reply: suspend (TerminalAPIRequest) -> Delivery? = { null },
+    var softwareVersion: String? = "1.137.0",
 ) {
     /** Every host a transport was created for, in order (`localhost` when the app runs on the terminal). */
     val hosts = mutableListOf<String>()
@@ -246,7 +247,13 @@ class FakeTerminal(
                     timeout: Duration,
                 ): Delivery {
                     beforeSend()
-                    return reply(request) ?: simulator.send(request, timeout)
+                    return reply(request) ?: simulator.send(request, timeout).also { delivery ->
+                        if (request.saleToPOIRequest.diagnosisRequest != null && delivery is Delivery.Answered) {
+                            checkNotNull(delivery.response)
+                                .saleToPOIResponse.diagnosisResponse.response.additionalResponse =
+                                softwareVersion?.let { "firmwareVersion=$it" }
+                        }
+                    }
                 }
 
                 override fun acknowledge(serviceId: String) {

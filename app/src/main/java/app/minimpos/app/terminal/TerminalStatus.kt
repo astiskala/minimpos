@@ -3,6 +3,7 @@ package app.minimpos.app.terminal
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.client.TerminalClient
+import app.minimpos.terminal.client.TerminalSoftware
 import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.CoroutineScope
@@ -54,6 +55,7 @@ data class SetupDiagnostics(
  * @property connectionProblem What must still be entered before the destination can be reached at all (printing,
  *   refunds, connection checks), from [TerminalSetup.connectionProblem]; null when nothing is missing.
  * @property printingStanding Printing readiness from destination support, known hardware and local preferences.
+ * @property softwareVersion Installed terminal software from diagnosis for this destination/account/environment; null if unknown.
  */
 data class TerminalState(
     val loaded: Boolean = false,
@@ -71,10 +73,30 @@ data class TerminalState(
     val capabilities: DestinationCapabilities = DestinationCapabilities(),
     val connectionProblem: SetupProblem? = null,
     val printingStanding: CapabilityStanding = CapabilityStanding.NEEDS_CONFIGURATION,
+    val softwareVersion: String? = null,
 ) {
-    /** Minimum software for this model; installed software and Support enablement still need merchant confirmation. */
+    /** Minimum software for this model; Support enablement and terminal language still need merchant confirmation. */
     val audioGuidanceMinimumSoftware: String?
         get() = if (capabilities.supportsTerminalFeatures) TerminalClient.audioGuidanceMinimumSoftware(poiId) else null
+
+    /** Whether this destination's verified software supports the current dynamic and pre-tax tipping format. */
+    val tipOptionsAvailable: Boolean get() = supportsSoftware(TerminalClient.TIP_OPTIONS_MINIMUM_SOFTWARE)
+
+    /** Whether installed software and the terminal model support audio guidance; Support enablement is still required. */
+    val audioGuidanceAvailable: Boolean
+        get() =
+            capabilities.supportsTerminalFeatures &&
+                (mode == TerminalMode.SIMULATOR || audioGuidanceMinimumSoftware?.let(::supportsSoftware) == true)
+
+    /** Whether the app may explicitly select a Brazilian meal-voucher account, independently of market enablement. */
+    val mealVoucherAccountAvailable: Boolean get() =
+        capabilities.mealVouchers &&
+            supportsSoftware(TerminalClient.MEAL_VOUCHER_MINIMUM_SOFTWARE)
+
+    /** Whether this physical destination reports software meeting [minimum], or is the offline simulator. */
+    fun supportsSoftware(minimum: String): Boolean =
+        capabilities.supportsTerminalFeatures &&
+            (mode == TerminalMode.SIMULATOR || TerminalSoftware.atLeast(softwareVersion, minimum))
 
     /**
      * Why printing cannot be tried now: what the destination still needs, else [SetupProblem.PRINTER] while printing is
@@ -134,7 +156,7 @@ class TerminalStatus(
 
     /** The current status; it holds the defaults (not [TerminalState.loaded]) until settings and secrets are read. */
     val state: StateFlow<TerminalState> =
-        combine(setups.changes, connection, gateway.printers) { setup, checked, printers ->
+        combine(setups.changes, connection, gateway.printers, gateway.softwareVersions) { setup, checked, printers, software ->
             TerminalState(
                 loaded = true,
                 mode = setup.mode,
@@ -151,6 +173,7 @@ class TerminalStatus(
                 capabilities = setup.capabilities,
                 connectionProblem = setup.connectionProblem,
                 printingStanding = setup.printingStanding(printers),
+                softwareVersion = software[setup.paymentContext()],
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
 

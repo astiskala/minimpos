@@ -6,17 +6,19 @@ import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
-import app.minimpos.app.terminal.DestinationCapabilities
+import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.SectionHeader
+import app.minimpos.terminal.client.TerminalClient
 
 /** Checkout offers for terminal tips, receipt-tip holds and Adyen Giving; remote terminal configuration stays separate. */
 @Composable
 internal fun ColumnScope.TippingSection(
     payment: PaymentSettings,
-    capabilities: DestinationCapabilities,
+    terminal: TerminalState,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
     target: String? = null,
 ) {
+    val capabilities = terminal.capabilities
     val terminalBlocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures }
     val printBlocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsPrinting }
     SectionHeader(stringResource(R.string.settings_tipping))
@@ -37,22 +39,7 @@ internal fun ColumnScope.TippingSection(
         blocked = terminalBlocked,
     )
     if (payment.terminalTipping != ReceiptTipping.DISABLED) {
-        SettingSwitch(
-            stringResource(R.string.settings_dynamic_tip_override),
-            payment.dynamicTipOverride,
-            { value -> update { it.copy(dynamicTipOverride = value) } },
-            subtitle = stringResource(R.string.settings_dynamic_tip_override_hint),
-            tag = "dynamicTipOverride",
-            blocked = terminalBlocked,
-        )
-        SettingSwitch(
-            stringResource(R.string.settings_tip_on_pre_tax),
-            payment.tipOnPreTax,
-            { value -> update { it.copy(tipOnPreTax = value) } },
-            subtitle = stringResource(R.string.settings_tip_on_pre_tax_hint),
-            tag = "tipOnPreTax",
-            blocked = terminalBlocked,
-        )
+        TipOverrideSettings(payment, terminal, update)
     }
     SettingChoice(
         title = stringResource(R.string.checkout_tip_on_receipt),
@@ -73,5 +60,30 @@ internal fun ColumnScope.TippingSection(
         tag = "askGivingSetting",
         target = target,
         blocked = terminalBlocked,
+    )
+}
+
+@Composable
+private fun ColumnScope.TipOverrideSettings(
+    payment: PaymentSettings,
+    terminal: TerminalState,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    val blocked = terminalSoftwareBlocked(terminal, TerminalClient.TIP_OPTIONS_MINIMUM_SOFTWARE)
+    SettingSwitch(
+        stringResource(R.string.settings_dynamic_tip_override),
+        payment.dynamicTipOverride,
+        { value -> update { it.copy(dynamicTipOverride = value) } },
+        subtitle = stringResource(R.string.settings_dynamic_tip_override_hint),
+        tag = "dynamicTipOverride",
+        blocked = blocked,
+    )
+    SettingSwitch(
+        stringResource(R.string.settings_tip_on_pre_tax),
+        payment.tipOnPreTax,
+        { value -> update { it.copy(tipOnPreTax = value) } },
+        subtitle = stringResource(R.string.settings_tip_on_pre_tax_hint),
+        tag = "tipOnPreTax",
+        blocked = blocked,
     )
 }

@@ -673,7 +673,7 @@ class TerminalClientTest {
                     respond {
                         diagnosisResponse =
                             DiagnosisResponse().apply {
-                                response = result(ResultType.SUCCESS)
+                                response = result(ResultType.SUCCESS).apply { additionalResponse = "firmwareVersion=1.95.1" }
                                 poiStatus =
                                     POIStatus().apply {
                                         globalStatus = GlobalStatusType.OK
@@ -686,6 +686,7 @@ class TerminalClientTest {
             assertThat(ok.globalStatus).isEqualTo("OK")
             assertThat(ok.printerStatus).isEqualTo("PaperLow")
             assertThat(ok.hasPrinter).isTrue()
+            assertThat(ok.softwareVersion).isEqualTo("1.95.1")
             assertThat(client { empty }.diagnose().reachable).isFalse()
             assertThat(client { Delivery.Failed(UNREACHABLE) }.diagnose().fault).isEqualTo(UNREACHABLE)
         }

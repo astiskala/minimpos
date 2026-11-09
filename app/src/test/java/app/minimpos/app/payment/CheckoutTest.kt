@@ -568,7 +568,7 @@ class CheckoutTest {
                 tipPercentages = listOf(10, 15, 20),
                 tipOnPreTax = true,
             )
-        val smallCheckout = Checkout(CheckoutForm(), settings, smallCart, aud, printerAvailable = true)
+        val smallCheckout = Checkout(CheckoutForm(), settings, smallCart, aud, printerAvailable = true, terminalTipOptionsAvailable = true)
         assertThat(smallCheckout.askGratuity).isTrue()
         assertThat(smallCheckout.tipOnReceipt).isFalse()
         assertThat(smallCheckout.terminalTipOptions()).isEqualTo(
@@ -578,7 +578,7 @@ class CheckoutTest {
             ),
         )
 
-        val largeCheckout = Checkout(CheckoutForm(), settings, largeCart, aud, printerAvailable = true)
+        val largeCheckout = Checkout(CheckoutForm(), settings, largeCart, aud, printerAvailable = true, terminalTipOptionsAvailable = true)
         assertThat(largeCheckout.terminalTipOptions()).isEqualTo(
             TerminalTipOptions(
                 suggestions = TerminalTipSuggestions.Percentages(listOf(10, 15, 20), allowCustom = true),
@@ -590,6 +590,8 @@ class CheckoutTest {
         assertThat(switchedToReceipt.tipOnReceipt).isTrue()
         assertThat(switchedToReceipt.askGratuity).isFalse()
         assertThat(switchedToReceipt.terminalTipOptions()).isNull()
+        assertThat(smallCheckout.copy(terminalTipOptionsAvailable = false).terminalTipOptions()).isEqualTo(TerminalTipOptions())
+        assertThat(largeCheckout.copy(terminalTipOptionsAvailable = false).terminalTipOptions()).isEqualTo(TerminalTipOptions())
     }
 
     @Test

@@ -47,15 +47,19 @@ sealed interface Connection {
      * @property destination What it can do besides payments and refunds ([DestinationRules.aborts],
      *   [DestinationRules.diagnoses]).
      * @property acknowledge Releases transient late answers after their resolved financial result is durably stored.
+     * @param origin Exact unlocked setup retained for fencing work after waiting for the terminal.
      * @property context Reads only the setup and certificate belonging to this connection.
      */
     class Open(
         val client: TerminalClient,
         val destination: DestinationRules,
         val acknowledge: (String) -> Unit,
+        origin: UnlockedSetup,
         /** Reads the identity and certificate environment of this connection, never a later setup. */
         val context: () -> PaymentContext,
-    ) : Connection
+    ) : Connection {
+        internal val origin = origin
+    }
 
     /** Nothing can be sent; also what a [Destination.open] that found no transport returns. */
     sealed interface Blocked :
@@ -137,7 +141,7 @@ sealed interface Destination {
                         // Amounts cross the client in minor units; Adyen's decimals convert them for nexo.
                         currencyDigits = { AdyenCurrencies[it]?.decimals },
                     )
-                Connection.Open(client, rules, opening.transport::acknowledge) {
+                Connection.Open(client, rules, opening.transport::acknowledge, unlocked) {
                     setup.paymentContext(opening.environment() ?: setup.environment)
                 }
             }

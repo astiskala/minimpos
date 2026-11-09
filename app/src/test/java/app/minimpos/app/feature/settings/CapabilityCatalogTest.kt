@@ -5,9 +5,11 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.terminal.AdyenCapabilitiesState
 import app.minimpos.app.terminal.CapabilityStanding
 import app.minimpos.app.terminal.DestinationCapabilities
+import app.minimpos.app.terminal.GratuityCapability
 import app.minimpos.app.terminal.MotoCapability
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
@@ -21,6 +23,7 @@ class CapabilityCatalogTest {
     private val terminal =
         TerminalState(
             loaded = true,
+            mode = TerminalMode.TERMINAL,
             capabilities = DestinationCapabilities(supportsTerminalFeatures = true, supportsOfflinePayments = true),
         )
 
@@ -119,5 +122,34 @@ class CapabilityCatalogTest {
                 terminal = terminal.copy(capabilities = DestinationCapabilities(supportsTerminalFeatures = false)),
             ).item(CapabilityFeature.TIPPING).status,
         ).isEqualTo(CapabilityStatus.UNSUPPORTED)
+    }
+
+    @Test
+    fun `capability indicators do not claim unsupported saved tip overrides or audio guidance are ready`() {
+        val enabled =
+            settings.copy(
+                payment =
+                    settings.payment.copy(
+                        terminalTipping = ReceiptTipping.DEFAULT_ON,
+                        dynamicTipOverride = true,
+                        audioGuidance = true,
+                    ),
+            )
+        val physical = terminal.copy(poiId = "S1F2-123")
+        val remote = AdyenCapabilitiesState(checked = true)
+        assertThat(
+            catalog(enabled, physical, remote).item(CapabilityFeature.TIPPING).status,
+        ).isEqualTo(CapabilityStatus.NEEDS_SETUP)
+        assertThat(catalog(enabled, physical, remote).item(CapabilityFeature.AUDIO_GUIDANCE).status).isEqualTo(CapabilityStatus.UNVERIFIED)
+        val old = physical.copy(softwareVersion = "1.95.1")
+        assertThat(catalog(enabled, old, remote).item(CapabilityFeature.TIPPING).status).isEqualTo(CapabilityStatus.NEEDS_SETUP)
+        val ordinaryTips = remote.copy(gratuities = listOf(GratuityCapability("EUR")))
+        assertThat(catalog(enabled, old, ordinaryTips).item(CapabilityFeature.TIPPING).status).isEqualTo(CapabilityStatus.READY)
+        assertThat(catalog(enabled, old, remote).item(CapabilityFeature.AUDIO_GUIDANCE).status).isEqualTo(CapabilityStatus.UNSUPPORTED)
+        val modern = physical.copy(softwareVersion = "1.117.0")
+        assertThat(catalog(enabled, modern, remote).item(CapabilityFeature.TIPPING).status).isEqualTo(CapabilityStatus.READY)
+        assertThat(
+            catalog(enabled, modern, remote).item(CapabilityFeature.AUDIO_GUIDANCE).requirement,
+        ).isEqualTo(CapabilityRequirement.SUPPORT)
     }
 }

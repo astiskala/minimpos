@@ -201,7 +201,11 @@ internal fun simulateInputResponse(
 
 internal fun simulateDiagnosisResponse(settings: SimulatorConfig): DiagnosisResponse =
     DiagnosisResponse().apply {
-        response = Response().apply { result = ResultType.SUCCESS }
+        response =
+            Response().apply {
+                result = ResultType.SUCCESS
+                additionalResponse = "${NexoVocabulary.FIRMWARE_VERSION}=1.137.0"
+            }
         poiStatus =
             POIStatus().apply {
                 globalStatus = GlobalStatusType.OK

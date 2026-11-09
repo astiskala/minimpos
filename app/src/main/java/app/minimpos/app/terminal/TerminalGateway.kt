@@ -26,6 +26,7 @@ import app.minimpos.terminal.client.PrintOutcome
 import app.minimpos.terminal.client.RefundParams
 import app.minimpos.terminal.client.StoredValueParams
 import app.minimpos.terminal.client.TerminalClient
+import app.minimpos.terminal.client.TerminalSoftware
 import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
@@ -259,7 +260,7 @@ data class DetectedEnvironment(
  */
 sealed interface Attempt<out T> {
     /**
-     * It was sent, or the destination could not be reached.
+     * An operation outcome, including a local refusal or a destination that could not be reached.
      *
      * @param T What came of it.
      * @property result The destination's answer, or why it could not be reached, as Adyen or the client worded it.
@@ -320,6 +321,13 @@ class TerminalGateway(
     val printers: StateFlow<Map<String, Boolean>>
         field = MutableStateFlow<Map<String, Boolean>>(emptyMap())
 
+    /**
+     * Diagnosis software evidence scoped to the complete payment destination, never shared across terminals or environments.
+     * Missing entries and null values mean unverified software.
+     */
+    val softwareVersions: StateFlow<Map<PaymentContext, String?>>
+        field = MutableStateFlow<Map<PaymentContext, String?>>(emptyMap())
+
     private val destinations = adapters { detectedEnvironment.value = it }
 
     /** [adapters] for a candidate's check, which an inner class reaches without a synthetic method accessor. */
@@ -359,57 +367,74 @@ class TerminalGateway(
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
     ): Attempt<TransactionOutcome> =
-        send(paying = true, serviceId, onSending, onContext, expected, expectedIdentity, authorized) {
-            val configured =
-                cashbackConfigured(params, it.context(), cashbackIdentity) &&
-                    unreferencedConfigured(params, it.context(), unreferencedIdentity) &&
-                    (
-                        !params.audioGuidance ||
-                            setups
-                                .current()
-                                .settings.payment.audioGuidance
-                    )
-            if (!configured ||
-                unsupported(
-                    params,
-                    it.destination,
-                    it.client.identity.poiId,
-                    audioGuidancePoiId,
-                    expected != null && expectedIdentity != null,
-                )
-            ) {
-                TransactionOutcome.NotProcessed(Fault.Unsupported)
-            } else {
-                it.client.pay(params, serviceId)
-            }
+        send(
+            paying = true,
+            serviceId,
+            onSending,
+            onContext,
+            expected,
+            expectedIdentity,
+            authorized,
+            supported = {
+                val verifiedContext = expected != null && expectedIdentity != null
+                !unsupported(params, it.destination, it.client.identity.poiId, audioGuidancePoiId, verifiedContext) &&
+                    softwareCompatible(it, params) &&
+                    paymentConfigured(params, it.context(), cashbackIdentity, unreferencedIdentity)
+            },
+        ) {
+            it.client.pay(params, serviceId)
         }
 
-    private suspend fun cashbackConfigured(
+    private suspend fun softwareCompatible(
+        open: Connection.Open,
         params: PaymentParams,
-        context: PaymentContext,
-        confirmed: String?,
     ): Boolean {
-        val cash = params.cashBackMinor ?: return true
-        val current =
-            setups
-                .current()
-                .settings.payment.cashback
-        return current.identity == confirmed && current.permits(cash, params.amountMinor, params.currency, context)
+        if (open.destination.simulatesApi) return true
+        val minimums =
+            buildList {
+                if (params.terminalTip?.suggestions != null) add(TerminalClient.TIP_OPTIONS_MINIMUM_SOFTWARE)
+                if (params.mealVoucherAccount) add(TerminalClient.MEAL_VOUCHER_MINIMUM_SOFTWARE)
+                if (params.audioGuidance) add(TerminalClient.audioGuidanceMinimumSoftware(open.client.identity.poiId) ?: return false)
+            }
+        if (minimums.isEmpty()) return true
+        if (!open.destination.diagnoses) return false
+        // Recheck on the opened destination: imported settings and a downgrade must not bypass software eligibility.
+        val diagnosis = open.client.diagnose()
+        rememberSoftware(open, diagnosis)
+        return diagnosis.reachable && minimums.all { TerminalSoftware.atLeast(diagnosis.softwareVersion, it) }
     }
 
-    // An unreferenced refund goes only under the confirmation it was started with, within the limit; whether the
-    // destination carries it is the card features' reading.
-    private suspend fun unreferencedConfigured(
+    private fun rememberSoftware(
+        open: Connection.Open,
+        diagnosis: DiagnosisResult?,
+    ) {
+        softwareVersions.update { it + (open.context() to diagnosis?.softwareVersion?.takeIf { diagnosis.reachable }) }
+    }
+
+    // Recheck confirmed local options from one snapshot after waiting for terminal software verification.
+    private suspend fun paymentConfigured(
         params: PaymentParams,
         context: PaymentContext,
-        confirmed: String?,
+        cashbackIdentity: String?,
+        unreferencedIdentity: String?,
     ): Boolean {
-        if (!params.unreferencedRefund) return true
-        val current =
+        val cash = params.cashBackMinor
+        if (cash == null && !params.unreferencedRefund && !params.audioGuidance) return true
+        val payment =
             setups
                 .current()
-                .settings.payment.unreferencedRefunds
-        return current.identity == confirmed && current.permits(params.amountMinor, params.currency, context)
+                .settings.payment
+        val cashback =
+            cash == null || (
+                payment.cashback.identity == cashbackIdentity &&
+                    payment.cashback.permits(cash, params.amountMinor, params.currency, context)
+            )
+        val refund =
+            !params.unreferencedRefund || (
+                payment.unreferencedRefunds.identity == unreferencedIdentity &&
+                    payment.unreferencedRefunds.permits(params.amountMinor, params.currency, context)
+            )
+        return cashback && refund && (!params.audioGuidance || payment.audioGuidance)
     }
 
     // Whether [destination] cannot carry what [params] select: audio guidance for another or unsupported terminal, gift
@@ -543,6 +568,7 @@ class TerminalGateway(
     suspend fun diagnose(): TerminalConnection {
         val connection = connection()
         return candidates.diagnose(connection).also { result ->
+            if (connection is Connection.Open) rememberSoftware(connection, (result as? TerminalConnection.Connected)?.diagnosis)
             if (connection is Connection.Open && result is TerminalConnection.Connected && !result.setupOnly) {
                 printers.update { it + (connection.client.identity.poiId to result.diagnosis.hasPrinter) }
             }
@@ -669,6 +695,7 @@ class TerminalGateway(
         expected: PaymentContext? = null,
         expectedIdentity: String? = null,
         authorized: suspend () -> Boolean = { true },
+        supported: suspend (Connection.Open) -> Boolean = { true },
         call: suspend (Connection.Open) -> TransactionOutcome,
     ): Attempt<TransactionOutcome> =
         attempt(paying, expectedIdentity, unreachable = { TransactionOutcome.NotProcessed(it) }) { open ->
@@ -677,8 +704,13 @@ class TerminalGateway(
             } else {
                 onContext(open.context())
                 onSending(open.client.identity.poiId)
-                if (!authorized()) return@attempt Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
-                val outcome = call(open)
+                // Checks awaiting the terminal must finish before rechecking setup and approval.
+                val compatible = supported(open)
+                setups.SetupFence(open.origin, SetupFreshness.SECRETS).changed()?.let {
+                    return@attempt Attempt.NotSetUp(it)
+                }
+                if (compatible && !authorized()) return@attempt Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
+                val outcome = if (compatible) call(open) else TransactionOutcome.NotProcessed(Fault.Unsupported)
                 onContext(open.context())
                 Attempt.Made(outcome) { open.acknowledge(serviceId) }
             }

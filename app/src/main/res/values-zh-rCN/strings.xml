@@ -909,6 +909,8 @@
   <string name="capability_status_configured">已在 Adyen 配置</string>
   <string name="settings_unavailable_tap_to_pay">使用 Tap to Pay 时不可用。</string>
   <string name="settings_unavailable_destination">此收款目标不可用。</string>
+  <string name="settings_software_check_required">请在设置 › 支付终端中检查连接，以确认软件是否支持此功能。</string>
+  <string name="settings_software_required">需要支付终端软件%1$s或更高版本。已安装：%2$s。</string>
   <string name="capability_group_shopper">小费与顾客互动</string>
   <string name="capability_group_receipts">收据与扫描</string>
   <string name="capability_group_terminal">终端与结果恢复</string>

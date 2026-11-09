@@ -702,7 +702,11 @@ private fun splitViewModel(
                     }.takeIf { terminal.capabilities.giftCards }
                     .orEmpty()
             },
-            combine(container.settingsState, container.walletDiscovery.state) { settings, discovery ->
+            combine(
+                container.settingsState,
+                container.walletDiscovery.state,
+                container.terminalStatus.state,
+            ) { settings, discovery, terminal ->
                 { currency: String ->
                     MealVoucherAvailability(
                         configured = settings.payment.mealVouchers,
@@ -710,7 +714,7 @@ private fun splitViewModel(
                         context = discovery.context,
                         identity = discovery.identity,
                         simulated = discovery.simulated,
-                        accountSelection = settings.payment.mealVoucherAccountSelection,
+                        accountSelection = settings.payment.mealVoucherAccountSelection && terminal.mealVoucherAccountAvailable,
                     )
                 }
             },

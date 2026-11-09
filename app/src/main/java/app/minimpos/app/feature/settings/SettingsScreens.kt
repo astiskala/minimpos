@@ -814,11 +814,11 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.PAYMENTS -> {
-            PaymentsSection(state, terminal.capabilities, events, opening.setting, currencyOffer)
+            PaymentsSection(state, terminal, events, opening.setting, currencyOffer)
         }
 
         SettingsSections.TIPPING -> {
-            TippingSection(state.settings.payment, terminal.capabilities, events::onPaymentUpdate, opening.setting)
+            TippingSection(state.settings.payment, terminal, events::onPaymentUpdate, opening.setting)
         }
 
         SettingsSections.SHOPPER_DISPLAY -> {

@@ -72,6 +72,7 @@ data class ShopperPromptTexts(
  * @property sessionRevision Revision of the coherent session snapshot; null for a checkout made without a session.
  * @property wallets Explicitly configured scanned wallets for this currency; empty when unavailable.
  * @property terminalTippingAvailable Whether the destination supports native terminal tipping (`AskGratuity`).
+ * @property terminalTipOptionsAvailable Whether verified terminal software supports dynamic or pre-tax tip overrides.
  * @property shopperDisplayAvailable Whether the destination supports shopper-facing terminal display and input requests.
  * @property shopperTexts App-localized terminal prompts; required when [shopperDisplayAvailable].
  * @property emailOnTerminal Whether the terminal asks for an email when none was entered
@@ -96,6 +97,7 @@ data class Checkout(
     internal val sessionRevision: Long? = null,
     val wallets: List<ScanWallet> = emptyList(),
     val terminalTippingAvailable: Boolean = true,
+    val terminalTipOptionsAvailable: Boolean = false,
     val shopperDisplayAvailable: Boolean = false,
     val shopperTexts: ShopperPromptTexts? = null,
     val emailOnTerminal: Boolean = false,
@@ -317,7 +319,7 @@ data class Checkout(
             totals.amounts.net.takeIf {
                 payment.tipOnPreTax && payment.chargeTax && it in 1..<totals.amounts.gross
             }
-        if (!payment.dynamicTipOverride && preTaxAmount == null) return TerminalTipOptions()
+        if (!terminalTipOptionsAvailable || (!payment.dynamicTipOverride && preTaxAmount == null)) return TerminalTipOptions()
         val suggestions =
             if (payment.dynamicTipOverride && totals.amounts.gross < payment.lowBasketThresholdMinor) {
                 TerminalTipSuggestions.FixedAmounts(payment.fixedTipAmountsMinor, payment.allowCustomTip)

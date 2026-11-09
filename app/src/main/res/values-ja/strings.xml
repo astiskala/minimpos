@@ -909,6 +909,8 @@
   <string name="capability_status_configured">Adyen で設定済み</string>
   <string name="settings_unavailable_tap_to_pay">Tap to Pay では利用できません。</string>
   <string name="settings_unavailable_destination">この決済先では利用できません。</string>
+  <string name="settings_software_check_required">設定 › 決済端末で接続を確認し、ソフトウェアの対応状況を確認してください。</string>
+  <string name="settings_software_required">決済端末ソフトウェア%1$s以降が必要です。インストール済み：%2$s。</string>
   <string name="capability_group_shopper">チップと購入者とのやり取り</string>
   <string name="capability_group_receipts">レシートとスキャン</string>
   <string name="capability_group_terminal">端末と結果の復旧</string>

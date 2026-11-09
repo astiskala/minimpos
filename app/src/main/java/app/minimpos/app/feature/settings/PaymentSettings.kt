@@ -15,7 +15,7 @@ import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.data.settings.UnreferencedRefundSettings
 import app.minimpos.app.feature.giftcard.entryLabel
 import app.minimpos.app.feature.giftcard.providerName
-import app.minimpos.app.terminal.DestinationCapabilities
+import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.Notice
 import app.minimpos.app.ui.components.NoticeKind
@@ -25,6 +25,7 @@ import app.minimpos.core.giftcard.GiftCardEntry
 import app.minimpos.core.giftcard.GiftCardProvider
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.shopper.EmailReferenceMode
+import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.app.data.settings.CashbackSettings as CashbackConfiguration
 
 /** Stores the payment settings with [transform] applied, through [SettingsEvents.onUpdate]. */
@@ -38,11 +39,12 @@ internal fun SettingsEvents.onPaymentUpdate(transform: (PaymentSettings) -> Paym
 @Composable
 internal fun ColumnScope.PaymentsSection(
     state: SettingsUiState,
-    capabilities: DestinationCapabilities,
+    terminal: TerminalState,
     events: SettingsEvents,
     target: String? = null,
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
+    val capabilities = terminal.capabilities
     val payment = state.settings.payment
     val update = events::onPaymentUpdate
     SectionHeader(stringResource(R.string.settings_pricing), Modifier.testTag("pricingHeader"))
@@ -80,7 +82,7 @@ internal fun ColumnScope.PaymentsSection(
         target = target,
         blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
     )
-    MarketSettings(payment, update, target)
+    MarketSettings(payment, terminal, update, target)
     CashbackSettings(payment, update, target)
     UnreferencedRefundSection(payment, update, target)
     SectionHeader(stringResource(R.string.settings_tokenization))
@@ -92,7 +94,7 @@ internal fun ColumnScope.PaymentsSection(
         Modifier.testTag("giftCardsHeader").settingAnchor("giftCardsHeader", target),
     )
     GiftCardSettings(payment, update)
-    AccessibilitySettings(payment, capabilities, update, target)
+    AccessibilitySettings(payment, terminal, update, target)
 }
 
 @Composable
@@ -120,7 +122,7 @@ private fun ColumnScope.PaymentReferences(
 @Composable
 private fun ColumnScope.AccessibilitySettings(
     payment: PaymentSettings,
-    capabilities: DestinationCapabilities,
+    terminal: TerminalState,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
     target: String?,
 ) {
@@ -132,7 +134,7 @@ private fun ColumnScope.AccessibilitySettings(
         subtitle = stringResource(R.string.settings_audio_guidance_hint),
         tag = "audioGuidanceSetting",
         target = target,
-        blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
+        blocked = terminalSoftwareBlocked(terminal, terminal.audioGuidanceMinimumSoftware),
     )
 }
 
@@ -143,6 +145,7 @@ private fun ColumnScope.AccessibilitySettings(
 @Composable
 private fun ColumnScope.MarketSettings(
     payment: PaymentSettings,
+    terminal: TerminalState,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
     target: String?,
 ) {
@@ -169,6 +172,7 @@ private fun ColumnScope.MarketSettings(
             { value -> update { it.copy(mealVoucherAccountSelection = value) } },
             subtitle = stringResource(R.string.voucher_account_description),
             tag = "mealVoucherAccountSelection",
+            blocked = terminalSoftwareBlocked(terminal, TerminalClient.MEAL_VOUCHER_MINIMUM_SOFTWARE),
         )
     }
 }

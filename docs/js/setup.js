@@ -218,7 +218,7 @@
     for (const group of form.querySelectorAll("fieldset[data-for], fieldset[data-mode], fieldset[data-email], fieldset[data-receipt-settings]")) {
       const wanted = !logoOnly() && (!group.dataset.for || group.dataset.for.split(" ").includes(destination())) &&
         (!group.dataset.env || group.dataset.env === environment()) &&
-        (!group.dataset.mode || group.dataset.mode === setupMode()) &&
+        (!group.dataset.mode || group.dataset.mode === setupMode() || (group.dataset.keyEntry && form.elements.keySource.value === "enter")) &&
         (!group.dataset.email || form.elements.includeSmtp.value === "yes") &&
         (!group.dataset.receiptSettings || form.elements.includeReceipt.value === "yes");
       group.hidden = !wanted;

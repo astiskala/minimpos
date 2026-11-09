@@ -181,7 +181,13 @@
             <p class="hint">端末のDevice info画面またはCustomer AreaのDevices › Terminalsで確認できます。</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
+          <fieldset data-for="thisTerminal network" data-mode="automatic">
+            <legend>共有キーの取得方法</legend>
+            <label class="choice"><input type="radio" name="keySource" value="lookup" checked> <span><strong>デバイスで検索する(推奨)</strong></span></label>
+            <label class="choice"><input type="radio" name="keySource" value="enter"> <span><strong>ここに入力する</strong>(デバイスで読み取れなかった場合)</span></label>
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual" data-key-entry="true">
             <legend>共有キー</legend>
             <p class="hint">Customer Area の
               <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">

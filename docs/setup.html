@@ -191,7 +191,13 @@
               </p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
+          <fieldset data-for="thisTerminal network" data-mode="automatic">
+            <legend>Where does the shared key come from?</legend>
+            <label class="choice"><input type="radio" name="keySource" value="lookup" checked> <span><strong>Look it up on the device (recommended)</strong></span></label>
+            <label class="choice"><input type="radio" name="keySource" value="enter"> <span><strong>Enter it here</strong>, if the device could not read it</span></label>
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual" data-key-entry="true">
             <legend>Shared key</legend>
             <p class="hint">In the Customer Area:
               <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">

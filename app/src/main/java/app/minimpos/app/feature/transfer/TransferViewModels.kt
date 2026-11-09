@@ -134,6 +134,7 @@ sealed interface ImportUiState {
      * @property wrongCode Whether the last code tried did not authenticate this transfer.
      * @property outcome Current typed validation or storage error; null before checking or after correction.
      * @property incomplete Whether required connection fields are missing and the helper must generate complete codes.
+     * @property keyUnread Whether Automatic setup could not read the shared key, which the helper can supply instead.
      * @property terminalChoices Eligible IDs offered only for an ambiguous destination; null when not selecting.
      * @property boardingRequired Whether explicit phone registration must run before this import can commit.
      * @property historySwitch Destructive history confirmation for this exact candidate; null before verification.
@@ -148,6 +149,7 @@ sealed interface ImportUiState {
         val wrongCode: Boolean = false,
         val outcome: ActionOutcome? = null,
         val incomplete: Boolean = false,
+        val keyUnread: Boolean = false,
         val terminalChoices: List<String>? = null,
         val boardingRequired: Boolean = false,
         /** Destructive environment-change confirmation; null until authenticated setup validation succeeds. */
@@ -360,7 +362,7 @@ class TransferImportViewModel(
             }
 
             is SetupImportOutcome.Terminals -> {
-                ready.copy(terminalChoices = result.ids, outcome = null)
+                ready.copy(terminalChoices = result.ids, outcome = null, keyUnread = false)
             }
 
             is SetupImportOutcome.HistoryConfirmation -> {
@@ -368,7 +370,7 @@ class TransferImportViewModel(
             }
 
             is SetupImportOutcome.KeyConfirmation -> {
-                ready.copy(sharedKeyOffer = result.offer, historySwitch = null, outcome = null, incomplete = false)
+                ready.copy(sharedKeyOffer = result.offer, historySwitch = null, outcome = null, incomplete = false, keyUnread = false)
             }
 
             SetupImportOutcome.BoardingRequired -> {
@@ -379,6 +381,7 @@ class TransferImportViewModel(
                 ready.copy(
                     outcome = ActionOutcome.Failed(result.failure),
                     incomplete = result.incomplete,
+                    keyUnread = result.keyUnread,
                     sharedKeyOffer = null,
                     historySwitch = null,
                     keyPending = result.keyPending,

@@ -189,7 +189,13 @@
               na Customer Area.</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
+          <fieldset data-for="thisTerminal network" data-mode="automatic">
+            <legend>De onde vem a chave compartilhada?</legend>
+            <label class="choice"><input type="radio" name="keySource" value="lookup" checked> <span><strong>Buscar no dispositivo (recomendado)</strong></span></label>
+            <label class="choice"><input type="radio" name="keySource" value="enter"> <span><strong>Inserir aqui</strong>, se o dispositivo não conseguiu ler</span></label>
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual" data-key-entry="true">
             <legend>Chave compartilhada</legend>
             <p class="hint">No Customer Area:
               <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">

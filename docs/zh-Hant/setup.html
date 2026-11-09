@@ -178,7 +178,13 @@
             <p class="hint">可在終端的 Device info 畫面或商戶後台的 Devices › Terminals 中查看。</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
+          <fieldset data-for="thisTerminal network" data-mode="automatic">
+            <legend>共享密鑰從哪裡取得?</legend>
+            <label class="choice"><input type="radio" name="keySource" value="lookup" checked> <span><strong>在裝置上查詢(建議)</strong></span></label>
+            <label class="choice"><input type="radio" name="keySource" value="enter"> <span><strong>在此輸入</strong>(裝置無法讀取時使用)</span></label>
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual" data-key-entry="true">
             <legend>共享密鑰</legend>
             <p class="hint">在商戶後台的
               <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">

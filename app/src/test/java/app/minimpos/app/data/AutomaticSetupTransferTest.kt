@@ -281,6 +281,24 @@ class AutomaticSetupTransferTest {
     }
 
     @Test
+    fun `a shared key supplied with Automatic setup is used without looking one up`() {
+        key = null
+        terminal.passphrase = "typed passphrase"
+        val received =
+            received(
+                """{"destination":"thisTerminal","automatic":true,"keyIdentifier":"typed","keyVersion":3}""",
+                """{"ADYEN_API_KEY":"imported-key","TERMINAL_PASSPHRASE":"typed passphrase"}""",
+            )
+        val outcome = await { env.container.setupImport.import(received, ImportMode.MERGE, code) }
+        assertThat(outcome).isInstanceOf(SetupImportOutcome.Committed::class.java)
+        assertThat(createdKeys).isEmpty()
+        val saved = await { env.container.settings.current() }.terminal
+        assertThat(saved.keyIdentifier).isEqualTo("typed")
+        assertThat(saved.keyVersion).isEqualTo(3)
+        assertThat(saved.merchantAccount).isEqualTo("Merchant")
+    }
+
+    @Test
     fun `wrong shared key fails connection before any active configuration changes`() {
         key = DiscoveredKey("store-key", 2, "wrong passphrase")
         val before = await { env.container.settings.current() }

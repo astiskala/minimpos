@@ -42,6 +42,7 @@ internal sealed interface SetupImportOutcome {
     data class Failed(
         val failure: Failure,
         val incomplete: Boolean = false,
+        val keyUnread: Boolean = false,
     ) : SetupImportOutcome {
         constructor(problem: SetupProblem, incomplete: Boolean = false) : this(Failure.NotSetUp(problem), incomplete)
 
@@ -224,13 +225,14 @@ class SetupImport internal constructor(
             is DiscoveredAssignment.Assigned -> {
                 val terminal = assignment.terminal
                 val assigned = applyAssignment(prepared, setup, terminal)
-                if (!prepared.received.automatic || !setup.needsSharedKey) {
+                val keySupplied = !prepared.received.connection?.keyIdentifier.isNullOrBlank()
+                if (!prepared.received.automatic || !setup.needsSharedKey || keySupplied) {
                     Step.Next(current.copy(prepared = assigned))
                 } else {
                     when (val found = management.sharedKey(terminal.id, environment)) {
                         is SharedKeyLookup.Found -> Step.Next(current.copy(prepared = assigned.withSharedKey(found.key)))
                         SharedKeyLookup.Missing -> Step.Next(Candidate(assigned, missingKey = true))
-                        is SharedKeyLookup.Failed -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(found.fault)))
+                        is SharedKeyLookup.Failed -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(found.fault), keyUnread = true))
                     }
                 }
             }

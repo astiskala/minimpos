@@ -664,6 +664,7 @@ private fun ImportReady(
                 }
             }
             if (state.incomplete) ActionMessage(stringResource(R.string.transfer_missing_fields), isError = true)
+            if (state.keyUnread) Notice(stringResource(R.string.transfer_key_enter_in_helper))
             if (state.boardingRequired) Notice(stringResource(R.string.transfer_board_first), kind = NoticeKind.WARNING)
             if (state.keyPending) Notice(stringResource(R.string.transfer_key_not_imported))
         }

@@ -364,6 +364,27 @@ class SetupHelperTest {
     }
 
     @Test
+    fun `Automatic carries a shared key only when the operator chooses to enter it`() {
+        field("destination", "thisTerminal")
+        field("setupMode", "automatic")
+        val entered = "return document.getElementById('keyIdentifier').closest('fieldset').hidden"
+        assertThat(script.executeScript(entered)).isEqualTo(true)
+        field("keySource", "enter")
+        assertThat(script.executeScript(entered)).isEqualTo(false)
+        field("keyIdentifier", "shared")
+        field("passphrase", "demo-passphrase")
+        field("keyVersion", "3")
+        submit()
+        ready()
+        assertThat(readTransfer())
+            .isEqualTo(
+                receiptUnchanged(
+                    """{"destination":"thisTerminal","automatic":true,"environment":"TEST","keyIdentifier":"shared","keyVersion":3}""",
+                ) to json("""{"TERMINAL_PASSPHRASE":"demo-passphrase","ADYEN_API_KEY":"demo-key"}"""),
+            )
+    }
+
+    @Test
     fun `Tap to Pay permits device key entry but physical Manual setup still requires key`() {
         field("destination", "tapToPay")
         field("keyVersion", "1")

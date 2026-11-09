@@ -39,7 +39,8 @@ enum class ConnectionDestination {
  * @property merchantAccount The merchant account the Checkout API (and the cloud) takes payments for.
  * @property liveUrlPrefix The live endpoint prefix for the Checkout API.
  * @property storeId The store Tap to Pay is set up for.
- * @property automatic Whether to continue optional setup lookup after importing the API key; never boards Tap to Pay.
+ * @property automatic Whether to continue optional setup lookup after importing the API key; never boards Tap to Pay. A
+ *   supplied [keyIdentifier] is used as it is, without looking up the shared key.
  * @property smtpHost SMTP server name; null or blank keeps the saved server.
  * @property smtpPort SMTP server port; null keeps the saved port, normalized by [SettingsRepository].
  * @property smtpSecurity SMTP connection security; null keeps the saved choice.

@@ -189,7 +189,13 @@
               Terminaux dans le Customer Area.</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
+          <fieldset data-for="thisTerminal network" data-mode="automatic">
+            <legend>D’où provient la clé partagée ?</legend>
+            <label class="choice"><input type="radio" name="keySource" value="lookup" checked> <span><strong>La rechercher sur l’appareil (recommandé)</strong></span></label>
+            <label class="choice"><input type="radio" name="keySource" value="enter"> <span><strong>La saisir ici</strong>, si l’appareil n’a pas pu la lire</span></label>
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual" data-key-entry="true">
             <legend>Clé partagée</legend>
             <p class="hint">Dans le Customer Area :
               <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">

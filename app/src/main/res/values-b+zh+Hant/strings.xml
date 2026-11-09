@@ -577,6 +577,7 @@
   <string name="transfer_register_phone">匯入時亦會設定 Tap to Pay。Mini mPOS 會為這部手機建立註冊憑據，並在需要註冊時開啟 Payments 應用程式。</string>
   <string name="transfer_business_failed">無法匯入商戶資訊。請重試，或在“設定 › 收據”中輸入。</string>
   <string name="transfer_missing_fields">設定不完整。請在手動設定助手中補充缺失資訊，再掃描新二維碼。</string>
+  <string name="transfer_key_enter_in_helper">Mini mPOS 無法從 Adyen 讀取共享密鑰。請在設定助手中保持「自動」，選擇「在此輸入」，再掃描新二維碼。</string>
   <string name="transfer_tap_checked">已檢查 Payments 應用程式註冊和設定。該應用程式無法通過連接檢查測試共享密鑰。</string>
   <string name="transfer_key_not_imported">已為終端建立密鑰，但設定尚未匯入。請重試，或稍後重新掃描同一組設定二維碼。取消不會刪除 Adyen 的密鑰。</string>
   <string name="scan_hint_qr">將相機對準二維碼</string>

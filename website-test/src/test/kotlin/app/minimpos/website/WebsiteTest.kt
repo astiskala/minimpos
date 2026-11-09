@@ -907,6 +907,9 @@ class WebsitePresentationTest {
             assertThat(apiKey.hasAttr("required")).isTrue()
             assertThat(apiKey.parent()!!.hasAttr("data-mode")).isFalse()
             assertThat(page.document.select("[data-automatic-for]")).isEmpty()
+            val keySources = page.document.select("input[name=keySource]")
+            assertThat(keySources.map { it.attr("value") }).containsExactly("lookup", "enter").inOrder()
+            assertThat(keySources.first()!!.hasAttr("checked")).isTrue()
             listOf("keyIdentifier", "passphrase", "keyVersion").forEach { id ->
                 assertThat(page.document.getElementById(id)!!.attr("data-required-for")).isEqualTo("thisTerminal network tapToPay")
             }

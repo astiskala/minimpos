@@ -260,6 +260,9 @@ internal interface TerminalSetupEvents {
     /** Reads key settings and retries connection verification without granting permission to PATCH. */
     fun onSharedKeyCheck()
 
+    /** Starts or stops checking a pending key again by itself ([TerminalSetupViewModel.followSharedKey]). */
+    fun onSharedKeyFollow(following: Boolean)
+
     /** Sets up Tap to Pay, provisioning its credential automatically ([TerminalSetupViewModel.setUpTapToPay]). */
     fun onTapToPaySetUp(again: Boolean)
 
@@ -371,6 +374,8 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
         override fun onSharedKeyConfirm(offer: SharedKeyOffer) = setup.createSharedKey(offer)
 
         override fun onSharedKeyCheck() = setup.checkSharedKey()
+
+        override fun onSharedKeyFollow(following: Boolean) = setup.followSharedKey(following)
 
         override fun onTapToPaySetUp(again: Boolean) = setup.setUpTapToPay(again)
 

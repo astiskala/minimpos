@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -176,6 +177,10 @@ private fun ColumnScope.SharedKeyActions(
         }
     }
     if (setup.keyPending) {
+        DisposableEffect(Unit) {
+            events.onSharedKeyFollow(true)
+            onDispose { events.onSharedKeyFollow(false) }
+        }
         SettingActions {
             SecondaryButton(
                 stringResource(R.string.settings_shared_key_check_again),

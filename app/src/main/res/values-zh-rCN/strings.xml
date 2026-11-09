@@ -1323,7 +1323,7 @@
   <string name="setup_store_access">无法读取已分配的门店。请检查门店访问权限；不会使用其他门店。</string>
   <string name="setup_changed">验证期间设置已更改。请使用当前设置重试。</string>
   <string name="setup_key_update_title">更新终端配置</string>
-  <string name="setup_key_connection_pending">新密钥已保存。请更新此终端的配置：打开“Admin menu › Config › Update”。完成后返回 Mini mPOS，点按“再次检查”以完成设置。</string>
+  <string name="setup_key_connection_pending">新密钥已保存。请更新此终端的配置：打开“Settings › Configuration”，输入密码并选择“Update”。旧版菜单为“Admin menu › Config › Update”。Mini mPOS 会持续检查，直到设置完成。</string>
   <string name="setup_key_recovery_unreadable">无法读取待完成的密钥设置。创建其他密钥前，请获取现有密钥或联系 Adyen 支持团队。</string>
   <string name="setup_key_creation_unconfirmed">尚未确认密钥创建结果。请继续密钥设置，先读取 Adyen 设置再重试。</string>
   <string name="setup_printer">没有可用的打印机。请检查“设置 › 收据”中的“打印机”，使用模拟器时请检查“设置 › 模拟器”。</string>

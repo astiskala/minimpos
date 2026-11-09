@@ -1323,7 +1323,7 @@
   <string name="setup_store_access">割り当てられた店舗を読み取れませんでした。店舗へのアクセス権を確認してください。他の店舗は使用しません。</string>
   <string name="setup_changed">確認中に設定が変更されました。現在の設定で再試行してください。</string>
   <string name="setup_key_update_title">端末の設定を更新</string>
-  <string name="setup_key_connection_pending">新しいキーを保存しました。この端末で「Admin menu › Config › Update」を開き、設定を更新してください。完了後、Mini mPOS に戻り「もう一度確認」をタップして設定を完了します。</string>
+  <string name="setup_key_connection_pending">新しいキーを保存しました。この端末で「Settings › Configuration」を開き、パスコードを入力して「Update」を選択してください。旧メニューでは「Admin menu › Config › Update」です。設定が完了するまで Mini mPOS が確認を続けます。</string>
   <string name="setup_key_recovery_unreadable">保存途中のキー設定を読み取れませんでした。別のキーを作成する前に既存のキーを取得するか、Adyen サポートへお問い合わせください。</string>
   <string name="setup_key_creation_unconfirmed">キー作成の結果は未確認です。キー設定を再開して Adyen の設定を読み取ってから再試行してください。</string>
   <string name="setup_printer">使用できるプリンターがありません。「設定 › 領収書」の「プリンター」を確認してください。シミュレーター使用時は「設定 › シミュレーター」を確認してください。</string>

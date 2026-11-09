@@ -28,12 +28,15 @@ import app.minimpos.core.codec.TransferFormatException
 import app.minimpos.core.ids.Ids
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * What the export screen shows: first the choice of what to share, then the QR codes.
@@ -211,6 +214,7 @@ class TransferImportViewModel(
     private var selectedTerminal: String? = null
     private var confirmedHistory: HistorySwitchPlan? = null
     private var confirmedAccount: String? = null
+    private var keyFollow: Job? = null
 
     init {
         retryRecovery()
@@ -321,6 +325,20 @@ class TransferImportViewModel(
             confirmedAccount = mismatch.assigned
             import()
         }
+    }
+
+    /** While [following], tries a pending key's import again every few seconds, so the operator need not come back and tap. */
+    fun followPendingKey(following: Boolean) {
+        keyFollow?.cancel()
+        keyFollow =
+            if (following) {
+                viewModelScope.launch {
+                    delay(KEY_RECHECK)
+                    if ((state.value as? ImportUiState.Ready)?.keyPending == true) import()
+                }
+            } else {
+                null
+            }
     }
 
     /** Reviews permanent history loss for this import; cancellation leaves current settings and history untouched. */
@@ -438,3 +456,5 @@ class TransferImportViewModel(
     private fun updateReady(transform: (ImportUiState.Ready) -> ImportUiState.Ready) =
         state.update { if (it is ImportUiState.Ready) transform(it) else it }
 }
+
+private val KEY_RECHECK = 15.seconds

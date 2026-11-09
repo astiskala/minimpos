@@ -25,13 +25,17 @@ import app.minimpos.app.terminal.TapToPayCheck
 import app.minimpos.app.terminal.TapToPayOutcome
 import app.minimpos.app.terminal.TapToPaySetup
 import app.minimpos.app.terminal.TerminalStatus
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Where the search for terminals in the cloud and the Tap to Pay setup stand.
@@ -109,6 +113,8 @@ class TerminalSetupViewModel(
     private val observedTerminal: Flow<TerminalSettings> = settings.settings.map { it.terminal },
     private val onConnected: suspend () -> Unit = {},
 ) : ViewModel() {
+    private var keyFollow: Job? = null
+
     /** Outcomes of the latest actions. */
     val actions: StateFlow<TerminalSetupActions>
         field = MutableStateFlow(TerminalSetupActions())
@@ -247,6 +253,22 @@ class TerminalSetupViewModel(
         keyAction(offer)
     }
 
+    /** While [following], checks a pending key again every few seconds, so the operator need not come back and tap. */
+    fun followSharedKey(following: Boolean) {
+        keyFollow?.cancel()
+        keyFollow =
+            if (following) {
+                viewModelScope.launch {
+                    while (isActive) {
+                        delay(KEY_RECHECK)
+                        checkSharedKey()
+                    }
+                }
+            } else {
+                null
+            }
+    }
+
     /** Reads existing settings and checks communication again; any required PATCH needs a new explicit confirmation. */
     fun checkSharedKey() = keyAction(null)
 
@@ -360,3 +382,5 @@ class TerminalSetupViewModel(
         })
     }
 }
+
+private val KEY_RECHECK = 10.seconds

@@ -1337,7 +1337,7 @@
   <string name="setup_store_access">Impossible de lire les données du magasin attribué. Vérifiez l’accès au magasin ; aucun autre magasin ne sera utilisé.</string>
   <string name="setup_changed">Paramètres modifiés lors de la vérification. Réessayez avec la configuration actuelle.</string>
   <string name="setup_key_update_title">Mettre à jour la configuration du terminal</string>
-  <string name="setup_key_connection_pending">La nouvelle clé est enregistrée. Mettez à jour la configuration de ce terminal : ouvrez le menu Admin › Config › Mettre à jour. Une fois terminé, revenez à Mini mPOS et appuyez à nouveau sur Vérifier pour terminer la configuration.</string>
+  <string name="setup_key_connection_pending">La nouvelle clé est enregistrée. Mettez à jour la configuration de ce terminal : ouvrez Réglages › Configuration, saisissez le code et sélectionnez Mettre à jour. Sur les menus plus anciens : menu Admin › Config › Mettre à jour. Mini mPOS continue de vérifier jusqu’à la fin de la configuration.</string>
   <string name="setup_key_recovery_unreadable">La configuration de clé en attente n’a pas pu être lue. Récupérez une clé existante ou contactez le support Adyen avant d’en créer une autre.</string>
   <string name="setup_key_creation_unconfirmed">La création de la clé n’est pas confirmée. Reprenez la configuration de la clé pour lire les paramètres Adyen avant de réessayer.</string>
   <string name="setup_printer">Aucune imprimante n’est disponible. Vérifiez l’imprimante dans Paramètres › Reçus ou dans Paramètres › Simulateur lors de la simulation.</string>

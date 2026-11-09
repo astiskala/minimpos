@@ -1330,7 +1330,7 @@
   <string name="setup_store_access">The assigned store could not be read. Check store access; another store will not be used.</string>
   <string name="setup_changed">Settings changed during verification. Retry with the current setup.</string>
   <string name="setup_key_update_title">Update terminal config</string>
-  <string name="setup_key_connection_pending">The new key is saved. Update this terminal’s config: open Admin menu › Config › Update. When finished, return to Mini mPOS and tap Check again to complete setup.</string>
+  <string name="setup_key_connection_pending">The new key is saved. Update this terminal’s config: open Settings › Configuration, enter the passcode and select Update. On older menus: Admin menu › Config › Update. Mini mPOS keeps checking until setup completes.</string>
   <string name="setup_key_recovery_unreadable">Pending key setup could not be read. Retrieve an existing key or contact Adyen Support before creating another.</string>
   <string name="setup_key_creation_unconfirmed">Key creation is unconfirmed. Resume key setup to read Adyen settings before retrying.</string>
   <string name="setup_printer">No printer is available. Check Printer in Settings › Receipts, or in Settings › Simulator when simulating.</string>

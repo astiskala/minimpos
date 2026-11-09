@@ -311,6 +311,12 @@ fun TransferImportScreen(
     val importing = state == ImportUiState.Importing
     val snackbar = remember { SnackbarHostState() }
     ImportNavigation(state, snackbar)
+    if ((state as? ImportUiState.Ready)?.keyPending == true) {
+        DisposableEffect(Unit) {
+            vm.followPendingKey(true)
+            onDispose { vm.followPendingKey(false) }
+        }
+    }
     MiniScaffold(
         title = stringResource(R.string.settings_quick_setup_import),
         onBack = ::back.takeUnless { importing },

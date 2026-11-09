@@ -1323,7 +1323,7 @@
   <string name="setup_store_access">無法讀取已分配的店舖。請檢查店舖存取權限；不會使用其他店舖。</string>
   <string name="setup_changed">驗證期間設定已更改。請使用目前設定重試。</string>
   <string name="setup_key_update_title">更新終端設定</string>
-  <string name="setup_key_connection_pending">新密鑰已儲存。請更新此終端的設定：打開“Admin menu › Config › Update”。完成後返回 Mini mPOS，點按“再次檢查”以完成設定。</string>
+  <string name="setup_key_connection_pending">新密鑰已儲存。請更新此終端的設定：打開“Settings › Configuration”，輸入密碼並選擇“Update”。舊版選單為“Admin menu › Config › Update”。Mini mPOS 會持續檢查，直到設定完成。</string>
   <string name="setup_key_recovery_unreadable">無法讀取待完成的密鑰設定。建立其他密鑰前，請取得現有密鑰或聯絡 Adyen 支援團隊。</string>
   <string name="setup_key_creation_unconfirmed">尚未確認密鑰建立結果。請繼續密鑰設定，先讀取 Adyen 設定再重試。</string>
   <string name="setup_printer">沒有可用的打印機。請檢查“設定 › 收據”中的“打印機”，使用模擬器時請檢查“設定 › 模擬器”。</string>

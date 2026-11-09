@@ -6,6 +6,7 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.ConnectionSetup
+import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.transfer.ConnectedTerminal
 import app.minimpos.app.data.transfer.ImportOutcome
 import app.minimpos.app.data.transfer.PreparedTransfer
@@ -48,6 +49,7 @@ internal sealed interface SetupImportOutcome {
         val failure: Failure,
         val incomplete: Boolean = false,
         val keyUnread: Boolean = false,
+        val terminalHost: String? = null,
     ) : SetupImportOutcome {
         constructor(problem: SetupProblem, incomplete: Boolean = false) : this(Failure.NotSetUp(problem), incomplete)
 
@@ -100,6 +102,7 @@ class SetupImport internal constructor(
         confirmedHistorySwitch: HistorySwitchPlan? = null,
         confirmedKey: SharedKeyOffer? = null,
         confirmedAccount: String? = null,
+        host: String? = null,
     ): SetupImportOutcome =
         mutex.withLock {
             if (busy()) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
@@ -107,7 +110,7 @@ class SetupImport internal constructor(
             val prepared = transfer.prepare(received, code) ?: return@withLock SetupImportOutcome.Committed(ImportOutcome.WrongCode)
             if (!prepared.original.acceptsSetupImport) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
             try {
-                val choices = Choices(terminalId, board, confirmedHistorySwitch, confirmedKey, confirmedAccount)
+                val choices = Choices(terminalId, board, confirmedHistorySwitch, confirmedKey, confirmedAccount, host)
                 val verified =
                     when (val step = verify(prepared, choices)) {
                         is Step.Halted -> return@withLock step.outcome
@@ -160,6 +163,7 @@ class SetupImport internal constructor(
         val confirmedHistory: HistorySwitchPlan?,
         val confirmedKey: SharedKeyOffer?,
         val confirmedAccount: String?,
+        val host: String?,
     )
 
     private data class Candidate(
@@ -191,7 +195,7 @@ class SetupImport internal constructor(
         if (!initial.changesSetup || candidate(initial).setup.apiSetup == ApiSetup.Simulated) return Step.Next(start)
         return environment(start)
             .andThen { credential(it) }
-            .andThen { discovery(it, choices.terminalId, choices.confirmedAccount) }
+            .andThen { discovery(it, choices.terminalId, choices.confirmedAccount, choices.host) }
             .andThen { requiredFields(it, allowMissingKey = it.missingKey) }
             .andThen { checkout(it) }
             .andThen { phone(it, choices.board || initial.received.hasConnection, choices.confirmedHistory) }
@@ -224,6 +228,7 @@ class SetupImport internal constructor(
         current: Candidate,
         selected: String?,
         confirmedAccount: String?,
+        host: String?,
     ): Step {
         val prepared = current.prepared
         val unlocked = candidate(prepared)
@@ -249,12 +254,12 @@ class SetupImport internal constructor(
             }
 
             is DiscoveredAssignment.Assigned -> {
-                assigned(current, setup, assignment.terminal, management)
+                assigned(current, setup, assignment.terminal, management, host)
             }
 
             is DiscoveredAssignment.Mismatched -> {
                 if (assignment.terminal.merchantAccount == confirmedAccount) {
-                    assigned(current, setup, assignment.terminal, management)
+                    assigned(current, setup, assignment.terminal, management, host)
                 } else {
                     Step.Halted(SetupImportOutcome.AccountDiffers(AccountMismatch(assignment.entered, assignment.terminal.merchantAccount)))
                 }
@@ -267,9 +272,10 @@ class SetupImport internal constructor(
         setup: TerminalSetup,
         terminal: TerminalDetails,
         management: SharedKeyApi,
+        host: String?,
     ): Step {
         val prepared = current.prepared
-        val assigned = applyAssignment(prepared, setup, terminal)
+        val assigned = applyAssignment(prepared, setup, terminal, host)
         val keySupplied =
             !prepared.received.connection
                 ?.keyIdentifier
@@ -286,6 +292,7 @@ class SetupImport internal constructor(
         prepared: PreparedTransfer,
         setup: TerminalSetup,
         terminal: TerminalDetails,
+        host: String?,
     ): PreparedTransfer {
         val current = prepared.settings.terminal
         return prepared.withTerminal(
@@ -294,7 +301,7 @@ class SetupImport internal constructor(
                 storeId = terminal.storeId,
                 poiIdOverride = if (setup.onTerminal) current.poiIdOverride else terminal.id,
                 host =
-                    if (prepared.received.automatic && setup.host != TerminalSetup.LOCALHOST &&
+                    host ?: if (prepared.received.automatic && setup.host != TerminalSetup.LOCALHOST &&
                         setup.needsSharedKey
                     ) {
                         terminal.host
@@ -426,7 +433,9 @@ class SetupImport internal constructor(
             }
 
             is TerminalConnection.Failed -> {
-                Step.Halted(SetupImportOutcome.Failed(connection.failure))
+                val setup = unlocked.setup
+                val networkHost = setup.host.takeIf { setup.mode == TerminalMode.TERMINAL && !setup.onTerminal }
+                Step.Halted(SetupImportOutcome.Failed(connection.failure, terminalHost = networkHost))
             }
 
             // A candidate check always settles; anything else is unexpected.

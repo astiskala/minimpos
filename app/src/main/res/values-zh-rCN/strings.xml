@@ -579,6 +579,7 @@
   <string name="transfer_business_failed">无法导入商家信息。请重试，或在“设置 › 收据”中输入。</string>
   <string name="transfer_missing_fields">设置不完整。请在手动设置助手中补充缺失信息，再扫描新二维码。</string>
   <string name="transfer_key_enter_in_helper">Mini mPOS 无法从 Adyen 读取共享密钥。请在设置助手中保持“自动”，选择“在此输入”，再扫描新二维码。</string>
+  <string name="transfer_host_fix_hint">请在终端的设备信息屏幕上核对 IP 地址，在此更正后重试。</string>
   <string name="transfer_tap_checked">已检查 Payments 应用注册和设置。该应用无法通过连接检查测试共享密钥。</string>
   <string name="transfer_key_not_imported">已为终端创建密钥，但设置尚未导入。请重试，或稍后重新扫描同一组设置二维码。取消不会删除 Adyen 的密钥。</string>
   <string name="scan_hint_qr">将摄像头对准二维码</string>

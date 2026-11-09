@@ -140,6 +140,7 @@ sealed interface ImportUiState {
      * @property outcome Current typed validation or storage error; null before checking or after correction.
      * @property incomplete Whether required connection fields are missing and the helper must generate complete codes.
      * @property keyUnread Whether Automatic setup could not read the shared key, which the helper can supply instead.
+     * @property terminalHost The network terminal's address, to correct and retry after a failed connection; null otherwise.
      * @property terminalChoices Eligible terminals offered only for an ambiguous destination; null when not selecting.
      * @property accountMismatch A terminal assigned to another merchant account, for the operator to accept; null otherwise.
      * @property boardingRequired Whether explicit phone registration must run before this import can commit.
@@ -156,6 +157,7 @@ sealed interface ImportUiState {
         val outcome: ActionOutcome? = null,
         val incomplete: Boolean = false,
         val keyUnread: Boolean = false,
+        val terminalHost: String? = null,
         val terminalChoices: List<SetupTerminalChoice>? = null,
         val accountMismatch: AccountMismatch? = null,
         val boardingRequired: Boolean = false,
@@ -317,6 +319,9 @@ class TransferImportViewModel(
         }
     }
 
+    /** Changes the network terminal's address tried by the next attempt; ignored unless one is offered for correction. */
+    fun setTerminalHost(host: String) = updateReady { if (it.terminalHost == null) it else it.copy(terminalHost = host) }
+
     /** Accepts the terminal's merchant account for this import and verifies again, or leaves the import as it is. */
     fun reviewAccount(accept: Boolean) {
         val mismatch = (state.value as? ImportUiState.Ready)?.accountMismatch ?: return
@@ -380,6 +385,7 @@ class TransferImportViewModel(
                 confirmedHistorySwitch ?: confirmedHistory,
                 confirmedKey,
                 confirmedAccount,
+                ready.terminalHost?.trim()?.ifBlank { null },
             )
         }) { result ->
             state.value = finished(ready, result)
@@ -420,6 +426,7 @@ class TransferImportViewModel(
                     outcome = ActionOutcome.Failed(result.failure),
                     incomplete = result.incomplete,
                     keyUnread = result.keyUnread,
+                    terminalHost = result.terminalHost ?: ready.terminalHost.takeIf { result.failure is Failure.Remote },
                     sharedKeyOffer = null,
                     historySwitch = null,
                     keyPending = result.keyPending,

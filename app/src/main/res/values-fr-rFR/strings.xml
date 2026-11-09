@@ -583,6 +583,7 @@
   <string name="transfer_business_failed">Les détails de l’entreprise n’ont pas pu être importés. Réessayez ou saisissez-les dans Paramètres › Reçus.</string>
   <string name="transfer_missing_fields">La configuration est incomplète. Ajoutez les détails manquants dans l’assistant de configuration manuelle et scannez les nouveaux codes.</string>
   <string name="transfer_key_enter_in_helper">Mini mPOS n’a pas pu lire la clé partagée auprès d’Adyen. Dans l’assistant de configuration, gardez Automatique, choisissez La saisir ici et scannez les nouveaux codes.</string>
+  <string name="transfer_host_fix_hint">Vérifiez l’adresse IP sur l’écran d’informations de l’appareil du terminal, corrigez-la ici et réessayez.</string>
   <string name="transfer_tap_checked">Enregistrement et configuration de l’application Adyen Payments vérifiés. L’application ne peut pas tester la clé partagée avec une vérification de connexion.</string>
   <string name="transfer_key_not_imported">La clé a été créée pour le terminal. La configuration n’a pas été importée. Réessayez ou scannez à nouveau les mêmes codes de configuration plus tard. L’annulation ne supprime pas la clé chez Adyen.</string>
   <string name="scan_hint_qr">Pointez la caméra vers le code QR</string>

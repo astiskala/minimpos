@@ -586,6 +586,26 @@ class AutomaticSetupTransferTest {
     }
 
     @Test
+    fun `a stale network address can be corrected without new codes`() {
+        env.close()
+        env =
+            TestEnvironment(
+                FakeDevice(),
+                terminal = terminal,
+                terminalDetails = details,
+                stores = storeDetails,
+                verifiedSetup = false,
+            )
+        terminal.unreachableHosts = setOf("192.168.1.42")
+        val received = received("""{"destination":"network","environment":"TEST","automatic":true}""")
+        val failed = await { env.container.setupImport.import(received, ImportMode.MERGE, code) } as SetupImportOutcome.Failed
+        assertThat(failed.terminalHost).isEqualTo("192.168.1.42")
+        val outcome = await { env.container.setupImport.import(received, ImportMode.MERGE, code, host = "192.168.1.99") }
+        assertThat(outcome).isInstanceOf(SetupImportOutcome.Committed::class.java)
+        assertThat(await { env.container.settings.current() }.terminal.host).isEqualTo("192.168.1.99")
+    }
+
+    @Test
     fun `terminal selector writes nothing until a terminal is chosen`() {
         env.close()
         env =

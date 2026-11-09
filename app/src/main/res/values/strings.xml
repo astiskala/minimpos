@@ -581,6 +581,7 @@
   <string name="transfer_business_failed">Business details could not be imported. Retry or enter them in Settings › Receipts.</string>
   <string name="transfer_missing_fields">Setup is incomplete. Add the missing details in the Manual setup helper and scan the new codes.</string>
   <string name="transfer_key_enter_in_helper">Mini mPOS could not read the shared key from Adyen. In the setup helper, keep Automatic, choose Enter it here and scan the new codes.</string>
+  <string name="transfer_host_fix_hint">Check the IP address on the terminal’s Device info screen, correct it here and try again.</string>
   <string name="transfer_tap_checked">Payments app registration and setup checked. The app cannot test the shared key with a connection check.</string>
   <string name="transfer_key_not_imported">The key was created for the terminal. Setup was not imported. Retry, or rescan the same setup codes later. Canceling does not remove the key at Adyen.</string>
   <string name="scan_hint_qr">Point the camera at the QR code</string>

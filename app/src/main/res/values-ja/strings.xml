@@ -579,6 +579,7 @@
   <string name="transfer_business_failed">店舗情報をインポートできませんでした。再試行するか、「設定 › 領収書」で入力してください。</string>
   <string name="transfer_missing_fields">設定が不完全です。手動設定ヘルパーで不足する情報を追加し、新しいコードを読み取ってください。</string>
   <string name="transfer_key_enter_in_helper">Mini mPOS は Adyen から共有キーを読み取れませんでした。設定ヘルパーで自動のまま「ここに入力する」を選び、新しいコードを読み取ってください。</string>
+  <string name="transfer_host_fix_hint">端末のデバイス情報画面で IP アドレスを確認し、ここで修正してもう一度お試しください。</string>
   <string name="transfer_tap_checked">Paymentsアプリの登録と設定を確認しました。このアプリは接続確認で共有キーをテストできません。</string>
   <string name="transfer_key_not_imported">端末用のキーは作成済みですが、設定は未インポートです。再試行するか、後で同じ設定コードを再読み取りしてください。キャンセルしても Adyen のキーは削除されません。</string>
   <string name="scan_hint_qr">QRコードにカメラを向けてください</string>

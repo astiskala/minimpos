@@ -344,7 +344,7 @@ fun TransferImportScreen(
             }
         },
     ) { padding ->
-        val callbacks = remember(vm) { ImportContentEvents(vm::onCode, vm::setMode, vm::setCode) }
+        val callbacks = remember(vm) { ImportContentEvents(vm::onCode, vm::setMode, vm::setCode, vm::setTerminalHost) }
         if (introduction) {
             SetupCodesIntro(padding)
         } else {
@@ -411,6 +411,7 @@ private class ImportContentEvents(
     val scan: (String) -> Unit,
     val mode: (ImportMode) -> Unit,
     val code: (String) -> Unit,
+    val host: (String) -> Unit,
 )
 
 @Composable
@@ -426,7 +427,7 @@ private fun ImportContent(
         }
 
         is ImportUiState.Ready -> {
-            ImportReady(state, currency, events.mode, events.code, modifier)
+            ImportReady(state, currency, events, modifier)
         }
 
         ImportUiState.Importing -> {
@@ -618,8 +619,7 @@ private fun ImportScanning(
 private fun ImportReady(
     state: ImportUiState.Ready,
     currency: String,
-    onMode: (ImportMode) -> Unit,
-    onCode: (String) -> Unit,
+    events: ImportContentEvents,
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
@@ -644,7 +644,7 @@ private fun ImportReady(
                 connection = received.hasConnection,
                 logo = received.logo,
             )
-            if (received.hasSecrets) TransferCodeField(state.code, state.wrongCode, onCode)
+            if (received.hasSecrets) TransferCodeField(state.code, state.wrongCode, events.code)
             received.catalogue?.let { catalogue ->
                 if (!state.currencyMatches) {
                     Notice(
@@ -656,7 +656,7 @@ private fun ImportReady(
                         kind = NoticeKind.WARNING,
                     )
                 }
-                CatalogueModeChoice(state.mode, onMode)
+                CatalogueModeChoice(state.mode, events.mode)
             }
             if (received.hasSettings) Notice(stringResource(R.string.transfer_settings_note))
             state.outcome?.let {
@@ -669,6 +669,7 @@ private fun ImportReady(
                     ActionMessage(it.text(), isError = true)
                 }
             }
+            state.terminalHost?.let { TerminalHostField(it, events.host) }
             if (state.incomplete) ActionMessage(stringResource(R.string.transfer_missing_fields), isError = true)
             if (state.keyUnread) Notice(stringResource(R.string.transfer_key_enter_in_helper))
             if (state.boardingRequired) Notice(stringResource(R.string.transfer_board_first), kind = NoticeKind.WARNING)
@@ -715,6 +716,21 @@ private fun ConnectionPreview(received: ReceivedTransfer) {
         )
     }
 }
+
+/** The network terminal's address, offered once a connection failed, because Adyen's last reported address can be stale. */
+@Composable
+private fun TerminalHostField(
+    host: String,
+    onChange: (String) -> Unit,
+) = OutlinedTextField(
+    value = host,
+    onValueChange = onChange,
+    label = { Text(stringResource(R.string.settings_host)) },
+    supportingText = { Text(stringResource(R.string.transfer_host_fix_hint)) },
+    singleLine = true,
+    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+    modifier = Modifier.fillMaxWidth().testTag("importTerminalHost"),
+)
 
 /** Merge into this catalogue or replace it, as radio options with what each does. */
 @Composable

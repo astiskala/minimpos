@@ -227,6 +227,9 @@ class FakeTerminal(
     private val reply: suspend (TerminalAPIRequest) -> Delivery? = { null },
     var softwareVersion: String? = "1.137.0",
 ) {
+    /** Hosts nothing answers on, as at a stale address. */
+    var unreachableHosts: Set<String> = emptySet()
+
     /** Every host a transport was created for, in order (`localhost` when the app runs on the terminal). */
     val hosts = mutableListOf<String>()
 
@@ -240,6 +243,7 @@ class FakeTerminal(
         key: TerminalKey,
     ): TerminalTransport {
         hosts += host
+        if (host in unreachableHosts) return TerminalTransport { _, _ -> Delivery.Failed(Fault.Unreachable(host, terminal = true)) }
         return if (key.passphrase == passphrase) {
             object : TerminalTransport {
                 override suspend fun send(

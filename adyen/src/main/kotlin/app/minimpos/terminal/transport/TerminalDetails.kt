@@ -435,7 +435,7 @@ class AdyenTerminalDetails(
     ): SharedKeyLookup {
         val reply = http.get(settingsUrl(id, environment), TIMEOUT)
         if (reply !is AdyenReply.Answered || !reply.ok) return SharedKeyLookup.Failed(managementFault(reply))
-        val settings = decodeTerminalSettings(reply.body) ?: return SharedKeyLookup.Failed(Fault.Malformed(MalformedPart.SETTINGS))
+        val settings = decodeEncryptionKeySettings(reply.body) ?: return SharedKeyLookup.Failed(Fault.Malformed(MalformedPart.SETTINGS))
         return lookup(settings)
     }
 

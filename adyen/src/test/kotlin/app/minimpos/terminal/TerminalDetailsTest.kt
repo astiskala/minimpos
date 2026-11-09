@@ -347,10 +347,6 @@ class TerminalDetailsTest {
                 """{"nexo":{"encryptionKey":{"identifier":"existing","passphrase":"secret"}}}""" to Fault.Malformed(MalformedPart.KEY),
                 """{"nexo":{"encryptionKey":{"identifier":"existing","version":10000,"passphrase":"secret"}}}""" to
                     Fault.Malformed(MalformedPart.KEY_VERSION),
-                """{"nexo":{"unknownSetting":true}}""" to Fault.Malformed(MalformedPart.SETTINGS),
-                """{"nexo":{"notification":{"title":123}}}""" to Fault.Malformed(MalformedPart.SETTINGS),
-                """{"nexo":{"notification":{"enabled":"false"}}}""" to Fault.Malformed(MalformedPart.SETTINGS),
-                """{"nexo":{"notification":{"showButton":1}}}""" to Fault.Malformed(MalformedPart.SETTINGS),
             ).forEach { (body, reason) ->
                 reply(body)
                 assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(reason))
@@ -361,7 +357,35 @@ class TerminalDetailsTest {
             reply("{}", 403)
             assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
                 .isEqualTo(SharedKeyUpdate.Failed(Fault.Permission(ApiKey.ADYEN)))
-            assertThat(server.requestCount).isEqualTo(21)
+            assertThat(server.requestCount).isEqualTo(13)
+        }
+
+    @Test
+    fun `a nexo field this library does not know hides no key but still blocks creation`() =
+        runBlocking {
+            val key = """"encryptionKey":{"identifier":"existing","version":2,"passphrase":"secret"}"""
+            reply("""{"nexo":{"unknownSetting":true,$key}}""")
+            val found = api.sharedKey("ID", TerminalEnvironment.TEST) as SharedKeyLookup.Found
+            assertThat(found.key.identifier).isEqualTo("existing")
+            listOf(
+                """{"nexo":{"unknownSetting":true}}""",
+                """{"nexo":{"notification":{"title":123}}}""",
+                """{"nexo":{"notification":{"enabled":"false"}}}""",
+                """{"nexo":{"notification":{"showButton":1}}}""",
+            ).forEach { body ->
+                reply(body)
+                assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Missing)
+                reply(body)
+                assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
+                    .isEqualTo(SharedKeyUpdate.Failed(Fault.Malformed(MalformedPart.SETTINGS)))
+            }
+        }
+
+    @Test
+    fun `a malformed key value is still reported rather than read as missing`() =
+        runBlocking {
+            reply("""{"nexo":{"encryptionKey":{"identifier":123,"version":2,"passphrase":"secret"}}}""")
+            assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(Fault.Malformed(MalformedPart.SETTINGS)))
         }
 
     @Test

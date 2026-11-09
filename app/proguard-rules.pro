@@ -22,6 +22,7 @@
 -keep,allowoptimization,allowobfuscation class jakarta.ws.rs.core.GenericType
 -keep,allowoptimization,allowobfuscation class com.adyen.model.checkout.CheckoutPaymentMethod$* extends jakarta.ws.rs.core.GenericType
 -keep,allowoptimization,allowobfuscation interface app.minimpos.terminal.transport.NexoSettings
+-keep,allowoptimization,allowobfuscation interface app.minimpos.terminal.transport.EncryptionKeySettings
 -keep @interface com.fasterxml.jackson.annotation.JsonIncludeProperties { *; }
 # The library's default Apache HttpClient is excluded (it does not run on Android); TerminalHttpClient replaces it.
 -dontwarn org.apache.hc.**

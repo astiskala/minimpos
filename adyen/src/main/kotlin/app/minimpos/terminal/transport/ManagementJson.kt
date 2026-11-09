@@ -3,6 +3,7 @@ package app.minimpos.terminal.transport
 import com.adyen.model.checkout.JSON
 import com.adyen.model.management.DefaultErrorResponseEntity
 import com.adyen.model.management.MeApiCredential
+import com.adyen.model.management.Nexo
 import com.adyen.model.management.TerminalSettings
 import com.fasterxml.jackson.annotation.JsonIncludeProperties
 import com.fasterxml.jackson.core.JsonParser
@@ -13,6 +14,7 @@ import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.JsonMappingException
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.cfg.CoercionAction
 import com.fasterxml.jackson.databind.cfg.CoercionInputShape
 import com.fasterxml.jackson.databind.module.SimpleDeserializers
@@ -114,10 +116,12 @@ internal fun decodeMeCredential(text: String): MeApiCredential? =
 @JsonIncludeProperties("nexo")
 private interface NexoSettings
 
-private val settingsMapper =
-    apiMapper.copy().apply {
-        addMixIn(TerminalSettings::class.java, NexoSettings::class.java)
-        enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+@JsonIncludeProperties("encryptionKey")
+private interface EncryptionKeySettings
+
+/** Values are read as what they claim to be, so a malformed value is never taken for a missing one. */
+private fun ObjectMapper.readingExactValues(): ObjectMapper =
+    apply {
         coercionConfigFor(LogicalType.Integer).setCoercion(CoercionInputShape.String, CoercionAction.Fail)
         coercionConfigFor(LogicalType.Boolean)
             .setCoercion(CoercionInputShape.String, CoercionAction.Fail)
@@ -140,9 +144,35 @@ private val settingsMapper =
         )
     }
 
-/** Reads official nexo settings strictly; unrelated sections are never sent in the shared-key PATCH. */
+private val settingsMapper =
+    apiMapper
+        .copy()
+        .apply {
+            addMixIn(TerminalSettings::class.java, NexoSettings::class.java)
+            enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        }.readingExactValues()
+
+private val encryptionKeyMapper =
+    apiMapper
+        .copy()
+        .apply {
+            addMixIn(TerminalSettings::class.java, NexoSettings::class.java)
+            addMixIn(Nexo::class.java, EncryptionKeySettings::class.java)
+        }.readingExactValues()
+
+/**
+ * Reads official nexo settings strictly, for the shared-key PATCH: it sends the nexo object back whole, so a field
+ * this library does not know would be lost. Unrelated sections are never sent.
+ */
 internal fun decodeTerminalSettings(text: String): TerminalSettings? =
     runCatching { settingsMapper.readValue(text, TerminalSettings::class.java) }.getOrNull()
+
+/**
+ * Reads only `nexo.encryptionKey`, for a lookup that writes nothing: other nexo fields Adyen adds must not hide a
+ * readable key.
+ */
+internal fun decodeEncryptionKeySettings(text: String): TerminalSettings? =
+    runCatching { encryptionKeyMapper.readValue(text, TerminalSettings::class.java) }.getOrNull()
 
 /** Reads official terminal capability settings without failing on unrelated sections. */
 internal fun decodeCapabilitySettings(text: String): TerminalSettings? = decodeAdyenModel(text, TerminalSettings::class.java)

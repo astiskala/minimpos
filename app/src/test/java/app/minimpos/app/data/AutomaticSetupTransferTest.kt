@@ -145,6 +145,10 @@ class AutomaticSetupTransferTest {
         return env.container.setupTransfer.receive(protected)
     }
 
+    /** The key creation an import asks the operator to accept. */
+    private val SetupImportOutcome.keyOffer: SharedKeyOffer
+        get() = ((this as SetupImportOutcome.Asks).question as SetupQuestion.KeyConfirmation).offer
+
     private fun import(connection: String = """{"destination":"thisTerminal","automatic":true}"""): SetupImportOutcome =
         await { env.container.setupImport.import(received(connection), ImportMode.MERGE, code) }
 
@@ -691,7 +695,3 @@ class AutomaticSetupTransferTest {
         assertThat(active.paymentsAppInstallationId).isEmpty()
     }
 }
-
-/** The key creation an import asks the operator to accept. */
-private val SetupImportOutcome.keyOffer: SharedKeyOffer
-    get() = ((this as SetupImportOutcome.Asks).question as SetupQuestion.KeyConfirmation).offer

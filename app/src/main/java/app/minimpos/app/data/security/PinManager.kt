@@ -47,8 +47,8 @@ sealed interface PinCheck {
 /**
  * Admin PIN: stored as a salted PBKDF2-SHA256 verifier inside [SecretStore] (`v1:<iterations>:<salt>:<hash>`, Base64),
  * so the PIN itself is never stored. Every [MAX_ATTEMPTS] wrong attempts lock entry out, for [LOCKOUT_MILLIS] and then
- * twice as long each time (up to 32 times as long). The failure count is kept in memory only, so it starts over when
- * the app restarts.
+ * twice as long each time (up to 32 times as long). Wrong attempts and the lockout are kept with the secrets
+ * ([SecretStore.lockout]), so restarting the app or another instance for the same PIN does not reset them.
  */
 class PinManager(
     private val secrets: SecretStore,
@@ -64,8 +64,6 @@ class PinManager(
     val pinConfigured: Flow<Boolean> = secrets.configured.map { verifierSecret in it }
 
     private val mutex = Mutex()
-    private var failures = 0
-    private var lockedUntil = 0L
 
     /**
      * Sets a new PIN and clears any lockout.
@@ -81,8 +79,7 @@ class PinManager(
                 verifierSecret,
                 "v1:$iterations:${Base64.encode(salt)}:${Base64.encode(hash(pin, salt, iterations))}",
             )
-            failures = 0
-            lockedUntil = 0
+            secrets.setLockout(verifierSecret, PinLockout())
         }
 
     /** Removes the PIN, which leaves the admin area unprotected. */
@@ -95,7 +92,8 @@ class PinManager(
     suspend fun verify(pin: String): PinCheck =
         mutex.withLock {
             val now = clock()
-            if (now < lockedUntil) return@withLock PinCheck.LockedOut(lockedUntil)
+            val lockout = secrets.lockout(verifierSecret)
+            if (now < lockout.lockedUntil) return@withLock PinCheck.LockedOut(lockout.lockedUntil)
             if (verifierSecret !in secrets.configured.first()) return@withLock PinCheck.Accepted
             val stored = secrets.get(verifierSecret)?.takeIf(::isValidVerifier) ?: return@withLock PinCheck.Unreadable
             val parts = stored.split(':')
@@ -103,17 +101,18 @@ class PinManager(
                 parts.size == 4 &&
                     MessageDigest.isEqual(hash(pin, Base64.decode(parts[2]), parts[1].toInt()), Base64.decode(parts[3]))
             if (matches) {
-                failures = 0
+                if (lockout != PinLockout()) secrets.setLockout(verifierSecret, PinLockout())
                 return@withLock PinCheck.Accepted
             }
-            failures++
+            val failures = lockout.failures + 1
             if (failures % MAX_ATTEMPTS == 0) {
                 val round = failures / MAX_ATTEMPTS
-                lockedUntil = now + LOCKOUT_MILLIS * (1L shl (round - 1).coerceAtMost(MAX_LOCKOUT_SHIFT))
+                val lockedUntil = now + LOCKOUT_MILLIS * (1L shl (round - 1).coerceAtMost(MAX_LOCKOUT_SHIFT))
                 // Retain complete five-attempt rounds at the maximum delay without growing towards Int overflow.
-                failures = failures.coerceAtMost(MAX_LOCKOUT_SHIFT * MAX_ATTEMPTS)
+                secrets.setLockout(verifierSecret, PinLockout(failures.coerceAtMost(MAX_LOCKOUT_SHIFT * MAX_ATTEMPTS), lockedUntil))
                 return@withLock PinCheck.LockedOut(lockedUntil)
             }
+            secrets.setLockout(verifierSecret, PinLockout(failures, 0))
             return@withLock PinCheck.Rejected(MAX_ATTEMPTS - failures % MAX_ATTEMPTS)
         }
 

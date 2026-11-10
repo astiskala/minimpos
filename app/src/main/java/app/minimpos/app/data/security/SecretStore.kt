@@ -127,6 +127,8 @@ class KeystoreSecretCipher(
  * @property boardingCredential Encrypted device-local generated boarding credential and creation intent; never transferred.
  * @property hints Plain-text recognition hints, keyed by [Secret.name], written and cleared with their secret: only the
  *   last [SECRET_HINT_LENGTH] characters of an Adyen API key ([secretHint]). Keys saved before hints have none.
+ * @property lockouts Plain-text PIN lockouts ([PinLockout.encode]), keyed by the [Secret.name] of their PIN verifier, so
+ *   restarting the app does not reset wrong attempts; never transferred.
  */
 @Serializable
 data class SecretBlob(
@@ -136,7 +138,33 @@ data class SecretBlob(
     val keyCreationRecovery: String? = null,
     val boardingCredential: String? = null,
     val hints: Map<String, String> = emptyMap(),
+    val lockouts: Map<String, String> = emptyMap(),
 )
+
+/**
+ * Wrong PIN attempts in a row and when entry unlocks, kept with the secrets so a restart cannot reset them.
+ *
+ * @property failures Wrong attempts since the last correct one.
+ * @property lockedUntil When entry unlocks, in epoch milliseconds; 0 when it is not locked.
+ */
+data class PinLockout(
+    val failures: Int = 0,
+    val lockedUntil: Long = 0,
+) {
+    /** This lockout as stored: `<failures>:<lockedUntil>`. */
+    fun encode(): String = "$failures:$lockedUntil"
+
+    /** Reading stored lockouts. */
+    companion object {
+        /** The lockout [stored] encodes; unreadable text reads as one wrong attempt, so damage never unlocks entry. */
+        fun decode(stored: String): PinLockout {
+            val parts = stored.split(':')
+            val failures = parts.getOrNull(0)?.toIntOrNull()
+            val until = parts.getOrNull(1)?.toLongOrNull()
+            return if (failures == null || until == null || failures < 0) PinLockout(failures = 1) else PinLockout(failures, until)
+        }
+    }
+}
 
 /** How many trailing characters of an Adyen API key are kept as its [SecretBlob.hints] entry. */
 const val SECRET_HINT_LENGTH = 4
@@ -308,6 +336,32 @@ class SecretStore(
                 .mapNotNull { secret -> blob.hints[secret.name]?.let { secret to it } }
                 .toMap()
         }
+
+    /** The stored PIN lockout of [verifier]'s PIN; no failures when none is stored. */
+    suspend fun lockout(verifier: Secret): PinLockout =
+        store.data
+            .first()
+            .lockouts[verifier.name]
+            ?.let(PinLockout::decode) ?: PinLockout()
+
+    /** Stores [lockout] for [verifier]'s PIN; one without failures or lockout removes the entry. */
+    suspend fun setLockout(
+        verifier: Secret,
+        lockout: PinLockout,
+    ) {
+        store.update { blob ->
+            blob.copy(
+                lockouts =
+                    if (lockout ==
+                        PinLockout()
+                    ) {
+                        blob.lockouts - verifier.name
+                    } else {
+                        blob.lockouts + (verifier.name to lockout.encode())
+                    },
+            )
+        }
+    }
 
     /** The secret, or null when it is not stored or can no longer be decrypted. */
     suspend fun get(secret: Secret): String? {

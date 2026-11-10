@@ -157,6 +157,9 @@ secrets.json: app.minimpos.app.data.security.SecretBlob
   hints: map
     key: string
     value: string
+  lockouts: map
+    key: string
+    value: string
 
 Room column: payment context: app.minimpos.core.payment.PaymentContext
   destination required: string

@@ -9,6 +9,7 @@ import app.minimpos.app.BuildConfig
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.security.PinCheck
+import app.minimpos.app.data.security.PinLockout
 import app.minimpos.app.data.security.PinManager
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStoreException
@@ -139,6 +140,27 @@ class SecurityAndSettingsTest {
             assertThat(pins.pinConfigured.first()).isFalse()
             assertThat(PinManager.isValidPin("123a")).isFalse()
             assertThat(PinManager.isValidPin("123456789")).isFalse()
+        }
+
+    @Test
+    fun `wrong attempts and the lockout survive a restart and are shared by every instance of a PIN`() =
+        await {
+            var now = 0L
+            PinManager(secrets, clock = { now }, iterations = 1_000).setPin("1234")
+            repeat(3) { PinManager(secrets, clock = { now }, iterations = 1_000).verify("9999") }
+            // A fresh instance, as after restarting the app, continues the count instead of starting over.
+            val restarted = PinManager(secrets, clock = { now }, iterations = 1_000)
+            assertThat(restarted.verify("9999")).isEqualTo(PinCheck.Rejected(1))
+            assertThat(restarted.verify("9999")).isInstanceOf(PinCheck.LockedOut::class.java)
+            assertThat(PinManager(secrets, clock = { now }, iterations = 1_000).verify("1234")).isInstanceOf(PinCheck.LockedOut::class.java)
+            // Each PIN keeps its own count.
+            val manager = PinManager(secrets, clock = { now }, iterations = 1_000, verifierSecret = Secret.MANAGER_PIN_VERIFIER)
+            manager.setPin("5678")
+            assertThat(manager.verify("5678")).isEqualTo(PinCheck.Accepted)
+            now = PinManager.LOCKOUT_MILLIS + 1
+            assertThat(restarted.verify("1234")).isEqualTo(PinCheck.Accepted)
+            assertThat(secrets.lockout(Secret.PIN_VERIFIER)).isEqualTo(PinLockout())
+            assertThat(PinLockout.decode("damaged")).isEqualTo(PinLockout(failures = 1))
         }
 
     @Test

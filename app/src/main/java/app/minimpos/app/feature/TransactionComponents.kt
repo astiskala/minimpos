@@ -170,13 +170,27 @@ fun ColumnScope.StatusCheck(
     modifier: Modifier = Modifier,
     onMarkAbsent: (() -> Unit)? = null,
 ) {
+    // A check that resends the stored request can be what charges or refunds, so it says so and is confirmed first.
+    var confirmingResend by rememberSaveable { mutableStateOf(false) }
     SecondaryButton(
-        stringResource(R.string.result_check_again),
-        onRecheck,
+        stringResource(if (state.resends) R.string.result_send_again else R.string.result_check_again),
+        { if (state.resends) confirmingResend = true else onRecheck() },
         loading = state.rechecking,
         icon = Icons.Default.Refresh,
         modifier = modifier.testTag("checkAgain"),
     )
+    if (confirmingResend) {
+        ConfirmDialog(
+            stringResource(R.string.send_again_title),
+            stringResource(R.string.send_again_message),
+            stringResource(R.string.result_send_again),
+            onConfirm = {
+                confirmingResend = false
+                onRecheck()
+            },
+            onDismiss = { confirmingResend = false },
+        )
+    }
     state.stillUnknown?.let {
         ResultDialog(stringResource(R.string.result_check_again), stillUnconfirmed(it), true, "statusCheckResult", onDismiss)
     }

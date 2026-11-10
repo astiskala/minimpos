@@ -253,6 +253,9 @@
   <string name="result_back_to_sale">Retour à la vente</string>
   <string name="result_back_to_pre_auth">Retour à la pré-autorisation</string>
   <string name="result_check_again">Vérifiez à nouveau le résultat</string>
+  <string name="result_send_again">Envoyer à nouveau</string>
+  <string name="send_again_title">L’envoyer à nouveau ?</string>
+  <string name="send_again_message">Si la première demande n’est jamais arrivée chez Adyen, ceci l’envoie maintenant et peut débiter ou rembourser. Consultez d’abord le Customer Area.</string>
   <string name="result_mark_not_processed">Marquer comme non traitée</string>
   <string name="mark_not_processed_title">Marquer comme non traitée ?</string>
   <string name="mark_not_processed_message">Le terminal n’a aucune trace de cette transaction. Continuez seulement si le Customer Area ne la montre pas. Ceci est enregistré sur cet appareil uniquement ; rien n’est envoyé.</string>

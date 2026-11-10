@@ -159,6 +159,18 @@ class FinancialOperations(
             }
         }
 
+    /**
+     * Whether checking [transaction] again sends its stored request again, under its idempotency key, rather than
+     * only asking about it: a saved-card charge or a Checkout refund. If the first request never reached Adyen, the
+     * check is what charges or refunds, so screens confirm it first.
+     */
+    suspend fun recheckResends(transaction: StoredTransaction): Boolean =
+        when (transaction) {
+            is StoredTransaction.Sale -> sales.get(transaction.id)?.sale?.route == SaleRoute.SAVED_CARD
+            is StoredTransaction.Refund -> refunds.resends(transaction.id)
+            is StoredTransaction.GiftCard -> false
+        }
+
     /** Recording an unknown terminal operation as not processed once the Customer Area confirms it never happened. */
     val notProcessed = NotProcessed()
 
@@ -289,6 +301,9 @@ class FinancialOperations(
                 else -> setOf(ManagerAction.REFERENCED_REFUND)
             }
         }
+
+        /** Whether checking refund [id] again resends it: a Checkout refund. */
+        internal suspend fun resends(id: String): Boolean = records.get(id)?.route == RefundRoute.CHECKOUT
 
         /** Stores refund [id] as not done for [reason]; its reserved balance is released. */
         internal suspend fun markNotProcessed(

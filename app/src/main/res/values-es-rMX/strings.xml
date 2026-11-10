@@ -253,6 +253,9 @@
   <string name="result_back_to_sale">Volver a la venta</string>
   <string name="result_back_to_pre_auth">Volver a preautorización</string>
   <string name="result_check_again">Comprobar el resultado de nuevo</string>
+  <string name="result_send_again">Enviar otra vez</string>
+  <string name="send_again_title">¿Enviarla otra vez?</string>
+  <string name="send_again_message">Si la primera solicitud nunca llegó a Adyen, esto la envía ahora y puede cobrar o reembolsar. Revisa primero el Área de Clientes.</string>
   <string name="result_mark_not_processed">Marcar como no procesada</string>
   <string name="mark_not_processed_title">¿Marcar como no procesada?</string>
   <string name="mark_not_processed_message">La terminal no tiene registro de esta transacción. Continúa solo si tu Área de Clientes no la muestra. Solo se registra en este dispositivo; no se envía nada.</string>

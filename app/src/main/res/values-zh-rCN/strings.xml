@@ -251,6 +251,9 @@
   <string name="result_back_to_sale">返回销售</string>
   <string name="result_back_to_pre_auth">返回预授权</string>
   <string name="result_check_again">重新查询结果</string>
+  <string name="result_send_again">重新发送</string>
+  <string name="send_again_title">重新发送？</string>
+  <string name="send_again_message">如果首次请求从未到达 Adyen，此操作会立即发送，并可能扣款或退款。请先在商户后台中查看。</string>
   <string name="result_mark_not_processed">标记为未处理</string>
   <string name="mark_not_processed_title">标记为未处理？</string>
   <string name="mark_not_processed_message">终端没有此交易的记录。仅在商户后台中没有此交易时继续。此操作仅记录在本设备上，不会发送任何内容。</string>

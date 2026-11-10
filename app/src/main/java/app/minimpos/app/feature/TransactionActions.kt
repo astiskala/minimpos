@@ -269,6 +269,8 @@ fun CaptureResult.toState(
  * @property markActions The Manager permissions marking the transaction not processed needs, offered once a status
  *   check found that the terminal has no record of it; null while that is not offered.
  * @property marking Whether marking it not processed is being stored.
+ * @property resends Whether checking again sends the stored request again ([FinancialOperations.recheckResends]), so
+ *   the screen names it "Send again" and confirms it first.
  */
 data class TransactionActionsState(
     val print: ActionState = ActionState(),
@@ -283,6 +285,7 @@ data class TransactionActionsState(
     val share: SharedReceipt? = null,
     val markActions: Set<ManagerAction>? = null,
     val marking: Boolean = false,
+    val resends: Boolean = false,
 )
 
 /**
@@ -313,6 +316,10 @@ class TransactionActions private constructor(
         field = MutableStateFlow(TransactionActionsState())
 
     init {
+        scope.launch {
+            val resends = operations.recheckResends(transaction)
+            state.update { it.copy(resends = resends) }
+        }
         scope.launch {
             receipts.offer(transaction, fresh).collect { offered ->
                 shareable = offered.share

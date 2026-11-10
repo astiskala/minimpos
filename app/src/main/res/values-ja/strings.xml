@@ -251,6 +251,9 @@
   <string name="result_back_to_sale">販売に戻る</string>
   <string name="result_back_to_pre_auth">プリオーソリに戻る</string>
   <string name="result_check_again">結果を再確認</string>
+  <string name="result_send_again">再送信</string>
+  <string name="send_again_title">再送信しますか？</string>
+  <string name="send_again_message">最初のリクエストが Adyen に届いていない場合、今送信され、請求または返金が行われることがあります。先に Customer Area を確認してください。</string>
   <string name="result_mark_not_processed">未処理として記録</string>
   <string name="mark_not_processed_title">未処理として記録しますか？</string>
   <string name="mark_not_processed_message">端末にこの取引の記録がありません。Customer Area にこの取引がない場合のみ続行してください。この端末にのみ記録され、何も送信されません。</string>

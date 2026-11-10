@@ -252,6 +252,9 @@
   <string name="result_back_to_sale">Back to sale</string>
   <string name="result_back_to_pre_auth">Back to pre-authorization</string>
   <string name="result_check_again">Check result again</string>
+  <string name="result_send_again">Send again</string>
+  <string name="send_again_title">Send it again?</string>
+  <string name="send_again_message">If the first request never reached Adyen, this sends it now and can charge or refund. Check your Customer Area first.</string>
   <string name="result_mark_not_processed">Mark as not processed</string>
   <string name="mark_not_processed_title">Mark as not processed?</string>
   <string name="mark_not_processed_message">The terminal has no record of this transaction. Continue only if your Customer Area shows no such transaction. This is recorded on this device only; nothing is sent.</string>

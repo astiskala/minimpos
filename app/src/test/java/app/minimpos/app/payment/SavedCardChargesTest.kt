@@ -344,6 +344,7 @@ class SavedCardChargesTest {
         await { refunds.state.first { it == TransactionState.Finished(refundId) } }
         assertThat(checkNotNull(await { container.refundRecords.get(refundId) }).status).isEqualTo(RefundStatus.UNKNOWN)
         refunds.acknowledge()
+        assertThat(await { operations.recheckResends(StoredTransaction.Refund(refundId)) }).isTrue()
         refundAnswer = ModificationResult.Received("REF2")
         val restored =
             CheckoutRefunds(
@@ -438,6 +439,8 @@ class SavedCardChargesTest {
         // A saved-card charge has no terminal ServiceID, yet it can be checked again.
         assertThat(stored.sale.serviceId).isNull()
         assertThat(StoredPayment(stored).actions).contains(PaymentAction.CHECK_AGAIN)
+        // Checking a saved-card charge again resends it, so screens name it "Send again" and confirm it.
+        assertThat(await { operations.recheckResends(StoredTransaction.Sale(unknown)) }).isTrue()
         answers += CardChargeResult.Authorised("PSP9")
         assertThat(await { operations.recheck(StoredTransaction.Sale(unknown)) }).isEqualTo(Recheck.Settled)
         assertThat(sale(unknown).status).isEqualTo(SaleStatus.APPROVED)

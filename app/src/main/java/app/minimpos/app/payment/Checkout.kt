@@ -279,38 +279,32 @@ data class Checkout(
     /** Whether a chosen feature only the terminal card payment carries rules out every other tender. */
     private val terminalOnly: Boolean get() = selectedFeatures.any { it.onlyOnTerminal }
 
-    /** What a tender other than the terminal leaves out of this sale: its tip and its donation invitation, when chosen. */
-    private val dropped: Set<DroppedOption>
-        get() =
-            buildSet {
-                if (tipOnReceipt || askGratuity) add(DroppedOption.TIP)
-                if (askGiving) add(DroppedOption.DONATION)
-            }
+    /** What [tender] leaves out of this sale that the shopper would be offered: its tip and donation invitation, when chosen. */
+    private fun dropped(tender: Tender): Set<DroppedOption> {
+        val left = chosenFeatures - tender.carries
+        return buildSet {
+            if (CardFeature.TIP_ON_RECEIPT in left || CardFeature.TERMINAL_TIP in left) add(DroppedOption.TIP)
+            if (CardFeature.GIVING in left) add(DroppedOption.DONATION)
+        }
+    }
 
     /**
      * What must happen before this checkout is paid with [tender], the one reading of each tender's confirmations:
-     * what the tender drops of what the shopper would be offered (a payment link, scanned wallet or token takes no tip
-     * and invites no donation, as [linkStart], [walletStart] and [savedCardStart] leave them out), the special
-     * card-entry warning, and Manager approval, which every token charge and MOTO/MKE payment needs.
+     * what the tender drops of what the shopper would be offered (what it does not carry, [Tender.carries], which its
+     * start leaves out the same way), the special card-entry warning, and Manager approval, which every token charge
+     * and MOTO/MKE payment needs.
      */
     fun ceremony(tender: Tender): TenderCeremony =
-        when (tender) {
-            Tender.TERMINAL -> {
-                TenderCeremony(
-                    emptySet(),
-                    specialEntryWarning = requiresSpecialEntryApproval,
-                    managerApproval = requiresSpecialEntryApproval || form.cashBackMinor > 0,
-                )
-            }
-
-            Tender.LINK, Tender.WALLET -> {
-                TenderCeremony(dropped, specialEntryWarning = false, managerApproval = false)
-            }
-
-            Tender.TOKEN -> {
-                TenderCeremony(dropped, specialEntryWarning = false, managerApproval = true)
-            }
-        }
+        TenderCeremony(
+            dropped(tender),
+            specialEntryWarning = tender == Tender.TERMINAL && requiresSpecialEntryApproval,
+            managerApproval =
+                when (tender) {
+                    Tender.TERMINAL -> requiresSpecialEntryApproval || form.cashBackMinor > 0
+                    Tender.LINK, Tender.WALLET -> false
+                    Tender.TOKEN -> true
+                },
+        )
 
     /** Resolved per-payment terminal tipping options when [askGratuity] is active; null otherwise. */
     fun terminalTipOptions(): TerminalTipOptions? {
@@ -479,12 +473,9 @@ data class Checkout(
         allocation: TenderAllocation?,
     ): PaymentStart? {
         if (!canSplit) return null
-        val payment = paymentStart(now, zone) ?: return null
+        val payment = paymentStart(now, zone)?.carrying(SPLIT_CARRIES) ?: return null
         val start =
             payment.copy(
-                terminalTip = null,
-                shopperFlow = null,
-                askGiving = false,
                 requestedAmountMinor = amountMinor,
                 allocation = allocation,
                 allowPartialAuthorisation = payment.allowPartialAuthorisation && allocation !is TenderAllocation.Items,
@@ -510,15 +501,9 @@ data class Checkout(
     ): PaymentLinkStart? {
         if (!canSendLink) return null
         val start =
-            paymentStart(now, zone)?.copy(
-                tipOnReceipt = false,
-                terminalTip = null,
-                shopperFlow = null,
-                allowPartialAuthorisation = false,
-                requestedAmountMinor = totals.amounts.gross,
-                askGiving = false,
-                cardEntryOverride = CardEntryOverride.NORMAL,
-            ) ?: return null
+            paymentStart(now, zone)
+                ?.carrying(Tender.LINK.carries)
+                ?.copy(requestedAmountMinor = totals.amounts.gross) ?: return null
         val lifetime = minOf(Duration.ofHours(payment.linkExpiryHours.toLong()), MAX_LINK_LIFETIME)
         return PaymentLinkStart(start, now.plus(lifetime))
     }
@@ -550,16 +535,7 @@ data class Checkout(
     fun walletStart(
         now: Instant,
         zone: ZoneId,
-    ): PaymentStart? =
-        paymentStart(now, zone)
-            ?.copy(
-                tipOnReceipt = false,
-                terminalTip = null,
-                shopperFlow = null,
-                allowPartialAuthorisation = false,
-                askGiving = false,
-                cardEntryOverride = CardEntryOverride.NORMAL,
-            ).takeIf { canScanWallet }
+    ): PaymentStart? = paymentStart(now, zone)?.carrying(Tender.WALLET.carries).takeIf { canScanWallet }
 
     /** Whether [actual] has the same priced cart, currency, form and payment settings as this checkout, and still offers [wallet]. */
     internal fun matchesWalletCheckout(
@@ -706,6 +682,15 @@ data class Checkout(
         /** Chosen options a split does not carry on every tender, which the operator turns off before splitting. */
         private val SPLIT_BLOCKERS =
             setOf(CardFeature.TIP_ON_RECEIPT, CardFeature.TERMINAL_TIP, CardFeature.GIVING, CardFeature.SPECIAL_ENTRY)
+
+        /** The card features a split's first tender keeps of its checkout: card saving and the issuer's partial approval. */
+        internal val SPLIT_CARRIES: Set<CardFeature> = setOf(CardFeature.TOKENIZATION, CardFeature.PARTIAL_AUTHORISATION)
+
+        /**
+         * The card features a gift-card or meal-voucher tender keeps of the tender it pays: its allocation and partial
+         * approval, which the stored value then decides again.
+         */
+        internal val STORED_VALUE_CARRIES: Set<CardFeature> = setOf(CardFeature.ALLOCATION, CardFeature.PARTIAL_AUTHORISATION)
     }
 }
 
@@ -769,19 +754,26 @@ data class MealVoucherReading(
     val blocked: MealVoucherBlock?,
 )
 
-/** A way to pay a checkout: on the terminal, by payment link, with a scanned wallet code, or with a saved card (Charge token). */
-enum class Tender {
+/**
+ * A way to pay a checkout: on the terminal, by payment link, with a scanned wallet code, or with a saved card (Charge token).
+ *
+ * @property carries The checkout's card features a payment by this tender keeps: its start leaves the others out
+ *   ([PaymentStart.carrying]) and its [TenderCeremony] confirms what that drops of what the shopper would be offered.
+ */
+enum class Tender(
+    val carries: Set<CardFeature>,
+) {
     /** Card on the terminal, possibly with MOTO or MKE entry. */
-    TERMINAL,
+    TERMINAL(CardFeature.entries.toSet()),
 
-    /** A payment link the shopper pays on Adyen's page. */
-    LINK,
+    /** A payment link the shopper pays on Adyen's page; it can save the card. */
+    LINK(setOf(CardFeature.TOKENIZATION)),
 
-    /** A shopper-presented wallet code scanned at checkout. */
-    WALLET,
+    /** A shopper-presented wallet code scanned at checkout; it can save the card. */
+    WALLET(setOf(CardFeature.TOKENIZATION)),
 
-    /** A card saved for the shopper reference, charged through Checkout. */
-    TOKEN,
+    /** A card saved for the shopper reference, charged through Checkout with the shopper not present. */
+    TOKEN(emptySet()),
 }
 
 /** What a tender leaves out of a sale that the shopper would otherwise be offered, see [Checkout.ceremony]. */

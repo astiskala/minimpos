@@ -148,6 +148,9 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   mail server's reply); only `email` and stored-reason decoding create `ExternalText` in `:app`.
   Only `CaptureResult.toState(CaptureStep, …)` creates capture-action outcomes outside the capture module.
 - \* Only `ReceiptLinesJson` converts Adyen receipt fields; only `PrintRenderer` builds print jobs from document segments.
+- \* Which card features each tender keeps of a checkout is one table, `Tender.carries`: every tender start leaves the
+  rest out through `PaymentStart.carrying`, and `Checkout.ceremony` confirms what that drops. Only the checkout (and
+  the session completing its revision) copies a `PaymentStart`.
 - \* Only the container creates/completes one `SaleSession` per kind. Start through its atomic cart/form/revision
   snapshot, including payment, link, saved-card and scanned-wallet starts and offered-wallet checkout assembly; only the
   session reads revisions or copies `Checkout`. Stale starts cannot pay or clear newer work; terminal/link completion

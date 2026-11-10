@@ -161,19 +161,26 @@ data class PaymentStart(
      * This payment as a saved-card charge, without what only a terminal offers: saving the card, partial approval,
      * split tender, giving, receipt or terminal tipping, shopper prompts and special card-entry overrides.
      */
-    fun forSavedCard(): PaymentStart =
+    fun forSavedCard(): PaymentStart = carrying(Tender.TOKEN.carries).copy(requestedAmountMinor = totals.amounts.gross)
+
+    /**
+     * This payment with only the checkout choices in [kept]: each card feature its tender does not carry ([Tender.carries])
+     * is left out of the request, the one way every tender start leaves out tips, prompts, donations, partial approval,
+     * card saving, audio guidance, special entry and allocations. Features that rule other tenders out
+     * ([CardFeature.onlyOnTerminal]) and those a tender adds itself stay as they are.
+     */
+    internal fun carrying(kept: Set<CardFeature>): PaymentStart =
         copy(
-            tokenization = null,
-            audioGuidance = false,
-            audioGuidancePoiId = null,
-            tipOnReceipt = false,
-            terminalTip = null,
-            shopperFlow = null,
-            allowPartialAuthorisation = false,
-            requestedAmountMinor = totals.amounts.gross,
-            askGiving = false,
-            cardEntryOverride = CardEntryOverride.NORMAL,
-            allocation = null,
+            tipOnReceipt = tipOnReceipt && CardFeature.TIP_ON_RECEIPT in kept,
+            terminalTip = terminalTip.takeIf { CardFeature.TERMINAL_TIP in kept },
+            shopperFlow = shopperFlow.takeIf { CardFeature.SHOPPER_DISPLAY in kept },
+            askGiving = askGiving && CardFeature.GIVING in kept,
+            audioGuidance = audioGuidance && CardFeature.AUDIO_GUIDANCE in kept,
+            audioGuidancePoiId = audioGuidancePoiId.takeIf { CardFeature.AUDIO_GUIDANCE in kept },
+            allowPartialAuthorisation = allowPartialAuthorisation && CardFeature.PARTIAL_AUTHORISATION in kept,
+            tokenization = tokenization.takeIf { CardFeature.TOKENIZATION in kept },
+            cardEntryOverride = if (CardFeature.SPECIAL_ENTRY in kept) cardEntryOverride else CardEntryOverride.NORMAL,
+            allocation = allocation.takeIf { CardFeature.ALLOCATION in kept },
         )
 
     /** What this payment requests on its tender, in [currency]. */
@@ -181,10 +188,8 @@ data class PaymentStart(
 
     /** This tender paid with [card] instead of a payment card: no card saving or special entry; a short balance may be approved. */
     fun withGiftCard(card: PresentedGiftCard): PaymentStart =
-        copy(
+        carrying(Checkout.STORED_VALUE_CARRIES).copy(
             giftCard = card,
-            tokenization = null,
-            cardEntryOverride = CardEntryOverride.NORMAL,
             // Adyen asks gift-card payments to allow a short balance; item tenders are still collected in full.
             allowPartialAuthorisation = allocation !is TenderAllocation.Items,
         )
@@ -198,13 +203,8 @@ data class PaymentStart(
         context: PaymentContext,
         setupIdentity: String,
     ): PaymentStart =
-        copy(
+        carrying(Checkout.STORED_VALUE_CARRIES).copy(
             mealVoucher = scheme,
-            tokenization = null,
-            terminalTip = null,
-            shopperFlow = null,
-            askGiving = false,
-            cardEntryOverride = CardEntryOverride.NORMAL,
             allowPartialAuthorisation = scheme.partialAuthorisation,
             walletContext = context,
             walletSetupIdentity = setupIdentity,

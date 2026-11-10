@@ -36,9 +36,11 @@ import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.IdentifiedSend
 import app.minimpos.app.payment.OperationKind
 import app.minimpos.app.payment.PaymentLinks
+import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.RefundCancellations
 import app.minimpos.app.payment.SaleBook
+import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.SavedCardLookup
 import app.minimpos.app.payment.StoredTransaction
@@ -295,6 +297,17 @@ class DeepeningArchitectureTest {
         fun roles(lookup: CredentialLookup.Failed) = KeyRoles.offer(lookup)
 
         fun terminal(listed: List<TerminalDetails>) = TerminalAssignments.select(listed, "S1F2-1", "Merchant")
+    }
+
+    @Test
+    fun `tender starts leave card features out only through the tender projection`() = tenderProjection.check(app)
+
+    @Test
+    fun `tender projection rejects a start stripping card features by hand`() =
+        reject(listOf(tenderProjection), TenderProjectionViolation::class.java)
+
+    private class TenderProjectionViolation {
+        fun strip(start: PaymentStart) = start.copy(askGiving = false)
     }
 
     @Test
@@ -761,6 +774,16 @@ class DeepeningArchitectureTest {
                 .callMethodWhere(callTo(SharedKeySetup::class.java.name, "resolve", "pendingOffer"))
                 .orShould()
                 .callMethodWhere(callToSubtypeOf(SharedKeyApi::class.java, "accountKey", "merchantAccounts"))
+
+        // Each tender start once stripped tips, prompts, donations and card saving by hand, and the ceremony agreed with
+        // them only by KDoc; Tender.carries is the one table and PaymentStart.carrying the one projection, so only the
+        // checkout (and the session completing its revision) copies a start.
+        val tenderProjection: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within(PaymentStart::class.java.name, Checkout::class.java.name, SaleSession::class.java.name))
+                .should()
+                .callMethodWhere(callTo(PaymentStart::class.java.name, "copy"))
 
         // First-screen claiming stays shared, while dispatch and its progress cannot be reconstructed in presentation.
         val receiptAutomation: List<ArchRule> =

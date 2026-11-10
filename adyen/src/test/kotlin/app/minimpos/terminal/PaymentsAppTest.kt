@@ -96,7 +96,7 @@ class PaymentsAppTest {
         val opened = app.opened.single()
         assertThat(opened.packageName).isEqualTo("com.adyen.ipp.mobile.companion.test")
         assertThat(opened.link).startsWith("https://mobile-test.cdn.adyen.com/test/nexo?request=")
-        assertThat(opened.returnUrl).isEqualTo("$RETURN_URL/nexo")
+        assertThat(opened.returnUrl).matches("\\Q$RETURN_URL/nexo/\\E[A-Za-z0-9_-]{22}")
         // The request in the link is encrypted, not readable.
         assertThat(opened.link).doesNotContain("PaymentRequest")
         assertThat(String(Base64.UrlSafe.decode(checkNotNull(opened.request)))).contains("NexoBlob")

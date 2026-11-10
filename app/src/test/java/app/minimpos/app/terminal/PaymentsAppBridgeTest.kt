@@ -31,6 +31,26 @@ class PaymentsAppBridgeTest {
         }
 
     @Test
+    fun `only the exact return address of the waiting link answers it`() {
+        val returnUrl = "${PaymentsAppBridge.RETURN_URL}/nexo/s3cr3t"
+        val encoded = java.net.URLEncoder.encode(java.net.URLEncoder.encode(returnUrl, "UTF-8"), "UTF-8")
+        val reply =
+            runBlocking {
+                val waiting =
+                    async { bridge.exchange("https://mobile-test.cdn.adyen.com/test/nexo?request=x&returnUrl=$encoded", "p", 5.seconds) }
+                val launch = bridge.launches.filterNotNull().first()
+                bridge.opened(launch.id)
+                // A forged error on the bare or another path cannot end the waiting payment as not taken.
+                bridge.deliver("${PaymentsAppBridge.RETURN_URL}/nexo?error=forged")
+                bridge.deliver("${PaymentsAppBridge.RETURN_URL}/nexo/guess?error=forged")
+                assertThat(waiting.isCompleted).isFalse()
+                bridge.deliver("$returnUrl?response=abc")
+                waiting.await()
+            }
+        assertThat(reply).isEqualTo(AppLinkAnswer.Returned("$returnUrl?response=abc"))
+    }
+
+    @Test
     fun `a link is opened once and its answer goes back to the exchange`() {
         val reply =
             exchange { launch ->

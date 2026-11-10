@@ -28,6 +28,7 @@ import com.adyen.model.terminal.TerminalAPISecuredResponse
 import com.adyen.terminal.security.NexoCrypto
 import com.google.gson.JsonObject
 import java.net.URLEncoder
+import java.security.SecureRandom
 import kotlin.io.encoding.Base64
 import kotlin.time.Duration
 
@@ -242,6 +243,7 @@ class PaymentsAppTransport(
     private val decoded = mutableMapOf<String, TerminalAPIResponse?>()
     private val recovered = mutableMapOf<String, MutableSet<String>>()
     private val completed = CompletedTransactions()
+    private val random = SecureRandom()
 
     override fun acknowledge(serviceId: String) {
         synchronized(decoded) {
@@ -282,7 +284,8 @@ class PaymentsAppTransport(
         timeout: Duration,
     ): Delivery {
         val encryptedRequest = crypto.encrypt(request) ?: return Delivery.Failed(Fault.RequestNotEncrypted)
-        val link = links.nexo(encryptedRequest, "$returnUrl/$NEXO")
+        // A random segment per exchange, so only the Payments app that received this link can answer it.
+        val link = links.nexo(encryptedRequest, "$returnUrl/$NEXO/${exchangeSegment()}")
         val returned =
             when (val returned = exchange.exchange(link, links.packageName, timeout)) {
                 is AppLinkAnswer.Returned -> returned
@@ -317,6 +320,9 @@ class PaymentsAppTransport(
         }
         return Delivery.Answered(response)
     }
+
+    private fun exchangeSegment(): String =
+        Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT).encode(ByteArray(EXCHANGE_SEGMENT_BYTES).also(random::nextBytes))
 
     private fun validate(
         response: SaleToPOIResponse?,
@@ -527,6 +533,7 @@ class PaymentsAppTransport(
     /** Version eligibility does not establish account or beta enablement. */
     companion object {
         private const val NEXO = "nexo"
+        private const val EXCHANGE_SEGMENT_BYTES = 16
         private const val STATUS_MINOR_VERSION = 8
 
         /** Whether [version] may support status; unreadable versions remain unverified and can be queried safely. */

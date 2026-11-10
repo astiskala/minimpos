@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import java.net.URLDecoder
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration
 
@@ -60,7 +61,7 @@ class PaymentsAppBridge : AppLinkExchange {
         timeout: Duration,
     ): AppLinkAnswer =
         mutex.withLock {
-            val waiting = Pending(++nextId, link.substringBefore('?').substringAfterLast('/'))
+            val waiting = Pending(++nextId, returnPath(link))
             pending = waiting
             launches.value = Launch(waiting.id, link, packageName)
             try {
@@ -126,9 +127,10 @@ class PaymentsAppBridge : AppLinkExchange {
     fun deliver(url: String): Boolean {
         if (!url.startsWith("$RETURN_URL/")) return false
         val path = url.substringBefore('?')
-        val financial = path == "$RETURN_URL/nexo"
+        val financial = path == "$RETURN_URL/nexo" || path.startsWith("$RETURN_URL/nexo/")
         if (financial) late += url
-        val waiting = pending?.takeIf { path == "$RETURN_URL/${it.path}" }
+        // Only the exact return address of the waiting link answers it: another app cannot guess its random segment.
+        val waiting = pending?.takeIf { path == it.path }
         if (waiting?.reply?.complete(AppLinkAnswer.Returned(url)) != true && !financial) late += url
         return true
     }
@@ -149,5 +151,20 @@ class PaymentsAppBridge : AppLinkExchange {
     companion object {
         /** Where the Payments app calls back; the manifest routes it to the activity. */
         const val RETURN_URL = "minimpos://paymentsapp"
+
+        /**
+         * The return address [link] asks the Payments app to call, without a query: its `returnUrl`, URL-encoded once
+         * as a value and once as a link parameter; else the link's path under [RETURN_URL].
+         */
+        internal fun returnPath(link: String): String {
+            val encoded =
+                link
+                    .substringAfter('?', "")
+                    .split('&')
+                    .firstOrNull { it.startsWith("returnUrl=") }
+                    ?.substringAfter('=')
+            val decoded = encoded?.let { URLDecoder.decode(URLDecoder.decode(it, "UTF-8"), "UTF-8") }
+            return decoded?.substringBefore('?') ?: "$RETURN_URL/${link.substringBefore('?').substringAfterLast('/')}"
+        }
     }
 }

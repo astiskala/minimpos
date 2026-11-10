@@ -43,7 +43,8 @@ internal class TerminalExchange(
 ) {
     /**
      * Sends [request] (ServiceID [serviceId], message [category]) and reads its answer with [extract]; a missing or
-     * unreadable answer is recovered with status checks of the same category, never by sending it again.
+     * unreadable answer, or one whose header names another request or terminal, is recovered with status checks of
+     * the same category, never by sending it again.
      */
     internal suspend fun execute(
         serviceId: String,
@@ -59,8 +60,25 @@ internal class TerminalExchange(
                 is Delivery.Failed -> return recover(serviceId, category, delivery.fault)
             }
         val details =
-            response?.saleToPOIResponse?.let(extract) ?: return recover(serviceId, category, Fault.UnreadableReply())
+            response
+                ?.saleToPOIResponse
+                ?.takeIf { answers(it.messageHeader, serviceId, category) }
+                ?.let(extract)
+                ?: return recover(serviceId, category, Fault.UnreadableReply())
         return TransactionOutcome.Completed(details)
+    }
+
+    // Some terminals omit echoed identity fields. Any supplied must name this request and terminal, so an answer that
+    // reached the wrong peer, or belongs to another request, never becomes this request's outcome.
+    private fun answers(
+        header: MessageHeader?,
+        serviceId: String,
+        category: MessageCategoryType,
+    ): Boolean {
+        header ?: return true
+        val identities = listOf(header.saleID to identity.saleId, header.serviceID to serviceId, header.poiid to identity.poiId)
+        return identities.all { (echoed, expected) -> echoed == null || echoed == expected } &&
+            (header.messageCategory == null || header.messageCategory == category)
     }
 
     /**

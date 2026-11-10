@@ -65,9 +65,11 @@ import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.PaymentIssue
 import app.minimpos.app.history.SaleResultNext
 import app.minimpos.app.history.cardText
 import app.minimpos.app.history.cashout
+import app.minimpos.app.history.issues
 import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.history.standing
 import app.minimpos.app.payment.Checkout
@@ -871,16 +873,19 @@ fun SaleResultScreen(
     val money = rememberMoneyFormatter(record?.sale?.currency ?: PaymentSettings.FALLBACK_CURRENCY)
     val ringUp = resultOrigin(state)
     val gate = currentSetupGate()
+    // While whether the payment went through is unknown, its cart is not offered for another charge: leaving goes Home.
+    val unresolved = record?.sale?.issues?.contains(PaymentIssue.OUTCOME) == true
+    val leave = if (unresolved) Route.Home else ringUp
 
     fun done(route: Route) {
         vm.finish()
         navigator.popTo(route)
     }
-    BackHandler { done(ringUp) }
+    BackHandler { done(leave) }
 
     MiniScaffold(
         title = stringResource(R.string.result_title),
-        onBack = { done(ringUp) },
+        onBack = { done(leave) },
         modifier = modifier,
         bottomBar = {
             if (record != null) {
@@ -917,9 +922,13 @@ fun SaleResultScreen(
                 if (PaymentAction.ENTER_TIP in state.actions) EnterTipButton({ gate.run { navigator.push(Route.Tip(saleId)) } })
                 ReceiptActions(state.transaction, vm.transaction, MerchantCopy.WHEN_DUE, email = record.sale.shopperEmail.orEmpty())
             } else {
-                UnapprovedSaleActions(state, vm.transaction::recheck, vm.transaction::dismissCheckResult, vm::abortBusyTransaction) {
-                    done(ringUp)
-                }
+                UnapprovedSaleActions(
+                    state,
+                    vm.transaction::recheck,
+                    vm.transaction::dismissCheckResult,
+                    vm::abortBusyTransaction,
+                    onBackToSale = { done(ringUp) }.takeUnless { unresolved },
+                )
             }
         }
     }
@@ -1001,7 +1010,7 @@ private fun saleResultNext(
 
 /**
  * For a payment that was not approved: checking an unknown outcome again, cancelling the transaction a busy terminal is
- * working on, and going back to the sale.
+ * working on, and going back to the sale, unless [onBackToSale] is null because the outcome is still unknown.
  */
 @Composable
 private fun ColumnScope.UnapprovedSaleActions(
@@ -1009,7 +1018,7 @@ private fun ColumnScope.UnapprovedSaleActions(
     onRecheck: () -> Unit,
     onCheckDismiss: () -> Unit,
     onAbortBusy: () -> Unit,
-    onBackToSale: () -> Unit,
+    onBackToSale: (() -> Unit)?,
 ) {
     if (PaymentAction.CHECK_AGAIN in state.actions) StatusCheck(state.transaction, onRecheck, onCheckDismiss)
     if (state.canAbortBusy) {
@@ -1021,10 +1030,13 @@ private fun ColumnScope.UnapprovedSaleActions(
         )
     }
     OutcomeMessage(state.abort)
-    SecondaryButton(
-        stringResource(if (state.preAuthorisation) R.string.result_back_to_pre_auth else R.string.result_back_to_sale),
-        onBackToSale,
-    )
+    if (onBackToSale != null) {
+        SecondaryButton(
+            stringResource(if (state.preAuthorisation) R.string.result_back_to_pre_auth else R.string.result_back_to_sale),
+            onBackToSale,
+            modifier = Modifier.testTag("backToSale"),
+        )
+    }
 }
 
 /**

@@ -783,8 +783,9 @@ fun RefundProcessingScreen(
 
 /**
  * The outcome of refund [refundId], with a status check while it is unknown and the receipt actions once accepted.
- * Just made, Home sits beside "New refund" (Home alone after a cancellation). [fromHistory] opens it as an older
- * refund's detail: nothing is printed automatically, there is no bottom bar and leaving goes back instead of home.
+ * Just made, Home sits beside "New refund" (Home alone after a cancellation or while the outcome is unknown).
+ * [fromHistory] opens it as an older refund's detail: nothing is printed automatically, there is no bottom bar and
+ * leaving goes back instead of home.
  * [header] selects standalone chrome or a pane beneath the shared navigation frame.
  */
 @Composable
@@ -823,13 +824,14 @@ fun RefundResultScreen(
             if (refund != null && !fromHistory) {
                 ResultBar(
                     onHome = { done() },
+                    // A refund whose outcome is still unknown is checked, not repeated, so no new refund is offered.
                     next =
                         ResultAction(stringResource(R.string.refund_new), "newRefund") {
                             gate.run {
                                 vm.finish()
                                 navigator.replace(Route.RefundStart)
                             }
-                        }.takeUnless { refund.cancellation },
+                        }.takeUnless { refund.cancellation || refund.status.unresolved },
                 )
             }
         },

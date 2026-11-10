@@ -174,6 +174,26 @@ class TerminalDetailsTest {
         }
 
     @Test
+    fun `roles still missing after the change are reported, not taken as added`() =
+        runBlocking {
+            val self = "https://elsewhere.example/v3/merchants/M1/apiCredentials/CRED"
+            reply("""{"id":"CRED","roles":[],"active":true,"_links":{"self":{"href":"$self"}}}""")
+            reply("{}")
+            reply("""{"id":"CRED","roles":[],"active":true}""")
+            val update = api.addRoles(TerminalEnvironment.TEST, listOf(AdyenRole.CLOUD_DEVICE)) as CredentialRolesUpdate.Failed
+            assertThat(update.fault).isInstanceOf(Fault.Permission::class.java)
+            server.takeRequest()
+            assertThat(server.takeRequest().url.encodedPath).endsWith("/merchants/M1/apiCredentials/CRED")
+        }
+
+    @Test
+    fun `a merchant listing Adyen refuses is a failure, never an empty list`() =
+        runBlocking {
+            reply("{}", 403)
+            assertThat(api.merchantAccounts(TerminalEnvironment.TEST)).isInstanceOf(MerchantAccountListing.Failed::class.java)
+        }
+
+    @Test
     fun `roles are not sent to an address the credential's self link cannot prove`() =
         runBlocking {
             reply("""{"id":"CRED","roles":[],"active":true,"_links":{"self":{"href":"https://x.example/v3/me"}}}""")
@@ -220,6 +240,10 @@ class TerminalDetailsTest {
                 .isEqualTo(TerminalCapabilitiesLookup.Failed(Fault.Unsupported))
             assertThat(minimal.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Dcc(true)))
                 .isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.Unsupported, uncertain = false))
+            assertThat(minimal.accountKey("M", null, TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(Fault.Unsupported))
+            assertThat(minimal.merchantAccounts(TerminalEnvironment.TEST)).isEqualTo(MerchantAccountListing.Failed(Fault.Unsupported))
+            assertThat(minimal.addRoles(TerminalEnvironment.TEST, listOf(AdyenRole.CLOUD_DEVICE)))
+                .isEqualTo(CredentialRolesUpdate.Failed(Fault.Unsupported))
         }
 
     @Test

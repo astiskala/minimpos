@@ -456,7 +456,7 @@ class GiftCards(
         reason: StoredReason,
     ): Boolean {
         val stage = unknownStage(groupId) ?: return false
-        return records.settle(stage.id, GiftCardStatus.FAILED, null, null, reason)
+        return records.settle(stage.id, GiftCardStatus.FAILED, null, null, reason, onlyIfUnknown = true)
     }
 
     /**

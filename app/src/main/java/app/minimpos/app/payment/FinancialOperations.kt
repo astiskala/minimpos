@@ -209,9 +209,20 @@ class FinancialOperations(
             if (actions == null || !approval.forActions(actions).allowsNow()) return false
             val reason = StoredReason.NotDone(Failure.Remote(Fault.NoRecord))
             return when (transaction) {
-                is StoredTransaction.Sale -> sales.record(transaction.id, SaleEvent.Settled(SaleStatus.FAILED, null, null, reason))
-                is StoredTransaction.Refund -> refunds.markNotProcessed(transaction.id, reason)
-                is StoredTransaction.GiftCard -> giftCards.markNotProcessed(transaction.id, reason)
+                is StoredTransaction.Sale -> {
+                    sales.record(
+                        transaction.id,
+                        SaleEvent.Settled(SaleStatus.FAILED, null, null, reason, onlyIfUnknown = true),
+                    )
+                }
+
+                is StoredTransaction.Refund -> {
+                    refunds.markNotProcessed(transaction.id, reason)
+                }
+
+                is StoredTransaction.GiftCard -> {
+                    giftCards.markNotProcessed(transaction.id, reason)
+                }
             }
         }
     }

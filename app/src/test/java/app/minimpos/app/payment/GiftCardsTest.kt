@@ -301,6 +301,8 @@ class GiftCardsTest {
         await {
             records.open(loaded)
             records.settle("load", GiftCardStatus.UNKNOWN, null, null, StoredReason.Interrupted)
+            // Marking not processed refuses a stage a status check resolved meanwhile.
+            assertThat(records.settle("load", GiftCardStatus.FAILED, null, null, StoredReason.Interrupted, onlyIfUnknown = true)).isFalse()
         }
         val stage = activity("resolved").stages.single()
         assertThat(stage.status).isEqualTo(GiftCardStatus.SUCCEEDED)

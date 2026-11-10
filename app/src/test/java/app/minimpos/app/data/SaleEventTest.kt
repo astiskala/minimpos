@@ -177,6 +177,11 @@ class SaleEventTest {
         val declined = pending.after(SaleEvent.Settled(SaleStatus.DECLINED, null, approved.copy(success = false)))
         assertThat(declined.after(unknown)).isEqualTo(declined)
         assertThat(pending.after(unknown).status).isEqualTo(SaleStatus.UNKNOWN)
+        // Marking an unknown sale not processed applies only while it is still unknown.
+        val markedFailed = SaleEvent.Settled(SaleStatus.FAILED, null, null, StoredReason.Interrupted, onlyIfUnknown = true)
+        assertThat(paid.after(markedFailed)).isEqualTo(paid)
+        assertThat(pending.after(markedFailed)).isEqualTo(pending)
+        assertThat(pending.after(unknown).after(markedFailed).status).isEqualTo(SaleStatus.FAILED)
     }
 
     @Test

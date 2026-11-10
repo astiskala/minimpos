@@ -105,6 +105,8 @@ sealed interface SaleEvent {
      * @property busyServiceId The ServiceID of the transaction a `Busy` refusal named, which can be aborted once; null
      *   otherwise. Only the sale's own event writes it, and [BusyAborted] clears it.
      * @property repeated Whether the same request already has a durable approved tender.
+     * @property onlyIfUnknown Whether it applies only while the sale's outcome is still unknown, as when staff mark it
+     *   not processed, so an answer a status check stored meanwhile is kept.
      */
     data class Settled(
         val status: SaleStatus,
@@ -117,6 +119,7 @@ sealed interface SaleEvent {
         val busyServiceId: String? = null,
         /** This request already has a durable tender; refresh its answer without adding its amounts again. */
         val repeated: Boolean = false,
+        val onlyIfUnknown: Boolean = false,
     ) : SaleEvent {
         override fun stamped(now: Long): SaleEvent =
             copy(
@@ -341,11 +344,13 @@ val SaleEntity.retentionEligible: Boolean
 
 /**
  * Whether [event] would replace this sale's resolved outcome with an unknown one, such as a runner's safety net firing
- * after its answer was stored; nothing may do that, so such an event changes nothing.
+ * after its answer was stored, or is meant only for an unknown outcome that has since been resolved; such an event
+ * changes nothing.
  */
 fun SaleEntity.keepsOutcomeAgainst(event: SaleEvent): Boolean {
     val unknown = (event is SaleEvent.Settled && event.status == SaleStatus.UNKNOWN) || event is SaleEvent.OutcomeUnknown
-    return unknown && status != SaleStatus.PENDING && status != SaleStatus.UNKNOWN
+    val resolved = status != SaleStatus.PENDING && status != SaleStatus.UNKNOWN
+    return (unknown && resolved) || (event is SaleEvent.Settled && event.onlyIfUnknown && status != SaleStatus.UNKNOWN)
 }
 
 /** This sale after [event] happened to it. */

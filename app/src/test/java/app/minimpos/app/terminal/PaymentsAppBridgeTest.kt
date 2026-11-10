@@ -19,7 +19,13 @@ class PaymentsAppBridgeTest {
     private fun exchange(activity: (PaymentsAppBridge.Launch) -> Unit): AppLinkAnswer =
         runBlocking {
             val reply =
-                async { bridge.exchange("https://www.adyen.com/test/nexo?request=x", "com.adyen.ipp.mobile.companion.test", 5.seconds) }
+                async {
+                    bridge.exchange(
+                        "https://mobile-test.cdn.adyen.com/test/nexo?request=x",
+                        "com.adyen.ipp.mobile.companion.test",
+                        5.seconds,
+                    )
+                }
             activity(bridge.launches.filterNotNull().first())
             reply.await()
         }
@@ -56,7 +62,7 @@ class PaymentsAppBridgeTest {
                 bridge.abandon(launch.id)
             }
         assertThat(abandoned).isEqualTo(AppLinkAnswer.Abandoned)
-        val late = runBlocking { bridge.exchange("https://www.adyen.com/test/nexo", "p", 10.milliseconds) }
+        val late = runBlocking { bridge.exchange("https://mobile-test.cdn.adyen.com/test/nexo", "p", 10.milliseconds) }
         assertThat(late).isEqualTo(AppLinkAnswer.TimedOut)
     }
 

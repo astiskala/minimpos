@@ -137,7 +137,7 @@ class TapToPayImportTest {
                 |"liveUrlPrefix":"live-prefix","keyIdentifier":"shared","keyVersion":1}
                 """.trimMargin(),
             )
-        assertThat(phone.opened.first()).startsWith("https://www.adyen.com/boarded?")
+        assertThat(phone.opened.first()).startsWith("https://mobile.cdn.adyen.com/boarded?")
         assertThat(phone.opened.first()).doesNotContain("reboard=true")
         assertThat(phone.packages.toSet()).containsExactly("com.adyen.ipp.mobile.companion.live")
         return result

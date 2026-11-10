@@ -102,11 +102,12 @@ class PaymentsAppLinks(
     /** The package name of the Payments app for [environment]. */
     val packageName: String get() = packageName(environment)
 
+    // Adyen's current App Link hosts; www.adyen.com is deprecated. Every live host reaches the same backend.
     private val base: String
         get() =
             when (environment) {
-                TerminalEnvironment.TEST -> "https://www.adyen.com/test"
-                TerminalEnvironment.LIVE -> "https://www.adyen.com"
+                TerminalEnvironment.TEST -> "https://mobile-test.cdn.adyen.com/test"
+                TerminalEnvironment.LIVE -> "https://mobile.cdn.adyen.com"
             }
 
     /**

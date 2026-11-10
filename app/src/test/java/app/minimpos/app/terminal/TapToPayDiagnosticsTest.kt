@@ -213,7 +213,7 @@ class TapToPayDiagnosticsTest {
         val live = await { diagnostics.refresh() }
         assertThat(live.environment).isEqualTo(TerminalEnvironment.LIVE)
         assertThat(management.connections.last()).isEqualTo("replacement-key" to TerminalEnvironment.LIVE)
-        assertThat(paymentsApp.opened.last()).startsWith("https://www.adyen.com/boarded?")
+        assertThat(paymentsApp.opened.last()).startsWith("https://mobile.cdn.adyen.com/boarded?")
     }
 
     @Test

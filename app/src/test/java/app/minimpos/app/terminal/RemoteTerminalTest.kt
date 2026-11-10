@@ -226,7 +226,14 @@ class RemoteTerminalTest {
             assertThat(paymentsApp.packages.drop(first))
                 .containsExactlyElementsIn(List(3) { "com.adyen.ipp.mobile.companion.${environment.name.lowercase()}" })
                 .inOrder()
-            val prefix = if (environment == TerminalEnvironment.TEST) "https://www.adyen.com/test/" else "https://www.adyen.com/"
+            val prefix =
+                if (environment ==
+                    TerminalEnvironment.TEST
+                ) {
+                    "https://mobile-test.cdn.adyen.com/test/"
+                } else {
+                    "https://mobile.cdn.adyen.com/"
+                }
             assertThat(paymentsApp.opened.drop(first).all { it.startsWith(prefix) }).isTrue()
             assertThat(management.connections.last().second).isEqualTo(environment)
         }
@@ -297,7 +304,7 @@ class RemoteTerminalTest {
         val paid = await { gateway.pay(payment, "PAY1") { sending = it } }.made() as TransactionOutcome.Completed
         assertThat(paid.details.success).isTrue()
         assertThat(sending).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
-        assertThat(paymentsApp.opened.last()).startsWith("https://www.adyen.com/test/nexo?request=")
+        assertThat(paymentsApp.opened.last()).startsWith("https://mobile-test.cdn.adyen.com/test/nexo?request=")
         // It has no printer; status repeats the original transaction through the encrypted App Link.
         assertThat(await { container.terminalStatus.state.first { it.loaded } }.printerAvailable).isFalse()
         assertThat(
@@ -363,9 +370,9 @@ class RemoteTerminalTest {
         assertThat(await { container.tapToPay.board(reboard = true) }).isEqualTo(TapToPayOutcome.Boarded(FakePaymentsApp.INSTALLATION_ID))
         assertThat(paymentsApp.opened.map { it.substringBefore('?') to ("reboard=true" in it) })
             .containsExactly(
-                "https://www.adyen.com/test/boarded" to false,
-                "https://www.adyen.com/test/boarded" to true,
-                "https://www.adyen.com/test/board" to false,
+                "https://mobile-test.cdn.adyen.com/test/boarded" to false,
+                "https://mobile-test.cdn.adyen.com/test/boarded" to true,
+                "https://mobile-test.cdn.adyen.com/test/board" to false,
             ).inOrder()
         assertThat(management.requests).containsExactly(BoardingTarget("Merchant"))
 

@@ -20,7 +20,7 @@ class PaymentsAppLaunchTest {
 
     private fun launch(open: (PaymentsAppBridge.Launch) -> Unit): AppLinkAnswer =
         runBlocking {
-            val answer = async { bridge.exchange("https://www.adyen.com/test/nexo?request=x", "test.package", 5.seconds) }
+            val answer = async { bridge.exchange("https://mobile-test.cdn.adyen.com/test/nexo?request=x", "test.package", 5.seconds) }
             bridge.launch(bridge.launches.filterNotNull().first(), open)
             answer.await()
         }

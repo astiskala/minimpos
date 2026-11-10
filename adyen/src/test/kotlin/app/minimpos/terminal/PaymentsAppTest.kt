@@ -72,15 +72,17 @@ class PaymentsAppTest {
         assertThat(live.packageName).isEqualTo("com.adyen.ipp.mobile.companion.live")
         // As in Adyen's example code, the return URL is URL-encoded before it is added as a parameter.
         assertThat(test.boardedCheck("minimpos://paymentsapp/boarded"))
-            .isEqualTo("https://www.adyen.com/test/boarded?returnUrl=minimpos%253A%252F%252Fpaymentsapp%252Fboarded")
+            .isEqualTo("https://mobile-test.cdn.adyen.com/test/boarded?returnUrl=minimpos%253A%252F%252Fpaymentsapp%252Fboarded")
         assertThat(
             live.boardedCheck("app://x", reboard = true),
-        ).isEqualTo("https://www.adyen.com/boarded?returnUrl=app%253A%252F%252Fx&reboard=true")
+        ).isEqualTo("https://mobile.cdn.adyen.com/boarded?returnUrl=app%253A%252F%252Fx&reboard=true")
         val board = live.board("token-1", "app://x")
-        assertThat(board).startsWith("https://www.adyen.com/board?boardingToken=")
+        assertThat(board).startsWith("https://mobile.cdn.adyen.com/board?boardingToken=")
         val token = FormEncoding.decode(board.substringAfter('?')).getValue("boardingToken")
         assertThat(String(Base64.UrlSafe.decode(token))).isEqualTo("token-1")
-        assertThat(test.nexo("abc=", "app://x")).isEqualTo("https://www.adyen.com/test/nexo?request=abc%3D&returnUrl=app%253A%252F%252Fx")
+        assertThat(
+            test.nexo("abc=", "app://x"),
+        ).isEqualTo("https://mobile-test.cdn.adyen.com/test/nexo?request=abc%3D&returnUrl=app%253A%252F%252Fx")
         assertThat(
             PaymentsAppLinks.answer("app://x?boarded=true&installationId=ID%201"),
         ).containsExactly("boarded", "true", "installationId", "ID 1")
@@ -93,7 +95,7 @@ class PaymentsAppTest {
         assertThat(paid.details.success).isTrue()
         val opened = app.opened.single()
         assertThat(opened.packageName).isEqualTo("com.adyen.ipp.mobile.companion.test")
-        assertThat(opened.link).startsWith("https://www.adyen.com/test/nexo?request=")
+        assertThat(opened.link).startsWith("https://mobile-test.cdn.adyen.com/test/nexo?request=")
         assertThat(opened.returnUrl).isEqualTo("$RETURN_URL/nexo")
         // The request in the link is encrypted, not readable.
         assertThat(opened.link).doesNotContain("PaymentRequest")
@@ -192,7 +194,14 @@ class PaymentsAppTest {
                 )
             assertThat(runBlocking { restarted.status("RESTART") }).isInstanceOf(TransactionOutcome.Completed::class.java)
             assertThat(app.opened.last().packageName).isEqualTo(PaymentsAppLinks.packageName(environment))
-            val prefix = if (environment == TerminalEnvironment.TEST) "https://www.adyen.com/test/nexo?" else "https://www.adyen.com/nexo?"
+            val prefix =
+                if (environment ==
+                    TerminalEnvironment.TEST
+                ) {
+                    "https://mobile-test.cdn.adyen.com/test/nexo?"
+                } else {
+                    "https://mobile.cdn.adyen.com/nexo?"
+                }
             assertThat(app.opened.last().link).startsWith(prefix)
         }
         assertThat(app.requests.count { it.saleToPOIRequest.paymentRequest != null }).isEqualTo(1)

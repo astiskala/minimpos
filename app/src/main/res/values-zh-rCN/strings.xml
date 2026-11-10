@@ -584,6 +584,7 @@
   <string name="transfer_verify">验证并导入</string>
   <string name="transfer_verifying">正在检查凭据和连接…</string>
   <string name="transfer_board_first">请设置 Tap to Pay 以验证本次导入。验证成功前不会保存其他内容。</string>
+  <string name="transfer_board_again">Payments 应用可能已为其他商家账户或门店设置。请点按“重新设置”为此账户设置。</string>
   <string name="transfer_register_phone">导入时也会设置 Tap to Pay。Mini mPOS 会为此手机创建注册凭据，并在需要注册时打开 Payments 应用。</string>
   <string name="transfer_business_failed">无法导入商家信息。请重试，或在“设置 › 收据”中输入。</string>
   <string name="transfer_missing_fields">设置不完整。请在手动设置助手中补充缺失信息，再扫描新二维码。</string>

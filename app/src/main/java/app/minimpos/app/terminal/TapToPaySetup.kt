@@ -210,11 +210,13 @@ class TapToPaySetup(
     /**
      * Whether the Payments app is boarded for the [candidate] setup; [explicit] setup also creates this phone's own
      * credential and boards it. Without one, that explicit setup is what is missing
-     * ([SetupProblem.PAYMENTS_APP_NOT_BOARDED]).
+     * ([SetupProblem.PAYMENTS_APP_NOT_BOARDED]). Explicit [reboard] boards it afresh, even when an installation is
+     * already known: one that is not listed for the candidate's merchant account or store stays unlisted otherwise.
      */
     internal suspend fun candidate(
         candidate: UnlockedSetup,
         explicit: Boolean,
+        reboard: Boolean = false,
     ): TapToPayOutcome {
         val unprepared =
             if (explicit) {
@@ -238,6 +240,7 @@ class TapToPaySetup(
                         .target(),
                     access,
                     explicit,
+                    explicit && reboard,
                 )
             }
         }
@@ -247,6 +250,7 @@ class TapToPaySetup(
         target: BoardingTarget,
         access: BoardingSetup.Ready,
         explicit: Boolean,
+        reboard: Boolean,
     ): TapToPayOutcome {
         val previous =
             when (val stored = journal.read()) {
@@ -266,7 +270,7 @@ class TapToPaySetup(
                 active.paymentsAppInstallationId.takeIf { activeMatches && it.isNotBlank() }
             }
         return when {
-            installation != null -> {
+            installation != null && !reboard -> {
                 registered(access, target, installation)
             }
 
@@ -277,7 +281,7 @@ class TapToPaySetup(
             else -> {
                 register(
                     Attempt(origin, target, granted(access)),
-                    reboard = !same && sameEnvironment && active.paymentsAppInstallationId.isNotBlank() && !activeMatches,
+                    reboard = reboard || (!same && sameEnvironment && active.paymentsAppInstallationId.isNotBlank() && !activeMatches),
                 )
             }
         }

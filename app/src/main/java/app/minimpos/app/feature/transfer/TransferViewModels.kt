@@ -145,6 +145,8 @@ sealed interface ImportUiState {
      * @property boardingRequired Whether explicit phone registration must run before this import can commit.
      * @property historySwitch Destructive history confirmation for this exact candidate; null before verification.
      * @property keyPending Whether the remote key exists but this import still needs connection verification.
+     * @property setUpAgain Whether explicit phone registration already ran without the Payments app being listed for this
+     *   merchant account or store, so it can be registered afresh.
      */
     data class Ready(
         val received: ReceivedTransfer,
@@ -161,6 +163,7 @@ sealed interface ImportUiState {
         /** Destructive environment-change confirmation; null until authenticated setup validation succeeds. */
         val historySwitch: HistorySwitchPlan? = null,
         val keyPending: Boolean = false,
+        val setUpAgain: Boolean = false,
     ) : ImportUiState
 
     /** Opening the secrets and writing everything. */
@@ -266,9 +269,13 @@ class TransferImportViewModel(
      */
     fun import() = verify(board = false)
 
-    /** Explicitly opens phone registration for the currently authenticated candidate; never called by scanning. */
-    fun setUpTapToPay() {
-        if ((state.value as? ImportUiState.Ready)?.boardingRequired == true) verify(board = true)
+    /**
+     * Explicitly opens phone registration for the currently authenticated candidate; never called by scanning. [again]
+     * registers it afresh, only once [ImportUiState.Ready.setUpAgain] offers it.
+     */
+    fun setUpTapToPay(again: Boolean = false) {
+        val ready = state.value as? ImportUiState.Ready ?: return
+        if (ready.boardingRequired && (!again || ready.setUpAgain)) verify(board = true, reboard = again)
     }
 
     /** Chooses only an offered terminal, or dismisses the selector for null; no fields have been imported yet. */
@@ -380,6 +387,7 @@ class TransferImportViewModel(
         board: Boolean,
         confirmedHistorySwitch: HistorySwitchPlan? = null,
         answers: SetupAnswers = this.answers,
+        reboard: Boolean = false,
     ) {
         val ready = state.value as? ImportUiState.Ready ?: return
         if (!ready.received.accepts(ready.code)) {
@@ -396,15 +404,17 @@ class TransferImportViewModel(
                 board,
                 confirmedHistorySwitch ?: confirmedHistory,
                 ready.terminalHost?.trim()?.ifBlank { null },
+                reboard,
             )
         }) { result ->
-            state.value = finished(ready.copy(historySwitch = null), result)
+            state.value = finished(ready.copy(historySwitch = null), result, explicit = board || ready.received.hasConnection)
         }
     }
 
     private fun finished(
         ready: ImportUiState.Ready,
         result: SetupImportOutcome,
+        explicit: Boolean,
     ): ImportUiState =
         when (result) {
             is SetupImportOutcome.Committed -> {
@@ -420,7 +430,7 @@ class TransferImportViewModel(
             }
 
             SetupImportOutcome.BoardingRequired -> {
-                ready.copy(boardingRequired = true, outcome = null)
+                ready.copy(boardingRequired = true, outcome = null, setUpAgain = explicit)
             }
 
             is SetupImportOutcome.Failed -> {

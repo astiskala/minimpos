@@ -584,6 +584,7 @@
   <string name="transfer_verify">確認してインポート</string>
   <string name="transfer_verifying">認証情報と接続を確認中…</string>
   <string name="transfer_board_first">このインポートを確認するため Tap to Pay を設定してください。確認成功まで他の内容は保存しません。</string>
+  <string name="transfer_board_again">Paymentsアプリが別のマーチャントアカウントまたは店舗に設定されている可能性があります。「再設定」をタップしてこのアカウント用に設定してください。</string>
   <string name="transfer_register_phone">インポート時に Tap to Pay も設定します。Mini mPOS がこのスマートフォンの登録用認証情報を作成し、登録が必要な場合は Payments アプリを開きます。</string>
   <string name="transfer_business_failed">店舗情報をインポートできませんでした。再試行するか、「設定 › 領収書」で入力してください。</string>
   <string name="transfer_missing_fields">設定が不完全です。手動設定ヘルパーで不足する情報を追加し、新しいコードを読み取ってください。</string>

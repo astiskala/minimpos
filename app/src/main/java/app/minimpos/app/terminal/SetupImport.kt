@@ -87,8 +87,8 @@ class SetupImport internal constructor(
 
     /**
      * Verifies [received] with [code] and the operator's [answers], then commits it in [mode]. [board] registers Tap to
-     * Pay now, [confirmedHistorySwitch] accepts the history loss previewed for exactly this candidate and [host] corrects
-     * an unreachable network terminal's address.
+     * Pay now and [reboard] registers it afresh, [confirmedHistorySwitch] accepts the history loss previewed for exactly
+     * this candidate and [host] corrects an unreachable network terminal's address.
      */
     internal suspend fun import(
         received: ReceivedTransfer,
@@ -98,6 +98,7 @@ class SetupImport internal constructor(
         board: Boolean = false,
         confirmedHistorySwitch: HistorySwitchPlan? = null,
         host: String? = null,
+        reboard: Boolean = false,
     ): SetupImportOutcome =
         mutex.withLock {
             if (busy()) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
@@ -106,7 +107,7 @@ class SetupImport internal constructor(
             if (!prepared.original.acceptsSetupImport) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
             try {
                 val verified =
-                    when (val step = verify(prepared, Choices(answers, board, confirmedHistorySwitch, host))) {
+                    when (val step = verify(prepared, Choices(answers, board || reboard, confirmedHistorySwitch, host, reboard))) {
                         is Step.Halted -> return@withLock step.outcome
                         is Step.Next -> step.candidate.prepared
                     }
@@ -156,6 +157,7 @@ class SetupImport internal constructor(
         val board: Boolean,
         val confirmedHistory: HistorySwitchPlan?,
         val host: String?,
+        val reboard: Boolean,
     )
 
     private data class Candidate(
@@ -201,7 +203,7 @@ class SetupImport internal constructor(
             .andThen { phoneAccount(it, answers.merchantAccount) }
             .andThen { requiredFields(it, allowMissingKey = it.missingKey) }
             .andThen { checkout(it) }
-            .andThen { phone(it, choices.board || initial.received.hasConnection, choices.confirmedHistory) }
+            .andThen { phone(it, choices.board || initial.received.hasConnection, choices.confirmedHistory, choices.reboard) }
             .andThen { sharedKey(it, choices.confirmedHistory, answers.acceptedKey) }
             .andThen { requiredFields(it) }
             .andThen { connection(it) }
@@ -367,13 +369,14 @@ class SetupImport internal constructor(
         current: Candidate,
         explicit: Boolean,
         confirmedHistory: HistorySwitchPlan?,
+        reboard: Boolean,
     ): Step {
         val prepared = current.prepared
         val unlocked = candidate(prepared)
         if (!unlocked.setup.boardsPhone) return Step.Next(current)
         // Registration creates a credential at Adyen, so history loss is confirmed before it rather than after.
         if (explicit) historyConfirmation(prepared, confirmedHistory)?.let { return it }
-        return when (val result = tapToPay.candidate(unlocked, explicit)) {
+        return when (val result = tapToPay.candidate(unlocked, explicit, reboard)) {
             is TapToPayOutcome.Boarded -> {
                 val evidence = tapToPay.candidateIdentity(unlocked, result.installationId)
                 Step.Next(current.copy(prepared = prepared.withBoardedPhone(result.installationId, evidence)))

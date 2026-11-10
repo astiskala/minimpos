@@ -588,6 +588,7 @@
   <string name="transfer_verify">Verificar e importar</string>
   <string name="transfer_verifying">Verificando credenciais e conexão…</string>
   <string name="transfer_board_first">Configure Tap to Pay para verificar esta importação. Nada mais é salvo até que a verificação seja bem-sucedida.</string>
+  <string name="transfer_board_again">O aplicativo Adyen Payments pode estar configurado para outra conta do comerciante ou loja. Toque em Configurar novamente para configurá-lo para esta.</string>
   <string name="transfer_register_phone">A importação também configura Tap to Pay. Mini mPOS cria a credencial de registro deste telefone e abre o aplicativo Adyen Payments se o registro for necessário.</string>
   <string name="transfer_business_failed">Os detalhes comerciais não puderam ser importados. Tente novamente ou insira-os em Configurações › Recibos.</string>
   <string name="transfer_missing_fields">A configuração está incompleta. Adicione os detalhes ausentes no auxiliar de configuração manual e leia os novos códigos.</string>

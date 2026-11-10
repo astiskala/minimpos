@@ -586,6 +586,7 @@
   <string name="transfer_verify">Verify and import</string>
   <string name="transfer_verifying">Checking credentials and connection…</string>
   <string name="transfer_board_first">Set up Tap to Pay to verify this import. Nothing else is saved until verification succeeds.</string>
+  <string name="transfer_board_again">The Payments app may be set up for another merchant account or store. Tap Set up again to set it up for this one.</string>
   <string name="transfer_register_phone">Import also sets up Tap to Pay. Mini mPOS creates this phone’s registration credential and opens the Payments app if registration is needed.</string>
   <string name="transfer_business_failed">Business details could not be imported. Retry or enter them in Settings › Receipts.</string>
   <string name="transfer_missing_fields">Setup is incomplete. Add the missing details in the Manual setup helper and scan the new codes.</string>

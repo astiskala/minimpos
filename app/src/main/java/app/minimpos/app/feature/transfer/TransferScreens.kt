@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.NavigateBefore
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -94,6 +95,7 @@ import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ProcessingContent
 import app.minimpos.app.ui.components.QrImage
 import app.minimpos.app.ui.components.ReceiptLogoPreview
+import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SharedKeyDialog
 import app.minimpos.app.ui.components.StatusBadge
 import app.minimpos.app.ui.components.StatusKind
@@ -311,7 +313,7 @@ fun TransferImportScreen(
         }
     }
     BackHandler(enabled = scanning || state is ImportUiState.Done) { back() }
-    var confirmReplace by rememberSaveable { mutableStateOf(false) }
+    var confirmReplace by rememberSaveable { mutableStateOf<Boolean?>(null) }
     val importing = state == ImportUiState.Importing
     val snackbar = remember { SnackbarHostState() }
     ImportNavigation(state, snackbar)
@@ -335,7 +337,7 @@ fun TransferImportScreen(
             } else {
                 ImportBottomBar(
                     state,
-                    onImport = { if (it) confirmReplace = true else vm.import() },
+                    onImport = { replaces, again -> if (replaces) confirmReplace = again else vm.import() },
                     onBoard = vm::setUpTapToPay,
                     onRetry = vm::retryRecovery,
                     onDone = ::back,
@@ -352,15 +354,16 @@ fun TransferImportScreen(
     }
     ImportReviewDialogs(
         state = state as? ImportUiState.Ready,
-        confirmReplace = confirmReplace,
+        confirmReplace = confirmReplace != null,
         onTerminal = vm::chooseTerminal,
         onReview = vm::reviewSetup,
         onMerchant = vm::chooseMerchant,
         onConfirm = {
-            confirmReplace = false
-            if ((state as? ImportUiState.Ready)?.boardingRequired == true) vm.setUpTapToPay() else vm.import()
+            val again = confirmReplace == true
+            confirmReplace = null
+            if ((state as? ImportUiState.Ready)?.boardingRequired == true) vm.setUpTapToPay(again) else vm.import()
         },
-        onDismiss = { confirmReplace = false },
+        onDismiss = { confirmReplace = null },
     )
 }
 
@@ -465,19 +468,20 @@ private fun ImportContent(
 }
 
 /**
- * Import when ready ([onImport] is told whether the catalogue replaces this one, which needs confirming), Done when
- * finished.
+ * Import when ready ([onImport] is told whether the catalogue replaces this one, which needs confirming, and whether
+ * Tap to Pay is set up again), Done when finished. [onBoard] sets up Tap to Pay, afresh when told so.
  */
 @Composable
 private fun ImportBottomBar(
     state: ImportUiState,
-    onImport: (replaces: Boolean) -> Unit,
-    onBoard: () -> Unit,
+    onImport: (replaces: Boolean, again: Boolean) -> Unit,
+    onBoard: (again: Boolean) -> Unit,
     onRetry: () -> Unit,
     onDone: () -> Unit,
 ) {
     when (state) {
         is ImportUiState.Ready -> {
+            val replaces = state.received.catalogue != null && state.mode == ImportMode.REPLACE
             BottomActions {
                 PrimaryButton(
                     stringResource(
@@ -487,13 +491,18 @@ private fun ImportBottomBar(
                             else -> R.string.transfer_verify
                         },
                     ),
-                    {
-                        val replaces = state.received.catalogue != null && state.mode == ImportMode.REPLACE
-                        if (state.boardingRequired && !replaces) onBoard() else onImport(replaces)
-                    },
+                    { if (state.boardingRequired && !replaces) onBoard(false) else onImport(replaces, false) },
                     enabled = state.received.accepts(state.code),
                     modifier = Modifier.testTag("import"),
                 )
+                if (state.boardingRequired && state.setUpAgain) {
+                    SecondaryButton(
+                        stringResource(R.string.settings_set_up_again),
+                        { if (replaces) onImport(true, true) else onBoard(true) },
+                        Modifier.testTag("reboardTapToPay"),
+                        icon = Icons.Default.Refresh,
+                    )
+                }
             }
         }
 
@@ -689,11 +698,16 @@ private fun ImportReady(
             state.terminalHost?.let { TerminalHostField(it, events.host) }
             if (state.incomplete) ActionMessage(stringResource(R.string.transfer_missing_fields), isError = true)
             if (state.keyUnread) Notice(stringResource(R.string.transfer_key_enter_in_helper))
-            if (state.boardingRequired) Notice(stringResource(R.string.transfer_board_first), kind = NoticeKind.WARNING)
+            if (state.boardingRequired) BoardingNotice(state.setUpAgain)
             if (state.keyPending) Notice(stringResource(R.string.transfer_key_not_imported))
         }
     }
 }
+
+/** Why Tap to Pay is set up before this import, and when [setUpAgain], that it can be set up afresh for this account. */
+@Composable
+private fun BoardingNotice(setUpAgain: Boolean) =
+    Notice(stringResource(if (setUpAgain) R.string.transfer_board_again else R.string.transfer_board_first), kind = NoticeKind.WARNING)
 
 /** Non-secret destination and environment from the helper, reviewed before any saved settings or secrets change. */
 @Composable

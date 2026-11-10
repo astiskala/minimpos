@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import app.minimpos.app.FakeDevice
+import app.minimpos.app.FakeManagement
 import app.minimpos.app.FakePaymentsApp
 import app.minimpos.app.FakeTerminal
 import app.minimpos.app.R
@@ -42,6 +43,7 @@ import app.minimpos.core.codec.QrChunks
 import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
+import app.minimpos.terminal.paymentsapp.ManagementResult
 import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.CredentialRoles
@@ -75,6 +77,7 @@ class AutomaticSetupUiTest {
     private val device = FakeDevice()
     private val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport))
     private val paymentsApp = FakePaymentsApp()
+    private val management = FakeManagement()
     private val searches = mutableListOf<TerminalEnvironment>()
     private var keyLookups = 0
     private val terminal = FakeTerminal()
@@ -132,7 +135,7 @@ class AutomaticSetupUiTest {
         }
 
     @get:Rule(order = 0)
-    val env = TestEnvironment(device, terminal = terminal, paymentsApp = paymentsApp, terminalDetails = details)
+    val env = TestEnvironment(device, terminal = terminal, paymentsApp = paymentsApp, management = management, terminalDetails = details)
 
     @get:Rule(order = 1)
     val compose = createComposeRule()
@@ -154,6 +157,7 @@ class AutomaticSetupUiTest {
         succeeds: Boolean = true,
         register: Boolean = false,
         awaitKey: Boolean = false,
+        awaitSetUpAgain: Boolean = false,
     ): TransferImportViewModel {
         val container = env.container
         container.start()
@@ -193,6 +197,11 @@ class AutomaticSetupUiTest {
                 (vm.state.value as? ImportUiState.Ready)?.question is SetupQuestion.KeyConfirmation
             }
             waitForTag("confirmSharedKey")
+        } else if (awaitSetUpAgain) {
+            compose.awaitCondition("Setting up Tap to Pay again is offered") {
+                (vm.state.value as? ImportUiState.Ready)?.setUpAgain == true
+            }
+            waitForTag("reboardTapToPay")
         } else if (!succeeds) {
             compose.awaitCondition("Rejected candidate remains editable") { (vm.state.value as? ImportUiState.Ready)?.outcome != null }
         } else {
@@ -424,6 +433,35 @@ class AutomaticSetupUiTest {
         compose.onNodeWithTag("paymentsAppKey").assertDoesNotExist()
         assertThat(searches).isEmpty()
         assertThat(paymentsApp.opened).isNotEmpty()
+    }
+
+    @Test
+    fun `Payments app boarded for another account is set up again from the import`() = setUpAgain()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese set up again fits AMS1 and completes the import`() = setUpAgain()
+
+    @Test
+    @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
+    fun `Japanese set up again fits AMS1 and completes the import`() = setUpAgain()
+
+    private fun setUpAgain() {
+        device.paymentsApps = setOf(TerminalEnvironment.TEST)
+        paymentsApp.boarded = true
+        management.registrationResult = ManagementResult.NotBoarded
+        importAutomatic(
+            "tapToPay",
+            manualDetails = """"keyIdentifier":"manual-key","keyVersion":3,""",
+            secrets = """{"ADYEN_API_KEY":"imported-key","TERMINAL_PASSPHRASE":"manual secret"}""",
+            awaitSetUpAgain = true,
+        )
+        compose.onNodeWithText(env.context.getString(R.string.transfer_board_again)).performScrollTo().assertIsDisplayed()
+        assertThat(paymentsApp.opened.none { "reboard=true" in it }).isTrue()
+        management.registrationResult = ManagementResult.Done()
+        compose.onNodeWithTag("reboardTapToPay").assertIsDisplayed().performClick()
+        finishImport(register = true)
+        assertThat(paymentsApp.opened.any { "reboard=true" in it }).isTrue()
     }
 
     @Test

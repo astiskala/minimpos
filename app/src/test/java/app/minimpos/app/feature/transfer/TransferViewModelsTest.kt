@@ -75,7 +75,7 @@ class TransferViewModelsTest {
      * Waits for [import] to reach a state that matches [condition], running the main looper meanwhile: parts of the
      * import resume on it, so blocking it as [await] does would stall them.
      */
-    private fun settled(
+    internal fun settled(
         import: TransferImportViewModel,
         condition: (ImportUiState) -> Boolean,
     ): ImportUiState {
@@ -183,9 +183,9 @@ class TransferViewModelsTest {
         assertThat(import.state.value).isInstanceOf(ImportUiState.Done::class.java)
     }
 
-    @Test
-    fun `confirmed history loss is not asked again when the import needs something else`() {
-        val details =
+    /** A simulator with history, its Payments app boarded but not listed for the merchant account the import chooses. */
+    private inner class UnlistedTapToPay : AutoCloseable {
+        private val details =
             object : TerminalDetailsApi {
                 override suspend fun credential(environment: TerminalEnvironment) =
                     CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList()))
@@ -209,10 +209,9 @@ class TransferViewModelsTest {
                     environment: TerminalEnvironment,
                 ) = SharedKeyLookup.Missing
             }
-        // Already boarded, but not for the chosen account: the import then needs Tap to Pay set up.
         val phone = FakePaymentsApp().apply { boarded = true }
         val management = FakeManagement().apply { registrationResult = ManagementResult.NotBoarded }
-        val simulator =
+        val env =
             TestEnvironment(
                 FakeDevice(paymentsApps = setOf(TerminalEnvironment.TEST)),
                 paymentsApp = phone,
@@ -220,14 +219,16 @@ class TransferViewModelsTest {
                 terminalDetails = details,
                 verifiedSetup = false,
             )
-        try {
-            simulator.useSimulator()
-            await { simulator.container.sampleData.populate(simulator.container.settings.current()) }
+        val import = TransferImportViewModel("AUD", env.container.setupImport)
+
+        /** Imports Automatic Tap to Pay for merchant account B, confirming history loss, until Tap to Pay is required. */
+        fun untilBoardingRequired(): ImportUiState.Ready {
+            env.useSimulator()
+            await { env.container.sampleData.populate(env.container.settings.current()) }
             val seal = TransferSeal(iterations = 1_000)
             val code = seal.newCode()
             val public = Transfer(connection = """{"destination":"tapToPay","environment":"TEST","automatic":true}""")
             val encrypted = seal.seal("""{"ADYEN_API_KEY":"key"}""".toByteArray(), code, TransferCodec.authenticationData(public))
-            val import = TransferImportViewModel("AUD", simulator.container.setupImport)
             settled(import) { it is ImportUiState.Scanning }
             QrChunks
                 .split(TransferCodec.encode(public.copy(sealedSecrets = SealedSecrets(encrypted))), "TAPP")
@@ -239,12 +240,37 @@ class TransferViewModelsTest {
             import.chooseMerchant("B")
             settled(import) { (it as? ImportUiState.Ready)?.historySwitch != null }
             import.reviewSetup(true)
-            val ready = settled(import) { it is ImportUiState.Ready && it.boardingRequired } as ImportUiState.Ready
-            assertThat(ready.historySwitch).isNull()
-        } finally {
-            simulator.close()
+            return settled(import) { it is ImportUiState.Ready && it.boardingRequired } as ImportUiState.Ready
         }
+
+        override fun close() = env.close()
     }
+
+    @Test
+    fun `confirmed history loss is not asked again when the import needs something else`() =
+        UnlistedTapToPay().use { assertThat(it.untilBoardingRequired().historySwitch).isNull() }
+
+    @Test
+    fun `a Payments app not listed for the chosen account is set up again only on request`() =
+        UnlistedTapToPay().use { setup ->
+            val import = setup.import
+            assertThat(setup.untilBoardingRequired().setUpAgain).isTrue()
+            setup.phone.opened.clear()
+            import.setUpTapToPay()
+            assertThat((settled(import) { it is ImportUiState.Ready } as ImportUiState.Ready).boardingRequired).isTrue()
+            assertThat(setup.phone.opened.none { "reboard=true" in it }).isTrue()
+            setup.management.registrationResult = ManagementResult.Done()
+            import.setUpTapToPay(again = true)
+            assertThat(settled(import) { it is ImportUiState.Done }).isInstanceOf(ImportUiState.Done::class.java)
+            assertThat(setup.phone.opened.any { "reboard=true" in it }).isTrue()
+            val terminal =
+                await {
+                    setup.env.container.settings
+                        .current()
+                }.terminal
+            assertThat(terminal.merchantAccount).isEqualTo("B")
+            assertThat(terminal.paymentsAppInstallationId).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
+        }
 
     @Test
     fun `corrupt transfer data clears scanned chunks and allows another transfer`() {

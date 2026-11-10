@@ -15,10 +15,13 @@ import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.StoredReasonConverter
+import app.minimpos.app.data.repo.ApprovedTender
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.repo.RefundedLine
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.after
+import app.minimpos.app.data.repo.approvedTender
+import app.minimpos.app.data.repo.authorisedFor
 import app.minimpos.app.data.repo.cashAwaitingHandover
 import app.minimpos.app.data.repo.refundedBy
 import app.minimpos.app.data.repo.retentionEligible
@@ -163,6 +166,25 @@ class SaleEventTest {
             )
         assertThat(Checkout.remainingPayment(unknownPurchase)).isNull()
         assertThat(saleResultNext(unknownPurchase)).isEqualTo(SaleResultNext.NONE)
+    }
+
+    @Test
+    fun `a tender approved without a readable amount pays only what it asked for`() {
+        val tender = pending.copy(totalMinor = 1_300, tenderRequestedMinor = 500)
+        val paid = tender.after(SaleEvent.Settled(SaleStatus.APPROVED, null, approved.copy(amountMinor = null)))
+        assertThat(paid.paidMinor).isEqualTo(500)
+        assertThat(paid.remainingMinor).isEqualTo(800)
+        assertThat(saleResultNext(paid)).isEqualTo(SaleResultNext.PAY_REMAINING)
+    }
+
+    @Test
+    fun `an approved tender is authorised for at most its request and reported components`() {
+        assertThat(approved.copy(amountMinor = 50_000).authorisedFor(500)).isEqualTo(500)
+        assertThat(approved.copy(amountMinor = 650, tipMinor = 100, surchargeMinor = 50).authorisedFor(500)).isEqualTo(650)
+        assertThat(approved.copy(amountMinor = -1).authorisedFor(500)).isEqualTo(0)
+        assertThat(approved.copy(amountMinor = null).authorisedFor(500)).isEqualTo(500)
+        assertThat(SaleEvent.Settled(SaleStatus.APPROVED, null, approved.copy(amountMinor = 9_999)).approvedTender(1_000, 400))
+            .isEqualTo(ApprovedTender(600, 600))
     }
 
     @Test

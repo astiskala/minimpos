@@ -593,7 +593,8 @@ private fun SaleEntity.settledAmounts(
             (reportedMinor - (terminalTipMinor ?: 0L) - (details.surchargeMinor ?: 0L) - (details.cashBackMinor ?: 0L))
                 .coerceIn(0L, chosen ?: remaining)
         } else {
-            remaining
+            // Without a readable amount, a tender that asked for less than the balance paid at most what it asked for.
+            chosen ?: remaining
         }
     return terminalTipMinor to Math.addExact(paidMinor, baseTenderMinor).coerceAtMost(totalMinor)
 }
@@ -628,8 +629,20 @@ fun SaleEvent.Settled.approvedTender(
     if (status != SaleStatus.APPROVED) return null
     val details = details ?: return null
     val requested = (totalMinor - paidMinor).coerceAtLeast(0)
-    val authorised = details.amountMinor ?: requested
-    return ApprovedTender(requested, authorised)
+    return ApprovedTender(requested, details.authorisedFor(requested))
+}
+
+/**
+ * What a tender that asked for [requestedMinor] minor units was approved for, as these details report it: the reported
+ * amount, never below zero nor above the request plus the tip, fees and cash it reports; the request when no amount is
+ * reported. An over-reported amount therefore cannot raise what the tender can later refund.
+ */
+fun TransactionDetails.authorisedFor(requestedMinor: Long): Long {
+    val ceiling =
+        listOf(tipMinor, surchargeMinor, cashBackMinor).fold(requestedMinor) { sum, part ->
+            Math.addExact(sum, part?.coerceAtLeast(0) ?: 0)
+        }
+    return amountMinor?.coerceIn(0, ceiling) ?: requestedMinor
 }
 
 private fun SaleEntity.linkAnswered(event: SaleEvent.LinkAnswered): SaleEntity {

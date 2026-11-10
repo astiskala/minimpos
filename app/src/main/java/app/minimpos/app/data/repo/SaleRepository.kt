@@ -205,7 +205,7 @@ class SaleRepository(
                 answeredTender(
                     open,
                     details,
-                    details.amountMinor ?: open.requestedMinor,
+                    details.authorisedFor(open.requestedMinor),
                     settled.processedAt ?: now(),
                     sale.context,
                 )

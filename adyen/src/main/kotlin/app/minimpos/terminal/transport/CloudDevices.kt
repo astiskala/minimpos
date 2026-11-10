@@ -308,7 +308,7 @@ class CloudTransport internal constructor(
         val details = eventDetails(body) ?: return Delivery.Failed(Fault.UnreadableReply())
         val message = FormEncoding.decode(details)["message"] ?: details
         val said = ExternalText.of(message)
-        return if (NOT_CONNECTED.any { message.contains(it, ignoreCase = true) }) {
+        return if (NOT_CONNECTED.any { it.matches(message.trim()) }) {
             Delivery.Failed(Fault.TerminalOffline(poiId, said))
         } else {
             Delivery.Failed(Fault.NoAnswerFromTerminal(poiId, said))
@@ -325,17 +325,21 @@ class CloudTransport internal constructor(
         }.getOrNull()
 
     private companion object {
-        /** How Adyen words that a terminal cannot be reached at all, so the request never got to it. */
+        /**
+         * How Adyen words, in full, that a terminal cannot be reached at all, so the request never got to it. Only these
+         * whole sentences count: any other wording, even one mentioning "offline", may follow a request the terminal
+         * received, so its outcome stays unknown.
+         */
         private val NOT_CONNECTED =
             listOf(
-                "not connected",
-                "offline",
-                "unknown device",
-                "not found",
+                "Device \\S+ is not connected\\.?",
+                "Device \\S+ is offline\\.?",
+                "Unknown device \\S+\\.?",
+                "Device not found\\.?",
                 // Observed from TEST Cloud device API with a powered-off terminal absent from connectedDevices; the
                 // rest of the sentence only guesses at the cause.
-                "Failed to send message to POI",
-            )
+                "Failed to send message to POI\\..*",
+            ).map { Regex(it, RegexOption.IGNORE_CASE) }
     }
 }
 

@@ -207,6 +207,11 @@ class CloudDevicesTest {
             assertThat(failure(200, event(msg)).fault)
                 .isEqualTo(Fault.TerminalOffline("S1F2-000158213605014", ExternalText(msg)))
         }
+        // Other wording, even mentioning that the terminal went offline, may follow a request it received.
+        listOf("Device S1F2-1 went offline while processing", "Transaction not found after timeout").forEach { msg ->
+            assertThat(failure(200, event(msg)).fault)
+                .isEqualTo(Fault.NoAnswerFromTerminal("S1F2-000158213605014", ExternalText(msg)))
+        }
         val late = failure(200, event("Did not receive a response from the POI."))
         assertThat(late.fault)
             .isEqualTo(Fault.NoAnswerFromTerminal("S1F2-000158213605014", ExternalText("Did not receive a response from the POI.")))

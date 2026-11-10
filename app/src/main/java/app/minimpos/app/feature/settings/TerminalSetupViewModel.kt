@@ -16,6 +16,7 @@ import app.minimpos.app.terminal.SetupDiagnostics
 import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SetupDiscoveryChoice
 import app.minimpos.app.terminal.SetupDiscoverySearch
+import app.minimpos.app.terminal.SetupQuestion
 import app.minimpos.app.terminal.SetupStoreChoice
 import app.minimpos.app.terminal.SetupStoreSearch
 import app.minimpos.app.terminal.SetupTerminalChoice
@@ -58,7 +59,7 @@ import kotlinx.coroutines.launch
 data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
     val connectedTerminals: List<SetupTerminalChoice>? = null,
-    val accountMismatch: SetupDiscoveryChoice.AccountDiffers? = null,
+    val accountMismatch: SetupQuestion.AccountDiffers? = null,
     val keyRolesOffer: KeyRolesOffer? = null,
     val keyRolesAdded: Boolean = false,
     val tapToPay: ActionState = ActionState(),
@@ -216,8 +217,8 @@ class TerminalSetupViewModel(
         actions.update { it.copy(connectedTerminals = null, accountMismatch = null, terminals = ActionState()) }
         launchWrite({
             val result = discovery.choose(poiId, confirmedAccount)
-            if (result is SetupDiscoveryChoice.AccountDiffers) {
-                actions.update { it.copy(accountMismatch = result) }
+            if (result is SetupDiscoveryChoice.Asks) {
+                actions.update { it.copy(accountMismatch = result.question) }
             } else if (poiId != null) {
                 val terminal = settings.current().terminal
                 observedTerminal.first { it == terminal }

@@ -83,6 +83,7 @@ import app.minimpos.app.terminal.MerchantCurrency
 import app.minimpos.app.terminal.PaymentsAppBridge
 import app.minimpos.app.terminal.ReceiptBusinessDetails
 import app.minimpos.app.terminal.SetupAccess
+import app.minimpos.app.terminal.SetupConversation
 import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SetupImport
 import app.minimpos.app.terminal.SetupImportChecks
@@ -412,6 +413,9 @@ class AppContainer(
 
     private val sharedKeys: SharedKeySetup = SharedKeySetup(terminalSetup, terminalDetails, api::verify, ::financialOperationRunning)
 
+    /** Setup discovery's questions, asked the same way for the saved setup and an import candidate. */
+    private val setupConversation = SetupConversation(terminalDetails, terminalDetails, sharedKeys)
+
     /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
     val tapToPay =
         TapToPaySetup(
@@ -432,7 +436,7 @@ class AppContainer(
     val setupDiscovery =
         SetupDiscovery(terminalSetup, {
             secrets.set(Secret.TERMINAL_PASSPHRASE, it)
-        }, terminalDetails, gateway::readEnvironment, sharedKeys, terminalStatus::check, storeDetails, terminalDetails)
+        }, setupConversation, gateway::readEnvironment, terminalStatus::check, storeDetails)
 
     /**
      * The startup check for a newer GitHub release, which Home offers to download in the browser; never started on an
@@ -714,7 +718,7 @@ class AppContainer(
             gateway,
             api,
             tapToPay,
-            SetupImportChecks(receiptBusinessDetails, terminalDetails, sharedKeys, terminalDetails),
+            SetupImportChecks(receiptBusinessDetails, setupConversation),
             historySwitches,
         ) { operations.running }
 

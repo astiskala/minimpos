@@ -50,10 +50,14 @@ import app.minimpos.app.receipt.ReceiptKind
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.CapabilityDiscovery
 import app.minimpos.app.terminal.DestinationRules
+import app.minimpos.app.terminal.KeyRoles
+import app.minimpos.app.terminal.SetupConversation
 import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SetupFreshness
+import app.minimpos.app.terminal.SharedKeySetup
 import app.minimpos.app.terminal.SharedKeySetupOutcome
 import app.minimpos.app.terminal.SimulatedTerminal
+import app.minimpos.app.terminal.TerminalAssignments
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.app.terminal.UnlockedSetup
@@ -70,8 +74,11 @@ import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.transport.AdyenLocalTransport
+import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.SharedKeyApi
+import app.minimpos.terminal.transport.TerminalDetails
 import com.tngtech.archunit.base.DescribedPredicate
 import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.belongToAnyOf
@@ -275,6 +282,19 @@ class DeepeningArchitectureTest {
             fence: TerminalSetupSource.SetupFence,
             key: DiscoveredKey,
         ) = fence.withSharedKey(key)
+    }
+
+    @Test
+    fun `setup discovery and setup import ask the operator only through the setup conversation`() = setupConversation.check(app)
+
+    @Test
+    fun `setup conversation ownership rejects a subject asking a setup question itself`() =
+        reject(listOf(setupConversation), SetupConversationViolation::class.java)
+
+    private class SetupConversationViolation {
+        fun roles(lookup: CredentialLookup.Failed) = KeyRoles.offer(lookup)
+
+        fun terminal(listed: List<TerminalDetails>) = TerminalAssignments.select(listed, "S1F2-1", "Merchant")
     }
 
     @Test
@@ -719,6 +739,28 @@ class DeepeningArchitectureTest {
                     within(TerminalSetupSource::class.java.name, AppSettings::class.java.name, SettingsRepository::class.java.name),
                 ).should()
                 .callMethodWhere(callTo(AppSettings::class.java.name, "getVerifiedSetup"))
+
+        // Setup discovery and setup import each asked about key roles, the terminal and its account, Tap to Pay's account
+        // and key creation, and their copies applied a chosen terminal's address and account differently;
+        // SetupConversation asks each question once, and each subject only commits the answers its own way.
+        val setupConversation: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(
+                    within(
+                        SetupConversation::class.java.name,
+                        "app.minimpos.app.terminal.KeyRoles",
+                        "app.minimpos.app.terminal.TerminalAssignments",
+                        SharedKeySetup::class.java.name,
+                    ),
+                ).should()
+                .callMethodWhere(callTo("app.minimpos.app.terminal.KeyRoles", "offer", "add"))
+                .orShould()
+                .callMethodWhere(callTo("app.minimpos.app.terminal.TerminalAssignments", "select", "discover"))
+                .orShould()
+                .callMethodWhere(callTo(SharedKeySetup::class.java.name, "resolve", "pendingOffer"))
+                .orShould()
+                .callMethodWhere(callToSubtypeOf(SharedKeyApi::class.java, "accountKey", "merchantAccounts"))
 
         // First-screen claiming stays shared, while dispatch and its progress cannot be reconstructed in presentation.
         val receiptAutomation: List<ArchRule> =

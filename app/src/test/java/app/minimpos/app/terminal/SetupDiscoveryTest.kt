@@ -172,8 +172,7 @@ class SetupDiscoveryTest {
                     container.secrets.set(Secret.TERMINAL_PASSPHRASE, it)
                     container.settings.update { saved -> saved.copy(terminal = saved.terminal.copy(host = "192.0.2.20")) }
                 },
-                { api },
-                sharedKeys = SharedKeySetup(container.terminalSetup, { api }, { ApiCheck.Works }, { false }),
+                SetupConversation({ api }, { api }, SharedKeySetup(container.terminalSetup, { api }, { ApiCheck.Works }, { false })),
                 verifyConnection = {
                     verified = true
                     container.terminalStatus.check()
@@ -198,8 +197,7 @@ class SetupDiscoveryTest {
                     container.secrets.set(Secret.TERMINAL_PASSPHRASE, it)
                     container.settings.update { saved -> saved.copy(terminal = saved.terminal.copy(host = "192.0.2.20")) }
                 },
-                { api },
-                sharedKeys = SharedKeySetup(container.terminalSetup, { api }, { ApiCheck.Works }, { false }),
+                SetupConversation({ api }, { api }, SharedKeySetup(container.terminalSetup, { api }, { ApiCheck.Works }, { false })),
                 verifyConnection = container.terminalStatus::check,
                 stores = { _, _ -> FakeStoreDetails() },
             )
@@ -366,7 +364,9 @@ class SetupDiscoveryTest {
         val before = await { container.settings.current() }
         await { container.setupDiscovery.find() }
         val result = await { container.setupDiscovery.choose("S1F2-123456789") }
-        assertThat(result).isEqualTo(SetupDiscoveryChoice.AccountDiffers("S1F2-123456789", AccountMismatch("Other", "Merchant")))
+        assertThat(
+            result,
+        ).isEqualTo(SetupDiscoveryChoice.Asks(SetupQuestion.AccountDiffers("S1F2-123456789", AccountMismatch("Other", "Merchant"))))
         assertThat(result.manualDetails).isFalse()
         assertThat(await { container.settings.current() }).isEqualTo(before)
         assertThat(await { container.setupDiscovery.choose("S1F2-123456789", "Merchant") }).isEqualTo(SetupDiscoveryChoice.Complete)

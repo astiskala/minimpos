@@ -6,7 +6,6 @@ import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.CredentialRoles
-import app.minimpos.terminal.transport.CredentialRolesApi
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyApi
 import app.minimpos.terminal.transport.SharedKeyLookup
@@ -133,12 +132,10 @@ sealed interface SetupDiscoveryChoice {
 
     /**
      * The terminal belongs to another account; nothing changed. Choosing it again with the assigned account accepts it.
-     * @property poiId The terminal that was chosen.
-     * @property mismatch The two accounts.
+     * @property question The terminal chosen and the two accounts, to put to the operator.
      */
-    data class AccountDiffers(
-        val poiId: String,
-        val mismatch: AccountMismatch,
+    data class Asks(
+        val question: SetupQuestion.AccountDiffers,
     ) : SetupDiscoveryChoice
 
     /** Selected fields and required optional details were imported. */
@@ -187,26 +184,23 @@ internal sealed interface SharedKeyConnection {
     ) : SharedKeyConnection
 }
 
-/** Optional setup discovery through Management, independent of payment readiness.
+/** Optional setup discovery through Management for the saved setup, independent of payment readiness: the
+ * [SetupConversation] asks its questions, and this applies the answers with fenced writes to the stored settings.
  * @param setups Unlocks the API key through the setup source, and saves selected connection fields through
  *   its [TerminalSetupSource.SetupFence] only while the setup a search began on is still stored.
  * @param savePassphrase Encrypts a retrieved passphrase through the container's secret-store writer.
- * @param connect Builds read-only Management access; tests inject a fake.
+ * @param conversation Asks setup discovery's questions; tests give it fake Management access.
  * @param readEnvironment Reads this device's certificate before using Management.
- * @param sharedKeys Owns separately confirmed key creation and encrypted recovery.
  * @param verifyConnection Checks saved setup and records its verified identity through TerminalStatus.
  * @param stores Read-only store listing for the selected credential and environment.
- * @param roles Adds the roles the API key lacks, only after the operator agrees.
  */
-class SetupDiscovery(
+class SetupDiscovery internal constructor(
     private val setups: TerminalSetupSource,
     private val savePassphrase: suspend (String) -> Unit,
-    private val connect: (String) -> SharedKeyApi,
+    private val conversation: SetupConversation,
     private val readEnvironment: suspend () -> Unit = {},
-    private val sharedKeys: SharedKeySetup,
     private val verifyConnection: suspend () -> TerminalConnection,
     private val stores: (String, TerminalEnvironment) -> StoreDetailsApi,
-    private val roles: (String) -> CredentialRolesApi = { object : CredentialRolesApi {} },
 ) {
     private var selection: Selection? = null
     private var storeSelection: StoreSelection? = null
@@ -214,34 +208,29 @@ class SetupDiscovery(
 
     /** Reads the shared key of the saved Tap to Pay account and saves it. */
     private suspend fun phoneKey(unlocked: UnlockedSetup): SharedKeyConnection {
-        val failure = phoneKeyFailure(unlocked)
-        return if (failure == null) SharedKeyConnection.Saved else SharedKeyConnection.Failed(failure)
-    }
+        val owner = setups.owner(unlocked)
+        if (owner is BoardingOwner.Blocked) return SharedKeyConnection.Failed(Failure.NotSetUp(owner.problem))
+        owner as BoardingOwner.Ready
+        val storeId =
+            unlocked.setup.settings.terminal.storeId
+                .trim()
+                .ifEmpty { null }
+        val fence = setups.SetupFence(unlocked, SetupFreshness.CREDENTIAL)
+        val api = conversation.management(owner.apiKey)
+        return when (val found = conversation.phoneKey(api, owner.environment, owner.merchantAccount, storeId)) {
+            is SetupReply.Halted -> {
+                SharedKeyConnection.Failed(found.failure)
+            }
 
-    private suspend fun phoneKeyFailure(unlocked: UnlockedSetup): Failure? =
-        run {
-            val owner = setups.owner(unlocked)
-            if (owner is BoardingOwner.Blocked) return@run Failure.NotSetUp(owner.problem)
-            owner as BoardingOwner.Ready
-            val storeId =
-                unlocked.setup.settings.terminal.storeId
-                    .trim()
-                    .ifEmpty { null }
-            val fence = setups.SetupFence(unlocked, SetupFreshness.CREDENTIAL)
-            when (val found = connect(owner.apiKey).accountKey(owner.merchantAccount, storeId, owner.environment)) {
-                is SharedKeyLookup.Found -> {
-                    if (saveKey(fence, found.key) == null) Failure.NotSetUp(SetupProblem.SETUP_CHANGED) else null
-                }
-
-                SharedKeyLookup.Missing -> {
-                    Failure.NotSetUp(SetupProblem.KEY_IDENTIFIER)
-                }
-
-                is SharedKeyLookup.Failed -> {
-                    Failure.Remote(found.fault)
+            is SetupReply.Next -> {
+                if (saveKey(fence, found.value) == null) {
+                    SharedKeyConnection.Failed(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
+                } else {
+                    SharedKeyConnection.Saved
                 }
             }
         }
+    }
 
     /** Roles the saved API key lacks and can be given; null when it has them all or cannot be changed from here. */
     suspend fun keyRolesOffer(): KeyRolesOffer? =
@@ -249,16 +238,24 @@ class SetupDiscovery(
             val unlocked = setups.unlocked()
             val key = unlocked.apiKey ?: return@withLock null
             val environment = unlocked.setup.environment ?: return@withLock null
-            (connect(key).credential(environment) as? CredentialLookup.Failed)?.let(KeyRoles::offer)
+            (
+                (
+                    conversation.credential(
+                        key,
+                        environment,
+                        accepted = null,
+                    ) as? SetupReply.Asks
+                )?.question as? SetupQuestion.RolesMissing
+            )?.offer
         }
 
-    /** Adds [offer] to the saved API key; whether Adyen confirmed it. */
+    /** Adds [offer] to the saved API key while it still lacks exactly those roles; whether the key now holds them. */
     suspend fun addKeyRoles(offer: KeyRolesOffer): Boolean =
         mutex.withLock {
             val unlocked = setups.unlocked()
             val key = unlocked.apiKey ?: return@withLock false
             val environment = unlocked.setup.environment ?: return@withLock false
-            KeyRoles.add(roles(key), environment, offer) == null
+            conversation.credential(key, environment, accepted = offer) is SetupReply.Next
         }
 
     /** Lists stores for the saved account; missing setup and stale responses return typed failures. */
@@ -311,9 +308,10 @@ class SetupDiscovery(
             val setup = unlocked.setup
             if (!setup.capabilities.discoversTerminals) return@withLock SetupDiscoverySearch.Unavailable
             val environment = setup.environment ?: return@withLock SetupDiscoverySearch.Unavailable
-            val api = connect(key)
-            val credential = api.credential(environment)
-            if (credential is CredentialLookup.Failed) return@withLock SetupDiscoverySearch.Failed(Failure.Remote(credential.fault))
+            // Settings presents missing roles as the failure; the key assistant then offers to add them.
+            val credential = conversation.credential(key, environment, accepted = null)
+            if (credential is SetupReply.Halted) return@withLock SetupDiscoverySearch.Failed(credential.failure)
+            val api = conversation.management(key)
             val onDevice = setup.onTerminal
             val terminals =
                 when (val found = TerminalAssignments.listOffered(api, environment, onDevice, setup.poiId)) {
@@ -337,43 +335,29 @@ class SetupDiscovery(
             val selected = selection ?: return@withLock SetupDiscoveryChoice.Ignored
             selection = null
             if (id == null) return@withLock SetupDiscoveryChoice.Ignored
+            val entered = selected.setup.settings.terminal.merchantAccount
             val terminal =
-                when (
-                    val assignment =
-                        TerminalAssignments.select(
-                            selected.terminals,
-                            id,
-                            selected.setup.settings.terminal.merchantAccount,
-                        )
-                ) {
-                    is TerminalAssignment.Assigned -> {
-                        assignment.terminal
+                when (val chosen = conversation.choose(selected.terminals, id, entered, confirmedAccount)) {
+                    is SetupReply.Next -> {
+                        chosen.value
                     }
 
-                    is TerminalAssignment.Mismatched -> {
-                        if (assignment.terminal.merchantAccount == confirmedAccount) {
-                            assignment.terminal
-                        } else {
-                            selection = selected
-                            return@withLock SetupDiscoveryChoice.AccountDiffers(
-                                id,
-                                AccountMismatch(assignment.entered, assignment.terminal.merchantAccount),
-                            )
-                        }
+                    is SetupReply.Asks -> {
+                        selection = selected
+                        val question = chosen.question as SetupQuestion.AccountDiffers
+                        return@withLock SetupDiscoveryChoice.Asks(question)
                     }
 
                     // An ID that this search did not offer is a stale or unknown selection, not an access failure.
-                    is TerminalAssignment.Blocked -> {
-                        val problem = assignment.problem
-                        return@withLock if (problem == SetupProblem.TERMINAL_ACCESS) {
+                    is SetupReply.Failed -> {
+                        return@withLock if (chosen.failure == Failure.NotSetUp(SetupProblem.TERMINAL_ACCESS)) {
                             SetupDiscoveryChoice.Ignored
                         } else {
-                            SetupDiscoveryChoice.Failed(Failure.NotSetUp(problem))
+                            SetupDiscoveryChoice.Failed(chosen.failure)
                         }
                     }
                 }
-            val local = selected.setup.mode == TerminalMode.TERMINAL
-            val lookup = if (local) selected.api.sharedKey(terminal.id, selected.environment) else null
+            val lookup = conversation.terminalKey(selected.api, selected.environment, selected.setup, terminal)
             if (!selected.fence.stillCurrent()) return@withLock SetupDiscoveryChoice.Ignored
             val key = (lookup as? SharedKeyLookup.Found)?.key?.takeIf { store(it) }
             if (!apply(selected, terminal, key)) return@withLock SetupDiscoveryChoice.Ignored
@@ -395,7 +379,7 @@ class SetupDiscovery(
         }
     }
 
-    internal suspend fun pendingKey(): SharedKeyOffer? = sharedKeys.pendingOffer(setups.unlocked(forValidation = true))
+    internal suspend fun pendingKey(): SharedKeyOffer? = conversation.pendingKey(setups.unlocked(forValidation = true))
 
     internal suspend fun setupKey(confirmed: SharedKeyOffer? = null): SharedKeyConnection =
         mutex.withLock {
@@ -403,19 +387,18 @@ class SetupDiscovery(
             if (unlocked.setup.boardsPhone) return@withLock phoneKey(unlocked)
             // The passphrase saved below is part of this work, so only the connection fields and API key must stay.
             val fence = setups.SetupFence(unlocked, SetupFreshness.CREDENTIAL)
-            val result = sharedKeys.resolve(unlocked, confirmed, unchanged = fence::stillCurrent)
-            when (result) {
-                is SharedKeySetupOutcome.Confirmation -> {
-                    SharedKeyConnection.Confirmation(result.offer)
+            when (val result = conversation.createKey(unlocked, confirmed, unchanged = fence::stillCurrent)) {
+                is SetupReply.Asks -> {
+                    SharedKeyConnection.Confirmation((result.question as SetupQuestion.KeyConfirmation).offer)
                 }
 
-                is SharedKeySetupOutcome.Failed -> {
+                is SetupReply.Failed -> {
                     val offer = pendingKey()
                     SharedKeyConnection.Failed(result.failure, offer, pending = offer?.resume == true)
                 }
 
-                is SharedKeySetupOutcome.Ready -> {
-                    connectKey(fence, result)
+                is SetupReply.Next -> {
+                    connectKey(fence, result.value)
                 }
             }
         }
@@ -461,31 +444,8 @@ class SetupDiscovery(
         terminal: TerminalDetails,
         key: DiscoveredKey?,
     ): Boolean =
-        selected.fence.update {
-            it.copy(
-                terminal =
-                    it.terminal.copy(
-                        poiIdOverride =
-                            if (selected.setup.onTerminal) {
-                                it.terminal.poiIdOverride
-                            } else {
-                                terminal.id
-                            },
-                        merchantAccount = terminal.merchantAccount.ifBlank { it.terminal.merchantAccount },
-                        storeId = terminal.storeId,
-                        host =
-                            if (selected.setup.mode == TerminalMode.TERMINAL &&
-                                !selected.setup.onTerminal
-                            ) {
-                                terminal.host.ifBlank { it.terminal.host }
-                            } else {
-                                it.terminal.host
-                            },
-                        keyIdentifier = key?.identifier ?: it.terminal.keyIdentifier,
-                        keyVersion = key?.version ?: it.terminal.keyVersion,
-                    ),
-            )
-        }
+        // Settings always takes a network terminal's listed address: the operator is choosing it from that listing.
+        selected.fence.update { it.copy(terminal = conversation.assign(it.terminal, selected.setup, terminal, listedAddress = true, key)) }
 
     private class Selection(
         val fence: TerminalSetupSource.SetupFence,

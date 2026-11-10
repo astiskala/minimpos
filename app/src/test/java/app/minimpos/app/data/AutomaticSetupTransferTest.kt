@@ -21,7 +21,10 @@ import app.minimpos.app.data.transfer.ImportOutcome
 import app.minimpos.app.data.transfer.ReceivedTransfer
 import app.minimpos.app.items
 import app.minimpos.app.terminal.ApiAccess
+import app.minimpos.app.terminal.SetupAnswers
 import app.minimpos.app.terminal.SetupImportOutcome
+import app.minimpos.app.terminal.SetupQuestion
+import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
@@ -294,7 +297,7 @@ class AutomaticSetupTransferTest {
     @Test
     fun `unresolved automatic fields reject rather than offering an entry wizard`() {
         key = null
-        assertThat(import()).isInstanceOf(SetupImportOutcome.KeyConfirmation::class.java)
+        assertThat((import() as SetupImportOutcome.Asks).question).isInstanceOf(SetupQuestion.KeyConfirmation::class.java)
         assertThat(
             await {
                 env.container.secrets.configured
@@ -316,8 +319,8 @@ class AutomaticSetupTransferTest {
                         ImportMode.MERGE,
                         code,
                     )
-                } as SetupImportOutcome.KeyConfirmation
-            ).offer
+                }
+            ).keyOffer
         assertThat(createdKeys).isEmpty()
         assertThat(
             await {
@@ -329,7 +332,7 @@ class AutomaticSetupTransferTest {
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
         val result =
             await {
-                env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedKey = offer)
+                env.container.setupImport.import(received, ImportMode.MERGE, code, answers = SetupAnswers(acceptedKey = offer))
             } as SetupImportOutcome.Committed
         assertThat(result.outcome).isInstanceOf(ImportOutcome.Imported::class.java)
         val generated = createdKeys.single()
@@ -358,9 +361,10 @@ class AutomaticSetupTransferTest {
                         ImportMode.MERGE,
                         code,
                     )
-                } as SetupImportOutcome.KeyConfirmation
-            ).offer
-        val result = await { env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedKey = offer) }
+                }
+            ).keyOffer
+        val result =
+            await { env.container.setupImport.import(received, ImportMode.MERGE, code, answers = SetupAnswers(acceptedKey = offer)) }
         assertThat(result).isEqualTo(SetupImportOutcome.Failed(SetupProblem.KEY_CONNECTION_PENDING))
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
         assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
@@ -405,8 +409,7 @@ class AutomaticSetupTransferTest {
         val offer =
             (
                 await { env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedHistorySwitch = history) }
-                    as SetupImportOutcome.KeyConfirmation
-            ).offer
+            ).keyOffer
         val pending =
             await {
                 env.container.setupImport.import(
@@ -414,7 +417,7 @@ class AutomaticSetupTransferTest {
                     ImportMode.MERGE,
                     code,
                     confirmedHistorySwitch = history,
-                    confirmedKey = offer,
+                    answers = SetupAnswers(acceptedKey = offer),
                 )
             }
         assertThat(pending).isEqualTo(SetupImportOutcome.Failed(SetupProblem.KEY_CONNECTION_PENDING))
@@ -451,12 +454,12 @@ class AutomaticSetupTransferTest {
                         ImportMode.MERGE,
                         code,
                     )
-                } as SetupImportOutcome.KeyConfirmation
-            ).offer
+                }
+            ).keyOffer
         env.cipher.failEncrypt = true
         val result =
             await {
-                env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedKey = offer)
+                env.container.setupImport.import(received, ImportMode.MERGE, code, answers = SetupAnswers(acceptedKey = offer))
             } as SetupImportOutcome.Committed
         assertThat(result.outcome).isInstanceOf(ImportOutcome.StorageFailed::class.java)
         assertThat(createdKeys).isEmpty()
@@ -475,10 +478,11 @@ class AutomaticSetupTransferTest {
                         ImportMode.MERGE,
                         code,
                     )
-                } as SetupImportOutcome.KeyConfirmation
-            ).offer
+                }
+            ).keyOffer
         key = DiscoveredKey("other-admin", 7, terminal.passphrase)
-        val result = await { env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedKey = offer) }
+        val result =
+            await { env.container.setupImport.import(received, ImportMode.MERGE, code, answers = SetupAnswers(acceptedKey = offer)) }
         assertThat(result).isInstanceOf(SetupImportOutcome.Committed::class.java)
         assertThat(createdKeys).isEmpty()
         assertThat(await { env.container.settings.current() }.terminal.keyIdentifier).isEqualTo("other-admin")
@@ -487,9 +491,10 @@ class AutomaticSetupTransferTest {
     @Test
     fun `changed imported credential cannot reuse key creation consent`() {
         key = null
-        val offer = (import() as SetupImportOutcome.KeyConfirmation).offer
+        val offer = import().keyOffer
         val changed = received(secrets = """{"ADYEN_API_KEY":"replacement"}""")
-        val result = await { env.container.setupImport.import(changed, ImportMode.MERGE, code, confirmedKey = offer) }
+        val result =
+            await { env.container.setupImport.import(changed, ImportMode.MERGE, code, answers = SetupAnswers(acceptedKey = offer)) }
         assertThat(result).isEqualTo(SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED))
         assertThat(createdKeys).isEmpty()
     }
@@ -574,9 +579,14 @@ class AutomaticSetupTransferTest {
         val received = received("""{"destination":"network","environment":"TEST","automatic":true}""")
         val before = await { env.container.settings.current() }
         val terminals = await { env.container.setupImport.import(received, ImportMode.MERGE, code) }
-        assertThat((terminals as SetupImportOutcome.Terminals).terminals.map { it.id }).containsExactlyElementsIn(available.map { it.id })
+        assertThat(
+            ((terminals as SetupImportOutcome.Asks).question as SetupQuestion.Terminals).terminals.map {
+                it.id
+            },
+        ).containsExactlyElementsIn(available.map { it.id })
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
-        val complete = await { env.container.setupImport.import(received, ImportMode.MERGE, code, terminalId = poiId) }
+        val complete =
+            await { env.container.setupImport.import(received, ImportMode.MERGE, code, answers = SetupAnswers(terminalId = poiId)) }
         assertThat(complete).isInstanceOf(SetupImportOutcome.Committed::class.java)
     }
 
@@ -681,3 +691,7 @@ class AutomaticSetupTransferTest {
         assertThat(active.paymentsAppInstallationId).isEmpty()
     }
 }
+
+/** The key creation an import asks the operator to accept. */
+private val SetupImportOutcome.keyOffer: SharedKeyOffer
+    get() = ((this as SetupImportOutcome.Asks).question as SetupQuestion.KeyConfirmation).offer

@@ -204,8 +204,7 @@ class SharedKeySetupTest {
             SetupDiscovery(
                 verifiedSource,
                 { env.container.secrets.set(Secret.TERMINAL_PASSPHRASE, it) },
-                { details },
-                sharedKeys = shared,
+                SetupConversation({ details }, { details }, shared),
                 verifyConnection = {
                     if (online) {
                         verifiedSource.rememberVerified(verifiedSource.unlocked(forValidation = true))

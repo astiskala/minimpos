@@ -32,6 +32,7 @@ import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.feature.transfer.ImportUiState
 import app.minimpos.app.feature.transfer.TransferImportScreen
 import app.minimpos.app.feature.transfer.TransferImportViewModel
+import app.minimpos.app.terminal.SetupQuestion
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SetupGateHost
 import app.minimpos.app.ui.navigation.Navigator
@@ -188,7 +189,9 @@ class AutomaticSetupUiTest {
         if (verificationRelease != null) {
             compose.awaitCondition("Candidate verification is running") { vm.state.value == ImportUiState.Importing }
         } else if (awaitKey) {
-            compose.awaitCondition("Explicit key creation is offered") { (vm.state.value as? ImportUiState.Ready)?.sharedKeyOffer != null }
+            compose.awaitCondition("Explicit key creation is offered") {
+                (vm.state.value as? ImportUiState.Ready)?.question is SetupQuestion.KeyConfirmation
+            }
             waitForTag("confirmSharedKey")
         } else if (!succeeds) {
             compose.awaitCondition("Rejected candidate remains editable") { (vm.state.value as? ImportUiState.Ready)?.outcome != null }
@@ -350,7 +353,7 @@ class AutomaticSetupUiTest {
             },
         ).isFalse()
         compose.onNodeWithText(env.context.getString(R.string.action_cancel)).performClick()
-        compose.awaitCondition("Confirmation dismissed") { (vm.state.value as? ImportUiState.Ready)?.sharedKeyOffer == null }
+        compose.awaitCondition("Confirmation dismissed") { (vm.state.value as? ImportUiState.Ready)?.question == null }
         assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
         assertThat(env.container.settingsState.value.terminal.host).isEmpty()
         assertThat(creations).isEqualTo(0)

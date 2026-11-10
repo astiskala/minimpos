@@ -15,14 +15,11 @@ import app.minimpos.app.data.transfer.TransferExport
 import app.minimpos.app.data.transfer.TransferResult
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.launchWrite
-import app.minimpos.app.terminal.AccountMismatch
 import app.minimpos.app.terminal.HistorySwitchPlan
-import app.minimpos.app.terminal.KeyRolesOffer
+import app.minimpos.app.terminal.SetupAnswers
 import app.minimpos.app.terminal.SetupImport
 import app.minimpos.app.terminal.SetupImportOutcome
-import app.minimpos.app.terminal.SetupMerchantChoice
-import app.minimpos.app.terminal.SetupTerminalChoice
-import app.minimpos.app.terminal.SharedKeyOffer
+import app.minimpos.app.terminal.SetupQuestion
 import app.minimpos.core.codec.QrChunkAssembler
 import app.minimpos.core.codec.QrChunks
 import app.minimpos.core.codec.TransferCodec
@@ -143,13 +140,10 @@ sealed interface ImportUiState {
      * @property incomplete Whether required connection fields are missing and the helper must generate complete codes.
      * @property keyUnread Whether Automatic setup could not read the shared key, which the helper can supply instead.
      * @property terminalHost The network terminal's address, to correct and retry after a failed connection; null otherwise.
-     * @property terminalChoices Eligible terminals offered only for an ambiguous destination; null when not selecting.
-     * @property accountMismatch A terminal assigned to another merchant account, for the operator to accept; null otherwise.
-     * @property keyRolesOffer Roles the API key lacks that it could be given, awaiting the operator; null otherwise.
-     * @property merchantChoices Merchant accounts to choose among for Tap to Pay; null when not selecting.
+     * @property question What the operator answers before the import can go on: a terminal or merchant account to
+     *   choose, or an account, roles or key creation to accept; null when nothing is asked.
      * @property boardingRequired Whether explicit phone registration must run before this import can commit.
      * @property historySwitch Destructive history confirmation for this exact candidate; null before verification.
-     * @property sharedKeyOffer Explicit key-creation/recovery confirmation; null when not offered.
      * @property keyPending Whether the remote key exists but this import still needs connection verification.
      */
     data class Ready(
@@ -162,14 +156,10 @@ sealed interface ImportUiState {
         val incomplete: Boolean = false,
         val keyUnread: Boolean = false,
         val terminalHost: String? = null,
-        val terminalChoices: List<SetupTerminalChoice>? = null,
-        val accountMismatch: AccountMismatch? = null,
-        val keyRolesOffer: KeyRolesOffer? = null,
-        val merchantChoices: List<SetupMerchantChoice>? = null,
+        val question: SetupQuestion? = null,
         val boardingRequired: Boolean = false,
         /** Destructive environment-change confirmation; null until authenticated setup validation succeeds. */
         val historySwitch: HistorySwitchPlan? = null,
-        val sharedKeyOffer: SharedKeyOffer? = null,
         val keyPending: Boolean = false,
     ) : ImportUiState
 
@@ -219,11 +209,8 @@ class TransferImportViewModel(
     /** The import state. */
     val state: StateFlow<ImportUiState>
         field = MutableStateFlow<ImportUiState>(ImportUiState.Importing)
-    private var selectedTerminal: String? = null
-    private var selectedMerchant: String? = null
+    private var answers = SetupAnswers()
     private var confirmedHistory: HistorySwitchPlan? = null
-    private var confirmedAccount: String? = null
-    private var confirmedRoles: KeyRolesOffer? = null
     private var keyFollow: Job? = null
 
     init {
@@ -285,23 +272,21 @@ class TransferImportViewModel(
     }
 
     /** Chooses only an offered terminal, or dismisses the selector for null; no fields have been imported yet. */
-    fun chooseTerminal(id: String?) {
-        val ready = state.value as? ImportUiState.Ready ?: return
-        if (id != null && ready.terminalChoices.orEmpty().none { it.id == id }) return
-        updateReady { it.copy(terminalChoices = null) }
-        if (id != null) {
-            selectedTerminal = id
-            import()
-        }
-    }
+    fun chooseTerminal(id: String?) = choose(id) { it is SetupQuestion.Terminals }
 
     /** Chooses only an offered merchant account, or dismisses the selector for null; nothing has been imported yet. */
-    fun chooseMerchant(id: String?) {
-        val ready = state.value as? ImportUiState.Ready ?: return
-        if (id != null && ready.merchantChoices.orEmpty().none { it.id == id }) return
-        updateReady { it.copy(merchantChoices = null) }
-        if (id != null) {
-            selectedMerchant = id
+    fun chooseMerchant(id: String?) = choose(id) { it is SetupQuestion.Merchants }
+
+    private fun choose(
+        id: String?,
+        asked: (SetupQuestion) -> Boolean,
+    ) {
+        val question = (state.value as? ImportUiState.Ready)?.question?.takeIf(asked) ?: return
+        val chosen = id?.let { answers.choose(question, it) }
+        if (id != null && chosen == null) return
+        updateReady { it.copy(question = null) }
+        if (chosen != null) {
+            answers = chosen
             import()
         }
     }
@@ -361,43 +346,40 @@ class TransferImportViewModel(
      */
     fun reviewSetup(confirm: Boolean) {
         val ready = state.value as? ImportUiState.Ready ?: return
-        if (reviewAssist(ready, confirm)) return
-        val offer = ready.sharedKeyOffer
-        if (offer != null) {
-            if (confirm) verify(board = false, confirmedKey = offer) else updateReady { it.copy(sharedKeyOffer = null) }
-        } else {
-            val plan = ready.historySwitch ?: return
-            if (confirm) {
-                confirmedHistory = plan
-                verify(board = false, confirmedHistorySwitch = plan)
-            } else {
-                confirmedHistory = null
-                updateReady { it.copy(historySwitch = null) }
-            }
-        }
+        val question = ready.question
+        if (question != null) answer(question, confirm) else reviewHistory(ready, confirm)
     }
 
-    /** Answers an account or roles question; false when neither is open. */
-    private fun reviewAssist(
+    private fun answer(
+        question: SetupQuestion,
+        confirm: Boolean,
+    ) {
+        updateReady { it.copy(question = null) }
+        if (!confirm) return
+        val accepted = answers.accept(question)
+        // Key consent covers only the attempt it was given for; an accepted account or roles stand for this import.
+        if (question !is SetupQuestion.KeyConfirmation) answers = accepted
+        verify(board = false, answers = accepted)
+    }
+
+    private fun reviewHistory(
         ready: ImportUiState.Ready,
         confirm: Boolean,
-    ): Boolean {
-        val mismatch = ready.accountMismatch
-        val roles = ready.keyRolesOffer
-        if (mismatch == null && roles == null) return false
-        updateReady { it.copy(accountMismatch = null, keyRolesOffer = null) }
+    ) {
+        val plan = ready.historySwitch ?: return
         if (confirm) {
-            if (mismatch != null) confirmedAccount = mismatch.assigned
-            if (roles != null) confirmedRoles = roles
-            import()
+            confirmedHistory = plan
+            verify(board = false, confirmedHistorySwitch = plan)
+        } else {
+            confirmedHistory = null
+            updateReady { it.copy(historySwitch = null) }
         }
-        return true
     }
 
     private fun verify(
         board: Boolean,
         confirmedHistorySwitch: HistorySwitchPlan? = null,
-        confirmedKey: SharedKeyOffer? = null,
+        answers: SetupAnswers = this.answers,
     ) {
         val ready = state.value as? ImportUiState.Ready ?: return
         if (!ready.received.accepts(ready.code)) {
@@ -410,14 +392,10 @@ class TransferImportViewModel(
                 ready.received,
                 ready.mode,
                 ready.code,
-                selectedTerminal,
+                answers,
                 board,
                 confirmedHistorySwitch ?: confirmedHistory,
-                confirmedKey,
-                confirmedAccount,
                 ready.terminalHost?.trim()?.ifBlank { null },
-                confirmedRoles,
-                selectedMerchant,
             )
         }) { result ->
             state.value = finished(ready, result)
@@ -433,28 +411,12 @@ class TransferImportViewModel(
                 committed(ready, result.outcome)
             }
 
-            is SetupImportOutcome.Terminals -> {
-                ready.copy(terminalChoices = result.terminals, outcome = null, keyUnread = false)
-            }
-
-            is SetupImportOutcome.Merchants -> {
-                ready.copy(merchantChoices = result.accounts, outcome = null)
-            }
-
-            is SetupImportOutcome.RolesMissing -> {
-                ready.copy(keyRolesOffer = result.offer, outcome = null)
-            }
-
-            is SetupImportOutcome.AccountDiffers -> {
-                ready.copy(accountMismatch = result.mismatch, outcome = null, keyUnread = false)
+            is SetupImportOutcome.Asks -> {
+                ready.copy(question = result.question, historySwitch = null, outcome = null, incomplete = false, keyUnread = false)
             }
 
             is SetupImportOutcome.HistoryConfirmation -> {
-                ready.copy(historySwitch = result.plan, sharedKeyOffer = null)
-            }
-
-            is SetupImportOutcome.KeyConfirmation -> {
-                ready.copy(sharedKeyOffer = result.offer, historySwitch = null, outcome = null, incomplete = false, keyUnread = false)
+                ready.copy(historySwitch = result.plan, question = null)
             }
 
             SetupImportOutcome.BoardingRequired -> {
@@ -467,7 +429,7 @@ class TransferImportViewModel(
                     incomplete = result.incomplete,
                     keyUnread = result.keyUnread,
                     terminalHost = result.terminalHost ?: ready.terminalHost.takeIf { result.failure is Failure.Remote },
-                    sharedKeyOffer = null,
+                    question = null,
                     historySwitch = null,
                     keyPending = result.keyPending,
                 )

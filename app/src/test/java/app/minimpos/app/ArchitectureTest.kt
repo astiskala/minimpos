@@ -81,8 +81,8 @@ import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.DetectedEnvironment
 import app.minimpos.app.terminal.ReceiptBusinessDetails
 import app.minimpos.app.terminal.SetupAccess
+import app.minimpos.app.terminal.SetupConversation
 import app.minimpos.app.terminal.SetupDiscovery
-import app.minimpos.app.terminal.SetupImport
 import app.minimpos.app.terminal.SharedKeySetup
 import app.minimpos.app.terminal.SimulatedTerminal
 import app.minimpos.app.terminal.TerminalAssignments
@@ -1217,7 +1217,7 @@ class ArchitectureTest {
                     .that(
                         type(SetupDiscovery::class.java)
                             .or(type(SetupAccess::class.java))
-                            .or(type(SetupImport::class.java))
+                            .or(type(SetupConversation::class.java))
                             .or(type(SharedKeySetup::class.java))
                             .or(type(ReceiptBusinessDetails::class.java))
                             .or(type(WalletDiscovery::class.java))

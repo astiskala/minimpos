@@ -13,7 +13,9 @@ import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.TransferSeal
 import app.minimpos.app.data.transfer.ReceivedTransfer
 import app.minimpos.app.terminal.AccountMismatch
+import app.minimpos.app.terminal.SetupAnswers
 import app.minimpos.app.terminal.SetupImportOutcome
+import app.minimpos.app.terminal.SetupQuestion
 import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
@@ -145,10 +147,19 @@ class SetupImportAssistTest {
     @Test
     fun `an explicit account mismatch waits for the operator and then imports the terminal's account`() {
         val mismatched = """{"destination":"thisTerminal","automatic":true,"merchantAccount":"OtherMerchant"}"""
-        assertThat(import(mismatched)).isEqualTo(SetupImportOutcome.AccountDiffers(AccountMismatch("OtherMerchant", "Merchant")))
+        assertThat(
+            import(mismatched),
+        ).isEqualTo(SetupImportOutcome.Asks(SetupQuestion.AccountDiffers(poiId, AccountMismatch("OtherMerchant", "Merchant"))))
         assertThat(await { env.container.settings.current() }.terminal.merchantAccount).isEmpty()
         val outcome =
-            await { env.container.setupImport.import(received(mismatched), ImportMode.MERGE, code, confirmedAccount = "Merchant") }
+            await {
+                env.container.setupImport.import(
+                    received(mismatched),
+                    ImportMode.MERGE,
+                    code,
+                    answers = SetupAnswers(acceptedAccount = "Merchant"),
+                )
+            }
         assertThat(outcome).isInstanceOf(SetupImportOutcome.Committed::class.java)
         assertThat(await { env.container.settings.current() }.terminal.merchantAccount).isEqualTo("Merchant")
     }
@@ -179,10 +190,18 @@ class SetupImportAssistTest {
                 Fault.Permission(ApiKey.ADYEN, AdyenRole.names(missing)),
                 CredentialRoles(AdyenRole.required(), missing),
             )
-        val offered = import() as SetupImportOutcome.RolesMissing
+        val offered = (import() as SetupImportOutcome.Asks).question as SetupQuestion.RolesMissing
         assertThat(offered.offer.roles).isEqualTo(missing)
         assertThat(rolesAdded).isEmpty()
-        val outcome = await { env.container.setupImport.import(received(), ImportMode.MERGE, code, confirmedRoles = offered.offer) }
+        val outcome =
+            await {
+                env.container.setupImport.import(
+                    received(),
+                    ImportMode.MERGE,
+                    code,
+                    answers = SetupAnswers(acceptedRoles = offered.offer),
+                )
+            }
         assertThat(rolesAdded).containsExactlyElementsIn(missing)
         assertThat(outcome).isInstanceOf(SetupImportOutcome.Committed::class.java)
     }
@@ -234,16 +253,22 @@ class SetupImportAssistTest {
         merchants = listOf(MerchantAccount("A", "First"), MerchantAccount("B", "Second"))
         val connection = """{"destination":"tapToPay","environment":"TEST","automatic":true}"""
         val choices =
+            (
+                await {
+                    env.container.setupImport.import(received(connection), ImportMode.MERGE, code)
+                } as SetupImportOutcome.Asks
+            ).question as SetupQuestion.Merchants
+        assertThat(choices.accounts.map { it.id }).containsExactly("A", "B").inOrder()
+        val chosen =
             await {
                 env.container.setupImport.import(
                     received(connection),
                     ImportMode.MERGE,
                     code,
+                    answers = SetupAnswers(merchantAccount = "B"),
+                    board = true,
                 )
-            } as SetupImportOutcome.Merchants
-        assertThat(choices.accounts.map { it.id }).containsExactly("A", "B").inOrder()
-        val chosen =
-            await { env.container.setupImport.import(received(connection), ImportMode.MERGE, code, board = true, merchantAccount = "B") }
+            }
         assertThat(chosen).isInstanceOf(SetupImportOutcome.Committed::class.java)
         assertThat(await { env.container.settings.current() }.terminal.merchantAccount).isEqualTo("B")
     }

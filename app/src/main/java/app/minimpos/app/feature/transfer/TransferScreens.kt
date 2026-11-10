@@ -74,6 +74,7 @@ import app.minimpos.app.feature.settings.TerminalChoiceDialog
 import app.minimpos.app.feature.text
 import app.minimpos.app.scan.ScanMode
 import app.minimpos.app.scan.ScannerView
+import app.minimpos.app.terminal.SetupQuestion
 import app.minimpos.app.ui.components.AccountMismatchDialog
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
@@ -400,15 +401,16 @@ private fun ImportReviewDialogs(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    state?.terminalChoices?.let { TerminalChoiceDialog(it, onTerminal) }
-    state?.accountMismatch?.let { AccountMismatchDialog(it, { onReview(true) }, { onReview(false) }) }
-    state?.keyRolesOffer?.let { KeyRolesDialog(it, { onReview(true) }, { onReview(false) }) }
-    state?.merchantChoices?.let { MerchantChoiceDialog(it, onMerchant) }
+    when (val question = state?.question) {
+        is SetupQuestion.Terminals -> TerminalChoiceDialog(question.terminals, onTerminal)
+        is SetupQuestion.AccountDiffers -> AccountMismatchDialog(question.mismatch, { onReview(true) }, { onReview(false) })
+        is SetupQuestion.RolesMissing -> KeyRolesDialog(question.offer, { onReview(true) }, { onReview(false) })
+        is SetupQuestion.Merchants -> MerchantChoiceDialog(question.accounts, onMerchant)
+        is SetupQuestion.KeyConfirmation -> SharedKeyDialog(question.offer, { onReview(true) }, { onReview(false) })
+        null -> Unit
+    }
     state?.historySwitch?.let {
         HistorySwitchDialog(it.unfinished, { onReview(true) }, { onReview(false) })
-    }
-    state?.sharedKeyOffer?.let {
-        SharedKeyDialog(it, { onReview(true) }, { onReview(false) })
     }
     if (confirmReplace) {
         ConfirmDialog(

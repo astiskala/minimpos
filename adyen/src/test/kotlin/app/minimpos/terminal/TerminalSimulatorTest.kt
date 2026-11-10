@@ -295,7 +295,7 @@ class TerminalSimulatorTest {
     @Test
     fun `unknown transactions are not found and unsupported requests fail`() =
         runBlocking {
-            assertThat(client.status("NOPE")).isInstanceOf(TransactionOutcome.NotProcessed::class.java)
+            assertThat(client.status("NOPE")).isEqualTo(TransactionOutcome.Unknown(Fault.NoRecord))
             val unsupported = TerminalAPIRequest().apply { saleToPOIRequest = SaleToPOIRequest().apply { messageHeader = MessageHeader() } }
             assertThat(simulator.send(unsupported, 1.seconds)).isEqualTo(Delivery.Failed(Fault.Unsupported))
             assertThat(simulator.send(TerminalAPIRequest(), 1.seconds)).isEqualTo(Delivery.Failed(Fault.UnreadableReply()))

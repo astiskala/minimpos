@@ -27,7 +27,6 @@ class FaultTest {
                 Fault.AppRefused(said),
                 Fault.Unsupported,
                 Fault.NoLateReply,
-                Fault.NoRecord,
                 Fault.RequestNotEncrypted,
                 Fault.Credential(ApiKey.ADYEN),
                 Fault.Permission(ApiKey.PAYMENTS_APP, "role"),
@@ -47,6 +46,7 @@ class FaultTest {
                 Fault.TerminalHttp(500),
                 Fault.AdyenUnavailable(503, "010", said),
                 Fault.StillInProgress,
+                Fault.NoRecord,
             )
         notSent.forEach { assertWithMessage(it.toString()).that(it.mayHaveTakenEffect).isFalse() }
         maybeSent.forEach { assertWithMessage(it.toString()).that(it.mayHaveTakenEffect).isTrue() }

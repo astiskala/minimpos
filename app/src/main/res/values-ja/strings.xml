@@ -1354,7 +1354,7 @@
   <string name="fault_app_refused">Adyen Paymentsアプリがリクエストを受け付けませんでした。</string>
   <string name="fault_unsupported">この決済先はこのリクエストに対応していません。</string>
   <string name="fault_no_late_reply">Payments アプリの結果はまだ不明です。選択した Payments アプリを更新し、状態照会の利用可否を Adyen に確認してください。再請求前に Customer Area を確認してください。</string>
-  <string name="fault_no_record">端末にこの取引の記録がないため、処理されていません。</string>
+  <string name="fault_no_record">端末にこの取引の記録がありません。Customer Area で確認してください。</string>
   <string name="fault_request_not_encrypted">リクエストを暗号化できませんでした。端末設定で共有キーを確認してください。</string>
   <string name="fault_credential_adyen">AdyenがAPIキーを受け付けませんでした。端末設定で確認してください。</string>
   <string name="fault_credential_payments_app">Adyen がこのスマートフォンの登録用認証情報を拒否しました。Customer Area で状態を確認してください。</string>

@@ -74,15 +74,21 @@ internal class TerminalExchange(
     ): TransactionOutcome {
         var unanswered = 0
         var inProgress = 0
-        while (unanswered < recovery.attempts && inProgress < recovery.maxInProgressChecks) {
+        var settled: TransactionOutcome? = null
+        while (settled == null && unanswered < recovery.attempts && inProgress < recovery.maxInProgressChecks) {
             delay(recovery.intervalMillis)
             when (val check = checkStatus(serviceId, category)) {
-                is StatusCheck.Settled -> return check.outcome
+                is StatusCheck.Settled -> settled = check.outcome
+
+                // Moments after sending, Adyen documents a missing record as the request not having arrived.
+                StatusCheck.NotFound -> settled = TransactionOutcome.NotProcessed(Fault.NoRecord)
+
                 StatusCheck.InProgress -> inProgress++
+
                 is StatusCheck.NoAnswer -> unanswered++
             }
         }
-        return TransactionOutcome.Unknown(if (inProgress >= recovery.maxInProgressChecks) Fault.StillInProgress else fault)
+        return settled ?: TransactionOutcome.Unknown(if (inProgress >= recovery.maxInProgressChecks) Fault.StillInProgress else fault)
     }
 
     /** What one status check found. */
@@ -93,6 +99,12 @@ internal class TerminalExchange(
 
         /** The terminal is still waiting for the shopper or the issuer. */
         data object InProgress : StatusCheck
+
+        /**
+         * The terminal has no record of the transaction (`NotFound`). Conclusive only while recovering the request just
+         * sent; later, a record the terminal no longer keeps or a check reaching another terminal reads the same way.
+         */
+        data object NotFound : StatusCheck
 
         /** No usable status came back, because of [fault]. */
         data class NoAnswer(
@@ -121,7 +133,7 @@ internal class TerminalExchange(
             }
 
             Decline.statusNotFound(response) -> {
-                StatusCheck.Settled(TransactionOutcome.NotProcessed(Fault.NoRecord))
+                StatusCheck.NotFound
             }
 
             Decline.statusInProgress(response) -> {

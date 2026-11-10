@@ -5,7 +5,9 @@ import app.minimpos.terminal.client.TerminalIdentity
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.transport.Delivery
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalTransport
+import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.MessageReference
@@ -84,6 +86,24 @@ class RecoveryIntegrityTest {
                 categories.values.filter { it != category }.forEach { wrong ->
                     assertThat(check(kind, wrong)).isInstanceOf(TransactionOutcome.Unknown::class.java)
                 }
+            }
+        }
+
+    @Test
+    fun `a later status check that finds no record leaves every category unknown`() =
+        runTest {
+            categories.keys.forEach { kind ->
+                val outcome =
+                    check(kind) {
+                        response =
+                            Response().apply {
+                                result = ResultType.FAILURE
+                                errorCondition = ErrorConditionType.NOT_FOUND
+                            }
+                        repeatedMessageResponse = null
+                    }
+                // A record the terminal no longer keeps, or a check reaching another terminal, reads the same way.
+                assertThat(outcome).isEqualTo(TransactionOutcome.Unknown(Fault.NoRecord))
             }
         }
 

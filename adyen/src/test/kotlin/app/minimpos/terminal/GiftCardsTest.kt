@@ -425,7 +425,8 @@ class GiftCardsTest {
 
             config = config.copy(outcome = SimulatedOutcome.APPROVE)
             assertThat(details(client.status("SVTIME01", TransactionKind.STORED_VALUE)).balanceMinor).isEqualTo(900)
-            assertThat(client.status("MISSING", TransactionKind.STORED_VALUE)).isEqualTo(TransactionOutcome.NotProcessed(Fault.NoRecord))
+            // A later check cannot tell a record never made from one the terminal no longer keeps.
+            assertThat(client.status("MISSING", TransactionKind.STORED_VALUE)).isEqualTo(TransactionOutcome.Unknown(Fault.NoRecord))
         }
 
     @Test

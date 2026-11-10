@@ -189,9 +189,11 @@ class UnreferencedRefundsTest {
         val interrupted = await { checkNotNull(container.refundRecords.get(id)) }
         assertThat(interrupted.status).isEqualTo(RefundStatus.UNKNOWN)
         assertThat(interrupted.reason).isEqualTo(StoredReason.Interrupted)
-        // Never sent, so the simulator has no record of it: a known not-processed outcome, not a fresh refund.
-        await { container.operations.recheck(StoredTransaction.Refund(id)) }
-        assertThat(await { checkNotNull(container.refundRecords.get(id)).status }).isEqualTo(RefundStatus.FAILED)
+        // The terminal has no record of it, which a later check cannot tell from a record it no longer keeps: the
+        // refund stays unknown rather than failed, and nothing is sent again.
+        assertThat(await { container.operations.recheck(StoredTransaction.Refund(id)) })
+            .isEqualTo(Recheck.StillUnknown(Failure.Remote(Fault.NoRecord)))
+        assertThat(await { checkNotNull(container.refundRecords.get(id)).status }).isEqualTo(RefundStatus.UNKNOWN)
     }
 
     @Test

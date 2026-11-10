@@ -482,7 +482,7 @@ class TerminalClientTest {
         }
 
     @Test
-    fun `status not found means not processed, silence and endless progress mean unknown`() =
+    fun `status not found while recovering means not processed, silence and endless progress mean unknown`() =
         runTest {
             val notFound =
                 client { request ->

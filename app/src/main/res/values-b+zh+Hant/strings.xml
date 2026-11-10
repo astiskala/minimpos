@@ -1354,7 +1354,7 @@
   <string name="fault_app_refused">Adyen Payments 應用程式未接受請求。</string>
   <string name="fault_unsupported">此收款目標不支援該請求。</string>
   <string name="fault_no_late_reply">Payments 應用程式的結果仍未知。請更新所選 Payments 應用程式，向 Adyen 確認狀態查詢權限，並在再次收款前檢查商戶後台。</string>
-  <string name="fault_no_record">終端沒有此交易的記錄，因此未處理。</string>
+  <string name="fault_no_record">終端沒有此交易的記錄。請在商戶後台中查看。</string>
   <string name="fault_request_not_encrypted">無法加密請求。請在終端設定中檢查共享密鑰。</string>
   <string name="fault_credential_adyen">Adyen 未接受 API 密鑰。請在終端設定中檢查。</string>
   <string name="fault_credential_payments_app">Adyen 未接受這部手機的註冊憑據。請在 Customer Area 中檢查其狀態。</string>

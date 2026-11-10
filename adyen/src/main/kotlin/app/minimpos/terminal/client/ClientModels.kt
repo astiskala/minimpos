@@ -627,7 +627,7 @@ sealed interface TransactionOutcome {
 
     /** The request never took effect, so nothing was charged or refunded. */
     data class NotProcessed(
-        /** Why: a fault that took no effect, or [Fault.NoRecord] from a status check. */
+        /** Why: a fault that took no effect, or [Fault.NoRecord] from the recovery of the request just sent. */
         val fault: Fault,
     ) : TransactionOutcome
 

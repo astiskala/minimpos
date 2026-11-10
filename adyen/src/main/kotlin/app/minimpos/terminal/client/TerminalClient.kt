@@ -571,10 +571,10 @@ class TerminalClient(
      *
      * @param serviceId The ServiceID the payment or refund was sent with.
      * @param kind Whether it was a payment or a refund.
-     * @return [TransactionOutcome.Completed] with the original result;
-     *   [TransactionOutcome.NotProcessed] ([Fault.NoRecord]) if the terminal has no record of it; otherwise
-     *   [TransactionOutcome.Unknown] with why, [Fault.StillInProgress] while the transaction is still in progress. I/O
-     *   errors are not thrown.
+     * @return [TransactionOutcome.Completed] with the original result; otherwise [TransactionOutcome.Unknown] with why:
+     *   [Fault.StillInProgress] while the transaction is still in progress, and [Fault.NoRecord] when the terminal has
+     *   no record of it, which this later check cannot tell apart from a record it no longer keeps or a check reaching
+     *   another terminal. I/O errors are not thrown.
      */
     suspend fun status(
         serviceId: String,
@@ -582,6 +582,7 @@ class TerminalClient(
     ): TransactionOutcome =
         when (val check = exchange.checkStatus(serviceId, kind.category())) {
             is TerminalExchange.StatusCheck.Settled -> check.outcome
+            TerminalExchange.StatusCheck.NotFound -> TransactionOutcome.Unknown(Fault.NoRecord)
             TerminalExchange.StatusCheck.InProgress -> TransactionOutcome.Unknown(Fault.StillInProgress)
             is TerminalExchange.StatusCheck.NoAnswer -> TransactionOutcome.Unknown(check.fault)
         }

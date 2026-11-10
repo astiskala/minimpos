@@ -139,9 +139,6 @@ sealed class Fault(
     /** No conclusive Payments app result: no usable late reply, unsupported status, or an unconfirmed NotFound. */
     data object NoLateReply : NotSent()
 
-    /** The terminal has no record of the transaction a status check asked about, so it was not processed. */
-    data object NoRecord : NotSent()
-
     /** The request could not be encrypted with the shared key. */
     data object RequestNotEncrypted : NotSent()
 
@@ -258,4 +255,10 @@ sealed class Fault(
 
     /** The terminal reports the transaction as still in progress (the shopper or the issuer is not done yet). */
     data object StillInProgress : MaybeSent()
+
+    /**
+     * The terminal has no record of the transaction a status check asked about. Only the recovery of a request just
+     * sent reads that as not processed; a later check may ask a terminal that no longer keeps the record, or another one.
+     */
+    data object NoRecord : MaybeSent()
 }

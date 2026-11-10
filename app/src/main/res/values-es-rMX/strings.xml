@@ -1368,7 +1368,7 @@
   <string name="fault_app_refused">La aplicación Adyen Payments no aceptó la solicitud.</string>
   <string name="fault_unsupported">Este destino no admite esta solicitud.</string>
   <string name="fault_no_late_reply">El resultado de Payments sigue siendo desconocido. Actualiza la aplicación Payments seleccionada, confirma el acceso a las consultas con Adyen y revisa el Área de Clientes antes de volver a cobrar.</string>
-  <string name="fault_no_record">La terminal no tiene registro de esta transacción, por lo que no fue procesada.</string>
+  <string name="fault_no_record">La terminal no tiene registro de esta transacción. Revísala en el Área de Clientes.</string>
   <string name="fault_request_not_encrypted">La solicitud no se pudo cifrar. Verifique la clave compartida en la configuración de la Terminal.</string>
   <string name="fault_credential_adyen">Adyen no aceptó la clave API. Compruébalo en la configuración del Terminal.</string>
   <string name="fault_credential_payments_app">Adyen no aceptó la credencial de registro de este teléfono. Comprueba su estado en tu Área de Clientes.</string>

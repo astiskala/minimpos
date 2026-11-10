@@ -260,11 +260,13 @@ class GiftCardsTest {
         val blocked = checkNotNull(giftCards.start(GiftCardRequest.Continue(groupId, card(), 400, "AUD")))
         await { giftCards.state.first { it == TransactionState.Finished(blocked) } }
         assertThat(activity(groupId).stages).hasSize(1)
-        // The simulator never saw it, so the check settles it as not done; nothing needs repair.
-        assertThat(await { container.operations.recheck(StoredTransaction.GiftCard(groupId)) }).isEqualTo(Recheck.Settled)
-        val settled = activity(groupId)
-        assertThat(settled.funding?.status).isEqualTo(GiftCardStatus.FAILED)
-        assertThat(settled.needsAttention).isFalse()
+        // A later check finding no record cannot prove the funding never happened, so it stays unknown and nothing is
+        // offered that would move money again (continuing the load or refunding the funding).
+        assertThat(await { container.operations.recheck(StoredTransaction.GiftCard(groupId)) })
+            .isEqualTo(Recheck.StillUnknown(Failure.Remote(Fault.NoRecord)))
+        val unresolved = activity(groupId)
+        assertThat(unresolved.funding?.status).isEqualTo(GiftCardStatus.UNKNOWN)
+        assertThat(unresolved.attention).containsExactly(GiftCardAction.CHECK_AGAIN)
     }
 
     @Test

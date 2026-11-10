@@ -228,14 +228,12 @@
           <h3 id="helper">パソコンから設定コードを読み取る</h3>
           <ol>
             <li>信頼できるコンピューターで<a href="setup">セットアップヘルパー</a>を開きます。コードはローカルで作成されます。<a href="setup#setup-privacy">ホスティングとプライバシーの説明</a>をご確認ください。</li>
-            <li>Mini mPOS を動かす場所と、環境（<strong>TEST</strong> または <strong>LIVE</strong>）を選びます。</li>
-            <li><strong>自動（推奨）</strong>では Adyen APIキーだけを入力し、残りはデバイスが取得します。<strong>手動</strong>では接続情報をすべて入力します。</li>
-            <li>必要な情報を入力します。</li>
+            <li>Mini mPOS を動かす場所を確認し、<strong>TEST</strong> または <strong>LIVE</strong> を選びます。<strong>自動（推奨）</strong>のまま Adyen APIキーを入力すると、残りはデバイスが取得します。接続情報をすべて自分で入力する場合だけ<strong>手動</strong>を選びます。</li>
             <li><strong>QRコードを作成</strong>をクリックします。12 文字の転送コードが表示されるため、ページは開いたままにします。</li>
             <li>Mini mPOS の<strong>設定 › 端末</strong>で<strong>設定コードを読み取る</strong>か右上の QR アイコンをタップします。案内を読み、<strong>
               コードを持っています</strong>をタップしてすべてのコードを読み取ります。</li>
             <li>決済先と環境を確認し、転送コードを入力して<strong>確認してインポート</strong>をタップします。</li>
-            <li>案内があれば端末を選びます。Tap to Pay では、Payments アプリが開いたら登録を完了します。すべての確認に成功するまで何も保存されません。</li>
+            <li>案内があれば端末を選ぶか、そのマーチャントアカウントを確認します。Tap to Pay では、Payments アプリが開いたら登録を完了します。すべての確認に成功するまで何も保存されません。</li>
           </ol>
           <div class="destination-route">
 <h3 id="on-terminal">Adyen 端末を接続する</h3>
@@ -252,8 +250,7 @@
   LIVE に移行</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>セットアップヘルパー（推奨）</dt>
-            <dd><a href="setup#destination-thisTerminal">セットアップヘルパー</a>で<strong>Adyen 端末で動かす</strong>、端末の <strong>TEST</strong> または <strong>LIVE
-              </strong> 環境、<strong>自動</strong>を選びます。APIキーを入力し、<a href="#helper">コードを読み取ります</a>。</dd>
+            <dd><a href="setup#destination-thisTerminal">セットアップヘルパー</a>を開き、端末の <strong>TEST</strong> または <strong>LIVE</strong> 環境を選んで<strong>自動</strong>のまま APIキーを入力し、<a href="#helper">コードを読み取ります</a>。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -281,9 +278,7 @@
   に移行</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>セットアップヘルパー（推奨）</dt>
-            <dd><a href="setup#destination-network">セットアップヘルパー</a>で<strong>タブレットやスマートフォンで動かす</strong>（同じネットワーク上の端末）、端末の <strong>TEST
-              </strong> または <strong>LIVE</strong> 環境、<strong>自動</strong>を選びます。APIキーを入力し、<a href="#helper">コードを読み取ります</a>
-              。複数の端末が見つかった場合は、使う端末を選びます。</dd>
+            <dd><a href="setup#destination-network">セットアップヘルパー</a>を開き、端末の <strong>TEST</strong> または <strong>LIVE</strong> 環境を選んで<strong>自動</strong>のまま APIキーを入力し、<a href="#helper">コードを読み取ります</a>。複数の端末が見つかった場合は、使う端末を選びます。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -313,9 +308,7 @@
   に移行</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>セットアップヘルパー（推奨）</dt>
-            <dd><a href="setup#destination-cloud">セットアップヘルパー</a>で<strong>タブレットやスマートフォンで動かす</strong>（インターネット経由の端末（クラウド））、端末の <strong>TEST
-              </strong> または <strong>LIVE</strong> 環境、<strong>自動</strong>を選びます。APIキーを入力し、<a href="#helper">コードを読み取ります</a>
-              。複数の端末が見つかった場合は、使う端末を選びます。</dd>
+            <dd><a href="setup#destination-cloud">セットアップヘルパー</a>を開き、端末の <strong>TEST</strong> または <strong>LIVE</strong> 環境を選んで<strong>自動</strong>のまま APIキーを入力し、<a href="#helper">コードを読み取ります</a>。複数の端末が見つかった場合は、使う端末を選びます。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -354,10 +347,7 @@
           </ol>
           <dl class="settings-list setup-route">
             <dt>セットアップヘルパー（推奨）</dt>
-            <dd><a href="setup#destination-tapToPay">セットアップヘルパー</a>で<strong>スマートフォンで動かす</strong>（Adyen Payments アプリの Tap to Pay）と、<strong>
-              TEST</strong> または <strong>LIVE</strong> 環境を選びます。その環境の Adyen APIキーと、任意で店舗IDを入力します。自動ではマーチャントアカウントと共有キーを検索します。手動で入力する場合は手動を選びます。
-              <a href="#helper">コードを読み取り</a>、<strong>確認してインポート</strong>をタップします。Mini mPOS が登録用認証情報を作成し、Payments
-              アプリを開いてインポート中に登録を完了します。</dd>
+            <dd><a href="setup#destination-tapToPay">セットアップヘルパー</a>を開き、<strong>TEST</strong> または <strong>LIVE</strong> を選んで対応する APIキーを入力し、<a href="#helper">コードを読み取ります</a>。<strong>確認してインポート</strong>の後、Mini mPOS がマーチャントアカウントと共有キーを取得し、登録用認証情報を作成して Payments アプリを開き、スマートフォンを登録します。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>

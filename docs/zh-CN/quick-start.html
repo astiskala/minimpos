@@ -218,13 +218,11 @@
           <h3 id="helper">从电脑扫描设置二维码</h3>
           <ol>
             <li>在可信电脑上打开<a href="setup">设置助手</a>。二维码在本地生成；请参阅<a href="setup#setup-privacy">网站托管和隐私说明</a>。</li>
-            <li>选择 Mini mPOS 的运行位置和环境：<strong>TEST</strong> 或 <strong>LIVE</strong>。</li>
-            <li>选择<strong>自动（推荐）</strong>只需输入 Adyen API 密钥，其余由设备查询；选择<strong>手动</strong>则输入全部连接信息。</li>
-            <li>填写所需信息。</li>
+            <li>确认 Mini mPOS 的运行位置，并选择 <strong>TEST</strong> 或 <strong>LIVE</strong>。保持<strong>自动（推荐）</strong>并输入 Adyen API 密钥，其余由设备查询。只有需要自行输入全部连接信息时才选择<strong>手动</strong>。</li>
             <li>点击<strong>生成二维码</strong>。请保持页面打开：页面会显示 12 位传输码。</li>
             <li>在 Mini mPOS 中打开<strong>设置 › 终端</strong>，点按<strong>扫描设置二维码</strong>或右上角的二维码图标。阅读说明，点按<strong>我已有二维码</strong>，扫描全部二维码。</li>
             <li>检查支付目标和环境，输入传输码，点按<strong>验证并导入</strong>。</li>
-            <li>如有提示，选择您的终端。使用 Tap to Pay 时，请在 Payments 应用打开后完成注册。全部检查通过前不会保存任何内容。</li>
+            <li>如有提示，选择您的终端或确认其商家账户。使用 Tap to Pay 时，请在 Payments 应用打开后完成注册。全部检查通过前不会保存任何内容。</li>
           </ol>
           <div class="destination-route">
 <h3 id="on-terminal">连接 Adyen 终端</h3>
@@ -241,8 +239,7 @@
   </a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>设置助手（推荐）</dt>
-            <dd>在<a href="setup#destination-thisTerminal">设置助手</a>中选择<strong>在 Adyen 终端上运行</strong>、终端的 <strong>TEST</strong> 或 <strong>LIVE
-              </strong> 环境及<strong>自动</strong>。输入 API 密钥，然后<a href="#helper">扫描二维码</a>。</dd>
+            <dd>打开<a href="setup#destination-thisTerminal">设置助手</a>，选择终端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 环境，保持<strong>自动</strong>，输入 API 密钥，然后<a href="#helper">扫描二维码</a>。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>
@@ -269,8 +266,7 @@
   </li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>设置助手（推荐）</dt>
-            <dd>在<a href="setup#destination-network">设置助手</a>中选择<strong>在平板电脑或手机上运行</strong>、配合同一网络中的终端，以及终端的 <strong>TEST</strong> 或
-              <strong>LIVE</strong> 环境和<strong>自动</strong>。输入 API 密钥，然后<a href="#helper">扫描二维码</a>。找到多台终端时，请选择您的终端。</dd>
+            <dd>打开<a href="setup#destination-network">设置助手</a>，选择终端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 环境，保持<strong>自动</strong>，输入 API 密钥，然后<a href="#helper">扫描二维码</a>。找到多台终端时，请选择您的终端。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>
@@ -300,8 +296,7 @@
   </li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>设置助手（推荐）</dt>
-            <dd>在<a href="setup#destination-cloud">设置助手</a>中选择<strong>在平板电脑或手机上运行</strong>、配合通过互联网连接的终端（云端），以及终端的 <strong>TEST</strong> 或
-              <strong>LIVE</strong> 环境和<strong>自动</strong>。输入 API 密钥，然后<a href="#helper">扫描二维码</a>。找到多台终端时，请选择您的终端。</dd>
+            <dd>打开<a href="setup#destination-cloud">设置助手</a>，选择终端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 环境，保持<strong>自动</strong>，输入 API 密钥，然后<a href="#helper">扫描二维码</a>。找到多台终端时，请选择您的终端。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>
@@ -340,9 +335,7 @@
           </ol>
           <dl class="settings-list setup-route">
             <dt>设置助手（推荐）</dt>
-            <dd>在<a href="setup#destination-tapToPay">设置助手</a>中选择<strong>在手机上运行</strong>、使用 Adyen Payments 应用的 Tap to Pay，以及 <strong>TEST
-              </strong> 或 <strong>LIVE</strong> 环境。输入对应环境的 Adyen API 密钥，可选填门店 ID。“自动”会查找商家账户和共享密钥；如需自行输入，请选择“手动”。<a href="#helper">扫描二维码</a>
-              后点按<strong>验证并导入</strong>。Mini mPOS 会创建注册凭据并打开 Payments 应用，在导入过程中完成注册。</dd>
+            <dd>打开<a href="setup#destination-tapToPay">设置助手</a>，选择 <strong>TEST</strong> 或 <strong>LIVE</strong>，输入对应的 API 密钥，然后<a href="#helper">扫描二维码</a>。点按<strong>验证并导入</strong>后，Mini mPOS 会查找商家账户和共享密钥，创建手机的注册凭据，并打开 Payments 应用完成注册。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>

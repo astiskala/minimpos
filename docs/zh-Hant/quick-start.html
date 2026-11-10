@@ -218,13 +218,11 @@
           <h3 id="helper">從電腦掃描設定二維碼</h3>
           <ol>
             <li>在可信電腦上開啟<a href="setup">設定助手</a>。二維碼在本地產生；請參閱<a href="setup#setup-privacy">網站託管及私隱說明</a>。</li>
-            <li>選擇 Mini mPOS 的運行位置和環境：<strong>TEST</strong> 或 <strong>LIVE</strong>。</li>
-            <li>選擇<strong>自動（建議）</strong>只需輸入 Adyen API 密鑰，其餘由設備查詢；選擇<strong>手動</strong>則輸入全部連接資訊。</li>
-            <li>填寫所需資訊。</li>
+            <li>確認 Mini mPOS 的運行位置，並選擇 <strong>TEST</strong> 或 <strong>LIVE</strong>。保持<strong>自動（建議）</strong>並輸入 Adyen API 密鑰，其餘由設備查詢。只有需要自行輸入全部連接資訊時才選擇<strong>手動</strong>。</li>
             <li>點按<strong>生成二維碼</strong>。請保持頁面打開：頁面會顯示 12 位傳輸碼。</li>
             <li>在 Mini mPOS 中打開<strong>設定 › 終端</strong>，點按<strong>掃描設定二維碼</strong>或右上角的二維碼圖示。閱讀說明，點按<strong>我已有二維碼</strong>，掃描全部二維碼。</li>
             <li>檢查支付目標和環境，輸入傳輸碼，點按<strong>驗證並匯入</strong>。</li>
-            <li>如有提示，選擇您的終端。使用 Tap to Pay 時，請在 Payments 應用程式開啟後完成註冊。全部檢查通過前不會儲存任何內容。</li>
+            <li>如有提示，選擇您的終端或確認其商戶帳戶。使用 Tap to Pay 時，請在 Payments 應用程式開啟後完成註冊。全部檢查通過前不會儲存任何內容。</li>
           </ol>
           <div class="destination-route">
 <h3 id="on-terminal">連接 Adyen 終端</h3>
@@ -241,8 +239,7 @@
   </a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>設定助手（建議）</dt>
-            <dd>在<a href="setup#destination-thisTerminal">設定助手</a>中選擇<strong>在 Adyen 終端上運行</strong>、終端的 <strong>TEST</strong> 或 <strong>LIVE
-              </strong> 環境及<strong>自動</strong>。輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。</dd>
+            <dd>打開<a href="setup#destination-thisTerminal">設定助手</a>，選擇終端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境，保持<strong>自動</strong>，輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -269,8 +266,7 @@
   </li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>設定助手（建議）</dt>
-            <dd>在<a href="setup#destination-network">設定助手</a>中選擇<strong>在平板電腦或手機上運行</strong>、配合同一網絡中的終端，以及終端的 <strong>TEST</strong> 或
-              <strong>LIVE</strong> 環境和<strong>自動</strong>。輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。找到多台終端時，請選擇您的終端。</dd>
+            <dd>打開<a href="setup#destination-network">設定助手</a>，選擇終端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境，保持<strong>自動</strong>，輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。找到多台終端時，請選擇您的終端。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -300,8 +296,7 @@
   </li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>設定助手（建議）</dt>
-            <dd>在<a href="setup#destination-cloud">設定助手</a>中選擇<strong>在平板電腦或手機上運行</strong>、配合通過互聯網連接的終端（雲端），以及終端的 <strong>TEST</strong> 或
-              <strong>LIVE</strong> 環境和<strong>自動</strong>。輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。找到多台終端時，請選擇您的終端。</dd>
+            <dd>打開<a href="setup#destination-cloud">設定助手</a>，選擇終端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境，保持<strong>自動</strong>，輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。找到多台終端時，請選擇您的終端。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -340,9 +335,7 @@
           </ol>
           <dl class="settings-list setup-route">
             <dt>設定助手（建議）</dt>
-            <dd>在<a href="setup#destination-tapToPay">設定助手</a>中選擇<strong>在手機上運行</strong>、使用 Adyen Payments 應用程式的 Tap to Pay，以及 <strong>TEST
-              </strong> 或 <strong>LIVE</strong> 環境。輸入對應環境的 Adyen API 密鑰，可選填店舖 ID。「自動」會尋找商戶帳戶和共享密鑰；如需自行輸入，請選擇「手動」。<a href="#helper">掃描二維碼</a>
-              後點按<strong>驗證並匯入</strong>。Mini mPOS 會建立註冊憑據並開啟 Payments 應用程式，在匯入過程中完成註冊。</dd>
+            <dd>打開<a href="setup#destination-tapToPay">設定助手</a>，選擇 <strong>TEST</strong> 或 <strong>LIVE</strong>，輸入對應的 API 密鑰，然後<a href="#helper">掃描二維碼</a>。點按<strong>驗證並匯入</strong>後，Mini mPOS 會尋找商戶帳戶和共享密鑰，建立手機的註冊憑據，並開啟 Payments 應用程式完成註冊。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>

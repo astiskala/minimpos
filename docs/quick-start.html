@@ -263,17 +263,13 @@
           <h3 id="helper">Scan setup codes from a computer</h3>
           <ol>
             <li>On a trusted computer, open the <a href="setup">setup helper</a>. It generates codes locally; see its <a href="setup#setup-privacy">hosting and privacy note</a>.</li>
-            <li>Choose where Mini mPOS runs and the environment, <strong>TEST</strong> or <strong>LIVE</strong>.</li>
-            <li>Choose <strong>Automatic (recommended)</strong> to enter only the Adyen API key; the device looks up the
-              rest. Choose <strong>Manual</strong> to enter every connection detail.</li>
-            <li>Enter the requested details.</li>
+            <li>Check where Mini mPOS runs and choose <strong>TEST</strong> or <strong>LIVE</strong>. Keep <strong>Automatic (recommended)</strong> and enter the Adyen API key; the device finds the rest. Choose <strong>Manual</strong> only to enter every connection detail yourself.</li>
             <li>Click <strong>Make QR codes</strong>. Keep the page open: it shows the 12-character transfer code.</li>
             <li>In Mini mPOS, open <strong>Settings › Terminal</strong> and tap <strong>Scan setup codes</strong> or the
               QR icon at the top right. Read the guidance, tap <strong>I already have codes</strong> and scan every
               code.</li>
             <li>Check the destination and environment, enter the transfer code and tap <strong>Verify and import</strong>.</li>
-            <li>If asked, choose your terminal. For Tap to Pay, complete registration when the Payments app opens.
-              Nothing is saved until all checks pass.</li>
+            <li>If asked, choose your terminal or confirm its merchant account. For Tap to Pay, complete registration when the Payments app opens. Nothing is saved until all checks pass.</li>
           </ol>
           <div class="destination-route">
 <h3 id="on-terminal">Connect an Adyen terminal</h3>
@@ -290,9 +286,7 @@
   payment</a></li><li><a href="#live">Go live</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>Setup helper (recommended)</dt>
-            <dd>In the <a href="setup#destination-thisTerminal">setup helper</a>, choose <strong>On an Adyen terminal</strong>, the terminal's
-              <strong>TEST</strong> or <strong>LIVE</strong> environment and <strong>Automatic</strong>. Enter the API
-              key, then <a href="#helper">scan the codes</a>.</dd>
+            <dd>Open the <a href="setup#destination-thisTerminal">setup helper</a>, choose the terminal's <strong>TEST</strong> or <strong>LIVE</strong> environment, keep <strong>Automatic</strong>, enter the API key and <a href="#helper">scan the codes</a>.</dd>
           </dl>
           <details class="manual-setup">
             <summary>Manual</summary>
@@ -321,10 +315,7 @@
   </a></li><li><a href="#live">Go live</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>Setup helper (recommended)</dt>
-            <dd>In the <a href="setup#destination-network">setup helper</a>, choose <strong>On a tablet or phone, with a terminal on the
-              same network</strong>, the terminal's <strong>TEST</strong> or <strong>LIVE</strong> environment and
-              <strong>Automatic</strong>. Enter the API key, then <a href="#helper">scan the codes</a>. If more than one
-              terminal is found, choose yours.</dd>
+            <dd>Open the <a href="setup#destination-network">setup helper</a>, choose the terminal's <strong>TEST</strong> or <strong>LIVE</strong> environment, keep <strong>Automatic</strong>, enter the API key and <a href="#helper">scan the codes</a>. If more than one terminal is found, choose yours.</dd>
           </dl>
           <details class="manual-setup">
             <summary>Manual</summary>
@@ -357,10 +348,7 @@
   </a></li><li><a href="#live">Go live</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>Setup helper (recommended)</dt>
-            <dd>In the <a href="setup#destination-cloud">setup helper</a>, choose <strong>On a tablet or phone, with a terminal over the
-              internet (cloud)</strong>, the terminal's <strong>TEST</strong> or <strong>LIVE</strong> environment and
-              <strong>Automatic</strong>. Enter the API key, then <a href="#helper">scan the codes</a>. If more than one
-              terminal is found, choose yours.</dd>
+            <dd>Open the <a href="setup#destination-cloud">setup helper</a>, choose the terminal's <strong>TEST</strong> or <strong>LIVE</strong> environment, keep <strong>Automatic</strong>, enter the API key and <a href="#helper">scan the codes</a>. If more than one terminal is found, choose yours.</dd>
           </dl>
           <details class="manual-setup">
             <summary>Manual</summary>
@@ -401,10 +389,7 @@
           </ol>
           <dl class="settings-list setup-route">
             <dt>Setup helper (recommended)</dt>
-            <dd>In the <a href="setup#destination-tapToPay">setup helper</a>, choose <strong>On a phone, with Tap to Pay in the Adyen
-              Payments app</strong> and <strong>TEST</strong> or <strong>LIVE</strong>. Enter the matching Adyen API key and, optionally, a store ID. Automatic finds the merchant account and shared key; choose Manual to enter them yourself. <a href="#helper">Scan the codes</a> and
-              tap <strong>Verify and import</strong>. Mini mPOS creates the registration credential and opens the
-              Payments app to complete registration as part of the import.</dd>
+            <dd>Open the <a href="setup#destination-tapToPay">setup helper</a>, choose <strong>TEST</strong> or <strong>LIVE</strong>, enter the matching API key and <a href="#helper">scan the codes</a>. After <strong>Verify and import</strong>, Mini mPOS finds the merchant account and shared key, creates the phone's registration credential and opens the Payments app to register it.</dd>
           </dl>
           <details class="manual-setup">
             <summary>Manual</summary>

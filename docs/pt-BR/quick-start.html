@@ -268,10 +268,7 @@
           <h3 id="helper">Digitalizar códigos de configuração de um computador</h3>
           <ol>
             <li>Em um computador confiável, abra o <a href="setup">assistente de configuração</a>. Os códigos são gerados localmente; veja a <a href="setup#setup-privacy">nota sobre hospedagem e privacidade</a>.</li>
-            <li>Escolha onde o Mini mPOS é executado e o ambiente, <strong>TEST</strong> ou <strong>LIVE</strong>.</li>
-            <li>Escolher <strong>Automático (recomendado)</strong> para inserir apenas a chave Adyen API; o dispositivo
-              procura o resto. Escolha <strong>Manual</strong> para inserir todos os detalhes da conexão.</li>
-            <li>Insira os detalhes solicitados.</li>
+            <li>Confira onde o Mini mPOS é executado e escolha <strong>TEST</strong> ou <strong>LIVE</strong>. Mantenha <strong>Automático (recomendado)</strong> e insira a chave Adyen API; o dispositivo encontra o resto. Escolha <strong>Manual</strong> somente para inserir você mesmo todos os detalhes da conexão.</li>
             <li>Clique <strong>Fazer códigos QR</strong>. Mantenha a página aberta: ela mostra o código de transferência
               de 12 caracteres.</li>
             <li>No Mini mPOS, abra <strong>Configurações › Terminal</strong> e toque em <strong>Digitalizar códigos de
@@ -279,8 +276,7 @@
               tenho códigos</strong> e escaneie cada código.</li>
             <li>Verifique o destino e o ambiente, insira o código de transferência e toque em <strong>Verificar e
               importar</strong>.</li>
-            <li>Se solicitado, escolha seu terminal. Para Tap to Pay, conclua o registro quando o aplicativo Adyen
-              Payments for aberto. Nada é salvo até que todas as verificações sejam aprovadas.</li>
+            <li>Se solicitado, escolha seu terminal ou confirme a conta de comerciante dele. Para Tap to Pay, conclua o registro quando o aplicativo Payments abrir. Nada é salvo até que todas as verificações sejam aprovadas.</li>
           </ol>
           <div class="destination-route">
 <h3 id="on-terminal">Conectar um terminal Adyen</h3>
@@ -297,9 +293,7 @@
   <a href="#first-payment">Teste um pagamento</a></li><li><a href="#live">Passe para LIVE</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>Auxiliar de configuração (recomendado)</dt>
-            <dd>No <a href="setup#destination-thisTerminal">auxiliar de configuração</a>, escolha <strong>Em um terminal Adyen</strong>, o
-              terminal <strong>TEST</strong> ou <strong>LIVE</strong> ambiente e <strong>Automático</strong>. Insira a
-              chave API e depois <a href="#helper">digitalizar os códigos</a>.</dd>
+            <dd>Abra o <a href="setup#destination-thisTerminal">auxiliar de configuração</a>, escolha o ambiente <strong>TEST</strong> ou <strong>LIVE</strong> do terminal, mantenha <strong>Automático</strong>, insira a chave API e <a href="#helper">leia os códigos</a>.</dd>
           </dl>
           <details class="manual-setup">
             <summary>Manual</summary>
@@ -328,10 +322,7 @@
   Teste um pagamento</a></li><li><a href="#live">Passe para LIVE</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>Auxiliar de configuração (recomendado)</dt>
-            <dd>No <a href="setup#destination-network">auxiliar de configuração</a>, escolha <strong>Em um tablet ou telefone, com um
-              terminal na mesma rede</strong>, o terminal <strong>TEST</strong> ou <strong>LIVE</strong> ambiente e
-              <strong>Automático</strong>. Insira a chave API e depois <a href="#helper">digitalizar os códigos</a>. Se
-              for encontrado mais de um terminal, escolha o seu.</dd>
+            <dd>Abra o <a href="setup#destination-network">auxiliar de configuração</a>, escolha o ambiente <strong>TEST</strong> ou <strong>LIVE</strong> do terminal, mantenha <strong>Automático</strong>, insira a chave API e <a href="#helper">leia os códigos</a>. Se mais de um terminal for encontrado, escolha o seu.</dd>
           </dl>
           <details class="manual-setup">
             <summary>Manual</summary>
@@ -365,10 +356,7 @@
   Teste um pagamento</a></li><li><a href="#live">Passe para LIVE</a></li></ol></nav>
           <dl class="settings-list setup-route">
             <dt>Auxiliar de configuração (recomendado)</dt>
-            <dd>No <a href="setup#destination-cloud">auxiliar de configuração</a>, escolha <strong>Em um tablet ou telefone, com terminal
-              pela internet (nuvem)</strong>, o terminal <strong>TEST</strong> ou <strong>LIVE</strong> ambiente e
-              <strong>Automático</strong>. Insira a chave API e depois <a href="#helper">digitalizar os códigos</a>. Se
-              for encontrado mais de um terminal, escolha o seu.</dd>
+            <dd>Abra o <a href="setup#destination-cloud">auxiliar de configuração</a>, escolha o ambiente <strong>TEST</strong> ou <strong>LIVE</strong> do terminal, mantenha <strong>Automático</strong>, insira a chave API e <a href="#helper">leia os códigos</a>. Se mais de um terminal for encontrado, escolha o seu.</dd>
           </dl>
           <details class="manual-setup">
             <summary>Manual</summary>
@@ -411,11 +399,7 @@
           </ol>
           <dl class="settings-list setup-route">
             <dt>Auxiliar de configuração (recomendado)</dt>
-            <dd>No <a href="setup#destination-tapToPay">auxiliar de configuração</a>, escolha <strong>Em um telefone, com Tap to Pay no
-              aplicativo Adyen Payments</strong> e <strong>TEST</strong> ou <strong>LIVE</strong>. Insira a chave Adyen API correspondente e, opcionalmente, um ID da loja. Automático encontra a conta do comerciante e a chave compartilhada; escolha Manual para inseri-las você mesmo.
-              <a href="#helper">Digitalize os códigos</a> e toque em <strong>Verificar e importar</strong>. Mini mPOS
-              cria a credencial de registro e abre o aplicativo Adyen Payments para concluir o registro como parte da
-              importação.</dd>
+            <dd>Abra o <a href="setup#destination-tapToPay">auxiliar de configuração</a>, escolha <strong>TEST</strong> ou <strong>LIVE</strong>, insira a chave API correspondente e <a href="#helper">leia os códigos</a>. Após <strong>Verificar e importar</strong>, o Mini mPOS encontra a conta de comerciante e a chave compartilhada, cria a credencial de registro do telefone e abre o aplicativo Payments para registrá-lo.</dd>
           </dl>
           <details class="manual-setup">
             <summary>Manual</summary>

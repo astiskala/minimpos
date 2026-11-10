@@ -125,6 +125,10 @@ class GiftCardActivityTest {
     fun `confirmed funding without delivered value is repaired by its own means`() {
         val pendingValue = activity(stage(GiftCardStage.FUNDING_CARD))
         assertThat(pendingValue.attention).containsExactly(GiftCardAction.CONTINUE, GiftCardAction.REFUND_FUNDING)
+        // Without the funding payment's transaction there is nothing to reverse here; it still needs attention.
+        val unreferenced = activity(stage(GiftCardStage.FUNDING_CARD, referenced = false))
+        assertThat(unreferenced.attention).containsExactly(GiftCardAction.CONTINUE)
+        assertThat(unreferenced.needsAttention).isTrue()
         val external = activity(stage(GiftCardStage.FUNDING_EXTERNAL), stage(GiftCardStage.LOAD, GiftCardStatus.FAILED))
         assertThat(external.attention).containsExactly(GiftCardAction.CONTINUE, GiftCardAction.RETURN_FUNDS)
         val refunding =

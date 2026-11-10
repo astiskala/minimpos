@@ -120,7 +120,12 @@ data class GiftCardActivity(
                 }
                 if (needsRepair) {
                     if (value == null || value?.status?.notDone == true) add(GiftCardAction.CONTINUE)
-                    add(if (funding?.stage == GiftCardStage.FUNDING_CARD) GiftCardAction.REFUND_FUNDING else GiftCardAction.RETURN_FUNDS)
+                    when {
+                        funding?.stage != GiftCardStage.FUNDING_CARD -> add(GiftCardAction.RETURN_FUNDS)
+
+                        // A referenced refund needs the funding payment's transaction; without it, the Customer Area refunds it.
+                        funding?.poiTransactionId != null && funding?.poiTimestamp != null -> add(GiftCardAction.REFUND_FUNDING)
+                    }
                 }
             }
 

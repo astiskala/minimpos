@@ -31,6 +31,25 @@ Screenshots show an English demo café using the built-in simulator, not live pa
 > Mini mPOS is an independent project, not made, endorsed or supported by Adyen. Test your setup in the Adyen test
 > environment before you take live payments.
 
+## Try it or set it up
+
+**Just exploring?** Install `minimpos-<version>.apk` from the
+[latest release](https://github.com/astiskala/minimpos/releases/latest) on an Android phone (Android 9+) or emulator.
+On the welcome screen, select **Try a demo**, then tap **Continue**. Follow the
+[demo walkthrough](https://minimpos.app/demo) for a sample sale, receipt and refund; no account, keys or real card needed.
+
+**Ready to connect to Adyen?** Follow [Quick start](https://minimpos.app/quick-start).
+Choose your device guide for installation and connection, then follow
+[Testing](https://minimpos.app/testing) to validate your setup before going live. Every real-payment setup needs
+Checkout API credentials; the [setup helper](https://minimpos.app/setup) lets you enter keys on a computer and scan them in.
+
+| Guide | What it covers |
+| --- | --- |
+| [Quick start](https://minimpos.app/quick-start) | Choose a device guide and check shared prerequisites. |
+| [Using Mini mPOS](https://minimpos.app/using) | Prepare the business, sell, refund, deliver receipts, close the day and manage devices. |
+| [Payment options](https://minimpos.app/payment-options) | Tips, deposits, saved cards and other optional workflows. |
+| [Troubleshooting](https://minimpos.app/troubleshooting) | Unknown results, declines, pairing, network, capture, printer and email problems. |
+
 ## What you can do
 
 - **Sell:** products, categories, barcode scanning and custom amounts, with your own tax rates and any Adyen currency.
@@ -45,7 +64,7 @@ Screenshots show an English demo café using the built-in simulator, not live pa
 - **Run your setup:** an admin PIN and a Manager PIN with per-action permissions, optional shopper references and card
   saving, and QR transfers of products, settings and encrypted keys to additional devices.
 
-The [operations guide](https://minimpos.app/using#terminal-checkout) also covers optional workflows: audio-guided
+[Payment options](https://minimpos.app/payment-options#terminal-checkout) also covers optional workflows: audio-guided
 payments, surcharges, Mexican installments, cashback and cashout, shopper-facing prompts, Adyen Giving, MOTO / Manual
 Key Entry and offline processing. Availability depends on the payment destination and your Adyen configuration; test
 the workflows you plan to use.
@@ -53,24 +72,6 @@ the workflows you plan to use.
 The app supports English, Simplified Chinese, Traditional Chinese, Japanese, Brazilian Portuguese, Spanish and French.
 Products, settings and history stay
 on each device; there is no backend, tracking or automatic synchronization between devices.
-
-## Try it or set it up
-
-**Just exploring?** Install `minimpos-<version>.apk` from the
-[latest release](https://github.com/astiskala/minimpos/releases/latest) on an Android phone (Android 9+) or emulator.
-Away from an Adyen terminal, the default is the simulator: no account, keys or real card needed. Choose outcomes and
-printer behavior in Settings › Simulator.
-
-**Ready to connect to Adyen?** Follow [Quick start](https://minimpos.app/quick-start).
-It covers device, network and credential prerequisites, deployment and all four payment setups. Every real-payment
-setup needs the Checkout API; the [setup helper](https://minimpos.app/setup) lets you enter keys
-on a computer and scan them in.
-
-| Guide | What it covers |
-| --- | --- |
-| [Quick start](https://minimpos.app/quick-start) | Check prerequisites, install, connect, test and go live. |
-| [Using Mini mPOS](https://minimpos.app/using) | Daily operations: sell, refund, receipts, closing the day, optional checkout workflows and more devices. |
-| [Troubleshooting](https://minimpos.app/troubleshooting) | Unknown results, declines, pairing, network, capture, printer and email problems. |
 
 ## Important boundaries
 
@@ -82,14 +83,6 @@ Mini mPOS saves API keys encrypted on the device. This is a trade-off against th
 keys on a server. Use narrowly scoped credentials, protect the device, and review [SECURITY.md](SECURITY.md).
 
 ## For contributors
-
-The app is Kotlin with Jetpack Compose, built with Gradle. With JDK 17+ and the Android SDK installed, build and
-install a debug copy on an Android 9+ device or emulator, then run the full verification gate:
-
-```sh
-./gradlew :app:installDebug
-./gradlew qualityGate
-```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for prerequisites, testing, architecture and releases—including signing your
 own APK. Coding agents start at [AGENTS.md](AGENTS.md). Use [CONTEXT.md](CONTEXT.md) for domain terminology. Report

@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="max-image-preview:large">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>追加の決済機能 – Mini mPOS</title>
+    <meta name="description" content="店舗に必要な決済機能を追加します。利用条件と Adyen の設定を確認し、実際に使う前に各機能をテストしてください。">
+    <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="describedby" href="../llms.txt" type="text/plain">
+    <meta name="application-name" content="Mini mPOS ガイド">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="canonical" href="https://minimpos.app/ja/payment-options">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Mini mPOS">
+    <meta property="og:title" content="追加の決済機能 – Mini mPOS">
+    <meta property="og:description" content="店舗に必要な決済機能を追加します。利用条件と Adyen の設定を確認し、実際に使う前に各機能をテストしてください。">
+    <meta property="og:url" content="https://minimpos.app/ja/payment-options">
+    <meta property="og:image" content="https://minimpos.app/images/ja/social.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと日本語のシミュレーターデモ。">
+    <meta name="twitter:image" content="https://minimpos.app/images/ja/social.png">
+    <meta name="twitter:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと日本語のシミュレーターデモ。">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="追加の決済機能 – Mini mPOS">
+    <meta name="twitter:description" content="店舗に必要な決済機能を追加します。利用条件と Adyen の設定を確認し、実際に使う前に各機能をテストしてください。">
+    <meta name="theme-color" content="#00843F">
+    <link href="https://minimpos.app/payment-options" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/payment-options" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/payment-options" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/payment-options" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/payment-options" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/payment-options" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/payment-options" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/payment-options" hreflang="x-default" rel="alternate">
+    <meta content="en_US" property="og:locale:alternate">
+    <meta content="zh_CN" property="og:locale:alternate">
+    <meta content="zh_HK" property="og:locale:alternate">
+    <meta content="ja_JP" property="og:locale">
+    <meta content="es_MX" property="og:locale:alternate">
+    <meta content="fr_FR" property="og:locale:alternate">
+    <meta content="pt_BR" property="og:locale:alternate">
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へ移動</a>
+    <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Mini mPOS ホーム"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav class="desktop-nav" aria-label="メインナビゲーション"><ul class="nav">
+      <li><a href="quick-start">クイックスタート</a></li><li><a href="using" aria-current="page">Mini mPOS の使い方</a></li>
+      <li><a href="troubleshooting">トラブルシューティング</a></li><li><a href="setup">セットアップヘルパー</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>メニュー</summary><div class="mobile-panel"><nav aria-label="メインナビゲーション"><ul class="nav">
+      <li><a href="quick-start">クイックスタート</a></li><li><a href="using" aria-current="page">Mini mPOS の使い方</a></li>
+      <li><a href="troubleshooting">トラブルシューティング</a></li><li><a href="setup">セットアップヘルパー</a></li>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="言語"><p>言語</p><ul><li><a href="../payment-options" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/payment-options" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/payment-options" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a aria-current="page" href="../ja/payment-options" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/payment-options" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/payment-options" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/payment-options" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+    </div></details>
+    <details class="language-menu"><summary aria-label="言語：日本語" title="言語"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">日本語</span></summary><nav aria-label="言語"><ul><li><a href="../payment-options" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/payment-options" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/payment-options" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a aria-current="page" href="../ja/payment-options" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/payment-options" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/payment-options" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/payment-options" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
+  </div></header>
+    <main id="main">
+      <section class="guide-hero"><div class="wrap">
+          <p class="breadcrumb"><a href="using">Mini mPOS の使い方</a></p>
+          <p class="eyebrow">ガイド</p>
+          <h1>追加の決済機能</h1>
+          <p class="lead">店舗に必要な決済機能を追加します。利用条件と Adyen の設定を確認し、実際に使う前に各機能をテストしてください。</p>
+        </div></section>
+      <div class="wrap guide">
+        <nav class="toc" id="contents" aria-label="ガイドナビゲーション">
+          <p class="guide-links toc-title">ガイド</p>
+          <p class="guide-links"><a href="quick-start">クイックスタート</a><br>
+            <a href="using" aria-current="page">Mini mPOS の使い方</a><br><a href="troubleshooting">トラブルシューティング</a></p>
+          <div class="desktop-contents">
+            <p class="toc-title">このページの内容</p>
+            <ol>
+              <li><a href="#capabilities">Adyen機能を確認・設定する</a></li>
+              <li><a href="#tipping">チップの受け取り方法を選ぶ</a></li>
+              <li><a href="#terminal-tips">端末でチップを受け取る</a></li>
+              <li><a href="#tips">領収書に書かれたチップを回収する</a></li>
+              <li><a href="#preauth">予約金を確保し、回収する</a></li>
+              <li><a href="#terminal-checkout">任意の会計フローを使う</a>
+                <ul>
+                  <li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li>
+                  <li><a href="#surcharges">サーチャージ</a></li>
+                  <li><a href="#mexican-installments">メキシコのカード分割払い</a></li>
+                  <li><a href="#partial-payments">一部承認された決済の残額を受け取る</a></li>
+                  <li><a href="#split-payments">販売を分割する・現金で受け取る</a></li>
+                  <li><a href="#cashback">購入時の現金引き出し</a></li>
+                  <li><a href="#cashout">現金引き出し</a></li>
+                  <li><a href="#meal-vouchers">食事券を受け付ける</a></li>
+                  <li><a href="#shopper-display">購入者向け端末画面を使う</a></li>
+                  <li><a href="#giving">チャリティ寄付を案内する</a></li>
+                  <li><a href="#keyed-entry">MOTOまたはカード番号手入力で決済する</a></li>
+                </ul>
+              </li>
+              <li><a href="#offline">オフライン決済と未確認バッチを確認する</a></li>
+              <li><a href="#wallets">購入者のウォレットコードをスキャンする</a></li>
+              <li><a href="#shoppers">参照IDを使い、カードを保存する</a>
+                <ul>
+                  <li><a href="#saved-card">トークンを管理する</a></li>
+                </ul>
+              </li>
+              <li><a href="#gift-cards">ギフトカードを販売・管理する</a></li>
+              <li><a href="#payment-links">リンクで支払ってもらう</a></li>
+            </ol>
+          </div>
+          <details class="mobile-contents">
+            <summary class="toc-title">このページの内容</summary>
+            <ol>
+              <li><a href="#capabilities">Adyen機能を確認・設定する</a></li>
+              <li><a href="#tipping">チップの受け取り方法を選ぶ</a></li>
+              <li><a href="#terminal-tips">端末でチップを受け取る</a></li>
+              <li><a href="#tips">領収書に書かれたチップを回収する</a></li>
+              <li><a href="#preauth">予約金を確保し、回収する</a></li>
+              <li><a href="#terminal-checkout">任意の会計フローを使う</a>
+                <ul>
+                  <li><a href="#audio-guidance">音声ガイド付きの支払いを受け付ける</a></li>
+                  <li><a href="#surcharges">サーチャージ</a></li>
+                  <li><a href="#mexican-installments">メキシコのカード分割払い</a></li>
+                  <li><a href="#partial-payments">一部承認された決済の残額を受け取る</a></li>
+                  <li><a href="#split-payments">販売を分割する・現金で受け取る</a></li>
+                  <li><a href="#cashback">購入時の現金引き出し</a></li>
+                  <li><a href="#cashout">現金引き出し</a></li>
+                  <li><a href="#meal-vouchers">食事券を受け付ける</a></li>
+                  <li><a href="#shopper-display">購入者向け端末画面を使う</a></li>
+                  <li><a href="#giving">チャリティ寄付を案内する</a></li>
+                  <li><a href="#keyed-entry">MOTOまたはカード番号手入力で決済する</a></li>
+                </ul>
+              </li>
+              <li><a href="#offline">オフライン決済と未確認バッチを確認する</a></li>
+              <li><a href="#wallets">購入者のウォレットコードをスキャンする</a></li>
+              <li><a href="#shoppers">参照IDを使い、カードを保存する</a>
+                <ul>
+                  <li><a href="#saved-card">トークンを管理する</a></li>
+                </ul>
+              </li>
+              <li><a href="#gift-cards">ギフトカードを販売・管理する</a></li>
+              <li><a href="#payment-links">リンクで支払ってもらう</a></li>
+            </ol>
+          </details>
+        </nav>
+        <div class="guide-body">
+          <section id="capabilities">
+            <h2>Adyen機能を確認・設定する</h2>
+            <p>決済先に接続したら、<strong>設定 › Adyen機能</strong>を開きます。
+              Adyen の決済・端末機能をまとめた画面で、アプリ内だけの機能やマネージャー PIN の設定は含みません。
+              決済、チップと購入者とのやり取り、レシートとスキャン、端末と結果の復旧の4つのグループがあります。</p>
+            <p>各機能名の下に<strong>準備完了</strong>、<strong>Adyen で設定済み</strong>、
+              <strong>オフ</strong>、<strong>要設定</strong>、
+              <strong>未確認</strong>を表示します。<strong>非対応</strong>の機能は
+              末尾の折りたたまれた一覧にあります。これらは設定の目安で、アカウント、カード、決済方法の承認を保証しません。
+              決済の設定が未完了の場合は、まず設定の完了を案内します。</p>
+            <p><strong>オフ · Adyen で設定済み</strong>は、チップの選択肢、MOTO、ギフトカードの種類など、端末または店舗の機能が
+              Adyen 側では設定済みであることを示します。使用するには Mini mPOS のアプリ設定を有効にしてください。</p>
+            <ol>
+              <li><strong>機能を再確認</strong>をタップして選択した端末の設定を読み取ります。
+                実際の端末の確認には<a href="quick-start#credentials">クイックスタートに記載の Management API ロール</a>が必要です。</li>
+              <li>機能を選んで、要件と設定を確認します。</li>
+              <li>対応端末では各機能の画面で端末チップ、DCC、MOTO、オフライン上限を編集します。
+                金額は通常の通貨単位で入力し、独自の上限を解除するには継承した上限を使うを明示的に選びます。
+                チップ候補は1行ずつ検証されます。</li>
+              <li><strong>Adyenに保存</strong> をタップします。</li>
+            </ol>
+            <p>結果不明の保存は自動再送しません。再確認に成功してから Adyen の値を確認し、次の操作を判断してください。
+              保存と読み戻しで確認できるのは Adyen 上の設定で、端末への反映ではありません。設定のダウンロードや再起動が必要な場合があります。
+              <a href="https://docs.adyen.com/point-of-sale/automating-terminal-management/configure-terminals-api">Adyen の端末設定の更新</a>をご覧ください。</p>
+            <p>Tap to Payでは、端末チップ、購入者向け画面、MOTO/MKE、オフライン決済、端末の照合など物理端末の機能は使えません。
+              アカウントの有効化や支払方法の要件は、<a href="https://docs.adyen.com/point-of-sale">Adyenの対面決済
+                ドキュメント</a>に従ってください。</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="../images/ja/capabilities.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：Adyen機能の利用可否と設定状況">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/ja/capabilities.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：Adyen機能の利用可否と設定状況" decoding="async">
+                </div></a>
+              <figcaption class="fine">日本語のシミュレーターデモです。<span class="shot-control">機能を再確認</span><a class="screenshot-link shot-expand" href="../images/ja/capabilities.png">スクリーンショットを元のサイズで開く</a></figcaption>
+            </figure>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="tipping">
+            <h2>チップの受け取り方法を選ぶ</h2>
+            <p>端末でのチップはカードへの請求前に選びます。レシートでのチップは、スタッフが記入されたチップを入力して売上確定するまで代金を保留します。以下の各方式の要件を確認してください。</p>
+            <ul>
+              <li><a href="#terminal-tips">端末でチップを受け取る</a></li>
+              <li><a href="#tips">領収書に書かれたチップを回収する</a></li>
+            </ul>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="terminal-tips">
+            <h2>端末でチップを受け取る</h2>
+            <ol>
+              <li><a href="#capabilities">Adyen機能</a>で端末チップを確認します。必要に応じて、決済通貨の定義済みチップと自由入力の選択肢を設定します。</li>
+              <li><strong>設定 › チップと寄付</strong>で<strong>端末でチップを入力</strong>を有効にし、会計での初期状態を選びます。必要なら<strong>購入金額に応じたチップ候補
+                </strong>で少額の会計には定額、高額の会計には割合を提示するか、<strong>税抜き金額でチップを計算</strong>を有効にします。
+                どちらも端末ソフトウェア1.101以降が必要で、接続テストで確認します。</li>
+              <li>販売の会計で<strong>端末でチップを入力</strong>を選び、<strong>支払う</strong>
+                をタップします。購入者はカードへの請求前にチップを選びます。返された合計とチップを確認し、領収書を渡します。</li>
+            </ol>
+            <p>プリンターも後からのチップ入力も不要です。端末チップと<a href="#tips">領収書のチップ</a>は同時に選べません。どちらもプリオーソリ、スキャンするウォレット決済、決済リンクには使えません。Tap
+              to Payでは端末チップを使えません。</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="../images/ja/terminal-tipping.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：チップと寄付の端末チップと購入金額に応じた候補の設定">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/ja/terminal-tipping.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：チップと寄付の端末チップと購入金額に応じた候補の設定" decoding="async">
+                </div></a>
+              <figcaption class="fine">日本語のシミュレーターの会計設定です。端末側はAdyen機能で別途設定します。<span class="shot-control">端末でのチップ</span><a class="screenshot-link shot-expand" href="../images/ja/terminal-tipping.png">スクリーンショットを元のサイズで開く</a></figcaption>
+            </figure>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="tips">
+            <h2>領収書に書かれたチップを回収する</h2>
+            <div class="callout callout-prereq" role="note">
+              <p class="callout-title">前提条件</p>
+              <ul>
+                <li>プリンター付きの端末</li>
+                <li>Adyen サポートがプリオーソリゼーションと overcapture を有効化済み。
+                  <a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">Adyen の領収書チップガイド</a>を参照してください
+                </li>
+              </ul>
+            </div>
+            <p><strong>設定 › チップと寄付</strong>で<strong>有効（初期値オフ）</strong>か<strong>有効（初期値オン）</strong>
+              を選び、会計のスイッチの初期状態を決めます。初期設定の<strong>無効</strong>ではスイッチを表示しません。一部のデビットカードやウォレットはこのフローに対応していません。</p>
+            <ol>
+              <li>販売の会計で<strong>領収書にチップを記入</strong>をオンにし、決済ボタンをタップします。代金は確保され、請求されません。</li>
+              <li>領収書を印刷します。チップと合計の空欄があり、加盟店控えには署名欄があります。</li>
+              <li>購入者が記入したら、結果画面か取引履歴の<strong>チップ入力待ち</strong>で<strong>チップを入力</strong>をタップします。</li>
+              <li>チップまたは合計を入力するか<strong>チップなし</strong>をタップし、確定します。</li>
+            </ol>
+            <p>アプリは代金とチップの合計をキャプチャします。20%
+              を超えるチップでは、先にカード発行会社による確保額の増額が必要です。拒否された場合は、少ないチップかゼロを入力してください。保存したチップは変更できません。チップ入力前は返金ではなく決済をキャンセルし、入力後の返金にはチップが含まれます。
+            </p>
+            <div class="callout callout-warning" role="note">
+              <p class="callout-title">警告</p>
+              <p>ゼロも含め、チップは速やかに入力し、確保の期限前にキャプチャしてください。キャプチャの失敗や結果不明は<a href="troubleshooting#modifications">キャプチャの問題</a>
+                を参照してください。</p>
+            </div>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="preauth">
+            <h2>予約金を確保し、回収する</h2>
+            <div class="callout callout-prereq" role="note">
+              <p class="callout-title">前提条件</p>
+              <ul>
+                <li>Adyen サポートが決済方法のプリオーソリゼーションを有効化済み。<a href="https://docs.adyen.com/point-of-sale/pre-authorisation">
+                    Adyen のプリオーソリゼーションガイド</a>を参照してください</li>
+              </ul>
+            </div>
+            <p>プリオーソリゼーションはカードに金額を確保し、すぐには請求しません。アカウント全体を手動キャプチャにする必要はなく、Mini mPOS はこの決済だけに手動キャプチャを指定します。</p>
+            <ol>
+              <li>ホームで<strong>新規プリオーソリ</strong>をタップします。プリオーソリ商品を選ぶか、バーコードをスキャンするか、金額を入力します。1 件につき 1 商品です。</li>
+              <li>会計でプリオーソリのボタンをタップします。領収書に確保額が表示されます。</li>
+              <li>準備ができたら<strong>取引履歴</strong>で項目を開き、操作を選びます。</li>
+            </ol>
+            <dl class="settings-list">
+              <dt>キャプチャ</dt>
+              <dd>必要な金額を回収します。少ない金額なら残りを解除し、多い金額なら先にカード発行会社に確保額の増額を求めます。キャプチャを要求した後は返金できます。</dd>
+              <dt>金額を調整</dt>
+              <dd>請求せずに確保額を変更します。同じ金額を送るとオーソリゼーションを更新します。</dd>
+              <dt>プリオーソリをキャンセル</dt>
+              <dd>確保を解除します。Customer Area でキャプチャ済みの場合は、Adyen が代わりに全額を返金します。</dd>
+            </dl>
+            <p><strong>キャプチャ要求済み</strong>は最終確認ではありません。Customer Area で確認してください。金額調整の結果をすぐに受け取るには、
+              <a href="https://docs.adyen.com/online-payments/adjust-authorisation">Adyen のオーソリゼーション調整ガイド</a>に従い <strong>
+                Return adjust authorisation data</strong> を有効にします。</p>
+            <div class="callout callout-warning" role="note">
+              <p class="callout-title">警告</p>
+              <p>確保には期限があります。プリオーソリのフィルターを毎日確認し、速やかにキャプチャまたはキャンセルしてください。失敗や結果不明の操作は
+                <a href="troubleshooting#modifications">キャプチャの問題</a>を参照してください。</p>
+            </div>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="terminal-checkout">
+            <h2>任意の会計フローを使う</h2>
+            <p>必要な決済オプションだけを設定でオンにしてください。一部承認、分割、サーチャージを除き、これらの操作には
+              Tap to Payではなく対応する物理端末が必要です。まず<a href="#capabilities">Adyen機能</a>を確認し、実際の構成で
+              テストしてください。多くのオプションは1回の支払いで併用できません。競合する場合は会計画面が説明し、どれかを
+              オフにするよう求めます。</p>
+            <h3 id="audio-guidance">音声ガイド付きの支払いを受け付ける</h3>
+            <p>まず、Adyenサポートが端末で有効にし、端末が対応ソフトウェアで動作し、端末の言語がエストニア語、ラトビア語、
+              アイスランド語、リトアニア語以外であることを確認してから、<strong>設定 › 決済 ›
+                アクセシビリティ</strong>で<strong>音声ガイドを有効にする</strong>をオンにします。AMS1、S1F2、S1F2L、S1E2L、
+              S1U2ではソフトウェア1.117以降、M450、P630、SFO1では1.124以降で利用できます。<a
+              href="https://docs.adyen.com/point-of-sale/android-terminals/accessibility-mode/accessibility-from-pos">Adyenの
+              アクセシブルな決済の要件</a>を参照してください。</p>
+            <p>会計時に、必要なお客様のために<strong>音声ガイド</strong>をオンにし、チップ、Giving、手入力をオフにします。
+              署名が不要なカードを使ってください。この支払いでは全額を要求し、購入者向け画面の案内を省略します。</p>
+            <p>端末が手順を読み上げます。お客様に十分な時間を取ってください。Mini mPOSは結果を最大10分待ちます。応答が
+              届かない場合は、次の支払いの前に<a href="troubleshooting#unknown">結果不明の取引を確認</a>してください。
+              この選択は試行のたびにリセットされます。</p>
+            <h3 id="surcharges">サーチャージ</h3>
+            <p>サーチャージはAdyenで設定したとおりにAdyenが加算します。Mini mPOSは設定しません。Adyenが報告した場合、
+              取引履歴、領収書、日次レポートで購入額やチップと分けて表示します。請求額にはすでに含まれています。報告されない
+              サーチャージは不明のままです。一部承認でサーチャージが報告されない場合は、やり直す前にCustomer Areaを確認するか、
+              元のカードに返金してください。</p>
+            <p>支払いの前にサーチャージを案内してください。特にTap to Payにはサーチャージの確認画面がありません。サーチャージと
+              DCCは併用しないでください。サーチャージが報告された場合、Mini mPOSは元の与信額を超える調整や売上確定を
+              ブロックします。<a href="https://docs.adyen.com/point-of-sale/surcharge">Adyenのサーチャージ要件</a>と
+              <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">Adyenのサーチャージ設定</a>を
+              参照してください。</p>
+            <h3 id="mexican-installments">メキシコのカード分割払い</h3>
+            <p>発行会社のプログラムと手数料をAdyenに確認し、「設定」›「決済」で分割払いをオンにして、Adyen機能を更新し
+              メキシコのストアを確認します。会計時にデビット、一括クレジット、3・6・9・12・18か月の分割払いから選び、
+              対象のカード1枚で販売全体を支払います。決済リンク、トークン、スキャン式ウォレット、ギフトカードでは分割払いは
+              適用されません。</p>
+            <p>詳細、取引履歴、領収書には、要求したプランと返されたプランが表示されます。対応していない発行会社は拒否する
+              ことがあります。元の決済を金額指定または全額で返金してください。支払いスケジュールは発行会社が管理します。</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/installments/mexico-installments/">Adyen: メキシコのカード分割払い</a></p>
+            <h3 id="partial-payments">一部承認された決済の残額を受け取る</h3>
+            <p><strong>一部承認を許可</strong>をオンにすると、要求額より少ないカード承認を受け付けます。結果が<strong>一部支払済み</strong>の場合は、支払い済み額と残額を確認し、ホーム
+              の横の<strong>受け取る</strong>ボタンをタップします。同じ販売の残額を受け取る方法を選びます。承認済み分は支払い済みなので、全額で新しい販売を始めないでください。</p>
+            <p>応答がないことは一部承認ではありません。追加で受け取る前に<a href="troubleshooting#unknown">結果不明の取引を
+                解決</a>してください。</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="../images/ja/partial-payment.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：支払済み1,070円、残額1,069円と受け取るボタン">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/ja/partial-payment.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：支払済み1,070円、残額1,069円と受け取るボタン" decoding="async">
+                </div></a>
+              <figcaption class="fine">日本語のシミュレーターでの一部承認です。販売全額の支払完了ではありません。<span class="shot-control">一部支払済み</span><a class="screenshot-link shot-expand" href="../images/ja/partial-payment.png">スクリーンショットを元のサイズで開く</a></figcaption>
+            </figure>
+            <h3 id="split-payments">販売を分割する・現金で受け取る</h3>
+            <p>会計で<strong>その他の支払い方法</strong>をタップします。残額全額を受け取るには<strong>現金</strong>を選び、金額・均等割り・商品を指定するには
+              <strong>支払いを分割</strong>を選んでから支払いまたは現金を選びます。価格と税額は変わらず、端数は最初の支払いに割り当てます。受取現金は支払額から始まり、数字を入力すると置き換わります。
+              <strong>ちょうどの現金</strong>で元の額に戻せます。受取額とお釣りを確認し、お釣りを渡してから確定してください。現金はこのデバイスだけに記録されます。</p>
+            <p>販売は全額を受け取るまで<strong>一部支払済み</strong>です。結果の<strong>受け取る</strong>、または取引履歴の<strong>残高を回収</strong>で、再起動後も
+              続けられます。均等割りの次の支払い額は自動選択されます。カードの結果が不明な場合は、追加で受け取る前に解決してください。領収書には全支払いが載り、日次レポートでは現金を分けて表示します。端末集計に現金は含
+              まれません。</p>
+            <p>ギフトカードを設定している場合は、<strong>ギフトカード</strong>をタップして選んだ金額をギフトカードで支払います。
+              残高が足りない場合は一部が承認されます。ギフトカードでの支払いはそのカードに返金されます。ただしローカル
+              ギフトカードはMini mPOSの外で返金します。</p>
+            <div class="shot-pair">
+              <a class="screenshot-link" href="../images/ja/split.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：販売を2つに均等割">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/ja/split.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：販売を2つに均等割" decoding="async">
+                </div></a>
+              <a class="screenshot-link" href="../images/ja/split-cash.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：1回分の現金の受取額とお釣り">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/ja/split-cash.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：1回分の現金の受取額とお釣り" decoding="async">
+                </div></a>
+            </div>
+            <p class="fine">分割販売の日本語シミュレーターデモです。</p>
+            <h3 id="cashback">購入時の現金引き出し</h3>
+            <p>Adyenがストアとカードプログラムを確認したら、「設定」›「決済」で購入時の現金引き出しをオンにし、現金の上限と
+              マネージャーPINを設定します。会計時に追加で求められた現金額を入力し、対象のカード1枚で販売全体を支払います。
+              購入は承認されても現金引き出しが拒否されることがあります。承認された現金だけを渡してください。</p>
+            <h3 id="cashout">現金引き出し</h3>
+            <p>ホームの現金引き出しは、購入なしで現金を要求します。Adyenがストアでオーストラリアのeftpos現金引き出しを
+              確認したら、別途オンにします。</p>
+            <p>承認後、承認された現金とカードへの請求額を確認します。承認された現金だけを渡し、<strong>現金の引き渡しを記録</strong>を
+              タップしてマネージャーPINで承認します。金額が報告されていない現金は渡さないでください。結果が不明な場合は
+              現金を再要求せずに確認してください。記録されていない引き渡しは取引履歴に残ります。日次レポートでは承認済みと
+              引き渡し済みの現金を販売と分けて表示します。返金で渡した現金が戻ることはありません。</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/cashback-and-cash-out">Adyen: Cashback</a></p>
+            <h3 id="meal-vouchers">食事券を受け付ける</h3>
+            <p>発行会社との契約、店舗登録、Adyenでの有効化が済んでから、「設定」›「決済」で<strong>食事券</strong>を
+              オンにしてください。対象の食事券は端末の確認済みの店舗の国で決まります。ブラジルのPAT食事券、ベルギー・
+              フィンランド・ドイツ・ルクセンブルク・スペインのMastercard/Visa食事券、フランスのTitres-restaurantです。
+              設定後にAdyen機能を更新してください。Monizze、ベルギーのPluxee、Lunch Checkは対象外です。</p>
+            <p>食事券に対象商品が必要な場合は、「設定」›「商品」で各商品を開き、<strong>食事券の対象</strong>をオンにします。
+              任意の商品は対象になりません。会計時に<strong>その他の支払い方法 › 支払いを分割</strong>、<strong>食事券</strong>の順に
+              タップします。Mini mPOSは食事券で支払える最大額を提示します。残りはカードまたは現金で受け取ります。
+              Mastercard/Visa食事券は一部承認されることがあります。Titres-restaurantは1日あたり最大EUR 25までで、日曜日と
+              祝日は使えず、返金もできないため、ストアクレジットで対応してください。残高が足りないブラジルの食事券は拒否
+              されるので、少ない金額を入力してください。</p>
+            <p>ブラジルでは、<strong>ブラジルの食事券をアプリで選択</strong>をオンにすると、Mini mPOSから食事券での支払いを
+              要求できます。アプリでの選択には端末ソフトウェア1.129以降が必要で、接続テストで確認します。
+              Adyenサポートが端末独自のクレジット・デビット・食事券の選択画面を有効にしている場合はオフのまま
+              にし、カードで会計してお客様に端末で選んでもらいます。食事券の返品は元の食事券に戻り、現金では返しません。</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers">Adyen：ブラジルの食事券</a> · <a href="https://docs.adyen.com/industries/markets/europe-meal-vouchers">Adyen：ヨーロッパの食事券</a></p>
+            <h3 id="shopper-display">購入者向け端末画面を使う</h3>
+            <p>別のネットワーク端末またはクラウド端末を使う場合、<strong>設定 › 購入者向け端末画面</strong>を開きます。決済前の明細表示、注文確認、会計のメール欄が空の場合のメール入力を選べます。メール入力には
+              <a href="using#receipts">領収書のメール送信</a>の設定が必要です。<strong>領収書を自動でメール送信</strong>
+              がオンなら、領収書は自動で送信されます。承認後にQRコードを表示したり、0–10の評価を求めたりすることもできます。返された評価は取引詳細に表示されます。</p>
+            <p>これらの案内はアプリの言語で表示されます。Mini mPOSが決済端末自体で動作している場合は使えません。
+              QRコードには領収書ではなく加盟店参照IDが含まれます。<a href="using#receipts">領収書も必ずお渡し</a>ください。</p>
+            <h3 id="giving">チャリティ寄付を案内する</h3>
+            <p>AdyenとAdyen Givingの利用を手配したら、<strong>設定 › チップと寄付</strong>で<strong>チャリティ寄付（Adyen Giving）</strong>
+              を有効にします。販売の会計で選択すると、決済後に端末で寄付を案内します。プリオーソリや領収書のチップ用の確保には使えません。</p>
+            <p>購入と寄付は別の取引です。報告された寄付額は取引詳細に表示されます。購入が承認されただけでは、寄付の完了は確認できません。</p>
+            <h3 id="keyed-entry">MOTOまたはカード番号手入力で決済する</h3>
+            <ol>
+              <li>必要な入力方法を端末とアカウントで利用できるかAdyenに確認します。必要なら<a href="#capabilities">Adyen機能</a>でMOTOを設定し、<a href="using#staff">
+                  スタッフのPIN</a>を設定します。</li>
+              <li><strong>設定 › 決済</strong>でMOTOまたはカード番号手入力を有効にします。会計で、遠隔注文には<strong>郵送・電話注文（MOTO）</strong>
+                、ICチップや非接触の読み取りに失敗した場合には<strong>手入力決済（MKE）</strong>を選びます。同時には選べません。</li>
+              <li><strong>支払う</strong>をタップし、不正利用とチャージバックの責任に関する警告を確認して、求められたら
+                マネージャー承認を行います。</li>
+            </ol>
+            <p>手入力の取引では、不正利用とチャージバックに対する加盟店の責任が大きくなります。</p>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="offline">
+            <h2>オフライン決済と未確認バッチを確認する</h2>
+            <p>オフラインEMVとストア・アンド・フォワード（Store-and-Forward）は、ローカル接続の対応端末で使います。Mini
+              mPOSをその端末で動かすか、同じネットワーク上の端末に接続します。クラウド経由やTap to Payでは使えません。Adyenとオフライン処理を手配し、リスクを確認してから
+              <a href="#capabilities">Adyen機能</a>で上限を設定してください。Mini mPOS自体は決済をキューに保存せず、ローカルネットワーク障害時に端末への接続を復旧するものでもありません。
+            </p>
+            <p>取引履歴では、端末が報告したオフライン販売に印が付きます。販売を開くと、<strong>オフライン処理</strong>の方式（オフラインEMVまたはストア・アンド・フォワード）と、端末が報告した<strong>
+                未確認のオフラインバッチ数</strong>を確認できます。オフライン承認ではPSP参照IDがまだない場合があります。これは結果不明ではありませんが、Adyenが受信・精算したことの確認でもありません。</p>
+            <p>端末とAdyenの接続を復旧し、Customer Areaでアップロードされた決済と最終結果を確認します。<a href="using#reconciliation">端末集計照合</a>
+              でもオフラインと未確認バッチの警告を確認してください。合計の一致はオフライン決済の精算完了ではありません。確定的な返答がない場合は、オフライン承認と決めつけたり再請求したりせず、
+              <a href="troubleshooting#unknown">結果不明の復旧手順</a>に従ってください。</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="../images/ja/offline-payment.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：Store-and-Forwardの決済詳細と未確認オフラインバッチ1件">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/ja/offline-payment.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：Store-and-Forwardの決済詳細と未確認オフラインバッチ1件" decoding="async">
+                </div></a>
+              <figcaption class="fine">日本語のシミュレーターのオフライン詳細です。アップロードや精算の証明ではありません。<span class="shot-control">オフライン処理</span><a class="screenshot-link shot-expand" href="../images/ja/offline-payment.png">スクリーンショットを元のサイズで開く</a></figcaption>
+            </figure>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="wallets">
+            <h2>購入者のウォレットコードをスキャンする</h2>
+            <p>販売の会計で<strong>ウォレットをスキャン</strong>を使い、購入者のウォレットアプリの支払いコードを読み取ります。商品バーコードや返金用領収書のスキャンとは別です。物理決済端末が必要で、Tap to
+              Pay では使えません。<a href="quick-start#credentials">ウォレット照会には読み取り権限が必要です</a>。</p>
+            <ol>
+              <li>合計と会計欄を確認し、<strong>ウォレットをスキャン</strong>
+                をタップします。領収書でのチップが選択されている場合は、それを使わず支払うことを確認します。ウォレットは合計を直ちに請求し、プリオーソリは行いません。</li>
+              <li>購入者のウォレットを選びます。1 種類だけなら自動選択します。個別に設定されたものだけが表示され、Alipay+ の設定から GCash、DANA、Kakao Pay、TrueMoney
+                の個別開通を推測しません。</li>
+              <li>内蔵スキャナーを確認できた端末では、その端末のスキャンボタンを押します。Mini mPOS のデバイスではなく、ネットワークやクラウドの決済端末の場合もあります。デバイスのカメラを使うには<strong>
+                  カメラを使用</strong>をタップします。</li>
+              <li>購入者の支払い QR コードまたは支払いバーコードをスキャンします。有効な 1 回のスキャンで直ちに決済が始まります。通常の結果を待ち、領収書を渡します。</li>
+            </ol>
+            <p>キャンセルしてもカートは残ります。端末でのスキャンは30秒で終了します。<strong>再スキャン</strong>または
+              カメラを使ってください。ウォレットによっては<strong>カードを保存</strong>に対応しません。トークンが保存
+              されなくても、承認された決済は承認済みのままです。<a href="troubleshooting#wallets">ウォレットの問題を解決</a>し、
+              <a href="troubleshooting#unknown">結果不明の決済</a>を再スキャンで置き換えないでください。</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen のウォレットガイド
+              </a>と <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">
+                Adyen の PayPal と Venmo ガイド</a>で開通状況と TEST 動作を確認してください。</p>
+            <div class="shot-pair">
+              <a class="screenshot-link" href="../images/ja/wallets.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：3,050円の販売でウォレットを選択">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/ja/wallets.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：3,050円の販売でウォレットを選択" decoding="async">
+                </div></a>
+              <a class="screenshot-link" href="../images/ja/wallet-scan.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：WeChat Pay のスキャンとオフラインデモコードの操作">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/ja/wallet-scan.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：WeChat Pay のスキャンとオフラインデモコードの操作" decoding="async">
+                </div></a>
+            </div>
+            <p class="fine">ウォレットスキャンの日本語シミュレーターデモです。</p>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="shoppers">
+            <h2>参照IDを使い、カードを保存する</h2>
+            <dl class="settings-list">
+              <dt>加盟店参照ID</dt>
+              <dd>予約番号や注文番号を記録するには、<strong>設定 › 決済 › 加盟店参照IDの入力を求める</strong>をオンにします。この番号は Adyen
+                で決済を識別します。空欄なら一意の参照IDを生成します。</dd>
+              <dt>購入者参照ID</dt>
+              <dd><strong>設定 › 決済</strong>で<strong>購入者参照ID</strong>
+                を、会計で入力する購入者参照ID（初期設定）、購入者のメール、なしから選びます。すべての決済とともに Adyen
+                に送信します。メールの参照IDは初期設定でハッシュ化されます。すべてのデバイスで同じソルトを使ってください。</dd>
+              <dt>カード保存</dt>
+              <dd>購入者参照IDを設定したうえで<strong>カード保存の選択肢を表示</strong>をオンにします。
+                <strong>次回の決済用にカードを保存</strong>を選ぶ前に購入者の同意を得てください。後で請求するには<a href="#saved-card">トークンを管理する</a>を参照してください。
+              </dd>
+            </dl>
+            <h3 id="saved-card">トークンを管理する</h3>
+            <ol>
+              <li>ホームで<strong>トークン</strong>をタップし、求められた場合はマネージャーPINを入力します。</li>
+              <li>購入者参照ID（またはそれに使うメールアドレス）を入力し、<strong>トークンを検索</strong>をタップします。</li>
+              <li>トークンの横の<strong>請求</strong>をタップし、商品または<strong>任意の商品</strong>を追加します。このカートは<strong>新規販売</strong>のカートとは別です。</li>
+              <li>請求内容を確認し、<strong>請求</strong>をタップします。</li>
+            </ol>
+            <p>お客様はその場にいないため、事前に同意を得てください。別の<strong>継続課金モデル</strong>で保存された
+              トークンはここでは請求できません。これらの決済は<strong>取引履歴</strong>から返金します。請求の結果が不明な
+              場合は、7日以内は取引履歴から、その後はCustomer Areaで確認してください。新規販売の会計では、購入者参照IDに
+              保存済みトークンがあると<strong>トークンで請求</strong>が表示されます。</p>
+            <p id="token-deletion">
+              トークンを削除するには、<strong>削除</strong>をタップして詳細を確認し、確定してマネージャーPINで承認します。
+              削除するとAdyen上のトークンが消え、Mini mPOSでもほかの連携でも使えなくなります。元に戻せません。過去の決済と
+              その返金は引き続き利用できます。削除が確認できない場合は、請求や再削除の前に<strong>削除を確認</strong>を
+              タップしてください。
+            </p>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="gift-cards">
+            <h2>ギフトカードを販売・管理する</h2>
+            <p>ギフトカードはAdyen端末で利用できます。Tap to Payでは利用できません。<strong>設定 › 決済 › ギフトカード</strong>で、
+              Adyenでオンボーディングを完了した各プロバイダーをオンにし、Intersolveまたはローカルギフトカードの場合はAdyenから案内されたカード種別を入力し、
+              スタッフのカード提示方法（カメラでスキャンして有効期限を入力、または端末でスワイプ・手入力）を選びます。
+              各プロバイダーについてAdyenが案内している操作だけが表示されます。無効化はGivexのみ、ローカルギフトカードは決済のみです。</p>
+            <ol>
+              <li>ホームで<strong>ギフトカード</strong>をタップし、プロバイダーとカードの提示方法を選びます。</li>
+              <li><strong>残高照会</strong>、<strong>有効化</strong>、<strong>チャージ</strong>、
+                <strong>現金払い出し</strong>、<strong>カードへ返金</strong>、
+                <strong>無効化</strong>のいずれかを選びます。</li>
+              <li>金額を追加する場合は<strong>カード決済</strong>、または<strong>アプリ外で受領</strong>を選んで受け取ったことを確認します。</li>
+              <li>確認し、マネージャーPINで承認します。</li>
+            </ol>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="../images/ja/gift-cards.png" aria-label="スクリーンショットを元のサイズで開く: 日本語のシミュレーターデモ：GivexとSVSのギフトカード、スワイプまたは手入力と操作の一覧">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/ja/gift-cards.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：GivexとSVSのギフトカード、スワイプまたは手入力と操作の一覧" decoding="async">
+                </div></a>
+              <figcaption class="fine">日本語のシミュレーターデモです。<span class="shot-control">ギフトカード</span><a class="screenshot-link shot-expand" href="../images/ja/gift-cards.png">スクリーンショットを元のサイズで開く</a></figcaption>
+            </figure>
+            <p>残高照会と金額変更の承認は<a href="using#staff">スタッフ権限</a>に従います。カード決済を先に行い、承認されてから金額を送信します。決済の結果が不明な場合は、先に確認してください。
+              決済は完了したのに金額が追加されなかった場合は<strong>金額未追加</strong>と表示されます。
+              金額を再送信するか、カード決済を返金するか、代金を返したことを記録してください。自動で繰り返されることはありません。</p>
+            <p><strong>チャージ取消</strong>は、24時間以内のカードの最新チャージに表示されます。
+              現金払い出しは通常、残高全額を払い出してカードを使えなくします。一部のGivexカードのみ一部払い出しが可能です。
+              承認後に現金を渡し、<strong>現金を渡しました</strong>をタップします。確認していない受け渡しは再起動後も<strong>要対応</strong>に残ります。
+              ギフトカードの取引は<strong>取引履歴</strong>と日次レポートに売上とは別に表示され、
+              売上には含まれません。</p>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="payment-links">
+            <h2>リンクで支払ってもらう</h2>
+            <div class="callout callout-prereq" role="note">
+              <p class="callout-title">前提条件</p>
+              <ul>
+                <li>LIVE で使う前に、マーチャントアカウントが利用規約を含む <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Adyen Pay
+                    by Link の要件</a>を満たしていること</li>
+              </ul>
+            </div>
+            <ol>
+              <li>販売の会計で<strong>決済リンクを作成</strong>をタップします。</li>
+              <li>QR コードを見せるか、<strong>リンクをメール送信</strong>、<strong>リンクを印刷</strong>、またはタブレットやスマートフォンで<strong>リンクを共有</strong>
+                をタップします。</li>
+              <li>リンク画面を開いたままにして入金を確認するか、後で取引履歴の項目で<strong>支払いを確認</strong>をタップします。</li>
+              <li>リンクが不要になったら<strong>リンクを取り消す</strong>をタップします。</li>
+            </ol>
+            <p>リンクが支払われる、期限切れになる、または取り消されるまで、項目には<strong>支払い待ち</strong>と表示されます。リンクの有効時間は<strong>設定 › 決済 › 決済リンク</strong>
+              で設定します。リンクは販売専用で、予約金や領収書のチップには使えません。</p>
+            <div class="callout callout-important" role="note">
+              <p class="callout-title">重要</p>
+              <p>有効期間中は、実際のリンクを持つ人なら誰でも支払えます。支払済みリンクの返金は<strong>Customer Area › Payments › Payment list</strong>
+                で行います。アプリからは返金できません。</p>
+            </div>
+            <p>リンクが表示されない、更新されない場合は<a href="troubleshooting#links">決済リンクの問題</a>を参照してください。</p>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+        </div>
+      </div>
+    </main>
+    <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="ガイドと設定"><ul class="footer-nav">
+      <li><a href="quick-start">クイックスタート</a></li><li><a href="using" aria-current="page">Mini mPOS の使い方</a></li>
+      <li><a href="troubleshooting">トラブルシューティング</a></li><li><a href="setup">セットアップヘルパー</a></li>
+    </ul></nav>
+    <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT ライセンス · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティ</a></p><p class="fine">Adyen は Adyen N.V. の商標です。Mini mPOS は独立したプロジェクトであり、Adyen との提携関係はなく、推奨やサポートもありません。</p>
+  </div></footer>
+  </body>
+</html>

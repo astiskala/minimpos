@@ -31,7 +31,7 @@ class DailyReportGuideTest {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         listOf("", "zh-CN", "zh-Hant", "ja").forEach { language ->
             val directory = docs.resolve(language)
-            val using = Jsoup.parse(directory.resolve("using.html").readText()).select("#wallets")
+            val using = Jsoup.parse(directory.resolve("payment-options.html").readText()).select("#wallets")
             listOf("Alipay+", "PayPal", "Venmo", "GCash", "DANA", "Kakao Pay", "TrueMoney")
                 .forEach { assertWithMessage("$language wallet contract: $it").that(using.text()).contains(it) }
             assertWithMessage(

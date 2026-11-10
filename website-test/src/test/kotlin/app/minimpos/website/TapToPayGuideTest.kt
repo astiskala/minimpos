@@ -41,13 +41,11 @@ class TapToPayGuideTest {
             val keySection = strings.select("string[name=settings_shared_key]").text()
             val terminal = strings.select("string[name=settings_terminal]").text()
             assertThat(help.text()).doesNotContain("$terminal › $keySection")
-            val quickStart = Jsoup.parse(directory.resolve("quick-start.html").readText())
             val apiTest = strings.select("string[name=settings_test_api]").text()
             val discover = strings.select("string[name=settings_discover]").text()
             listOf("network", "cloud").forEach { id ->
-                val heading = checkNotNull(quickStart.getElementById(id))
-                val steps =
-                    heading.nextElementSiblings().takeWhile { it.tagName() != "h3" }.single { it.hasClass("manual-setup") }
+                val route = Jsoup.parse(directory.resolve("quick-start-$id.html").readText())
+                val steps = route.select("#connect .manual-setup").single()
                 assertThat(steps.tagName()).isEqualTo("details")
                 assertThat(steps.select("strong").eachText()).containsAtLeast(discover, connectionTest)
                 assertThat(steps.select("strong").eachText()).doesNotContain(apiTest)

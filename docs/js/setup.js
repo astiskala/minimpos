@@ -208,11 +208,22 @@
   const destination = () => form.elements.destination.value;
   const environment = () => form.elements.environment.value;
   const setupMode = () => form.elements.setupMode.value;
+  const deviceGuides = {
+    thisTerminal: "quick-start-terminal", network: "quick-start-network",
+    cloud: "quick-start-cloud", tapToPay: "quick-start-tap-to-pay",
+  };
 
   /** Hidden destination, environment and mode fields are disabled, so they are neither checked nor read. */
   const logoOnly = () => form.elements.make.value === "logo";
   const refresh = () => {
     document.getElementById("complete-fields").hidden = logoOnly();
+    document.getElementById("setup-after-import").hidden = logoOnly();
+    document.getElementById("setup-scan-connection").hidden = logoOnly();
+    document.getElementById("setup-scan-logo").hidden = !logoOnly();
+    document.getElementById("setup-device-guide").href = deviceGuides[destination()] + "#connect";
+    if (setupMode() === "manual" || form.elements.keySource.value === "enter") {
+      document.getElementById("setup-method").open = true;
+    }
     for (const group of document.querySelectorAll("#complete-fields > fieldset, #complete-fields > details > fieldset")) group.disabled = logoOnly();
     document.getElementById("logo-fields").hidden = !logoOnly() && form.elements.includeReceipt.value !== "yes";
     for (const group of form.querySelectorAll("fieldset[data-for], fieldset[data-mode], fieldset[data-email], fieldset[data-receipt-settings]")) {
@@ -608,11 +619,20 @@
     results.scrollIntoView({ block: "start" });
   });
 
-  // Each Quick start route links here with its destination already chosen.
-  const linked = document.getElementById(location.hash.slice(1));
-  if (linked?.name === "destination") linked.checked = true;
+  // Only recognized non-secret form choices can be selected by a guide link, including links followed after load.
+  const followGuide = () => {
+    const linked = document.getElementById(location.hash.slice(1));
+    if (linked?.name === "destination" || linked?.name === "make") {
+      linked.checked = true;
+      if (linked.name === "make") document.getElementById("setup-tools").open = true;
+      refresh();
+      clear();
+    }
+  };
+  window.addEventListener("hashchange", followGuide);
 
   form.hidden = false;
   document.getElementById("setup-loading")?.remove();
   refresh();
+  followGuide();
 })();

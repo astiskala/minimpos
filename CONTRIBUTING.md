@@ -393,8 +393,8 @@ folder; processing selects dimensions and bar heights from the terminal-specific
 `social` renders the checked-in template and seven-language copy with local assets only; use `MINIMPOS_CHROME` for a
 Chrome/Chromium or `chrome-headless-shell` executable. `review` validates language parity, frame dimensions and indexed
 palettes, then writes labeled contact sheets to `build/docs-assets` (`DOCS_WORK` overrides it). Inspect them: valid
-dimensions do not prove the correct screen or transaction. Website checks also render all seven languages' five pages at
-320/390/1280 px, reject broken images and horizontal overflow, and save 105 screenshots in
+dimensions do not prove the correct screen or transaction. Website checks also render every page in all seven
+languages at 320/390/1280 px, reject broken images and horizontal overflow, and save the screenshots in
 `website-test/build/reports/guide-layout`. Run `scripts/dev finish` before committing.
 
 ## Dependency and build maintenance

@@ -44,8 +44,11 @@ internal class HelperBrowser : AutoCloseable {
     private val pending = ConcurrentHashMap<Int, CompletableFuture<JsonObject>>()
     private val socket = connect()
 
-    fun open(path: Path) {
-        openPage(path)
+    fun open(
+        path: Path,
+        fragment: String = "",
+    ) {
+        openPage(path, fragment)
         await {
             executeScript(
                 "return document.getElementById('setup-form') !== null && !document.getElementById('setup-form').hidden",
@@ -53,8 +56,11 @@ internal class HelperBrowser : AutoCloseable {
         }
     }
 
-    fun openPage(path: Path) {
-        val url = path.toUri().toString()
+    fun openPage(
+        path: Path,
+        fragment: String = "",
+    ) {
+        val url = path.toUri().toString() + fragment
         val answer = command("Page.navigate", buildJsonObject { put("url", url) })
         check(answer["errorText"] == null) { "Cannot load local helper page" }
         await {

@@ -66,7 +66,7 @@ class TerminalFeaturesGuideTest {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         resources.keys.forEach { language ->
             val directory = docs.resolve(if (language == "en") "" else language)
-            val using = Jsoup.parse(directory.resolve("using.html").readText())
+            val using = Jsoup.parse(directory.resolve("payment-options.html").readText())
             assertThat(using.select("a[href='https://docs.adyen.com/point-of-sale/surcharge/configuration']")).isNotEmpty()
             assertThat(using.select("a[href='https://docs.adyen.com/point-of-sale/surcharge']")).isNotEmpty()
             assertThat(using.text()).contains("DCC")
@@ -78,7 +78,7 @@ class TerminalFeaturesGuideTest {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         resources.keys.forEach { language ->
             val directory = docs.resolve(if (language == "en") "" else language)
-            val using = Jsoup.parse(directory.resolve("using.html").readText())
+            val using = Jsoup.parse(directory.resolve("payment-options.html").readText() + directory.resolve("using.html").readText())
             listOf(
                 "https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers",
                 "https://docs.adyen.com/point-of-sale/cashback-and-cash-out",
@@ -95,20 +95,28 @@ class TerminalFeaturesGuideTest {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         resources.forEach { (language, folder) ->
             val directory = docs.resolve(if (language == "en") "" else language)
-            val using = Jsoup.parse(directory.resolve("using.html").readText())
-            val setup = Jsoup.parse(directory.resolve("quick-start.html").readText())
+            val using = Jsoup.parse(directory.resolve("payment-options.html").readText())
+            val setup = Jsoup.parse(directory.resolve("testing.html").readText())
+            val operations = Jsoup.parse(directory.resolve("using.html").readText())
             val strings =
                 Jsoup
                     .parse(docs.parent.resolve("app/src/main/res/$folder/strings.xml").readText())
                     .select("string[name]")
                     .associate { it.attr("name") to it.text() }
-            setup.select(".manual-setup").take(3).forEach { terminalSetup ->
+            listOf("terminal", "network", "cloud").forEach { route ->
+                val terminalSetup =
+                    Jsoup
+                        .parse(
+                            directory.resolve("quick-start-$route.html").readText(),
+                        ).select("#connect .manual-setup")
+                        .single()
                 assertWithMessage("$language terminal discovery label")
                     .that(terminalSetup.text())
                     .contains(strings.getValue("settings_discover"))
             }
             workflowLabels.forEach { (id, keys) ->
-                val task = checkNotNull(using.getElementById(id)) { "$language missing #$id" }
+                val owner = if (id in setOf("unreferenced-refunds", "reconciliation")) operations else using
+                val task = checkNotNull(owner.getElementById(id)) { "$language missing #$id" }
                 val text =
                     if (task.tagName() == "h3") {
                         generateSequence(task.nextElementSibling()) { it.nextElementSibling() }
@@ -120,20 +128,20 @@ class TerminalFeaturesGuideTest {
                 keys.forEach { key ->
                     assertWithMessage("$language #$id label $key").that(text).contains(strings.getValue(key))
                 }
-                assertWithMessage("$language #$id navigation").that(using.select("nav.toc a[href='#$id']")).isNotEmpty()
+                assertWithMessage("$language #$id navigation").that(owner.select("nav.toc a[href='#$id']")).isNotEmpty()
             }
-            listOf("capabilities", "terminal-tips", "terminal-checkout", "offline", "reconciliation").forEach { id ->
-                assertWithMessage("$language setup link #$id").that(setup.select("a[href='using#$id']")).isNotEmpty()
-            }
-            listOf("DCC", "MOTO", "MKE", "Adyen Giving").forEach { term ->
+            assertThat(setup.select("a[href=payment-options]")).isNotEmpty()
+            assertThat(setup.select("a[href='using#close-day']")).isNotEmpty()
+            listOf("DCC", "MOTO", "MKE").forEach { term ->
                 assertThat(using.select("#capabilities").text()).contains(term)
             }
+            assertThat(checkNotNull(using.getElementById("giving")).nextElementSibling()!!.text()).contains("Adyen Giving")
             assertThat(using.select("#terminal-checkout a[href='troubleshooting#unknown']")).isNotEmpty()
             assertThat(using.select("#offline a[href='troubleshooting#unknown']")).isNotEmpty()
             val trouble = Jsoup.parse(directory.resolve("troubleshooting.html").readText())
             listOf("capabilities", "partial-payments", "reconciliation", "offline").forEach { id ->
                 assertWithMessage("$language troubleshooting link #$id")
-                    .that(trouble.select("a[href='using#$id']"))
+                    .that(trouble.select("a[href='${if (id == "reconciliation") "using" else "payment-options"}#$id']"))
                     .isNotEmpty()
             }
         }
@@ -144,7 +152,7 @@ class TerminalFeaturesGuideTest {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         resources.keys.forEach { language ->
             val directory = docs.resolve(if (language == "en") "" else language)
-            val using = Jsoup.parse(directory.resolve("using.html").readText())
+            val using = Jsoup.parse(directory.resolve("payment-options.html").readText())
             assertWithMessage("$language tip override software").that(using.select("#terminal-tips").text()).contains("1.101")
             val voucher = checkNotNull(using.getElementById("meal-vouchers"))
             val voucherText =
@@ -160,7 +168,7 @@ class TerminalFeaturesGuideTest {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         resources.keys.forEach { language ->
             val directory = docs.resolve(if (language == "en") "" else language)
-            val using = Jsoup.parse(directory.resolve("using.html").readText())
+            val using = Jsoup.parse(directory.resolve("payment-options.html").readText())
             val audio = checkNotNull(using.getElementById("audio-guidance"))
             val audioText =
                 generateSequence(audio.nextElementSibling()) { it.nextElementSibling() }

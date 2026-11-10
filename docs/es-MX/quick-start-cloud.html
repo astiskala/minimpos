@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="max-image-preview:large">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Conectar un terminal en la nube – Mini mPOS</title>
+    <meta name="description" content="Conectar un terminal en la nube. Instala y conecta esta configuración; después continúa con la lista de pruebas TEST.">
+    <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="describedby" href="../llms.txt" type="text/plain">
+    <meta name="application-name" content="Guías de Mini mPOS">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="canonical" href="https://minimpos.app/es-MX/quick-start-cloud">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Mini mPOS">
+    <meta property="og:title" content="Conectar un terminal en la nube – Mini mPOS">
+    <meta property="og:description" content="Conectar un terminal en la nube. Instala y conecta esta configuración; después continúa con la lista de pruebas TEST.">
+    <meta property="og:url" content="https://minimpos.app/es-MX/quick-start-cloud">
+    <meta property="og:image" content="https://minimpos.app/images/es-MX/social.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="Mini mPOS en terminales Adyen ilustrados, que muestran demostraciones de simuladores en español.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Conectar un terminal en la nube – Mini mPOS">
+    <meta name="twitter:description" content="Conectar un terminal en la nube. Instala y conecta esta configuración; después continúa con la lista de pruebas TEST.">
+    <meta name="twitter:image" content="https://minimpos.app/images/es-MX/social.png">
+    <meta name="twitter:image:alt" content="Mini mPOS en terminales Adyen ilustrados, que muestran demostraciones de simuladores en español.">
+    <meta name="theme-color" content="#00843F">
+    <link href="https://minimpos.app/quick-start-cloud" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/quick-start-cloud" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/quick-start-cloud" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/quick-start-cloud" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/quick-start-cloud" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/quick-start-cloud" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/quick-start-cloud" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/quick-start-cloud" hreflang="x-default" rel="alternate">
+    <meta content="en_US" property="og:locale:alternate">
+    <meta content="ja_JP" property="og:locale:alternate">
+    <meta content="pt_BR" property="og:locale:alternate">
+    <meta content="zh_CN" property="og:locale:alternate">
+    <meta content="zh_HK" property="og:locale:alternate">
+    <meta content="es_MX" property="og:locale">
+    <meta content="fr_FR" property="og:locale:alternate">
+  </head>
+  <body>
+    <a class="skip" href="#main">Saltar al contenido</a>
+    <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Inicio Mini mPOS"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav class="desktop-nav" aria-label="principal"><ul class="nav">
+      <li><a href="quick-start" aria-current="page">Inicio rápido</a></li><li><a href="using">Usando Mini mPOS</a></li>
+      <li><a href="troubleshooting">Solución de problemas</a></li><li><a href="setup">Ayudante de configuración</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>Menú</summary><div class="mobile-panel"><nav aria-label="principal"><ul class="nav">
+      <li><a href="quick-start" aria-current="page">Inicio rápido</a></li><li><a href="using">Usando Mini mPOS</a></li>
+      <li><a href="troubleshooting">Solución de problemas</a></li><li><a href="setup">Ayudante de configuración</a></li>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="Idioma"><p>Idioma</p><ul><li><a href="../quick-start-cloud" hreflang="en" lang="en">English</a></li><li><a aria-current="page" href="../es-MX/quick-start-cloud" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/quick-start-cloud" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/quick-start-cloud" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/quick-start-cloud" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/quick-start-cloud" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/quick-start-cloud" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+    </div></details>
+    <details class="language-menu">
+      <summary aria-label="Idioma: Español (México)" title="Idioma"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">Español (México)</span></summary>
+      <nav aria-label="Idioma"><ul><li><a href="../quick-start-cloud" hreflang="en" lang="en">English</a></li><li><a aria-current="page" href="../es-MX/quick-start-cloud" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/quick-start-cloud" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/quick-start-cloud" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/quick-start-cloud" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/quick-start-cloud" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/quick-start-cloud" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+    </details>
+  </div></header>
+    <main id="main">
+      <section class="guide-hero"><div class="wrap">
+          <p class="breadcrumb"><a href="quick-start">Inicio rápido</a></p>
+          <p class="eyebrow">Guía</p>
+          <h1>Conectar un terminal en la nube</h1>
+          <p class="lead">Instala Mini mPOS, conéctalo a Adyen y haz un pago TEST.</p>
+        <p id="before" class="hint"><a href="quick-start#credentials">Requisitos de las credenciales Adyen →</a></p></div></section>
+      <div class="wrap guide">
+        <nav class="toc" id="contents" aria-label="Guía de navegación">
+          <p class="guide-links toc-title">Guías</p>
+          <p class="guide-links"><a href="quick-start" aria-current="page">Inicio rápido</a><br><a href="using">Usando
+              Mini mPOS</a><br><a href="troubleshooting">Solución de problemas</a></p>
+          <div class="desktop-contents">
+            <p class="toc-title">En esta página</p>
+            <ol>
+
+              <li><a href="#install">Instalar la aplicación</a></li>
+              <li><a href="#connect">Conectar un terminal en la nube</a></li>
+              <li><a href="#verify">Continúa: prueba tu configuración</a></li>
+            </ol>
+          </div>
+          <details class="mobile-contents">
+            <summary class="toc-title">En esta página</summary>
+            <ol>
+
+              <li><a href="#install">Instalar la aplicación</a></li>
+              <li><a href="#connect">Conectar un terminal en la nube</a></li>
+              <li><a href="#verify">Continúa: prueba tu configuración</a></li>
+            </ol>
+          </details>
+        </nav>
+        <div class="guide-body">
+
+          <section id="install">
+            <h2>Instalar la aplicación</h2>
+
+            <ol>
+              <li>En el dispositivo, abra el <a href="https://github.com/astiskala/minimpos/releases/latest/download/minimpos.apk">enlace
+                  de descarga directa</a> o escanee este código con su cámara:
+                <img class="qr" src="../images/apk-qr.svg" alt="Código QR de la descarga directa del APK" width="160" height="160"></li>
+              <li>Abra APK en el dispositivo y permita la instalación desde su
+                navegador o administrador de archivos cuando Android lo solicite.</li>
+              <li>Abra Mini mPOS, seleccione
+              <strong>Conéctate a Adyen</strong> y toque <strong>Continuar</strong>.</li>
+            </ol>
+            <div class="callout callout-important" role="note">
+              <p class="callout-title">importante</p>
+              <p>Instale todas las actualizaciones desde la misma fuente de firma. Un terminal rechaza una actualización
+                firmada con una clave diferente. Para crear y firmar el suyo propio, consulte la
+                <a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md#signing-your-own-apk">guía para
+                  contribuyentes</a>.</p>
+            </div>
+            <p class="back-to-contents"><a href="#contents">Volver al contenido</a></p>
+          </section>
+          <section id="connect">
+            <h2>Conectar un terminal en la nube</h2>
+            <dl class="settings-list setup-route">
+              <dt>Asistente de configuración (recomendado)</dt>
+              <dd>Abra el <a href="setup#destination-cloud">asistente de configuración</a>, elija el entorno <strong>TEST</strong>
+                o <strong>LIVE</strong> del terminal, mantenga <strong>Automático</strong>, ingrese la clave API y <a href="setup#destination-cloud">escanee
+                  los códigos</a>. Si se encuentra más de un terminal, elija el suyo.</dd>
+            </dl>
+            <details class="manual-setup">
+              <summary>manuales</summary>
+              <ol>
+                <li>en <strong>Configuración › Terminal</strong>, establecer <strong>Los pagos van a</strong> a <strong>Un
+                    terminal a través de internet (nube)</strong>. bajo <strong>Entorno</strong>, elija TEST o LIVE para que
+                  coincida con el terminal.</li>
+                <li>bajo <strong>Adyen API</strong>, ingrese la clave API de Adyen y la cuenta comercial, más el prefijo
+                  de URL LIVE para LIVE. Toque <strong>Buscar configuración del terminal</strong> para probar el acceso
+                  al API y elegir el terminal. Ingrese los detalles que faltan manualmente.</li>
+                <li>Consulta o introduce el <strong>ID de terminal (POIID)</strong> y toque <strong>Probar conexión</strong>.</li>
+              </ol>
+            </details>
+            <p class="back-to-contents"><a href="#contents">Volver al contenido</a></p>
+          </section>
+          <section id="verify">
+            <h2>Continúa: prueba tu configuración</h2>
+            <p><a class="button" href="testing">Continúa: prueba tu configuración</a></p>
+            <p><a href="troubleshooting#connection">No puedo terminar la configuración</a></p>
+            <p class="back-to-contents"><a href="#contents">Volver al contenido</a></p>
+          </section>
+        </div>
+      </div>
+    </main>
+    <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="Guías y configuración."><ul class="footer-nav">
+      <li><a href="quick-start" aria-current="page">Inicio rápido</a></li><li><a href="using">Usando Mini mPOS</a></li>
+      <li><a href="troubleshooting">Solución de problemas</a></li><li><a href="setup">Ayudante de configuración</a></li>
+    </ul></nav>
+    <p><img src="../favicon.svg" alt="" width="24" height="24"> Licencia Mini mPOS · MIT · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Seguridad</a></p>
+    <p class="fine">Adyen es una marca comercial de Adyen N.V. Mini mPOS es independiente y no está afiliada, respaldada ni respaldada por Adyen.</p>
+  </div></footer>
+  </body>
+</html>

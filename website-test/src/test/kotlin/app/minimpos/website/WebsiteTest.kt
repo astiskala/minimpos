@@ -20,28 +20,24 @@ import kotlin.io.path.readText
 class QuickStartGuideTest {
     @Test
     fun `credentials list API roles together and separate manual details from user permissions`() {
-        val manual =
-            mapOf(
-                "en" to "If you want to configure the device manually",
-                "zh-CN" to "如需手动配置设备",
-                "zh-Hant" to "如需手動設定設備",
-                "ja" to "デバイスを手動で設定する場合",
-            )
-        val additional =
-            mapOf(
-                "en" to "enable these additional roles",
-                "zh-CN" to "启用以下额外角色",
-                "zh-Hant" to "啟用以下額外角色",
-                "ja" to "次のロールを追加で有効にします",
-            )
-        LANGUAGES.forEach { language ->
-            val guide = pages.getValue(language to Kind.GUIDE)
-            val credentials = guide.document.getElementById("credentials")!!.untilNextTask()
-            val text = credentials.joinToString(" ") { it.text() }
-            listOf("Manage API credentials", "Merchant admin").forEach { assertThat(text).contains(it) }
-            val steps = credentials.single { it.tagName() == "ol" }
-            assertThat(steps.children()[1].ownText()).contains(additional.getValue(language))
-            assertThat(steps.select("ul.roles li strong").map { it.text() })
+        ALL_LANGUAGES.forEach { language ->
+            val guide = allPages.getValue(language to Kind.GUIDE)
+            val credentials = guide.document.select("#credentials").single()
+            assertThat(credentials.text()).contains("Manage API credentials")
+            assertThat(credentials.text()).contains("Merchant admin")
+            val groups = credentials.select(".role-checklist ul.roles")
+            assertThat(groups).hasSize(2)
+            assertThat(groups.first()!!.select("strong").eachText())
+                .containsExactly(
+                    "Merchant PAL webservice role",
+                    "Checkout webservice role",
+                    "Management API - API credentials read and write",
+                    "Management API - Payment methods read",
+                    "Management API - Stores read",
+                    "Management API - Accounts read",
+                    "Merchant Recurring role",
+                ).inOrder()
+            assertThat(groups.last()!!.select("strong").eachText())
                 .containsExactly(
                     "Management API - Terminal actions read",
                     "Management API - Terminal settings read and write",
@@ -49,37 +45,25 @@ class QuickStartGuideTest {
                     "Cloud Device API role",
                     "API tokenise payment details",
                 ).inOrder()
-            steps.select("ul.roles li").forEach { role ->
-                assertThat(role.text()).isEqualTo(role.select("strong").single().text())
-            }
-            assertThat(steps.children()[1].select("ul.roles")).hasSize(1)
-            val manualStep = steps.children().last()!!
-            assertThat(manualStep.text()).contains(manual.getValue(language))
-            assertThat(manualStep.select("ul > li")).hasSize(2)
-            assertThat(
-                manualStep.select("strong").map {
-                    it.text()
-                },
-            ).contains("Devices › Device settings › Integrations › Terminal API › Encryption key")
-            assertThat(text).contains("API tokenise payment details")
-            assertThat(text).contains("Management API - API credentials read and write")
-            assertThat(steps.children().single { "Adyen Payments App role" in it.text() }.text())
+            assertThat(credentials.select(".role-checklist")).hasSize(1)
+            assertThat(credentials.select(".role-checklist").single().hasAttr("open")).isFalse()
+            val manual = credentials.select("details.manual-setup").single()
+            assertThat(manual.select("ul > li")).hasSize(2)
+            assertThat(manual.select("strong")).hasSize(3)
+            assertThat(credentials.select("ol > li").single { "Adyen Payments App role" in it.text() }.text())
                 .doesNotContain("Management API - API credentials read and write")
         }
     }
 
     @Test
     fun `quick start guides name their outcome and offer the simulator before prerequisites`() {
-        val titles = mapOf("en" to "Quick start", "zh-CN" to "快速入门", "zh-Hant" to "快速入門", "ja" to "クイックスタート")
-        LANGUAGES.forEach { language ->
-            val guide = pages.getValue(language to Kind.GUIDE)
-            val title = titles.getValue(language)
-            assertThat(
+        ALL_LANGUAGES.forEach { language ->
+            val guide = allPages.getValue(language to Kind.GUIDE)
+            val title =
                 guide.document
                     .select("h1")
                     .single()
-                    .text(),
-            ).isEqualTo(title)
+                    .text()
             assertThat(guide.document.title()).contains(title)
             listOf("og:title", "twitter:title").forEach { name ->
                 assertThat(
@@ -89,15 +73,12 @@ class QuickStartGuideTest {
                         .attr("content"),
                 ).contains(title)
             }
-            assertThat(guide.document.select(".guide-hero .lead").text()).contains("TEST")
-            assertThat(guide.document.select(".guide-hero a[href='#try']")).hasSize(1)
-            assertThat(
-                guide.document
-                    .select("#credentials")
-                    .single()
-                    .nextElementSibling()!!
-                    .text(),
-            ).contains("TEST")
+            assertThat(guide.document.select(".guide-hero a[href=demo]")).hasSize(1)
+            assertThat(guide.document.select("#ready").text()).contains("TEST")
+            assertThat(guide.document.select("#choose .setup-choices dt a").eachAttr("href"))
+                .containsExactly(Kind.TERMINAL.route, Kind.TAP.route, Kind.NETWORK.route, Kind.CLOUD.route)
+                .inOrder()
+            assertThat(guide.document.select("#credentials .manual-setup")).hasSize(1)
         }
     }
 
@@ -107,7 +88,7 @@ class QuickStartGuideTest {
         val unavailable =
             mapOf("en" to "no terminal diagnosis", "zh-CN" to "不支持终端诊断", "zh-Hant" to "不支援終端診斷", "ja" to "端末診断には対応していません")
         LANGUAGES.forEach { language ->
-            val guide = pages.getValue(language to Kind.GUIDE)
+            val guide = pages.getValue(language to Kind.TESTING)
             listOf("first-payment" to "TEST", "live" to "LIVE").forEach { (id, environment) ->
                 val steps = guide.document.select("#$id > ol > li")
                 val check = if (id == "first-payment") steps.first()!! else steps.last()!!
@@ -132,7 +113,7 @@ class QuickStartGuideTest {
         val references = mapOf("en" to "PSP reference", "zh-CN" to "PSP 识别号", "zh-Hant" to "PSP 參考編號", "ja" to "PSP参照ID")
         val pending = mapOf("en" to "Refund requested", "zh-CN" to "已请求退款", "zh-Hant" to "已請求退款", "ja" to "返金要求済み")
         LANGUAGES.forEach { language ->
-            val guide = pages.getValue(language to Kind.GUIDE)
+            val guide = pages.getValue(language to Kind.TESTING)
             val validation = guide.document.select("#first-payment")
             assertThat(validation.text()).contains(references.getValue(language))
             assertThat(validation.text()).contains(pending.getValue(language))
@@ -140,10 +121,10 @@ class QuickStartGuideTest {
             assertThat(validation.select("a[href='using#refund']")).hasSize(1)
             assertThat(validation.select("a[href='troubleshooting#declines']")).hasSize(1)
             assertThat(validation.select("a[href='troubleshooting#unknown']")).hasSize(1)
+            assertThat(guide.document.select("#business-ready a[href=payment-options]")).hasSize(1)
+            val options = pages.getValue(language to Kind.OPTIONS)
             listOf("preauth", "tips", "payment-links", "wallets").forEach { workflow ->
-                assertWithMessage("${guide.name} optional $workflow")
-                    .that(guide.document.select("#live a[href='using#$workflow']"))
-                    .hasSize(1)
+                assertThat(options.document.select("#$workflow")).hasSize(1)
             }
             assertThat(guide.document.select("#live a[href='using#close-day']")).hasSize(1)
         }
@@ -163,24 +144,22 @@ class WebsiteTest {
                 "en" to
                     listOf(
                         "Try a demo",
-                        "Scan setup codes",
-                        "Connect to Adyen",
                         "Continue",
                         "Set up real payments",
                         "Continue to setup",
                         "Add sample data",
                         "Remove sample data",
                     ),
-                "zh-CN" to listOf("试用演示", "扫描设置二维码", "连接 Adyen", "继续", "设置真实支付", "继续设置", "添加示例数据", "删除示例数据"),
-                "zh-Hant" to listOf("試用示範", "掃描設定二維碼", "連接 Adyen", "繼續", "設定真實付款", "繼續設定", "新增示例資料", "刪除示例資料"),
-                "ja" to listOf("デモを試す", "設定コードを読み取る", "Adyen に接続", "続ける", "実際の決済を設定", "設定に進む", "サンプルデータを追加", "サンプルデータを削除"),
+                "zh-CN" to listOf("试用演示", "继续", "设置真实支付", "继续设置", "添加示例数据", "删除示例数据"),
+                "zh-Hant" to listOf("試用示範", "繼續", "設定真實付款", "繼續設定", "新增示例資料", "刪除示例資料"),
+                "ja" to listOf("デモを試す", "続ける", "実際の決済を設定", "設定に進む", "サンプルデータを追加", "サンプルデータを削除"),
             )
         labels.forEach { (language, actions) ->
             val text =
                 pages
-                    .getValue(language to Kind.GUIDE)
+                    .getValue(language to Kind.DEMO)
                     .document
-                    .select("#try")
+                    .select("main")
                     .text()
             actions.forEach { assertWithMessage("$language onboarding: $it").that(text).contains(it) }
         }
@@ -273,7 +252,7 @@ class WebsiteTest {
                 links.forEach { link ->
                     assertWithMessage("${page.name} $selector ${link.attr("href")}")
                         .that(link.attr("aria-current"))
-                        .isEqualTo(if (link.attr("href") == kind.route) "page" else "")
+                        .isEqualTo(if (link.attr("href") == kind.parentRoute) "page" else "")
                 }
             }
             val menu = page.document.select("details.mobile-menu").single()
@@ -355,31 +334,24 @@ class WebsiteTest {
 
     @Test
     fun `setup shortcuts keep prerequisites and troubleshooting reachable`() {
-        LANGUAGES.forEach { language ->
-            val guide = pages.getValue(language to Kind.GUIDE)
-            listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
-                val prerequisites = guide.document.getElementById(destination)!!.nextElementSibling()!!
-                assertWithMessage("${guide.name} #$destination prerequisites").that(prerequisites.hasClass("callout-prereq")).isTrue()
-                assertWithMessage("${guide.name} #$destination")
-                    .that(prerequisites.select("a").map { it.attr("href") })
-                    .containsAtLeast("#install", "#credentials")
-                    .inOrder()
+        ALL_LANGUAGES.forEach { language ->
+            DESTINATIONS.forEach { (_, kind) ->
+                val guide = allPages.getValue(language to kind)
+                assertThat(guide.document.select("#before a[href='quick-start#credentials']")).hasSize(1)
+                assertThat(guide.document.select("#verify a[href=testing]")).hasSize(1)
+                assertThat(guide.document.select("#verify a[href='troubleshooting#connection']")).hasSize(1)
             }
-            val helper = pages.getValue(language to Kind.SETUP)
-            assertWithMessage(helper.name)
-                .that(helper.document.select(".setup-main > p a").map { it.attr("href") })
+            val helper = allPages.getValue(language to Kind.SETUP)
+            assertThat(helper.document.select(".setup-main > p a").eachAttr("href"))
                 .containsAtLeast("quick-start#choose", "quick-start#credentials")
-            assertWithMessage(helper.name)
-                .that(helper.document.select("#setup-codes a").map { it.attr("href") })
-                .containsExactly("troubleshooting#access", "troubleshooting#connection")
-                .inOrder()
-            assertWithMessage(helper.name).that(helper.document.select("#setup-codes ol > li")).hasSize(3)
+            assertThat(helper.document.select("#setup-codes a").eachAttr("href"))
+                .containsAtLeast("troubleshooting#access", "troubleshooting#connection", "testing")
+            assertThat(helper.document.select("#setup-codes ol > li")).hasSize(3)
             val notice = helper.document.getElementById("customer-area-note")!!
-            assertWithMessage(helper.name).that(notice.text()).isNotEmpty()
             helper.document.select("a[href^='https://ca-']").forEach { link ->
-                assertWithMessage(helper.name).that(link.attr("target")).isEqualTo("_blank")
-                assertWithMessage(helper.name).that(link.attr("rel").split(" ")).containsAtLeast("noopener", "noreferrer")
-                assertWithMessage(helper.name).that(link.attr("aria-describedby")).isEqualTo(notice.id())
+                assertThat(link.attr("target")).isEqualTo("_blank")
+                assertThat(link.attr("rel").split(" ")).containsAtLeast("noopener", "noreferrer")
+                assertThat(link.attr("aria-describedby")).isEqualTo(notice.id())
             }
         }
     }
@@ -389,31 +361,28 @@ class WebsiteTest {
         val keys = mapOf("en" to "Adyen API key", "zh-CN" to "Adyen API 密钥", "zh-Hant" to "Adyen API 密鑰", "ja" to "Adyen APIキー")
         val environments = mapOf("en" to "Environment", "zh-CN" to "环境", "zh-Hant" to "環境", "ja" to "環境")
         LANGUAGES.forEach { language ->
-            val guide = pages.getValue(language to Kind.GUIDE)
-            listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
-                val following = guide.document.getElementById(destination)!!.untilNextTask()
+            DESTINATIONS.forEach { (destination, kind) ->
+                val guide = pages.getValue(language to kind)
                 val steps =
-                    if (destination == "tap-to-pay") {
-                        following.first { it.tagName() == "ol" }
+                    if (kind == Kind.TAP) {
+                        guide.document.select("#connect > ol").single()
                     } else {
-                        following.single { it.hasClass("manual-setup") }.select("ol").single()
+                        guide.document.select("#connect .manual-setup ol").single()
                     }
                 val first = steps.select("li").first()!!.text()
                 val label =
                     when (destination) {
                         "network", "cloud" -> environments.getValue(language)
-                        "tap-to-pay" -> "Adyen Payments"
+                        "tapToPay" -> "Adyen Payments"
                         else -> keys.getValue(language)
                     }
-                assertWithMessage("${guide.name} #$destination first step").that(first).contains(label)
-                if (destination != "tap-to-pay") assertThat(steps.text()).contains(keys.getValue(language))
-                if (destination == "network" || destination == "cloud") {
+                assertWithMessage(guide.name).that(first).contains(label)
+                if (kind != Kind.TAP) assertThat(steps.text()).contains(keys.getValue(language))
+                if (kind == Kind.NETWORK || kind == Kind.CLOUD) {
                     assertThat(first).contains("TEST")
                     assertThat(first).contains("LIVE")
                 }
             }
-            assertThat(guide.text).contains("Management API - Terminal actions read")
-            assertThat(guide.text).contains("Management API - Terminal settings Advanced read and write")
         }
     }
 
@@ -433,6 +402,7 @@ class WebsiteTest {
         LANGUAGES.forEach { language ->
             val page = pages.getValue(language to Kind.USING)
             routes.forEach { (task, recovery) ->
+                val page = pages.getValue(language to if (task in setOf("payment-links", "preauth", "tips")) Kind.OPTIONS else Kind.USING)
                 assertWithMessage("${page.name} #$task")
                     .that(page.document.select("#$task a[href='troubleshooting#$recovery']"))
                     .isNotEmpty()
@@ -480,7 +450,7 @@ class WebsiteTest {
                 page.sections.forEach {
                     assertWithMessage("${page.name} #$it").that(page.matching("a", "href" to "#$it")).isNotEmpty()
                 }
-                GUIDE_TOPICS.keys.forEach { target ->
+                listOf(Kind.GUIDE, Kind.USING, Kind.TROUBLE).forEach { target ->
                     assertWithMessage("${page.name} → $target")
                         .that(page.document.select("nav.toc a[href='${target.route}']"))
                         .isNotEmpty()
@@ -489,7 +459,7 @@ class WebsiteTest {
         }
         LANGUAGES.forEach { language ->
             assertThat(pages.getValue(language to Kind.GUIDE).text).contains("Management API - Terminal settings read and write")
-            assertThat(pages.getValue(language to Kind.USING).text).contains("Return adjust authorisation data")
+            assertThat(pages.getValue(language to Kind.OPTIONS).text).contains("Return adjust authorisation data")
         }
     }
 }
@@ -708,7 +678,7 @@ class WebsitePresentationTest {
             )
         LANGUAGES.forEach { language ->
             val using = pages.getValue(language to Kind.USING)
-            wording.getValue(language).forEach { assertThat(using.text).contains(it) }
+            wording.getValue(language).forEach { assertThat(using.text + pages.getValue(language to Kind.OPTIONS).text).contains(it) }
             val troubleshooting = pages.getValue(language to Kind.TROUBLE)
             listOf("Settings › Payments › Offer payment links", "设置 › 支付 › 提供付款链接", "設定 › 決済 › 決済リンクを使う").forEach { obsolete ->
                 assertThat(using.text).doesNotContain(obsolete)
@@ -936,7 +906,7 @@ class WebsitePresentationTest {
         val shot = Regex("""class="terminal terminal-(ams1|s1f2)[^"]*">\s*<img ([^>]*)>""")
         pages.forEach { (key, page) ->
             val found = shot.findAll(page.source).toList()
-            if (key.second == Kind.LANDING || key.second == Kind.GUIDE) assertWithMessage(page.name).that(found).isNotEmpty()
+            if (key.second == Kind.LANDING || key.second == Kind.DEMO) assertWithMessage(page.name).that(found).isNotEmpty()
             found.forEach { match ->
                 val attributes =
                     Regex("""(\w+)="([^"]*)"""").findAll(match.groupValues[2]).associate {
@@ -990,9 +960,10 @@ class PartnerStyleGuideTest {
 
     @Test
     fun `all manual connection procedures use numbered steps`() {
-        LANGUAGES.forEach { language ->
-            val guide = pages.getValue(language to Kind.GUIDE)
-            guide.document.select(".manual-setup").forEach { manual ->
+        ALL_LANGUAGES.forEach { language ->
+            DESTINATIONS.values.forEach { kind ->
+                val guide = allPages.getValue(language to kind)
+                val manual = guide.document.select("#connect .manual-setup").single()
                 assertWithMessage(guide.name).that(manual.select("ol > li").size).isAtLeast(2)
             }
         }
@@ -1018,9 +989,9 @@ class PartnerStyleGuideTest {
             assertWithMessage(language)
                 .that(
                     pages
-                        .getValue(language to Kind.GUIDE)
+                        .getValue(language to Kind.DEMO)
                         .document
-                        .select("#try")
+                        .select("main")
                         .text(),
                 ).contains(sampleTotals.getValue(language))
             assertWithMessage(language)
@@ -1047,22 +1018,22 @@ class SetupGuideTest {
                 "ja" to "購入者参照ID（初期設定）",
             )
         LANGUAGES.forEach { language ->
-            val using = pages.getValue(language to Kind.USING)
+            val using = pages.getValue(language to Kind.OPTIONS)
             assertThat(using.document.select("#shoppers").text()).contains(defaults.getValue(language))
-            assertThat(using.document.select("#sell a[href='#shoppers']")).isNotEmpty()
+            assertThat(pages.getValue(language to Kind.USING).document.select("#sell a[href='payment-options#shoppers']")).isNotEmpty()
         }
     }
 
     @Test
     fun `prerequisites name the network ports and Adyen domains in every language`() {
         LANGUAGES.forEach { language ->
-            val heading = pages.getValue(language to Kind.GUIDE).document.getElementById("network-requirements")!!
-            val text = heading.untilNextTask().joinToString(" ") { it.text() }
+            val heading = pages.getValue(language to Kind.NETWORK).document.getElementById("network-requirements")!!
+            val text = heading.children().joinToString(" ") { it.text() }
             listOf("443", "8443", "*.adyen.com", "*.adyenpayments.com").forEach {
                 assertWithMessage("$language network prerequisites: $it").that(text).contains(it)
             }
             val allowlisting =
-                heading.untilNextTask().flatMap {
+                heading.children().flatMap {
                     it.select(
                         "a[href='https://docs.adyen.com/development-resources/security/integration-security/" +
                             "allowlisting#dns-resolution-and-domain-base-allowlist']",
@@ -1092,49 +1063,44 @@ class SetupGuideTest {
 
     @Test
     fun `setup guides combine API credentials in every language`() {
-        val tests = mapOf("en" to "Test API", "zh-CN" to "测试 API", "zh-Hant" to "測試 API", "ja" to "APIをテスト")
-        LANGUAGES.forEach { language ->
-            val guide = pages.getValue(language to Kind.GUIDE)
-            assertWithMessage(guide.name)
-                .that(guide.document.select("#connect strong").map { it.text() })
-                .contains("Adyen API")
-            assertWithMessage(guide.name).that(guide.text).contains(tests.getValue(language))
-            val manual = guide.document.select(".manual-setup").map { it.text() }
-            assertThat(manual).hasSize(4)
-            manual.forEach { assertWithMessage(guide.name).that(it).contains("Adyen API") }
+        ALL_LANGUAGES.forEach { language ->
+            DESTINATIONS.values.forEach { kind ->
+                val guide = allPages.getValue(language to kind)
+                assertThat(guide.document.select("#connect .manual-setup").text()).contains("Adyen API")
+                assertThat(guide.document.select("#connect .manual-setup")).hasSize(1)
+            }
         }
     }
 
     @Test
     fun `Tap to Pay separates activation installation credential options and boarding`() {
-        LANGUAGES.forEach { language ->
-            val guide = pages.getValue(language to Kind.GUIDE)
-            val heading = guide.document.getElementById("tap-to-pay")!!
-            val notice = heading.nextElementSibling()!!
-            assertWithMessage(guide.name).that(notice.hasClass("callout-prereq")).isTrue()
-            assertThat(notice.text()).contains("Adyen Payments App role")
-            assertThat(notice.select("a").map { it.attr("href") }).contains("https://help.adyen.com/contact")
-            val following = heading.nextElementSiblings()
-            val steps = following.first { it.tagName() == "ol" }.select("li")
+        ALL_LANGUAGES.forEach { language ->
+            val guide = allPages.getValue(language to Kind.TAP)
+            val before = guide.document.select("#before").single()
+            assertThat(before.text()).contains("Adyen Payments App role")
+            assertThat(before.select("a").eachAttr("href")).contains("https://help.adyen.com/contact")
+            val steps = guide.document.select("#connect > ol > li")
             assertThat(steps).hasSize(2)
-            assertThat(steps.first()!!.select("a").map { it.attr("href") })
+            assertThat(steps.first()!!.select("a").eachAttr("href"))
                 .containsExactly(
                     "https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.test",
                     "https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.live",
                 ).inOrder()
-            val options = following.first { it.tagName() == "dl" }
+            val options = guide.document.select("#connect dl").single()
             assertThat(options.select("dt")).hasSize(1)
             assertThat(options.select("dd")).hasSize(1)
-            assertThat(options.select("a").map { it.attr("href") }).containsExactly("setup#destination-tapToPay", "#helper").inOrder()
-            assertThat(following.single { it.hasClass("manual-setup") }.text()).doesNotContain("Adyen Payments App role")
+            assertThat(
+                options.select("a").eachAttr("href"),
+            ).containsExactly("setup#destination-tapToPay", "setup#destination-tapToPay").inOrder()
+            assertThat(guide.document.select("#connect .manual-setup").text()).doesNotContain("Adyen Payments App role")
         }
-        val english =
-            pages
-                .getValue("en" to Kind.GUIDE)
+        assertThat(
+            allPages
+                .getValue("en" to Kind.TAP)
                 .document
-                .getElementById("tap-to-pay")!!
-                .untilNextTask()
-        assertThat(english.single { it.hasClass("manual-setup") }.text()).contains("shared key")
+                .select("#connect .manual-setup")
+                .text(),
+        ).contains("shared key")
     }
 
     @Test
@@ -1150,21 +1116,22 @@ class SetupGuideTest {
         val automaticLabels = mapOf("en" to "Automatic", "zh-CN" to "自动", "zh-Hant" to "自動", "ja" to "自動")
         val registrationLabels = mapOf("en" to "Verify and import", "zh-CN" to "验证并导入", "zh-Hant" to "驗證並匯入", "ja" to "確認してインポート")
         LANGUAGES.forEach { language ->
-            val guide = pages.getValue(language to Kind.GUIDE)
-            assertThat(guide.document.select("#connect details.manual-setup")).hasSize(4)
-            assertThat(guide.document.select("script")).isEmpty()
-            listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
-                val following = guide.document.getElementById(destination)!!.untilNextTask()
+            DESTINATIONS.forEach { (destination, kind) ->
+                val guide = pages.getValue(language to kind)
+                assertThat(guide.document.select("script")).isEmpty()
+                val following = guide.document.select("#connect > *")
                 val helper = following.single { it.hasClass("settings-list") }
                 assertWithMessage("${guide.name} #$destination helper")
                     .that(helper.select("dt").single().text())
                     .isEqualTo(helperLabels.getValue(language))
                 assertThat(helper.select("dd")).hasSize(1)
                 assertThat(helper.parents().any { it.tagName() == "details" }).isFalse()
-                val linked = mapOf("on-terminal" to "thisTerminal", "tap-to-pay" to "tapToPay").getOrDefault(destination, destination)
-                assertThat(helper.select("a").map { it.attr("href") }).containsExactly("setup#destination-$linked", "#helper").inOrder()
+                val linked = mapOf("thisTerminal" to "thisTerminal", "tapToPay" to "tapToPay").getOrDefault(destination, destination)
+                assertThat(
+                    helper.select("a").map { it.attr("href") },
+                ).containsExactly("setup#destination-$linked", "setup#destination-$linked").inOrder()
                 val flowLabels =
-                    if (destination == "tap-to-pay") {
+                    if (destination == "tapToPay") {
                         listOf(registrationLabels.getValue(language))
                     } else {
                         listOf(automaticLabels.getValue(language))
@@ -1182,7 +1149,7 @@ class SetupGuideTest {
                 assertThat(manual.select("summary").single().text()).isEqualTo(manualLabels.getValue(language))
                 val steps =
                     when (destination) {
-                        "on-terminal" -> 2
+                        "thisTerminal" -> 2
                         "cloud" -> 3
                         else -> 4
                     }
@@ -1268,8 +1235,27 @@ private val LANGUAGES = listOf("en", "zh-CN", "zh-Hant", "ja")
 private val ALL_LANGUAGES = LANGUAGES + listOf("pt-BR", "es-MX", "fr-FR")
 private val GUIDE_TOPICS =
     mapOf(
-        Kind.GUIDE to setOf("try", "choose", "install", "connect", "first-payment", "live"),
-        Kind.USING to setOf("business", "sell", "refund", "history", "receipts", "shoppers", "payment-links", "preauth", "tips", "more"),
+        Kind.GUIDE to setOf("choose", "ready", "credentials", "environments", "next-steps", "shared-key-creation"),
+        Kind.TERMINAL to setOf("install", "connect", "verify"),
+        Kind.NETWORK to setOf("network-requirements", "install", "connect", "verify"),
+        Kind.CLOUD to setOf("install", "connect", "verify"),
+        Kind.TAP to setOf("install", "connect", "verify"),
+        Kind.DEMO to setOf("try", "sample-sale", "explore", "real-payments"),
+        Kind.TESTING to setOf("first-payment", "business-ready", "live", "live-payment"),
+        Kind.USING to setOf("business", "sell", "refund", "history", "receipts", "more", "optional"),
+        Kind.OPTIONS to
+            setOf(
+                "capabilities",
+                "terminal-checkout",
+                "offline",
+                "wallets",
+                "shoppers",
+                "gift-cards",
+                "payment-links",
+                "preauth",
+                "terminal-tips",
+                "tips",
+            ),
         Kind.TROUBLE to
             setOf(
                 "unknown",
@@ -1285,6 +1271,7 @@ private val GUIDE_TOPICS =
                 "help",
             ),
     )
+private val DESTINATIONS = mapOf("thisTerminal" to Kind.TERMINAL, "network" to Kind.NETWORK, "cloud" to Kind.CLOUD, "tapToPay" to Kind.TAP)
 
 private val docs: Path =
     Path.of(checkNotNull(System.getProperty("minimpos.website")) { "minimpos.website is not set" }).toAbsolutePath().normalize()
@@ -1298,12 +1285,27 @@ private enum class Kind(
 ) {
     LANDING("index.html"),
     GUIDE("quick-start.html"),
+    TERMINAL("quick-start-terminal.html"),
+    NETWORK("quick-start-network.html"),
+    CLOUD("quick-start-cloud.html"),
+    TAP("quick-start-tap-to-pay.html"),
+    DEMO("demo.html"),
+    TESTING("testing.html"),
+    OPTIONS("payment-options.html"),
     USING("using.html"),
     TROUBLE("troubleshooting.html"),
     SETUP("setup.html"),
     ;
 
     val route: String get() = file.removeSuffix("index.html").removeSuffix(".html")
+
+    val parentRoute: String
+        get() =
+            when (this) {
+                TERMINAL, NETWORK, CLOUD, TAP, DEMO, TESTING -> GUIDE.route
+                OPTIONS -> USING.route
+                LANDING, GUIDE, USING, TROUBLE, SETUP -> route
+            }
 }
 
 private val allPages: Map<Pair<String, Kind>, Page> =

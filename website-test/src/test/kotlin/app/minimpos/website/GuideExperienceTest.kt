@@ -14,7 +14,7 @@ class GuideExperienceTest {
     @Test
     fun `data loss warnings precede environment switching and reset instructions in every language`() {
         languages.forEach { language ->
-            listOf("quick-start.html" to "live", "troubleshooting.html" to "storage").forEach { (file, id) ->
+            listOf("testing.html" to "live", "troubleshooting.html" to "storage").forEach { (file, id) ->
                 val section = checkNotNull(page(language, file).getElementById(id))
                 val children = section.children()
                 assertWithMessage("$language $id warning before action")
@@ -35,7 +35,7 @@ class GuideExperienceTest {
             assertWithMessage(
                 language,
             ).that(sections.take(5)).containsExactly("business", "sell", "refund", "receipts", "history").inOrder()
-            assertThat(sections.indexOf("capabilities")).isGreaterThan(sections.indexOf("history"))
+            assertThat(using.select("#optional a[href='payment-options#capabilities']")).hasSize(1)
             assertThat(using.select(".task-links a").eachAttr("href"))
                 .containsExactly("#sell", "#refund", "#email", "#close-day")
                 .inOrder()
@@ -43,34 +43,40 @@ class GuideExperienceTest {
     }
 
     @Test
-    fun `setup routes compare destinations and link the shared requirements and verification`() {
+    fun `setup routes compare destinations and link shared requirements and verification`() {
         languages.forEach { language ->
             val guide = page(language, "quick-start.html")
-            val destinations = listOf("on-terminal", "network", "cloud", "tap-to-pay")
-            assertThat(guide.select(".setup-comparison tbody th a").eachAttr("href"))
-                .containsExactlyElementsIn(destinations.map { "#$it" })
-                .inOrder()
+            val routes = listOf("quick-start-terminal", "quick-start-network", "quick-start-cloud", "quick-start-tap-to-pay")
+            assertThat(guide.select(".setup-comparison tbody th a").eachAttr("href")).containsExactlyElementsIn(routes).inOrder()
             assertThat(guide.select(".setup-comparison thead th[scope=col]")).hasSize(4)
             assertThat(guide.select(".setup-comparison td[data-label]")).hasSize(12)
-            guide.select(".setup-path").forEachIndexed { index, route ->
-                val install = if (index == 0) "#install-terminal" else "#install-mobile"
-                assertThat(route.select("a").eachAttr("href"))
-                    .containsExactly("#credentials", install, "#helper", "#first-payment", "#live")
-                    .inOrder()
+            routes.forEach { route ->
+                val destination = page(language, "$route.html")
+                assertThat(destination.select("#before a[href='quick-start#credentials']")).hasSize(1)
+                assertThat(destination.select("#connect .manual-setup").single().hasAttr("open")).isFalse()
+                assertThat(destination.select("#verify a[href=testing]")).hasSize(1)
             }
-            assertThat(guide.select(".destination-route")).hasSize(4)
-            assertThat(guide.select(".destination-route .route-next a").eachAttr("href"))
-                .containsExactlyElementsIn(List(4) { "#first-payment" })
-            assertThat(guide.select(".role-checklist").single().hasAttr("open")).isFalse()
-            assertThat(guide.select(".roles strong").eachText()).contains("API tokenise payment details")
-            assertThat(guide.select(".role-checklist strong").eachText()).containsAtLeast(
+            val checklist = guide.select(".role-checklist").single()
+            assertThat(checklist.hasAttr("open")).isFalse()
+            assertThat(checklist.select("ul.roles")).hasSize(2)
+            assertThat(
+                checklist
+                    .select("ul.roles")
+                    .first()!!
+                    .select("strong")
+                    .eachText(),
+            ).containsAtLeast(
                 "Checkout webservice role",
                 "Management API - API credentials read and write",
-                "Management API - Payment methods read",
-                "Management API - Stores read",
-                "Management API - Accounts read",
                 "Merchant Recurring role",
             )
+            assertThat(
+                checklist
+                    .select("ul.roles")
+                    .last()!!
+                    .select("strong")
+                    .eachText(),
+            ).containsAtLeast("API tokenise payment details", "Cloud Device API role")
         }
     }
 
@@ -79,17 +85,30 @@ class GuideExperienceTest {
         languages.forEach { language ->
             val using = page(language, "using.html")
             assertWithMessage(language).that(using.select("#settings-navigation strong").eachText()).hasSize(2)
-            assertThat(using.select("#token-deletion strong").eachText()).hasSize(2)
-            assertThat(using.select("#token-deletion").text()).contains("Adyen")
-            assertThat(using.select("#token-deletion").text()).contains("Mini mPOS")
-            assertThat(using.select("#token-deletion").text()).contains("PIN")
+            assertThat(page(language, "payment-options.html").select("#token-deletion strong").eachText()).hasSize(2)
+            assertThat(page(language, "payment-options.html").select("#token-deletion").text()).contains("Adyen")
+            assertThat(page(language, "payment-options.html").select("#token-deletion").text()).contains("Mini mPOS")
+            assertThat(page(language, "payment-options.html").select("#token-deletion").text()).contains("PIN")
         }
     }
 
     @Test
     fun `framed screenshots expose full size originals in every language`() {
         languages.forEach { language ->
-            listOf("index.html", "quick-start.html", "using.html").forEach { file ->
+            listOf(
+                "index.html",
+                "quick-start.html",
+                "quick-start-terminal.html",
+                "quick-start-network.html",
+                "quick-start-cloud.html",
+                "quick-start-tap-to-pay.html",
+                "demo.html",
+                "testing.html",
+                "using.html",
+                "payment-options.html",
+                "troubleshooting.html",
+                "setup.html",
+            ).forEach { file ->
                 page(language, file).select(".terminal").forEach { terminal ->
                     val link = checkNotNull(terminal.parent())
                     assertThat(link.tagName()).isEqualTo("a")
@@ -100,7 +119,7 @@ class GuideExperienceTest {
             }
             val troubleshooting = page(language, "troubleshooting.html")
             assertThat(troubleshooting.select(".task-links a").eachAttr("href"))
-                .containsExactly("#unknown", "#connection", "#receipts", "#messages")
+                .containsExactly("#unknown", "#install", "#connection", "#receipts", "#access")
                 .inOrder()
             troubleshooting.select(".fixes dd:has(.cause)").forEach { entry ->
                 assertThat(entry.children().last()!!.hasClass("cause")).isTrue()

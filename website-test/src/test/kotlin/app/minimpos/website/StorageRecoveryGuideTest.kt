@@ -30,7 +30,7 @@ class StorageRecoveryGuideTest {
             assertThat(storage.select("a").eachAttr("href")).containsAtLeast(
                 "#unknown",
                 "#help",
-                "quick-start#connect",
+                "quick-start#choose",
                 "https://github.com/astiskala/minimpos/releases/latest",
                 "https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps",
             )

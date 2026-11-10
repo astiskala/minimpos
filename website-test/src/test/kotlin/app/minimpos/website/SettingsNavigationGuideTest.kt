@@ -31,12 +31,13 @@ class SettingsNavigationGuideTest {
 
             fun path(key: String) = "$root \u203a ${strings.getValue(key)}"
             val using = Jsoup.parse(directory.resolve("using.html").readText())
-            val labels = using.select("strong").eachText()
+            val options = Jsoup.parse(directory.resolve("payment-options.html").readText())
+            val labels = using.select("strong").eachText() + options.select("strong").eachText()
             assertWithMessage("$language admin PIN setup").that(labels).contains(strings.getValue("settings_set_pin"))
             assertWithMessage("$language configurable Manager permissions").that(labels).contains(strings.getValue("manager_permissions"))
             assertWithMessage("$language separate Manager PIN setup").that(labels).contains(strings.getValue("manager_pin_set"))
             assertWithMessage("$language simulator link action")
-                .that(Jsoup.parse(directory.resolve("quick-start.html").readText()).select("#try strong").eachText())
+                .that(Jsoup.parse(directory.resolve("demo.html").readText()).select("main strong").eachText())
                 .contains(strings.getValue("link_simulate"))
             assertWithMessage("$language browser update action")
                 .that(using.select("#more strong").eachText())
@@ -52,7 +53,7 @@ class SettingsNavigationGuideTest {
                 val text = Jsoup.parse(directory.resolve(page).readText()).text()
                 assertWithMessage("$language $page email path").that(text).contains(path("settings_email"))
             }
-            val quickStart = Jsoup.parse(directory.resolve("quick-start.html").readText()).text()
+            val quickStart = Jsoup.parse(directory.resolve("demo.html").readText()).text()
             assertWithMessage("$language sample management path").that(quickStart).contains(path("settings_data"))
             listOf("email_not_configured", "email_authentication").forEach { key ->
                 assertWithMessage("$language $key path").that(strings.getValue(key)).contains(path("settings_email"))

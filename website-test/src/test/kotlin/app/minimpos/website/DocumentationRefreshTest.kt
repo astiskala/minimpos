@@ -134,8 +134,10 @@ class DocumentationRefreshTest {
         disclosures.forEach { (language, marker) ->
             val directory = docs.resolve(if (language == "en") "" else language)
             val using = Jsoup.parse(directory.resolve("using.html").readText())
+            val options = Jsoup.parse(directory.resolve("payment-options.html").readText())
             screenshots.forEach { (section, image) ->
-                val figure = using.select("#$section figure").single()
+                val owner = if (section in setOf("history", "refund", "receipts")) using else options
+                val figure = owner.select("#$section figure").single()
                 assertWithMessage("$language #$section responsive guide figure").that(figure.hasClass("guide-shot")).isTrue()
                 assertWithMessage("$language #$section original terminal frame")
                     .that(figure.select(".terminal.terminal-s1f2 img"))
@@ -153,9 +155,9 @@ class DocumentationRefreshTest {
                     .contains(marker)
                 assertWithMessage("$language #$section demo caption").that(figure.select("figcaption").text()).contains(marker)
             }
-            val split = using.select("#terminal-checkout .shot-pair img").map { it.attr("src").substringAfterLast('/') }
+            val split = options.select("#terminal-checkout .shot-pair img").map { it.attr("src").substringAfterLast('/') }
             assertWithMessage("$language split screenshots").that(split).containsExactly("split.png", "split-cash.png").inOrder()
-            using.select("#terminal-checkout .shot-pair img").forEach {
+            options.select("#terminal-checkout .shot-pair img").forEach {
                 assertWithMessage("$language split description").that(it.attr("alt")).contains(marker)
             }
         }
@@ -202,8 +204,8 @@ class DocumentationRefreshTest {
         contracts.forEach { (language, phrases) ->
             val directory = docs.resolve(if (language == "en") "" else language)
             val using = Jsoup.parse(directory.resolve("using.html").readText())
-            val quickStart = Jsoup.parse(directory.resolve("quick-start.html").readText())
-            assertWithMessage("$language demo QR safety").that(quickStart.select("#try").text()).contains(phrases.first())
+            val quickStart = Jsoup.parse(directory.resolve("demo.html").readText())
+            assertWithMessage("$language demo QR safety").that(quickStart.select("main").text()).contains(phrases.first())
             phrases.drop(1).forEach { phrase ->
                 assertWithMessage("$language transfer and update safety").that(using.select("#more").text()).contains(phrase)
             }

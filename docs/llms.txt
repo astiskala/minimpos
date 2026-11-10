@@ -2,63 +2,112 @@
 
 > Free, open-source Android point of sale for Adyen terminals, tablets and phones.
 
-This is the official merchant documentation. Choose the language below, then use Quick start for setup,
-Using Mini mPOS for daily tasks, and Troubleshooting for recovery. The guides are the authoritative source
-for device requirements, Adyen prerequisites and payment behavior. The setup helper creates encrypted QR
-codes locally in the browser; it does not send credentials to a server.
+Official merchant documentation. Start with Quick start to choose a connection guide, or Demo to try a sample sale.
+Testing covers TEST validation and going live. Using Mini mPOS covers daily work; Payment options covers optional
+workflows. Troubleshooting owns recovery. The setup helper generates encrypted QR codes locally; its own scripts
+send no credentials and store no entered values.
 
 ## English
 
-- [Mini mPOS guides](https://minimpos.app/)
+- [Mini mPOS](https://minimpos.app/)
 - [Quick start](https://minimpos.app/quick-start)
+- [Connect an Adyen terminal](https://minimpos.app/quick-start-terminal)
+- [Pair a terminal on your network](https://minimpos.app/quick-start-network)
+- [Connect a cloud terminal](https://minimpos.app/quick-start-cloud)
+- [Set up Tap to Pay](https://minimpos.app/quick-start-tap-to-pay)
+- [Try the demo](https://minimpos.app/demo)
+- [Test your setup and go live](https://minimpos.app/testing)
 - [Using Mini mPOS](https://minimpos.app/using)
+- [Payment options](https://minimpos.app/payment-options)
 - [Troubleshooting](https://minimpos.app/troubleshooting)
-- [Setup helper](https://minimpos.app/setup)
+- [Set up a device from your computer](https://minimpos.app/setup)
 
 ## Español (México)
 
-- [Guías de Mini mPOS](https://minimpos.app/es-MX/)
+- [Mini mPOS](https://minimpos.app/es-MX/)
 - [Inicio rápido](https://minimpos.app/es-MX/quick-start)
+- [Conectar un terminal Adyen](https://minimpos.app/es-MX/quick-start-terminal)
+- [Emparejar un terminal en su red](https://minimpos.app/es-MX/quick-start-network)
+- [Conectar un terminal en la nube](https://minimpos.app/es-MX/quick-start-cloud)
+- [Configurar Tap to Pay](https://minimpos.app/es-MX/quick-start-tap-to-pay)
+- [Prueba la demo](https://minimpos.app/es-MX/demo)
+- [Prueba tu configuración y pasa a LIVE](https://minimpos.app/es-MX/testing)
 - [Usando Mini mPOS](https://minimpos.app/es-MX/using)
+- [Opciones de pago](https://minimpos.app/es-MX/payment-options)
 - [Solución de problemas](https://minimpos.app/es-MX/troubleshooting)
-- [Ayudante de configuración](https://minimpos.app/es-MX/setup)
+- [Configura un dispositivo desde tu computadora](https://minimpos.app/es-MX/setup)
 
 ## Français (France)
 
-- [Guides Mini mPOS](https://minimpos.app/fr-FR/)
+- [Mini mPOS](https://minimpos.app/fr-FR/)
 - [Démarrage rapide](https://minimpos.app/fr-FR/quick-start)
+- [Connecter un terminal Adyen](https://minimpos.app/fr-FR/quick-start-terminal)
+- [Associez un terminal sur votre réseau](https://minimpos.app/fr-FR/quick-start-network)
+- [Connecter un terminal cloud](https://minimpos.app/fr-FR/quick-start-cloud)
+- [Configurer Tap to Pay](https://minimpos.app/fr-FR/quick-start-tap-to-pay)
+- [Essayer la démo](https://minimpos.app/fr-FR/demo)
+- [Tester la configuration et passer en LIVE](https://minimpos.app/fr-FR/testing)
 - [Utilisation de Mini mPOS](https://minimpos.app/fr-FR/using)
+- [Options de paiement](https://minimpos.app/fr-FR/payment-options)
 - [Dépannage](https://minimpos.app/fr-FR/troubleshooting)
-- [Aide à la configuration](https://minimpos.app/fr-FR/setup)
+- [Configurer un appareil depuis votre ordinateur](https://minimpos.app/fr-FR/setup)
 
 ## 日本語
 
-- [Mini mPOS ガイド](https://minimpos.app/ja/)
+- [Mini mPOS](https://minimpos.app/ja/)
 - [クイックスタート](https://minimpos.app/ja/quick-start)
+- [Adyen 端末を接続する](https://minimpos.app/ja/quick-start-terminal)
+- [ネットワーク上の端末をペアリングする](https://minimpos.app/ja/quick-start-network)
+- [クラウドの端末を接続する](https://minimpos.app/ja/quick-start-cloud)
+- [Tap to Pay を設定する](https://minimpos.app/ja/quick-start-tap-to-pay)
+- [デモを試す](https://minimpos.app/ja/demo)
+- [設定をテストして LIVE に移行する](https://minimpos.app/ja/testing)
 - [Mini mPOS の使い方](https://minimpos.app/ja/using)
+- [追加の決済機能](https://minimpos.app/ja/payment-options)
 - [トラブルシューティング](https://minimpos.app/ja/troubleshooting)
-- [セットアップヘルパー](https://minimpos.app/ja/setup)
+- [パソコンからデバイスを設定](https://minimpos.app/ja/setup)
 
 ## Português (Brasil)
 
-- [Guias do Mini mPOS](https://minimpos.app/pt-BR/)
+- [Mini mPOS](https://minimpos.app/pt-BR/)
 - [Início rápido](https://minimpos.app/pt-BR/quick-start)
+- [Conectar um terminal Adyen](https://minimpos.app/pt-BR/quick-start-terminal)
+- [Emparelhar um terminal na sua rede](https://minimpos.app/pt-BR/quick-start-network)
+- [Conectar um terminal em nuvem](https://minimpos.app/pt-BR/quick-start-cloud)
+- [Configurar Tap to Pay](https://minimpos.app/pt-BR/quick-start-tap-to-pay)
+- [Experimente a demonstração](https://minimpos.app/pt-BR/demo)
+- [Teste a configuração e passe para LIVE](https://minimpos.app/pt-BR/testing)
 - [Usando Mini mPOS](https://minimpos.app/pt-BR/using)
+- [Opções de pagamento](https://minimpos.app/pt-BR/payment-options)
 - [Solução de problemas](https://minimpos.app/pt-BR/troubleshooting)
-- [Auxiliar de configuração](https://minimpos.app/pt-BR/setup)
+- [Configure um dispositivo a partir do seu computador](https://minimpos.app/pt-BR/setup)
 
 ## 简体中文
 
-- [Mini mPOS 指南](https://minimpos.app/zh-CN/)
+- [Mini mPOS](https://minimpos.app/zh-CN/)
 - [快速入门](https://minimpos.app/zh-CN/quick-start)
+- [连接 Adyen 终端](https://minimpos.app/zh-CN/quick-start-terminal)
+- [绑定同一网络中的终端](https://minimpos.app/zh-CN/quick-start-network)
+- [连接云端终端](https://minimpos.app/zh-CN/quick-start-cloud)
+- [设置 Tap to Pay](https://minimpos.app/zh-CN/quick-start-tap-to-pay)
+- [体验演示](https://minimpos.app/zh-CN/demo)
+- [测试配置并切换至 LIVE](https://minimpos.app/zh-CN/testing)
 - [使用 Mini mPOS](https://minimpos.app/zh-CN/using)
+- [可选支付功能](https://minimpos.app/zh-CN/payment-options)
 - [故障排查](https://minimpos.app/zh-CN/troubleshooting)
-- [设置助手](https://minimpos.app/zh-CN/setup)
+- [在电脑上设置设备](https://minimpos.app/zh-CN/setup)
 
 ## 繁體中文
 
-- [Mini mPOS 指南](https://minimpos.app/zh-Hant/)
+- [Mini mPOS](https://minimpos.app/zh-Hant/)
 - [快速入門](https://minimpos.app/zh-Hant/quick-start)
+- [連接 Adyen 終端](https://minimpos.app/zh-Hant/quick-start-terminal)
+- [綁定同一網絡中的終端](https://minimpos.app/zh-Hant/quick-start-network)
+- [連接雲端終端](https://minimpos.app/zh-Hant/quick-start-cloud)
+- [設定 Tap to Pay](https://minimpos.app/zh-Hant/quick-start-tap-to-pay)
+- [體驗示範](https://minimpos.app/zh-Hant/demo)
+- [測試設定並切換至 LIVE](https://minimpos.app/zh-Hant/testing)
 - [使用 Mini mPOS](https://minimpos.app/zh-Hant/using)
+- [選用付款功能](https://minimpos.app/zh-Hant/payment-options)
 - [疑難排解](https://minimpos.app/zh-Hant/troubleshooting)
-- [設定助手](https://minimpos.app/zh-Hant/setup)
+- [在電腦上設定設備](https://minimpos.app/zh-Hant/setup)

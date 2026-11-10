@@ -1,40 +1,40 @@
 <!doctype html>
 <html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self' blob:; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
-  <meta name="referrer" content="no-referrer">
-  <meta name="robots" content="max-image-preview:large">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Adyen 設定を QR で転送するセットアップヘルパー – Mini mPOS</title>
-  <meta name="description" content="パソコンで Mini mPOS を設定。Adyen の認証情報や任意の領収書・メール設定を暗号化した QR コードに変換し、デバイスで読み取れます。">
-  <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
-  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
-  <link rel="manifest" href="site.webmanifest">
-  <link rel="describedby" href="../llms.txt" type="text/plain">
-  <meta name="application-name" content="Mini mPOS ガイド">
-  <link rel="canonical" href="https://minimpos.app/ja/setup">
-  <meta property="og:type" content="article">
-  <meta property="og:site_name" content="Mini mPOS">
-  <meta property="og:title" content="Adyen 設定を QR で転送するセットアップヘルパー – Mini mPOS">
-  <meta property="og:description" content="パソコンで Mini mPOS を設定。Adyen の認証情報や任意の領収書・メール設定を暗号化した QR コードに変換し、デバイスで読み取れます。">
-  <meta property="og:url" content="https://minimpos.app/ja/setup">
-  <meta property="og:image" content="https://minimpos.app/images/ja/social.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:type" content="image/png">
-  <meta content="Adyen 決済端末のイラストに表示した Mini mPOS の日本語のデモ画面。" property="og:image:alt">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="theme-color" content="#00843F">
-  <link rel="stylesheet" href="../styles.css">
-  <meta content="Adyen 設定を QR で転送するセットアップヘルパー – Mini mPOS" name="twitter:title">
-  <meta content="パソコンで Mini mPOS を設定。Adyen の認証情報や任意の領収書・メール設定を暗号化した QR コードに変換し、デバイスで読み取れます。" name="twitter:description">
-  <meta content="https://minimpos.app/images/ja/social.png" name="twitter:image">
-  <meta content="Adyen 決済端末のイラストに表示した Mini mPOS の日本語のデモ画面。" name="twitter:image:alt">
-  <script defer src="../js/qrcodegen.js"></script>
-  <script defer src="../js/logo.js"></script>
-  <script defer src="../js/setup.js"></script>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self' blob:; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="max-image-preview:large">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Adyen 設定を QR で転送するセットアップヘルパー – Mini mPOS</title>
+    <meta name="description" content="パソコンで Mini mPOS を設定。Adyen の認証情報や任意の領収書・メール設定を暗号化した QR コードに変換し、デバイスで読み取れます。">
+    <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="describedby" href="../llms.txt" type="text/plain">
+    <meta name="application-name" content="Mini mPOS ガイド">
+    <link rel="canonical" href="https://minimpos.app/ja/setup">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Mini mPOS">
+    <meta property="og:title" content="Adyen 設定を QR で転送するセットアップヘルパー – Mini mPOS">
+    <meta property="og:description" content="パソコンで Mini mPOS を設定。Adyen の認証情報や任意の領収書・メール設定を暗号化した QR コードに変換し、デバイスで読み取れます。">
+    <meta property="og:url" content="https://minimpos.app/ja/setup">
+    <meta property="og:image" content="https://minimpos.app/images/ja/social.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta content="Adyen 決済端末のイラストに表示した Mini mPOS の日本語のデモ画面。" property="og:image:alt">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="theme-color" content="#00843F">
+    <link rel="stylesheet" href="../styles.css">
+    <meta content="Adyen 設定を QR で転送するセットアップヘルパー – Mini mPOS" name="twitter:title">
+    <meta content="パソコンで Mini mPOS を設定。Adyen の認証情報や任意の領収書・メール設定を暗号化した QR コードに変換し、デバイスで読み取れます。" name="twitter:description">
+    <meta content="https://minimpos.app/images/ja/social.png" name="twitter:image">
+    <meta content="Adyen 決済端末のイラストに表示した Mini mPOS の日本語のデモ画面。" name="twitter:image:alt">
+    <script defer src="../js/qrcodegen.js"></script>
+    <script defer src="../js/logo.js"></script>
+    <script defer src="../js/setup.js"></script>
     <link href="https://minimpos.app/setup" hreflang="en" rel="alternate">
     <link href="https://minimpos.app/es-MX/setup" hreflang="es-MX" rel="alternate">
     <link href="https://minimpos.app/fr-FR/setup" hreflang="fr-FR" rel="alternate">
@@ -51,10 +51,9 @@
     <meta content="fr_FR" property="og:locale:alternate">
     <meta content="pt_BR" property="og:locale:alternate">
   </head>
-<body>
-  <a class="skip" href="#main">本文へ移動</a>
-
-  <header class="site-header">
+  <body>
+    <a class="skip" href="#main">本文へ移動</a>
+    <header class="site-header">
     <div class="wrap header-row">
       <a class="brand" href="./" aria-label="Mini mPOS ホーム">
         <img src="../favicon.svg" alt="" width="36" height="36">
@@ -82,226 +81,215 @@
       </details>
     </div>
   </header>
+    <main id="main">
+      <section class="guide-hero">
+        <div class="wrap">
+          <p class="eyebrow">セットアップヘルパー</p>
+          <h1>パソコンからデバイスを設定</h1>
+          <p class="lead">信頼できるコンピューターで設定コードを作成し、Mini mPOS で読み取ります。</p>
+        </div>
+      </section>
+      <div class="wrap setup">
+        <div class="setup-main">
 
-  <main id="main">
-    <section class="guide-hero">
-      <div class="wrap">
-        <p class="eyebrow">セットアップヘルパー</p>
-        <h1>パソコンからデバイスを設定</h1>
-        <p class="lead">
-          長い APIキーを端末のキーパッドで入力するのは大変です。Customer Area を見ながらここに入力し、QR コードで Mini mPOS に読み取らせましょう。
-        </p>
-      </div>
-    </section>
-
-    <div class="wrap setup">
-      <div class="setup-main">
-        <p>初めて使う場合は、入力前に<a href="quick-start#choose">構成を選び</a>、<a href="quick-start#credentials">認証情報を用意</a>してください。</p>
-        <p class="hint" id="customer-area-note">Customer Area のリンクは新しいタブで開くので、このフォームを開いたままにできます。</p>
-        <noscript><p class="note">JavaScript が無効です。有効にしてヘルパーを使うか、アプリに直接入力してください。 <a href="quick-start#connect">接続</a>.
-          </p></noscript>
-<p class="hint" id="setup-loading" role="status">設定フォームを読み込んでいます…</p>
-
-        <form id="setup-form" class="setup-form" hidden autocomplete="off"
-              data-msg-logo-unreadable="この画像を読み取れませんでした。"
-              data-msg-logo-blank="変換後の画像が空白です。"
-              data-msg-logo-required="先に画像を選択してください。"
-              data-msg-making="コードを作成しています…"
-              data-msg-ready="完了：下に {total} 個のコードがあります。"
-              data-msg-code-of="コード {n}／{total}"
-              data-msg-pause="一時停止"
-              data-msg-play="再生"
-              data-msg-unsupported="このブラウザーではコードを作成できません。最新の Chrome、Edge、Firefox、Safari をお使いください。">
-          <fieldset>
-            <legend>作成するもの</legend>
-            <label class="choice"><input type="radio" name="make" value="complete" checked> <span>すべての設定</span></label>
-            <label class="choice"><input type="radio" name="make" value="logo"> <span>レシートのロゴのみ</span></label>
-          </fieldset>
+          <p class="hint"><a href="quick-start#choose">構成を選び</a> · <a href="quick-start#credentials">認証情報を用意</a> · <a id="setup-device-guide" href="quick-start#choose">手動設定</a></p>
+          <p class="hint" id="customer-area-note">Customer Area のリンクは新しいタブで開きます。</p>
+          <noscript>
+            <p class="note">JavaScript が無効です。有効にしてヘルパーを使うか、アプリに直接入力してください。 <a href="quick-start#choose">接続</a>.
+            </p>
+          </noscript>
+          <p class="hint" id="setup-loading" role="status">設定フォームを読み込んでいます…</p>
+          <form id="setup-form" class="setup-form" hidden autocomplete="off"
+          data-msg-logo-unreadable="この画像を読み取れませんでした。"
+          data-msg-logo-blank="変換後の画像が空白です。"
+          data-msg-logo-required="先に画像を選択してください。"
+          data-msg-making="コードを作成しています…"
+          data-msg-ready="完了：下に {total} 個のコードがあります。"
+          data-msg-code-of="コード {n}／{total}"
+          data-msg-pause="一時停止"
+          data-msg-play="再生"
+          data-msg-unsupported="このブラウザーではコードを作成できません。最新の Chrome、Edge、Firefox、Safari をお使いください。">
           <div id="complete-fields">
-          <fieldset>
-            <legend>Mini mPOS をどこで動かし、決済をどこに送りますか？</legend>
-            <label class="choice"><input type="radio" id="destination-thisTerminal" name="destination" value="thisTerminal" checked> <span><strong>
-              Adyen 端末で動かす</strong>：その端末自体で決済を受け付けます</span></label>
-            <label class="choice"><input type="radio" id="destination-network" name="destination" value="network"> <span><strong>
-              タブレットやスマートフォンで動かす</strong>：同じネットワーク上の端末を使います</span></label>
-            <label class="choice"><input type="radio" id="destination-cloud" name="destination" value="cloud"> <span><strong>タブレットやスマートフォンで動かす</strong>：インターネット経由の端末（クラウド）を使います</span></label>
-            <label class="choice"><input type="radio" id="destination-tapToPay" name="destination" value="tapToPay"> <span><strong>スマートフォンで動かす</strong>：Adyen Payments アプリの Tap to Pay を使います</span></label>
-          </fieldset>
-
-          <fieldset>
-            <legend>どの Adyen 環境ですか？</legend>
-            <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：テスト端末とテストカード</span></label>
-            <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：本番の決済
-              </span></label>
-            <p class="hint">すべての設定コードに TEST または LIVE が含まれ、インポート前に確認できます。ネットワークやクラウドの端末、Tap to Pay では選択した環境を使用します。Adyen
-              端末の接続には引き続きデバイスの証明書を使用します。</p>
-          </fieldset>
-
-          <fieldset data-for="thisTerminal network cloud tapToPay">
-            <legend>どの方法で設定しますか？</legend>
-            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自動（推奨）</strong>：デバイスで端末設定を取得</span></label>
-            <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手動</strong>
-              ：接続情報をすべてパソコンで入力します</span></label>
-          </fieldset>
-
-          <p class="hint" data-only="tapToPay" hidden>先に<a href="quick-start#tap-to-pay">Tap to Payの準備手順</a>
-            に従い、Paymentsアプリをインストールしてください。Mini mPOS が Adyen API キーで登録用認証情報を自動作成します。インポート完了前にスマートフォンで明示的な登録操作が必要です。</p>
-
-          <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
-            <legend>Adyen APIキー</legend>
-            <p class="hint">
-              <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
-              Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="tapToPay" hidden>このキーは Checkout
-              と登録用認証情報の自動作成に使います。</span>すべての構成で、メインの認証情報に同じロールが必要です。<a href="quick-start#credentials">認証情報の要件</a>
-              を参照してください。</p>
-            <label for="apiKey">APIキー</label>
-            <input id="apiKey" name="apiKey" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" required spellcheck="false">
-          </fieldset>
-
-          <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
-            <legend>マーチャントアカウント</legend>
-            <label for="merchantAccount">マーチャントアカウント</label>
-            <input id="merchantAccount" name="merchantAccount" type="text" required data-optional-for="thisTerminal network cloud" spellcheck="false">
-            <p class="hint" data-only="thisTerminal network cloud" hidden>任意。Mini mPOS が端末から読み取ります。</p>
-          </fieldset>
-
-          <fieldset data-for="network" data-mode="manual">
-            <legend>ネットワーク上の端末</legend>
-            <label for="host">端末のIPアドレス</label>
-            <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.0.2.1">
-            <label for="poiId">端末ID（POIID）</label>
-            <input id="poiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
-            <p class="hint">どちらも端末の Device info 画面に表示されます。</p>
-          </fieldset>
-
-          <fieldset data-for="cloud" data-mode="manual">
-            <legend>クラウドの端末</legend>
-            <label for="cloudPoiId">端末ID（POIID）</label>
-            <input id="cloudPoiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
-            <p class="hint">端末のDevice info画面またはCustomer AreaのDevices › Terminalsで確認できます。</p>
-          </fieldset>
-
-          <fieldset data-for="thisTerminal network tapToPay" data-mode="automatic">
-            <legend>共有キーの取得方法</legend>
-            <label class="choice"><input type="radio" name="keySource" value="lookup" checked> <span><strong>デバイスで検索する(推奨)</strong></span></label>
-            <label class="choice"><input type="radio" name="keySource" value="enter"> <span><strong>ここに入力する</strong>(デバイスで読み取れなかった場合)</span></label>
-          </fieldset>
-
-          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual" data-key-entry="true">
-            <legend>共有キー</legend>
-            <p class="hint">Customer Area の
-              <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
-              Devices › Device settings › Terminal API</a> の Encryption key にあります（鉛筆アイコンで表示）。</p>
-            <label for="keyIdentifier">キー識別子</label>
-            <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
-            <label for="passphrase">キーのパスフレーズ</label>
-            <input id="passphrase" name="passphrase" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
-            <label for="keyVersion">キーバージョン</label>
-            <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required data-required-for="thisTerminal network tapToPay">
-          </fieldset>
-
-          <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
-            <legend>LIVE URLプレフィックス</legend>
-            <p class="hint">
-              <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
-              Developers › API URLs</a> にあります。</p>
-            <label for="liveUrlPrefix">プレフィックス</label>
-            <input id="liveUrlPrefix" name="liveUrlPrefix" type="text" required spellcheck="false" placeholder="1797a841fbb37ca7-AdyenDemo">
-          </fieldset>
-
-          <fieldset data-for="tapToPay">
-            <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS が Adyen Payments App role とクライアントキーを持つ別の認証情報を自動作成します。追加のキーの入力や転送は不要です。
-              <a href="troubleshooting#tap-to-pay-check">Tap to Pay のトラブルシューティング</a>と
-              <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments アプリガイド</a>
-              を参照してください。</p>
-            <label for="storeId">店舗ID（任意）</label>
-            <input id="storeId" name="storeId" type="text" spellcheck="false">
-            <p class="hint">スマートフォンを 1 店舗用に設定する場合：
-              <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
-              Devices › Stores</a> にあるその店舗の ID（reference ではありません）。</p>
-          </fieldset>
-
-          <details class="setup-optional"><summary>領収書とメールの任意設定</summary>
-<fieldset>
-            <legend>領収書の情報（任意）</legend>
-            <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>領収書設定を変更しない</span>
-              </label>
-            <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>領収書の情報を含める</span></label>
-            <p class="hint">オフの場合、領収書の文面や Adyen の事業者情報はインポートしません。</p>
-
-            <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
-              <legend>領収書の情報</legend>
-              <p class="hint">各事業者情報は Adyen からの取得または手入力を選べます。</p>
-              <label for="receiptNameSource">事業者名</label>
-              <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Adyen から取得</option>
-                <option value="manual">手入力</option></select>
-              <div data-receipt="receiptNameSource" hidden>
-                <label for="receiptBusinessName">領収書の事業者名</label>
-                <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
-              </div>
-              <label for="receiptAddressSource">住所</label>
-              <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Adyen から取得</option>
-                <option value="manual">手入力</option></select>
-              <div data-receipt="receiptAddressSource" hidden>
-                <label for="receiptAddressLines">領収書の住所</label>
-                <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
-              </div>
-              <label for="receiptPhoneSource">電話番号</label>
-              <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Adyen から取得</option>
-                <option value="manual">手入力</option></select>
-              <div data-receipt="receiptPhoneSource" hidden>
-                <label for="receiptPhone">領収書の電話番号</label>
-                <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
-              </div>
-              <label for="receiptTaxId">税務番号（任意）</label>
-              <input id="receiptTaxId" name="receiptTaxId" type="text">
-              <label for="receiptTitle">領収書のタイトル（任意）</label>
-              <input id="receiptTitle" name="receiptTitle" type="text">
-              <label for="receiptFooter">フッター（任意）</label>
-              <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
-              <p class="hint">入力した手動の文面だけが保存済みの値を変更します。空欄は既存の文面を残します。税務番号、タイトル、フッターは手入力で、Adyen から取得しません。
-                <a href="using#receipts">領収書の設定</a>を参照してください。</p>
+            <fieldset>
+              <legend>Mini mPOS をどこで動かし、決済をどこに送りますか？</legend>
+              <label class="choice"><input type="radio" id="destination-thisTerminal" name="destination" value="thisTerminal" checked> <span><strong>
+                    Adyen 端末で動かす</strong>：その端末自体で決済を受け付けます</span></label>
+              <label class="choice"><input type="radio" id="destination-network" name="destination" value="network"> <span><strong>
+                    タブレットやスマートフォンで動かす</strong>：同じネットワーク上の端末を使います</span></label>
+              <label class="choice"><input type="radio" id="destination-cloud" name="destination" value="cloud"> <span><strong>タブレットやスマートフォンで動かす</strong>：インターネット経由の端末（クラウド）を使います</span></label>
+              <label class="choice"><input type="radio" id="destination-tapToPay" name="destination" value="tapToPay"> <span><strong>スマートフォンで動かす</strong>：Adyen
+                  Payments アプリの Tap to Pay を使います</span></label>
             </fieldset>
-          </fieldset>
-
-          <fieldset>
-            <legend>領収書メール（任意）</legend>
-            <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>メール設定を変更しない</span>
-              </label>
-            <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>SMTP設定を含める</span></label>
-            <p class="hint">先に<a href="using#email">メール設定とプロバイダーの要件</a>を確認してください。ヘルパーからサーバーはテストできません。</p>
-
-            <fieldset id="smtp-fields" data-email="true" hidden disabled>
-              <legend>SMTPサーバー</legend>
-              <label for="smtpHost">サーバー名</label>
-              <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
-              <label for="smtpPort">ポート</label>
-              <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>
-                STARTTLS（通常はポート587）</span></label>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS（通常はポート465）</span>
-                </label>
-              <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>なし（暗号化なし、非推奨）</span>
-                </label>
-              <label for="smtpUsername">ユーザー名（任意）</label>
-              <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
-              <label for="smtpPassword">パスワードまたはアプリパスワード（任意）</label>
-              <input id="smtpPassword" name="smtpPassword" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" spellcheck="false">
-              <label for="smtpFromAddress">差出人メールアドレス</label>
-              <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
-              <label for="smtpFromName">差出人名（任意）</label>
-              <input id="smtpFromName" name="smtpFromName" type="text">
-              <p class="hint">入力した欄だけが変わります。空の任意欄は保存済みの値を残します。削除が必要なら「設定 › 領収書のメール送信」で行ってください。パスワードはほかの秘密情報とともに暗号化します。
-                </p>
+            <fieldset>
+              <legend>どの Adyen 環境ですか？</legend>
+              <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：テスト端末とテストカード</span></label>
+              <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：本番の決済
+                </span></label>
+              <p class="hint">すべての設定コードに TEST または LIVE が含まれ、インポート前に確認できます。ネットワークやクラウドの端末、Tap to Pay では選択した環境を使用します。Adyen
+                端末の接続には引き続きデバイスの証明書を使用します。</p>
             </fieldset>
-          </fieldset>
-</details>
-
+            <p class="hint" data-only="tapToPay" hidden>先に<a href="quick-start-tap-to-pay">Tap to Payの準備手順</a>
+              に従い、Paymentsアプリをインストールしてください。Mini mPOS が Adyen API キーで登録用認証情報を自動作成します。インポート完了前にスマートフォンで明示的な登録操作が必要です。</p>
+            <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
+              <legend>Adyen APIキー</legend>
+              <p class="hint">
+                <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+                  Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="tapToPay" hidden>このキーは Checkout
+                  と登録用認証情報の自動作成に使います。</span>すべての構成で、メインの認証情報に同じロールが必要です。<a href="quick-start#credentials">認証情報の要件</a>
+                を参照してください。</p>
+              <label for="apiKey">APIキー</label>
+              <input id="apiKey" name="apiKey" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" required spellcheck="false">
+            </fieldset>
+            <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
+              <legend>LIVE URLプレフィックス</legend>
+              <p class="hint">
+                <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+                  Developers › API URLs</a> にあります。</p>
+              <label for="liveUrlPrefix">プレフィックス</label>
+              <input id="liveUrlPrefix" name="liveUrlPrefix" type="text" required spellcheck="false" placeholder="1797a841fbb37ca7-AdyenDemo">
+            </fieldset>
+            <details class="setup-optional" id="setup-method">
+              <summary>接続情報を手動で入力する</summary>
+              <fieldset data-for="thisTerminal network cloud tapToPay">
+                <legend>どの方法で設定しますか？</legend>
+                <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自動（推奨）</strong>：デバイスで端末設定を取得</span></label>
+                <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手動</strong>
+                    ：接続情報をすべてパソコンで入力します</span></label>
+              </fieldset>
+              <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
+                <legend>マーチャントアカウント</legend>
+                <label for="merchantAccount">マーチャントアカウント</label>
+                <input id="merchantAccount" name="merchantAccount" type="text" required data-optional-for="thisTerminal network cloud" spellcheck="false">
+                <p class="hint" data-only="thisTerminal network cloud" hidden>任意。Mini mPOS が端末から読み取ります。</p>
+              </fieldset>
+              <fieldset data-for="network" data-mode="manual">
+                <legend>ネットワーク上の端末</legend>
+                <label for="host">端末のIPアドレス</label>
+                <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.0.2.1">
+                <label for="poiId">端末ID（POIID）</label>
+                <input id="poiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
+                <p class="hint">どちらも端末の Device info 画面に表示されます。</p>
+              </fieldset>
+              <fieldset data-for="cloud" data-mode="manual">
+                <legend>クラウドの端末</legend>
+                <label for="cloudPoiId">端末ID（POIID）</label>
+                <input id="cloudPoiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
+                <p class="hint">端末のDevice info画面またはCustomer AreaのDevices › Terminalsで確認できます。</p>
+              </fieldset>
+              <fieldset data-for="thisTerminal network tapToPay" data-mode="automatic">
+                <legend>共有キーの取得方法</legend>
+                <label class="choice"><input type="radio" name="keySource" value="lookup" checked> <span><strong>デバイスで検索する(推奨)</strong></span></label>
+                <label class="choice"><input type="radio" name="keySource" value="enter"> <span><strong>ここに入力する</strong>(デバイスで読み取れなかった場合)</span></label>
+              </fieldset>
+              <fieldset data-for="thisTerminal network tapToPay" data-mode="manual" data-key-entry="true">
+                <legend>共有キー</legend>
+                <p class="hint">Customer Area の
+                  <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+                    Devices › Device settings › Terminal API</a> の Encryption key にあります（鉛筆アイコンで表示）。</p>
+                <label for="keyIdentifier">キー識別子</label>
+                <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
+                <label for="passphrase">キーのパスフレーズ</label>
+                <input id="passphrase" name="passphrase" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
+                <label for="keyVersion">キーバージョン</label>
+                <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required data-required-for="thisTerminal network tapToPay">
+              </fieldset>
+              <fieldset data-for="tapToPay">
+                <legend>Tap to Pay</legend>
+                <p class="hint">Mini mPOS が Adyen Payments App role とクライアントキーを持つ別の認証情報を自動作成します。追加のキーの入力や転送は不要です。
+                  <a href="troubleshooting#tap-to-pay-check">Tap to Pay のトラブルシューティング</a>と
+                  <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments アプリガイド</a>
+                  を参照してください。</p>
+                <label for="storeId">店舗ID（任意）</label>
+                <input id="storeId" name="storeId" type="text" spellcheck="false">
+                <p class="hint">スマートフォンを 1 店舗用に設定する場合：
+                  <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">
+                    Devices › Stores</a> にあるその店舗の ID（reference ではありません）。</p>
+              </fieldset>
+            </details>
+            <details class="setup-optional" id="receipt-options">
+              <summary>領収書とメールの任意設定</summary>
+              <fieldset>
+                <legend>領収書の情報</legend>
+                <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>領収書設定を変更しない</span>
+                </label>
+                <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>領収書の情報を含める</span></label>
+                <p class="hint">オフの場合、領収書の文面や Adyen の事業者情報はインポートしません。</p>
+                <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
+                  <legend>領収書の情報</legend>
+                  <p class="hint">各事業者情報は Adyen からの取得または手入力を選べます。</p>
+                  <label for="receiptNameSource">事業者名</label>
+                  <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Adyen から取得</option>
+                    <option value="manual">手入力</option></select>
+                  <div data-receipt="receiptNameSource" hidden>
+                    <label for="receiptBusinessName">領収書の事業者名</label>
+                    <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
+                  </div>
+                  <label for="receiptAddressSource">住所</label>
+                  <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Adyen から取得</option>
+                    <option value="manual">手入力</option></select>
+                  <div data-receipt="receiptAddressSource" hidden>
+                    <label for="receiptAddressLines">領収書の住所</label>
+                    <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
+                  </div>
+                  <label for="receiptPhoneSource">電話番号</label>
+                  <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Adyen から取得</option>
+                    <option value="manual">手入力</option></select>
+                  <div data-receipt="receiptPhoneSource" hidden>
+                    <label for="receiptPhone">領収書の電話番号</label>
+                    <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
+                  </div>
+                  <label for="receiptTaxId">税務番号</label>
+                  <input id="receiptTaxId" name="receiptTaxId" type="text">
+                  <label for="receiptTitle">領収書のタイトル</label>
+                  <input id="receiptTitle" name="receiptTitle" type="text">
+                  <label for="receiptFooter">フッター</label>
+                  <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
+                  <p class="hint">入力した手動の文面だけが保存済みの値を変更します。空欄は既存の文面を残します。税務番号、タイトル、フッターは手入力で、Adyen から取得しません。
+                    <a href="using#receipts">領収書の設定</a>を参照してください。</p>
+                </fieldset>
+              </fieldset>
+              <fieldset>
+                <legend>領収書メール</legend>
+                <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>メール設定を変更しない</span>
+                </label>
+                <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>SMTP設定を含める</span></label>
+                <p class="hint">先に<a href="using#email">メール設定とプロバイダーの要件</a>を確認してください。ヘルパーからサーバーはテストできません。</p>
+                <fieldset id="smtp-fields" data-email="true" hidden disabled>
+                  <legend>SMTPサーバー</legend>
+                  <label for="smtpHost">サーバー名</label>
+                  <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
+                  <label for="smtpPort">ポート</label>
+                  <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
+                  <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>
+                      STARTTLS（通常はポート587）</span></label>
+                  <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS（通常はポート465）</span>
+                  </label>
+                  <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>なし（暗号化なし、非推奨）</span>
+                  </label>
+                  <label for="smtpUsername">ユーザー名</label>
+                  <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
+                  <label for="smtpPassword">パスワードまたはアプリパスワード</label>
+                  <input id="smtpPassword" name="smtpPassword" type="text" class="masked" autocomplete="off" autocapitalize="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" spellcheck="false">
+                  <label for="smtpFromAddress">差出人メールアドレス</label>
+                  <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
+                  <label for="smtpFromName">差出人名</label>
+                  <input id="smtpFromName" name="smtpFromName" type="text">
+                  <p class="hint">入力した欄だけが変わります。空の任意欄は保存済みの値を残します。削除が必要なら「設定 › 領収書のメール送信」で行ってください。パスワードはほかの秘密情報とともに暗号化します。
+                  </p>
+                </fieldset>
+              </fieldset>
+            </details>
           </div>
-
+          <details class="setup-optional" id="setup-tools">
+            <summary>ほかの設定ツール</summary>
+            <fieldset>
+              <legend>作成するもの</legend>
+              <label class="choice"><input type="radio" name="make" value="complete" checked> <span>すべての設定</span></label>
+              <label class="choice"><input type="radio" id="make-logo" name="make" value="logo"> <span>レシートのロゴのみ</span></label>
+            </fieldset>
+          </details>
           <fieldset id="logo-fields">
-            <legend>レシートのロゴ（任意）</legend>
+            <legend>レシートのロゴ</legend>
             <label for="logo">画像を選択</label>
             <input id="logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
             <div id="logo-editor" hidden>
@@ -323,55 +311,71 @@
             <button class="button button-ghost" type="reset">クリア</button>
           </div>
           <p class="hint" id="setup-status" role="status" aria-live="polite"></p>
-        </form>
+          </form>
+        </div>
+        <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
+          <h2 id="setup-codes-title" tabindex="-1">デバイスでこのコードを読み取る</h2>
+          <div class="setup-scan">
+            <div class="setup-qr" id="setup-qr"></div>
+            <div class="setup-controls">
+              <span id="setup-position"></span>
+              <button class="button button-ghost button-small" id="setup-previous" type="button">前へ</button>
+              <button class="button button-ghost button-small" id="setup-pause" type="button">一時停止</button>
+              <button class="button button-ghost button-small" id="setup-next" type="button">次へ</button>
+            </div>
+          </div>
+          <div class="setup-next">
+            <div class="setup-code-card" id="setup-code-card">
+              <p>転送コード</p>
+              <p class="setup-code" id="setup-code"></p>
+            </div>
+            <dl class="setup-summary"><div>
+                <dt>決済先</dt>
+                <dd id="setup-summary-destination"></dd>
+              </div><div>
+                <dt>環境</dt>
+                <dd id="setup-summary-environment"></dd>
+              </div><div>
+                <dt>設定方法</dt>
+                <dd id="setup-summary-mode"></dd>
+              </div><div>
+                <dt>領収書の設定</dt>
+                <dd id="setup-summary-receipt"></dd>
+              </div><div>
+                <dt>メールの設定</dt>
+                <dd id="setup-summary-email">
+                </dd>
+              </div></dl>
+            <div id="setup-scan-connection">
+              <ol>
+                <li>Mini mPOS で <strong>設定 › 端末</strong> を開き、<strong>設定コードを読み取る</strong>、<strong>
+                    コードを持っています</strong> の順にタップします。すべてのコードを読み取ってください。</li>
+                <li>カメラでコードを読み取ります。複数ある場合は自動で切り替わります。</li>
+                <li>決済先と環境を確認し、必須の<strong>転送コード</strong>を入力して<strong>確認してインポート</strong>をタップします。</li>
+              </ol>
+            </div>
+            <p id="setup-scan-logo" hidden>Mini mPOS でコードを読み取り、端末でロゴを確認します。</p>
+            <p>SMTP設定を含めた場合は<strong>設定 › 領収書のメール送信</strong>を確認し、テストメールを送ります。</p>
+            <p><a href="troubleshooting#access">取り込みの問題</a> · <a href="troubleshooting#connection">接続の問題</a></p>
+            <div id="setup-after-import">
+              <p>端末の選択や Payments アプリへの登録を求められたら完了してください。</p>
+              <p><a class="button" href="testing">設定を取り込みましたか？最初の決済をテストする</a></p>
+            </div></div>
+        </section>
+        <aside class="setup-side"><div>
+            <h2>知っておきたいこと</h2>
+            <ul>
+              <li id="setup-privacy"><strong>認証情報はブラウザー内で処理されます。</strong> ヘルパーはコードをローカルで作成し、入力した認証情報を送信・保存しません。公開サイトでは、Cloudflare
+                のセキュリティとパフォーマンスサービスも読み込みます。</li>
+              <li><strong>キーは暗号化されます。</strong>コード内のパスワードとキーは、ここにだけ表示される転送コードで暗号化されるため、コードの写真だけでは読み取れません。</li>
+              <li><strong>転送コードは秘密にしてください。</strong>QR コードと転送コードの両方があればキーを復号できます。必要に応じて新しい転送を作り、終わったら閉じてください。</li>
+              <li><strong>全体の手順は？</strong><a href="quick-start">クイックスタート</a>を参照し、取り込みや接続の問題は<a href="troubleshooting">
+                  トラブルシューティング</a>で確認してください。</li>
+            </ul>
+          </div></aside>
       </div>
-
-      <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
-        <h2 id="setup-codes-title" tabindex="-1">デバイスでこのコードを読み取る</h2>
-        <div class="setup-scan">
-          <div class="setup-qr" id="setup-qr"></div>
-          <div class="setup-controls">
-            <span id="setup-position"></span>
-            <button class="button button-ghost button-small" id="setup-previous" type="button">前へ</button>
-            <button class="button button-ghost button-small" id="setup-pause" type="button">一時停止</button>
-            <button class="button button-ghost button-small" id="setup-next" type="button">次へ</button>
-          </div>
-        </div>
-        <div class="setup-next">
-
-<div class="setup-code-card" id="setup-code-card">
-            <p>転送コード</p>
-            <p class="setup-code" id="setup-code"></p>
-          </div>
-<dl class="setup-summary"><div><dt>決済先</dt><dd id="setup-summary-destination"></dd></div><div><dt>環境</dt>
-<dd id="setup-summary-environment"></dd></div><div><dt>設定方法</dt><dd id="setup-summary-mode"></dd></div><div>
-<dt>領収書の設定</dt><dd id="setup-summary-receipt"></dd></div><div><dt>メールの設定</dt><dd id="setup-summary-email">
-</dd></div></dl>
-          <ol>
-            <li>Mini mPOS の<strong>設定 › 端末</strong>を開き、かんたんセットアップの<strong>設定コードを読み取る</strong>か右上のQRスキャンアイコンをタップします。</li>
-            <li>カメラでコードを読み取ります。複数ある場合は自動で切り替わります。</li>
-            <li>決済先と環境を確認し、必須の<strong>転送コード</strong>を入力して<strong>確認してインポート</strong>をタップします。</li>
-          </ol>
-          <p>SMTP設定を含めた場合は<strong>設定 › 領収書のメール送信</strong>を確認し、テストメールを送ります。</p>
-          <p><a href="troubleshooting#access">取り込みの問題</a> · <a href="troubleshooting#connection">接続の問題</a></p>
-        </div>
-      </section>
-
-      <aside class="setup-side"><div>
-        <h2>知っておきたいこと</h2>
-        <ul>
-          <li id="setup-privacy"><strong>認証情報はブラウザー内で処理されます。</strong> ヘルパーはコードをローカルで作成し、入力した認証情報を送信・保存しません。公開サイトでは、Cloudflare
-            のセキュリティとパフォーマンスサービスも読み込みます。</li>
-          <li><strong>キーは暗号化されます。</strong>コード内のパスワードとキーは、ここにだけ表示される転送コードで暗号化されるため、コードの写真だけでは読み取れません。</li>
-          <li><strong>転送コードは秘密にしてください。</strong>QR コードと転送コードの両方があればキーを復号できます。必要に応じて新しい転送を作り、終わったら閉じてください。</li>
-          <li><strong>全体の手順は？</strong><a href="quick-start">クイックスタート</a>を参照し、取り込みや接続の問題は<a href="troubleshooting">
-            トラブルシューティング</a>で確認してください。</li>
-        </ul>
-      </div></aside>
-    </div>
-  </main>
-
-  <footer class="site-footer">
+    </main>
+    <footer class="site-footer">
     <div class="wrap footer-row">
       <nav aria-label="ガイドと設定"><ul class="footer-nav">
         <li><a href="quick-start">クイックスタート</a></li><li><a href="using">Mini mPOS の使い方</a></li>
@@ -385,5 +389,5 @@
       <p class="fine">Adyen は Adyen N.V. の商標です。Mini mPOS は独立したプロジェクトであり、Adyen との提携関係はなく、Adyen による推奨やサポートもありません。QR コードは Project Nayuki の QR Code generator ライブラリ（MIT ライセンス）で描画しています。</p>
     </div>
   </footer>
-</body>
+  </body>
 </html>

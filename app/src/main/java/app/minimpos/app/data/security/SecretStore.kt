@@ -78,7 +78,10 @@ interface SecretCipher {
 class KeystoreSecretCipher(
     private val alias: String = "minimpos.secrets",
 ) : SecretCipher {
-    private fun key(): SecretKey {
+    // Serialized process-wide: two first uses generating a key each would leave the first one's ciphertext undecryptable.
+    private fun key(): SecretKey = synchronized(KEY_LOCK) { existingOrNewKey() }
+
+    private fun existingOrNewKey(): SecretKey {
         val keyStore = KeyStore.getInstance(KEYSTORE).apply { load(null) }
         (keyStore.getKey(alias, null) as? SecretKey)?.let { return it }
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
@@ -105,6 +108,7 @@ class KeystoreSecretCipher(
     }
 
     private companion object {
+        val KEY_LOCK = Any()
         const val KEYSTORE = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val IV_LENGTH = 12

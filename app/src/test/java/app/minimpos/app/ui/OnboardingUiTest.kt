@@ -44,6 +44,9 @@ class OnboardingUiTest {
 
     private fun waitFor(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
 
+    // Settings change before the screen recomposes, so a node that should disappear is waited for, not asserted at once.
+    private fun waitGone(tag: String) = compose.waitUntilDoesNotExist(hasTestTag(tag), 15_000)
+
     @Test
     fun `the simulator banner waits until a first-run choice is made`() {
         compose.setContent { MiniMposApp(env.container) }
@@ -163,6 +166,7 @@ class OnboardingUiTest {
         compose.onNodeWithTag("section_simulator").performScrollTo().performClick()
         waitFor("exitDemo")
         compose.onNodeWithTag("exitDemo").performClick()
+        waitFor("reviewDemoSamples")
         compose.onNodeWithText(env.context.getString(R.string.demo_exit_history_hint)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("reviewDemoSamples").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("reviewDemoReceipts").performScrollTo().assertIsDisplayed()
@@ -201,6 +205,7 @@ class OnboardingUiTest {
         compose.onNodeWithTag("section_simulator").performScrollTo().performClick()
         waitFor("exitDemo")
         compose.onNodeWithTag("exitDemo").performClick()
+        waitFor("demoFeatures")
         compose.onNodeWithTag("demoFeatures").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("turnOffDemoFeatures").performScrollTo().performClick()
         compose.onNodeWithTag("confirm").performClick()
@@ -212,7 +217,7 @@ class OnboardingUiTest {
         assertThat(payment.terminalTipping).isEqualTo(ReceiptTipping.DISABLED)
         assertThat(payment.askGiving).isEqualTo(ReceiptTipping.DISABLED)
         assertThat(payment.giftCards).isEmpty()
-        compose.onNodeWithTag("demoFeatures").assertDoesNotExist()
+        waitGone("demoFeatures")
     }
 
     @Test
@@ -229,7 +234,7 @@ class OnboardingUiTest {
                 .isEmpty()
         }
         assertThat(env.container.settingsState.value.payment.terminalTipping).isEqualTo(ReceiptTipping.DEFAULT_OFF)
-        compose.onNodeWithTag("demoFeatures").assertDoesNotExist()
+        waitGone("demoFeatures")
     }
 
     @Test
@@ -269,7 +274,7 @@ class OnboardingUiTest {
         ).hasSize(11)
         compose.onNodeWithTag("sampleResult").assertExists()
         compose.onNodeWithTag("sampleResultOk").performClick()
-        compose.onNodeWithTag("sampleResult").assertDoesNotExist()
+        waitGone("sampleResult")
         compose.onNodeWithTag("purgeSamples").performScrollTo().performClick()
         compose.onNodeWithTag("confirm").performClick()
         compose.awaitCondition("samples are purged") {
@@ -288,7 +293,7 @@ class OnboardingUiTest {
         ).isEmpty()
         waitFor("sampleResult")
         compose.onNodeWithTag("sampleResultOk").performClick()
-        compose.onNodeWithTag("sampleResult").assertDoesNotExist()
+        waitGone("sampleResult")
         assertThat(env.container.settingsState.value.onboardingCompleted).isTrue()
     }
 

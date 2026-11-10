@@ -250,6 +250,9 @@
   <string name="result_back_to_sale">Volver a la venta</string>
   <string name="result_back_to_pre_auth">Volver a preautorización</string>
   <string name="result_check_again">Comprobar el resultado de nuevo</string>
+  <string name="result_mark_not_processed">Marcar como no procesada</string>
+  <string name="mark_not_processed_title">¿Marcar como no procesada?</string>
+  <string name="mark_not_processed_message">La terminal no tiene registro de esta transacción. Continúa solo si tu Área de Clientes no la muestra. Solo se registra en este dispositivo; no se envía nada.</string>
   <string name="result_abort_busy">Cancelar la transacción actual del terminal</string>
   <string name="result_abort_sent">Se pidió a la terminal que cancelara su transacción actual. Inténtalo de nuevo una vez que esté inactivo.</string>
   <string name="result_tip_note">Imprima el recibo para que el cliente pueda agregar una propina y firmarlo, luego ingrese la propina.</string>

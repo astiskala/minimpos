@@ -11,6 +11,7 @@ import app.minimpos.app.payment.Recheck
 import app.minimpos.app.payment.SharedReceipt
 import app.minimpos.app.payment.StoredTransaction
 import app.minimpos.app.receipt.ActionResult
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.terminal.transport.ExternalText
@@ -265,6 +266,9 @@ fun CaptureResult.toState(
  * @property canShare Whether sharing the receipt through Android's share sheet is offered (on phones and tablets).
  * @property share A receipt the screen should hand to the share sheet now, then report with
  *   [TransactionActions.shared]; null while none is waiting.
+ * @property markActions The Manager permissions marking the transaction not processed needs, offered once a status
+ *   check found that the terminal has no record of it; null while that is not offered.
+ * @property marking Whether marking it not processed is being stored.
  */
 data class TransactionActionsState(
     val print: ActionState = ActionState(),
@@ -277,6 +281,8 @@ data class TransactionActionsState(
     val canEmail: Boolean = false,
     val canShare: Boolean = false,
     val share: SharedReceipt? = null,
+    val markActions: Set<ManagerAction>? = null,
+    val marking: Boolean = false,
 )
 
 /**
@@ -376,7 +382,22 @@ class TransactionActions private constructor(
         state.update { it.copy(rechecking = true, stillUnknown = null) }
         scope.launch {
             val checked = operations.recheck(transaction)
-            state.update { it.copy(rechecking = false, stillUnknown = (checked as? Recheck.StillUnknown)?.failure) }
+            val failure = (checked as? Recheck.StillUnknown)?.failure
+            // Only a terminal with no record of it lets the operator record it as not processed, after checking.
+            val mark = if (failure == Failure.Remote(Fault.NoRecord)) operations.notProcessed.actions(transaction) else null
+            state.update { it.copy(rechecking = false, stillUnknown = failure, markActions = mark) }
+        }
+    }
+
+    /**
+     * Records the unknown transaction as not processed, once the operator confirmed the Customer Area shows no such
+     * transaction; nothing is sent. Offered only through [TransactionActionsState.markActions].
+     */
+    fun markNotProcessed() {
+        state.update { it.copy(marking = true) }
+        scope.launch {
+            persisting { operations.notProcessed.mark(transaction) }
+            state.update { it.copy(marking = false, markActions = null) }
         }
     }
 

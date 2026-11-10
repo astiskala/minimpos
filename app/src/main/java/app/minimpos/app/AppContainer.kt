@@ -665,6 +665,7 @@ class AppContainer(
             sales,
             giftCards,
             holds = listOf(refundCancellations.operationKind, captures.operationKind),
+            approval = managerApproval,
         )
 
     private fun historyPurged() {

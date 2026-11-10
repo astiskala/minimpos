@@ -874,9 +874,7 @@ fun SaleResultScreen(
     val money = rememberMoneyFormatter(record?.sale?.currency ?: PaymentSettings.FALLBACK_CURRENCY)
     val ringUp = resultOrigin(state)
     val gate = currentSetupGate()
-    // While whether the payment went through is unknown, its cart is not offered for another charge: leaving goes Home.
-    val unresolved = record?.sale?.issues?.contains(PaymentIssue.OUTCOME) == true
-    val leave = if (unresolved) Route.Home else ringUp
+    val leave = if (state.unresolved) Route.Home else ringUp
 
     fun done(route: Route) {
         vm.finish()
@@ -928,13 +926,20 @@ fun SaleResultScreen(
                     vm.transaction::recheck,
                     vm.transaction::dismissCheckResult,
                     vm::abortBusyTransaction,
-                    onBackToSale = { done(ringUp) }.takeUnless { unresolved },
+                    onBackToSale = { done(ringUp) }.takeUnless { state.unresolved },
+                    onMarkAbsent = vm.transaction::markNotProcessed,
                 )
             }
         }
     }
     ShareEffect(state.transaction.share, vm.transaction::shared)
 }
+
+/**
+ * Whether it is unknown if the payment went through: its cart is then not offered for another charge, and leaving the
+ * result goes Home.
+ */
+private val SaleResultUiState.unresolved: Boolean get() = record?.sale?.issues?.contains(PaymentIssue.OUTCOME) == true
 
 /** The outcome badge and title, the amount, and for unsuccessful payments why and what to do next. */
 @Composable
@@ -1020,8 +1025,13 @@ private fun ColumnScope.UnapprovedSaleActions(
     onCheckDismiss: () -> Unit,
     onAbortBusy: () -> Unit,
     onBackToSale: (() -> Unit)?,
+    onMarkAbsent: () -> Unit,
 ) {
-    if (PaymentAction.CHECK_AGAIN in state.actions) StatusCheck(state.transaction, onRecheck, onCheckDismiss)
+    if (PaymentAction.CHECK_AGAIN in
+        state.actions
+    ) {
+        StatusCheck(state.transaction, onRecheck, onCheckDismiss, onMarkAbsent = onMarkAbsent)
+    }
     if (state.canAbortBusy) {
         SecondaryButton(
             stringResource(R.string.result_abort_busy),

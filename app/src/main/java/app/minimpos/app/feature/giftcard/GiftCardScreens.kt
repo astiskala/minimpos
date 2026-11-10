@@ -610,7 +610,12 @@ private fun ColumnScope.ActivityResult(
     if (GiftCardAction.CHECK_AGAIN in
         state.actions
     ) {
-        StatusCheck(state.transaction, transaction::recheck, transaction::dismissCheckResult)
+        StatusCheck(
+            state.transaction,
+            transaction::recheck,
+            transaction::dismissCheckResult,
+            onMarkAbsent = transaction::markNotProcessed,
+        )
     }
     if (GiftCardAction.CONTINUE in state.actions) {
         GiftCardPicker(

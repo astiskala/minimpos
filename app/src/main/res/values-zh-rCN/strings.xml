@@ -248,6 +248,9 @@
   <string name="result_back_to_sale">返回销售</string>
   <string name="result_back_to_pre_auth">返回预授权</string>
   <string name="result_check_again">重新查询结果</string>
+  <string name="result_mark_not_processed">标记为未处理</string>
+  <string name="mark_not_processed_title">标记为未处理？</string>
+  <string name="mark_not_processed_message">终端没有此交易的记录。仅在商户后台中没有此交易时继续。此操作仅记录在本设备上，不会发送任何内容。</string>
   <string name="result_abort_busy">取消终端当前交易</string>
   <string name="result_abort_sent">已请求终端取消当前交易。请在终端空闲后重试。</string>
   <string name="result_tip_note">请打印收据，让购物者填写小费并签名，然后输入小费。</string>

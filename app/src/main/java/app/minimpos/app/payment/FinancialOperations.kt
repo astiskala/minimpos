@@ -1,12 +1,20 @@
 package app.minimpos.app.payment
 
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundRoute
+import app.minimpos.app.data.db.RefundStatus
+import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleRoute
+import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.RefundRepository
+import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.RefundStart
+import app.minimpos.core.access.ManagerAction
+import app.minimpos.terminal.transport.Fault
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
@@ -28,6 +36,7 @@ import kotlinx.coroutines.flow.combine
  * @param sales Where sales are stored, read to route a sale's status check.
  * @param giftCards Stored-value activities on the terminal, which count as running and route their own status checks.
  * @param holds Runners that only count as running, such as captures and refund cancellations.
+ * @param approval Manager approval of marking an unknown operation not processed, under the permission of its kind.
  */
 class FinancialOperations(
     private val payments: TransactionLifecycle<PaymentStart>,
@@ -37,6 +46,7 @@ class FinancialOperations(
     private val sales: SaleRepository,
     private val giftCards: GiftCards,
     holds: List<OperationKind> = emptyList(),
+    private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
 ) {
     private val kinds =
         listOf(
@@ -49,7 +59,7 @@ class FinancialOperations(
             .toMutableList()
 
     /** Every runner held now. */
-    private fun kinds(): List<OperationKind> = synchronized(kinds) { kinds.toList() }
+    private val held: List<OperationKind> get() = synchronized(kinds) { kinds.toList() }
 
     /** Holds [kind] too: a runner made after these operations, such as a multi-leg return that sends through them. */
     internal fun include(kind: OperationKind) {
@@ -57,17 +67,17 @@ class FinancialOperations(
     }
 
     /** Releases every runner's process-only requests after confirmed complete history deletion. */
-    internal fun forgetAll() = kinds().forEach(OperationKind::forgetAll)
+    internal fun forgetAll() = held.forEach(OperationKind::forgetAll)
 
     /** Releases process-only request material after durable history deletion, routed to every runner. */
-    internal fun forget(ids: Set<String>) = kinds().forEach { it.forget(ids) }
+    internal fun forget(ids: Set<String>) = held.forEach { it.forget(ids) }
 
     /**
      * Whether a card payment, refund, saved-card charge or Checkout refund is being sent now, so the configuration it
      * is sent with must not be replaced. Token deletion and its active reconciliation, stored-value activities,
      * unreferenced refunds and their cancellations also hold credentials steady. Unfinished history alone does not count.
      */
-    val running: Boolean get() = kinds().any { it.running }
+    val running: Boolean get() = held.any { it.running }
 
     /**
      * The payment running or just finished, whichever way it is sent: on the terminal (scanned wallets included) or as a
@@ -149,13 +159,50 @@ class FinancialOperations(
             }
         }
 
-    /** This link answer as a status check: settled once the link exists or ended, else still unknown for why. */
-    private fun LinkUpdate.recheck(): Recheck =
-        when (this) {
-            LinkUpdate.Settled, LinkUpdate.StillOpen -> Recheck.Settled
-            is LinkUpdate.NotDone -> Recheck.StillUnknown(failure)
-            is LinkUpdate.Unconfirmed -> Recheck.StillUnknown(failure)
+    /** Recording an unknown terminal operation as not processed once the Customer Area confirms it never happened. */
+    val notProcessed = NotProcessed()
+
+    /**
+     * The not-processed part of [FinancialOperations]: an unknown operation sent to a terminal (a payment, a refund or
+     * a gift-card stage), which a later terminal check can find without a record, may be recorded as not done after the
+     * operator confirmed that the Customer Area shows no such transaction. Nothing is sent.
+     */
+    inner class NotProcessed internal constructor() {
+        /** The Manager permissions recording [transaction] as not processed needs; null when it cannot be marked. */
+        suspend fun actions(transaction: StoredTransaction): Set<ManagerAction>? =
+            when (transaction) {
+                is StoredTransaction.Sale -> {
+                    sales
+                        .get(transaction.id)
+                        ?.sale
+                        ?.takeIf { it.route == SaleRoute.TERMINAL && it.status == SaleStatus.UNKNOWN }
+                        ?.let { setOf(if (it.kind == SaleKind.PRE_AUTHORISATION) ManagerAction.PRE_AUTHORISATION else ManagerAction.SALE) }
+                }
+
+                is StoredTransaction.Refund -> {
+                    refunds.notProcessedActions(transaction.id)
+                }
+
+                is StoredTransaction.GiftCard -> {
+                    setOf(ManagerAction.GIFT_CARD_CHANGE).takeIf { giftCards.unknownStage(transaction.id) != null }
+                }
+            }
+
+        /**
+         * Records the unknown [transaction] as not processed. Refused (false) for anything [actions] does not offer, or
+         * without its Manager approval held now. An answer a concurrent status check stores still applies.
+         */
+        suspend fun mark(transaction: StoredTransaction): Boolean {
+            val actions = actions(transaction)
+            if (actions == null || !approval.forActions(actions).allowsNow()) return false
+            val reason = StoredReason.NotDone(Failure.Remote(Fault.NoRecord))
+            return when (transaction) {
+                is StoredTransaction.Sale -> sales.record(transaction.id, SaleEvent.Settled(SaleStatus.FAILED, null, null, reason))
+                is StoredTransaction.Refund -> refunds.markNotProcessed(transaction.id, reason)
+                is StoredTransaction.GiftCard -> giftCards.markNotProcessed(transaction.id, reason)
+            }
         }
+    }
 
     /**
      * The refund part of [FinancialOperations]: follows all refund runners, refuses overlapping starts and routes
@@ -232,6 +279,23 @@ class FinancialOperations(
             checkout.acknowledge()
         }
 
+        /** The Manager permissions marking refund [id] not processed needs: an unknown one sent to a terminal; else null. */
+        internal suspend fun notProcessedActions(id: String): Set<ManagerAction>? {
+            val refund = records.get(id)?.takeIf { it.status == RefundStatus.UNKNOWN } ?: return null
+            return when {
+                refund.route == RefundRoute.UNREFERENCED -> setOf(ManagerAction.UNREFERENCED_REFUND)
+                refund.route != RefundRoute.TERMINAL -> null
+                refund.cancellation -> setOf(ManagerAction.CANCEL_AUTHORISATION)
+                else -> setOf(ManagerAction.REFERENCED_REFUND)
+            }
+        }
+
+        /** Stores refund [id] as not done for [reason]; its reserved balance is released. */
+        internal suspend fun markNotProcessed(
+            id: String,
+            reason: StoredReason,
+        ): Boolean = records.settle(id, RefundStatus.FAILED, null, null, reason)
+
         /** Checks refund [id] through its stored route; cash refunds and absent records are already settled. */
         internal suspend fun recheck(id: String): Recheck =
             when (records.get(id)?.route) {
@@ -242,6 +306,14 @@ class FinancialOperations(
             }
     }
 }
+
+/** This link answer as a status check: settled once the link exists or ended, else still unknown for why. */
+private fun LinkUpdate.recheck(): Recheck =
+    when (this) {
+        LinkUpdate.Settled, LinkUpdate.StillOpen -> Recheck.Settled
+        is LinkUpdate.NotDone -> Recheck.StillUnknown(failure)
+        is LinkUpdate.Unconfirmed -> Recheck.StillUnknown(failure)
+    }
 
 /** The operation a screen follows: [first] while it runs, else [second] unless idle, else [first]. */
 internal fun following(

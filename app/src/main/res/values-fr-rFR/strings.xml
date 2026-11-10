@@ -250,6 +250,9 @@
   <string name="result_back_to_sale">Retour à la vente</string>
   <string name="result_back_to_pre_auth">Retour à la pré-autorisation</string>
   <string name="result_check_again">Vérifiez à nouveau le résultat</string>
+  <string name="result_mark_not_processed">Marquer comme non traitée</string>
+  <string name="mark_not_processed_title">Marquer comme non traitée ?</string>
+  <string name="mark_not_processed_message">Le terminal n’a aucune trace de cette transaction. Continuez seulement si le Customer Area ne la montre pas. Ceci est enregistré sur cet appareil uniquement ; rien n’est envoyé.</string>
   <string name="result_abort_busy">Annuler la transaction en cours du terminal</string>
   <string name="result_abort_sent">Il a été demandé au terminal d’annuler sa transaction en cours. Réessayez une fois qu’il est inactif.</string>
   <string name="result_tip_note">Imprimez le reçu pour que le client puisse ajouter un pourboire et le signer, puis saisissez le pourboire.</string>

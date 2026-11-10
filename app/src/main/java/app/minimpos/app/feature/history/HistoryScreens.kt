@@ -546,6 +546,7 @@ fun SaleDetailScreen(
                 state = state,
                 onRecheck = vm.transaction::recheck,
                 onCheckDismiss = vm.transaction::dismissCheckResult,
+                onMarkAbsent = vm.transaction::markNotProcessed,
                 onRefund = { gate.run { navigator.push(Route.Refund(saleId = sale.id)) } },
                 onCancel = {
                     gate.run {
@@ -679,6 +680,7 @@ private fun ColumnScope.SaleDetailActions(
     state: SaleDetailUiState,
     onRecheck: () -> Unit,
     onCheckDismiss: () -> Unit,
+    onMarkAbsent: () -> Unit,
     onRefund: () -> Unit,
     onCancel: () -> Unit,
     onShowLink: () -> Unit,
@@ -693,7 +695,11 @@ private fun ColumnScope.SaleDetailActions(
         )
     }
     sale.decline?.advice?.let { OutcomeNote(adviceText(it)) }
-    if (PaymentAction.CHECK_AGAIN in state.actions) StatusCheck(state.transaction, onRecheck, onCheckDismiss)
+    if (PaymentAction.CHECK_AGAIN in
+        state.actions
+    ) {
+        StatusCheck(state.transaction, onRecheck, onCheckDismiss, onMarkAbsent = onMarkAbsent)
+    }
     if (PaymentAction.REFUND in state.actions) {
         SecondaryButton(
             stringResource(R.string.detail_refund),

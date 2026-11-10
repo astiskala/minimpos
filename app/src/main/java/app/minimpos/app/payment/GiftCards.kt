@@ -439,9 +439,25 @@ class GiftCards(
      */
     suspend fun recheck(groupId: String): Recheck =
         sends.recheck(unresolved = {
-            val stage = records.activity(groupId)?.stages?.firstOrNull { it.status == GiftCardStatus.UNKNOWN && it.stage.sent }
+            val stage = unknownStage(groupId)
             stage?.serviceId?.let { UnresolvedRequest(it, kindOf(checkNotNull(stage.category)), stage.context, record(stage.id)) }
         })
+
+    /** Activity [groupId]'s stage that was sent to a terminal and whose outcome is unknown; null without one. */
+    internal suspend fun unknownStage(groupId: String): GiftCardOperationEntity? =
+        records.activity(groupId)?.stages?.firstOrNull { it.status == GiftCardStatus.UNKNOWN && it.stage.sent }
+
+    /**
+     * Stores activity [groupId]'s unknown stage as not done for [reason], after the operator confirmed it did not take
+     * effect; nothing is sent. False without such a stage.
+     */
+    internal suspend fun markNotProcessed(
+        groupId: String,
+        reason: StoredReason,
+    ): Boolean {
+        val stage = unknownStage(groupId) ?: return false
+        return records.settle(stage.id, GiftCardStatus.FAILED, null, null, reason)
+    }
 
     /**
      * Records that the cash of activity [groupId]'s approved cash-out was handed over, after its configured Manager approval;

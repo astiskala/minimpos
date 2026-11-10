@@ -249,6 +249,9 @@
   <string name="result_back_to_sale">Back to sale</string>
   <string name="result_back_to_pre_auth">Back to pre-authorization</string>
   <string name="result_check_again">Check result again</string>
+  <string name="result_mark_not_processed">Mark as not processed</string>
+  <string name="mark_not_processed_title">Mark as not processed?</string>
+  <string name="mark_not_processed_message">The terminal has no record of this transaction. Continue only if your Customer Area shows no such transaction. This is recorded on this device only; nothing is sent.</string>
   <string name="result_abort_busy">Cancel the terminal’s current transaction</string>
   <string name="result_abort_sent">The terminal was asked to cancel its current transaction. Try again once it is idle.</string>
   <string name="result_tip_note">Print the receipt so the customer can add a tip and sign it, then enter the tip.</string>

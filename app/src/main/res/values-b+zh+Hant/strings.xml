@@ -248,6 +248,9 @@
   <string name="result_back_to_sale">返回銷售</string>
   <string name="result_back_to_pre_auth">返回預授權</string>
   <string name="result_check_again">重新查詢結果</string>
+  <string name="result_mark_not_processed">標記為未處理</string>
+  <string name="mark_not_processed_title">標記為未處理？</string>
+  <string name="mark_not_processed_message">終端沒有此交易的記錄。僅在商戶後台中沒有此交易時繼續。此操作僅記錄在本裝置上，不會傳送任何內容。</string>
   <string name="result_abort_busy">取消終端目前交易</string>
   <string name="result_abort_sent">已請求終端取消目前交易。請在終端空閒後重試。</string>
   <string name="result_tip_note">請列印收據，讓顧客填寫小費並簽名，然後輸入小費。</string>

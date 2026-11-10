@@ -248,6 +248,9 @@
   <string name="result_back_to_sale">販売に戻る</string>
   <string name="result_back_to_pre_auth">プリオーソリに戻る</string>
   <string name="result_check_again">結果を再確認</string>
+  <string name="result_mark_not_processed">未処理として記録</string>
+  <string name="mark_not_processed_title">未処理として記録しますか？</string>
+  <string name="mark_not_processed_message">端末にこの取引の記録がありません。Customer Area にこの取引がない場合のみ続行してください。この端末にのみ記録され、何も送信されません。</string>
   <string name="result_abort_busy">端末の現在の取引をキャンセル</string>
   <string name="result_abort_sent">端末に現在の取引のキャンセルを要求しました。端末が空いてから再試行してください。</string>
   <string name="result_tip_note">領収書を印刷し、購入者にチップの記入と署名をお願いしてから、チップを入力してください。</string>

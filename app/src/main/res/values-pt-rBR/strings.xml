@@ -250,6 +250,9 @@
   <string name="result_back_to_sale">De volta à venda</string>
   <string name="result_back_to_pre_auth">Voltar à pré-autorização</string>
   <string name="result_check_again">Verifique o resultado novamente</string>
+  <string name="result_mark_not_processed">Marcar como não processada</string>
+  <string name="mark_not_processed_title">Marcar como não processada?</string>
+  <string name="mark_not_processed_message">O terminal não possui registro desta transação. Continue somente se a Customer Area não a mostrar. Isso fica registrado só neste dispositivo; nada é enviado.</string>
   <string name="result_abort_busy">Cancelar a transação atual do terminal</string>
   <string name="result_abort_sent">O terminal foi solicitado a cancelar sua transação atual. Tente novamente quando estiver ocioso.</string>
   <string name="result_tip_note">Imprima o recibo para que o cliente possa adicionar uma gorjeta e assiná-lo, em seguida insira a gorjeta.</string>

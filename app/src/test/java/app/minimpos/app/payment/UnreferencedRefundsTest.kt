@@ -20,6 +20,7 @@ import app.minimpos.app.items
 import app.minimpos.app.protectedApproval
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
@@ -194,6 +195,12 @@ class UnreferencedRefundsTest {
         assertThat(await { container.operations.recheck(StoredTransaction.Refund(id)) })
             .isEqualTo(Recheck.StillUnknown(Failure.Remote(Fault.NoRecord)))
         assertThat(await { checkNotNull(container.refundRecords.get(id)).status }).isEqualTo(RefundStatus.UNKNOWN)
+        // Once the Customer Area confirms it never happened, staff record it as not processed; nothing is sent.
+        assertThat(await { container.operations.notProcessed.actions(StoredTransaction.Refund(id)) })
+            .containsExactly(ManagerAction.UNREFERENCED_REFUND)
+        assertThat(await { container.operations.notProcessed.mark(StoredTransaction.Refund(id)) }).isTrue()
+        assertThat(await { checkNotNull(container.refundRecords.get(id)).status }).isEqualTo(RefundStatus.FAILED)
+        assertThat(await { container.operations.notProcessed.actions(StoredTransaction.Refund(id)) }).isNull()
     }
 
     @Test

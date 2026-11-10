@@ -267,6 +267,11 @@ class GiftCardsTest {
         val unresolved = activity(groupId)
         assertThat(unresolved.funding?.status).isEqualTo(GiftCardStatus.UNKNOWN)
         assertThat(unresolved.attention).containsExactly(GiftCardAction.CHECK_AGAIN)
+        // Confirmed absent in the Customer Area, the funding is recorded as not done: nothing to repair or check.
+        assertThat(await { container.operations.notProcessed.mark(StoredTransaction.GiftCard(groupId)) }).isTrue()
+        val settled = activity(groupId)
+        assertThat(settled.funding?.status).isEqualTo(GiftCardStatus.FAILED)
+        assertThat(settled.needsAttention).isFalse()
     }
 
     @Test

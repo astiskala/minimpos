@@ -27,12 +27,14 @@ import app.minimpos.app.R
 import app.minimpos.app.feature.lock.rememberManagerAction
 import app.minimpos.app.ui.components.ActionGroup
 import app.minimpos.app.ui.components.BottomActions
+import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.EmailReceiptDialog
 import app.minimpos.app.ui.components.GroupAction
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ReceiptPreview
 import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.access.ManagerAction
@@ -166,6 +168,7 @@ fun ColumnScope.StatusCheck(
     onRecheck: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    onMarkAbsent: (() -> Unit)? = null,
 ) {
     SecondaryButton(
         stringResource(R.string.result_check_again),
@@ -176,6 +179,41 @@ fun ColumnScope.StatusCheck(
     )
     state.stillUnknown?.let {
         ResultDialog(stringResource(R.string.result_check_again), stillUnconfirmed(it), true, "statusCheckResult", onDismiss)
+    }
+    val actions = state.markActions
+    if (onMarkAbsent != null && actions != null) MarkNotProcessed(actions, state.marking, onMarkAbsent)
+}
+
+/**
+ * Records an unknown transaction the terminal has no record of as not processed, under the Manager permissions
+ * [actions] and after the operator confirms the Customer Area shows no such transaction. Tagged `markNotProcessed`.
+ */
+@Composable
+private fun MarkNotProcessed(
+    actions: Set<ManagerAction>,
+    marking: Boolean,
+    onConfirm: () -> Unit,
+) {
+    val approve = rememberManagerAction()
+    var confirming by rememberSaveable { mutableStateOf(false) }
+    TertiaryButton(
+        stringResource(R.string.result_mark_not_processed),
+        { approve(actions) { confirming = true } },
+        loading = marking,
+        modifier = Modifier.testTag("markNotProcessed"),
+    )
+    if (confirming) {
+        ConfirmDialog(
+            stringResource(R.string.mark_not_processed_title),
+            stringResource(R.string.mark_not_processed_message),
+            stringResource(R.string.result_mark_not_processed),
+            onConfirm = {
+                confirming = false
+                onConfirm()
+            },
+            onDismiss = { confirming = false },
+            destructive = true,
+        )
     }
 }
 

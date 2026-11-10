@@ -841,7 +841,14 @@ fun RefundResultScreen(
         ScreenColumn(padding, horizontalAlignment = Alignment.CenterHorizontally) {
             RefundOutcome(refund, money)
             RefundDetailsCard(refund, container::formatDateTime)
-            if (state.canRecheck) StatusCheck(state.transaction, vm.transaction::recheck, vm.transaction::dismissCheckResult)
+            if (state.canRecheck) {
+                StatusCheck(
+                    state.transaction,
+                    vm.transaction::recheck,
+                    vm.transaction::dismissCheckResult,
+                    onMarkAbsent = vm.transaction::markNotProcessed,
+                )
+            }
             if (state.accepted) ReceiptActions(state.transaction, vm.transaction, MerchantCopy.NONE)
             RefundCancellation(state, onConfirm = { approveCancel = true }, onDismiss = vm::dismissCancel)
         }

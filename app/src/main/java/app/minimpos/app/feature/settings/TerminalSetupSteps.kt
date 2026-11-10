@@ -816,7 +816,7 @@ private fun terminalDetail(terminal: SetupTerminalChoice): String? {
 private fun ChoiceLabel(
     label: String,
     detail: String?,
-) = Column {
+) = Column(Modifier.fillMaxWidth()) {
     Text(label)
     detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 }

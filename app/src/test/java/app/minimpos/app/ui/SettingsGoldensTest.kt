@@ -27,9 +27,13 @@ import app.minimpos.app.feature.transfer.CodeControls
 import app.minimpos.app.feature.transfer.ImportUiState
 import app.minimpos.app.feature.transfer.TransferImportScreen
 import app.minimpos.app.feature.transfer.TransferImportViewModel
+import app.minimpos.app.terminal.AccountMismatch
+import app.minimpos.app.terminal.KeyRolesOffer
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.terminal.SetupTerminalChoice
 import app.minimpos.app.terminal.TerminalState
+import app.minimpos.app.ui.components.AccountMismatchDialog
+import app.minimpos.app.ui.components.KeyRolesDialog
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -39,6 +43,7 @@ import app.minimpos.core.catalogue.CatalogueTaxRate
 import app.minimpos.core.codec.QrChunks
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
+import app.minimpos.terminal.transport.AdyenRole
 import kotlinx.coroutines.cancel
 import org.junit.Before
 import org.junit.Rule
@@ -47,6 +52,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import java.time.Instant
 import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
 /**
@@ -328,6 +334,37 @@ class SettingsGoldensTest {
     fun `terminal picker on the smallest screen`() {
         compose.setContent { MiniMposTheme { TerminalChoiceDialog(poiIds.map { SetupTerminalChoice(it) }) {} } }
         waitForTag("terminalSearch")
+        screenshot.capture(screen = true)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `terminal picker naming accounts on the smallest screen`() {
+        val terminals =
+            listOf(
+                SetupTerminalChoice("S1F2-000158213605014", "HarbourCoffeeCOM", "ST3224Z22322", Instant.parse("2026-10-16T08:30:00Z")),
+                SetupTerminalChoice("AMS1-000168223606144", "HarbourCoffeeCOM"),
+                SetupTerminalChoice("V400m-324688179", "DemoRetailCOM", inventory = true),
+            )
+        compose.setContent { MiniMposTheme { TerminalChoiceDialog(terminals) {} } }
+        waitForTag("terminal_V400m-324688179")
+        screenshot.capture(screen = true)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `account mismatch on the smallest screen`() {
+        compose.setContent { MiniMposTheme { AccountMismatchDialog(AccountMismatch("HarbourCoffee", "HarbourCoffeeCOM"), {}, {}) } }
+        waitForTag("useTerminalAccount")
+        screenshot.capture(screen = true)
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `missing key roles on the smallest screen`() {
+        val offer = KeyRolesOffer(listOf(AdyenRole.TERMINAL_SETTINGS_ADVANCED, AdyenRole.CLOUD_DEVICE, AdyenRole.TOKENISE))
+        compose.setContent { MiniMposTheme { KeyRolesDialog(offer, {}, {}) } }
+        waitForTag("addKeyRoles")
         screenshot.capture(screen = true)
     }
 }

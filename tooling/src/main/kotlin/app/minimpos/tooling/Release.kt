@@ -166,6 +166,11 @@ internal object Release {
             val file = artifact.resolve(requireNotNull(asset.string("name")))
             require(asset.string("digest") == "sha256:${sha256(file)}") { "Published asset digest mismatch" }
         }
+        // Only the versioned APK's signature, package and alignment are checked, so the fixed-name download must be
+        // the very same file.
+        require(
+            sha256(artifact.resolve("minimpos.apk")) == sha256(artifact.resolve("minimpos-${current.name}.apk")),
+        ) { "The fixed-name APK differs from the verified versioned APK" }
         require(
             readJson(artifact.resolve("update.json")) == updateMetadata(version),
         ) { "Published update metadata differs from this version" }

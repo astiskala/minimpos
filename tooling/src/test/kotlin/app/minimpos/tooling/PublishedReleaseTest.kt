@@ -43,6 +43,13 @@ class PublishedReleaseTest {
     }
 
     @Test
+    fun `the fixed-name APK must be the verified versioned APK even with its own matching digest`() {
+        val directory = fixture()
+        Files.writeString(directory.resolve("minimpos.apk"), "a different, unsigned APK")
+        checkFails(directory, metadata(directory))
+    }
+
+    @Test
     fun `wrong tag drafts prereleases missing flags and nonobjects cannot pass`() {
         val directory = fixture()
         val release = metadata(directory)

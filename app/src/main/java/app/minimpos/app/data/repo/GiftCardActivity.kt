@@ -95,6 +95,10 @@ data class GiftCardActivity(
 
     private val funded: Boolean get() = funding?.status == GiftCardStatus.SUCCEEDED && funding?.movedMinor?.let { it > 0 } == true
 
+    /** Whether the card funding carries the transaction a referenced refund reverses. */
+    private val reversibleFunding: Boolean
+        get() = funding?.stage == GiftCardStage.FUNDING_CARD && funding?.poiTransactionId != null && funding?.poiTimestamp != null
+
     /** Whether confirmed funding has neither delivered value nor been repaired: a visible repair is needed. */
     val needsRepair: Boolean get() = funded && !delivered && !repaired && !unresolved
 
@@ -120,17 +124,17 @@ data class GiftCardActivity(
                 }
                 if (needsRepair) {
                     if (value == null || value?.status?.notDone == true) add(GiftCardAction.CONTINUE)
-                    when {
-                        funding?.stage != GiftCardStage.FUNDING_CARD -> add(GiftCardAction.RETURN_FUNDS)
-
-                        // A referenced refund needs the funding payment's transaction; without it, the Customer Area refunds it.
-                        funding?.poiTransactionId != null && funding?.poiTimestamp != null -> add(GiftCardAction.REFUND_FUNDING)
-                    }
+                    // A referenced refund needs the funding payment's transaction; without it, the Customer Area refunds
+                    // it and staff record the funds as given back.
+                    add(if (reversibleFunding) GiftCardAction.REFUND_FUNDING else GiftCardAction.RETURN_FUNDS)
                 }
             }
 
-    /** Whether it is unfinished or still needs a check, confirmation or repair; retention keeps it. */
-    val needsAttention: Boolean get() = unresolved || attention.isNotEmpty()
+    /**
+     * Whether it is unfinished or still needs a check, confirmation or repair; retention keeps it. Funding not yet
+     * repaired counts even when no action is offered here.
+     */
+    val needsAttention: Boolean get() = unresolved || needsRepair || attention.isNotEmpty()
 
     /**
      * What staff may do now: [attention], plus undoing its load while [now] (epoch milliseconds) is within the undo

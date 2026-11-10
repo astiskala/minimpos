@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.StateRestorationTester
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -303,7 +304,10 @@ class OnboardingUiTest {
             15_000,
         )
         compose.awaitCondition("import choice is persisted") { env.container.settingsState.value.onboardingCompleted }
-        compose.onNodeWithTag("setupCodesIntro", useUnmergedTree = true).assertExists()
+        // The intro can compose a frame after the screen's title, so wait for it rather than asserting at once.
+        compose.waitUntil(
+            15_000,
+        ) { compose.onAllNodesWithTag("setupCodesIntro", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("startSetupScan").assertIsDisplayed()
         compose.onNodeWithTag("manualSetup").assertIsDisplayed()
         assertThat(

@@ -161,6 +161,9 @@ class SecurityAndSettingsTest {
             assertThat(restarted.verify("1234")).isEqualTo(PinCheck.Accepted)
             assertThat(secrets.lockout(Secret.PIN_VERIFIER)).isEqualTo(PinLockout())
             assertThat(PinLockout.decode("damaged")).isEqualTo(PinLockout(failures = 1))
+            assertThat(PinLockout.decode("3:x")).isEqualTo(PinLockout(failures = 1))
+            assertThat(PinLockout.decode("-2:0")).isEqualTo(PinLockout(failures = 1))
+            assertThat(PinLockout.decode(PinLockout(4, 900).encode())).isEqualTo(PinLockout(4, 900))
         }
 
     @Test

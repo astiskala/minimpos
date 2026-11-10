@@ -22,6 +22,7 @@ import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.protectedApproval
+import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.giftcard.GiftCardEntry
 import app.minimpos.core.giftcard.GiftCardOperation
 import app.minimpos.core.giftcard.GiftCardProvider
@@ -267,11 +268,16 @@ class GiftCardsTest {
         val unresolved = activity(groupId)
         assertThat(unresolved.funding?.status).isEqualTo(GiftCardStatus.UNKNOWN)
         assertThat(unresolved.attention).containsExactly(GiftCardAction.CHECK_AGAIN)
+        assertThat(await { container.operations.notProcessed.actions(StoredTransaction.GiftCard(groupId)) })
+            .containsExactly(ManagerAction.GIFT_CARD_CHANGE)
+        assertThat(await { container.operations.recheckResends(StoredTransaction.GiftCard(groupId)) }).isFalse()
         // Confirmed absent in the Customer Area, the funding is recorded as not done: nothing to repair or check.
         assertThat(await { container.operations.notProcessed.mark(StoredTransaction.GiftCard(groupId)) }).isTrue()
         val settled = activity(groupId)
         assertThat(settled.funding?.status).isEqualTo(GiftCardStatus.FAILED)
         assertThat(settled.needsAttention).isFalse()
+        assertThat(await { container.operations.notProcessed.actions(StoredTransaction.GiftCard(groupId)) }).isNull()
+        assertThat(await { container.operations.notProcessed.mark(StoredTransaction.GiftCard(groupId)) }).isFalse()
     }
 
     @Test

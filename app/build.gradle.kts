@@ -158,6 +158,7 @@ kotlin {
     compilerOptions {
         allWarningsAsErrors.set(true)
         extraWarnings.set(true)
+        progressiveMode.set(true)
         jvmDefault.set(org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode.NO_COMPATIBILITY)
         // Room's generated DAOs trip these two extra checks; detekt's VarCouldBeVal and RedundantVisibilityModifier
         // cover them in hand-written code.
@@ -292,7 +293,7 @@ kover {
                 }
                 rule("App branch coverage (non-UI code)") {
                     bound {
-                        minValue.set(77)
+                        minValue.set(78)
                         coverageUnits.set(kotlinx.kover.gradle.plugin.dsl.CoverageUnit.BRANCH)
                     }
                 }

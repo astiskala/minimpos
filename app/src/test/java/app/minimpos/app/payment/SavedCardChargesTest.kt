@@ -441,6 +441,8 @@ class SavedCardChargesTest {
         assertThat(StoredPayment(stored).actions).contains(PaymentAction.CHECK_AGAIN)
         // Checking a saved-card charge again resends it, so screens name it "Send again" and confirm it.
         assertThat(await { operations.recheckResends(StoredTransaction.Sale(unknown)) }).isTrue()
+        // Only terminal operations can be found without a record, so a saved-card charge is never marked.
+        assertThat(await { operations.notProcessed.actions(StoredTransaction.Sale(unknown)) }).isNull()
         answers += CardChargeResult.Authorised("PSP9")
         assertThat(await { operations.recheck(StoredTransaction.Sale(unknown)) }).isEqualTo(Recheck.Settled)
         assertThat(sale(unknown).status).isEqualTo(SaleStatus.APPROVED)

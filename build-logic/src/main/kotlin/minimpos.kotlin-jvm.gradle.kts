@@ -15,6 +15,7 @@ kotlin {
         jvmDefault.set(org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode.NO_COMPATIBILITY)
         allWarningsAsErrors.set(true)
         extraWarnings.set(true)
+        progressiveMode.set(true)
     }
 }
 

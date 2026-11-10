@@ -201,6 +201,9 @@ class UnreferencedRefundsTest {
         assertThat(await { container.operations.notProcessed.mark(StoredTransaction.Refund(id)) }).isTrue()
         assertThat(await { checkNotNull(container.refundRecords.get(id)).status }).isEqualTo(RefundStatus.FAILED)
         assertThat(await { container.operations.notProcessed.actions(StoredTransaction.Refund(id)) }).isNull()
+        assertThat(await { container.operations.notProcessed.mark(StoredTransaction.Refund(id)) }).isFalse()
+        // A terminal refund is asked about, never sent again.
+        assertThat(await { container.operations.recheckResends(StoredTransaction.Refund(id)) }).isFalse()
     }
 
     @Test

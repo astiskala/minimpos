@@ -398,7 +398,7 @@ class TransferImportViewModel(
                 ready.terminalHost?.trim()?.ifBlank { null },
             )
         }) { result ->
-            state.value = finished(ready, result)
+            state.value = finished(ready.copy(historySwitch = null), result)
         }
     }
 
@@ -412,7 +412,7 @@ class TransferImportViewModel(
             }
 
             is SetupImportOutcome.Asks -> {
-                ready.copy(question = result.question, historySwitch = null, outcome = null, incomplete = false, keyUnread = false)
+                ready.copy(question = result.question, outcome = null, incomplete = false, keyUnread = false)
             }
 
             is SetupImportOutcome.HistoryConfirmation -> {
@@ -430,7 +430,6 @@ class TransferImportViewModel(
                     keyUnread = result.keyUnread,
                     terminalHost = result.terminalHost ?: ready.terminalHost.takeIf { result.failure is Failure.Remote },
                     question = null,
-                    historySwitch = null,
                     keyPending = result.keyPending,
                 )
             }

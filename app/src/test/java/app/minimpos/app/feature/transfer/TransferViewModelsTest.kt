@@ -1,16 +1,33 @@
 package app.minimpos.app.feature.transfer
 
 import android.os.Looper
+import app.minimpos.app.FakeDevice
+import app.minimpos.app.FakeManagement
+import app.minimpos.app.FakePaymentsApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.Secret
+import app.minimpos.app.data.security.TransferSeal
+import app.minimpos.app.terminal.SetupQuestion
 import app.minimpos.core.codec.QrChunks
+import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
 import app.minimpos.core.logo.MonoBitmap
+import app.minimpos.terminal.paymentsapp.ManagementResult
+import app.minimpos.terminal.transport.AdyenRole
+import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRoles
+import app.minimpos.terminal.transport.DiscoveredKey
+import app.minimpos.terminal.transport.MerchantAccount
+import app.minimpos.terminal.transport.MerchantAccountListing
+import app.minimpos.terminal.transport.SharedKeyLookup
+import app.minimpos.terminal.transport.TerminalDetailsApi
+import app.minimpos.terminal.transport.TerminalEnvironment
+import app.minimpos.terminal.transport.TerminalListing
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -164,6 +181,69 @@ class TransferViewModelsTest {
         import.import()
         import.setCode("x")
         assertThat(import.state.value).isInstanceOf(ImportUiState.Done::class.java)
+    }
+
+    @Test
+    fun `confirmed history loss is not asked again when the import needs something else`() {
+        val details =
+            object : TerminalDetailsApi {
+                override suspend fun credential(environment: TerminalEnvironment) =
+                    CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList()))
+
+                override suspend fun merchantAccounts(environment: TerminalEnvironment) =
+                    MerchantAccountListing.Listed(listOf(MerchantAccount("A", "First"), MerchantAccount("B", "Second")))
+
+                override suspend fun accountKey(
+                    merchantAccount: String,
+                    storeId: String?,
+                    environment: TerminalEnvironment,
+                ) = SharedKeyLookup.Found(DiscoveredKey("store-key", 2, "correct horse battery staple"))
+
+                override suspend fun terminals(
+                    environment: TerminalEnvironment,
+                    id: String?,
+                ) = TerminalListing.Listed(emptyList(), environment)
+
+                override suspend fun sharedKey(
+                    id: String,
+                    environment: TerminalEnvironment,
+                ) = SharedKeyLookup.Missing
+            }
+        // Already boarded, but not for the chosen account: the import then needs Tap to Pay set up.
+        val phone = FakePaymentsApp().apply { boarded = true }
+        val management = FakeManagement().apply { registrationResult = ManagementResult.NotBoarded }
+        val simulator =
+            TestEnvironment(
+                FakeDevice(paymentsApps = setOf(TerminalEnvironment.TEST)),
+                paymentsApp = phone,
+                management = management,
+                terminalDetails = details,
+                verifiedSetup = false,
+            )
+        try {
+            simulator.useSimulator()
+            await { simulator.container.sampleData.populate(simulator.container.settings.current()) }
+            val seal = TransferSeal(iterations = 1_000)
+            val code = seal.newCode()
+            val public = Transfer(connection = """{"destination":"tapToPay","environment":"TEST","automatic":true}""")
+            val encrypted = seal.seal("""{"ADYEN_API_KEY":"key"}""".toByteArray(), code, TransferCodec.authenticationData(public))
+            val import = TransferImportViewModel("AUD", simulator.container.setupImport)
+            settled(import) { it is ImportUiState.Scanning }
+            QrChunks
+                .split(TransferCodec.encode(public.copy(sealedSecrets = SealedSecrets(encrypted))), "TAPP")
+                .forEach { import.onCode(it.encode()) }
+            settled(import) { it is ImportUiState.Ready }
+            import.setCode(code)
+            import.import()
+            settled(import) { (it as? ImportUiState.Ready)?.question is SetupQuestion.Merchants }
+            import.chooseMerchant("B")
+            settled(import) { (it as? ImportUiState.Ready)?.historySwitch != null }
+            import.reviewSetup(true)
+            val ready = settled(import) { it is ImportUiState.Ready && it.boardingRequired } as ImportUiState.Ready
+            assertThat(ready.historySwitch).isNull()
+        } finally {
+            simulator.close()
+        }
     }
 
     @Test

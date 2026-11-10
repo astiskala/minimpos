@@ -11,7 +11,15 @@ class PaymentContextConverter {
     @TypeConverter
     fun encode(context: PaymentContext?): String? = context?.let { Json.encodeToString(serializer<PaymentContext>(), it) }
 
-    /** Decodes [text]; null means no request has been sent. */
+    /**
+     * Decodes [text]; null means no request has been sent. Fields this version does not know, such as those a newer
+     * version wrote before a downgrade, are ignored. Damaged text still fails: reading it as no context would let a
+     * historical operation skip its original-context check.
+     */
     @TypeConverter
-    fun decode(text: String?): PaymentContext? = text?.let { Json.decodeFromString(serializer<PaymentContext>(), it) }
+    fun decode(text: String?): PaymentContext? = text?.let { LENIENT.decodeFromString(serializer<PaymentContext>(), it) }
+
+    private companion object {
+        val LENIENT = Json { ignoreUnknownKeys = true }
+    }
 }

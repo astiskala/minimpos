@@ -7,10 +7,11 @@ import app.minimpos.app.terminal.KeyRolesOffer
 import app.minimpos.app.terminal.SetupDiscovery
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -41,6 +42,18 @@ class KeyAssistViewModel(
     /** The roles offer and whether roles were added. */
     val state: StateFlow<KeyAssistState>
         field = MutableStateFlow(KeyAssistState())
+
+    private var combined: Pair<TerminalSetupViewModel, StateFlow<TerminalSetupActions>>? = null
+
+    /** [setup]'s actions with this roles offer, as Settings › Terminal shows them together. */
+    fun alongside(setup: TerminalSetupViewModel): StateFlow<TerminalSetupActions> =
+        combined?.takeIf { it.first === setup }?.second
+            ?: combine(
+                setup.actions,
+                state,
+            ) { actions, help -> actions.copy(keyRolesOffer = help.rolesOffer, keyRolesAdded = help.rolesAdded) }
+                .stateIn(viewModelScope, SharingStarted.Eagerly, setup.actions.value)
+                .also { combined = setup to it }
 
     /** Looks for roles the saved API key lacks and could be given, after a test found a role missing. */
     fun offerKeyRoles() {
@@ -81,9 +94,5 @@ class KeyAssistViewModel(
             }
     }
 }
-
-/** These actions with [assist]'s roles offer, as Settings › Terminal shows them together. */
-internal fun TerminalSetupViewModel.withHelp(assist: KeyAssistViewModel): Flow<TerminalSetupActions> =
-    combine(actions, assist.state) { actions, help -> actions.copy(keyRolesOffer = help.rolesOffer, keyRolesAdded = help.rolesAdded) }
 
 private val KEY_RECHECK = 10.seconds

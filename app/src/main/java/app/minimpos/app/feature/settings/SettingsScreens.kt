@@ -241,7 +241,6 @@ internal interface ReceiptBusinessEvents {
     fun onResultDismiss()
 }
 
-/** What Settings › Terminal asks [TerminalSetupViewModel] to do, as [SettingsEvents] does for [SettingsViewModel]. */
 /** Help beside key setup: an account to accept, roles to add and a pending key to check again by itself. */
 internal interface KeyAssistEvents {
     /** Accepts the chosen terminal's merchant account, or leaves it. */
@@ -257,6 +256,7 @@ internal interface KeyAssistEvents {
     fun onSharedKeyFollow(following: Boolean)
 }
 
+/** What Settings › Terminal asks [TerminalSetupViewModel] to do, as [SettingsEvents] does for [SettingsViewModel]. */
 internal interface TerminalSetupEvents : KeyAssistEvents {
     /** Tracks whether [secret] has unsaved visible text, without passing or storing its value. */
     fun onSecretDraft(
@@ -684,12 +684,11 @@ private fun LocalSettingsSectionScreen(
     val actions by vm.actions.collectAsStateWithLifecycle()
     val setup = terminalSetupViewModel(vm)
     val assist = keyAssistViewModel()
-    val setupActions by remember(setup, assist) { setup.withHelp(assist) }.collectAsStateWithLifecycle(setup.actions.value)
-    vm.pricing.pending.collectAsStateWithLifecycle().value?.let { PricingConfirmation(it, vm.pricing::confirm, vm.pricing::cancel) }
+    val setupActions by assist.alongside(setup).collectAsStateWithLifecycle()
+    val pricing by vm.pricing.pending.collectAsStateWithLifecycle()
+    pricing?.let { PricingConfirmation(it, vm.pricing::confirm, vm.pricing::cancel) }
     val historySwitch by vm.environment.pending.collectAsStateWithLifecycle()
-    historySwitch?.let {
-        HistorySwitchDialog(it.unfinished, { vm.environment.review(true) }, { vm.environment.review(false) })
-    }
+    historySwitch?.let { HistorySwitchDialog(it.unfinished, { vm.environment.review(true) }, { vm.environment.review(false) }) }
     val events = remember(vm, sampleData) { settingsEvents(vm, sampleData) }
     val setupEvents = remember(setup, assist) { terminalSetupEvents(setup, assist) }
     var settingPin by rememberSaveable { mutableStateOf<Boolean?>(null) }

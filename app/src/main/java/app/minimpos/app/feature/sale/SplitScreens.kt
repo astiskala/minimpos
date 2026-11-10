@@ -52,6 +52,7 @@ import app.minimpos.app.feature.mealVoucherLabel
 import app.minimpos.app.feature.mealVoucherRules
 import app.minimpos.app.feature.mexicanPlan
 import app.minimpos.app.history.SaleResultNext
+import app.minimpos.app.history.cardText
 import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.MealVoucherAvailability
@@ -655,8 +656,7 @@ private fun SaleTenders(
                                 else -> R.string.split_tender_card
                             },
                         ),
-                        tender.paymentBrand?.uppercase(),
-                        tender.maskedPan,
+                        tender.cardText,
                     ).joinToString(" ")
                 }
             LabeledValue(label, money.format(tender.authorisedMinor ?: tender.requestedMinor))

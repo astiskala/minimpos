@@ -66,6 +66,7 @@ import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.SaleResultNext
+import app.minimpos.app.history.cardText
 import app.minimpos.app.history.cashout
 import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.history.standing
@@ -1036,9 +1037,7 @@ private fun SalePaymentCard(sale: SaleEntity) {
         LabeledValue(stringResource(R.string.detail_reference), sale.merchantReference)
         LabeledValue(
             stringResource(R.string.detail_card),
-            listOfNotNull(sale.paymentBrand?.uppercase(), sale.maskedPan).joinToString(" ").ifBlank {
-                null
-            },
+            sale.cardText,
         )
         LabeledValue(
             stringResource(R.string.detail_wallet),

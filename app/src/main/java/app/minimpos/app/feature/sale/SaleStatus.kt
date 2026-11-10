@@ -14,7 +14,9 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.remainingAmountKnown
+import app.minimpos.app.history.OfflineApproval
 import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.offlineApproval
 import app.minimpos.app.history.standing
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.OutcomeNote
@@ -226,10 +228,10 @@ private fun ColumnScope.ExtraSaleNotes(
         )
     }
     sale.donationMinor?.let { OutcomeNote(stringResource(R.string.detail_donation, money.format(it)), Modifier.testTag("donationNote")) }
-    sale.offlineMode?.let { mode ->
+    sale.offlineApproval?.let { mode ->
         val label =
             stringResource(
-                if (mode == "OFFLINE_EMV") R.string.detail_offline_emv else R.string.detail_offline_saf,
+                if (mode == OfflineApproval.OFFLINE_EMV) R.string.detail_offline_emv else R.string.detail_offline_saf,
             )
         OutcomeNote(label, Modifier.testTag("offlineNote"))
     }

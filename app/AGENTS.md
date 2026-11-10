@@ -31,6 +31,8 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   defines captured statuses. `StoredPayment.actions` owns allowed actions and is checked by capture operations too.
   `SaleEntity.issues` is the one issue reading; screens get whole days from `HistoryAccounting.days`.
   `saleResultNext` is the one reading of what a result screen offers next, payment links included.
+- \* Screens and receipts read what paid a stored sale or tender through the stored payment (`cardText`,
+  `offlineApproval`), never its stored masked card number or offline-mode string.
 - \* Decision rules stay pure: Checkout, Cashback, UnreferencedRefunds, PaymentLinkRequests, SaleEvent, TenderBalance,
   GiftCardActivity, PaymentStanding, RefundablePayment, HistorySearch, HistoryAccounting, ReceiptKind,
   TerminalAssignments, WalletOffers, TerminalSetup, TerminalSetupPlan, DestinationRules, NewInstallation, VerifiedSetup

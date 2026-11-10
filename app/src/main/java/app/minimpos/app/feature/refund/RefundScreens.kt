@@ -67,6 +67,7 @@ import app.minimpos.app.history.RefundInvalidReason
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.approvedSynchronously
+import app.minimpos.app.history.cardText
 import app.minimpos.app.payment.RefundCancelResult
 import app.minimpos.app.payment.RefundLegSkip
 import app.minimpos.app.payment.RefundLegState
@@ -524,10 +525,7 @@ private fun OriginalPaymentCard(
         original.local?.sale?.takeIf { original.legs.size <= 1 }?.let { sale ->
             LabeledValue(
                 stringResource(R.string.detail_card),
-                listOfNotNull(
-                    (if (original.tender == null) sale.paymentBrand else original.tender.paymentBrand)?.uppercase(),
-                    if (original.tender == null) sale.maskedPan else original.tender.maskedPan,
-                ).joinToString(" ").ifBlank { stringResource(R.string.surcharge_unknown) },
+                (if (original.tender == null) sale.cardText else original.tender.cardText) ?: stringResource(R.string.surcharge_unknown),
             )
         }
         LabeledValue(stringResource(R.string.detail_psp), original.transactionId.substringAfter('.'))
@@ -742,8 +740,7 @@ internal fun tenderLabel(tender: SaleTenderEntity): String =
     } else {
         listOf(
             stringResource(if (tender.giftCard != null) R.string.split_tender_gift_card else R.string.split_tender_card),
-            tender.paymentBrand?.uppercase(),
-            tender.maskedPan,
+            tender.cardText,
         ).filterNotNull().joinToString(" ")
     }
 

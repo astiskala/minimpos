@@ -79,11 +79,14 @@ import app.minimpos.app.feature.sale.statusKind
 import app.minimpos.app.feature.sale.statusTitle
 import app.minimpos.app.history.DayTotals
 import app.minimpos.app.history.HistoryDay
+import app.minimpos.app.history.OfflineApproval
 import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.cardText
 import app.minimpos.app.history.cashout
 import app.minimpos.app.history.decline
 import app.minimpos.app.history.linkUnsettled
 import app.minimpos.app.history.methodCode
+import app.minimpos.app.history.offlineApproval
 import app.minimpos.app.history.paidOnline
 import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.share.ShareEffect
@@ -430,7 +433,7 @@ private fun historyRowText(
                 listOfNotNull(
                     time,
                     stringResource(R.string.sample_label).takeIf { sale.sample },
-                    stringResource(R.string.history_offline_label).takeIf { sale.offlineMode != null },
+                    stringResource(R.string.history_offline_label).takeIf { sale.offlineApproval != null },
                     paymentMethodText(sale),
                     sale.customerReference,
                     androidx.compose.ui.platform.LocalContext.current
@@ -748,9 +751,7 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
         LabeledValue(stringResource(R.string.checkout_email), sale.shopperEmail)
         LabeledValue(
             stringResource(R.string.detail_card),
-            listOfNotNull(sale.paymentBrand?.uppercase(), sale.maskedPan).joinToString(" ").ifBlank {
-                null
-            },
+            sale.cardText,
         )
         LabeledValue(stringResource(R.string.detail_entry), sale.entryMode)
         LabeledValue(stringResource(R.string.detail_auth), sale.authCode)
@@ -759,10 +760,10 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
         LabeledValue(stringResource(R.string.detail_shopper_reference), sale.shopperReference)
         LabeledValue(stringResource(R.string.detail_token), sale.storedPaymentMethodId)
         LabeledValue(stringResource(R.string.detail_terminal), sale.poiId)
-        sale.offlineMode?.let { mode ->
+        sale.offlineApproval?.let { mode ->
             LabeledValue(
                 stringResource(R.string.detail_offline_mode),
-                stringResource(if (mode == "OFFLINE_EMV") R.string.detail_offline_emv else R.string.detail_offline_saf),
+                stringResource(if (mode == OfflineApproval.OFFLINE_EMV) R.string.detail_offline_emv else R.string.detail_offline_saf),
             )
         }
         sale.unconfirmedBatchCount?.takeIf { it > 0 }?.let {

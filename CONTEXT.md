@@ -65,7 +65,7 @@ reports approved cash separately from the card charge. Cash handover is a durabl
 
 | Term | Meaning | Owner / code name |
 | --- | --- | --- |
-| Stored payment | Read-only interpretation of a retained sale: standing, allowed actions, refund eligibility and history accounting. Separate from sending financial operations. | `history/StoredPayment`, `history/PaymentStanding`, `history/RefundablePayment`, `history/HistoryAccounting` |
+| Stored payment | Read-only interpretation of a retained sale: standing, allowed actions, refund eligibility, history accounting and what paid it (the card as reported, offline approval). Separate from sending financial operations. | `history/StoredPayment`, `history/OfflineApproval` (`cardText`, `offlineApproval`), `history/PaymentStanding`, `history/RefundablePayment`, `history/HistoryAccounting` |
 | Standing | Where a payment stands: charged, awaiting tip, held, capture requested/failed/unknown, or cancelled. | `history/PaymentStanding`, `sale.standing` |
 | Actions | Operations permitted on a stored payment now; refund/cancellation initiation and capture retry keep reference facts out of screens. | `StoredPayment.actions`, `PaymentAction`, `payment/StoredPaymentActions` |
 | Capture | Collects a held amount through Checkout; accepted requests still need Adyen's final confirmation. | `payment/Captures` |

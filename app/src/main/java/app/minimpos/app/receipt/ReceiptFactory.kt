@@ -18,6 +18,7 @@ import app.minimpos.app.history.HistoryReport
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.ReceiptStanding
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.history.cardText
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.TaxBreakdown
 import app.minimpos.core.codec.RefundQrPayload
@@ -402,7 +403,7 @@ internal fun receiptTenders(record: SaleWithLines): List<ReceiptTender> =
         if (tender.kind == TenderKind.CASH) {
             ReceiptTender(ReceiptTenderKind.CASH, null, tender.requestedMinor, tender.cashReceivedMinor, tender.changeMinor)
         } else {
-            val detail = listOfNotNull(tender.paymentBrand?.uppercase(), tender.maskedPan).joinToString(" ").ifBlank { null }
+            val detail = tender.cardText
             val kind =
                 when {
                     tender.giftCard != null -> ReceiptTenderKind.GIFT_CARD

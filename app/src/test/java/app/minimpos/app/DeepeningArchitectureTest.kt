@@ -323,6 +323,16 @@ class DeepeningArchitectureTest {
     }
 
     @Test
+    fun `screens and receipts read what paid a sale only through the stored payment`() = paidWith.check(app)
+
+    @Test
+    fun `paid-with ownership rejects a screen formatting the stored card itself`() = reject(listOf(paidWith), PaidWithViolation::class.java)
+
+    private class PaidWithViolation {
+        fun card(sale: SaleEntity) = sale.maskedPan
+    }
+
+    @Test
     fun `automatic receipt claims use transaction actions and only delivery publishes progress`() =
         receiptAutomation.forEach { it.check(app) }
 
@@ -815,6 +825,26 @@ class DeepeningArchitectureTest {
                         "getUnreferencedIdentity",
                     ),
                 )
+
+        // The result, history, refund and split screens and the receipt each formatted the stored card, and two screens
+        // compared the stored offline-mode string; the stored payment reads what paid a sale once (cardText,
+        // offlineApproval), so a stored format no longer reaches presentation.
+        val paidWith: ArchRule =
+            noClasses()
+                .that(
+                    resideInAnyPackage("app.minimpos.app.feature..", "app.minimpos.app.receipt..")
+                        .and(
+                            // History search matches typed text against the stored fields verbatim; it presents nothing.
+                            DescribedPredicate.not(
+                                DescribedPredicate.describe<JavaClass>("history search") {
+                                    it.name.matches(Regex(within("app.minimpos.app.feature.history.HistorySearch")))
+                                },
+                            ),
+                        ).or(type(PaidWithViolation::class.java)),
+                ).should()
+                .callMethodWhere(callTo(SaleEntity::class.java.name, "getMaskedPan", "getOfflineMode"))
+                .orShould()
+                .callMethodWhere(callTo(SaleTenderEntity::class.java.name, "getMaskedPan"))
 
         // First-screen claiming stays shared, while dispatch and its progress cannot be reconstructed in presentation.
         val receiptAutomation: List<ArchRule> =

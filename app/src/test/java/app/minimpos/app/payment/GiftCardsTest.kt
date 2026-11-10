@@ -270,6 +270,33 @@ class GiftCardsTest {
     }
 
     @Test
+    fun `an unknown outcome never replaces a resolved stage or its approved amount`() {
+        simulator()
+        val loaded =
+            GiftCardOperationEntity(
+                id = "load",
+                groupId = "resolved",
+                stage = GiftCardStage.LOAD,
+                category = GiftCardCategory.STORED_VALUE,
+                createdAt = 1,
+                status = GiftCardStatus.SUCCEEDED,
+                provider = "SVS",
+                currency = "AUD",
+                amountMinor = 400,
+                approvedMinor = 400,
+                merchantReference = "G-2",
+                serviceId = "LOADED01",
+            )
+        await {
+            records.open(loaded)
+            records.settle("load", GiftCardStatus.UNKNOWN, null, null, StoredReason.Interrupted)
+        }
+        val stage = activity("resolved").stages.single()
+        assertThat(stage.status).isEqualTo(GiftCardStatus.SUCCEEDED)
+        assertThat(stage.approvedMinor).isEqualTo(400)
+    }
+
+    @Test
     fun `an unexpected failure keeps its stored stage recoverable before request cleanup`() {
         simulator()
         val presented = card(number = "6006491234567890")

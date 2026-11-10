@@ -58,8 +58,8 @@ class GiftCardRepository(
 
     /**
      * Stores [status] for stage [id] with the terminal's [details] (when it answered), its own words [message] and the
-     * [reason] there is no answer. An approved cash-out also stores its cash handover, awaiting staff, once. False only
-     * when the stage is gone; storage failures throw.
+     * [reason] there is no answer. An approved cash-out also stores its cash handover, awaiting staff, once. An unknown
+     * [status] leaves a resolved stage unchanged. False only when the stage is gone; storage failures throw.
      */
     suspend fun settle(
         id: String,
@@ -70,6 +70,8 @@ class GiftCardRepository(
     ): Boolean =
         db.withTransaction {
             val stage = dao.stage(id) ?: return@withTransaction false
+            // A resolved stage keeps its outcome and approved amount; an unknown one never replaces them.
+            if (status == GiftCardStatus.UNKNOWN && !stage.status.unresolved) return@withTransaction true
             val settled =
                 stage.answered(details).copy(
                     status = status,

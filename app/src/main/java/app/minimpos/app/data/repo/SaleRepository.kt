@@ -172,6 +172,8 @@ class SaleRepository(
     ): Boolean =
         db.withTransaction {
             val sale = dao.header(id) ?: return@withTransaction false
+            // A resolved outcome is never replaced by an unknown one, on the sale or its tender row.
+            if (sale.keepsOutcomeAgainst(event)) return@withTransaction true
             var stamped = event.stamped(now())
             if (stamped is SaleEvent.Settled && stamped.status == SaleStatus.APPROVED &&
                 dao.tenderRecorded(id, sale.serviceId, stamped.details?.poiTransactionId)

@@ -169,6 +169,17 @@ class SaleEventTest {
     }
 
     @Test
+    fun `an unknown outcome never replaces a resolved one`() {
+        val paid = pending.after(SaleEvent.Settled(SaleStatus.APPROVED, null, approved.copy(amountMinor = 2_000)))
+        val unknown = SaleEvent.Settled(SaleStatus.UNKNOWN, null, null, StoredReason.Interrupted)
+        assertThat(paid.after(unknown)).isEqualTo(paid)
+        assertThat(paid.after(SaleEvent.OutcomeUnknown(Failure.Device(DeviceFault.UNEXPECTED)))).isEqualTo(paid)
+        val declined = pending.after(SaleEvent.Settled(SaleStatus.DECLINED, null, approved.copy(success = false)))
+        assertThat(declined.after(unknown)).isEqualTo(declined)
+        assertThat(pending.after(unknown).status).isEqualTo(SaleStatus.UNKNOWN)
+    }
+
+    @Test
     fun `a tender approved without a readable amount pays only what it asked for`() {
         val tender = pending.copy(totalMinor = 1_300, tenderRequestedMinor = 500)
         val paid = tender.after(SaleEvent.Settled(SaleStatus.APPROVED, null, approved.copy(amountMinor = null)))
@@ -228,11 +239,12 @@ class SaleEventTest {
         assertThat(tipSale.pspReference).isEqualTo("PSP1")
         assertThat(tipSale.adjustAuthorisationData).isEqualTo("BQABAQfirst")
         assertThat(tipSale.standing).isEqualTo(PaymentStanding.AWAITING_TIP)
-        // Without an answer the stored terminal details are kept.
-        val unknown = tipSale.after(SaleEvent.Settled(SaleStatus.UNKNOWN, "No answer", null))
+        // Without an answer an attempt in progress keeps the stored terminal details; a resolved one is never replaced.
+        val unknown = tipSale.copy(status = SaleStatus.PENDING).after(SaleEvent.Settled(SaleStatus.UNKNOWN, "No answer", null))
         assertThat(unknown.pspReference).isEqualTo("PSP1")
         assertThat(unknown.message).isEqualTo("No answer")
         assertThat(unknown.standing).isEqualTo(PaymentStanding.NOT_APPROVED)
+        assertThat(tipSale.after(SaleEvent.Settled(SaleStatus.UNKNOWN, "No answer", null))).isEqualTo(tipSale)
         // What the app says and what the terminal says replace each other.
         val notSetUp =
             pending.after(

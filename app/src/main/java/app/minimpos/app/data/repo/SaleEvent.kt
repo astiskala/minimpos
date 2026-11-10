@@ -339,8 +339,19 @@ val SaleEntity.retentionEligible: Boolean
             }
         }
 
+/**
+ * Whether [event] would replace this sale's resolved outcome with an unknown one, such as a runner's safety net firing
+ * after its answer was stored; nothing may do that, so such an event changes nothing.
+ */
+fun SaleEntity.keepsOutcomeAgainst(event: SaleEvent): Boolean {
+    val unknown = (event is SaleEvent.Settled && event.status == SaleStatus.UNKNOWN) || event is SaleEvent.OutcomeUnknown
+    return unknown && status != SaleStatus.PENDING && status != SaleStatus.UNKNOWN
+}
+
 /** This sale after [event] happened to it. */
-fun SaleEntity.after(event: SaleEvent): SaleEntity =
+fun SaleEntity.after(event: SaleEvent): SaleEntity = if (keepsOutcomeAgainst(event)) this else changedBy(event)
+
+private fun SaleEntity.changedBy(event: SaleEvent): SaleEntity =
     when (event) {
         is SaleEvent.CashEvent -> {
             cashEvent(event)

@@ -1,4 +1,4 @@
-// Libraries that come in transitively (the Adyen library's Jackson, and AGP's, Android Lint's and Dokka's own
+// Libraries that come in transitively (the Adyen library's Jackson, and AGP's, Android Lint's, Truth's and Dokka's own
 // dependencies) and have published security advisories: wherever they are resolved, including each build script's
 // classpath, an older version is raised to the patched release of its line (newer versions are left alone). Dependabot
 // cannot update these itself, since no build file declares them.
@@ -15,6 +15,8 @@ gradle.lifecycle.beforeProject {
             "org.bouncycastle:bcpkix-jdk18on" to listOf("1.85"),
             "org.bouncycastle:bcprov-jdk18on" to listOf("1.85"),
             "org.bouncycastle:bcutil-jdk18on" to listOf("1.85"),
+            // Build and test tooling only (AGP, Lint, Truth); 33.7.2 fixes unbounded allocation when deserializing.
+            "com.google.guava:guava" to listOf("33.7.2-jre"),
             // The HTML checker's Jetty modules share one patch level; 12.0.36 fixes the server/security advisories.
             "org.eclipse.jetty:jetty-alpn-client" to listOf("12.0.36"),
             "org.eclipse.jetty:jetty-client" to listOf("12.0.36"),

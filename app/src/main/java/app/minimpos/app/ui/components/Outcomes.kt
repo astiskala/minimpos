@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -147,7 +148,7 @@ fun TransactionRow(
         PaddingValues(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding),
 ) {
     Row(
-        modifier.fillMaxWidth().clickable(onClick = onClick).padding(contentPadding),
+        modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick).padding(contentPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {

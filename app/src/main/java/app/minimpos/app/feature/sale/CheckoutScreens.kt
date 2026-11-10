@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -516,7 +517,7 @@ private fun TokenChoice(
                                 card.expiryYear?.let { year -> { Text(stringResource(R.string.saved_card_expires, month, year)) } }
                             },
                         leadingContent = { Icon(Icons.Default.CreditCard, contentDescription = null) },
-                        modifier = Modifier.clickable { onChoose(card) }.testTag("token_${card.id}"),
+                        modifier = Modifier.clickable(role = Role.Button) { onChoose(card) }.testTag("token_${card.id}"),
                     )
                 }
             }

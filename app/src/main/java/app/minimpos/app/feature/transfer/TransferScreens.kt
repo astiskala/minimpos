@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -313,12 +314,7 @@ fun TransferImportScreen(
     val importing = state == ImportUiState.Importing
     val snackbar = remember { SnackbarHostState() }
     ImportNavigation(state, snackbar)
-    if ((state as? ImportUiState.Ready)?.keyPending == true) {
-        DisposableEffect(Unit) {
-            vm.followPendingKey(true)
-            onDispose { vm.followPendingKey(false) }
-        }
-    }
+    FollowPendingKey((state as? ImportUiState.Ready)?.keyPending == true, vm::followPendingKey)
     MiniScaffold(
         title = stringResource(R.string.settings_quick_setup_import),
         onBack = ::back.takeUnless { importing },
@@ -358,8 +354,6 @@ fun TransferImportScreen(
         confirmReplace = confirmReplace,
         onTerminal = vm::chooseTerminal,
         onReview = vm::reviewSetup,
-        onAccount = vm::reviewAccount,
-        onRoles = vm::reviewKeyRoles,
         onMerchant = vm::chooseMerchant,
         onConfirm = {
             confirmReplace = false
@@ -367,6 +361,21 @@ fun TransferImportScreen(
         },
         onDismiss = { confirmReplace = false },
     )
+}
+
+/** While a created key is [pending], has [follow] retry the import by itself. */
+@Composable
+private fun FollowPendingKey(
+    pending: Boolean,
+    follow: (Boolean) -> Unit,
+) {
+    val current = rememberUpdatedState(follow)
+    if (pending) {
+        DisposableEffect(Unit) {
+            current.value(true)
+            onDispose { current.value(false) }
+        }
+    }
 }
 
 /** In-progress imports intercept system Back until their durable work finishes. */
@@ -387,15 +396,13 @@ private fun ImportReviewDialogs(
     confirmReplace: Boolean,
     onTerminal: (String?) -> Unit,
     onReview: (Boolean) -> Unit,
-    onAccount: (Boolean) -> Unit,
-    onRoles: (Boolean) -> Unit,
     onMerchant: (String?) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     state?.terminalChoices?.let { TerminalChoiceDialog(it, onTerminal) }
-    state?.accountMismatch?.let { AccountMismatchDialog(it, { onAccount(true) }, { onAccount(false) }) }
-    state?.keyRolesOffer?.let { KeyRolesDialog(it, { onRoles(true) }, { onRoles(false) }) }
+    state?.accountMismatch?.let { AccountMismatchDialog(it, { onReview(true) }, { onReview(false) }) }
+    state?.keyRolesOffer?.let { KeyRolesDialog(it, { onReview(true) }, { onReview(false) }) }
     state?.merchantChoices?.let { MerchantChoiceDialog(it, onMerchant) }
     state?.historySwitch?.let {
         HistorySwitchDialog(it.unfinished, { onReview(true) }, { onReview(false) })

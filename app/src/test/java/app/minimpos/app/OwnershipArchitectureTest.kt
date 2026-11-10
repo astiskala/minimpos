@@ -40,6 +40,7 @@ import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.SavedCardApi
+import app.minimpos.terminal.transport.CredentialRolesApi
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalKey
@@ -200,6 +201,16 @@ class OwnershipArchitectureTest {
         fun offers(state: TransactionActionsState) = state.canPrint || state.stillUnknown != null
     }
 
+    @Test
+    fun `only key roles can widen an API key`() = keyRolesOwnership.check(app)
+
+    @Test
+    fun `key roles ownership rejects an unconfirmed widening`() = reject(listOf(keyRolesOwnership), KeyRolesViolation::class.java)
+
+    private class KeyRolesViolation {
+        suspend fun widen(api: TerminalDetailsApi) = api.addRoles(TerminalEnvironment.TEST, emptyList())
+    }
+
     private fun reject(
         rules: List<ArchRule>,
         violation: Class<*>,
@@ -209,6 +220,14 @@ class OwnershipArchitectureTest {
     }
 
     private companion object {
+        // Adding roles widens what a stored key can do, so it stays with the one owner that asks the operator first.
+        val keyRolesOwnership: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within("app.minimpos.app.terminal.KeyRoles"))
+                .should()
+                .callMethodWhere(callToSubtypeOf(CredentialRolesApi::class.java, "addRoles"))
+
         // Every gated action asks the one SetupGate, so "not set up yet" is decided, explained and linked the same way
         // on every screen; a screen reading readiness itself would drift into its own wording or partial gate.
         val setupGateOwnership: ArchRule =

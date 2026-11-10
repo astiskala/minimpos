@@ -293,7 +293,7 @@ private fun ColumnScope.ConnectionSteps(
             SettingActions {
                 SecondaryButton(
                     stringResource(R.string.settings_find_shared_key),
-                    setupEvents::onPhoneKeyFind,
+                    setupEvents::onSharedKeyCheck,
                     loading = setup.keyResult.running,
                     modifier = Modifier.testTag("findSharedKey"),
                 )

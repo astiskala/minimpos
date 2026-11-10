@@ -39,7 +39,7 @@ class TerminalAssignmentsTest {
         val older = terminal.copy(id = "A", lastActivity = Instant.parse("2026-01-01T00:00:00Z"))
         val newer = terminal.copy(id = "B", lastActivity = Instant.parse("2026-02-01T00:00:00Z"), inventory = true)
         val silent = terminal.copy(id = "C")
-        val listed = TerminalAssignments.choices(listOf(silent, older, newer))
+        val listed = terminalChoices(listOf(silent, older, newer))
         assertThat(listed.map { it.id }).containsExactly("B", "A", "C").inOrder()
         assertThat(listed.first().inventory).isTrue()
         assertThat(listed.first().merchantAccount).isEqualTo(terminal.merchantAccount)

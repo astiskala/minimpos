@@ -67,6 +67,12 @@ data class SetupMerchantChoice(
     val name: String,
 )
 
+/** [terminals] as an operator chooses among them: the most recently active first, those without activity last. */
+internal fun terminalChoices(terminals: List<TerminalDetails>): List<SetupTerminalChoice> =
+    terminals
+        .sortedWith(compareBy(nullsLast(reverseOrder<Instant>())) { it.lastActivity })
+        .map { SetupTerminalChoice(it.id, it.merchantAccount, it.storeId, it.lastActivity, it.inventory) }
+
 /** Store discovery for a saved Tap to Pay setup, without changing registration. */
 sealed interface SetupStoreSearch {
     /**
@@ -168,6 +174,11 @@ internal sealed interface SharedKeyConnection {
         override val configured: Boolean = true
     }
 
+    /** The Tap to Pay account's key was read from Adyen and saved; only a payment can test it. */
+    data object Saved : SharedKeyConnection {
+        override val configured: Boolean = true
+    }
+
     data class Failed(
         val failure: Failure,
         val offer: SharedKeyOffer? = null,
@@ -201,12 +212,16 @@ class SetupDiscovery(
     private var storeSelection: StoreSelection? = null
     private val mutex = Mutex()
 
-    /** Reads the shared key of the saved Tap to Pay account and saves it; null once saved, else why it could not be. */
-    suspend fun findPhoneKey(): Failure? =
-        mutex.withLock {
-            val unlocked = setups.unlocked(forValidation = true)
+    /** Reads the shared key of the saved Tap to Pay account and saves it. */
+    private suspend fun phoneKey(unlocked: UnlockedSetup): SharedKeyConnection {
+        val failure = phoneKeyFailure(unlocked)
+        return if (failure == null) SharedKeyConnection.Saved else SharedKeyConnection.Failed(failure)
+    }
+
+    private suspend fun phoneKeyFailure(unlocked: UnlockedSetup): Failure? =
+        run {
             val owner = setups.owner(unlocked)
-            if (owner is BoardingOwner.Blocked) return@withLock Failure.NotSetUp(owner.problem)
+            if (owner is BoardingOwner.Blocked) return@run Failure.NotSetUp(owner.problem)
             owner as BoardingOwner.Ready
             val storeId =
                 unlocked.setup.settings.terminal.storeId
@@ -306,7 +321,7 @@ class SetupDiscovery(
                     is DiscoveredTerminals.Failed -> return@withLock SetupDiscoverySearch.Failed(found.failure)
                 }
             selection = Selection(setups.SetupFence(unlocked, SetupFreshness.CREDENTIAL), setup, api, environment, terminals)
-            SetupDiscoverySearch.Found(TerminalAssignments.choices(terminals))
+            SetupDiscoverySearch.Found(terminalChoices(terminals))
         }
 
     /** Applies only a currently offered ID; null dismisses the list, and stale selections are ignored. A terminal assigned
@@ -385,6 +400,7 @@ class SetupDiscovery(
     internal suspend fun setupKey(confirmed: SharedKeyOffer? = null): SharedKeyConnection =
         mutex.withLock {
             val unlocked = setups.unlocked(forValidation = true)
+            if (unlocked.setup.boardsPhone) return@withLock phoneKey(unlocked)
             // The passphrase saved below is part of this work, so only the connection fields and API key must stay.
             val fence = setups.SetupFence(unlocked, SetupFreshness.CREDENTIAL)
             val result = sharedKeys.resolve(unlocked, confirmed, unchanged = fence::stillCurrent)

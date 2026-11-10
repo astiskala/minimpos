@@ -25,17 +25,13 @@ import app.minimpos.app.terminal.TapToPayCheck
 import app.minimpos.app.terminal.TapToPayOutcome
 import app.minimpos.app.terminal.TapToPaySetup
 import app.minimpos.app.terminal.TerminalStatus
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * Where the search for terminals in the cloud and the Tap to Pay setup stand.
@@ -43,8 +39,8 @@ import kotlin.time.Duration.Companion.seconds
  * @property terminals The latest search for terminals connected in the cloud.
  * @property connectedTerminals The terminals that search found, to choose from; null while none is offered.
  * @property accountMismatch A chosen terminal assigned to another merchant account, for the operator to accept; null otherwise.
- * @property keyRolesOffer Roles the API key lacks that it could be given, awaiting the operator; null otherwise.
- * @property keyRolesAdded Whether the latest addition of roles was confirmed, so the key can be tested again.
+ * @property keyRolesOffer Roles the API key lacks that it could be given, from [KeyAssistViewModel]; null otherwise.
+ * @property keyRolesAdded Whether [KeyAssistViewModel] confirmed the latest addition of roles.
  * @property tapToPay The latest setup or removal of Tap to Pay.
  * @property apiKeyStored Whether the API key given to the latest search was stored (so the field can be cleared).
  * @property manualDetails Whether optional details need manual entry.
@@ -117,8 +113,6 @@ class TerminalSetupViewModel(
     private val observedTerminal: Flow<TerminalSettings> = settings.settings.map { it.terminal },
     private val onConnected: suspend () -> Unit = {},
 ) : ViewModel() {
-    private var keyFollow: Job? = null
-
     /** Outcomes of the latest actions. */
     val actions: StateFlow<TerminalSetupActions>
         field = MutableStateFlow(TerminalSetupActions())
@@ -241,75 +235,10 @@ class TerminalSetupViewModel(
         })
     }
 
-    /** Looks for roles the saved API key lacks and could be given, after a test found a role missing. */
-    fun offerKeyRoles() {
-        launchWrite({
-            val offer = discovery.keyRolesOffer()
-            actions.update { it.copy(keyRolesOffer = offer, keyRolesAdded = false) }
-        })
-    }
-
-    /** Adds the offered roles to the API key, or leaves the key as it is. */
-    fun reviewKeyRoles(accept: Boolean) {
-        val offer = actions.value.keyRolesOffer ?: return
-        actions.update { it.copy(keyRolesOffer = null) }
-        if (accept) {
-            launchWrite({
-                val added = discovery.addKeyRoles(offer)
-                actions.update { it.copy(keyRolesAdded = added) }
-            })
-        }
-    }
-
-    /** Accepts the chosen terminal's merchant account, or leaves everything as it is. */
-    fun reviewAccount(accept: Boolean) {
-        val differs = actions.value.accountMismatch ?: return
-        if (accept) {
-            chooseTerminal(differs.poiId, differs.mismatch.assigned)
-        } else {
-            actions.update { it.copy(accountMismatch = null) }
-        }
-    }
-
     /** Confirms only the currently offered terminal/environment; never triggered by discovery or startup. */
     fun createSharedKey(offer: SharedKeyOffer) {
         if (actions.value.sharedKeyOffer?.matches(offer) != true) return
         keyAction(offer)
-    }
-
-    /** While [following], checks a pending key again every few seconds, so the operator need not come back and tap. */
-    fun followSharedKey(following: Boolean) {
-        keyFollow?.cancel()
-        keyFollow =
-            if (following) {
-                viewModelScope.launch {
-                    while (isActive) {
-                        delay(KEY_RECHECK)
-                        checkSharedKey()
-                    }
-                }
-            } else {
-                null
-            }
-    }
-
-    /** Reads the Tap to Pay account's shared key from Adyen and saves it. */
-    fun findPhoneKey() {
-        if (actions.value.keyResult.running) return
-        actions.update { it.copy(keyResult = ActionState(running = true)) }
-        launchWrite({
-            val failure = runSecretWrite { discovery.findPhoneKey()?.let { ActionOutcome.Failed(it) } }
-            if (failure == null) {
-                val terminal = settings.current().terminal
-                observedTerminal.first { it == terminal }
-            }
-            actions.update {
-                it.copy(
-                    keyResult = failure?.let { outcome -> ActionState(outcome = outcome, isError = true) } ?: ActionState(done = true),
-                    revision = if (failure == null) it.revision + 1 else it.revision,
-                )
-            }
-        })
     }
 
     /** Reads existing settings and checks communication again; any required PATCH needs a new explicit confirmation. */
@@ -346,6 +275,12 @@ class TerminalSetupViewModel(
                         revision = if (result.configured) it.revision + 1 else it.revision,
                         keyResult = ActionState(outcome = ActionOutcome.Failed(result.failure), isError = true),
                     )
+                }
+            }
+
+            SharedKeyConnection.Saved -> {
+                actions.update {
+                    it.copy(manualDetails = false, revision = it.revision + 1, keyResult = ActionState(done = true))
                 }
             }
 
@@ -425,5 +360,3 @@ class TerminalSetupViewModel(
         })
     }
 }
-
-private val KEY_RECHECK = 10.seconds

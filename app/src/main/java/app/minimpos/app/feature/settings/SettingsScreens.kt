@@ -147,6 +147,12 @@ private fun settingsViewModel(): SettingsViewModel {
 }
 
 @Composable
+private fun keyAssistViewModel(): KeyAssistViewModel {
+    val container = LocalAppContainer.current
+    return viewModel { KeyAssistViewModel(container.setupDiscovery) }
+}
+
+@Composable
 private fun terminalSetupViewModel(settings: SettingsViewModel): TerminalSetupViewModel {
     val container = LocalAppContainer.current
     return viewModel {
@@ -236,7 +242,22 @@ internal interface ReceiptBusinessEvents {
 }
 
 /** What Settings › Terminal asks [TerminalSetupViewModel] to do, as [SettingsEvents] does for [SettingsViewModel]. */
-internal interface TerminalSetupEvents {
+/** Help beside key setup: an account to accept, roles to add and a pending key to check again by itself. */
+internal interface KeyAssistEvents {
+    /** Accepts the chosen terminal's merchant account, or leaves it. */
+    fun onAccountReview(accept: Boolean)
+
+    /** Looks for roles the API key lacks and could be given ([KeyAssistViewModel.offerKeyRoles]). */
+    fun onKeyRolesOffer()
+
+    /** Adds the offered roles, or leaves the key ([KeyAssistViewModel.reviewKeyRoles]). */
+    fun onKeyRolesReview(accept: Boolean)
+
+    /** Starts or stops checking a pending key again by itself ([KeyAssistViewModel.followSharedKey]). */
+    fun onSharedKeyFollow(following: Boolean)
+}
+
+internal interface TerminalSetupEvents : KeyAssistEvents {
     /** Tracks whether [secret] has unsaved visible text, without passing or storing its value. */
     fun onSecretDraft(
         secret: Secret,
@@ -249,15 +270,6 @@ internal interface TerminalSetupEvents {
     /** Takes [poiId] as the terminal in the cloud; null only closes the list ([TerminalSetupViewModel.chooseTerminal]). */
     fun onTerminalChoose(poiId: String?)
 
-    /** Accepts the chosen terminal's merchant account, or leaves it ([TerminalSetupViewModel.reviewAccount]). */
-    fun onAccountReview(accept: Boolean)
-
-    /** Looks for roles the API key lacks and could be given ([TerminalSetupViewModel.offerKeyRoles]). */
-    fun onKeyRolesOffer()
-
-    /** Adds the offered roles, or leaves the key ([TerminalSetupViewModel.reviewKeyRoles]). */
-    fun onKeyRolesReview(accept: Boolean)
-
     /** Lists stores for the saved Tap to Pay account. */
     fun onStoresFind()
 
@@ -269,12 +281,6 @@ internal interface TerminalSetupEvents {
 
     /** Reads key settings and retries connection verification without granting permission to PATCH. */
     fun onSharedKeyCheck()
-
-    /** Reads the Tap to Pay account's shared key from Adyen ([TerminalSetupViewModel.findPhoneKey]). */
-    fun onPhoneKeyFind()
-
-    /** Starts or stops checking a pending key again by itself ([TerminalSetupViewModel.followSharedKey]). */
-    fun onSharedKeyFollow(following: Boolean)
 
     /** Sets up Tap to Pay, provisioning its credential automatically ([TerminalSetupViewModel.setUpTapToPay]). */
     fun onTapToPaySetUp(again: Boolean)
@@ -367,7 +373,10 @@ private fun settingsEvents(
         override fun onTaxRateDelete(taxRate: TaxRateEntity) = settings.deleteTaxRate(taxRate)
     }
 
-private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEvents =
+private fun terminalSetupEvents(
+    setup: TerminalSetupViewModel,
+    assist: KeyAssistViewModel,
+): TerminalSetupEvents =
     object : TerminalSetupEvents {
         override fun onSecretDraft(
             secret: Secret,
@@ -378,11 +387,14 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
 
         override fun onTerminalChoose(poiId: String?) = setup.chooseTerminal(poiId)
 
-        override fun onAccountReview(accept: Boolean) = setup.reviewAccount(accept)
+        override fun onAccountReview(accept: Boolean) {
+            val differs = setup.actions.value.accountMismatch ?: return
+            setup.chooseTerminal(differs.poiId.takeIf { accept }, differs.mismatch.assigned)
+        }
 
-        override fun onKeyRolesOffer() = setup.offerKeyRoles()
+        override fun onKeyRolesOffer() = assist.offerKeyRoles()
 
-        override fun onKeyRolesReview(accept: Boolean) = setup.reviewKeyRoles(accept)
+        override fun onKeyRolesReview(accept: Boolean) = assist.reviewKeyRoles(accept)
 
         override fun onStoresFind() = setup.findStores()
 
@@ -392,9 +404,7 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
 
         override fun onSharedKeyCheck() = setup.checkSharedKey()
 
-        override fun onPhoneKeyFind() = setup.findPhoneKey()
-
-        override fun onSharedKeyFollow(following: Boolean) = setup.followSharedKey(following)
+        override fun onSharedKeyFollow(following: Boolean) = assist.followSharedKey(following, setup::checkSharedKey)
 
         override fun onTapToPaySetUp(again: Boolean) = setup.setUpTapToPay(again)
 
@@ -673,15 +683,15 @@ private fun LocalSettingsSectionScreen(
     val sampleData = sampleDataViewModel()
     val actions by vm.actions.collectAsStateWithLifecycle()
     val setup = terminalSetupViewModel(vm)
-    val setupActions by setup.actions.collectAsStateWithLifecycle()
-    val pricing by vm.pricing.pending.collectAsStateWithLifecycle()
-    pricing?.let { PricingConfirmation(it, vm.pricing::confirm, vm.pricing::cancel) }
+    val assist = keyAssistViewModel()
+    val setupActions by remember(setup, assist) { setup.withHelp(assist) }.collectAsStateWithLifecycle(setup.actions.value)
+    vm.pricing.pending.collectAsStateWithLifecycle().value?.let { PricingConfirmation(it, vm.pricing::confirm, vm.pricing::cancel) }
     val historySwitch by vm.environment.pending.collectAsStateWithLifecycle()
     historySwitch?.let {
         HistorySwitchDialog(it.unfinished, { vm.environment.review(true) }, { vm.environment.review(false) })
     }
     val events = remember(vm, sampleData) { settingsEvents(vm, sampleData) }
-    val setupEvents = remember(setup) { terminalSetupEvents(setup) }
+    val setupEvents = remember(setup, assist) { terminalSetupEvents(setup, assist) }
     var settingPin by rememberSaveable { mutableStateOf<Boolean?>(null) }
     val setPin: (Boolean) -> Unit = { settingPin = it }
     if (settingPin != null) {

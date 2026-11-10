@@ -341,26 +341,6 @@ class TransferImportViewModel(
     /** Changes the network terminal's address tried by the next attempt; ignored unless one is offered for correction. */
     fun setTerminalHost(host: String) = updateReady { if (it.terminalHost == null) it else it.copy(terminalHost = host) }
 
-    /** Adds the offered roles to the API key and verifies again, or leaves the import as it is. */
-    fun reviewKeyRoles(accept: Boolean) {
-        val offer = (state.value as? ImportUiState.Ready)?.keyRolesOffer ?: return
-        updateReady { it.copy(keyRolesOffer = null) }
-        if (accept) {
-            confirmedRoles = offer
-            import()
-        }
-    }
-
-    /** Accepts the terminal's merchant account for this import and verifies again, or leaves the import as it is. */
-    fun reviewAccount(accept: Boolean) {
-        val mismatch = (state.value as? ImportUiState.Ready)?.accountMismatch ?: return
-        updateReady { it.copy(accountMismatch = null) }
-        if (accept) {
-            confirmedAccount = mismatch.assigned
-            import()
-        }
-    }
-
     /** While [following], tries a pending key's import again every few seconds, so the operator need not come back and tap. */
     fun followPendingKey(following: Boolean) {
         keyFollow?.cancel()
@@ -375,9 +355,13 @@ class TransferImportViewModel(
             }
     }
 
-    /** Reviews permanent history loss for this import; cancellation leaves current settings and history untouched. */
+    /**
+     * Answers the open question about this import: creating a key, accepting the terminal's merchant account, adding the
+     * key's missing roles or permanent history loss. Cancelling leaves current settings and history untouched.
+     */
     fun reviewSetup(confirm: Boolean) {
         val ready = state.value as? ImportUiState.Ready ?: return
+        if (reviewAssist(ready, confirm)) return
         val offer = ready.sharedKeyOffer
         if (offer != null) {
             if (confirm) verify(board = false, confirmedKey = offer) else updateReady { it.copy(sharedKeyOffer = null) }
@@ -391,6 +375,23 @@ class TransferImportViewModel(
                 updateReady { it.copy(historySwitch = null) }
             }
         }
+    }
+
+    /** Answers an account or roles question; false when neither is open. */
+    private fun reviewAssist(
+        ready: ImportUiState.Ready,
+        confirm: Boolean,
+    ): Boolean {
+        val mismatch = ready.accountMismatch
+        val roles = ready.keyRolesOffer
+        if (mismatch == null && roles == null) return false
+        updateReady { it.copy(accountMismatch = null, keyRolesOffer = null) }
+        if (confirm) {
+            if (mismatch != null) confirmedAccount = mismatch.assigned
+            if (roles != null) confirmedRoles = roles
+            import()
+        }
+        return true
     }
 
     private fun verify(

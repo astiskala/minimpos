@@ -184,7 +184,10 @@ class SetupDiscoveryTest {
         assertThat(verified).isFalse()
         val saved = await { container.settings.current() }.terminal
         assertThat(saved.host).isEqualTo("192.0.2.20")
-        assertThat(saved.keyIdentifier).isEqualTo("key")
+        // The passphrase is written only after its identifier and version, so the saved key is never a mismatched pair.
+        assertThat(saved.keyIdentifier).isEqualTo("new-key")
+        assertThat(saved.keyVersion).isEqualTo(3)
+        assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("new-passphrase")
     }
 
     @Test

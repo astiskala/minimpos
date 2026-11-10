@@ -426,9 +426,12 @@ class SetupDiscovery internal constructor(
         fence: TerminalSetupSource.SetupFence,
         key: DiscoveredKey,
     ): TerminalSetupSource.SetupFence? {
-        savePassphrase(key.passphrase)
+        // The saved passphrase changes only once the fenced write applied, so a concurrent settings edit cannot leave the
+        // working key's identifier paired with this key's passphrase.
         val applied = fence.update { it.copy(terminal = it.terminal.copy(keyIdentifier = key.identifier, keyVersion = key.version)) }
-        return if (applied) fence.withSharedKey(key) else null
+        if (!applied) return null
+        savePassphrase(key.passphrase)
+        return fence.withSharedKey(key)
     }
 
     private suspend fun store(key: DiscoveredKey): Boolean =

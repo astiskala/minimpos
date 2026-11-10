@@ -13,7 +13,21 @@ class LatinLanguageWebsiteTest {
     private val docs = Path.of(System.getProperty("minimpos.website"))
     private val languages = listOf("en", "zh-CN", "zh-Hant", "ja", "pt-BR", "es-MX", "fr-FR")
     private val translated = listOf("pt-BR", "es-MX", "fr-FR")
-    private val files = listOf("index.html", "quick-start.html", "using.html", "troubleshooting.html", "setup.html")
+    private val files =
+        listOf(
+            "index.html",
+            "quick-start.html",
+            "quick-start-terminal.html",
+            "quick-start-network.html",
+            "quick-start-cloud.html",
+            "quick-start-tap-to-pay.html",
+            "demo.html",
+            "testing.html",
+            "using.html",
+            "payment-options.html",
+            "troubleshooting.html",
+            "setup.html",
+        )
 
     @Test
     fun `new translations preserve guide structure links and reciprocal language choices`() {

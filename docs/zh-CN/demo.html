@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="max-image-preview:large">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>体验演示 – Mini mPOS</title>
+    <meta name="description" content="无需 Adyen 账户或支付终端，即可体验示例销售、收据和退款。不会向银行卡扣款。">
+    <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="describedby" href="../llms.txt" type="text/plain">
+    <meta name="application-name" content="Mini mPOS 指南">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="canonical" href="https://minimpos.app/zh-CN/demo">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Mini mPOS">
+    <meta property="og:title" content="体验演示 – Mini mPOS">
+    <meta property="og:description" content="无需 Adyen 账户或支付终端，即可体验示例销售、收据和退款。不会向银行卡扣款。">
+    <meta property="og:url" content="https://minimpos.app/zh-CN/demo">
+    <meta property="og:image" content="https://minimpos.app/images/zh-CN/social.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="Adyen 终端示意图中的 Mini mPOS，展示简体中文模拟器演示。">
+    <meta name="twitter:image" content="https://minimpos.app/images/zh-CN/social.png">
+    <meta name="twitter:image:alt" content="Adyen 终端示意图中的 Mini mPOS，展示简体中文模拟器演示。">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="体验演示 – Mini mPOS">
+    <meta name="twitter:description" content="无需 Adyen 账户或支付终端，即可体验示例销售、收据和退款。不会向银行卡扣款。">
+    <meta name="theme-color" content="#00843F">
+    <link href="https://minimpos.app/demo" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/demo" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/demo" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/demo" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/demo" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/demo" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/demo" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/demo" hreflang="x-default" rel="alternate">
+    <meta content="en_US" property="og:locale:alternate">
+    <meta content="zh_CN" property="og:locale">
+    <meta content="es_MX" property="og:locale:alternate">
+    <meta content="fr_FR" property="og:locale:alternate">
+    <meta content="ja_JP" property="og:locale:alternate">
+    <meta content="pt_BR" property="og:locale:alternate">
+    <meta content="zh_HK" property="og:locale:alternate">
+  </head>
+  <body>
+    <a class="skip" href="#main">跳到正文</a>
+    <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Mini mPOS 首页"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav class="desktop-nav" aria-label="主导航"><ul class="nav">
+      <li><a href="quick-start" aria-current="page">快速入门</a></li><li><a href="using">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting">故障排查</a></li><li><a href="setup">设置助手</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>菜单</summary><div class="mobile-panel"><nav aria-label="主导航"><ul class="nav">
+      <li><a href="quick-start" aria-current="page">快速入门</a></li><li><a href="using">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting">故障排查</a></li><li><a href="setup">设置助手</a></li>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="语言"><p>语言</p><ul><li><a href="../demo" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/demo" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/demo" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/demo" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/demo" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a aria-current="page" href="../zh-CN/demo" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/demo" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+    </div></details>
+    <details class="language-menu"><summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary><nav aria-label="语言"><ul><li><a href="../demo" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/demo" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/demo" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/demo" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/demo" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a aria-current="page" href="../zh-CN/demo" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/demo" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
+  </div></header>
+    <main id="main">
+      <section class="guide-hero"><div class="wrap">
+          <p class="breadcrumb"><a href="quick-start">快速入门</a></p>
+          <p class="eyebrow">指南</p>
+          <h1>体验演示</h1>
+          <p class="lead">无需 Adyen 账户或支付终端，即可体验示例销售、收据和退款。</p>
+        </div></section>
+      <div class="wrap guide">
+        <nav class="toc" id="contents" aria-label="指南导航">
+          <p class="guide-links toc-title">指南</p>
+          <p class="guide-links"><a href="quick-start" aria-current="page">
+              快速入门</a><br><a href="using">使用 Mini mPOS</a><br><a href="troubleshooting">故障排查</a></p>
+          <div class="desktop-contents">
+            <p class="toc-title">本页目录</p>
+            <ol>
+              <li><a href="#try">安装应用</a></li>
+              <li><a href="#sample-sale">体验销售和退款</a></li>
+              <li><a href="#explore">探索更多演示场景</a></li>
+              <li><a href="#real-payments">继续设置真实连接</a></li>
+            </ol>
+          </div>
+          <details class="mobile-contents">
+            <summary class="toc-title">本页目录</summary>
+            <ol>
+              <li><a href="#try">安装应用</a></li>
+              <li><a href="#sample-sale">体验销售和退款</a></li>
+              <li><a href="#explore">探索更多演示场景</a></li>
+              <li><a href="#real-payments">继续设置真实连接</a></li>
+            </ol>
+          </details>
+        </nav>
+        <div class="guide-body">
+          <section id="try">
+
+            <h2>安装应用</h2><p>请使用 Android 9 或更高版本的手机或模拟器。</p>
+
+            <ol>
+              <li>在设备上打开<a href="https://github.com/astiskala/minimpos/releases/latest/download/minimpos.apk">直接下载链接</a>，或用相机扫描此二维码：
+                <img class="qr" src="../images/apk-qr.svg" alt="APK 直接下载的二维码" width="160" height="160"></li>
+              <li>在设备上打开 APK，按 Android 提示允许浏览器或文件管理器安装应用。</li>
+              <li>在欢迎界面选择 <strong>试用演示</strong>，然后点按 <strong>继续</strong>。</li>
+            </ol>
+            <p class="back-to-contents"><a href="#contents">返回目录</a></p>
+          </section>
+          <section id="sample-sale">
+            <h2>体验销售和退款</h2>
+            <ol>
+              <li>在首页点击 <strong>新建销售</strong>，选择一个示例商品。</li>
+              <li>点击 <strong>收款</strong>，核对总额后点击 <strong>支付</strong>。</li>
+              <li>查看收据。</li>
+              <li>打开 <strong>交易记录</strong>，选择该笔销售并点按 <strong>退款</strong>。选择全额退款并确认。</li>
+            </ol>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="../images/zh-CN/approved.png" aria-label="模拟器演示：付款已获批">
+                <div class="terminal terminal-s1f2">
+                  <img alt="模拟器演示：付款已获批" height="960" loading="lazy" src="../images/zh-CN/approved.png" width="540" decoding="async">
+                </div></a>
+              <figcaption class="fine">模拟器演示：付款已获批</figcaption>
+            </figure>
+            <p class="back-to-contents"><a href="#contents">返回目录</a></p>
+          </section>
+          <section id="explore">
+            <h2>探索更多演示场景</h2>
+            <ol>
+              <li>在<strong>设置 › 模拟器</strong>中选择支付结果、延迟以及是否有打印机。开启<strong>离线批准</strong>后，可在交易记录和
+                <a href="using#reconciliation">终端对账</a>中查看离线警告。</li>
+            </ol>
+            <p>在<strong>设置 › 数据与传输</strong>中可<strong>添加示例数据</strong>或<strong>删除示例数据</strong>。示例会标为演示。
+              示例计入演示每日合计和报告；添加示例会以虚构咖啡店替换收据商户信息，
+              并在未设置标志时添加其标志；删除示例会保留您自己的商品、交易记录、设置和标志。</p>
+            <p>付款链接无需 API 凭据即可离线使用，其页面和收据都标为演示。这些二维码无法收款；点按<strong>模拟支付</strong>即可完成演示。</p>
+            <p>模拟器展示的是 Mini mPOS 的行为，而不是您的终端或 Adyen 账户支持什么。语音引导、离线批准和 Adyen 功能等只是模拟，
+              请在真实的 TEST 终端上测试后再使用。</p>
+            <p>演示还会在结账时提供终端小费和 <strong>Adyen Giving</strong>（开关默认关闭），并在<strong>礼品卡</strong>中提供
+              SVS 礼品卡。示例交易记录包含小费、捐赠、离线批准，以及为客户参考号 CUST-1042 保存的银行卡，可在<strong>令牌</strong>中
+              扣款。在<strong>设置 › 模拟器</strong>中设置<strong>附加费</strong>，或将<strong>部分批准（%）</strong>设为低于
+              100，即可试用这些流程；为 100 时，金额末尾为 139 的付款会部分批准，与 Adyen 测试卡相同。设置真实支付时，除非您选择
+              保留，Mini mPOS 会提示关闭这些演示功能。</p>
+            <p class="back-to-contents"><a href="#contents">返回目录</a></p>
+          </section>
+          <section id="real-payments">
+            <h2>继续设置真实连接</h2>
+            <p>准备连接时，在<strong>设置 › 模拟器</strong>中依次点按<strong>设置真实支付</strong>和<strong>继续设置</strong>。确认 TEST
+              或 LIVE 会删除所有本地交易记录；示例商品和收据信息会保留，因此请在真实付款前移除示例并检查商户信息。先使用 TEST 测试。</p>
+            <p><a href="quick-start">继续设置真实连接</a></p>
+            <p class="back-to-contents"><a href="#contents">返回目录</a></p>
+          </section>
+        </div>
+      </div>
+    </main>
+    <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="指南和设置"><ul class="footer-nav">
+      <li><a href="quick-start" aria-current="page">快速入门</a></li><li><a href="using">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting">故障排查</a></li><li><a href="setup">设置助手</a></li>
+    </ul></nav>
+    <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT 许可证 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p><p class="fine">Adyen 是 Adyen N.V. 的商标。Mini mPOS 是独立项目，与 Adyen 无关联，未获其背书，也不由其提供支持。</p>
+  </div></footer>
+  </body>
+</html>

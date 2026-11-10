@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="max-image-preview:large">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>設定をテストして LIVE に移行する – Mini mPOS</title>
+    <meta name="description" content="接続後、TEST 決済とレシート、返金を確認します。店舗の設定を整えてから LIVE に切り替えてください。">
+    <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="describedby" href="../llms.txt" type="text/plain">
+    <meta name="application-name" content="Mini mPOS ガイド">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="canonical" href="https://minimpos.app/ja/testing">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Mini mPOS">
+    <meta property="og:title" content="設定をテストして LIVE に移行する – Mini mPOS">
+    <meta property="og:description" content="接続後、TEST 決済とレシート、返金を確認します。店舗の設定を整えてから LIVE に切り替えてください。">
+    <meta property="og:url" content="https://minimpos.app/ja/testing">
+    <meta property="og:image" content="https://minimpos.app/images/ja/social.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと日本語のシミュレーターデモ。">
+    <meta name="twitter:image" content="https://minimpos.app/images/ja/social.png">
+    <meta name="twitter:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと日本語のシミュレーターデモ。">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="設定をテストして LIVE に移行する – Mini mPOS">
+    <meta name="twitter:description" content="接続後、TEST 決済とレシート、返金を確認します。店舗の設定を整えてから LIVE に切り替えてください。">
+    <meta name="theme-color" content="#00843F">
+    <link href="https://minimpos.app/testing" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/testing" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/testing" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/testing" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/testing" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/testing" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/testing" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/testing" hreflang="x-default" rel="alternate">
+    <meta content="en_US" property="og:locale:alternate">
+    <meta content="zh_CN" property="og:locale:alternate">
+    <meta content="zh_HK" property="og:locale:alternate">
+    <meta content="ja_JP" property="og:locale">
+    <meta content="es_MX" property="og:locale:alternate">
+    <meta content="fr_FR" property="og:locale:alternate">
+    <meta content="pt_BR" property="og:locale:alternate">
+  </head>
+  <body>
+    <a class="skip" href="#main">本文へ移動</a>
+    <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Mini mPOS ホーム"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav class="desktop-nav" aria-label="メインナビゲーション"><ul class="nav">
+      <li><a href="quick-start" aria-current="page">クイックスタート</a></li><li><a href="using">Mini mPOS の使い方</a></li>
+      <li><a href="troubleshooting">トラブルシューティング</a></li><li><a href="setup">セットアップヘルパー</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>メニュー</summary><div class="mobile-panel"><nav aria-label="メインナビゲーション"><ul class="nav">
+      <li><a href="quick-start" aria-current="page">クイックスタート</a></li><li><a href="using">Mini mPOS の使い方</a></li>
+      <li><a href="troubleshooting">トラブルシューティング</a></li><li><a href="setup">セットアップヘルパー</a></li>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="言語"><p>言語</p><ul><li><a href="../testing" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/testing" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/testing" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a aria-current="page" href="../ja/testing" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/testing" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/testing" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/testing" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+    </div></details>
+    <details class="language-menu"><summary aria-label="言語：日本語" title="言語"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">日本語</span></summary><nav aria-label="言語"><ul><li><a href="../testing" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/testing" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="../fr-FR/testing" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a aria-current="page" href="../ja/testing" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/testing" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/testing" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/testing" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav></details>
+  </div></header>
+    <main id="main">
+      <section class="guide-hero"><div class="wrap">
+          <p class="breadcrumb"><a href="quick-start">クイックスタート</a></p>
+          <p class="eyebrow">ガイド</p>
+          <h1>設定をテストして LIVE に移行する</h1>
+          <p class="lead">接続後、TEST 決済とレシート、返金を確認します。店舗の設定を整えてから LIVE に切り替えてください。</p>
+        </div></section>
+      <div class="wrap guide">
+        <nav class="toc" id="contents" aria-label="ガイドナビゲーション">
+          <p class="guide-links toc-title">ガイド</p>
+          <p class="guide-links">
+            <a href="quick-start" aria-current="page">クイックスタート</a><br><a href="using">Mini mPOS の使い方</a><br>
+            <a href="troubleshooting">トラブルシューティング</a></p>
+          <div class="desktop-contents">
+            <p class="toc-title">このページの内容</p>
+            <ol>
+              <li><a href="#first-payment">TEST の構成を確認する</a></li>
+              <li><a href="#business-ready">LIVE に向けて店舗を準備する</a></li>
+              <li><a href="#live">本番運用を始める</a></li>
+              <li><a href="#live-payment">最初の LIVE 決済を確認する</a></li>
+            </ol>
+          </div>
+          <details class="mobile-contents">
+            <summary class="toc-title">このページの内容</summary>
+            <ol>
+              <li><a href="#first-payment">TEST の構成を確認する</a></li>
+              <li><a href="#business-ready">LIVE に向けて店舗を準備する</a></li>
+              <li><a href="#live">本番運用を始める</a></li>
+              <li><a href="#live-payment">最初の LIVE 決済を確認する</a></li>
+            </ol>
+          </details>
+        </nav>
+        <div class="guide-body">
+          <section id="first-payment">
+            <h2>TEST の構成を確認する</h2>
+            <ol>
+              <li><strong>設定 › 端末</strong>で、環境が <strong>TEST</strong> であることを確認します。最後の<strong>接続をテスト</strong>で API
+                アクセスと対応する接続チェックを確認します。
+                <ul>
+                  <li>物理端末：<strong>接続をテスト</strong>を実行し、成功を確認します。</li>
+                  <li>Tap to Pay：スマートフォンが <strong>Adyen Payments Test</strong>
+                    に登録されていることを確認します。接続チェックは設定のみを確認し、端末診断には対応していません。以下のテスト決済で決済の動作を確認します。</li>
+                </ul>
+              </li>
+              <li><strong>設定 › 決済</strong>で通貨を、<strong>設定 › 税</strong>で税率と税込・税抜の設定を確認します。</li>
+              <li>ホームで<strong>新規販売</strong>をタップし、<strong>任意の商品</strong>を追加して会計ボタンをタップします。 カスタム商品名を「テスト販売」にし、テストカードのシナリオに合う金額を入力します。</li>
+              <li>決済ボタンをタップし、<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Adyen の POS テストガイド</a>
+                に従って成功する決済を行います。</li>
+              <li>結果が承認済みで、領収書の金額、通貨、税額が正しいことを確認します。<strong>取引履歴</strong>で販売を開き、<strong>PSP参照ID</strong>で TEST Customer
+                Area の決済と照合します。</li>
+              <li><a href="using#refund">この決済を返金</a>し、TEST Customer Area で最終結果を確認します。<strong>返金要求済み</strong>は最終確認ではありません。
+              </li>
+              <li><a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Adyen の POS テストガイド</a>
+                の拒否シナリオで販売をもう一度試します。Mini mPOS が拒否を表示することを確認します。<a href="troubleshooting#declines">決済の拒否</a>
+                を参照してください。</li>
+            </ol>
+            <div class="callout callout-warning" role="note">
+              <p class="callout-title">警告</p>
+              <p>結果が不明な場合は、もう一度決済しないでください。先に<a href="troubleshooting#unknown">復旧手順</a>に従います。</p>
+            </div>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="business-ready">
+            <h2>LIVE に向けて店舗を準備する</h2>
+            <ul>
+              <li><a href="using#pricing">商品価格を設定する前に、通貨と税を確認します。</a></li>
+              <li><a href="using#receipts">店舗情報を確認し、利用するレシートの提供方法をそれぞれテストします。</a></li>
+              <li><a href="using#staff">スタッフの PIN と、マネージャー承認が必要な操作を確認します。</a></li>
+              <li><a href="payment-options">利用する追加の決済機能だけを有効にしてテストします。</a></li>
+            </ul>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="live">
+            <h2>本番運用を始める</h2>
+            <div class="callout callout-warning" role="note">
+              <p class="callout-title">警告</p>
+              <p>TEST、LIVE、シミュレーターを切り替えると、未完了の決済の復旧データを含め、デバイスのすべての決済履歴が削除されます。先に<strong>要確認</strong>の決済をすべて解決してください。</p>
+            </div>
+            <ol>
+              <li>LIVE の端末または LIVE 版 Payments アプリと、LIVE の認証情報に切り替えます。ネットワークやクラウドの端末、Tap to Pay では<strong>環境</strong>で
+                <strong>LIVE</strong> を選びます。<strong>LIVE URLプレフィックス</strong>を入力します。
+                <a href="https://docs.adyen.com/development-resources/live-endpoints">Adyen の LIVE エンドポイントガイド</a>
+                を参照してください。Tap to Pay は選択した環境で再登録が必要です。</li>
+              <li><strong>設定 › 端末</strong>で、環境が <strong>LIVE</strong> であることを確認します。最後の<strong>接続をテスト</strong>で API
+                アクセスと対応する接続チェックを確認します。
+                <ul>
+                  <li>物理端末：<strong>接続をテスト</strong>を実行し、成功を確認します。</li>
+                  <li>Tap to Pay：スマートフォンが LIVE 版 <strong>Adyen Payments</strong>
+                    アプリに登録されていることを確認します。接続チェックは設定のみを確認し、端末診断には対応していません。</li>
+                </ul>
+              </li>
+            </ol>
+            <p>日々の確認と照合は<a href="using#close-day">締め作業</a>を参照してください。</p>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+          <section id="live-payment">
+            <h2>最初の LIVE 決済を確認する</h2>
+            <p>実際に使う送信先とレシート提供方法で、Adyen の LIVE テスト手順に従います。LIVE Customer Area で金額、通貨、レシート、決済を確認してください。接続確認だけでは決済が動作する証明にはなりません。</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Adyen: 最初の LIVE 決済を確認する</a></p>
+            <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+          </section>
+        </div>
+      </div>
+    </main>
+    <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="ガイドと設定"><ul class="footer-nav">
+      <li><a href="quick-start" aria-current="page">クイックスタート</a></li><li><a href="using">Mini mPOS の使い方</a></li>
+      <li><a href="troubleshooting">トラブルシューティング</a></li><li><a href="setup">セットアップヘルパー</a></li>
+    </ul></nav>
+    <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT ライセンス · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティ</a></p><p class="fine">Adyen は Adyen N.V. の商標です。Mini mPOS は独立したプロジェクトであり、Adyen との提携関係はなく、推奨やサポートもありません。</p>
+  </div></footer>
+  </body>
+</html>

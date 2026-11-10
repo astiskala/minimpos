@@ -500,13 +500,15 @@ pre {
 
 .guide-body section { padding-top: 24px; }
 
+.breadcrumb { margin: 0 0 16px; font-size: 0.95rem; }
+.workflow-links { padding-left: 24px; }
+
 .task-kicker { margin: 0 0 8px; color: var(--green-dark); font-size: 0.9rem; font-weight: 700; }
 
 .task-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 20px 0 8px; }
 .task-links > span { flex-basis: 100%; color: var(--grey); font-size: 0.9rem; font-weight: 600; }
 .task-links a { padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
 .task-links a:hover { background: var(--green-light); }
-.toc .advanced-start { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
 
 .screenshot-link { display: block; color: inherit; border-radius: var(--radius); }
 .screenshot-link:focus-visible .terminal { outline: 3px solid var(--green); outline-offset: 4px; }
@@ -521,11 +523,6 @@ pre {
 .setup-compare > summary { cursor: pointer; font-weight: 700; color: var(--green-dark); }
 .setup-compare .setup-comparison caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .setup-comparison tbody th { width: 24%; }
-.destination-route { margin: 28px 0; padding-top: 8px; border-top: 1px solid var(--border); }
-.destination-route > h3 { margin-top: 16px; }
-.route-next { font-weight: 700; }
-.setup-path { margin: 16px 0; font-size: 0.9rem; }
-.setup-path ol { display: flex; flex-wrap: wrap; gap: 6px 24px; padding-left: 24px; }
 .role-checklist, .error-catalog, .setup-optional { margin: 20px 0; padding: 16px 20px; border: 1px solid var(--border); border-radius: 12px; }
 .role-checklist > summary, .error-catalog > summary, .setup-optional > summary { cursor: pointer; font-weight: 700; }
 .cause { margin-top: 12px; color: var(--grey); }
@@ -588,7 +585,7 @@ pre {
 
 .settings-list dd ol { padding-left: 1.2em; }
 
-.settings-list dd img.qr { display: block; margin: 8px 0; }
+.guide-body img.qr { display: block; margin: 8px 0; }
 
 /* Troubleshooting: what you see, why, and what to do. */
 .fixes > div { padding: 14px 0; border-top: 1px solid var(--border); }
@@ -723,7 +720,6 @@ pre {
   .setup-comparison th, .setup-comparison td { padding: 6px 0; border: 0; }
   .setup-comparison tbody th { width: 100%; }
   .setup-comparison td::before { content: attr(data-label) ": "; font-weight: 700; }
-  .setup-path ol { display: block; }
 }
 
 /* Single-word titles such as "Troubleshooting" must fit 320 px screens with classic scrollbars and wider fonts. */
@@ -784,7 +780,7 @@ pre {
 .setup-summary dd { margin: 2px 0 0; overflow-wrap: anywhere; }
 .setup-codes > h2:focus { outline: 3px solid var(--green); outline-offset: 6px; }
 
-.setup-form > fieldset > legend, #complete-fields > fieldset > legend { position: relative; min-height: 28px; padding: 2px 0 0 40px; }
+#complete-fields > fieldset > legend { position: relative; min-height: 28px; padding: 2px 0 0 40px; }
 
 .setup-form > fieldset > legend::before, #complete-fields > fieldset > legend::before {
   counter-increment: step;

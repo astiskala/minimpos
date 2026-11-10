@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="fr-FR">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="max-image-preview:large">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Options de paiement – Mini mPOS</title>
+    <meta name="description" content="Ajoutez les fonctions utiles à votre activité. Vérifiez leur disponibilité, terminez la configuration Adyen et testez chaque fonction avant son utilisation en LIVE.">
+    <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="describedby" href="../llms.txt" type="text/plain">
+    <meta name="application-name" content="Guides Mini mPOS">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="canonical" href="https://minimpos.app/fr-FR/payment-options">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Mini mPOS">
+    <meta property="og:title" content="Options de paiement – Mini mPOS">
+    <meta property="og:description" content="Ajoutez les fonctions utiles à votre activité. Vérifiez leur disponibilité, terminez la configuration Adyen et testez chaque fonction avant son utilisation en LIVE.">
+    <meta property="og:url" content="https://minimpos.app/fr-FR/payment-options">
+    <meta property="og:image" content="https://minimpos.app/images/fr-FR/social.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="Mini mPOS sur des terminaux Adyen illustrés, montrant des démos de simulateur en français.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Options de paiement – Mini mPOS">
+    <meta name="twitter:description" content="Ajoutez les fonctions utiles à votre activité. Vérifiez leur disponibilité, terminez la configuration Adyen et testez chaque fonction avant son utilisation en LIVE.">
+    <meta name="twitter:image" content="https://minimpos.app/images/fr-FR/social.png">
+    <meta name="twitter:image:alt" content="Mini mPOS sur des terminaux Adyen illustrés, montrant des démos de simulateur en français.">
+    <meta name="theme-color" content="#00843F">
+    <link href="https://minimpos.app/payment-options" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/payment-options" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/payment-options" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/payment-options" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/payment-options" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/payment-options" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/payment-options" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/payment-options" hreflang="x-default" rel="alternate">
+    <meta content="en_US" property="og:locale:alternate">
+    <meta content="es_MX" property="og:locale:alternate">
+    <meta content="ja_JP" property="og:locale:alternate">
+    <meta content="pt_BR" property="og:locale:alternate">
+    <meta content="zh_CN" property="og:locale:alternate">
+    <meta content="zh_HK" property="og:locale:alternate">
+    <meta content="fr_FR" property="og:locale">
+  </head>
+  <body>
+    <a class="skip" href="#main">Passer au contenu</a>
+    <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Accueil Mini mPOS"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav class="desktop-nav" aria-label="Principal"><ul class="nav">
+      <li><a href="quick-start">Démarrage rapide</a></li><li><a href="using" aria-current="page">Utilisation de Mini mPOS</a></li>
+      <li><a href="troubleshooting">Dépannage</a></li><li><a href="setup">Aide à la configuration</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>Menu</summary><div class="mobile-panel"><nav aria-label="Principal"><ul class="nav">
+      <li><a href="quick-start">Démarrage rapide</a></li><li><a href="using" aria-current="page">Utilisation de Mini mPOS</a></li>
+      <li><a href="troubleshooting">Dépannage</a></li><li><a href="setup">Aide à la configuration</a></li>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="Langue"><p>Langue</p><ul><li><a href="../payment-options" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/payment-options" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a aria-current="page" href="../fr-FR/payment-options" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/payment-options" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/payment-options" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/payment-options" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/payment-options" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+    </div></details>
+    <details class="language-menu">
+      <summary aria-label="Langue : Français (France)" title="Langue"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">Français (France)</span></summary>
+      <nav aria-label="Langue"><ul><li><a href="../payment-options" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/payment-options" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a aria-current="page" href="../fr-FR/payment-options" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/payment-options" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/payment-options" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/payment-options" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/payment-options" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+    </details>
+  </div></header>
+    <main id="main">
+      <section class="guide-hero"><div class="wrap">
+          <p class="breadcrumb"><a href="using">Utilisation de Mini mPOS</a></p>
+          <p class="eyebrow">Guide</p>
+          <h1>Options de paiement</h1>
+          <p class="lead">Ajoutez les fonctions utiles à votre activité. Vérifiez leur disponibilité, terminez la configuration
+            Adyen et testez chaque fonction avant son utilisation en LIVE.</p>
+        </div></section>
+      <div class="wrap guide">
+        <nav class="toc" id="contents" aria-label="Navigation des guides">
+          <p class="guide-links toc-title">Guides</p>
+          <p class="guide-links"><a href="quick-start">Démarrage rapide
+            </a><br><a href="using" aria-current="page">Utilisation de Mini mPOS</a><br><a href="troubleshooting">
+              Dépannage</a></p>
+          <div class="desktop-contents">
+            <p class="toc-title">Sur cette page</p>
+            <ol>
+              <li><a href="#capabilities">Vérifier et configurer les fonctionnalités d'Adyen</a></li>
+              <li><a href="#tipping">Choisir comment recueillir les pourboires</a></li>
+              <li><a href="#terminal-tips">Récupérez un pourboire sur le terminal</a></li>
+              <li><a href="#tips">Récupérez un pourboire inscrit sur le reçu</a></li>
+              <li><a href="#preauth">Conserver et récupérer un dépôt</a></li>
+              <li><a href="#terminal-checkout">Utilisez des workflows de paiement facultatifs</a>
+                <ul>
+                  <li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li>
+                  <li><a href="#surcharges">Suppléments</a></li>
+                  <li><a href="#mexican-installments">Paiements échelonnés au Mexique</a></li>
+                  <li><a href="#partial-payments">Encaisser un paiement partiellement autorisé</a></li>
+                  <li><a href="#split-payments">Partager une vente ou encaisser en espèces</a></li>
+                  <li><a href="#cashback">Retrait avec achat</a></li>
+                  <li><a href="#cashout">Retrait d’espèces</a></li>
+                  <li><a href="#meal-vouchers">Accepter les titres-restaurant</a></li>
+                  <li><a href="#shopper-display">Utilisez l'écran du terminal destiné aux acheteurs</a></li>
+                  <li><a href="#giving">Invitez un don de charité</a></li>
+                  <li><a href="#keyed-entry">Acceptez un paiement MOTO ou une saisie manuelle de la carte</a></li>
+                </ul>
+              </li>
+              <li><a href="#offline">Reconnaître les paiements hors ligne et les lots en attente</a></li>
+              <li><a href="#wallets">Scanner le code d'un portefeuille d'acheteur</a></li>
+              <li><a href="#shoppers">Utilisez des références et enregistrer des cartes</a>
+                <ul>
+                  <li><a href="#saved-card">Gérer les jetons</a></li>
+                </ul>
+              </li>
+              <li><a href="#gift-cards">Vendre et gérer des cartes cadeaux</a></li>
+              <li><a href="#payment-links">Accepter le paiement avec un lien</a></li>
+            </ol>
+          </div>
+          <details class="mobile-contents">
+            <summary class="toc-title">Sur cette page</summary>
+            <ol>
+              <li><a href="#capabilities">Vérifier et configurer les fonctionnalités d'Adyen</a></li>
+              <li><a href="#tipping">Choisir comment recueillir les pourboires</a></li>
+              <li><a href="#terminal-tips">Récupérez un pourboire sur le terminal</a></li>
+              <li><a href="#tips">Récupérez un pourboire inscrit sur le reçu</a></li>
+              <li><a href="#preauth">Conserver et récupérer un dépôt</a></li>
+              <li><a href="#terminal-checkout">Utilisez des workflows de paiement facultatifs</a>
+                <ul>
+                  <li><a href="#audio-guidance">Accepter des paiements avec guidage audio</a></li>
+                  <li><a href="#surcharges">Suppléments</a></li>
+                  <li><a href="#mexican-installments">Paiements échelonnés au Mexique</a></li>
+                  <li><a href="#partial-payments">Encaisser un paiement partiellement autorisé</a></li>
+                  <li><a href="#split-payments">Partager une vente ou encaisser en espèces</a></li>
+                  <li><a href="#cashback">Retrait avec achat</a></li>
+                  <li><a href="#cashout">Retrait d’espèces</a></li>
+                  <li><a href="#meal-vouchers">Accepter les titres-restaurant</a></li>
+                  <li><a href="#shopper-display">Utilisez l'écran du terminal destiné aux acheteurs</a></li>
+                  <li><a href="#giving">Invitez un don de charité</a></li>
+                  <li><a href="#keyed-entry">Acceptez un paiement MOTO ou une saisie manuelle de la carte</a></li>
+                </ul>
+              </li>
+              <li><a href="#offline">Reconnaître les paiements hors ligne et les lots en attente</a></li>
+              <li><a href="#wallets">Scanner le code d'un portefeuille d'acheteur</a></li>
+              <li><a href="#shoppers">Utilisez des références et enregistrer des cartes</a>
+                <ul>
+                  <li><a href="#saved-card">Gérer les jetons</a></li>
+                </ul>
+              </li>
+              <li><a href="#gift-cards">Vendre et gérer des cartes cadeaux</a></li>
+              <li><a href="#payment-links">Accepter le paiement avec un lien</a></li>
+            </ol>
+          </details>
+        </nav>
+        <div class="guide-body">
+          <section id="capabilities">
+            <h2>Vérifier et configurer les fonctionnalités d'Adyen</h2>
+            <p>Ouvrez <strong>Paramètres › Capacités d’Adyen</strong> après avoir connecté votre destination.
+              Ce centre regroupe les fonctions de paiement et de terminal Adyen, pas les outils locaux ni le PIN
+              responsable. Les groupes sont Paiements, Pourboires et interaction, Reçus et lecture de codes et
+              Terminal et récupération.</p>
+            <p>Chaque fonction affiche <strong>Prêt</strong>,
+              <strong>Configuré sur Adyen</strong>, <strong>Désactivé</strong>,
+              <strong>À configurer</strong> ou <strong>Non vérifié</strong>
+              sous son nom. Les fonctions <strong>Non pris en charge</strong> sont dans une liste repliée
+              en bas. Ces indicateurs ne garantissent pas l'approbation pour un compte marchand, une carte ou un moyen de
+              paiement. Si les paiements ne sont pas configurés, l'écran propose d'abord de terminer leur configuration.</p>
+            <p><strong>Désactivé · configuré sur Adyen</strong> signifie qu’Adyen a déjà configuré la fonction pour le
+              terminal ou le magasin, comme des options de pourboire, MOTO ou un type de carte cadeau ; activez son réglage
+              local dans Mini mPOS pour l’utiliser.</p>
+            <ol>
+              <li>Touchez <strong>Actualiser les capacités</strong> pour lire les paramètres du terminal sélectionné.
+                La lecture réelle nécessite les <a href="quick-start#credentials">rôles Management API du Démarrage rapide</a>.</li>
+              <li>Choisissez une fonction pour afficher ses exigences et ses paramètres.</li>
+              <li>Sur un terminal compatible, modifiez les pourboires, DCC, MOTO ou limites hors ligne dans leur fonction.
+                Saisissez les montants dans la devise habituelle et choisissez Utiliser la limite héritée pour retirer
+                une limite personnalisée. Chaque suggestion de pourboire a sa propre ligne validée.</li>
+              <li>Appuyez sur <strong>Enregistrer sur Adyen</strong>.</li>
+            </ol>
+            <p>Un enregistrement au résultat inconnu n'est pas réessayé automatiquement. Actualisez avec succès et vérifiez
+              les valeurs Adyen avant de décider. L'enregistrement et la relecture confirment les paramètres chez Adyen,
+              pas leur application sur le terminal. Un téléchargement et un redémarrage peuvent rester nécessaires ; voir les
+              <a href="https://docs.adyen.com/point-of-sale/automating-terminal-management/configure-terminals-api">mises à
+                jour de configuration des terminaux Adyen</a>.</p>
+            <p>Tap to Pay n’offre pas les fonctions de terminal physique comme le pourboire sur le terminal, l’écran client,
+              MOTO/MKE, les paiements hors ligne ou le rapprochement du terminal. Pour l’activation du compte et les
+              exigences des moyens de paiement, suivez la <a href="https://docs.adyen.com/point-of-sale">documentation
+                Adyen sur les paiements en personne</a>.</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="../images/fr-FR/capabilities.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français : disponibilité et configuration des capacités d’Adyen">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/fr-FR/capabilities.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français : disponibilité et configuration des capacités d’Adyen" decoding="async">
+                </div></a>
+              <figcaption class="fine">Démo du simulateur en français.<span class="shot-control">Actualiser les capacités</span><a class="screenshot-link shot-expand" href="../images/fr-FR/capabilities.png">Ouvrir
+                  la capture en taille réelle</a></figcaption>
+            </figure>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="tipping">
+            <h2>Choisir comment recueillir les pourboires</h2>
+            <p>Le pourboire sur le terminal est choisi avant le débit de la carte. Le pourboire sur reçu bloque le montant
+              jusqu’à la saisie du pourboire par le personnel et sa capture. Consultez les conditions de chaque méthode ci-dessous.</p>
+            <ul>
+              <li><a href="#terminal-tips">Récupérez un pourboire sur le terminal</a></li>
+              <li><a href="#tips">Récupérez un pourboire inscrit sur le reçu</a></li>
+            </ul>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="terminal-tips">
+            <h2>Récupérez un pourboire sur le terminal</h2>
+            <ol>
+              <li>Vérifiez les pourboires sur le terminal dans <a href="#capabilities">Capacités d'Adyen</a>. Définissez
+                les options de pourboire prédéfinies et personnalisées du terminal pour la devise de paiement si
+                nécessaire.</li>
+              <li>Dans <strong>Paramètres › Pourboires et dons</strong>, activez <strong>Pourboire sur le terminal
+                </strong> et choisissez sa valeur par défaut de paiement. Activer éventuellement <strong>Suggestions de
+                  pourboires selon le panier</strong> pour des montants fixes sur les petits paniers et des pourcentages sur
+                les plus grands, ou <strong>Pourboire sur le montant avant taxes</strong>. Ces deux options nécessitent le
+                logiciel du terminal 1.101 ou ultérieur, vérifié par un test de connexion.</li>
+              <li>À l’encaissement d’une vente, sélectionnez <strong>Pourboire sur le terminal</strong> et appuyez sur
+                <strong>Payer</strong>. Le client choisit un pourboire avant que la carte ne soit débitée. Vérifiez le
+                total retourné et le pourboire et remettez le reçu.</li>
+            </ol>
+            <p>Cela ne nécessite pas d’imprimante ni d’entrée de pourboire ultérieure. Pourboires sur le terminal et
+              <a href="#tips">pourboires sur le reçu</a> ne peuvent pas être sélectionnés ensemble. Ni l'un ni l'autre
+              n'est proposé pour les préautorisations, les paiements par portefeuille numérisé ou les liens de paiement ;
+              les pourboires sur le terminal ne sont pas proposés avec Tap to Pay.</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="../images/fr-FR/terminal-tipping.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Pourboires sur le terminal">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/fr-FR/terminal-tipping.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Pourboires sur le terminal" decoding="async">
+                </div></a>
+              <figcaption class="fine">Démo du simulateur en français des préférences de paiement. Configurez le terminal
+                séparément dans les fonctionnalités Adyen.<span class="shot-control">Pourboires sur le terminal</span><a class="screenshot-link shot-expand" href="../images/fr-FR/terminal-tipping.png">Ouvrir
+                  la capture en taille réelle</a></figcaption>
+            </figure>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="tips">
+            <h2>Récupérez un pourboire inscrit sur le reçu</h2>
+            <div class="callout callout-prereq" role="note">
+              <p class="callout-title">Conditions préalables</p>
+              <ul>
+                <li>Un terminal avec une imprimante</li>
+                <li>Pré-autorisation et surcapture activées par le support Adyen ; voir le
+                  <a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">Guide des pourboires sur reçu
+                    Adyen</a></li>
+              </ul>
+            </div>
+            <p>Dans <strong>Paramètres › Pourboires et dons</strong>, choisissez <strong>Activé (désactivé par défaut)
+              </strong> ou <strong>Activé (activé par défaut)</strong> pour définir la façon dont le commutateur de
+              paiement démarre. <strong>Désactivé</strong>, la valeur par défaut, le cache. Certaines cartes de débit et
+              portefeuilles ne prennent pas en charge ce flux.</p>
+            <ol>
+              <li>À la caisse d'une vente, activez <strong>Pourboire sur le reçu</strong> et appuyez sur <strong>Payer</strong>. Le
+                montant de l’addition est réservé, sans être débité.</li>
+              <li>Imprimez le reçu. Il comporte des lignes de pourboire et de total vierges, et la copie du commerçant
+                comporte une ligne de signature.</li>
+              <li>Lorsque le client l’a rempli, appuyez sur <strong>Entrez le pourboire</strong> sur le résultat ou
+                utilisez le filtre <strong>En attente de pourboire</strong> dans l’Historique.</li>
+              <li>Saisissez le pourboire ou le total, ou appuyez sur <strong>Pas de pourboire</strong>, et confirmez.</li>
+            </ol>
+            <p>L’application capture le montant de l’addition et le pourboire. Pour les pourboires supérieurs à 20 %,
+              l'émetteur de la carte doit d'abord augmenter la retenue ; s'il refuse, entrez un pourboire plus petit ou
+              aucun. Un pourboire enregistré ne peut pas être modifié. Avant de saisir un pourboire, annulez le paiement
+              au lieu de le rembourser ; par la suite, les remboursements incluent le pourboire.</p>
+            <div class="callout callout-warning" role="note">
+              <p class="callout-title">Avertissement</p>
+              <p>Saisissez rapidement chaque pourboire, y compris zéro pourboire, afin que les factures soient capturées
+                avant l'expiration de leur retenue. Pour les captures échouées ou inconnues, voir
+                <a href="troubleshooting#modifications">capturer les problèmes</a>.</p>
+            </div>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="preauth">
+            <h2>Conserver et récupérer un dépôt</h2>
+            <div class="callout callout-prereq" role="note">
+              <p class="callout-title">Conditions préalables</p>
+              <ul>
+                <li>Préautorisation activée par le support Adyen pour vos méthodes de paiement ; voir le
+                  <a href="https://docs.adyen.com/point-of-sale/pre-authorisation">Guide de préautorisation Adyen</a></li>
+              </ul>
+            </div>
+            <p>Une préautorisation permet de conserver un montant sur la carte sans le débiter. L'ensemble de votre compte
+              n'a pas besoin d'être capturé manuellement ; Mini mPOS le demande uniquement pour ces paiements.</p>
+            <ol>
+              <li>Sur Accueil, appuyez sur <strong>Nouvelle pré-autorisation</strong>. Choisissez un produit en
+                préautorisation, scannez son code-barres ou saisissez un montant. Chaque préautorisation comporte un
+                élément.</li>
+              <li>Au moment du paiement, appuyez sur <strong>Pré-autoriser</strong>. Le reçu indique le montant détenu.
+              </li>
+              <li>Lorsque vous êtes prêt, ouvrez l'entrée dans <strong>Historique</strong> et choisissez une action :</li>
+            </ol>
+            <dl class="settings-list">
+              <dt>Capturer</dt>
+              <dd>Encaisse le montant dû. Un montant inférieur libère le reste ; un montant plus élevé
+                demande d'abord à l'émetteur de la carte d'augmenter la retenue. Les remboursements sont possibles une
+                fois la capture demandée.</dd>
+              <dt>Ajuster le montant</dt>
+              <dd>Modifie le montant détenu sans le facturer. La présentation du même montant
+                renouvelle l’autorisation.</dd>
+              <dt>Annuler la préautorisation</dt>
+              <dd>Libère la prise. Si le paiement a déjà été enregistré dans le
+                Customer Area, Adyen le rembourse intégralement.</dd>
+            </dl>
+            <p><strong>Capture demandée</strong> n'est pas une confirmation définitive ; vérifiez le Customer Area. Pour
+              des réponses immédiates aux ajustements, activez <strong>Renvoyer les données d'autorisation d'ajustement
+              </strong> comme décrit dans le <a href="https://docs.adyen.com/online-payments/adjust-authorisation">Guide
+                de réglage des autorisations Adyen</a>.</p>
+            <div class="callout callout-warning" role="note">
+              <p class="callout-title">Avertissement</p>
+              <p>Les retenues expirent. Vérifiez quotidiennement le filtre de préautorisation et capturez ou annulez
+                rapidement. Pour les opérations ayant échoué ou inconnues, voir <a href="troubleshooting#modifications">
+                  capturer les problèmes</a>.</p>
+            </div>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="terminal-checkout">
+            <h2>Utilisez des workflows de paiement facultatifs</h2>
+            <p>Activez dans les Paramètres uniquement les options d’encaissement nécessaires. Hormis l’autorisation
+              partielle, le partage et les suppléments, ces parcours exigent un terminal physique compatible, pas Tap to
+              Pay. Vérifiez les <a href="#capabilities">capacités d’Adyen</a> et testez d’abord votre configuration réelle.
+              La plupart des options ne peuvent pas être combinées dans un paiement ; l’encaissement explique le conflit et
+              vous demande d’en désactiver une.</p>
+            <h3 id="audio-guidance">Accepter des paiements avec guidage audio</h3>
+            <p>Activez d’abord <strong>Activer le guidage audio</strong> dans <strong>Paramètres › Paiements ›
+                Accessibilité</strong>, une fois que le support Adyen l’a activé pour vos terminaux, qu’ils utilisent un
+              logiciel compatible et que leur langue n’est pas l’estonien, le letton, l’islandais ou le lituanien. Il est
+              disponible sur AMS1, S1F2, S1F2L, S1E2L et S1U2 avec le logiciel 1.117 ou ultérieur, et sur M450, P630 et SFO1
+              avec 1.124 ou ultérieur. Voir les
+              <a
+              href="https://docs.adyen.com/point-of-sale/android-terminals/accessibility-mode/accessibility-from-pos">exigences
+              d’Adyen pour les paiements accessibles</a>.</p>
+            <p>À l’encaissement, activez <strong>Guidage audio</strong> pour l’acheteur qui en a besoin et désactivez les
+              pourboires, Giving et la saisie manuelle. Utilisez une carte sans signature. Le paiement demande le montant
+              total et ignore les invites de l’écran client.</p>
+            <p>Le terminal lit les instructions à voix haute ; laissez du temps à l’acheteur. Mini mPOS attend jusqu’à dix
+              minutes le résultat. Si aucune réponse n’arrive, <a href="troubleshooting#unknown">vérifiez le résultat
+                inconnu</a> avant un autre paiement. Le choix est réinitialisé après chaque tentative.</p>
+            <h3 id="surcharges">Suppléments</h3>
+            <p>Adyen ajoute les suppléments que vous configurez chez Adyen ; Mini mPOS ne les définit pas. Quand Adyen en
+              indique un, l’historique, les reçus et le rapport quotidien le présentent séparément des achats et des
+              pourboires ; le total débité l’inclut déjà. Un supplément non indiqué reste inconnu. Si une autorisation
+              partielle n’indique pas le supplément, vérifiez le Customer Area ou remboursez la carte d’origine avant de
+              recommencer.</p>
+            <p>Annoncez le supplément avant le paiement, surtout avec Tap to Pay, qui n’a pas d’écran de confirmation du
+              supplément. Ne combinez pas suppléments et DCC. Mini mPOS bloque les ajustements et captures au-delà de la
+              réservation d’origine lorsqu’un supplément a été indiqué. Voir les
+              <a href="https://docs.adyen.com/point-of-sale/surcharge">exigences d’Adyen sur les suppléments</a> et la
+              <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">configuration des suppléments
+                d’Adyen</a>.</p>
+            <h3 id="mexican-installments">Paiements échelonnés au Mexique</h3>
+            <p>Confirmez avec Adyen vos programmes émetteurs et vos frais, activez le paiement échelonné dans Paramètres ›
+              Paiements et actualisez les capacités d’Adyen pour vérifier le magasin mexicain. À l’encaissement, choisissez
+              débit, crédit en une fois ou 3, 6, 9, 12 ou 18 mensualités, et payez toute la vente avec une carte éligible.
+              Les liens de paiement, jetons, portefeuilles scannés et cartes cadeaux ne transmettent pas le plan.</p>
+            <p>Les détails, l’historique et les reçus indiquent le plan demandé et le plan renvoyé. Un émetteur non pris en
+              charge peut refuser. Remboursez le paiement d’origine par montant ou en totalité ; l’émetteur gère
+              l’échéancier.</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/installments/mexico-installments/">Adyen: Paiements échelonnés au
+                Mexique</a></p>
+            <h3 id="partial-payments">Encaisser un paiement partiellement autorisé</h3>
+            <p>Activez <strong>Autoriser les autorisations partielles</strong> pour accepter une approbation
+              inférieure au montant demandé. Lorsque le résultat indique <strong>Partiellement payé</strong>,
+              vérifiez les montants payé et restant, puis touchez <strong>Encaisser</strong> à côté d’Accueil.
+              Choisissez comment encaisser le solde sur la même vente. Ne recommencez pas une vente pour le
+              total : la partie approuvée est déjà payée.</p>
+            <p>Une réponse manquante n’est pas une approbation partielle. <a href="troubleshooting#unknown">Résolvez les
+                résultats inconnus</a> avant d’encaisser davantage.</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="../images/fr-FR/partial-payment.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Autorisation partielle">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/fr-FR/partial-payment.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Autorisation partielle" decoding="async">
+                </div></a>
+              <figcaption class="fine">Démo sur simulateur en français d'une approbation partielle, pas d'une vente
+                entièrement payée.<span class="shot-control">Partiellement payé</span><a class="screenshot-link shot-expand" href="../images/fr-FR/partial-payment.png">Ouvrir
+                  la capture en taille réelle</a></figcaption>
+            </figure>
+            <h3 id="split-payments">Partager une vente ou encaisser en espèces</h3>
+            <p>À la caisse, touchez <strong>Autres options de paiement</strong>. Choisissez
+              <strong>Espèces</strong> pour encaisser tout le solde, ou <strong>Partager le paiement</strong>
+              pour choisir un montant, des parts égales ou des articles, puis Payer ou Espèces. Les prix et
+              taxes restent inchangés ; les centimes restants vont aux premières parts. Le montant reçu
+              commence au montant dû ; la saisie le remplace. <strong>Montant exact</strong> le rétablit.
+              Vérifiez les espèces reçues et la monnaie, rendez la monnaie, puis confirmez. Les espèces sont
+              enregistrées uniquement sur cet appareil.</p>
+            <p>La vente reste <strong>Partiellement payée</strong> jusqu’au paiement complet. Touchez
+              <strong>Encaisser</strong> sur le résultat ou <strong>Encaisser le solde</strong> dans
+              Historique pour continuer, même après un redémarrage. La part égale suivante est sélectionnée
+              automatiquement. Résolvez tout résultat de carte inconnu avant d’encaisser davantage. Le reçu
+              liste tous les paiements ; le rapport quotidien sépare les espèces, absentes des totaux du
+              terminal.</p>
+            <p>Avec des cartes cadeaux configurées, touchez <strong>Carte cadeau</strong> pour payer le montant choisi avec
+              l’une d’elles ; un solde insuffisant est approuvé en partie. Les paiements par carte cadeau sont remboursés sur
+              la carte, sauf les cartes cadeaux locales, remboursées en dehors de Mini mPOS.</p>
+            <div class="shot-pair">
+              <a class="screenshot-link" href="../images/fr-FR/split.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français : vente partagée en deux parts égales">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/fr-FR/split.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français : vente partagée en deux parts égales" decoding="async">
+                </div></a>
+              <a class="screenshot-link" href="../images/fr-FR/split-cash.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français : espèces reçues et monnaie à rendre pour une part">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/fr-FR/split-cash.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français : espèces reçues et monnaie à rendre pour une part" decoding="async">
+                </div></a>
+            </div>
+            <p class="fine">Démos du simulateur en français d’une vente partagée.</p>
+            <h3 id="cashback">Retrait avec achat</h3>
+            <p>Après confirmation par Adyen de votre magasin et de votre programme de cartes, activez Retrait avec
+              achat dans Paramètres › Paiements, définissez une limite d’espèces et un PIN responsable. À l’encaissement,
+              saisissez les espèces supplémentaires demandées et payez toute la vente avec une carte éligible. Un achat peut
+              être approuvé alors que son retrait est refusé ; ne remettez que les espèces approuvées.</p>
+            <h3 id="cashout">Retrait d’espèces</h3>
+            <p>Retrait d’espèces, sur l’accueil, demande des espèces sans achat. Activez-le séparément après qu’Adyen a
+              confirmé le retrait d’espèces eftpos australien pour le magasin.</p>
+            <p>Après approbation, vérifiez les espèces approuvées et le débit de la carte. Ne remettez que les espèces
+              approuvées, puis touchez <strong>Enregistrer la remise d’espèces</strong> et approuvez avec le PIN responsable.
+              Ne remettez jamais d’espèces dont le montant n’est pas indiqué, et vérifiez un résultat inconnu au lieu de
+              redemander des espèces. L’historique conserve les remises non enregistrées ; les rapports quotidiens présentent
+              les espèces approuvées et remises séparément des ventes. Les remboursements ne rendent jamais les espèces
+              remises.</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/cashback-and-cash-out">Adyen: Cashback</a></p>
+            <h3 id="meal-vouchers">Accepter les titres-restaurant</h3>
+            <p>Activez <strong>Titres-restaurant</strong> dans Paramètres › Paiements seulement après avoir signé les contrats
+              émetteurs, enregistré votre magasin et obtenu l’activation par Adyen. Le pays vérifié du magasin du terminal
+              détermine les titres acceptés : titres PAT au Brésil ; titres Mastercard ou Visa en Belgique, Finlande,
+              Allemagne, Luxembourg et Espagne ; ou titres-restaurant en France. Actualisez les capacités d’Adyen après la
+              configuration. Monizze, Pluxee Belgique et Lunch Check ne sont pas proposés.</p>
+            <p>Lorsque les titres exigent des produits éligibles, ouvrez chaque produit dans Paramètres › Produits et activez
+              <strong>Éligible aux titres-restaurant</strong> ; les articles personnalisés ne le sont jamais. À
+              l’encaissement, touchez <strong>Autres options de paiement › Partager le paiement</strong>, puis <strong>Titre-restaurant</strong>.
+              Mini mPOS propose le maximum que le titre peut payer ; encaissez le reste par carte ou en espèces. Les titres
+              Mastercard ou Visa peuvent être approuvés en partie. Les titres-restaurant acceptent au plus 25 EUR par jour,
+              jamais le dimanche ni les jours fériés, et ne peuvent pas être remboursés : proposez un avoir. Un titre
+              brésilien au solde insuffisant est refusé ; saisissez un montant inférieur.</p>
+            <p>Au Brésil, activez <strong>Choisir les titres brésiliens dans l’app</strong> pour demander un paiement par titre
+              depuis Mini mPOS. La sélection dans l’app nécessite le logiciel du terminal 1.129 ou ultérieur, vérifié par
+              un test de connexion. Laissez-le désactivé si le support Adyen a activé l’écran crédit, débit ou titre du terminal ;
+              encaissez alors par carte et l’acheteur choisit sur le terminal. Les retours de titres reviennent sur le titre
+              d’origine, jamais en espèces.</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers">Adyen :
+                titres-restaurant au Brésil</a> · <a href="https://docs.adyen.com/industries/markets/europe-meal-vouchers">Adyen :
+                titres-restaurant en Europe</a></p>
+            <h3 id="shopper-display">Utilisez l'écran du terminal destiné aux acheteurs</h3>
+            <p>Avec un terminal réseau/cloud séparé, ouvrez <strong>Paramètres › Affichage du terminal pour le client</strong>.
+              Choisissez d’afficher les articles avant le paiement, de demander au client de confirmer la commande ou de saisir son
+              adresse e-mail si elle manque au paiement. Configurez d’abord les <a href="using#receipts">reçus par e-mail</a>. Le
+              reçu est envoyé automatiquement si <strong>Envoyez automatiquement le reçu par e-mail
+              </strong> est activé. Après approbation, vous pouvez afficher un code QR et demander une note de 0 à 10 ; la note
+              reçue apparaît dans les détails de la transaction.</p>
+            <p>Ces invites utilisent la langue de l’application. Elles ne sont pas proposées lorsque Mini mPOS
+              fonctionne sur le terminal de paiement lui-même. Le QR code contient la référence marchand, pas un reçu ;
+              <a href="using#receipts">remettez quand même le reçu</a>.</p>
+            <h3 id="giving">Invitez un don de charité</h3>
+            <p>Après avoir organisé Adyen Giving avec Adyen, activez <strong>Don de charité (Adyen Giving)</strong> dans
+              <strong>Paramètres › Pourboires et dons</strong>. Lors du règlement des ventes, sélectionnez-le pour inviter
+              un don sur le terminal après paiement. Il n’est pas proposé pour les préautorisations ou les retenues de
+              reçus.</p>
+            <p>L'achat et le don sont distincts. Le montant du don déclaré apparaît dans les détails de la transaction ;
+              un achat approuvé à lui seul ne confirme pas un don.</p>
+            <h3 id="keyed-entry">Acceptez un paiement MOTO ou une saisie manuelle de la carte</h3>
+            <ol>
+              <li>Vérifiez auprès d'Adyen que votre terminal et votre compte autorisent le mode de saisie requis.
+                Configurez MOTO dans <a href="#capabilities">Capacités d'Adyen</a> en cas de besoin, et définissez les PIN
+                du personnel sous <a href="using#staff">Codes PIN du personnel</a>.</li>
+              <li>Dans <strong>Paramètres › Paiements</strong>, activez l'option MOTO ou Saisie manuelle de la carte. À la
+                caisse, sélectionnez <strong>Commande par courrier/téléphone (MOTO)</strong> pour une commande à distance,
+                ou <strong>Saisie manuelle de la carte (MKE)</strong> lorsque la lecture par puce ou sans contact échoue.
+                Un seul peut être sélectionné.</li>
+              <li>Touchez <strong>Payer</strong>, lisez l’avertissement sur la responsabilité en cas de fraude et de
+                rétrofacturation, et effectuez l’approbation du responsable si elle est demandée.</li>
+            </ol>
+            <p>Les transactions saisies manuellement entraînent une responsabilité accrue du commerçant en cas de fraude et de
+              rétrofacturation.</p>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="offline">
+            <h2>Reconnaître les paiements hors ligne et les lots en attente</h2>
+            <p>Les modes EMV et Store-and-Forward hors ligne nécessitent un terminal pris en charge atteint localement :
+              Mini mPOS sur ce terminal ou un terminal sur votre réseau. Ils ne sont pas proposés via le routage cloud ou
+              Tap to Pay. Organisez le traitement hors ligne avec Adyen et examinez ses risques avant de fixer des limites
+              dans <a href="#capabilities">Capacités d'Adyen</a>; Mini mPOS ne met pas lui-même les paiements en file
+              d'attente et ne rend pas un terminal accessible lorsque votre réseau local est en panne.</p>
+            <p>L'historique marque les ventes hors ligne signalées. Ouvrez une vente pour voir <strong>Traitement hors
+                ligne</strong>, qu'il ait utilisé EMV hors ligne ou Store-and-Forward, et tout <strong>Lots hors ligne non
+                confirmés</strong> signalé par le terminal. Une approbation hors ligne ne peut pas encore avoir de référence
+              PSP. Il ne s'agit pas d'un résultat inconnu, mais cela ne confirme pas qu'Adyen a reçu ou réglé le paiement.
+            </p>
+            <p>Restaurez la connexion du terminal à Adyen et vérifiez les paiements téléchargés et les résultats finaux
+              dans le Customer Area. Vérifiez les avertissements hors ligne et de lots non confirmés pendant
+              <a href="using#reconciliation">rapprochement des terminaux</a>; les totaux correspondants ne confirment pas le
+              règlement hors ligne. Si aucune réponse de paiement concluante n'est arrivée, suivez
+              <a href="troubleshooting#unknown">récupération à résultat inconnu</a> au lieu d'assumer une approbation hors
+              ligne ou de facturer à nouveau.</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="../images/fr-FR/offline-payment.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Paiement hors ligne">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/fr-FR/offline-payment.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Paiement hors ligne" decoding="async">
+                </div></a>
+              <figcaption class="fine">Démo du simulateur en français des détails hors ligne, pas de preuve de
+                téléchargement ou de règlement.<span class="shot-control">Traitement hors ligne</span><a class="screenshot-link shot-expand" href="../images/fr-FR/offline-payment.png">Ouvrir
+                  la capture en taille réelle</a></figcaption>
+            </figure>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="wallets">
+            <h2>Scanner le code d'un portefeuille d'acheteur</h2>
+            <p>Utilisez <strong>Scanner le portefeuille</strong> lors du paiement des soldes pour lire un code de paiement
+              provenant de l'application de portefeuille de l'acheteur. Ceci est différent de la numérisation d’un
+              code-barres de produit ou d’un reçu de remboursement. Il fonctionne avec un terminal de paiement physique,
+              et non avec Tap to Pay ; <a href="quick-start#credentials">La découverte du portefeuille nécessite un rôle
+                de lecture</a>.</p>
+            <ol>
+              <li>Vérifiez les champs de total et de paiement, puis appuyez sur <strong>Scanner le portefeuille</strong>.
+                Si le pourboire sur reçu est sélectionné, confirmez le paiement sans ce pourboire : le portefeuille
+                facture le total immédiatement, et non une pré-autorisation.</li>
+              <li>Choisissez le portefeuille de l'acheteur. Un seul portefeuille disponible est sélectionné
+                automatiquement. Seuls les portefeuilles configurés individuellement apparaissent ; Alipay+ n'implique pas
+                d'options distinctes GCash, DANA, Kakao Pay ou TrueMoney.</li>
+              <li>Sur un terminal confirmé équipé d'un scanner, appuyez sur son bouton de numérisation. Il peut s'agir du
+                terminal réseau/cloud, et non de l'appareil exécutant Mini mPOS. Pour numériser avec l'appareil photo de
+                l'appareil, appuyez sur <strong>Utiliser l’appareil photo</strong>.</li>
+              <li>Scannez le code de paiement QR ou le code-barres de paiement de l'acheteur. Un scan valide démarre le
+                paiement immédiatement. Attendez le résultat normal du paiement et remettez son reçu.</li>
+            </ol>
+            <p>Annuler conserve le panier. Un scan sur le terminal s’arrête après 30 secondes ; utilisez
+              <strong>Scannez à nouveau</strong> ou l’appareil photo. Certains portefeuilles ne prennent pas en charge
+              <strong>Enregistrer la carte</strong> ; un paiement approuvé sans jeton enregistré reste approuvé.
+              <a href="troubleshooting#wallets">Résolvez les problèmes de portefeuille</a> et ne remplacez jamais un
+              <a href="troubleshooting#unknown">paiement inconnu</a> par un nouveau scan.</p>
+            <p>Confirmez la configuration de votre portefeuille et testez le comportement avec le
+              <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Guide du
+                portefeuille Adyen</a> et
+              <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Guide
+                Adyen PayPal et Venmo</a>.</p>
+            <div class="shot-pair">
+              <a class="screenshot-link" href="../images/fr-FR/wallets.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Choisir un portefeuille numérique">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/fr-FR/wallets.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Choisir un portefeuille numérique" decoding="async">
+                </div></a>
+              <a class="screenshot-link" href="../images/fr-FR/wallet-scan.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français: Scanner un portefeuille numérique">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/fr-FR/wallet-scan.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français: Scanner un portefeuille numérique" decoding="async">
+                </div></a>
+            </div>
+            <p class="fine">Démonstrations de simulation en français de numérisation de portefeuille.</p>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="shoppers">
+            <h2>Utilisez des références et enregistrer des cartes</h2>
+            <dl class="settings-list">
+              <dt>Référence marchand</dt>
+              <dd>Pour enregistrer un numéro de réservation ou de commande, activez <strong>
+                  Paramètres › Paiements › Demandez une référence marchand</strong>. Le numéro identifie le paiement dans
+                Adyen. Si laissé vide, une référence unique est générée.</dd>
+              <dt>Référence acheteur</dt>
+              <dd>Dans <strong>Paramètres › Paiements</strong>, choisissez le <strong>Référence
+                  acheteur</strong>: une référence client saisie lors du paiement (par défaut), l'e-mail du client, ou
+                aucune. Il est envoyé à Adyen avec chaque paiement. Les références de courrier électronique sont hachées
+                par défaut ; utilisez le même sel sur chaque appareil.</dd>
+              <dt>Cartes enregistrées</dt>
+              <dd>Avec un ensemble de références d'acheteur, activez <strong>Proposer
+                  l’enregistrement des cartes</strong>. Obtenez le consentement du client avant de sélectionner
+                <strong>Enregistrer la carte pour de futurs paiements</strong>. Pour en charger un plus tard, voir
+                <a href="#saved-card">Gérer les jetons</a>.</dd>
+            </dl>
+            <h3 id="saved-card">Gérer les jetons</h3>
+            <ol>
+              <li>Sur Accueil, appuyez sur <strong>Jetons</strong> et entrez le PIN responsable si demandé.</li>
+              <li>Saisissez la référence client, ou l'e-mail lorsqu'il s'agit de la référence acheteur, et appuyez sur
+                <strong>Rechercher des jetons</strong>.</li>
+              <li>Appuyez sur <strong>Débiter</strong> à côté d’un jeton, puis ajoutez des produits ou un
+                <strong>Article personnalisé</strong>. Ce panier est distinct de <strong>Nouvelle vente</strong>.</li>
+              <li>Vérifiez le montant des frais et appuyez sur <strong>Débiter</strong>.</li>
+            </ol>
+            <p>Le client n’est pas présent : obtenez d’abord son consentement. Les jetons enregistrés avec un autre
+              <strong>Modèle de traitement récurrent</strong> ne peuvent pas être débités ici. Remboursez ces paiements
+              depuis l’<strong>Historique</strong>. Si le résultat d’un débit est inconnu, vérifiez-le depuis l’historique
+              pendant sept jours, puis dans le Customer Area. À l’encaissement d’une nouvelle vente, <strong>Débiter un
+                jeton</strong> apparaît dès que la référence acheteur a des jetons enregistrés.</p>
+            <p id="token-deletion">
+              Pour supprimer un jeton, touchez son action <strong>Supprimer</strong>, vérifiez les détails, puis confirmez et
+              approuvez avec le PIN responsable. La suppression retire le jeton chez Adyen pour Mini mPOS et toute autre
+              intégration ; elle est irréversible. Les paiements passés et leurs remboursements restent disponibles. Si la
+              suppression reste non confirmée, touchez <strong>Vérifier la suppression</strong> avant de débiter ou de
+              supprimer à nouveau.
+            </p>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="gift-cards">
+            <h2>Vendre et gérer des cartes cadeaux</h2>
+            <p>Les cartes cadeaux fonctionnent avec un terminal Adyen ; Tap to Pay ne les accepte pas. Dans
+              <strong>Paramètres › Paiements › Cartes cadeaux</strong>, activez chaque fournisseur pour lequel vous avez
+              terminé l’intégration chez Adyen, ajoutez le type de carte indiqué par Adyen pour Intersolve ou les cartes
+              locales, et choisissez comment le personnel présente les cartes : scanner avec l’appareil photo et saisir la
+              date d’expiration, ou glisser ou saisir sur le terminal. Seules les actions documentées par Adyen pour un
+              fournisseur sont proposées : la désactivation est réservée à Givex et les cartes locales n’acceptent que les
+              paiements.</p>
+            <ol>
+              <li>Sur l’accueil, touchez <strong>Cartes cadeaux</strong>, puis choisissez le fournisseur et la façon de
+                présenter la carte.</li>
+              <li>Choisissez <strong>Consulter le solde</strong>, <strong>Activer</strong>, <strong>Recharger</strong>,
+                <strong>Retrait espèces</strong>, <strong>Rembourser sur la carte</strong> ou <strong>Désactiver</strong>.</li>
+              <li>Pour ajouter de la valeur, choisissez <strong>Paiement par carte</strong>, ou <strong>Reçu hors de
+                  l’app</strong> et confirmez avoir reçu l’argent.</li>
+              <li>Confirmez, puis validez avec le PIN responsable.</li>
+            </ol>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="../images/fr-FR/gift-cards.png" aria-label="Ouvrir la capture en taille réelle: Démonstration du simulateur en français : cartes cadeaux Givex et SVS, glissées ou saisies, avec leurs actions">
+                <div class="terminal terminal-s1f2">
+                  <img src="../images/fr-FR/gift-cards.png" width="540" height="960" loading="lazy" alt="Démonstration du simulateur en français : cartes cadeaux Givex et SVS, glissées ou saisies, avec leurs actions" decoding="async">
+                </div></a>
+              <figcaption class="fine">Démo du simulateur en français.<span class="shot-control">Cartes cadeaux</span><a class="screenshot-link shot-expand" href="../images/fr-FR/gift-cards.png">Ouvrir
+                  la capture en taille réelle</a></figcaption>
+            </figure>
+            <p>L’approbation des consultations de solde et des modifications de valeur suit les <a
+              href="using#staff">autorisations du personnel</a>. Le paiement par carte est encaissé d’abord et la valeur n’est
+              envoyée qu’après son acceptation ; si son résultat est inconnu, vérifiez-le avant toute autre action. Si le
+              paiement a été encaissé sans ajout de valeur, l’activité indique <strong>Valeur non ajoutée</strong> :
+              renvoyez la valeur, remboursez le paiement par carte ou enregistrez l’argent rendu. Rien n’est répété
+              automatiquement.</p>
+            <p><strong>Annuler la recharge</strong> apparaît pour la dernière recharge de la carte dans les 24 heures. Un
+              retrait verse normalement tout le solde et clôt la carte ; seules certaines cartes Givex permettent moins.
+              Remettez les espèces une fois le retrait accepté, puis touchez <strong>Espèces remises</strong> ; une remise
+              non confirmée reste sous <strong>À traiter</strong>, même après un redémarrage. L’activité des cartes
+              cadeaux apparaît dans <strong>Historique</strong> et à part dans le rapport du jour ; elle n’est jamais
+              comptée comme une vente.</p>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="payment-links">
+            <h2>Accepter le paiement avec un lien</h2>
+            <div class="callout callout-prereq" role="note">
+              <p class="callout-title">Conditions préalables</p>
+              <ul>
+                <li>Votre compte marchand répond aux <a href="https://docs.adyen.com/unified-commerce/pay-by-link">
+                    Conditions requises pour Adyen Pay by Link</a>, y compris les termes et conditions, avant utilisation en
+                  direct</li>
+              </ul>
+            </div>
+            <ol>
+              <li>À la caisse d'une vente, appuyez sur <strong>Créer un lien de paiement</strong>.</li>
+              <li>Affichez le code QR ou appuyez sur <strong>Envoyer le lien par e-mail</strong>, <strong>Imprimer le lien
+                </strong> ou, sur une tablette ou un téléphone, <strong>Partager le lien</strong>.</li>
+              <li>Gardez l'écran du lien ouvert pour voir le paiement arriver, ou appuyez plus tard sur <strong>Vérifier
+                  le paiement</strong> dans son entrée Historique.</li>
+              <li>Si le lien n'est plus nécessaire, appuyez sur <strong>Annuler le lien</strong>.</li>
+            </ol>
+            <p>L'entrée montre <strong>En attente de paiement</strong> jusqu'à ce que le lien soit payé, expire ou soit
+              annulé. Définir la durée de fonctionnement des liens <strong>Paramètres › Paiements › Liens de paiement</strong>. Les
+              liens sont uniquement destinés aux ventes, pas aux dépôts ni aux pourboires sur le reçu.</p>
+            <div class="callout callout-important" role="note">
+              <p class="callout-title">Important</p>
+              <p>Toute personne disposant d’un vrai lien peut payer jusqu’à son expiration. Rembourser les liens payants
+                dans <strong>Customer Area › Paiements › Liste de paiements</strong>; l'application ne peut pas les
+                rembourser.</p>
+            </div>
+            <p>Si un lien est manquant ou n'est pas mis à jour, voir <a href="troubleshooting#links">problèmes de lien de
+                paiement</a>.</p>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+        </div>
+      </div>
+    </main>
+    <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="Guides et configuration"><ul class="footer-nav">
+      <li><a href="quick-start">Démarrage rapide</a></li><li><a href="using" aria-current="page">Utilisation de Mini mPOS</a></li>
+      <li><a href="troubleshooting">Dépannage</a></li><li><a href="setup">Aide à la configuration</a></li>
+    </ul></nav>
+    <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · Licence MIT · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Sécurité</a></p><p class="fine">Adyen est une marque commerciale d'Adyen N.V. Mini mPOS est indépendant et n'est pas affilié, approuvé ou soutenu par Adyen.</p>
+  </div></footer>
+  </body>
+</html>

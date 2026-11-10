@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="max-image-preview:large">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Payment options – Mini mPOS</title>
+    <meta name="description" content="Add the payment workflows your business needs. Check availability, finish Adyen setup and test each workflow before live use.">
+    <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="describedby" href="llms.txt" type="text/plain">
+    <meta name="application-name" content="Mini mPOS guides">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="canonical" href="https://minimpos.app/payment-options">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Mini mPOS">
+    <meta property="og:title" content="Payment options – Mini mPOS">
+    <meta property="og:description" content="Add the payment workflows your business needs. Check availability, finish Adyen setup and test each workflow before live use.">
+    <meta property="og:url" content="https://minimpos.app/payment-options">
+    <meta property="og:image" content="https://minimpos.app/images/social.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="Mini mPOS on illustrated Adyen terminals, showing English simulator demos.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Payment options – Mini mPOS">
+    <meta name="twitter:description" content="Add the payment workflows your business needs. Check availability, finish Adyen setup and test each workflow before live use.">
+    <meta name="twitter:image" content="https://minimpos.app/images/social.png">
+    <meta name="twitter:image:alt" content="Mini mPOS on illustrated Adyen terminals, showing English simulator demos.">
+    <meta name="theme-color" content="#00843F">
+    <link href="https://minimpos.app/payment-options" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/payment-options" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/payment-options" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/payment-options" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/payment-options" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/payment-options" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/payment-options" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/payment-options" hreflang="x-default" rel="alternate">
+    <meta content="en_US" property="og:locale">
+    <meta content="es_MX" property="og:locale:alternate">
+    <meta content="fr_FR" property="og:locale:alternate">
+    <meta content="ja_JP" property="og:locale:alternate">
+    <meta content="pt_BR" property="og:locale:alternate">
+    <meta content="zh_CN" property="og:locale:alternate">
+    <meta content="zh_HK" property="og:locale:alternate">
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Mini mPOS home"><img src="favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav class="desktop-nav" aria-label="Main"><ul class="nav">
+      <li><a href="quick-start">Quick start</a></li><li><a href="using" aria-current="page">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting">Troubleshooting</a></li><li><a href="setup">Setup helper</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>Menu</summary><div class="mobile-panel"><nav aria-label="Main"><ul class="nav">
+      <li><a href="quick-start">Quick start</a></li><li><a href="using" aria-current="page">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting">Troubleshooting</a></li><li><a href="setup">Setup helper</a></li>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="Language"><p>Language</p><ul><li><a aria-current="page" href="payment-options" hreflang="en" lang="en">English</a></li><li><a href="es-MX/payment-options" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/payment-options" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/payment-options" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/payment-options" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/payment-options" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/payment-options" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+    </div></details>
+    <details class="language-menu">
+      <summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary>
+      <nav aria-label="Language"><ul><li><a aria-current="page" href="payment-options" hreflang="en" lang="en">English</a></li><li><a href="es-MX/payment-options" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a href="fr-FR/payment-options" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="ja/payment-options" hreflang="ja" lang="ja">日本語</a></li><li><a href="pt-BR/payment-options" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="zh-CN/payment-options" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="zh-Hant/payment-options" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+    </details>
+  </div></header>
+    <main id="main">
+      <section class="guide-hero"><div class="wrap">
+          <p class="breadcrumb"><a href="using">Using Mini mPOS</a></p>
+          <p class="eyebrow">Guide</p>
+          <h1>Payment options</h1>
+          <p class="lead">Add the payment workflows your business needs. Check availability, finish Adyen setup and test each
+            workflow before live use.</p>
+        </div></section>
+      <div class="wrap guide">
+        <nav class="toc" id="contents" aria-label="Guide navigation">
+          <p class="guide-links toc-title">Guides</p>
+          <p class="guide-links"><a href="quick-start">Quick start</a>
+            <br><a href="using" aria-current="page">Using Mini mPOS</a><br><a href="troubleshooting">Troubleshooting</a>
+          </p>
+          <div class="desktop-contents">
+            <p class="toc-title">On this page</p>
+            <ol>
+              <li><a href="#capabilities">Check and configure Adyen capabilities</a></li>
+              <li><a href="#tipping">Choose how to collect tips</a></li>
+              <li><a href="#terminal-tips">Collect a tip on the terminal</a></li>
+              <li><a href="#tips">Collect a tip written on the receipt</a></li>
+              <li><a href="#preauth">Hold and collect a deposit</a></li>
+              <li><a href="#terminal-checkout">Use optional checkout workflows</a>
+                <ul>
+                  <li><a href="#audio-guidance">Use audio-guided payments</a></li>
+                  <li><a href="#surcharges">Surcharges</a></li>
+                  <li><a href="#mexican-installments">Mexican card installments</a></li>
+                  <li><a href="#partial-payments">Collect a partially authorized payment</a></li>
+                  <li><a href="#split-payments">Split a sale or take cash</a></li>
+                  <li><a href="#cashback">Cashback</a></li>
+                  <li><a href="#cashout">Cashout</a></li>
+                  <li><a href="#meal-vouchers">Take meal vouchers</a></li>
+                  <li><a href="#shopper-display">Use the shopper-facing terminal screen</a></li>
+                  <li><a href="#giving">Invite a charity donation</a></li>
+                  <li><a href="#keyed-entry">Take a MOTO or Manual Key Entry payment</a></li>
+                </ul>
+              </li>
+              <li><a href="#offline">Recognize offline payments and pending batches</a></li>
+              <li><a href="#wallets">Scan a shopper wallet code</a></li>
+              <li><a href="#shoppers">Use references and save cards</a>
+                <ul>
+                  <li><a href="#saved-card">Manage tokens</a></li>
+                </ul>
+              </li>
+              <li><a href="#gift-cards">Sell and manage gift cards</a></li>
+              <li><a href="#payment-links">Take payment with a link</a></li>
+            </ol>
+          </div>
+          <details class="mobile-contents">
+            <summary class="toc-title">On this page</summary>
+            <ol>
+              <li><a href="#capabilities">Check and configure Adyen capabilities</a></li>
+              <li><a href="#tipping">Choose how to collect tips</a></li>
+              <li><a href="#terminal-tips">Collect a tip on the terminal</a></li>
+              <li><a href="#tips">Collect a tip written on the receipt</a></li>
+              <li><a href="#preauth">Hold and collect a deposit</a></li>
+              <li><a href="#terminal-checkout">Use optional checkout workflows</a>
+                <ul>
+                  <li><a href="#audio-guidance">Use audio-guided payments</a></li>
+                  <li><a href="#surcharges">Surcharges</a></li>
+                  <li><a href="#mexican-installments">Mexican card installments</a></li>
+                  <li><a href="#partial-payments">Collect a partially authorized payment</a></li>
+                  <li><a href="#split-payments">Split a sale or take cash</a></li>
+                  <li><a href="#cashback">Cashback</a></li>
+                  <li><a href="#cashout">Cashout</a></li>
+                  <li><a href="#meal-vouchers">Take meal vouchers</a></li>
+                  <li><a href="#shopper-display">Use the shopper-facing terminal screen</a></li>
+                  <li><a href="#giving">Invite a charity donation</a></li>
+                  <li><a href="#keyed-entry">Take a MOTO or Manual Key Entry payment</a></li>
+                </ul>
+              </li>
+              <li><a href="#offline">Recognize offline payments and pending batches</a></li>
+              <li><a href="#wallets">Scan a shopper wallet code</a></li>
+              <li><a href="#shoppers">Use references and save cards</a>
+                <ul>
+                  <li><a href="#saved-card">Manage tokens</a></li>
+                </ul>
+              </li>
+              <li><a href="#gift-cards">Sell and manage gift cards</a></li>
+              <li><a href="#payment-links">Take payment with a link</a></li>
+            </ol>
+          </details>
+        </nav>
+        <div class="guide-body">
+          <section id="capabilities">
+            <h2>Check and configure Adyen capabilities</h2>
+            <p>Open <strong>Settings › Adyen capabilities</strong> after connecting your payment destination.
+              This hub covers Adyen payment and terminal features, not app-only tools or Manager PIN settings. Its four
+              groups are Payments, Tips and shopper interaction, Receipts and scanning, and
+              Terminal and recovery.</p>
+            <p>Each feature shows <strong>Ready</strong>,
+              <strong>Configured at Adyen</strong>, <strong>Off</strong>,
+              <strong>Needs setup</strong>, or <strong>Unverified</strong>
+              below its name. <strong>Unsupported</strong> features are collapsed at the bottom.
+              These indicators do not guarantee approval for a merchant account, card, or payment method. Until payments
+              are set up, the screen offers Finish setting up payments instead.</p>
+            <p><strong>Off · configured at Adyen</strong> means Adyen already has the feature set up for the terminal or
+              store, such as tip options, MOTO or a gift-card type; turn on its local setting in Mini mPOS to use it.</p>
+            <ol>
+              <li>Tap <strong>Refresh capabilities</strong> to read the selected terminal's settings. Real terminal
+                inspection needs the <a href="quick-start#credentials">Management API roles in Quick start</a>.</li>
+              <li>Choose a feature to view its requirements and settings.</li>
+              <li>For supported terminals, edit terminal tipping, DCC, MOTO, or offline limits inside that feature.
+                Enter currency amounts normally and explicitly select Use inherited limit to remove a limit
+                override. Tip suggestions have separate validated rows.</li>
+              <li>Tap <strong>Save to Adyen</strong>.</li>
+            </ol>
+            <p>An unknown save is not retried automatically. Refresh successfully and review Adyen's values before deciding
+              what to do. A successful save and read-back confirm the settings at Adyen, not that the terminal has applied
+              them. A configuration download and restart may still be needed; see
+              <a href="https://docs.adyen.com/point-of-sale/automating-terminal-management/configure-terminals-api">Adyen
+                terminal configuration updates</a>.</p>
+            <p>Tap to Pay does not offer physical-terminal features such as terminal tipping, shopper display, MOTO/MKE,
+              offline payments or terminal reconciliation. For account enablement and payment-method requirements, follow
+              the <a href="https://docs.adyen.com/point-of-sale">Adyen in-person payments documentation</a>.</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="images/capabilities.png" aria-label="Open full-size screenshot: English simulator demo: Adyen capability availability and configuration status">
+                <div class="terminal terminal-s1f2">
+                  <img src="images/capabilities.png" width="540" height="960" loading="lazy" alt="English simulator demo: Adyen capability availability and configuration status" decoding="async">
+                </div></a>
+              <figcaption class="fine">English simulator demo.<span class="shot-control">Refresh capabilities</span><a class="screenshot-link shot-expand" href="images/capabilities.png">Open
+                  full-size screenshot</a></figcaption>
+            </figure>
+            <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+          </section>
+          <section id="tipping">
+            <h2>Choose how to collect tips</h2>
+            <p>Terminal tips are chosen before the card is charged. Receipt tips hold the bill until staff enter the written tip
+              and capture it. Follow the requirements for your chosen method below.</p>
+            <ul>
+              <li><a href="#terminal-tips">Collect a tip on the terminal</a></li>
+              <li><a href="#tips">Collect a tip written on the receipt</a></li>
+            </ul>
+            <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+          </section>
+          <section id="terminal-tips">
+            <h2>Collect a tip on the terminal</h2>
+            <ol>
+              <li>Check terminal tipping in <a href="#capabilities">Adyen capabilities</a>. Set the terminal's predefined
+                and custom tip options for the payment currency when needed.</li>
+              <li>In <strong>Settings › Tips and donations</strong>, enable <strong>Tip on the terminal</strong> and
+                choose its checkout default. Optionally enable <strong>Dynamic basket tip suggestions</strong> for fixed
+                amounts on small baskets and percentages on larger ones, or <strong>Tip on the pre-tax amount</strong>.
+                Both options require terminal software 1.101 or later, verified by a connection check.
+              </li>
+              <li>At sale checkout, select <strong>Tip on the terminal</strong> and tap <strong>Pay</strong>. The shopper
+                chooses a tip before the card is charged. Check the returned total and tip and deliver the receipt.</li>
+            </ol>
+            <p>This does not need a printer or later tip entry. Terminal tipping and <a href="#tips">tips on the receipt
+              </a> cannot be selected together. Neither is offered for pre-authorizations, scanned-wallet payments or
+              payment links; terminal tipping is not offered with Tap to Pay.</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="images/terminal-tipping.png" aria-label="Open full-size screenshot: English simulator demo: terminal tipping enabled with dynamic basket suggestions in Tips and donations">
+                <div class="terminal terminal-s1f2">
+                  <img src="images/terminal-tipping.png" width="540" height="960" loading="lazy" alt="English simulator demo: terminal tipping enabled with dynamic basket suggestions in Tips and donations" decoding="async">
+                </div></a>
+              <figcaption class="fine">English simulator demo of checkout preferences. Configure the terminal separately
+                in Adyen capabilities.<span class="shot-control">Terminal tipping</span><a class="screenshot-link shot-expand" href="images/terminal-tipping.png">Open
+                  full-size screenshot</a></figcaption>
+            </figure>
+            <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+          </section>
+          <section id="tips">
+            <h2>Collect a tip written on the receipt</h2>
+            <div class="callout callout-prereq" role="note">
+              <p class="callout-title">Prerequisites</p>
+              <ul>
+                <li>A terminal with a printer</li>
+                <li>Pre-authorization and overcapture enabled by Adyen Support; see the
+                  <a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">Adyen receipt tipping guide
+                  </a></li>
+              </ul>
+            </div>
+            <p>In <strong>Settings › Tips and donations</strong>, choose <strong>Enabled (default off)</strong> or
+              <strong>Enabled (default on)</strong> to set how the checkout switch starts. <strong>Disabled</strong>, the
+              default, hides it. Some debit cards and wallets do not support this flow.</p>
+            <ol>
+              <li>At a sale's checkout, switch on <strong>Tip on the receipt</strong> and tap <strong>Pay</strong>. The
+                bill is held, not charged.</li>
+              <li>Print the receipt. It has blank Tip and Total lines, and the merchant copy has a signature line.</li>
+              <li>When the customer has filled it in, tap <strong>Enter tip</strong> on the result or in History's
+                <strong>Awaiting tip</strong> filter.</li>
+              <li>Enter the tip or the total, or tap <strong>No tip</strong>, and confirm.</li>
+            </ol>
+            <p>The app captures the bill plus the tip. Tips over 20% first need the card issuer to increase the hold; if
+              it refuses, enter a smaller tip or none. A saved tip cannot be changed. Before a tip is entered, cancel the payment;
+              afterward, refunds include the tip.</p>
+            <div class="callout callout-warning" role="note">
+              <p class="callout-title">Warning</p>
+              <p>Enter every tip promptly, including zero tips, so the bills are captured before their holds expire. For
+                failed or unknown captures, see <a href="troubleshooting#modifications">capture problems</a>.</p>
+            </div>
+            <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+          </section>
+          <section id="preauth">
+            <h2>Hold and collect a deposit</h2>
+            <div class="callout callout-prereq" role="note">
+              <p class="callout-title">Prerequisites</p>
+              <ul>
+                <li>Pre-authorization enabled by Adyen Support for your payment methods; see the
+                  <a href="https://docs.adyen.com/point-of-sale/pre-authorisation">Adyen pre-authorization guide</a></li>
+              </ul>
+            </div>
+            <p>A pre-authorization holds an amount on the card without charging it. Your whole account does not need
+              manual capture; Mini mPOS requests it for these payments only.</p>
+            <ol>
+              <li>On Home, tap <strong>New pre-authorization</strong>. Choose a pre-authorization product, scan its
+                barcode or enter an amount. Each pre-authorization has one item.</li>
+              <li>At checkout, tap <strong>Pre-authorize</strong>. The receipt shows the amount held.</li>
+              <li>When you are ready, open the entry in <strong>History</strong> and choose an action:</li>
+            </ol>
+            <dl class="settings-list">
+              <dt>Capture</dt>
+              <dd>Collects the amount owed. A lower amount releases the rest; a higher amount first asks
+                the card issuer to increase the hold. Refunds are possible once capture is requested.</dd>
+              <dt>Adjust amount</dt>
+              <dd>Changes the amount held without charging it. Submitting the same amount renews the
+                authorization.</dd>
+              <dt>Cancel pre-authorization</dt>
+              <dd>Releases the hold. If the payment was already captured in the Customer
+                Area, Adyen refunds it in full instead.</dd>
+            </dl>
+            <p><strong>Capture requested</strong> is not final confirmation; check the Customer Area. For immediate
+              answers to adjustments, enable <strong>Return adjust authorisation data</strong> as described in the
+              <a href="https://docs.adyen.com/online-payments/adjust-authorisation">Adyen authorization adjustment guide
+              </a>.</p>
+            <div class="callout callout-warning" role="note">
+              <p class="callout-title">Warning</p>
+              <p>Holds expire. Check the pre-authorization filter daily and capture or cancel promptly. For failed or
+                unknown operations, see <a href="troubleshooting#modifications">capture problems</a>.</p>
+            </div>
+            <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+          </section>
+          <section id="terminal-checkout">
+            <h2>Use optional checkout workflows</h2>
+            <p>Enable only the checkout options you need in Settings. Except for partial authorization, splitting and
+              surcharges, these workflows need a supported physical terminal, not Tap to Pay. Check
+              <a href="#capabilities">Adyen capabilities</a> and test your actual setup first. Most options cannot be
+              combined in one payment; checkout explains a conflict and asks you to turn one off.</p>
+            <h3 id="audio-guidance">Use audio-guided payments</h3>
+            <p>First turn on <strong>Enable audio guidance</strong> in <strong>Settings › Payments ›
+                Accessibility</strong>, once Adyen Support has enabled it for your terminals, they run supported software and
+              their language is not Estonian, Latvian, Icelandic or Lithuanian. It is available on AMS1, S1F2, S1F2L, S1E2L
+              and S1U2 with software 1.117 or later, and M450, P630 and SFO1 with 1.124 or later. See
+              <a
+              href="https://docs.adyen.com/point-of-sale/android-terminals/accessibility-mode/accessibility-from-pos">Adyen’s
+              accessible payment requirements</a>.</p>
+            <p>At checkout, turn on <strong>Audio guidance</strong> for a shopper who needs it, and turn off tipping, Giving
+              and keyed entry. Use a card that needs no signature. The payment requests the full amount and skips
+              shopper-display prompts.</p>
+            <p>The terminal reads the instructions aloud; allow the shopper time. Mini mPOS waits up to ten minutes for
+              the result. If no answer arrives, <a href="troubleshooting#unknown">check the unknown result</a> before
+              another payment. The choice resets after each attempt.</p>
+            <h3 id="surcharges">Surcharges</h3>
+            <p>Adyen adds surcharges you configure at Adyen; Mini mPOS does not set them. When Adyen reports one, History,
+              receipts and the daily report show it separately from purchases and tips; the charged total already
+              includes it. An unreported fee stays unknown. If a partial approval does not report the surcharge, check
+              the Customer Area or refund the original card before starting again.</p>
+            <p>Disclose the surcharge before payment, especially with Tap to Pay, which has no surcharge confirmation
+              screen. Do not combine surcharges with DCC. Mini mPOS blocks adjustments and captures above the original
+              hold when a surcharge was reported. See <a href="https://docs.adyen.com/point-of-sale/surcharge">Adyen’s
+                surcharge requirements</a> and <a href="https://docs.adyen.com/point-of-sale/surcharge/configuration">Adyen’s
+                surcharge configuration</a>.</p>
+            <h3 id="mexican-installments">Mexican card installments</h3>
+            <p>Confirm your issuer programs and fees with Adyen, enable installments in Settings › Payments and refresh
+              Adyen capabilities to verify the Mexican store. At checkout, choose debit, one-off credit, or 3, 6, 9, 12 or
+              18 monthly payments, and pay the whole sale with one eligible card. Payment links, tokens, scanned wallets and
+              gift cards do not carry the plan.</p>
+            <p>Details, History and receipts show the plan requested and the plan returned. An unsupported issuer may
+              decline. Refund the original payment by amount or in full; the issuer manages the schedule.</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/installments/mexico-installments/">Adyen: Mexican card installments</a></p>
+            <h3 id="partial-payments">Collect a partially authorized payment</h3>
+            <p>Turn on <strong>Allow partial authorizations</strong> to accept a card approval for less than
+              the requested amount. When the result shows <strong>Partially paid</strong>, check the paid and
+              remaining amounts, then tap <strong>Collect</strong> beside Home. Choose how to collect the
+              balance on the same sale. Do not start a new sale for the full total: the approved portion is
+              already paid.</p>
+            <p>A missing answer is not a partial approval. <a href="troubleshooting#unknown">Resolve unknown results</a>
+              before collecting more.</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="images/partial-payment.png" aria-label="Open full-size screenshot: English simulator demo: $10.70 paid, $10.69 remaining and a Collect button">
+                <div class="terminal terminal-s1f2">
+                  <img src="images/partial-payment.png" width="540" height="960" loading="lazy" alt="English simulator demo: $10.70 paid, $10.69 remaining and a Collect button" decoding="async">
+                </div></a>
+              <figcaption class="fine">English simulator demo of a partial approval, not a fully paid sale.<span class="shot-control">Partially
+                  paid</span><a class="screenshot-link shot-expand" href="images/partial-payment.png">Open full-size screenshot</a></figcaption>
+            </figure>
+            <h3 id="split-payments">Split a sale or take cash</h3>
+            <p>At checkout, tap <strong>Other payment options</strong>. Choose <strong>Cash</strong> to
+              collect the full balance, or <strong>Split payment</strong> to choose an
+              <strong>Amount</strong>, equal <strong>Shares</strong> or sold <strong>Items</strong>, then Pay
+              or Cash. Prices and tax stay as rung up, and any extra cent goes to the first shares. Cash entry
+              starts at the amount due; typing replaces it. <strong>Exact cash</strong> restores it. Check the
+              cash received and change, hand back the change, then confirm. Cash is recorded on this device
+              only.</p>
+            <p>The sale stays <strong>Partially paid</strong> until paid in full. Tap <strong>Collect</strong>
+              on its result or <strong>Collect balance</strong> in History to continue, even after a restart.
+              The next equal share is selected automatically. Resolve an unknown card result before collecting
+              more. The receipt lists every payment; the daily report shows cash separately, and terminal
+              totals never include it.</p>
+            <p>With gift cards set up, tap <strong>Gift card</strong> to pay the chosen amount with one; a short balance is
+              approved in part. Gift-card payments are refunded to the card, except local gift cards, which are refunded
+              outside Mini mPOS.</p>
+            <div class="shot-pair">
+              <a class="screenshot-link" href="images/split.png" aria-label="Open full-size screenshot: English simulator demo: $34.00 sale split into two $17.00 shares">
+                <div class="terminal terminal-s1f2">
+                  <img src="images/split.png" width="540" height="960" loading="lazy" alt="English simulator demo: $34.00 sale split into two $17.00 shares" decoding="async">
+                </div></a>
+              <a class="screenshot-link" href="images/split-cash.png" aria-label="Open full-size screenshot: English simulator demo: $20.00 cash received for a $17.00 share, with $3.00 change">
+                <div class="terminal terminal-s1f2">
+                  <img src="images/split-cash.png" width="540" height="960" loading="lazy" alt="English simulator demo: $20.00 cash received for a $17.00 share, with $3.00 change" decoding="async">
+                </div></a>
+            </div>
+            <p class="fine">English simulator demos of a split sale.</p>
+            <h3 id="cashback">Cashback</h3>
+            <p>After Adyen confirms your store and card program, enable Cashback in Settings › Payments, set a cash limit
+              and set a Manager PIN. At checkout, enter the extra cash requested and pay the whole sale with one eligible
+              card. A purchase can be approved while its cashback is refused; hand over only the cash approved.</p>
+            <h3 id="cashout">Cashout</h3>
+            <p>Cashout on Home requests cash without a purchase. Enable it separately after Adyen confirms Australian
+              eftpos cash-out for the store.</p>
+            <p>After approval, check the cash approved and the card charge. Hand over only the approved cash, then tap
+              <strong>Record cash handed over</strong> and approve with the Manager PIN. Never hand over cash when its
+              amount is unreported, and check an unknown result instead of requesting cash again. History keeps
+              unrecorded handovers; daily reports show approved and handed-over cash separately from sales. Refunds never
+              return cash given out.</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/cashback-and-cash-out">Adyen: Cashback</a></p>
+            <h3 id="meal-vouchers">Take meal vouchers</h3>
+            <p>Turn on <strong>Meal vouchers</strong> in Settings › Payments only after you signed the issuer contracts,
+              registered
+              your store and Adyen enabled the vouchers. The verified store country of the terminal decides which vouchers
+              apply: Brazilian PAT vouchers; Mastercard or Visa meal vouchers in Belgium, Finland, Germany, Luxembourg and
+              Spain; or Titres-restaurant in France. Refresh Adyen capabilities after setup. Monizze, Pluxee Belgium and
+              Lunch Check are not offered.</p>
+            <p>Where vouchers need eligible products, open each product in Settings › Products and turn on
+              <strong>Meal-voucher eligible</strong>; custom items are never eligible. At checkout, tap <strong>Other payment
+                options › Split payment</strong>, then <strong>Meal voucher</strong>. Mini mPOS offers the most the voucher can pay;
+              collect the
+              rest by card or cash. Mastercard or Visa vouchers may be approved in part. Titres-restaurant take at most
+              EUR 25 a day, never on Sundays or public holidays, and cannot be refunded: offer store credit instead. A
+              Brazilian voucher with a short balance is declined; enter a lower amount.</p>
+            <p>In Brazil, turn on <strong>Choose Brazilian vouchers in the app</strong> to request a voucher payment from
+              Mini mPOS. App selection requires terminal software 1.129 or later, verified by a connection check.
+              Leave it off when Adyen Support enabled the terminal’s own credit, debit or voucher screen; then pay
+              by card and the shopper chooses on the terminal. Voucher returns go back to the original voucher, never as
+              cash.</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/brazil-vouchers">Adyen: Brazilian meal
+                vouchers</a> · <a href="https://docs.adyen.com/industries/markets/europe-meal-vouchers">Adyen: Meal vouchers in Europe</a></p>
+            <h3 id="shopper-display">Use the shopper-facing terminal screen</h3>
+            <p>With a separate network/cloud terminal, open <strong>Settings › Shopper terminal display</strong>. Choose
+              whether to show item details before payment, ask the shopper to confirm the order, or collect an email when
+              checkout has none. Asking for an email needs <a href="using#receipts">email receipts</a> to be set up; the
+              receipt is then emailed automatically when <strong>Email the receipt automatically</strong> is on. After
+              approval, you can show a QR code and ask for a 0–10 rating; a returned rating appears in transaction
+              details.</p>
+            <p>These prompts use the app language. They are not offered when Mini mPOS runs on the payment terminal
+              itself. The QR code holds the merchant reference, not a receipt; still <a href="using#receipts">deliver the
+                receipt</a>.</p>
+            <h3 id="giving">Invite a charity donation</h3>
+            <p>After arranging Adyen Giving with Adyen, enable <strong>Charity donation (Adyen Giving)</strong> in
+              <strong>Settings › Tips and donations</strong>. At sale checkout, select it to invite a donation on the
+              terminal after payment. It is not offered for pre-authorizations or receipt-tip holds.</p>
+            <p>The purchase and donation are separate. A reported donation amount appears in transaction details; an
+              approved purchase alone does not confirm a donation.</p>
+            <h3 id="keyed-entry">Take a MOTO or Manual Key Entry payment</h3>
+            <ol>
+              <li>Check with Adyen that your terminal and account allow the required entry mode. Configure MOTO in
+                <a href="#capabilities">Adyen capabilities</a> when needed, and set staff PINs under <a href="using#staff">
+                  Staff PINs</a>.</li>
+              <li>In <strong>Settings › Payments</strong>, enable the MOTO or Manual Key Entry option. At checkout, select
+                <strong>Mail / telephone order (MOTO)</strong> for a remote order, or <strong>Manual Key Entry (MKE)
+                </strong> when chip or contactless reading fails. Only one can be selected.</li>
+              <li>Tap <strong>Pay</strong>, review the fraud and chargeback liability warning, and complete Manager
+                approval when prompted.</li>
+            </ol>
+            <p>Keyed transactions carry higher fraud and chargeback liability for the merchant.</p>
+            <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+          </section>
+          <section id="offline">
+            <h2>Recognize offline payments and pending batches</h2>
+            <p>Offline EMV and Store-and-Forward need a supported terminal reached locally: Mini mPOS on that terminal or
+              a terminal on your network. They are not offered through cloud routing or Tap to Pay. Arrange offline
+              processing with Adyen and review its risks before setting limits in <a href="#capabilities">Adyen
+                capabilities</a>; Mini mPOS does not queue payments itself or make a terminal reachable when your local
+              network is down.</p>
+            <p>History marks reported offline sales. Open a sale to see <strong>Offline processing</strong>, whether it
+              used offline EMV or Store-and-Forward, and any <strong>Unconfirmed offline batches</strong> reported by the
+              terminal. An offline approval can have no PSP reference yet. It is not an unknown result, but it does not
+              confirm that Adyen has received or settled the payment.</p>
+            <p>Restore the terminal's connection to Adyen and verify uploaded payments and final outcomes in the Customer
+              Area. Check the offline and unconfirmed-batch warnings during <a href="using#reconciliation">terminal
+                reconciliation</a>; matching totals do not confirm offline settlement. If no conclusive payment answer
+              arrived, follow <a href="troubleshooting#unknown">unknown-result recovery</a> instead of assuming offline
+              approval or charging again.</p>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="images/offline-payment.png" aria-label="Open full-size screenshot: English simulator demo: Store-and-Forward payment details with one unconfirmed offline batch">
+                <div class="terminal terminal-s1f2">
+                  <img src="images/offline-payment.png" width="540" height="960" loading="lazy" alt="English simulator demo: Store-and-Forward payment details with one unconfirmed offline batch" decoding="async">
+                </div></a>
+              <figcaption class="fine">English simulator demo of offline details, not proof of upload or settlement.
+                <span class="shot-control">Offline processing</span><a class="screenshot-link shot-expand" href="images/offline-payment.png">Open
+                  full-size screenshot</a></figcaption>
+            </figure>
+            <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+          </section>
+          <section id="wallets">
+            <h2>Scan a shopper wallet code</h2>
+            <p>Use <strong>Scan wallet</strong> at sale checkout to read a payment code from the shopper’s wallet app.
+              This is different from scanning a product barcode or a refund receipt. It works with a physical payment
+              terminal, not Tap to Pay; <a href="quick-start#credentials">wallet discovery needs a read role</a>.</p>
+            <ol>
+              <li>Check the total and checkout fields, then tap <strong>Scan wallet</strong>. If receipt tipping is
+                selected, confirm paying without it: the wallet charges the total immediately, not a pre-authorization.
+              </li>
+              <li>Choose the shopper’s wallet. A single available wallet is selected automatically. Only individually
+                configured wallets appear; Alipay+ does not imply separate GCash, DANA, Kakao Pay or TrueMoney choices.
+              </li>
+              <li>On a confirmed scanner-equipped terminal, press its scan button. This may be the network/cloud terminal,
+                not the device running Mini mPOS. To scan with the device’s camera, tap <strong>Use camera</strong>.</li>
+              <li>Scan the shopper’s payment QR code or payment barcode. One valid scan starts payment immediately. Wait
+                for the normal payment result and deliver its receipt.</li>
+            </ol>
+            <p>Canceling keeps the cart. A terminal scan ends after 30 seconds; use <strong>Scan again</strong> or the
+              camera. Wallets may not support <strong>Save card</strong>; an approved payment without a saved token is
+              still approved. <a href="troubleshooting#wallets">Handle wallet problems</a>, and never replace an
+              <a href="troubleshooting#unknown">unknown payment</a> by scanning again.</p>
+            <p>Confirm your wallet setup and test behavior with the
+              <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen wallet
+                guide</a> and
+              <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen
+                PayPal and Venmo guide</a>.</p>
+            <div class="shot-pair">
+              <a class="screenshot-link" href="images/wallets.png" aria-label="Open full-size screenshot: English simulator demo: choose a wallet for a $34.00 sale">
+                <div class="terminal terminal-s1f2">
+                  <img src="images/wallets.png" width="540" height="960" loading="lazy" alt="English simulator demo: choose a wallet for a $34.00 sale" decoding="async">
+                </div></a>
+              <a class="screenshot-link" href="images/wallet-scan.png" aria-label="Open full-size screenshot: English simulator demo: WeChat Pay scan flow with an offline demo-code action">
+                <div class="terminal terminal-s1f2">
+                  <img src="images/wallet-scan.png" width="540" height="960" loading="lazy" alt="English simulator demo: WeChat Pay scan flow with an offline demo-code action" decoding="async">
+                </div></a>
+            </div>
+            <p class="fine">English simulator demos of wallet scanning.</p>
+            <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+          </section>
+          <section id="shoppers">
+            <h2>Use references and save cards</h2>
+            <dl class="settings-list">
+              <dt>Merchant reference</dt>
+              <dd>To record a booking or order number, turn on <strong>Settings › Payments ›
+                  Ask for a merchant reference</strong>. The number identifies the payment in Adyen. If left blank, a unique
+                reference is generated.</dd>
+              <dt>Shopper reference</dt>
+              <dd>In <strong>Settings › Payments</strong>, choose the <strong>Shopper reference</strong>: a customer reference
+                typed at checkout (the default), the customer's email, or none. It is sent
+                to Adyen with every payment. Email references are hashed by default; use the same salt on every device.
+              </dd>
+              <dt>Saved cards</dt>
+              <dd>With a shopper reference set, turn on <strong>Offer to save cards</strong>. Get the
+                customer's consent before selecting <strong>Save card for future payments</strong>. To charge one later,
+                see <a href="#saved-card">Manage tokens</a>.</dd>
+            </dl>
+            <h3 id="saved-card">Manage tokens</h3>
+            <ol>
+              <li>On Home, tap <strong>Tokens</strong> and enter the Manager PIN if asked.</li>
+              <li>Enter the customer reference, or the email when that is the shopper reference, and tap <strong>Find
+                  tokens</strong>.</li>
+              <li>Tap <strong>Charge</strong> beside a token, then add products or a <strong>Custom item</strong>.
+                This cart is separate from <strong>New sale</strong>.</li>
+              <li>Review the charge and tap <strong>Charge</strong>.</li>
+            </ol>
+            <p>The customer is not present, so get their consent first. Tokens saved for a different <strong>Recurring
+                processing model</strong> cannot be charged here. Refund these payments from <strong>History</strong>. If a
+              charge's result is unknown, check it from History within seven days, after that in the Customer Area. At a
+              New sale’s checkout, <strong>Charge token</strong> appears once the shopper reference has saved tokens.</p>
+            <p id="token-deletion">
+              To delete a token, tap its <strong>Delete</strong> action, check the details, then confirm and approve with
+              the Manager PIN. Deletion removes the token at Adyen for Mini mPOS and every other integration; it cannot
+              be undone. Past payments and their refunds stay available. If deletion stays unconfirmed, tap <strong>Check
+                deletion</strong> before charging or deleting again.
+            </p>
+            <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+          </section>
+          <section id="gift-cards">
+            <h2>Sell and manage gift cards</h2>
+            <p>Gift cards work with an Adyen terminal; Tap to Pay can’t take them. In <strong>Settings › Payments › Gift
+                cards</strong>, turn on each provider you completed onboarding with at Adyen, add the card type Adyen gave
+              you for Intersolve or local gift cards, and choose how staff present cards: scan with the camera and enter
+              the expiry date, or swipe or key in on the terminal. Only the actions Adyen documents for a provider are
+              offered: deactivation is Givex only, and local gift cards take payments only.</p>
+            <ol>
+              <li>On Home, tap <strong>Gift cards</strong>, then choose the provider and how the card is presented.</li>
+              <li>Choose <strong>Check balance</strong>, <strong>Activate</strong>, <strong>Load</strong>, <strong>Cash
+                  out</strong>, <strong>Refund to card</strong> or <strong>Deactivate</strong>.</li>
+              <li>For a new value, choose <strong>Card payment</strong>, or <strong>Received outside app</strong> and
+                confirm you received the money.</li>
+              <li>Confirm, then approve with the Manager PIN.</li>
+            </ol>
+            <figure class="guide-shot">
+              <a class="screenshot-link" href="images/gift-cards.png" aria-label="Open full-size screenshot: English simulator demo: Gift cards with Givex and SVS, swiped or keyed in, and their actions">
+                <div class="terminal terminal-s1f2">
+                  <img src="images/gift-cards.png" width="540" height="960" loading="lazy" alt="English simulator demo: Gift cards with Givex and SVS, swiped or keyed in, and their actions" decoding="async">
+                </div></a>
+              <figcaption class="fine">English simulator demo.<span class="shot-control">Gift cards</span><a class="screenshot-link shot-expand" href="images/gift-cards.png">Open
+                  full-size screenshot</a></figcaption>
+            </figure>
+            <p>Approval for balance checks and value changes follows <a href="using#staff">staff permissions</a>. A card
+              payment is taken first and the value is sent only once it is approved; if the payment’s result is unknown,
+              check it before anything else happens. If the payment was taken but no value was added, the activity shows
+              <strong>Value not added</strong>: send the value again, refund the card payment, or record the money given
+              back. Nothing is repeated automatically.</p>
+            <p><strong>Undo load</strong> appears for the card’s latest load within 24 hours. A cash out normally pays the
+              whole balance and ends the card; only some Givex cards allow less. Hand the cash over once it is approved,
+              then tap <strong>Cash handed over</strong>; an unconfirmed handover stays under <strong>Needs
+                attention</strong>, also after a restart. Gift card activity appears in <strong>History</strong> and
+              separately in the daily report; it is never counted as a sale.</p>
+            <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+          </section>
+          <section id="payment-links">
+            <h2>Take payment with a link</h2>
+            <div class="callout callout-prereq" role="note">
+              <p class="callout-title">Prerequisites</p>
+              <ul>
+                <li>Your merchant account meets the <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Adyen
+                    Pay by Link requirements</a>, including terms and conditions, before live use</li>
+              </ul>
+            </div>
+            <ol>
+              <li>At a sale's checkout, tap <strong>Create payment link</strong>.</li>
+              <li>Show the QR code, or tap <strong>Email link</strong>, <strong>Print link</strong> or, on a tablet or
+                phone, <strong>Share link</strong>.</li>
+              <li>Keep the link screen open to see the payment arrive, or later tap <strong>Check payment</strong> in its
+                History entry.</li>
+              <li>If the link is no longer needed, tap <strong>Cancel link</strong>.</li>
+            </ol>
+            <p>The entry shows <strong>Awaiting payment</strong> until the link is paid, expires or is canceled. Set how
+              long links work in <strong>Settings › Payments › Payment links</strong>. Links are for sales only, not
+              deposits or tips on the receipt.</p>
+            <div class="callout callout-important" role="note">
+              <p class="callout-title">Important</p>
+              <p>Anyone with a real link can pay until it expires. Refund paid links in <strong>Customer Area › Payments ›
+                  Payment list</strong>; the app cannot refund them.</p>
+            </div>
+            <p>If a link is missing or not updating, see <a href="troubleshooting#links">payment link problems</a>.</p>
+            <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+          </section>
+        </div>
+      </div>
+    </main>
+    <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="Guides and setup"><ul class="footer-nav">
+      <li><a href="quick-start">Quick start</a></li><li><a href="using" aria-current="page">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting">Troubleshooting</a></li><li><a href="setup">Setup helper</a></li>
+    </ul></nav>
+    <p><img src="favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT license · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Security</a></p><p class="fine">Adyen is a trademark of Adyen N.V. Mini mPOS is independent and is not affiliated with, endorsed by or supported by Adyen.</p>
+  </div></footer>
+  </body>
+</html>

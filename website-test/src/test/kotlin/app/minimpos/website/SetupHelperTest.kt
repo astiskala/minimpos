@@ -75,7 +75,7 @@ class SetupHelperTest {
                 )
             assertThat(script.executeScript("return document.getElementById('setup-summary-receipt').textContent.length > 0"))
                 .isEqualTo(true)
-            assertThat(script.executeScript("return document.querySelector('.setup-optional').open")).isEqualTo(false)
+            assertThat(script.executeScript("return document.getElementById('receipt-options').open")).isEqualTo(false)
             assertThat(connection).isEqualTo(receiptUnchanged("""{"destination":"network","environment":"TEST"}"""))
             assertThat(secrets).isEqualTo(json("""{"ADYEN_API_KEY":"demo-key"}"""))
         }
@@ -413,6 +413,42 @@ class SetupHelperTest {
         assertRequired(true)
         field("destination", "network")
         assertRequired(true)
+    }
+
+    @Test
+    fun `guide links select destinations on load and after navigation in every language`() {
+        for (language in listOf("", "es-MX/", "fr-FR/", "ja/", "pt-BR/", "zh-CN/", "zh-Hant/")) {
+            browser.open(docs.resolve("${language}setup.html"), "#destination-cloud")
+            assertThat(script.executeScript("return document.getElementById('setup-form').elements.destination.value")).isEqualTo("cloud")
+            assertThat(script.executeScript("return document.getElementById('setup-device-guide').getAttribute('href')"))
+                .isEqualTo("quick-start-cloud#connect")
+            script.executeScript("location.hash = 'destination-tapToPay'")
+            browser.await {
+                script.executeScript("return document.getElementById('setup-form').elements.destination.value === 'tapToPay'") == true
+            }
+            assertThat(script.executeScript("return document.getElementById('setup-device-guide').getAttribute('href')"))
+                .isEqualTo("quick-start-tap-to-pay#connect")
+            script.executeScript("location.hash = 'apiKey'")
+            assertThat(script.executeScript("return document.getElementById('setup-form').elements.environment.value")).isEqualTo("test")
+        }
+    }
+
+    @Test
+    fun `default setup hides optional choices and exposes a successful import handoff`() {
+        browser.open(docs.resolve("setup.html"))
+        assertThat(script.executeScript("return document.getElementById('setup-method').open")).isEqualTo(false)
+        assertThat(script.executeScript("return document.getElementById('setup-tools').open")).isEqualTo(false)
+        assertThat(script.executeScript("return document.getElementById('setup-form').elements.setupMode.value")).isEqualTo("automatic")
+        field("environment", "live")
+        assertThat(script.executeScript("return document.getElementById('liveUrlPrefix').checkVisibility()"))
+            .isEqualTo(true)
+        field("setupMode", "manual")
+        assertThat(script.executeScript("return document.getElementById('setup-method').open")).isEqualTo(true)
+        assertThat(script.executeScript("return document.querySelector('#setup-after-import a').getAttribute('href')")).isEqualTo("testing")
+        script.executeScript("location.hash = 'make-logo'")
+        browser.await { script.executeScript("return document.getElementById('setup-form').elements.make.value === 'logo'") == true }
+        assertThat(script.executeScript("return document.getElementById('setup-after-import').hidden")).isEqualTo(true)
+        assertThat(script.executeScript("return document.getElementById('setup-tools').open")).isEqualTo(true)
     }
 
     private fun openPage(language: String = "") {

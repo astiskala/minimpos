@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="fr-FR">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://ajax.cloudflare.com; script-src-attr 'none'; style-src 'self'; img-src 'self'; manifest-src 'self'; connect-src https://minimpos.app/cdn-cgi/ https://cloudflareinsights.com/cdn-cgi/rum; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="max-image-preview:large">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tester la configuration et passer en LIVE – Mini mPOS</title>
+    <meta name="description" content="Après la connexion, vérifiez un paiement TEST, son reçu et son remboursement. Préparez votre activité avant de passer en LIVE.">
+    <link rel="icon" href="../icons/favicon-32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" sizes="180x180">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="describedby" href="../llms.txt" type="text/plain">
+    <meta name="application-name" content="Guides Mini mPOS">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="canonical" href="https://minimpos.app/fr-FR/testing">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Mini mPOS">
+    <meta property="og:title" content="Tester la configuration et passer en LIVE – Mini mPOS">
+    <meta property="og:description" content="Après la connexion, vérifiez un paiement TEST, son reçu et son remboursement. Préparez votre activité avant de passer en LIVE.">
+    <meta property="og:url" content="https://minimpos.app/fr-FR/testing">
+    <meta property="og:image" content="https://minimpos.app/images/fr-FR/social.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="Mini mPOS sur des terminaux Adyen illustrés, montrant des démos de simulateur en français.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Tester la configuration et passer en LIVE – Mini mPOS">
+    <meta name="twitter:description" content="Après la connexion, vérifiez un paiement TEST, son reçu et son remboursement. Préparez votre activité avant de passer en LIVE.">
+    <meta name="twitter:image" content="https://minimpos.app/images/fr-FR/social.png">
+    <meta name="twitter:image:alt" content="Mini mPOS sur des terminaux Adyen illustrés, montrant des démos de simulateur en français.">
+    <meta name="theme-color" content="#00843F">
+    <link href="https://minimpos.app/testing" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/es-MX/testing" hreflang="es-MX" rel="alternate">
+    <link href="https://minimpos.app/fr-FR/testing" hreflang="fr-FR" rel="alternate">
+    <link href="https://minimpos.app/ja/testing" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/pt-BR/testing" hreflang="pt-BR" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/testing" hreflang="zh-CN" rel="alternate">
+    <link href="https://minimpos.app/zh-Hant/testing" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/testing" hreflang="x-default" rel="alternate">
+    <meta content="en_US" property="og:locale:alternate">
+    <meta content="es_MX" property="og:locale:alternate">
+    <meta content="ja_JP" property="og:locale:alternate">
+    <meta content="pt_BR" property="og:locale:alternate">
+    <meta content="zh_CN" property="og:locale:alternate">
+    <meta content="zh_HK" property="og:locale:alternate">
+    <meta content="fr_FR" property="og:locale">
+  </head>
+  <body>
+    <a class="skip" href="#main">Passer au contenu</a>
+    <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Accueil Mini mPOS"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav class="desktop-nav" aria-label="Principal"><ul class="nav">
+      <li><a href="quick-start" aria-current="page">Démarrage rapide</a></li><li><a href="using">Utilisation de Mini mPOS</a></li>
+      <li><a href="troubleshooting">Dépannage</a></li><li><a href="setup">Aide à la configuration</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>Menu</summary><div class="mobile-panel"><nav aria-label="Principal"><ul class="nav">
+      <li><a href="quick-start" aria-current="page">Démarrage rapide</a></li><li><a href="using">Utilisation de Mini mPOS</a></li>
+      <li><a href="troubleshooting">Dépannage</a></li><li><a href="setup">Aide à la configuration</a></li>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="Langue"><p>Langue</p><ul><li><a href="../testing" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/testing" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a aria-current="page" href="../fr-FR/testing" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/testing" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/testing" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/testing" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/testing" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+    </div></details>
+    <details class="language-menu">
+      <summary aria-label="Langue : Français (France)" title="Langue"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">Français (France)</span></summary>
+      <nav aria-label="Langue"><ul><li><a href="../testing" hreflang="en" lang="en">English</a></li><li><a href="../es-MX/testing" hreflang="es-MX" lang="es-MX">Español (México)</a></li><li><a aria-current="page" href="../fr-FR/testing" hreflang="fr-FR" lang="fr-FR">Français (France)</a></li><li><a href="../ja/testing" hreflang="ja" lang="ja">日本語</a></li><li><a href="../pt-BR/testing" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a></li><li><a href="../zh-CN/testing" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="../zh-Hant/testing" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li></ul></nav>
+    </details>
+  </div></header>
+    <main id="main">
+      <section class="guide-hero"><div class="wrap">
+          <p class="breadcrumb"><a href="quick-start">Démarrage rapide</a></p>
+          <p class="eyebrow">Guide</p>
+          <h1>Tester la configuration et passer en LIVE</h1>
+          <p class="lead">Après la connexion, vérifiez un paiement TEST, son reçu et son remboursement. Préparez votre activité
+            avant de passer en LIVE.</p>
+        </div></section>
+      <div class="wrap guide">
+        <nav class="toc" id="contents" aria-label="Navigation des guides">
+          <p class="guide-links toc-title">Guides</p>
+          <p class="guide-links"><a href="quick-start" aria-current="page">Démarrage rapide</a><br><a href="using">
+              Utilisation de Mini mPOS</a><br><a href="troubleshooting">Dépannage</a></p>
+          <div class="desktop-contents">
+            <p class="toc-title">Sur cette page</p>
+            <ol>
+              <li><a href="#first-payment">Validez votre configuration TEST</a></li>
+              <li><a href="#business-ready">Préparer l’activité pour LIVE</a></li>
+              <li><a href="#live">Allez en direct</a></li>
+              <li><a href="#live-payment">Vérifier le premier paiement LIVE</a></li>
+            </ol>
+          </div>
+          <details class="mobile-contents">
+            <summary class="toc-title">Sur cette page</summary>
+            <ol>
+              <li><a href="#first-payment">Validez votre configuration TEST</a></li>
+              <li><a href="#business-ready">Préparer l’activité pour LIVE</a></li>
+              <li><a href="#live">Allez en direct</a></li>
+              <li><a href="#live-payment">Vérifier le premier paiement LIVE</a></li>
+            </ol>
+          </details>
+        </nav>
+        <div class="guide-body">
+          <section id="first-payment">
+            <h2>Validez votre configuration TEST</h2>
+            <ol>
+              <li>Dans <strong>Paramètres › Terminal</strong>, vérifiez que l'environnement est <strong>TEST</strong>.
+                Terminez par <strong>Tester la connexion</strong> pour vérifier l’accès à l’API et les vérifications de
+                connexion prises en charge.
+                <ul>
+                  <li>Terminal physique : exécuter <strong>Tester la connexion</strong> et vérifiez que ça passe.</li>
+                  <li>Tap to Pay : confirmez que le téléphone est enregistré dans <strong>Adyen Payments Test</strong>. Le
+                    contrôle de connexion valide uniquement le paramétrage : il n'y a pas de diagnostic du terminal.
+                    Utilisez le paiement test ci-dessous pour vérifier le comportement de paiement.</li>
+                </ul>
+              </li>
+              <li>Dans <strong>Paramètres › Paiements</strong>, vérifiez la devise. Dans <strong>Paramètres › Taxe</strong>,
+                vérifiez les tarifs et si les prix incluent les taxes.</li>
+              <li>Sur Accueil, appuyez sur <strong>Nouvelle vente</strong>, ajoutez un <strong>Article personnalisé
+                </strong> et appuyez sur <strong>Débiter</strong>. Nommez l’article personnalisé « Vente de test » et saisissez le
+                montant du scénario de votre carte.</li>
+              <li>Appuyez sur <strong>Payer</strong> et suivez le
+                <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Guide de test Adyen POS</a> pour un
+                paiement réussi.</li>
+              <li>Vérifiez que le résultat est approuvé et que le reçu contient le montant, la devise et la taxe corrects.
+                Ouvrir la vente dans <strong>Historique</strong>. Faites correspondre son <strong>Référence PSP</strong>
+                au paiement dans le TEST Customer Area.</li>
+              <li><a href="using#refund">Rembourser le paiement</a> et vérifiez le résultat final du remboursement dans le
+                TEST Customer Area. <strong>Remboursement demandé</strong> n’est pas une confirmation définitive.</li>
+              <li>Répétez la vente avec un scénario de refus de paiement du
+                <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Guide de test Adyen POS</a>. Vérifiez
+                que Mini mPOS affiche un refus et non une approbation ; voir <a href="troubleshooting#declines">paiements
+                  refusés</a>.</li>
+            </ol>
+            <div class="callout callout-warning" role="note">
+              <p class="callout-title">Avertissement</p>
+              <p>Si le résultat est inconnu, ne payez plus. Suivez le <a href="troubleshooting#unknown">étapes de
+                  récupération</a> d'abord.</p>
+            </div>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="business-ready">
+            <h2>Préparer l’activité pour LIVE</h2>
+            <ul>
+              <li><a href="using#pricing">Vérifiez la devise et les taxes avant de fixer les prix.</a></li>
+              <li><a href="using#receipts">Vérifiez les coordonnées de l’entreprise et chaque mode de remise des reçus utilisé.</a></li>
+              <li><a href="using#staff">Configurez les PIN du personnel et les actions nécessitant l’approbation d’un responsable.</a></li>
+              <li><a href="payment-options">Activez et testez uniquement les fonctions de paiement facultatives nécessaires.</a></li>
+            </ul>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="live">
+            <h2>Allez en direct</h2>
+            <div class="callout callout-warning" role="note">
+              <p class="callout-title">Avertissement</p>
+              <p>Le basculement entre TEST, LIVE et le simulateur supprime tout l'historique des paiements sur l'appareil, y compris
+                les données de récupération des paiements inachevés. Résolvez chaque paiement sous <strong>A besoin d’attention
+                </strong> d'abord.</p>
+            </div>
+            <ol>
+              <li>Basculez vers le terminal LIVE ou l’application Adyen Payments LIVE, avec les informations
+                d'identification LIVE. Pour un terminal réseau/cloud ou Tap to Pay, choisissez <strong>LIVE</strong> sous
+                <strong>Environnement</strong>. Entrez le <strong>Préfixe d’URL LIVE</strong>; voir le
+                <a href="https://docs.adyen.com/development-resources/live-endpoints">Guide des points de terminaison en
+                  direct Adyen</a>. Tap to Pay doit être à nouveau enregistré dans l'environnement sélectionné.</li>
+              <li>Dans <strong>Paramètres › Terminal</strong>, vérifiez que l'environnement est <strong>LIVE</strong>.
+                Terminez par <strong>Tester la connexion</strong> pour vérifier l’accès à l’API et les vérifications de
+                connexion prises en charge.
+                <ul>
+                  <li>Terminal physique : exécuter <strong>Tester la connexion</strong> et vérifiez que ça passe.</li>
+                  <li>Tap to Pay : confirmez que le téléphone est enregistré dans le LIVE <strong>Adyen Payments</strong>
+                    application. Le contrôle de connexion valide uniquement le paramétrage : il n'y a pas de diagnostic du
+                    terminal.</li>
+                </ul>
+              </li>
+            </ol>
+            <p>Pour les contrôles quotidiens et le rapprochement, voir <a href="using#close-day">Clôturer la journée</a>.
+            </p>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+          <section id="live-payment">
+            <h2>Vérifier le premier paiement LIVE</h2>
+            <p>Suivez les instructions de test LIVE d’Adyen avec votre destination et votre mode de remise des reçus. Vérifiez le
+              montant, la devise, le reçu et le paiement dans le Customer Area LIVE. Le test de connexion ne suffit pas à valider
+              les paiements.</p>
+            <p><a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Adyen: Vérifier le premier paiement LIVE</a></p>
+            <p class="back-to-contents"><a href="#contents">Retour au contenu</a></p>
+          </section>
+        </div>
+      </div>
+    </main>
+    <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="Guides et configuration"><ul class="footer-nav">
+      <li><a href="quick-start" aria-current="page">Démarrage rapide</a></li><li><a href="using">Utilisation de Mini mPOS</a></li>
+      <li><a href="troubleshooting">Dépannage</a></li><li><a href="setup">Aide à la configuration</a></li>
+    </ul></nav>
+    <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · Licence MIT · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Sécurité</a></p>
+    <p class="fine">Adyen est une marque commerciale d'Adyen N.V. Mini mPOS est indépendant et n'est pas affilié, approuvé ou soutenu par Adyen.</p>
+  </div></footer>
+  </body>
+</html>

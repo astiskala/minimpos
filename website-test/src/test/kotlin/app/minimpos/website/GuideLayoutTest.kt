@@ -11,7 +11,20 @@ class GuideLayoutTest {
         val reports = Path.of(System.getProperty("minimpos.layoutReports"))
         HelperBrowser().use { browser ->
             for (language in listOf("", "zh-CN/", "zh-Hant/", "ja/", "pt-BR/", "es-MX/", "fr-FR/")) {
-                for (page in listOf("index.html", "quick-start.html", "using.html", "troubleshooting.html", "setup.html")) {
+                for (page in listOf(
+                    "index.html",
+                    "quick-start.html",
+                    "quick-start-terminal.html",
+                    "quick-start-network.html",
+                    "quick-start-cloud.html",
+                    "quick-start-tap-to-pay.html",
+                    "demo.html",
+                    "testing.html",
+                    "using.html",
+                    "payment-options.html",
+                    "troubleshooting.html",
+                    "setup.html",
+                )) {
                     for (width in listOf(320, 390, 1280)) {
                         browser.viewport(width)
                         browser.openPage(docs.resolve(language + page))
@@ -27,7 +40,10 @@ class GuideLayoutTest {
                                 """.trimIndent(),
                             )
                         val prefix = "${language.ifEmpty { "en/" }.dropLast(1)}-${page.removeSuffix(".html")}-$width"
+                        // Resizing and revisiting a page can restore its previous scroll position.
+                        browser.executeScript("window.scrollTo({top: 0, left: 0, behavior: 'instant'})")
                         browser.screenshot(reports.resolve("$prefix.png"))
+                        assertWithMessage("$prefix initial scroll").that(browser.executeScript("return window.scrollY")).isEqualTo(0L)
                         assertWithMessage("$prefix broken images").that(broken).isEqualTo(emptyList<String>())
                         assertWithMessage(
                             "$prefix viewport",

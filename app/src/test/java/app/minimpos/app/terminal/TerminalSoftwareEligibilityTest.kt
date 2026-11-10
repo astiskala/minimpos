@@ -58,7 +58,8 @@ class TerminalSoftwareEligibilityTest {
         env.updateSettings { it.copy(payment = it.payment.copy(audioGuidance = true)) }
         var diagnoses = 0
         onDiagnosis = { diagnoses++ }
-        val result = await { gateway.pay(payment.copy(audioGuidance = true), "WRONGPOI", audioGuidancePoiId = "S1F2-OTHER") }
+        val result =
+            await { gateway.pay(payment.copy(audioGuidance = true), "WRONGPOI", PaymentConfirmations(audioGuidancePoiId = "S1F2-OTHER")) }
         assertThat(result.made()).isEqualTo(TransactionOutcome.NotProcessed(Fault.Unsupported))
         assertThat(diagnoses).isEqualTo(0)
         assertThat(paymentsSent).isEqualTo(0)
@@ -98,7 +99,7 @@ class TerminalSoftwareEligibilityTest {
                 gateway.pay(
                     payment.copy(audioGuidance = true),
                     "AUDIOOFF",
-                    audioGuidancePoiId = "S1F2-000158213605014",
+                    PaymentConfirmations(audioGuidancePoiId = "S1F2-000158213605014"),
                     authorized = {
                         approvals++
                         true
@@ -140,11 +141,13 @@ class TerminalSoftwareEligibilityTest {
         env.updateSettings { it.copy(payment = it.payment.copy(audioGuidance = true)) }
         val poiId = "S1F2-000158213605014"
         terminal.softwareVersion = "1.116.9"
-        assertThat(await { gateway.pay(payment.copy(audioGuidance = true), "AUDIOOLD", audioGuidancePoiId = poiId) }.made())
-            .isEqualTo(TransactionOutcome.NotProcessed(Fault.Unsupported))
+        assertThat(
+            await { gateway.pay(payment.copy(audioGuidance = true), "AUDIOOLD", PaymentConfirmations(audioGuidancePoiId = poiId)) }.made(),
+        ).isEqualTo(TransactionOutcome.NotProcessed(Fault.Unsupported))
         terminal.softwareVersion = "1.117.0"
-        assertThat(await { gateway.pay(payment.copy(audioGuidance = true), "AUDIONEW", audioGuidancePoiId = poiId) }.made())
-            .isInstanceOf(TransactionOutcome.Completed::class.java)
+        assertThat(
+            await { gateway.pay(payment.copy(audioGuidance = true), "AUDIONEW", PaymentConfirmations(audioGuidancePoiId = poiId)) }.made(),
+        ).isInstanceOf(TransactionOutcome.Completed::class.java)
         val voucher = payment.copy(currency = "BRL", mealVoucherAccount = true)
         terminal.softwareVersion = "1.128.9"
         assertThat(await { gateway.pay(voucher, "VOUCHEROLD") }.made()).isEqualTo(TransactionOutcome.NotProcessed(Fault.Unsupported))
@@ -153,7 +156,11 @@ class TerminalSoftwareEligibilityTest {
         val setup = await { env.container.terminalSetup.unlocked() }
         assertThat(
             await {
-                gateway.pay(voucher, "VOUCHERNEW", expected = setup.setup.paymentContext(), expectedIdentity = setup.validationIdentity)
+                gateway.pay(
+                    voucher,
+                    "VOUCHERNEW",
+                    PaymentConfirmations(expected = setup.setup.paymentContext(), setupIdentity = setup.validationIdentity),
+                )
             }.made(),
         ).isInstanceOf(TransactionOutcome.Completed::class.java)
         assertThat(paymentsSent).isEqualTo(2)

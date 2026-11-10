@@ -9,6 +9,7 @@ import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.repo.TenderAllocation
 import app.minimpos.app.data.repo.TenderBalance
 import app.minimpos.app.data.settings.CashbackSettings
+import app.minimpos.app.terminal.PaymentConfirmations
 import app.minimpos.core.access.ManagerAction
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.giftcard.GiftCardOperation
@@ -335,10 +336,14 @@ class SaleBook(
                     mealVoucherAccount = request.mealVoucher?.selection == VoucherSelection.ACCOUNT_TYPE,
                     cashBackMinor = request.cashBackMinor,
                 ),
-            cashbackIdentity = request.cashbackConfiguration?.identity,
-            audioGuidancePoiId = request.audioGuidancePoiId,
-            expected = request.walletContext,
-            setupIdentity = request.walletSetupIdentity,
+            confirmed =
+                PaymentConfirmations(
+                    features = request.cardFeatures,
+                    audioGuidancePoiId = request.audioGuidancePoiId,
+                    expected = request.walletContext,
+                    setupIdentity = request.walletSetupIdentity,
+                    cashbackIdentity = request.cashbackConfiguration?.identity,
+                ),
         )
     }
 

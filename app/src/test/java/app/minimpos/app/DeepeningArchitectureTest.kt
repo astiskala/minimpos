@@ -53,6 +53,7 @@ import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.CapabilityDiscovery
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.KeyRoles
+import app.minimpos.app.terminal.PaymentConfirmations
 import app.minimpos.app.terminal.SetupConversation
 import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SetupFreshness
@@ -308,6 +309,17 @@ class DeepeningArchitectureTest {
 
     private class TenderProjectionViolation {
         fun strip(start: PaymentStart) = start.copy(askGiving = false)
+    }
+
+    @Test
+    fun `only the gateway opens what a card payment was confirmed under`() = paymentConfirmations.check(app)
+
+    @Test
+    fun `payment confirmation ownership rejects a sender unpacking the confirmations`() =
+        reject(listOf(paymentConfirmations), PaymentConfirmationsViolation::class.java)
+
+    private class PaymentConfirmationsViolation {
+        fun cash(confirmed: PaymentConfirmations) = confirmed.cashbackIdentity
     }
 
     @Test
@@ -784,6 +796,25 @@ class DeepeningArchitectureTest {
                 .haveNameNotMatching(within(PaymentStart::class.java.name, Checkout::class.java.name, SaleSession::class.java.name))
                 .should()
                 .callMethodWhere(callTo(PaymentStart::class.java.name, "copy"))
+
+        // The audio terminal, verified store, cash and unreferenced-refund confirmations each rode from the book through
+        // TerminalOperation.Pay and TerminalSends into five of TerminalGateway.pay's parameters; they now travel as one
+        // PaymentConfirmations value that only the gateway opens, together with the card features the start confirmed.
+        val paymentConfirmations: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within(TerminalGateway::class.java.name, PaymentConfirmations::class.java.name))
+                .should()
+                .callMethodWhere(
+                    callTo(
+                        PaymentConfirmations::class.java.name,
+                        "getAudioGuidancePoiId",
+                        "getExpected",
+                        "getSetupIdentity",
+                        "getCashbackIdentity",
+                        "getUnreferencedIdentity",
+                    ),
+                )
 
         // First-screen claiming stays shared, while dispatch and its progress cannot be reconstructed in presentation.
         val receiptAutomation: List<ArchRule> =

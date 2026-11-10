@@ -7,6 +7,8 @@ import app.minimpos.app.data.db.UnreferencedRefundReason
 import app.minimpos.app.data.db.route
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.settings.UnreferencedRefundSettings
+import app.minimpos.app.terminal.PaymentConfirmations
+import app.minimpos.core.payment.CardFeature
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.TransactionKind
@@ -91,7 +93,7 @@ class UnreferencedRefundBook(
                 appPrintsReceipts = true,
                 unreferencedRefund = true,
             ),
-            unreferencedIdentity = request.confirmation,
+            PaymentConfirmations(setOf(CardFeature.UNREFERENCED_REFUND), unreferencedIdentity = request.confirmation),
         )
 
     override suspend fun recordContext(

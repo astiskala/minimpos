@@ -180,11 +180,7 @@ internal class TerminalSends(
                 gateway.pay(
                     request.params,
                     serviceId,
-                    audioGuidancePoiId = request.audioGuidancePoiId,
-                    expected = request.expected,
-                    expectedIdentity = request.setupIdentity,
-                    cashbackIdentity = request.cashbackIdentity,
-                    unreferencedIdentity = request.unreferencedIdentity,
+                    request.confirmed,
                     authorized = approved,
                     onContext = onContext,
                     onSending = onSending,

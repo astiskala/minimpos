@@ -77,8 +77,8 @@ class MexicanInstallmentsTest {
         assertThat(env.context.mexicanPlan(pending).last()).contains(env.context.getString(R.string.mexican_unreported))
         val operation = book.operation(start) as TerminalOperation.Pay
         assertThat(operation.params.mexicanPayment).isEqualTo(MexicanPayment.MONTHS_9)
-        assertThat(operation.expected).isEqualTo(start.walletContext)
-        assertThat(operation.setupIdentity).isEqualTo(start.walletSetupIdentity)
+        assertThat(operation.confirmed.expected).isEqualTo(start.walletContext)
+        assertThat(operation.confirmed.setupIdentity).isEqualTo(start.walletSetupIdentity)
     }
 
     @Test

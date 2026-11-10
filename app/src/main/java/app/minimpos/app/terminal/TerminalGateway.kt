@@ -283,6 +283,26 @@ sealed interface Attempt<out T> {
 }
 
 /**
+ * What a card payment was confirmed under at checkout, carried whole from its book to [TerminalGateway.pay], which
+ * alone opens it and checks it again against the setup as it is when the request leaves.
+ *
+ * @property features The payment's card features as its start states them, including those its request cannot express.
+ * @property audioGuidancePoiId Terminal checkout resolved for audio guidance; null for ordinary payments.
+ * @property expected Checked destination for scanned, voucher, Mexican-routed or cash payments; null for ordinary ones.
+ * @property setupIdentity Exact checked setup fingerprint [expected] was read with; null for ordinary payments.
+ * @property cashbackIdentity Non-secret configuration identity confirmed for a cash request; null otherwise.
+ * @property unreferencedIdentity Non-secret configuration identity confirmed for an unreferenced refund; null otherwise.
+ */
+data class PaymentConfirmations(
+    val features: Set<CardFeature> = emptySet(),
+    val audioGuidancePoiId: String? = null,
+    val expected: PaymentContext? = null,
+    val setupIdentity: String? = null,
+    val cashbackIdentity: String? = null,
+    val unreferencedIdentity: String? = null,
+)
+
+/**
  * The payment terminal as the rest of the app sees it: the Terminal API operations, sent to the [Destination] the
  * [TerminalSetup] at the time of each call says (this terminal, one on the network or in the cloud, the Adyen Payments
  * app on this phone, or the built-in simulator). What a destination can do (abort, diagnose, recover a missing answer,
@@ -350,19 +370,15 @@ class TerminalGateway(
     /**
      * Takes a card payment, see [TerminalClient.pay]. [onSending] is called with the terminal's POIID right before the
      * request is sent; [authorized] rechecks approval after setup and persistence. Without complete setup, including
-     * the Checkout API, nothing is sent ([Attempt.NotSetUp]), and an
-     * unreachable destination is [TransactionOutcome.NotProcessed]. For audio guidance, [audioGuidancePoiId] names the
-     * terminal checkout resolved; a changed or unsupported destination, or audio guidance since turned off in the
-     * payment settings, sends no payment.
+     * the Checkout API, nothing is sent ([Attempt.NotSetUp]), and an unreachable destination is
+     * [TransactionOutcome.NotProcessed]. [confirmed] is what checkout confirmed the payment under: for audio guidance
+     * the terminal it resolved; a changed or unsupported destination, or audio guidance since turned off in the payment
+     * settings, sends no payment.
      */
     suspend fun pay(
         params: PaymentParams,
         serviceId: String,
-        audioGuidancePoiId: String? = null,
-        expected: PaymentContext? = null,
-        expectedIdentity: String? = null,
-        cashbackIdentity: String? = null,
-        unreferencedIdentity: String? = null,
+        confirmed: PaymentConfirmations = PaymentConfirmations(),
         authorized: suspend () -> Boolean = { true },
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
@@ -372,14 +388,13 @@ class TerminalGateway(
             serviceId,
             onSending,
             onContext,
-            expected,
-            expectedIdentity,
+            confirmed.expected,
+            confirmed.setupIdentity,
             authorized,
             supported = {
-                val verifiedContext = expected != null && expectedIdentity != null
-                !unsupported(params, it.destination, it.client.identity.poiId, audioGuidancePoiId, verifiedContext) &&
+                !unsupported(params, confirmed, it.destination, it.client.identity.poiId) &&
                     softwareCompatible(it, params) &&
-                    paymentConfigured(params, it.context(), cashbackIdentity, unreferencedIdentity)
+                    paymentConfigured(params, it.context(), confirmed.cashbackIdentity, confirmed.unreferencedIdentity)
             },
         ) {
             it.client.pay(params, serviceId)
@@ -441,21 +456,18 @@ class TerminalGateway(
     // cards, or Mexican routing and Brazilian voucher accounts without a [verified] store context and identity.
     private fun unsupported(
         params: PaymentParams,
+        confirmed: PaymentConfirmations,
         destination: DestinationRules,
         poiId: String,
-        audioGuidancePoiId: String?,
-        verified: Boolean,
     ): Boolean {
         val supportsModel = destination.simulatesApi || TerminalClient.audioGuidanceMinimumSoftware(poiId) != null
-        val compatible = destination.supportsTerminalFeatures && supportsModel && audioGuidancePoiId == poiId
-        return (params.audioGuidance && !compatible) || unsupportedCardFeatures(params, destination, verified)
+        val compatible = destination.supportsTerminalFeatures && supportsModel && confirmed.audioGuidancePoiId == poiId
+        val verified = confirmed.expected != null && confirmed.setupIdentity != null
+        // What the start confirmed and what the request carries are checked together, so neither can skip a feature.
+        val features = confirmed.features + params.cardFeatures
+        return (params.audioGuidance && !compatible) ||
+            features.any { !destination.carries(it) || (it.needsVerifiedStore && !verified) }
     }
-
-    private fun unsupportedCardFeatures(
-        params: PaymentParams,
-        destination: DestinationRules,
-        verified: Boolean,
-    ): Boolean = params.cardFeatures.any { !destination.carries(it) || (it.needsVerifiedStore && !verified) }
 
     /** Opens native scanning only for the unchanged [expected] destination and [identity] fingerprint; null when blocked. */
     internal suspend fun nativeScanner(

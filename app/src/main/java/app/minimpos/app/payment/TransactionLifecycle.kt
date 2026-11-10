@@ -4,6 +4,7 @@ import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.security.ManagerApproval
+import app.minimpos.app.terminal.PaymentConfirmations
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.cardFeatures
 import app.minimpos.core.access.ManagerAction
@@ -128,25 +129,17 @@ sealed interface TerminalOperation {
      * A card payment whose Manager permissions follow its sale kind, cash request and card-entry method.
      *
      * @property params What to charge.
-     * @property audioGuidancePoiId Terminal checkout resolved for audio guidance; null for ordinary payments.
-     * @property expected Checked destination for scanned or Mexican-routed payments; null for ordinary collection.
-     * @property setupIdentity Exact checked store/scan setup fingerprint; null for ordinary collection.
-     * @property cashbackIdentity Non-secret configuration identity confirmed for a cash request; null for ordinary collection.
-     * @property unreferencedIdentity Non-secret configuration identity confirmed for an unreferenced refund; null otherwise.
+     * @property confirmed What checkout confirmed the payment under, carried whole to the gateway's checks before sending.
      * @property collectionAction Sale or pre-authorization permission; null derives it from the wire request.
      */
     data class Pay(
         val params: PaymentParams,
-        val audioGuidancePoiId: String? = null,
-        val expected: PaymentContext? = null,
-        val setupIdentity: String? = null,
-        val cashbackIdentity: String? = null,
-        val unreferencedIdentity: String? = null,
+        val confirmed: PaymentConfirmations = PaymentConfirmations(),
         val collectionAction: ManagerAction? = null,
     ) : TerminalOperation {
         override val managerActions: Set<ManagerAction> get() =
             CardFeatures.managerActions(
-                params.cardFeatures,
+                confirmed.features + params.cardFeatures,
                 when {
                     params.unreferencedRefund -> null
                     params.cashBackMinor != null -> ManagerAction.SALE.takeIf { params.amountMinor > (params.cashBackMinor ?: 0L) }

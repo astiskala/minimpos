@@ -101,7 +101,7 @@ class MealVouchersTest {
         val book = SaleBook(env.container.sales)
         val operation = book.operation(start) as TerminalOperation.Pay
         assertThat(operation.params.mealVoucherAccount).isTrue()
-        assertThat(operation.expected).isEqualTo(start.walletContext)
+        assertThat(operation.confirmed.expected).isEqualTo(start.walletContext)
         await { assertThat(book.open("brv", start, "BRV", 100)).isTrue() }
         val pending = await { checkNotNull(env.container.sales.get("brv")).tenders.single() }
         assertThat(pending.status).isEqualTo(SaleStatus.PENDING)

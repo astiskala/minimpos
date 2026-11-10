@@ -153,6 +153,9 @@
   <string name="payment_cancel_keep">Seguir esperando</string>
   <string name="processing_wait">Espere el resultado antes de salir de esta pantalla.</string>
   <string name="payment_unknown_outcome">La terminal no confirmó el resultado. Verifica el pago en tu Área de Clientes antes de volver a cobrar.</string>
+  <string name="checkout_unconfirmed_title">¿Cobrar esta venta otra vez?</string>
+  <string name="checkout_unconfirmed_message">Aún no se sabe si el último pago de esta venta se realizó. Revísalo en el Historial o en el Área de Clientes antes de volver a cobrar.</string>
+  <string name="checkout_unconfirmed_confirm">Cobrar otra vez</string>
   <string name="payment_interrupted">La aplicación se detuvo antes de recibir el resultado.</string>
   <string name="capture_interrupted">La aplicación se detuvo antes de que Adyen respondiera a la solicitud de captura. Vuelva a intentar la misma captura de forma segura.</string>
   <string name="shopper_order">Orden</string>

@@ -151,6 +151,9 @@
   <string name="payment_cancel_keep">繼續等待</string>
   <string name="processing_wait">請等待結果後再離開此畫面。</string>
   <string name="payment_unknown_outcome">終端未確認支付結果。再次收款前，請先在商戶後台核實。</string>
+  <string name="checkout_unconfirmed_title">再次收取此筆銷售？</string>
+  <string name="checkout_unconfirmed_message">此筆銷售的上一筆付款是否成功仍未知。再次收款前，請在歷史記錄或商戶後台中查看。</string>
+  <string name="checkout_unconfirmed_confirm">再次收款</string>
   <string name="payment_interrupted">應用程式在收到結果前已停止運行。</string>
   <string name="capture_interrupted">應用程式在收到 Adyen 的扣款回應前已停止運行。可以安全地重試同一扣款請求。</string>
   <string name="shopper_order">訂單</string>

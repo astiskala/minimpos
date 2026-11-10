@@ -140,9 +140,11 @@ fun CheckoutScreen(
             if (vm.chargeToken(card)) navigator.replace(Route.Payment(SaleKind.SALE))
         }
     }
+    val unresolved by vm.previousUnresolved.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
     CheckoutContent(
         state = state,
+        unresolved = unresolved,
         navigator = navigator,
         kind = kind,
         actions = CheckoutCallbacks(vm::pay, vm::scanWallet, vm::sendLink, vm::update),
@@ -193,6 +195,7 @@ private enum class CeremonyStep {
 @Composable
 private fun CheckoutContent(
     state: Checkout,
+    unresolved: Boolean,
     navigator: Navigator,
     kind: SaleKind,
     actions: CheckoutCallbacks,
@@ -222,6 +225,14 @@ private fun CheckoutContent(
         val next = CeremonyStep.entries.firstOrNull { (done == null || it > done) && it.needed(ceremony) }
         if (next == null) step = tender to CeremonyStep.APPROVAL else step = tender to next
     }
+
+    // While the last payment of this unchanged cart is unknown, charging it again in any way needs confirming first.
+    var confirmAgain by remember { mutableStateOf<Tender?>(null) }
+
+    fun begin(tender: Tender) {
+        if (unresolved) confirmAgain = tender else advance(tender)
+    }
+    UnconfirmedChargeDialog(confirmAgain, onConfirm = { advance(it) }, onDismiss = { confirmAgain = null })
     val current = step
     if (current?.second == CeremonyStep.APPROVAL) {
         return ManagerApproval(
@@ -242,11 +253,11 @@ private fun CheckoutContent(
             CheckoutActions(
                 state,
                 money,
-                onPay = { advance(Tender.TERMINAL) },
-                onSendLink = { advance(Tender.LINK) },
-                onScanWallet = { advance(Tender.WALLET) },
+                onPay = { begin(Tender.TERMINAL) },
+                onSendLink = { begin(Tender.LINK) },
+                onScanWallet = { begin(Tender.WALLET) },
                 tokens = tokens,
-                onChargeToken = { advance(Tender.TOKEN) },
+                onChargeToken = { begin(Tender.TOKEN) },
                 onSplit = { cash -> navigator.push(Route.Split(cash = cash)) },
             )
         },
@@ -785,6 +796,7 @@ private fun checkoutViewModel(kind: SaleKind): CheckoutViewModel {
             discovery = container.walletDiscovery,
             charges = container.savedCardCharges.takeIf { kind == SaleKind.SALE },
             managerConfigured = container.managerApproval.forAction(ManagerAction.CASHOUT).available,
+            sales = container.sales,
         )
     }
 }
@@ -1097,4 +1109,27 @@ private fun saleResultViewModel(saleId: String): SaleResultViewModel {
 private fun resultOrigin(state: SaleResultUiState): Route {
     val sale = state.record?.sale
     return if (sale?.cashout == true) Route.Cashout else Route.ringUp(state.kind)
+}
+
+/**
+ * Asks before charging a cart again with [tender] while its last payment is unknown; nothing without a [tender].
+ * [onConfirm] continues with the tender, after [onDismiss] closes the question either way.
+ */
+@Composable
+private fun UnconfirmedChargeDialog(
+    tender: Tender?,
+    onConfirm: (Tender) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    tender ?: return
+    ConfirmDialog(
+        stringResource(R.string.checkout_unconfirmed_title),
+        stringResource(R.string.checkout_unconfirmed_message),
+        stringResource(R.string.checkout_unconfirmed_confirm),
+        onConfirm = {
+            onDismiss()
+            onConfirm(tender)
+        },
+        onDismiss = onDismiss,
+    )
 }

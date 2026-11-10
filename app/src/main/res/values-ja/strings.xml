@@ -151,6 +151,9 @@
   <string name="payment_cancel_keep">このまま待つ</string>
   <string name="processing_wait">結果が出るまでこの画面でお待ちください。</string>
   <string name="payment_unknown_outcome">端末から結果を確認できませんでした。再度請求する前に、Customer Areaで決済を確認してください。</string>
+  <string name="checkout_unconfirmed_title">この売上を再度請求しますか？</string>
+  <string name="checkout_unconfirmed_message">この売上の前回の支払いが完了したかどうかはまだ不明です。再請求する前に履歴または Customer Area で確認してください。</string>
+  <string name="checkout_unconfirmed_confirm">再度請求</string>
   <string name="payment_interrupted">結果を受信する前にアプリが停止しました。</string>
   <string name="capture_interrupted">キャプチャ要求へのAdyenの応答を受信する前にアプリが停止しました。同じキャプチャ要求を安全に再試行できます。</string>
   <string name="shopper_order">注文</string>

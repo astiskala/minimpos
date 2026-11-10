@@ -9,6 +9,7 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.CatalogRepository
+import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.feature.ActionOutcome
@@ -17,10 +18,12 @@ import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.TransactionActionsState
 import app.minimpos.app.feature.runAction
 import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.PaymentIssue
 import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.history.awaitsLinkPayment
 import app.minimpos.app.history.decline
+import app.minimpos.app.history.issues
 import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutForm
@@ -308,6 +311,7 @@ class SaleViewModel(
  * @param lookupDelay How long the shopper reference must stay unchanged before its tokens are looked up.
  * @param cpu Dispatcher for checkout calculation shared with saved-card lookup.
  * @param managerConfigured Whether cashback is public or a Manager PIN is configured to approve it.
+ * @param sales Where started sales are stored, read for [previousUnresolved]; null never asks for confirmation.
  */
 class CheckoutViewModel(
     private val session: SaleSession,
@@ -324,6 +328,7 @@ class CheckoutViewModel(
     lookupDelay: Duration = 700.milliseconds,
     private val cpu: CoroutineDispatcher = Dispatchers.Default,
     managerConfigured: Flow<Boolean> = flowOf(false),
+    sales: SaleRepository? = null,
 ) : ViewModel() {
     private val checkout =
         session.checkout(
@@ -364,10 +369,31 @@ class CheckoutViewModel(
     /** Updates the form (kept in the [SaleSession] so it survives going back to the cart). */
     fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateForm(transform = transform)
 
+    /**
+     * Whether the sale last started on the terminal from this unchanged cart and form still has an unknown outcome, so
+     * charging them again needs the operator's confirmation first.
+     */
+    val previousUnresolved: StateFlow<Boolean> =
+        MutableStateFlow(false).also { unresolved ->
+            if (sales != null) {
+                viewModelScope.launch {
+                    session.attempts.current.collectLatest { id ->
+                        if (id == null) {
+                            unresolved.value = false
+                        } else {
+                            sales.observe(id).collect { unresolved.value = it?.sale?.issues?.contains(PaymentIssue.OUTCOME) == true }
+                        }
+                    }
+                }
+            }
+        }
+
     /** Starts the payment ([Checkout.paymentStart]); returns false when the form is not ready or a payment is running. */
     fun pay(): Boolean {
         val start = session.paymentStart(state.value, clock.instant(), zone()) ?: return false
-        if (payments.start(start) != null) return true
+        val started = payments.start(start)
+        if (started != null) session.attempts.record(start, started)
+        if (started != null) return true
         if (start.audioGuidance) session.updateForm(start) { it.copy(audioGuidance = true) }
         return false
     }

@@ -114,6 +114,29 @@ class SaleSession(
 
     private val snapshot = MutableStateFlow(Snapshot(cart.value, form.value, revision))
 
+    /** The sales started on the terminal from this session, see [Attempts.current]. */
+    val attempts = Attempts()
+
+    /**
+     * The sale last started on the terminal from the cart and form as they are now. Checkout asks for confirmation
+     * before charging them again while that sale's outcome is unknown.
+     */
+    inner class Attempts internal constructor() {
+        private val last = MutableStateFlow<Pair<Long, String>?>(null)
+
+        /** The sale last started from the cart and form as they are now; null once either changed. */
+        val current: Flow<String?> = combine(last, snapshot) { attempt, now -> attempt?.takeIf { it.first == now.revision }?.second }
+
+        /** Remembers that [start], made from this session, was started as sale [saleId]. */
+        fun record(
+            start: PaymentStart,
+            saleId: String,
+        ) {
+            val revision = start.sessionRevision ?: return
+            if (start.kind == kind) last.value = revision to saleId
+        }
+    }
+
     /**
      * The checkout of this session's cart and form with [settings], charged in the [currency] the settings give,
      * following [terminal] (printer, payment links when [offersLinks], and whole destination capabilities) and

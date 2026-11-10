@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import java.net.URLEncoder
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -33,7 +34,7 @@ class PaymentsAppBridgeTest {
     @Test
     fun `only the exact return address of the waiting link answers it`() {
         val returnUrl = "${PaymentsAppBridge.RETURN_URL}/nexo/s3cr3t"
-        val encoded = java.net.URLEncoder.encode(java.net.URLEncoder.encode(returnUrl, "UTF-8"), "UTF-8")
+        val encoded = URLEncoder.encode(URLEncoder.encode(returnUrl, "UTF-8"), "UTF-8")
         val reply =
             runBlocking {
                 val waiting =

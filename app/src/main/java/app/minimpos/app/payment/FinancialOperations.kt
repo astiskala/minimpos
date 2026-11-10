@@ -308,7 +308,7 @@ class FinancialOperations(
 }
 
 /** This link answer as a status check: settled once the link exists or ended, else still unknown for why. */
-private fun LinkUpdate.recheck(): Recheck =
+internal fun LinkUpdate.recheck(): Recheck =
     when (this) {
         LinkUpdate.Settled, LinkUpdate.StillOpen -> Recheck.Settled
         is LinkUpdate.NotDone -> Recheck.StillUnknown(failure)

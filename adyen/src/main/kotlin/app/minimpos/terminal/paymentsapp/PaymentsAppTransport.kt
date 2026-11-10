@@ -28,9 +28,9 @@ import com.adyen.model.terminal.TerminalAPISecuredResponse
 import com.adyen.terminal.security.NexoCrypto
 import com.google.gson.JsonObject
 import java.net.URLEncoder
-import java.security.SecureRandom
 import kotlin.io.encoding.Base64
 import kotlin.time.Duration
+import kotlin.uuid.Uuid
 
 /** What came of opening one App Link in the Adyen Payments app, see [AppLinkExchange.exchange]. */
 sealed interface AppLinkAnswer {
@@ -243,7 +243,6 @@ class PaymentsAppTransport(
     private val decoded = mutableMapOf<String, TerminalAPIResponse?>()
     private val recovered = mutableMapOf<String, MutableSet<String>>()
     private val completed = CompletedTransactions()
-    private val random = SecureRandom()
 
     override fun acknowledge(serviceId: String) {
         synchronized(decoded) {
@@ -321,8 +320,7 @@ class PaymentsAppTransport(
         return Delivery.Answered(response)
     }
 
-    private fun exchangeSegment(): String =
-        Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT).encode(ByteArray(EXCHANGE_SEGMENT_BYTES).also(random::nextBytes))
+    private fun exchangeSegment(): String = Uuid.random().toHexString()
 
     private fun validate(
         response: SaleToPOIResponse?,
@@ -533,7 +531,6 @@ class PaymentsAppTransport(
     /** Version eligibility does not establish account or beta enablement. */
     companion object {
         private const val NEXO = "nexo"
-        private const val EXCHANGE_SEGMENT_BYTES = 16
         private const val STATUS_MINOR_VERSION = 8
 
         /** Whether [version] may support status; unreadable versions remain unverified and can be queried safely. */

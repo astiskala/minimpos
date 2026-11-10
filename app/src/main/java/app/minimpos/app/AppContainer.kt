@@ -534,6 +534,9 @@ class AppContainer(
                 // The cart has been paid for, so the next payment of its kind starts afresh.
                 completeSale(id, start)
             },
+            // Whichever screen started it (checkout, split or wallet), checkout asks before charging the cart again
+            // while this sale's outcome is unknown.
+            onStarted = { id, start -> session(start.kind).attempts.record(start, id) },
             approval = managerApproval,
         )
 

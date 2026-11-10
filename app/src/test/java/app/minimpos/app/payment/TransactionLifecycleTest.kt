@@ -124,6 +124,22 @@ class TransactionLifecycleTest {
     }
 
     @Test
+    fun `every started transaction is reported once, before it is sent`() {
+        val started = mutableListOf<String>()
+        val lifecycle =
+            TransactionLifecycle(env.scope, container.gateway, SaleBook(container.sales), onStarted = {
+                id,
+                _,
+                ->
+                started += id
+            })
+        val id = checkNotNull(lifecycle.start(request()))
+        assertThat(started).containsExactly(id)
+        await { lifecycle.state.first { it == TransactionState.Finished(id) } }
+        assertThat(started).containsExactly(id)
+    }
+
+    @Test
     fun `failed opens release orphan requests only after storage proves no record exists`() {
         val delegate = SaleBook(container.sales)
         val book =

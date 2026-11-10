@@ -391,9 +391,7 @@ class CheckoutViewModel(
     /** Starts the payment ([Checkout.paymentStart]); returns false when the form is not ready or a payment is running. */
     fun pay(): Boolean {
         val start = session.paymentStart(state.value, clock.instant(), zone()) ?: return false
-        val started = payments.start(start)
-        if (started != null) session.attempts.record(start, started)
-        if (started != null) return true
+        if (payments.start(start) != null) return true
         if (start.audioGuidance) session.updateForm(start) { it.copy(audioGuidance = true) }
         return false
     }

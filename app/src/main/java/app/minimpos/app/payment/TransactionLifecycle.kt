@@ -267,6 +267,8 @@ interface TransactionBook<R> {
  * @param book How the records are stored.
  * @param onSucceeded Called once with the record ID and its original request when a transaction succeeds, including
  *   a [recheck] of one started in this process; an immediate success is reported before [TransactionState.Finished].
+ * @param onStarted Called with the record ID and its request whenever [start] starts a transaction, whichever screen
+ *   started it, before it is sent.
  * @param clock Stamps the records.
  * @param newId Generates record IDs.
  * @param newServiceId Generates the ServiceIDs of the requests.
@@ -278,6 +280,7 @@ class TransactionLifecycle<R>(
     gateway: TerminalGateway,
     private val book: TransactionBook<R>,
     private val onSucceeded: (id: String, request: R) -> Unit = { _, _ -> },
+    private val onStarted: (id: String, request: R) -> Unit = { _, _ -> },
     private val clock: Clock = Clock.systemUTC(),
     private val newId: () -> String = { Uuid.random().toString() },
     private val newServiceId: () -> String = { TerminalClient.randomServiceId() },
@@ -310,16 +313,18 @@ class TransactionLifecycle<R>(
         request: R,
         grant: ManagerApproval.Grant,
     ): String? =
-        runner.start(
-            request,
-            id = { book.existingId(request) ?: newId() },
-            interrupted = { id, _ ->
-                // The request may already have been sent, so the outcome is unconfirmed rather than failed.
-                val unexpected = Failure.Device(DeviceFault.UNEXPECTED)
-                record(id).settle(Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(unexpected)))
-            },
-            release = { book.release(request) },
-        ) { id -> run(id, request, grant) }
+        runner
+            .start(
+                request,
+                id = { book.existingId(request) ?: newId() },
+                interrupted = { id, _ ->
+                    // The request may already have been sent, so the outcome is unconfirmed rather than failed.
+                    val unexpected = Failure.Device(DeviceFault.UNEXPECTED)
+                    record(id).settle(Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(unexpected)))
+                },
+                release = { book.release(request) },
+            ) { id -> run(id, request, grant) }
+            ?.also { onStarted(it, request) }
 
     /**
      * Asks the terminal to cancel the running transaction (an AbortRequest). Does nothing before its request is being

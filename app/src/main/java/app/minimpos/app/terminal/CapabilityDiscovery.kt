@@ -231,8 +231,17 @@ class CapabilityDiscovery(
     val changes: Flow<*> get() = setups.discoveryChanges
 
     /** Refreshes capability state for the current setup. */
-    suspend fun refresh(): AdyenCapabilitiesState =
+    suspend fun refresh(): AdyenCapabilitiesState = refresh { false }
+
+    /**
+     * Refreshes only when no successful reading was made for the setup stored now, as when another capability screen
+     * opens; waits for a refresh already running instead of reading Management again.
+     */
+    suspend fun refreshIfStale(): AdyenCapabilitiesState = refresh { it.checked && it.failure == null && reading.madeForCurrent(it) }
+
+    private suspend fun refresh(keep: suspend (AdyenCapabilitiesState) -> Boolean): AdyenCapabilitiesState =
         reading.refresh(
+            keep = keep,
             begin = { old ->
                 old.copy(
                     context = context,
@@ -268,13 +277,6 @@ class CapabilityDiscovery(
                 }
             }
         }
-
-    /**
-     * Refreshes only when no successful reading was made for the setup stored now, as when another capability screen
-     * opens; waits for a refresh already running instead of reading Management again.
-     */
-    suspend fun refreshIfStale(): AdyenCapabilitiesState =
-        reading.locked { state.value.takeIf { it.checked && it.failure == null && reading.madeForCurrent(it) } } ?: refresh()
 
     /**
      * Updates the terminal's gratuity configuration for [currency].

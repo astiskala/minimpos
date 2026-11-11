@@ -241,20 +241,18 @@ class CapabilityDiscoveryTest {
             // The simulated terminal starts in the payment currency (AUD here), not a fixed one.
             assertThat(vm.state.value.gratuityFor("AUD")).isNotNull()
             assertThat(vm.state.value.motoCurrency).isEqualTo("AUD")
-            vm.edit(CapabilityFeature.TIPPING, CapabilityDraft(enabled = true, tips = listOf(CapabilityTip(text = "10")), custom = true))
-            await { vm.actions.first { it.gratuity.done } }
-            vm.edit(CapabilityFeature.TIPPING, CapabilityDraft())
-            await { vm.state.first { it.gratuityFor("EUR") == null } }
+            vm.saved(CapabilityFeature.TIPPING, CapabilityDraft(enabled = true, tips = listOf(CapabilityTip(text = "10")), custom = true))
+            assertThat(vm.state.value.gratuityFor("EUR")).isNotNull()
+            vm.saved(CapabilityFeature.TIPPING, CapabilityDraft())
+            assertThat(vm.state.value.gratuityFor("EUR")).isNull()
 
-            vm.edit(CapabilityFeature.DCC, CapabilityDraft(enabled = true))
-            await { vm.actions.first { it.dcc.done } }
+            vm.saved(CapabilityFeature.DCC, CapabilityDraft(enabled = true))
             assertThat(vm.state.value.dccEnabled).isTrue()
 
-            vm.edit(CapabilityFeature.MOTO, CapabilityDraft(enabled = true, motoLimit = CapabilityLimit(false, "150")))
-            await { vm.actions.first { it.moto.done } }
+            vm.saved(CapabilityFeature.MOTO, CapabilityDraft(enabled = true, motoLimit = CapabilityLimit(false, "150")))
             assertThat(vm.state.value.moto).isEqualTo(MotoCapability(enabled = true, maxAmount = 150))
 
-            vm.edit(
+            vm.saved(
                 CapabilityFeature.OFFLINE,
                 CapabilityDraft(
                     chip = CapabilityLimit(false, "0.30"),
@@ -262,11 +260,10 @@ class CapabilityDiscoveryTest {
                     count = CapabilityLimit(false, "8"),
                 ),
             )
-            await { vm.actions.first { it.offline.done } }
             assertThat(vm.state.value.offline.maxStoreAndForwardMinor).containsEntry("EUR", 4_000L)
 
-            vm.edit(CapabilityFeature.OFFLINE, CapabilityDraft())
-            await { vm.state.first { it.offline.maxStoreAndForwardMinor.isEmpty() } }
+            vm.saved(CapabilityFeature.OFFLINE, CapabilityDraft())
+            assertThat(vm.state.value.offline.maxStoreAndForwardMinor).isEmpty()
 
             // Non-discoverable destination (Payments app) rejects remote capability writes.
             env.updateSettings { it.copy(terminal = it.terminal.withConnection(TerminalMode.PAYMENTS_APP, TerminalEnvironment.TEST)) }
@@ -386,6 +383,20 @@ class CapabilityDiscoveryTest {
         ),
         "EUR",
     )
+
+    /**
+     * Saves [draft] like [edit] and waits until that save succeeded and no save runs: a reading can show the new value
+     * before its save finishes, and a save started meanwhile is ignored.
+     */
+    private fun CapabilitiesViewModel.saved(
+        feature: CapabilityFeature,
+        draft: CapabilityDraft,
+    ) {
+        val result = checkNotNull(feature.editorResult)
+        val before = actions.value.savedRevisions[result] ?: 0
+        edit(feature, draft)
+        await { actions.first { (it.savedRevisions[result] ?: 0) > before && !it.running } }
+    }
 
     @Test
     fun `capabilities screen displays standing matrix and saves simulator updates`() {

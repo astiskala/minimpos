@@ -44,13 +44,17 @@ internal class SetupReading<S>(
     /**
      * Refreshes the reading for the setup stored now and returns it once checking ended: [begin] makes the reading shown
      * while it runs from the earlier one, kept only for the same setup (else the empty reading); [read] then publishes
-     * its results through the [Refresh], which drops them once the setup changed.
+     * its results through the [Refresh], which drops them once the setup changed. When [keep] accepts the reading now it
+     * is returned without reading again; it is asked under the same lock, so callers arriving together wait for one
+     * refresh instead of each starting their own.
      */
     suspend fun refresh(
         begin: Refresh.(previous: S) -> S,
+        keep: suspend (S) -> Boolean = { false },
         read: suspend Refresh.(initial: S) -> Unit,
     ): S =
         mutex.withLock {
+            current.value.takeIf { keep(it) }?.let { return@withLock it }
             val origin = setups.unlocked()
             val refresh = Refresh(origin, identity(origin), origin.setup.paymentContext())
             val previous = current.value.takeIf { identityOf(it) == refresh.identity && contextOf(it) == refresh.context } ?: empty

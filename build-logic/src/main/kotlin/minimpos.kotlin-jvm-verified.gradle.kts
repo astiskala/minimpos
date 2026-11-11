@@ -41,4 +41,5 @@ pitest {
     // Kotlin's generated null checks, resource-closing finally blocks, coroutine state-machine checks and serializers are compiler output.
     avoidCallsTo.set(listOf("kotlin.jvm.internal", "kotlin.ResultKt", "kotlin.io.CloseableKt"))
     excludedClasses.set(listOf("*\$\$serializer"))
+    addJUnitPlatformLauncher.set(false)
 }

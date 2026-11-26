@@ -217,9 +217,9 @@ class SmallScreenTest {
     fun `home guides terminal setup through the Adyen API test before the shared key`() {
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.TEST)) }
         compose.setContent { MiniMposApp(container) }
-        // Beside the setup card, the tiles keep their icons above their labels, scrolling rather than shrinking below their
+        // Under the setup tile, the tiles keep their icons above their labels, scrolling rather than shrinking below their
         // own minimum, and Settings remains in the top-right corner.
-        listOf("newSale", "preAuth", "savedCard", "giftCards", "refund", "history", "reconciliation").forEach {
+        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation").forEach {
             compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed()
         }
         compose.onNodeWithTag("settings").assertIsDisplayed()
@@ -547,7 +547,7 @@ class SmallScreenTest {
             )
         }
         compose.setContent { MiniMposApp(container) }
-        // Both payment tiles and every other tile fit.
+        // The sale tile and every other tile fit.
         waitForTag("preAuth")
         listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "settings").forEach {
             compose.onNodeWithTag(it).assertIsDisplayed()

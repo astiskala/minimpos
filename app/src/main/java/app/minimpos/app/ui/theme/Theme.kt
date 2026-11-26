@@ -192,8 +192,10 @@ data class Dimens(
     val contentMaxWidth: Dp = 560.dp,
     /** The widest a settings list grows. */
     val listMaxWidth: Dp = 640.dp,
-    /** The tallest Home's tiles grow together, the height they have on the largest terminals (S1F4 Pro). */
-    val homeMaxHeight: Dp = 640.dp,
+    /** The tallest Home's large tile grows: its height on the largest terminals (S1F4 Pro). */
+    val homeHeroMaxHeight: Dp = 144.dp,
+    /** The tallest Home's smaller tiles grow, in step with [homeHeroMaxHeight]. */
+    val homeTileMaxHeight: Dp = 100.dp,
     /** Space before and after the content of list and settings rows. */
     val rowHorizontalPadding: Dp = 16.dp,
     /** Space under a list's last row that keeps it clear of a floating action button. */

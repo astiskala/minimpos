@@ -206,7 +206,7 @@ private val Route.entryManagerAction: ManagerAction?
         when {
             this == Route.Sale -> ManagerAction.SALE
             this == Route.PreAuth -> ManagerAction.PRE_AUTHORISATION
-            this == Route.History -> ManagerAction.HISTORY
+            this is Route.History -> ManagerAction.HISTORY
             this is Route.SaleDetail || this is Route.RefundDetail || this is Route.GiftCardDetail -> ManagerAction.HISTORY
             this == Route.Reconciliation -> ManagerAction.TOTALS
             else -> null
@@ -272,7 +272,8 @@ private val Route.paneRoot: Route?
     get() =
         when {
             this == Route.Settings || this is Route.SettingsSection -> Route.Settings
-            this == Route.History || this is Route.SaleDetail || this is Route.RefundDetail || this is Route.GiftCardDetail -> Route.History
+            this is Route.History -> Route.History()
+            this is Route.SaleDetail || this is Route.RefundDetail || this is Route.GiftCardDetail -> Route.History()
             else -> null
         }
 
@@ -285,7 +286,7 @@ private fun EntryProviderScope<NavKey>.historyEntries(
 ) {
     val historyList =
         ListDetailSceneStrategy.listPane(HISTORY_PANES) { PanePlaceholder(R.string.history_choose) } +
-            mapOf(PANE_ROOT_METADATA to Route.History)
+            mapOf(PANE_ROOT_METADATA to Route.History())
     val historyDetail = ListDetailSceneStrategy.detailPane(HISTORY_PANES)
     entry<Route.History>(
         metadata = historyList,
@@ -294,7 +295,7 @@ private fun EntryProviderScope<NavKey>.historyEntries(
             setOf(ManagerAction.HISTORY),
             navigator,
             header = listHeader,
-        ) { HistoryScreen(navigator, header = listHeader) }
+        ) { HistoryScreen(navigator, issues = it.issues, header = listHeader) }
     }
     entry<Route.SaleDetail>(metadata = historyDetail) {
         ManagerGate(setOf(ManagerAction.HISTORY), navigator, header = detailHeader) {

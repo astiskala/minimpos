@@ -35,8 +35,9 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
   `offlineApproval`), never its stored masked card number or offline-mode string.
 - \* Decision rules stay pure: Checkout, Cashback, UnreferencedRefunds, PaymentLinkRequests, SaleEvent, TenderBalance,
   GiftCardActivity, PaymentStanding, RefundablePayment, HistorySearch, HistoryAccounting, ReceiptKind,
-  TerminalAssignments, WalletOffers, TerminalSetup, TerminalSetupPlan, DestinationRules, NewInstallation, VerifiedSetup
-  and settings models. No Android, coroutines, repositories or clocks; do not rederive their decisions elsewhere.
+  TerminalAssignments, WalletOffers, TerminalSetup, TerminalSetupPlan, DestinationRules, NewInstallation, VerifiedSetup,
+  HomeTiles and settings models. No Android, coroutines, repositories or clocks; do not rederive their decisions
+  elsewhere. `HomeTiles` reads which tiles Home shows from the capability catalog; Home only draws them.
   History filters reuse accounting's issue meaning rather than reading pending/unknown status fields. `ReceiptStanding`
   owns receipt meaning; only the stored-payment reading interprets the original payment context's simulator flag for
   demo links.
@@ -223,8 +224,7 @@ Starred rules below are enforced by the `*ArchitectureTest` classes in `app/src/
 - [CONTRIBUTING's test setup](../CONTRIBUTING.md#test-setup) owns the test stack and regression suites. `SmallScreenTest`
   checks visible primary actions at AMS1 `w320dp-h460dp-hdpi`, P630 and S1F2 sizes.
 - `TestEnvironment` is rule order 0, `createRecordingComposeRule` order 1 (v2 rule with pre-teardown failure artifacts;
-  CONTRIBUTING owns paths and usage). `ScreenshotRule` (golden images, CONTRIBUTING)
-  is order 2. FakeDevice/FakeTerminal model terminals; FakeCloud,
+  CONTRIBUTING owns paths and usage). FakeDevice/FakeTerminal model terminals; FakeCloud,
   FakePaymentsApp, FakeManagement and FakeLinkApi model external services (`env.useLinks()` enables link setup).
   Call `container.start()` for background connection checks. Use fake DNS; no network in tests.
   Startup tests inject `UnconfinedTestDispatcher` into `TestEnvironment` for eager startup and run the test with a

@@ -59,18 +59,23 @@
   <!-- Home -->
   <string name="home_new_sale">Nouvelle vente</string>
   <string name="home_new_sale_hint">Ajoutez des produits ou un montant personnalisé</string>
-  <string name="home_pre_auth">Nouvelle pré-autorisation</string>
-  <string name="home_pre_auth_hint">Réserver un montant sur une carte</string>
+  <string name="home_pre_auth">Pré-autorisation</string>
   <string name="home_saved_card">Jetons</string>
   <string name="home_gift_cards">Cartes cadeaux</string>
   <string name="home_refund">Remboursement</string>
   <string name="home_history">Historique</string>
+  <plurals name="home_history_attention">
+    <item quantity="one">%1$d a besoin d’attention</item>
+    <item quantity="other">%1$d ont besoin d’attention</item>
+    <item quantity="many">%1$d ont besoin d’attention</item>
+  </plurals>
   <string name="home_reconciliation">Rapprochement</string>
   <string name="home_products">Produits</string>
   <string name="home_settings">Paramètres</string>
   <string name="home_printer_yes">imprimante disponible</string>
   <string name="home_printer_no">pas d’imprimante</string>
-  <string name="home_setup_text">Appuyez pour terminer la configuration des paiements.</string>
+  <string name="home_setup">Configurer les paiements</string>
+  <string name="home_setup_text">Connectez Mini mPOS à Adyen pour accepter les paiements.</string>
   <string name="home_connection_failed">Les paiements ne fonctionnent pas pour le moment</string>
   <string name="update_available">La version %1$s est disponible</string>
   <string name="update_download">Mettre à jour</string>

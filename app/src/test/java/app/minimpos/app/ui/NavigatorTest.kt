@@ -97,10 +97,10 @@ class NavigatorTest {
     fun `different screens still form a back stack`() {
         val stack = NavBackStack<NavKey>(Route.Home)
         val navigator = Navigator(stack)
-        navigator.push(Route.History)
+        navigator.push(Route.History())
         navigator.push(Route.SaleDetail("sale"))
         navigator.back()
-        assertThat(navigator.current).isEqualTo(Route.History)
+        assertThat(navigator.current).isEqualTo(Route.History())
         navigator.back()
         navigator.back()
         assertThat(stack).containsExactly(Route.Home)
@@ -108,14 +108,28 @@ class NavigatorTest {
 
     @Test
     fun `a list's next choice replaces what it opened, keeping that detail's own back stack until then`() {
-        val stack = NavBackStack<NavKey>(Route.Home, Route.History)
+        val stack = NavBackStack<NavKey>(Route.Home, Route.History())
         val navigator = Navigator(stack)
-        navigator.openFrom(Route.History, Route.SaleDetail("first"))
+        navigator.openFrom(Route.History(), Route.SaleDetail("first"))
         // A refund opened from the sale detail stacks on it, as on a phone.
         navigator.push(Route.RefundDetail("refund"))
-        assertThat(stack).containsExactly(Route.Home, Route.History, Route.SaleDetail("first"), Route.RefundDetail("refund")).inOrder()
-        navigator.openFrom(Route.History, Route.SaleDetail("second"))
-        assertThat(stack).containsExactly(Route.Home, Route.History, Route.SaleDetail("second")).inOrder()
+        assertThat(stack).containsExactly(Route.Home, Route.History(), Route.SaleDetail("first"), Route.RefundDetail("refund")).inOrder()
+        navigator.openFrom(Route.History(), Route.SaleDetail("second"))
+        assertThat(stack).containsExactly(Route.Home, Route.History(), Route.SaleDetail("second")).inOrder()
+    }
+
+    @Test
+    fun `history opened on what needs attention is the same list`() {
+        val stack = NavBackStack<NavKey>(Route.Home)
+        val navigator = Navigator(stack)
+        navigator.push(Route.History(issues = true))
+        navigator.push(Route.History())
+        navigator.openFrom(Route.History(), Route.SaleDetail("first"))
+        navigator.openFrom(Route.History(), Route.SaleDetail("second"))
+        assertThat(stack).containsExactly(Route.Home, Route.History(), Route.SaleDetail("second")).inOrder()
+        assertThat((stack[1] as Route.History).issues).isTrue()
+        navigator.leave(Route.History())
+        assertThat(stack).containsExactly(Route.Home)
     }
 
     @Test
@@ -126,10 +140,10 @@ class NavigatorTest {
         assertThat(stack).containsExactly(Route.Home)
         navigator.leave(Route.Home)
         assertThat(stack).containsExactly(Route.Home)
-        navigator.push(Route.History)
+        navigator.push(Route.History())
         // Without the list on the stack (opened another way), leaving is plain Back.
         navigator.push(Route.SettingsSection("terminal"))
         navigator.leave(Route.Settings)
-        assertThat(stack).containsExactly(Route.Home, Route.History).inOrder()
+        assertThat(stack).containsExactly(Route.Home, Route.History()).inOrder()
     }
 }

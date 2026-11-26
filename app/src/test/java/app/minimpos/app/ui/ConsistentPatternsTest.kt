@@ -123,8 +123,8 @@ class ConsistentPatternsTest {
         compose
             .onNodeWithTag("terminalSetup")
             .performScrollTo()
-            .assertTextContains(env.context.getString(R.string.setup_required_title), substring = true)
-            .assertTextContains(env.context.getString(R.string.home_setup_text), substring = true)
+            .assertTextContains(env.context.getString(R.string.home_setup))
+            .assertTextContains(env.context.getString(R.string.home_setup_text))
             .performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("terminalMode"), 15_000)
     }

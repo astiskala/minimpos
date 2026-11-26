@@ -40,7 +40,7 @@ object IconSize {
     /** The numbered marker of a step. */
     val Standard = 24.dp
 
-    /** The artwork of a Home payment tile. */
+    /** The artwork of Home's large tile. */
     val Tile = 32.dp
 
     /** Empty state on compact screens, and the badge of a result dialog. */
@@ -49,6 +49,12 @@ object IconSize {
 
 /** Width of the outline of secondary buttons, bordered action groups and products in the cart. */
 val BorderWidth = 1.dp
+
+/** Opacities of content that is drawn but set back. */
+object Opacity {
+    /** Content that cannot be used now, as Material fades disabled content. */
+    const val DISABLED = 0.38f
+}
 
 /** The smallest touch target Android accessibility guidance allows (48 × 48 dp). */
 val MinTouchTarget = 48.dp

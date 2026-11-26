@@ -70,8 +70,7 @@ scripts/dev finish
 | --- | --- |
 | `format` | Existing `spotlessApply`: ktlint and fixable Markdown, plus text whitespace. Review the diff. |
 | `test MODULE PATTERN` | Matching tests in `core`, `adyen`, `app`, `website-test` or `tooling`; quote the pattern. |
-| `check AREA` | Module `check` for `core`/`adyen`/`app`/`tooling`; focused `website`, `workflows`, `markdown`, `architecture`, `localization`, `ui`, `ui-snapshots`, `qr`, `db` or `payment` lanes. |
-| `snapshots record` | Rewrite the golden screenshots; see [Update the golden screenshots](#update-the-golden-screenshots). |
+| `check AREA` | Module `check` for `core`/`adyen`/`app`/`tooling`; focused `website`, `workflows`, `markdown`, `architecture`, `localization`, `ui`, `qr`, `db` or `payment` lanes. |
 | `finish` | Format, then full `qualityGate --continue`; formatting failure stops the gate, gate failure stays nonzero. |
 | `preflight` | Read-only check of JDK 17+, SDK 37/build tools and Chrome; reports missing cached linters without failing for them. |
 | `warm` | Preflight, then compiler/test/browser/pinned-tool warmup; does not install SDKs or change config. |
@@ -148,9 +147,6 @@ standalone release builds retain release lint by default. R8, signing and packag
   `app/build/reports/ui-failures/<test-task>/`. Passing tests do not capture; directories are unique across workers.
   Capture errors never replace the original assertion. These contain synthetic test data, not merchant screenshots;
   CI includes them in its existing reports artifact. Check timestamps: old failure artifacts may remain.
-- `ScreenshotRule` (rule order 2, after the recording rule) names golden images from test class, method and window
-  size, fixes the locale (`en-AU` unless given another), time zone (UTC) and font scale, and freezes the Compose clock.
-  In an ordinary test run it captures nothing; see [Update the golden screenshots](#update-the-golden-screenshots).
 - `LocalizationTest` checks resource/format parity and writes receipt samples under
   `app/build/reports/localization/`. `LocalizedUiTest` checks Simplified/Traditional Chinese and Japanese checkout
   at AMS1 size. `ScreenTextTest` finds text cut off without an ellipsis in all seven languages at AMS1 size, and text
@@ -171,44 +167,15 @@ standalone release builds retain release lint by default. R8, signing and packag
   browser-driver library or ChromeDriver is needed. Set `MINIMPOS_CHROME` to a Chrome/Chromium executable to override
   Google Chrome's standard macOS path or `google-chrome` on Linux. CI uses the browser already on its runner image.
 
-### Update the golden screenshots
+### Verify UI changes
 
-Golden images are the visual safety net for [DESIGN.md](DESIGN.md) tokens and shared components. They compare approved
-Android rendering with future Android rendering; dark mode and renders from external design tools are never baselines.
-Roborazzi (test-only) captures the Robolectric Compose tests, reusing `TestEnvironment`, the fakes and the device-size
-helpers; Paparazzi cannot render `AppContainer`-backed screens and Preview Screenshot Testing needs `@Preview`s, which
-the app does not have. Goldens live in `app/src/test/screenshots/` and are a declared test input.
+Run `scripts/dev check ui` for focused feedback. Assert what must hold: visible primary actions and readable labels on
+the AMS1, effective touch targets, and layout at larger text or window sizes where relevant. Use `SmallScreenTest`,
+`CompactLayoutTest`, `AdaptiveLayoutTest` and `DesignGalleryTest` as examples. These tests also run in `qualityGate`.
 
-| Test | Covers | Sizes |
-| --- | --- | --- |
-| `DesignGalleryTest` | Shared components in every variant, plus enabled touch targets | Regular, Medium, AMS1 |
-| `ScreenGoldensTest` | Home, sale, cash entry, results, History, reconciliation, refund reasons | AMS1, S1F2, phone, tablet two-pane |
-| `SettingsGoldensTest` | Settings sections, pickers, PINs, products, transfer, imports | Phone, AMS1, 1.5× font, tablet two-pane |
-| `LocaleGoldensTest` | Home and the terminal picker in French and Japanese | AMS1 |
-| `UpdateGoldensTest` | Home with an update offer | AMS1 |
-
-Sizes reuse `SmallScreenTest`'s: AMS1 `w320dp-h460dp-hdpi`, S1F2 360×640, phone 411×891, tablet 1000×1280 (the
-expanded threshold is 840 dp). Use at most three per screen and keep the set small: each PNG is about 15–60 KB. Not yet
-covered: checkout review at 1.5×, Japanese results and History's empty state.
-
-Components must match with a 0 % changed-pixel threshold; whole screens may differ in up to 0.1 % of their counted
-pixels. Roborazzi first ignores colour distances up to `0.007`, so neither threshold is raw pixel equality. The owner
-keeps these thresholds; tightening or loosening them needs approval. Anti-aliasing differs between operating systems
-and JDKs, so the goldens are recorded on CI's `ubuntu-latest` with Temurin 21, and a local comparison on another
-platform can fail on edges alone. The comparison is not part of `qualityGate`.
-
-1. `scripts/dev check ui-snapshots` compares the current rendering with the goldens, running only those five classes. A
-   difference fails the run and leaves the expected, actual and difference images in `app/build/reports/roborazzi/`,
-   which the separate `ui-snapshots` CI job uploads as `ui-snapshot-differences` on failure. CI's manual **Run only UI
-   snapshots** option compares without the full gate.
-2. Look at the images. A difference you did not intend is a defect: fix the code, not the golden.
-3. For a deliberate change, record on the CI platform: CI's manual **Record CI-platform goldens for review instead of
-   comparing** option uploads a `ui-snapshot-goldens` artifact. Review it, replace the checked-in PNGs, commit them with
-   the code, and update `DESIGN.md` when a visual rule changed. `scripts/dev snapshots record` records locally for a
-   quick look. Never edit a PNG by hand or record to make a failure go away. Expect to re-record after a Compose or
-   Material 3 upgrade.
-4. A new component or screen adds a test to the matching class (a gallery group, or a screen with fixed data: store the
-   facts, as `showResult` does, instead of paying through the simulator, whose references and times differ each run).
+For visual changes, open the affected screen on Android in the simulator and exercise it at the smallest applicable
+size, comparing it with [DESIGN.md](DESIGN.md). Check applicable long translations and larger text. If the change
+dates a merchant screenshot, update it using the [docs screenshot workflow](#repeatable-screenshot-refresh).
 
 ## Make changes that fit
 

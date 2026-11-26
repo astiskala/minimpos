@@ -228,9 +228,22 @@ sealed interface Route : NavKey {
     /** Terminal totals compared with Mini mPOS, closing the terminal's period and today's report. */
     @Serializable data object Reconciliation : Route
 
-    /** Sales and refunds by day; local, so it opens before payments are set up. */
-    @Serializable data object History : Route {
+    /**
+     * Sales and refunds by day; local, so it opens before payments are set up. History is one place on the back stack
+     * however it was opened, so every `History` is equal: lists, panes and Back find it as `History()`.
+     *
+     * @property issues Opens on the "Needs attention" filter, as Home does while something needs attention.
+     */
+    @Serializable class History(
+        val issues: Boolean = false,
+    ) : Route {
         override val requiresSetup get() = false
+
+        override fun equals(other: Any?): Boolean = other is History
+
+        override fun hashCode(): Int = History::class.hashCode()
+
+        override fun toString(): String = "History"
     }
 
     /**

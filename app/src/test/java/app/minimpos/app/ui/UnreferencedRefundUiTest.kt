@@ -72,7 +72,7 @@ class UnreferencedRefundUiTest {
                 compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed()
             }
             compose.onNodeWithTag("refundHistory").performScrollTo().performClick()
-            compose.awaitCondition("history opened") { navigator.current == Route.History }
+            compose.awaitCondition("history opened") { navigator.current == Route.History() }
             navigator.back()
             compose.onNodeWithTag("refundUnreferenced").performScrollTo().performClick()
             compose.awaitCondition("refund without receipt opened") { navigator.current == Route.UnreferencedRefund }

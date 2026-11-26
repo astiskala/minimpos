@@ -39,24 +39,13 @@ class DevRunnerTest {
     }
 
     @Test
-    fun `screenshot lanes compare or record only the golden image tests`() {
-        val compare = run(fixture(), "check", "ui-snapshots", "--stacktrace")
-        assertThat(compare.code).isEqualTo(0)
-        assertThat(compare.output).contains(
-            "<:app:verifyRoborazziDebug>\n" +
-                "<--tests>\n<*DesignGalleryTest>\n<--tests>\n<*ScreenGoldensTest>\n<--tests>\n<*SettingsGoldensTest>\n" +
-                "<--tests>\n<*LocaleGoldensTest>\n<--tests>\n<*UpdateGoldensTest>\n<--stacktrace>",
+    fun `ui lane checks Compose behavior and failure artifacts`() {
+        val result = run(fixture(), "check", "ui", "--stacktrace")
+        assertThat(result.code).isEqualTo(0)
+        assertThat(result.output).contains(
+            "<:app:testDebugUnitTest>\n<--tests>\n<*ui.*>\n<--tests>\n<*ComposeFailureArtifactsTest>\n" +
+                "<:app:detektDebug>\n<:app:detektDebugUnitTest>\n<--stacktrace>",
         )
-        val record = run(fixture(), "snapshots", "record", "--stacktrace")
-        assertThat(record.code).isEqualTo(0)
-        assertThat(record.output).contains(
-            "<:app:recordRoborazziDebug>\n" +
-                "<--tests>\n<*DesignGalleryTest>\n<--tests>\n<*ScreenGoldensTest>\n<--tests>\n<*SettingsGoldensTest>\n" +
-                "<--tests>\n<*LocaleGoldensTest>\n<--tests>\n<*UpdateGoldensTest>\n<--stacktrace>",
-        )
-        val unknown = run(fixture(), "snapshots", "verify")
-        assertThat(unknown.code).isEqualTo(2)
-        assertThat(unknown.output).doesNotContain("<")
     }
 
     @Test

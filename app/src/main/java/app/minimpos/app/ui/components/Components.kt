@@ -67,6 +67,7 @@ import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
 import app.minimpos.app.ui.theme.MinTouchTarget
+import app.minimpos.app.ui.theme.Opacity
 import app.minimpos.app.ui.theme.Spacing
 
 /**
@@ -325,7 +326,7 @@ fun SwitchRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Disabled, the title and its description fade together, as Material's disabled content does.
-        val disabled = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        val disabled = MaterialTheme.colorScheme.onSurface.copy(alpha = Opacity.DISABLED)
         Column(Modifier.weight(1f)) {
             Text(
                 title,

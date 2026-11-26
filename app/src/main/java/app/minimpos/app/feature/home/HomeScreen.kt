@@ -1,5 +1,6 @@
 package app.minimpos.app.feature.home
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -10,10 +11,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.modifiers.TextAutoSizeLayoutScope
@@ -44,11 +47,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -62,27 +69,38 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.feature.settings.CapabilityCatalog
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.feature.text
+import app.minimpos.app.history.attention
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.app.ui.components.CompactSecondaryButton
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.StatusKind
+import app.minimpos.app.ui.components.color
 import app.minimpos.app.ui.components.currentSetupGate
+import app.minimpos.app.ui.components.icon
 import app.minimpos.app.ui.components.openInBrowser
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
+import app.minimpos.app.ui.theme.Opacity
 import app.minimpos.app.ui.theme.Spacing
 import app.minimpos.app.update.UpdateCheck
 
 /**
- * The home screen fills the available height, so everything fits on a 4" terminal screen without scrolling. Only when
- * the tiles would get less room than their content needs (a landscape phone, large text) does it scroll instead. While
- * payments still need setting up, a card says so and every tile that reaches Adyen or a terminal explains that instead
- * of opening.
+ * The home screen: one large green tile, New sale, then only the tiles this setup can use ([HomeTiles]), two per row.
+ * Those that start a payment are tinted green; Refund, History and Reconciliation follow in grey. The tiles share the
+ * height up to their largest size and stay at the top, so everything fits a 4" terminal screen without scrolling and
+ * a taller one keeps the rest white. Only when the tiles would get less room than their content needs (a landscape
+ * phone, large text) does Home scroll instead.
+ *
+ * While payments still need setting up, the large tile finishes that instead and New sale joins the smaller tiles;
+ * every tile that reaches Adyen or a terminal is faded and explains instead of opening. History marks how many
+ * records need attention and then opens on them.
  */
 @Composable
 fun HomeScreen(
@@ -93,12 +111,17 @@ fun HomeScreen(
     val dimens = LocalDimens.current
     val settings by container.settingsState.collectAsStateWithLifecycle()
     val terminal by container.terminalStatus.state.collectAsStateWithLifecycle()
+    val remote by container.capabilityDiscovery.state.collectAsStateWithLifecycle()
+    val wallets by container.walletDiscovery.state.collectAsStateWithLifecycle()
     val update by container.update.state.collectAsStateWithLifecycle()
+    val attention by remember(container) { container.history.attention() }.collectAsStateWithLifecycle(0)
     val gate = currentSetupGate()
     // A failed check is retried whenever Home is shown, so its warning clears once the terminal answers again.
     LaunchedEffect(Unit) { container.terminalStatus.recheckIfFailed() }
     // Every tile but History and the admin areas reaches Adyen or a terminal, so it asks to finish setup first.
     val open = { route: Route -> if (route.requiresSetup) gate.run { navigator.push(route) } else navigator.push(route) }
+    val catalog = CapabilityCatalog(settings, terminal, remote, wallets, container.currency(settings).code)
+    val tiles = HomeTiles.of(settings, catalog, gate.pending)
 
     MiniScaffold(
         title = settings.receipt.businessName.ifBlank { stringResource(R.string.app_name) },
@@ -111,8 +134,7 @@ fun HomeScreen(
         },
     ) { padding ->
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
-            // The tiles share the height, up to that of the largest terminals (the S1F4 Pro), and stop growing beyond.
-            val height = (maxHeight - dimens.screenPadding * 2).coerceIn(0.dp, dimens.homeMaxHeight)
+            val height = (maxHeight - dimens.screenPadding * 2).coerceAtLeast(0.dp)
             Column(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(dimens.screenPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -122,16 +144,15 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(dimens.spacing),
                 ) {
                     // Wherever payments go but the simulator: this terminal, one on the network or in the cloud, or Tap to Pay.
-                    if (terminal.loaded && terminal.mode != TerminalMode.SIMULATOR) {
-                        ConnectionProblem(gate.pending, terminal.connection, gate::openSetup) {
-                            navigator.push(Route.SettingsSection(SettingsSections.TERMINAL))
-                        }
+                    val failed = (terminal.connection as? TerminalConnection.Failed)?.takeIf { !gate.pending }
+                    if (failed != null && terminal.loaded && terminal.mode != TerminalMode.SIMULATOR) {
+                        ConnectionFailed(failed) { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
                     }
                     (update as? UpdateCheck.Available)?.let { offered ->
                         UpdateCard(offered, container.update::dismiss)
                     }
-                    PaymentTiles(onOpen = open)
-                    AreaTiles(onOpen = open)
+                    MainTile(gate.pending, gate::openSetup) { open(Route.Sale) }
+                    Tiles(tiles, gate.pending, attention, onOpen = open)
                 }
             }
         }
@@ -151,63 +172,35 @@ private fun Modifier.fillOrGrow(height: Dp): Modifier =
     }
 
 /**
- * The two large green tiles that start a payment, one above the other: New sale and New pre-authorisation. Both are
- * always there, since a pre-authorisation can also be of a custom amount, without pre-authorisation products.
+ * Why payments are not working although they are set up: the terminal did not answer. Tagged `terminalSetup`;
+ * [onOpenSettings] opens Terminal settings.
  */
 @Composable
-private fun ColumnScope.PaymentTiles(onOpen: (Route) -> Unit) {
-    val sale = stringResource(R.string.home_new_sale)
-    val preAuth = stringResource(R.string.home_pre_auth)
-    val titles = rememberSharedFontSize(listOf(sale, preAuth), MaterialTheme.typography.titleLarge, MIN_PAYMENT_TITLE_SIZE)
-    PaymentTile(
-        Icons.Default.PointOfSale,
-        sale,
-        titles,
-        stringResource(R.string.home_new_sale_hint),
-        onClick = { onOpen(Route.Sale) },
-        modifier = Modifier.fillMaxWidth().weight(1f).testTag("newSale"),
-    )
-    PaymentTile(
-        Icons.Default.LockClock,
-        preAuth,
-        titles,
-        stringResource(R.string.home_pre_auth_hint),
-        onClick = { onOpen(Route.PreAuth) },
-        modifier = Modifier.fillMaxWidth().weight(1f).testTag("preAuth"),
-    )
-}
-
-/**
- * A [SetupCard] while payments cannot work, else nothing: while they still need setting up ([needsSetup]) the gate's
- * generic "not set up yet" ([onSetUp] finishes it); otherwise, when the terminal did not answer, why
- * ([onOpenSettings] opens Terminal settings).
- */
-@Composable
-private fun ConnectionProblem(
-    needsSetup: Boolean,
-    connection: TerminalConnection,
-    onSetUp: () -> Unit,
+private fun ConnectionFailed(
+    connection: TerminalConnection.Failed,
     onOpenSettings: () -> Unit,
 ) {
-    when {
-        needsSetup -> {
-            SetupCard(
-                Icons.Default.Key,
-                stringResource(R.string.setup_required_title),
-                stringResource(R.string.home_setup_text),
-                error = false,
-                onClick = onSetUp,
-            )
-        }
-
-        connection is TerminalConnection.Failed -> {
-            SetupCard(
-                Icons.Default.ErrorOutline,
-                stringResource(R.string.home_connection_failed),
-                connection.failure.text(),
-                error = true,
-                onClick = onOpenSettings,
-            )
+    val colors = LocalStatusColors.current
+    val dimens = LocalDimens.current
+    Surface(
+        onClick = onOpenSettings,
+        color = colors.errorContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth().testTag("terminalSetup"),
+    ) {
+        Row(Modifier.padding(dimens.cardPadding), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = colors.error)
+            Spacer(Modifier.width(dimens.spacing))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.home_connection_failed), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    connection.failure.text(),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }
@@ -254,28 +247,61 @@ private fun UpdateCard(
     }
 }
 
+/** The large tile: New sale, or finishing the setup while payments still need it ([setupPending]). */
+@Composable
+private fun ColumnScope.MainTile(
+    setupPending: Boolean,
+    onSetup: () -> Unit,
+    onSale: () -> Unit,
+) {
+    if (setupPending) {
+        LargeTile(
+            Icons.Default.Key,
+            stringResource(R.string.home_setup),
+            stringResource(R.string.home_setup_text),
+            "terminalSetup",
+            onSetup,
+        )
+    } else {
+        LargeTile(
+            Icons.Default.PointOfSale,
+            stringResource(R.string.home_new_sale),
+            stringResource(R.string.home_new_sale_hint),
+            "newSale",
+            onSale,
+        )
+    }
+}
+
 /**
- * A large green tile that starts a payment (a sale, or a pre-authorisation): the icon beside the title and hint, the
- * same on every screen. The title is one line, sized by [titles] so both tiles' titles shrink together, only as far as
- * the longest needs.
- * Where the height is limited the hint is a single line too, so two tiles fit a 4" screen.
+ * Home's one large green tile, the main thing to do now (a sale, or finishing the setup): the icon beside the title
+ * and hint, the same on every screen. The title stays on one line, shrinking for a long translation or large text; the
+ * hint takes at most two.
  */
 @Composable
-private fun PaymentTile(
+private fun ColumnScope.LargeTile(
     icon: ImageVector,
     title: String,
-    titles: TextAutoSize,
     hint: String,
+    tag: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
+    val titleStyle = MaterialTheme.typography.titleLarge
     Surface(
         onClick = onClick,
         color = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary,
         shape = MaterialTheme.shapes.large,
-        modifier = modifier,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .weight(
+                    LARGE_TILE_WEIGHT,
+                    fill = false,
+                ).heightIn(max = dimens.homeHeroMaxHeight)
+                .fillMaxHeight()
+                .testTag(tag),
     ) {
         Row(
             Modifier.padding(horizontal = dimens.screenPadding + Spacing.Small, vertical = dimens.spacing / 2),
@@ -283,13 +309,15 @@ private fun PaymentTile(
         ) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(IconSize.Tile))
             Spacer(Modifier.width(dimens.screenPadding))
-            Column {
+            // A column sharing its height by weight hands out whole pixels, and can leave this tile one short of its
+            // content. The texts then lean into the padding rather than lose the hint's last line.
+            Column(Modifier.wrapContentHeight(unbounded = true)) {
                 Text(
                     title,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = titleStyle,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    autoSize = titles,
+                    autoSize = TextAutoSize.StepBased(minFontSize = MIN_LARGE_TITLE_SIZE, maxFontSize = titleStyle.fontSize),
                 )
                 Text(
                     hint,
@@ -303,127 +331,184 @@ private fun PaymentTile(
 }
 
 /**
- * Tiles for the everyday areas, in row-major order among the implemented workflows.
+ * The smaller tiles, two per row with an odd last one spanning its row, zone by zone: those that start a payment,
+ * tinted, then those for afterwards. While [setupPending], the tiles that reach Adyen or a terminal are faded.
+ * [attention] is how many records History has to show for attention.
  */
 @Composable
-private fun ColumnScope.AreaTiles(onOpen: (Route) -> Unit) {
-    val savedCard = stringResource(R.string.home_saved_card)
-    val giftCards = stringResource(R.string.home_gift_cards)
-    val refund = stringResource(R.string.home_refund)
-    val cashout = stringResource(R.string.cashout_title)
-    val history = stringResource(R.string.home_history)
-    val reconciliation = stringResource(R.string.home_reconciliation)
-    val labels =
-        rememberSharedFontSize(
-            listOf(savedCard, giftCards, refund, cashout, history, reconciliation),
-            MaterialTheme.typography.titleMedium,
-            MIN_TILE_LABEL_SIZE,
-        )
-    Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
-        HomeTile(
-            Icons.Default.CreditCard,
-            savedCard,
-            labels,
-            onClick = { onOpen(Route.SavedCard) },
-            modifier = Modifier.testTag("savedCard"),
-        )
-        HomeTile(
-            Icons.Default.CardGiftcard,
-            giftCards,
-            labels,
-            onClick = { onOpen(Route.GiftCards) },
-            modifier = Modifier.testTag("giftCards"),
-        )
-    }
-    Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
-        HomeTile(
-            Icons.Default.QrCodeScanner,
-            refund,
-            labels,
-            onClick = { onOpen(Route.RefundStart) },
-            modifier = Modifier.testTag("refund"),
-        )
-        HomeTile(
-            Icons.Default.Payments,
-            cashout,
-            labels,
-            onClick = { onOpen(Route.Cashout) },
-            modifier = Modifier.testTag("cashout"),
-        )
-    }
-    HistoryTiles(history, reconciliation, labels, onOpen)
-}
-
-/** Points to Terminal settings while payments cannot work yet: something is missing, or the terminal did not answer. */
-@Composable
-private fun SetupCard(
-    icon: ImageVector,
-    title: String,
-    text: String,
-    error: Boolean,
-    onClick: () -> Unit,
+private fun ColumnScope.Tiles(
+    tiles: HomeTiles,
+    setupPending: Boolean,
+    attention: Int,
+    onOpen: (Route) -> Unit,
 ) {
-    val colors = LocalStatusColors.current
     val dimens = LocalDimens.current
-    Surface(
-        onClick = onClick,
-        color = if (error) colors.errorContainer else colors.warningContainer,
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth().testTag("terminalSetup"),
-    ) {
-        Row(Modifier.padding(dimens.cardPadding), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = if (error) colors.error else colors.warning)
-            Spacer(Modifier.width(dimens.spacing))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall)
-                Text(text, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+    val shown = tiles.payment + tiles.afterwards
+    val labels = rememberSharedFontSize(shown.map { stringResource(it.label) }, MaterialTheme.typography.titleMedium, MIN_TILE_LABEL_SIZE)
+    listOf(tiles.payment to true, tiles.afterwards to false).forEach { (zone, starts) ->
+        zone.chunked(2).forEach { row ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(TILE_WEIGHT, fill = false)
+                    .heightIn(max = dimens.homeTileMaxHeight)
+                    .fillMaxHeight(),
+                horizontalArrangement = Arrangement.spacedBy(dimens.spacing),
+            ) {
+                row.forEach { tile ->
+                    val issues = if (tile == HomeTile.HISTORY) attention else 0
+                    val route = if (issues > 0) Route.History(issues = true) else tile.route
+                    Tile(
+                        tile,
+                        labels,
+                        TileState(starts, faded = setupPending && route.requiresSetup, alone = row.size == 1, attention = issues),
+                    ) { onOpen(route) }
+                }
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }
 
 /**
- * A half-width tile: its icon at the top and the label at the bottom, the same on every screen. The tiles of a group
- * share [labels], so they show their labels at one size: the largest, up to the style's, at which the longest still
- * fits on a line (Reconciliation, say, or Charge saved card), so no tile's label looks smaller than another's.
+ * How a smaller tile is drawn.
+ *
+ * @property startsPayment Whether it is tinted green, as the tiles that start a payment are.
+ * @property faded Whether it only explains for now, as payments still need setting up.
+ * @property alone Whether it spans its row.
+ * @property attention How many records need attention, shown on History; 0 shows nothing.
+ */
+private data class TileState(
+    val startsPayment: Boolean,
+    val faded: Boolean,
+    val alone: Boolean,
+    val attention: Int,
+)
+
+/**
+ * A smaller tile: its icon at the top and the label at the bottom, the same on every screen. All of them share
+ * [labels], so they show their labels at one size: the largest, up to the style's, at which the longest still fits a
+ * half-width tile on a line (Pre-authorization, say, or Reconciliation), so no tile's label looks smaller than another's.
  */
 @Composable
-private fun RowScope.HomeTile(
-    icon: ImageVector,
-    label: String,
+private fun RowScope.Tile(
+    tile: HomeTile,
     labels: TextAutoSize,
+    state: TileState,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
+    val colors = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = if (state.startsPayment) colors.primaryContainer else colors.surfaceVariant,
         shape = MaterialTheme.shapes.large,
-        modifier = modifier.weight(1f).fillMaxHeight(),
+        modifier = Modifier.weight(1f).fillMaxHeight().testTag(tile.tag),
     ) {
         // The vertical padding is the spacing, so the smallest terminal's tile is still no taller than it can spare.
         Column(
-            Modifier.padding(horizontal = dimens.cardPadding, vertical = dimens.spacing),
+            Modifier.alpha(if (state.faded) Opacity.DISABLED else 1f).padding(horizontal = dimens.cardPadding, vertical = dimens.spacing),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(IconSize.Standard),
-            )
-            Text(
-                label,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                autoSize = labels,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(tile.icon, contentDescription = null, tint = colors.primary, modifier = Modifier.size(IconSize.Standard))
+                if (state.attention > 0) {
+                    Spacer(Modifier.weight(1f))
+                    AttentionCount(state.attention)
+                }
+            }
+            Row {
+                Text(
+                    stringResource(tile.label),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    autoSize = labels,
+                    modifier = Modifier.weight(1f),
+                )
+                // Alone in its row, a tile gives its label the width a half-width tile's has (the gap between two
+                // tiles and both their paddings less than half), so the shared size is measured for one width.
+                if (state.alone) {
+                    Spacer(Modifier.width(dimens.spacing + dimens.cardPadding * 2))
+                    Spacer(Modifier.weight(1f))
+                }
+            }
         }
     }
 }
+
+/**
+ * The warning glyph and how many records need attention. Screen readers get the count in words ("3 need attention")
+ * as text, which the tile reads with its label. Tagged `historyAttention`.
+ */
+@Composable
+private fun AttentionCount(count: Int) {
+    val description = pluralStringResource(R.plurals.home_history_attention, count, count)
+    Row(
+        Modifier.testTag("historyAttention").clearAndSetSemantics { text = AnnotatedString(description) },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            StatusKind.WARNING.icon(),
+            contentDescription = null,
+            tint = StatusKind.WARNING.color(),
+            modifier = Modifier.size(IconSize.Small),
+        )
+        Text(count.toString(), style = MaterialTheme.typography.titleSmall, color = StatusKind.WARNING.color(), maxLines = 1)
+    }
+}
+
+private val HomeTile.icon: ImageVector
+    get() =
+        when (this) {
+            HomeTile.NEW_SALE -> Icons.Default.PointOfSale
+            HomeTile.PRE_AUTH -> Icons.Default.LockClock
+            HomeTile.TOKENS -> Icons.Default.CreditCard
+            HomeTile.GIFT_CARDS -> Icons.Default.CardGiftcard
+            HomeTile.CASHOUT -> Icons.Default.Payments
+            HomeTile.REFUND -> Icons.Default.QrCodeScanner
+            HomeTile.HISTORY -> Icons.AutoMirrored.Filled.ReceiptLong
+            HomeTile.RECONCILIATION -> Icons.Default.Balance
+        }
+
+@get:StringRes
+private val HomeTile.label: Int
+    get() =
+        when (this) {
+            HomeTile.NEW_SALE -> R.string.home_new_sale
+            HomeTile.PRE_AUTH -> R.string.home_pre_auth
+            HomeTile.TOKENS -> R.string.home_saved_card
+            HomeTile.GIFT_CARDS -> R.string.home_gift_cards
+            HomeTile.CASHOUT -> R.string.cashout_title
+            HomeTile.REFUND -> R.string.home_refund
+            HomeTile.HISTORY -> R.string.home_history
+            HomeTile.RECONCILIATION -> R.string.home_reconciliation
+        }
+
+private val HomeTile.tag: String
+    get() =
+        when (this) {
+            HomeTile.NEW_SALE -> "newSale"
+            HomeTile.PRE_AUTH -> "preAuth"
+            HomeTile.TOKENS -> "savedCard"
+            HomeTile.GIFT_CARDS -> "giftCards"
+            HomeTile.CASHOUT -> "cashout"
+            HomeTile.REFUND -> "refund"
+            HomeTile.HISTORY -> "history"
+            HomeTile.RECONCILIATION -> "reconciliation"
+        }
+
+private val HomeTile.route: Route
+    get() =
+        when (this) {
+            HomeTile.NEW_SALE -> Route.Sale
+            HomeTile.PRE_AUTH -> Route.PreAuth
+            HomeTile.TOKENS -> Route.SavedCard
+            HomeTile.GIFT_CARDS -> Route.GiftCards
+            HomeTile.CASHOUT -> Route.Cashout
+            HomeTile.REFUND -> Route.RefundStart
+            HomeTile.HISTORY -> Route.History()
+            HomeTile.RECONCILIATION -> Route.Reconciliation
+        }
 
 /** One [SharedFontSize] for a group of tiles, so the group's size is measured once rather than by every tile. */
 @Composable
@@ -439,10 +524,10 @@ private fun rememberSharedFontSize(
 /**
  * Sizes a single-line text like [TextAutoSize.StepBased], in 1 sp steps from [style]'s size down to [minSize], but for
  * the whole group of [texts] at once: the largest size at which all of them fit the width the text is given.
- * [measurer] measures the others, which the layout scope cannot. Tiles of one size lay their labels out in the same
- * width, so each arrives at the same size, however short its own label is. Longer labels, such as Charge saved card,
- * shrink every label rather than lose their end. The size is kept for the last width and density, which every tile of
- * the group shares; layout runs on the main thread only.
+ * [measurer] measures the others, which the layout scope cannot. Tiles lay their labels out in the same width, so
+ * each arrives at the same size, however short its own label is. Longer labels, such as Pre-authorization, shrink
+ * every label rather than lose their end. The size is kept for the last width and density, which every tile of the
+ * group shares; layout runs on the main thread only.
  */
 private class SharedFontSize(
     private val texts: List<String>,
@@ -482,31 +567,19 @@ private class SharedFontSize(
 /** The smallest a Home tile label shrinks to before it is ellipsized. */
 private val MIN_TILE_LABEL_SIZE = 12.sp
 
-/** The smallest a payment tile's title shrinks to, for a long translation or large text, before it is ellipsized. */
-private val MIN_PAYMENT_TITLE_SIZE = 16.sp
+/** The smallest the large tile's title shrinks to, for a long translation or large text, before it is ellipsized. */
+private val MIN_LARGE_TITLE_SIZE = 16.sp
 
-/** The final Home row keeps History before Reconciliation at every text size. */
-@Composable
-private fun ColumnScope.HistoryTiles(
-    history: String,
-    reconciliation: String,
-    labels: TextAutoSize,
-    onOpen: (Route) -> Unit,
-) {
-    Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
-        HomeTile(
-            Icons.AutoMirrored.Filled.ReceiptLong,
-            history,
-            labels,
-            onClick = { onOpen(Route.History) },
-            modifier = Modifier.testTag("history"),
-        )
-        HomeTile(
-            Icons.Default.Balance,
-            reconciliation,
-            labels,
-            onClick = { onOpen(Route.Reconciliation) },
-            modifier = Modifier.testTag("reconciliation"),
-        )
-    }
-}
+/**
+ * The large tile's share of the height beside a row of smaller tiles ([TILE_WEIGHT]). Tiles take their share only up
+ * to their largest size: they shrink together on a small screen and stop growing on a tall one, where the space they
+ * leave stays under them.
+ */
+private const val LARGE_TILE_WEIGHT = 1f
+
+/**
+ * A row of smaller tiles' share of the height beside the large tile: their smallest heights' ratio (an icon over a
+ * label to a title over a two-line hint), so both reach them together and the most tiles still fit a 4" screen under
+ * the simulator banner.
+ */
+private const val TILE_WEIGHT = 0.84f

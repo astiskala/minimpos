@@ -118,12 +118,18 @@ class SavedCardFlowTest {
     }
 
     @Test
-    fun `without a shopper reference source the lookup says what to set up`() {
-        useSimulator(ShopperReferenceSource.NONE)
+    fun `without a shopper reference source Home leaves Tokens out and an open lookup says what to set up`() {
+        useSimulator(ShopperReferenceSource.CUSTOMER_REFERENCE)
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("savedCard").performClick()
         waitForTag("findCards")
+        // Home offers Tokens only with a source, so the lookup is left without one only while it is open.
+        useSimulator(ShopperReferenceSource.NONE)
+        waitForTag("blockedReason")
         compose.onNodeWithTag("findCards").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag("blockedReason").assertTextContains(env.context.getString(R.string.setup_shopper_reference))
+        compose.onNodeWithTag("back").performClick()
+        waitForTag("newSale")
+        compose.onNodeWithTag("savedCard").assertDoesNotExist()
     }
 }

@@ -45,6 +45,7 @@ import app.minimpos.app.data.transfer.SetupTransfer
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.history.HistoryViewModel
+import app.minimpos.app.feature.home.HomeTiles
 import app.minimpos.app.feature.settings.CapabilitiesViewModel
 import app.minimpos.app.feature.settings.ReceiptBusinessImports
 import app.minimpos.app.feature.settings.SettingsUiState
@@ -852,6 +853,7 @@ class ArchitectureTest {
             ConnectionSetup::class.java,
             PricingChange::class.java,
             HistoryAccounting::class.java,
+            HomeTiles::class.java,
         ).forEach { contract -> assertTrue(contract.name, pureDecisions.test(app.get(contract))) }
         assertTrue(app.none { it.isEquivalentTo(ArchitectureTest::class.java) })
     }
@@ -1285,6 +1287,8 @@ class ArchitectureTest {
                 .or(declaredIn("app.minimpos.app.history", "HistoryAccounting.kt"))
                 .or(declaredIn("app.minimpos.app.receipt", "ReceiptKind.kt"))
                 .or(declaredIn("app.minimpos.app.feature.history", "HistorySearch.kt"))
+                // Which tiles Home shows is read from the settings and the capability catalog alone.
+                .or(declaredIn("app.minimpos.app.feature.home", "HomeTiles.kt"))
                 .or(declaredIn("app.minimpos.app.terminal", "TerminalAssignments.kt"))
                 .or(declaredIn("app.minimpos.app.terminal", "WalletOffers.kt"))
                 .or(declaredIn("app.minimpos.app.terminal", "TerminalSetupPlan.kt"))

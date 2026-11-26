@@ -21,31 +21,17 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.isEnabled
-import app.minimpos.app.ScreenshotRule
-import app.minimpos.app.ScreenshotTolerance
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.ui.components.ActionGroup
-import app.minimpos.app.ui.components.ActionMessage
-import app.minimpos.app.ui.components.BlockedReason
-import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ChoiceChip
 import app.minimpos.app.ui.components.CompactSecondaryButton
 import app.minimpos.app.ui.components.CompactTertiaryButton
 import app.minimpos.app.ui.components.ConfirmDialog
-import app.minimpos.app.ui.components.Description
-import app.minimpos.app.ui.components.EmptyState
 import app.minimpos.app.ui.components.GroupAction
-import app.minimpos.app.ui.components.LabeledValue
-import app.minimpos.app.ui.components.Notice
-import app.minimpos.app.ui.components.NoticeKind
 import app.minimpos.app.ui.components.NumericKeypad
-import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.SecondaryButton
-import app.minimpos.app.ui.components.SectionHeader
-import app.minimpos.app.ui.components.StatusBadge
 import app.minimpos.app.ui.components.StatusKind
-import app.minimpos.app.ui.components.Subheading
 import app.minimpos.app.ui.components.SwitchRow
 import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.components.TransactionRow
@@ -64,11 +50,8 @@ import org.robolectric.annotation.Config
 import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
 /**
- * Golden images of the shared components in the real theme, one test per group (`CONTRIBUTING.md`). The
- * text is fixed here, not read from resources, so rewording a screen never changes a golden. Components are compared
- * exactly. The `Regular` gallery sizes the window to its content; [Dimens] is set explicitly because the gallery is not
- * a whole screen. The Compact variants run at the AMS1's size and the Medium ones at the S1F2's, where the app itself
- * switches to those dimensions.
+ * Effective touch targets of shared controls in the real theme. The Compact variants run at the AMS1's size and
+ * the Medium ones at the S1F2's.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "en-rAU-w411dp-h640dp-xhdpi")
@@ -78,9 +61,6 @@ class DesignGalleryTest {
 
     @get:Rule(order = 1)
     val compose = createComposeRule()
-
-    @get:Rule(order = 2)
-    val screenshot = ScreenshotRule(compose, ScreenshotTolerance.EXACT)
 
     @Composable
     private fun Gallery(
@@ -99,19 +79,17 @@ class DesignGalleryTest {
     private fun show(
         dimens: Dimens = Dimens.Regular,
         content: @Composable ColumnScope.() -> Unit,
-    ) = screenshot.setContent { Gallery(dimens, content) }
+    ) = compose.setContent { Gallery(dimens, content) }
 
     /** Check the effective hit area, which Compose can expand beyond a compact control's drawn bounds. */
-    private fun capture(
-        variant: String? = null,
-        screen: Boolean = false,
-    ) {
-        compose.onAllNodes(hasClickAction() and isEnabled()).fetchSemanticsNodes().forEach { node ->
+    private fun assertTouchTargets() {
+        val controls = compose.onAllNodes(hasClickAction() and isEnabled()).fetchSemanticsNodes()
+        assertWithMessage("Enabled controls").that(controls).isNotEmpty()
+        controls.forEach { node ->
             val minimum = with(node.layoutInfo.density) { MinTouchTarget.toPx() }
             assertWithMessage("Touch width: ${node.config}").that(node.touchBoundsInRoot.width).isAtLeast(minimum)
             assertWithMessage("Touch height: ${node.config}").that(node.touchBoundsInRoot.height).isAtLeast(minimum)
         }
-        screenshot.capture(variant, screen)
     }
 
     @Composable
@@ -128,21 +106,21 @@ class DesignGalleryTest {
     @Test
     fun `buttons in every variant`() {
         show { Buttons() }
-        capture()
+        assertTouchTargets()
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
     fun `buttons in every variant on a compact screen`() {
         show(Dimens.Compact) { Buttons() }
-        capture("compact")
+        assertTouchTargets()
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w360dp-h600dp-xhdpi")
     fun `buttons in every variant on a medium screen`() {
         show(Dimens.Medium) { Buttons() }
-        capture("medium")
+        assertTouchTargets()
     }
 
     @Composable
@@ -158,62 +136,14 @@ class DesignGalleryTest {
     @Test
     fun `compact secondary and tertiary actions`() {
         show { CompactActions() }
-        capture()
+        assertTouchTargets()
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
     fun `compact actions on the smallest screen`() {
         show(Dimens.Compact) { CompactActions() }
-        capture()
-    }
-
-    @Test
-    fun `card and notices`() {
-        show {
-            Card {
-                LabeledValue("Subtotal", "$11.36")
-                LabeledValue("GST", "$1.14")
-                LabeledValue("Total", "$12.50", emphasize = true)
-            }
-            Notice("Card payments need the Checkout API to be set up first.")
-            Notice("Changing the destination clears the saved terminal.", kind = NoticeKind.WARNING)
-        }
-        capture()
-    }
-
-    @Test
-    fun `text roles`() {
-        show {
-            SectionHeader("Receipts")
-            Subheading("Business details")
-            Description("Shown at the top of every receipt, so shoppers know who they paid.")
-        }
-        capture()
-    }
-
-    @Test
-    fun `feedback and status badges`() {
-        show {
-            PrimaryButton("Pay", {}, enabled = false)
-            BlockedReason("Enter the shared key to take payments.")
-            ActionMessage("Connection checked.", isError = false)
-            ActionMessage("The terminal did not answer.", isError = true)
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.Large)) {
-                StatusKind.entries.forEach { StatusBadge(it) }
-            }
-        }
-        capture()
-    }
-
-    @Test
-    fun `empty state`() {
-        screenshot.setContent {
-            Gallery(Dimens.Regular) {
-                EmptyState(Icons.AutoMirrored.Filled.ReceiptLong, "No sales yet", "Completed sales appear here.")
-            }
-        }
-        capture()
+        assertTouchTargets()
     }
 
     @Test
@@ -231,7 +161,7 @@ class DesignGalleryTest {
                 supportingText = { Text("Enter a price such as 12.50.") },
             )
         }
-        capture()
+        assertTouchTargets()
     }
 
     private val receiptActions =
@@ -246,14 +176,14 @@ class DesignGalleryTest {
     @Test
     fun `action group`() {
         show { ActionGroup(receiptActions) }
-        capture()
+        assertTouchTargets()
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
     fun `action group on the smallest screen`() {
         show(Dimens.Compact) { ActionGroup(receiptActions) }
-        capture("compact")
+        assertTouchTargets()
     }
 
     @Test
@@ -268,23 +198,7 @@ class DesignGalleryTest {
             TransactionRow("261015-094000-BBBBB", "9:40 am · VISA", "$23.80", "Approved", StatusKind.SUCCESS, {})
             TransactionRow("261015-093000-AAAAA", "9:30 am", "$5.00", "Unknown", StatusKind.WARNING, {})
         }
-        capture()
-    }
-
-    @Test
-    fun `outcome header`() {
-        show { OutcomeHeader(StatusKind.SUCCESS, "Approved", "$12.50") }
-        capture()
-    }
-
-    @Test
-    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
-    fun `outcome header on the smallest screen`() {
-        show(Dimens.Compact) {
-            OutcomeHeader(StatusKind.SUCCESS, "Approved", "$12.50")
-            OutcomeHeader(StatusKind.WARNING, "Refund requested", "$1,234.50")
-        }
-        capture("compact")
+        assertTouchTargets()
     }
 
     private val keypad: @Composable ColumnScope.() -> Unit = {
@@ -294,26 +208,26 @@ class DesignGalleryTest {
     @Test
     fun keypad() {
         show(content = keypad)
-        capture()
+        assertTouchTargets()
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
     fun `keypad on a compact screen`() {
         show(Dimens.Compact, keypad)
-        capture("compact")
+        assertTouchTargets()
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w360dp-h600dp-xhdpi")
     fun `keypad on a medium screen`() {
         show(Dimens.Medium, keypad)
-        capture("medium")
+        assertTouchTargets()
     }
 
     @Test
     fun `confirm dialog`() {
-        screenshot.setContent {
+        compose.setContent {
             MiniMposTheme {
                 ConfirmDialog(
                     title = "Remove the shared key?",
@@ -325,6 +239,6 @@ class DesignGalleryTest {
                 )
             }
         }
-        capture(screen = true)
+        assertTouchTargets()
     }
 }

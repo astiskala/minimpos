@@ -93,13 +93,15 @@ class HistoryViewModel(
     private val reconciliation: TerminalReconciliation? = null,
     /** Dispatcher for filtering and whole-day accounting, including each search edit. */
     private val cpu: CoroutineDispatcher = Dispatchers.Default,
+    /** The filter the list opens on. */
+    initialFilter: HistoryFilter = HistoryFilter.ALL,
 ) : ViewModel() {
     private val pages = MutableStateFlow<List<HistoryKey>>(emptyList())
 
     private val print = MutableStateFlow(ActionState())
     private val reconcileState = MutableStateFlow<Pair<ActionState, TerminalReconciliationReport?>>(ActionState() to null)
     private val canPrint = receipts?.let(TransactionActions::canPrintReports) ?: flowOf(false)
-    private val filter = MutableStateFlow(HistoryFilter.ALL)
+    private val filter = MutableStateFlow(initialFilter)
     private val query = MutableStateFlow("")
     private val method = MutableStateFlow<PaymentMethodFilter?>(null)
 
@@ -160,7 +162,7 @@ class HistoryViewModel(
                     reconcile = slice.reconcile,
                     reconciliation = slice.reconciliation,
                 )
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState(filter = initialFilter))
 
     /** Shows up to 100 older matching entries across seven days; summaries still include each whole filtered day. */
     fun older() {

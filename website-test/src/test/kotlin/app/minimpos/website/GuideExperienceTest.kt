@@ -93,6 +93,13 @@ class GuideExperienceTest {
     }
 
     @Test
+    fun `every language says which Home tiles depend on the setup`() {
+        languages.forEach { language ->
+            assertWithMessage(language).that(page(language, "using.html").select("#home-tiles strong").eachText()).hasSize(4)
+        }
+    }
+
+    @Test
     fun `framed screenshots expose full size originals in every language`() {
         languages.forEach { language ->
             listOf(

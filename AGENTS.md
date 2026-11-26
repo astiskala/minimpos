@@ -125,9 +125,12 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
   links stay offline and clearly label their screen and delivered receipts as demos; their QR codes cannot take payments.
 - Optional Manager PIN approval is separate from admin access and must be checked again before financial operations.
 - Keep deliberate UI choices: no TEST banner (only simulator), no Home terminal-status line or unprotected-settings
-  warning. Home keeps both full-width sale/pre-authorization tiles, then Tokens/Gift cards, Refund/Cashout and
-  History/Reconciliation, in row-major order. The top-right Settings icon opens main Settings
-  under the admin lock; Products lives there. Gated tiles stay pressable and explain; only the setup card is shown.
+  warning. Home shows only what the setup can use. New sale is its one large tile; under it, two per row, come the
+  tiles that start a payment (Pre-authorization, Tokens, Gift cards, Cashout), then those for afterwards (Refund,
+  History, Reconciliation). A tile whose feature is unsupported or switched off is left out, with no pointer to it on
+  Home; one that needs setup or is unverified stays. History counts the records needing attention and opens on them.
+  Until payments are set up, the large tile finishes the setup instead; gated tiles are faded, stay pressable and
+  explain. The top-right Settings icon opens main Settings under the admin lock; Products lives there.
 - Ask the shopper's email on the terminal only once emailed receipts are ready (SMTP set up, capture not Never); a
   terminal email is sent automatically like a checkout one.
 - Every product has a tax rate; use 0% for untaxed items. Turning tax off keeps rates. The last rate cannot be deleted.
@@ -161,9 +164,8 @@ and test runs: concise output, a full private log under `build/gradle-logs/` and
 - Feature code takes colours, shapes, type and sizes only from the theme and uses `ui.components` instead of raw
   Material equivalents or copies (DESIGN.md › Do's and Don'ts). A new value is a new token in the theme and
   `DESIGN.md`; a deliberate deviation goes in its Known Exceptions with a reason.
-- Materially changed UI passes `scripts/dev check ui-snapshots`, which is not part of `scripts/dev finish`. Review every
-  image difference and add goldens for new shared components, following
-  [Update the golden screenshots](CONTRIBUTING.md#update-the-golden-screenshots).
+- For materially changed UI, exercise the affected flows on the smallest applicable screen and add assertions for the
+  behavior or layout that must hold. See [Verify UI changes](CONTRIBUTING.md#verify-ui-changes).
 
 ## Documentation changes
 

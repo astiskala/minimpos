@@ -29,6 +29,7 @@ import app.minimpos.app.ui.theme.BorderWidth
 import app.minimpos.app.ui.theme.IconSize
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.MinTouchTarget
+import app.minimpos.app.ui.theme.Opacity
 import app.minimpos.app.ui.theme.Spacing
 
 /**
@@ -105,7 +106,4 @@ private fun ActionIcon(
 @Composable
 @ReadOnlyComposable
 private fun contentColor(enabled: Boolean): Color =
-    if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_ALPHA)
-
-/** Material's opacity for disabled content. */
-private const val DISABLED_ALPHA = 0.38f
+    if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = Opacity.DISABLED)

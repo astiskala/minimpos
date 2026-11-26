@@ -229,11 +229,24 @@ components:
     backgroundColor: "{colors.warning-container}"
     textColor: "{colors.warning}"
     typography: "{typography.label-md}"
-  home-payment-tile:
+  home-large-tile:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
     typography: "{typography.title-lg}"
     rounded: "{rounded.lg}"
+    height: 144px
+  home-tile-payment:
+    backgroundColor: "{colors.primary-container}"
+    textColor: "{colors.on-primary-container}"
+    typography: "{typography.title-md}"
+    rounded: "{rounded.lg}"
+    height: 100px
+  home-tile:
+    backgroundColor: "{colors.surface-variant}"
+    textColor: "{colors.on-surface}"
+    typography: "{typography.title-md}"
+    rounded: "{rounded.lg}"
+    height: 100px
   keypad-key:
     backgroundColor: "{colors.secondary-container}"
     textColor: "{colors.on-secondary-container}"
@@ -304,8 +317,8 @@ for layout and `sp` for text. Token names map to code as follows, and a value in
 
 ### Keeping code and spec in step
 
-- **Visual changes update both.** A change to a colour, size, shape or shared component edits the code, this file and
-  any affected screenshot golden in the same change. Change the token here first, then the code.
+- **Visual changes update both.** A change to a colour, size, shape or shared component edits the code and this file
+  in the same change. Change the token here first, then the code.
 - **Exceptions are written down.** A deliberate deviation goes in [Known Exceptions](#known-exceptions) with a
   reason; an undocumented one is a defect.
 - **Check the spec.** `npx @google/design.md lint DESIGN.md` validates the front matter, references and component
@@ -314,9 +327,8 @@ for layout and `sp` for text. Token names map to code as follows, and a value in
   colour literals and corner shapes in `ui.theme` (`ThemeArchitectureTest`), and headings, Material 3 and button
   frames in `ui.components` (`HeadingArchitectureTest`, `MaterialArchitectureTest`, `ButtonArchitectureTest`).
   `DesignGalleryTest` checks touch targets.
-- **Goldens detect regressions.** Android screenshot goldens compare approved Android rendering with future Android
-  rendering; see [Update the golden screenshots](CONTRIBUTING.md#update-the-golden-screenshots). External design renders
-  show intent only and are never pixel baselines.
+- **Review the rendered UI.** Check affected screens on Android after a visual change. External design renders show
+  intent only; see [Verify UI changes](CONTRIBUTING.md#verify-ui-changes).
 
 ### Design principles
 
@@ -328,13 +340,14 @@ for layout and `sp` for text. Token names map to code as follows, and a value in
    requirements and risks use `Notice`. Do not invent a new text role.
 4. **Colour carries outcome, never decoration.** Green is success, primary action, links and tertiary actions; orange
    is unknown or needs attention; red is declined or destructive. Feature icons on Home tiles and Settings rows are
-   green as the one deliberate identity exception. Values, such as a setting's current choice, stay grey.
+   green as the one deliberate identity exception. Home's light green tiles are the ones that start a payment.
+   Values, such as a setting's current choice, stay grey.
 5. **Light only, high contrast.** Every text pair meets WCAG AA 4.5:1 and outlines or meaningful icons 3:1
    (`ThemeContrastTest`).
 6. **Density follows the screen.** `Dimens` has three size sets (Compact, Medium, Regular); compact screens drop
    decoration instead of shrinking tap targets.
-7. **Deliberate UI choices stay.** No TEST banner (the simulator banner only), no Home terminal-status line, two
-   full-width payment tiles on Home. See [AGENTS.md](AGENTS.md#payment-and-product-boundaries).
+7. **Deliberate UI choices stay.** No TEST banner (the simulator banner only), no Home terminal-status line, one
+   large tile on Home and only the tiles the setup can use. See [AGENTS.md](AGENTS.md#payment-and-product-boundaries).
 
 ## Colors
 
@@ -356,7 +369,7 @@ A Material 3 `lightColorScheme` built from `AdyenColors`, with no dynamic colour
 | Meaning | Colour | Glyph | Use |
 | --- | --- | --- | --- |
 | Success | `success` | Tick | Approved, completed, `ActionMessage` |
-| Warning | `warning` on `warning-container` | Exclamation | Unknown, pending, needs attention, `BlockedReason` icon, simulator banner |
+| Warning | `warning` on `warning-container` | Exclamation | Unknown, pending, needs attention (also Home's count on History), `BlockedReason` icon, simulator banner |
 | Error | `error` on `error-container` | Cross | Declined, failed, destructive actions (`ConfirmedRemoval`, destructive `TertiaryButton`) |
 
 Status is never signalled by colour alone: the glyph (`StatusKind.icon()`) and the text always accompany it, on result
@@ -377,8 +390,8 @@ custom font.
 | `amount-lg/md/sm` | Amounts on checkout, keypad and results (Regular/Medium/Compact); based on `display-md` |
 | `headline-md` | Regular-size outcome title ("Approved") |
 | `headline-sm` | Compact outcome title; keypad digits |
-| `title-lg` | Payment tile titles; regular app bar title |
-| `title-md` | Compact app bar title; quantity |
+| `title-lg` | Home's large tile title; regular app bar title |
+| `title-md` | Home tile labels; compact app bar title; quantity |
 | `title-sm` | `Subheading` (block, step, card title); product tile name |
 | `label-lg` | All button labels |
 | `label-md` | `SectionHeader` (upper case) |
@@ -402,7 +415,7 @@ custom font.
 - Money is always `Long` minor units formatted by `MoneyFormatter`; amounts use the amount style, other money uses the
   surrounding body role.
 - Text must survive 1.5× font scale on the smallest screens (`CompactLayoutTest`). Prefer `TextAutoSize` and wrapping
-  to truncation for titles (Home payment tiles).
+  to truncation for titles (Home tiles).
 
 ## Layout
 
@@ -428,7 +441,8 @@ Screen-dependent sizes come from `Dimens`, chosen by `Dimens.forWindow` for the 
 | `badgeSize` | 88 | 64 | 56 |
 | `progressSize` | 64 | 56 | 48 |
 
-Widths: `contentMaxWidth` 560, `listMaxWidth` 640, `narrowActionMaxWidth` 320, `homeMaxHeight` 640, `fabClearance` 88.
+Widths: `contentMaxWidth` 560, `listMaxWidth` 640, `narrowActionMaxWidth` 320. Heights: `homeHeroMaxHeight` 144,
+`homeTileMaxHeight` 100, `fabClearance` 88.
 
 - **Screen margin.** Every screen's content, including the sale screen's search, category chips, Custom item button and
   product grid, starts `screenPadding` from the edge; gaps between items use `spacing`.
@@ -450,7 +464,7 @@ surfaces. **Decision needed:** whether dialogs and sheets should use Material de
 | Token | Used for |
 | --- | --- |
 | `md` (12) | **Canonical.** Buttons, keypad keys, `Card`, `Notice` and product tiles |
-| `lg` (16) | Home payment tiles, custom-amount dialog, scanner frame |
+| `lg` (16) | Home tiles, custom-amount dialog, scanner frame |
 | `sm` (8) | Receipt preview border |
 | `xs` (6) | Material's outlined text fields |
 | `xl` (24) | Dialog surfaces: the `AlertDialog` family and `PickerDialog` |
@@ -527,9 +541,10 @@ detail panes show a semantic heading in `Dimens.titleStyle`. Back and transition
 
 `SwitchRow` (min 48 dp, toggleable as one target), `LabeledValue`, `TransactionRow`, `SettingActions`, `ListItem`.
 Rows use `rowPadding` vertical and `rowHorizontalPadding` horizontal. Section titles are `SectionHeader`. A disabled
-`SwitchRow` fades its title and description together (`on-surface` at 38 %). A `TransactionRow` shows its status as a
-16 dp glyph and the word in the status colour. A choice setting shows its current value in `on-surface-variant`, like a
-navigation row. A saved secret's "Set" and "Not set" stay green and red because they are states.
+`SwitchRow` fades its title and description together (`on-surface` at 38 %, `Opacity.DISABLED`). A `TransactionRow`
+shows its status as a 16 dp glyph and the word in the status colour. A choice setting shows its current value in
+`on-surface-variant`, like a navigation row. A saved secret's "Set" and "Not set" stay green and red because they are
+states.
 
 ### Keypad and amounts
 
@@ -549,9 +564,25 @@ dots.
 
 ### Home
 
-Full-width green payment tiles (`lg` shape, `title-lg` with shared autosize) above the feature tiles, which grow
-together up to `homeMaxHeight`. Which tiles appear, in what order, is a product decision in
-[AGENTS.md](AGENTS.md#payment-and-product-boundaries).
+One large green tile (`lg` shape, a 32 dp icon beside a `title-lg` title and a `body-md` hint) for the main thing to do
+now: New sale, or Set up payments until the setup is verified. Under it come the smaller tiles, two per row, an odd
+last one spanning its row: a 24 dp green icon above a `title-md` label, which all tiles show at one shared autosize.
+Tiles that start a payment are `primary-container`; those for afterwards (Refund, History, Reconciliation) are
+`surface-variant`. The two zones reflow separately and have no headers: the colour is the seam.
+
+- **Height.** The tiles share the screen's height, a row of smaller tiles taking 0.84 of the large tile's, up to
+  `homeHeroMaxHeight` and `homeTileMaxHeight`. On a taller screen they stay at the top and the rest stays white. On the
+  AMS1 every tile fits without scrolling, under the simulator banner too; only when tiles would get less than their
+  content needs (landscape, large text, a card above them) does Home scroll.
+- **Before setup.** Tiles that reach Adyen or a terminal are drawn at `Opacity.DISABLED` (38 %), stay pressable and
+  explain through the setup gate; History stays as it is.
+- **Needs attention.** History shows the warning glyph (16 dp) and the number of records needing attention in
+  `warning`, `title-sm`, opposite its icon; screen readers get the count in words. No other tile carries a mark.
+- **Cards.** A terminal that does not answer shows an `error-container` card above the tiles, and an offered update a
+  `secondary-container` card; both take their room from the tiles.
+
+Which tiles appear, in what order, is a product decision in [AGENTS.md](AGENTS.md#payment-and-product-boundaries),
+read by `HomeTiles`.
 
 ### Screen flows
 
@@ -586,8 +617,8 @@ together up to `homeMaxHeight`. Which tiles appear, in what order, is a product 
 - Material icons (`Icons.Default`, `Outlined`, `AutoMirrored`); icons are decorative (`contentDescription = null`)
   whenever text sits beside them.
 - Sizes (`IconSize`, dp): 16 compact notice and finished step (`Small`), 18 blocked reason, **20 beside button labels
-  (`Inline`)**, 24 rows and steps (`Standard`), 32 payment tiles (`Tile`), 40 empty state and PIN lock (`Large`; 56 on
-  the regular empty state). 18 is the one off-grid size.
+  (`Inline`)**, 24 rows, steps and Home tiles (`Standard`), 32 Home's large tile (`Tile`), 40 empty state and PIN lock
+  (`Large`; 56 on the regular empty state). 18 is the one off-grid size.
 - The application icon is PNG, not adaptive; `MainActivity` has its own adaptive icon (AGENTS.md).
 
 ## Do's and Don'ts
@@ -603,7 +634,9 @@ together up to `homeMaxHeight`. Which tiles appear, in what order, is a product 
   too crowded. Receipt actions stay one per row, and lower ones scroll on the AMS1 when needed.
 - **Don't** shrink row text or upper-case the simulator banner on compact screens: the Compact tier keeps the body
   roles and must survive 1.5× font scale.
-- **Don't** shrink Home's feature tiles to fit; they grow together up to `homeMaxHeight`.
+- **Don't** squeeze Home's tiles below their content or stretch them over a tall screen: they share the height up to
+  `homeHeroMaxHeight` and `homeTileMaxHeight`, then Home scrolls or stays white. **Don't** show a tile the setup cannot
+  use, or add a second large tile.
 - **Don't** shorten Settings rows (to 64 dp, for example): the gain is small and it changes every Settings layout.
 - **Don't** make values in labeled rows semibold or switch titles bold; they add emphasis without hierarchy.
 - **Don't** replace the shipped Material icons (Tokens, Refund, Terminal, Simulator) with generated alternatives.

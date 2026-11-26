@@ -57,9 +57,12 @@ class GiftCardUiTest {
     }
 
     @Test
-    fun `without providers the screen says where to set them up`() {
-        simulator()
+    fun `once its last provider is removed the screen says where to set them up`() {
+        // Home offers Gift cards only with a provider, so the screen is left without one only while it is open.
+        simulator(svs)
         openGiftCards()
+        compose.waitUntilAtLeastOneExists(hasTestTag("giftCardOperation_BALANCE"), 15_000)
+        simulator()
         compose.waitUntilAtLeastOneExists(hasText(env.context.getString(R.string.gift_card_none_title)), 15_000)
         compose.onNodeWithText(env.context.getString(R.string.gift_card_none_message)).assertIsDisplayed()
         compose.onNodeWithTag("giftCardStart").assertDoesNotExist()

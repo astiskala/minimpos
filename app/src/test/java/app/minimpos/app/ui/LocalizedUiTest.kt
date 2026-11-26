@@ -441,7 +441,7 @@ class LocalizedUiTest {
     }
 
     private fun assertHomeAreas() {
-        listOf("newSale", "refund", "cashout", "history").forEach {
+        listOf("newSale", "preAuth", "refund", "history").forEach {
             compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed()
         }
         compose.onNodeWithTag("settings").assertIsDisplayed()

@@ -2,10 +2,14 @@ package app.minimpos.app.ui
 
 import android.app.Application
 import android.content.Intent
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.height
 import androidx.test.core.app.ApplicationProvider
 import app.minimpos.app.FakeUpdateCheck
 import app.minimpos.app.MiniMposApp
@@ -14,6 +18,7 @@ import app.minimpos.app.TestEnvironment
 import app.minimpos.app.awaitCondition
 import app.minimpos.app.update.UpdateCheck
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Before
@@ -66,6 +71,30 @@ class UpdateOfferTest {
         compose.awaitCondition("the update offer is gone") {
             compose.onAllNodes(hasTestTag("update")).fetchSemanticsNodes().isEmpty()
         }
+    }
+
+    @Test
+    fun `the offer takes its room from the tiles without cutting the sale tile's hint`() {
+        val tile = compose.onNodeWithTag("newSale")
+        val before = tile.getUnclippedBoundsInRoot()
+        env.container.start()
+        compose.awaitCondition("the update offer is shown") {
+            compose.onAllNodes(hasTestTag("update")).fetchSemanticsNodes().isNotEmpty()
+        }
+        val after = tile.getUnclippedBoundsInRoot()
+        assertThat(after.height).isLessThan(before.height)
+        val hintNode = compose.onNodeWithText(env.context.getString(R.string.home_new_sale_hint), useUnmergedTree = true)
+        val hintBounds = hintNode.getUnclippedBoundsInRoot()
+        assertThat(hintBounds.top).isAtLeast(after.top)
+        assertThat(hintBounds.bottom).isAtMost(after.bottom)
+        val layouts = mutableListOf<TextLayoutResult>()
+        hintNode
+            .fetchSemanticsNode()
+            .config[SemanticsActions.GetTextLayoutResult]
+            .action
+            ?.invoke(layouts)
+        val hint = layouts.single()
+        assertWithMessage("hint of ${hint.lineCount} lines cut").that(hint.isLineEllipsized(hint.lineCount - 1)).isFalse()
     }
 
     @Test

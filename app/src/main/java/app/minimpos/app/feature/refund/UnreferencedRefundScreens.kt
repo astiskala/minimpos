@@ -87,7 +87,7 @@ fun RefundStartScreen(
                 navigator.push(Route.RefundScan)
             }
             RefundWay(Icons.Default.History, R.string.refund_entry_history, R.string.refund_entry_history_hint, "refundHistory") {
-                navigator.push(Route.History)
+                navigator.push(Route.History())
             }
             RefundWay(
                 Icons.Default.CreditCard,

@@ -118,6 +118,12 @@ internal class CapabilityCatalog(
     private val discovered get() = remote.checked && remote.problem == null && remote.failure == null
     private val storeChecked get() = wallets.checked && wallets.problem == null && wallets.failure == null
 
+    /** Whether the merchant has configured any local gift-card providers, even before discovery. */
+    val giftCardsEnabled: Boolean get() = payment.giftCards.isNotEmpty()
+
+    /** Whether the merchant has switched on standalone cashout, even before discovery. */
+    val cashoutEnabled: Boolean get() = payment.cashback.standalone
+
     /** Whether Adyen lists a gift-card type for the store that one of the fixed-code providers sends. */
     private val giftCardsAtAdyen: Boolean
         get() = discovered && remote.methodsChecked && remote.giftCardsFor(currency).any { it in FIXED_GIFT_CARD_TYPES }
@@ -195,7 +201,7 @@ internal class CapabilityCatalog(
     private fun giftCards() =
         supported(terminal.capabilities.giftCards) {
             when {
-                payment.giftCards.isEmpty() -> offUnless(giftCardsAtAdyen)
+                !giftCardsEnabled -> offUnless(giftCardsAtAdyen)
 
                 payment.giftCards.any { !it.complete } -> needs(CapabilityRequirement.PROVIDER)
 
@@ -337,7 +343,7 @@ internal class CapabilityCatalog(
         } else {
             supported(wallets.cashbackDestination) {
                 when {
-                    !(if (standalone) payment.cashback.standalone else payment.cashback.enabled) -> off()
+                    !(if (standalone) cashoutEnabled else payment.cashback.enabled) -> off()
                     !storeChecked -> unverified()
                     !Cashback.ready(payment.cashback, wallets, currency, standalone) -> needs(CapabilityRequirement.STORE)
                     else -> ready()

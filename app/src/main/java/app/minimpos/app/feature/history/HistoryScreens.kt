@@ -132,13 +132,15 @@ import java.time.format.FormatStyle
 /**
  * Sales and refunds by day, newest first, with each day's totals, filters for sales, refunds and issues, a payment
  * method menu and a search field (behind an app-bar icon on compact screens). Tapping an entry opens its detail.
- * [header] selects standalone chrome or a pane beneath the shared navigation frame.
+ * [issues] opens it on the "Needs attention" filter. [header] selects standalone chrome or a pane beneath the shared
+ * navigation frame.
  */
 @Composable
 fun HistoryScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
-    vm: HistoryViewModel = historyViewModel(),
+    issues: Boolean = false,
+    vm: HistoryViewModel = historyViewModel(issues),
     header: ScreenHeader = ScreenHeader.FULL,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -147,7 +149,7 @@ fun HistoryScreen(
         header = header,
         title = stringResource(R.string.history_title),
         // Beside a detail in an expanded window, Back leaves History rather than closing that detail.
-        onBack = { navigator.leave(Route.History) },
+        onBack = { navigator.leave(Route.History()) },
         modifier = modifier,
         actions = {
             if (search.onRequest) SearchToggle(search.mode, stringResource(R.string.history_search), search.toggle)
@@ -162,7 +164,8 @@ fun HistoryScreen(
                     modifier = Modifier.fillMaxWidth().padding(start = Spacing.Medium, end = Spacing.Medium, top = Spacing.Small),
                 )
             }
-            HistoryFilters(state.filter, vm::setFilter, state.methods, state.method, vm::setMethod)
+            // When opening at the last chip, wait for the payment method menu so the first scroll range includes it.
+            if (!issues || state.loaded) HistoryFilters(state.filter, vm::setFilter, state.methods, state.method, vm::setMethod)
             if (state.hasNewer || state.hasOlder) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.Medium), horizontalArrangement = Arrangement.SpaceBetween) {
                     SecondaryButton(
@@ -203,9 +206,9 @@ private fun ColumnScope.HistoryBody(
         state.days.isNotEmpty() -> {
             HistoryList(state.days, state.canPrint, state.print.running, onPrintDay) { item ->
                 when (item) {
-                    is HistoryItem.Sale -> navigator.openFrom(Route.History, Route.SaleDetail(item.sale.id))
-                    is HistoryItem.Refund -> navigator.openFrom(Route.History, Route.RefundDetail(item.refund.id))
-                    is HistoryItem.GiftCard -> navigator.openFrom(Route.History, Route.GiftCardDetail(item.activity.groupId))
+                    is HistoryItem.Sale -> navigator.openFrom(Route.History(), Route.SaleDetail(item.sale.id))
+                    is HistoryItem.Refund -> navigator.openFrom(Route.History(), Route.RefundDetail(item.refund.id))
+                    is HistoryItem.GiftCard -> navigator.openFrom(Route.History(), Route.GiftCardDetail(item.activity.groupId))
                 }
             }
         }
@@ -276,9 +279,11 @@ private fun HistoryFilters(
     method: PaymentMethodFilter?,
     onMethod: (PaymentMethodFilter?) -> Unit,
 ) {
+    // Opened on its last chip (as Home does on "Needs attention"), the row starts at its end, so that chip is in view.
+    val scroll = rememberScrollState(if (selected == HistoryFilter.entries.last()) Int.MAX_VALUE else 0)
     Row(
         Modifier
-            .horizontalScroll(rememberScrollState())
+            .horizontalScroll(scroll)
             .padding(horizontal = Spacing.Medium, vertical = if (LocalDimens.current.compact) Spacing.XSmall else Spacing.Medium),
         horizontalArrangement = Arrangement.spacedBy(Spacing.Small),
     ) {
@@ -783,14 +788,16 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
     }
 }
 
+/** The entry's history list, which starts on the "Needs attention" filter when [issues]. */
 @Composable
-internal fun historyViewModel(): HistoryViewModel {
+internal fun historyViewModel(issues: Boolean = false): HistoryViewModel {
     val container = LocalAppContainer.current
     return viewModel {
         HistoryViewModel(
             history = container.history,
             receipts = container.receipts,
             reconciliation = container.reconciliation,
+            initialFilter = if (issues) HistoryFilter.ISSUES else HistoryFilter.ALL,
         )
     }
 }

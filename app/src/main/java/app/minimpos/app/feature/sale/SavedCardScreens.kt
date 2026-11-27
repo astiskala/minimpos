@@ -327,9 +327,11 @@ internal fun TokenRow(
     removing: Boolean = false,
 ) {
     val gate = currentSetupGate()
+    val dimens = LocalDimens.current
     Column(modifier.testTag("savedCard_${card.id}")) {
         ListItem(
-            headlineContent = { Text(cardLabel(card.id, card.brand, card.lastFour)) },
+            leadingContent = { Icon(Icons.Default.CreditCard, contentDescription = null) },
+            contentPadding = PaddingValues(horizontal = dimens.rowHorizontalPadding, vertical = dimens.rowPadding),
             supportingContent = {
                 val details =
                     listOfNotNull(
@@ -339,8 +341,7 @@ internal fun TokenRow(
                     )
                 if (details.isNotEmpty()) Text(details.joinToString(" · "))
             },
-            leadingContent = { Icon(Icons.Default.CreditCard, contentDescription = null) },
-        )
+        ) { Text(cardLabel(card.id, card.brand, card.lastFour)) }
         GatedButton(
             stringResource(R.string.token_charge),
             { onChoose(card) },

@@ -44,7 +44,9 @@ require(!qualityGatePassed || providers.environmentVariable("CI").orNull == "tru
 
 android {
     namespace = "app.minimpos.app"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) { minorApiLevel = 1 }
+    }
 
     defaultConfig {
         applicationId = "app.minimpos"

@@ -75,6 +75,6 @@ class SettingsFieldDescriptionsTest {
         val input = compose.onNodeWithTag("secret").getUnclippedBoundsInRoot()
         assertThat(title.bottom.value).isAtMost(input.top.value)
         compose.onNodeWithTag("secret").assertContentDescriptionEquals("API key").performTextReplacement("synthetic")
-        assertThat(saved).isEqualTo("synthetic")
+        compose.waitUntil(5_000) { saved == "synthetic" }
     }
 }

@@ -13,6 +13,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.OutputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.insert
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.NavigateBefore
@@ -38,20 +43,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.OffsetMapping
-import androidx.compose.ui.text.input.TransformedText
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -109,6 +111,7 @@ import app.minimpos.core.catalogue.Catalogue
 import app.minimpos.core.logo.MonoBitmap
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -802,43 +805,51 @@ private fun TransferCodeField(
     code: String,
     wrong: Boolean,
     onChange: (String) -> Unit,
-) = OutlinedTextField(
-    value = code,
-    onValueChange = onChange,
-    label = { Text(stringResource(R.string.transfer_code_title)) },
-    supportingText = {
-        val hint = if (wrong) R.string.transfer_code_wrong else R.string.transfer_code_import_hint
-        Text(stringResource(hint))
-    },
-    isError = wrong || (code.isNotEmpty() && !TransferSeal.isValidCode(code)),
-    trailingIcon = fieldErrorIcon(wrong || (code.isNotEmpty() && !TransferSeal.isValidCode(code))),
-    visualTransformation = TransferCodeTransformation,
-    singleLine = true,
-    keyboardOptions =
-        KeyboardOptions(
-            capitalization = KeyboardCapitalization.Characters,
-            autoCorrectEnabled = false,
-            keyboardType = KeyboardType.Ascii,
-            imeAction = ImeAction.Done,
-        ),
-    modifier = Modifier.fillMaxWidth().testTag("transferCodeInput"),
-)
-
-internal object TransferCodeTransformation : VisualTransformation {
-    override fun filter(text: AnnotatedString): TransformedText {
-        val grouped = text.text.chunked(4).joinToString("-")
-        val offsets =
-            object : OffsetMapping {
-                override fun originalToTransformed(offset: Int): Int {
-                    val separators = (offset - 1).coerceAtLeast(0) / 4
-                    return (offset + separators).coerceAtMost(grouped.length)
-                }
-
-                override fun transformedToOriginal(offset: Int): Int = (offset - offset / 5).coerceAtMost(text.length)
-            }
-        return TransformedText(AnnotatedString(grouped), offsets)
-    }
+) {
+    // The field keeps its own text, so typing never waits for the screen's state; only remembered, as the code opens
+    // the secrets.
+    val text = remember { TextFieldState(code) }
+    val latestOnChange by rememberUpdatedState(onChange)
+    LaunchedEffect(text) { snapshotFlow { text.text.toString() }.drop(1).collect { latestOnChange(it) } }
+    val invalid = wrong || (code.isNotEmpty() && !TransferSeal.isValidCode(code))
+    OutlinedTextField(
+        state = text,
+        label = { Text(stringResource(R.string.transfer_code_title)) },
+        supportingText = {
+            val hint = if (wrong) R.string.transfer_code_wrong else R.string.transfer_code_import_hint
+            Text(stringResource(hint))
+        },
+        isError = invalid,
+        trailingIcon = fieldErrorIcon(invalid),
+        inputTransformation = TransferCodeInput,
+        outputTransformation = TransferCodeGroups,
+        lineLimits = TextFieldLineLimits.SingleLine,
+        keyboardOptions =
+            KeyboardOptions(
+                capitalization = KeyboardCapitalization.Characters,
+                autoCorrectEnabled = false,
+                keyboardType = KeyboardType.Ascii,
+                imeAction = ImeAction.Done,
+            ),
+        modifier = Modifier.fillMaxWidth().testTag("transferCodeInput"),
+    )
 }
+
+/** What is typed or pasted, as [TransferSeal.normalize] reads it; one character at a time, so the cursor stays put. */
+internal val TransferCodeInput =
+    InputTransformation {
+        for (index in length - 1 downTo 0) {
+            val typed = charAt(index).toString()
+            val normalized = TransferSeal.normalize(typed)
+            if (normalized != typed) replace(index, index + 1, normalized)
+        }
+    }
+
+/** Shows the code in groups of four separated by hyphens, as the other terminal does, without typing them. */
+internal val TransferCodeGroups =
+    OutputTransformation {
+        for (index in (length - 1) / 4 * 4 downTo 4 step 4) insert(index, "-")
+    }
 
 /** Which account, store and terminal the device now uses, leaving out what does not apply. */
 @Composable

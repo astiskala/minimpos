@@ -6,7 +6,7 @@ tested them, and include before/after screenshots for UI changes. Contributions 
 ## Build and run
 
 You need JDK 17+ to start Gradle (the build downloads JDK 21), Chrome/Chromium for setup-helper browser tests,
-Android SDK platform 37 and recent build tools.
+Android SDK platform 37.1 and recent build tools.
 Android Studio can install the SDK; otherwise set `sdk.dir` in an untracked `local.properties`. The full gate supports
 macOS and Linux; its pinned Markdown/workflow linter binaries are not available for Windows.
 
@@ -72,7 +72,7 @@ scripts/dev finish
 | `test MODULE PATTERN` | Matching tests in `core`, `adyen`, `app`, `website-test` or `tooling`; quote the pattern. |
 | `check AREA` | Module `check` for `core`/`adyen`/`app`/`tooling`; focused `website`, `workflows`, `markdown`, `architecture`, `localization`, `ui`, `qr`, `db` or `payment` lanes. |
 | `finish` | Format, then full `qualityGate --continue`; formatting failure stops the gate, gate failure stays nonzero. |
-| `preflight` | Read-only check of JDK 17+, SDK 37/build tools and Chrome; reports missing cached linters without failing for them. |
+| `preflight` | Read-only check of JDK 17+, SDK 37.1/build tools and Chrome; reports missing cached linters without failing for them. |
 | `warm` | Preflight, then compiler/test/browser/pinned-tool warmup; does not install SDKs or change config. |
 | `report` | Build current tooling, then summarize existing JUnit XML: exact assertions, first project frame, quoted reruns and slowest suites. |
 | `profile WORKERS [PATTERN]` | Rerun only the app test task with 1–4 workers and Gradle `--profile`; default pattern `*ui.*`. |

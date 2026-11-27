@@ -56,10 +56,12 @@ jobs:
         if: matrix.language == 'java-kotlin'
         # Compiler execution is required for extraction. Do not restore compilation or skip it as up to date.
         # Packaging, D8, R8 and tests remain in CI, not this security-only build.
+        # No Gradle or Kotlin daemon may outlive the build: analysis sizes itself to nearly all runner memory.
         run: >-
           ./gradlew :core:classes :adyen:classes :tooling:classes :website-test:classes
           :app:compileDebugKotlin :app:compileDebugJavaWithJavac
           --no-build-cache --no-configuration-cache --rerun-tasks
+          --no-daemon -Pkotlin.compiler.execution.strategy=in-process
 
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:

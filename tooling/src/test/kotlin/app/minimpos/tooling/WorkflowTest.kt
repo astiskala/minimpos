@@ -101,6 +101,8 @@ class WorkflowTest {
         assertThat(workflow).contains(":core:classes :adyen:classes :tooling:classes :website-test:classes")
         assertThat(workflow).contains(":app:compileDebugKotlin :app:compileDebugJavaWithJavac")
         assertThat(workflow).contains("--no-build-cache --no-configuration-cache --rerun-tasks")
+        // Leftover daemons and CodeQL's memory-sized analysis together exhaust the runner.
+        assertThat(workflow).contains("--no-daemon -Pkotlin.compiler.execution.strategy=in-process")
         assertThat(workflow).contains("cache-read-only: true")
         assertThat(workflow).doesNotContain("assemble")
         assertThat(workflow).doesNotContain("autobuild@")

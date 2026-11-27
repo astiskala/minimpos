@@ -31,7 +31,14 @@ class WorkflowTest {
         }
         val beforeSigning = workflow.substringBefore("\n  release:\n")
         assertThat(beforeSigning).contains("./gradlew :tooling:cliJar")
-        assertThat(beforeSigning).doesNotContain("secrets.RELEASE_")
+        val prepare = beforeSigning.substringBefore("\n  ci:\n")
+        assertThat(prepare).contains("environment: release-version-push")
+        assertThat(prepare).contains("private-key: \${{ secrets.RELEASE_APP_PRIVATE_KEY }}")
+        assertThat(prepare).contains("permission-contents: write")
+        assertThat(prepare).doesNotContain("contents: write\n      actions:")
+        assertThat(beforeSigning.split("secrets.RELEASE_")).hasSize(2)
+        assertThat(release).doesNotContain("RELEASE_APP_PRIVATE_KEY")
+        assertThat(release).contains("inputs.bump != 'verify-app'")
         assertThat(release).contains("needs.prepare.outputs.run || needs.ci.outputs.run")
         assertThat(release).contains("needs.ci.result == 'success'")
         assertThat(release).contains("needs.ci.result == 'skipped' && needs.prepare.outputs.run != ''")
@@ -48,6 +55,7 @@ class WorkflowTest {
         assertThat(workflow).contains("github.event_name != 'pull_request'")
         assertThat(workflow).doesNotContain("setup-node@")
         assertThat(workflow).contains("cache-encryption-key:")
+        assertThat(workflow).contains("paths-ignore: [version.properties]\n  pull_request:")
         assertThat(workflow).contains("cancel-in-progress: \${{ github.event_name == 'pull_request' }}")
     }
 
@@ -71,6 +79,15 @@ class WorkflowTest {
         assertThat(prepare).doesNotContain("""java -jar "${'$'}artifact""")
         assertThat(prepare).contains("No reusable exact-commit artifact; the full CI workflow will run.")
         assertThat(prepare).doesNotContain("setup-gradle@")
+    }
+
+    @Test
+    fun `release app verification cannot prepare or push a version`() {
+        val workflow = Files.readString(repository.resolve(".github/workflows/release.yml"))
+        assertThat(workflow).contains("options: [patch, minor, major, resume, verify-app]")
+        assertThat(workflow).contains("Prepare the version commit\n        if: inputs.bump != 'verify-app'")
+        assertThat(workflow).contains("Push the version commit to main\n        if: inputs.bump != 'resume' && inputs.bump != 'verify-app'")
+        assertThat(workflow).contains("if: needs.prepare.outputs.run == '' && inputs.bump != 'verify-app'")
     }
 
     @Test

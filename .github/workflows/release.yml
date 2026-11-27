@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Version component to raise, or resume an unpublished version commit
+        description: Version component to raise, resume an unpublished version commit, or verify the release app
         type: choice
-        options: [patch, minor, major, resume]
+        options: [patch, minor, major, resume, verify-app]
         default: patch
       notes:
         description: Merchant-facing English Markdown bullets (see CONTRIBUTING release-note style)
@@ -26,8 +26,9 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: release-version-push
     permissions:
-      contents: write
+      contents: read
       actions: read
     outputs:
       commit: ${{ steps.version.outputs.commit }}
@@ -38,6 +39,7 @@ jobs:
       attempt: ${{ steps.reuse.outputs.attempt }}
     steps:
       - name: Require authored release notes before preparing a version
+        if: inputs.bump != 'verify-app'
         env:
           RELEASE_NOTES: ${{ inputs.notes }}
         run: |
@@ -47,19 +49,23 @@ jobs:
           fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: inputs.bump != 'verify-app'
         with:
           persist-credentials: false
           fetch-depth: 0
 
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        if: inputs.bump != 'verify-app'
         with:
           distribution: temurin
           java-version: 21
 
       - name: Build release tooling without signing credentials
+        if: inputs.bump != 'verify-app'
         run: ./gradlew :tooling:cliJar --console=plain
 
       - name: Prepare the version commit
+        if: inputs.bump != 'verify-app'
         id: version
         env:
           BUMP: ${{ inputs.bump }}
@@ -97,9 +103,6 @@ jobs:
               git diff -- version.properties
               test "$(git diff --name-only)" = version.properties
               git commit --quiet --message "Release $name" version.properties
-              auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
-              printf '%s\n' "::add-mask::$auth"
-              git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:main
           fi
           {
               printf '%s\n' "commit=$(git rev-parse HEAD)"
@@ -108,7 +111,28 @@ jobs:
               printf '%s\n' "previous=$previous"
           } >> "$GITHUB_OUTPUT"
           printf '%s\n' "Prepared $name at $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Create repository-scoped release push token
+        if: inputs.bump != 'resume'
+        id: release-app
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Push the version commit to main
+        if: inputs.bump != 'resume' && inputs.bump != 'verify-app'
+        env:
+          RELEASE_PUSH_TOKEN: ${{ steps.release-app.outputs.token }}
+        run: |
+          test -n "$RELEASE_PUSH_TOKEN"
+          test "$(git diff-tree --no-commit-id --name-only -r HEAD)" = version.properties
+          auth=$(printf 'x-access-token:%s' "$RELEASE_PUSH_TOKEN" | base64 -w0)
+          printf '%s\n' "::add-mask::$auth"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:main
+
       - name: Reuse successful exact-commit CI when available
+        if: inputs.bump != 'verify-app'
         id: reuse
         env:
           GH_TOKEN: ${{ github.token }}
@@ -144,7 +168,7 @@ jobs:
 
   ci:
     needs: prepare
-    if: needs.prepare.outputs.run == ''
+    if: needs.prepare.outputs.run == '' && inputs.bump != 'verify-app'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     outputs:
@@ -214,7 +238,7 @@ jobs:
   release:
     needs: [prepare, ci]
     if: >-
-      ${{ !cancelled() && needs.prepare.result == 'success' &&
+      ${{ !cancelled() && needs.prepare.result == 'success' && inputs.bump != 'verify-app' &&
           (needs.ci.result == 'success' || (needs.ci.result == 'skipped' && needs.prepare.outputs.run != '')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10

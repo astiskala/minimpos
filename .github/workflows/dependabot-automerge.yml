@@ -1,0 +1,66 @@
+name: Dependabot automerge
+
+on:
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency: dependabot-automerge
+
+jobs:
+  merge:
+    if: vars.DEPENDABOT_AUTOMERGE == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      checks: read
+      contents: write
+      pull-requests: read
+    steps:
+      # Only main's policy is checked out. PR contents are read as data via the API.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Merge a verified patch after all required checks pass
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          catalog=gradle/libs.versions.toml
+          # Don't merge if a repository setting has removed any required check.
+          gh api "repos/$REPO/rules/branches/main" | jq -e '
+              any(.[]; .type == "pull_request") and any(.[]; .type == "required_status_checks" and
+                  .parameters.strict_required_status_checks_policy and
+                  (["quality-gate", "analyze (actions, none)", "analyze (java-kotlin, manual)"] -
+                      [.parameters.required_status_checks[] | select(.integration_id == 15368) | .context] | length == 0))
+          ' > /dev/null
+          candidates=$(gh api --paginate "repos/$REPO/pulls?state=open&base=main&per_page=100" |
+              jq -r --arg repo "$REPO" '.[] | select(.user.login == "dependabot[bot]" and
+                  .draft == false and .head.repo.full_name == $repo and (.head.ref | startswith("dependabot/gradle/")))
+                  | [.number, .head.sha] | @tsv')
+          while read -r pr head; do
+              if [[ -z "$pr" ]]; then continue; fi
+              gh pr checks "$pr" --repo "$REPO" --required || continue
+              gh api --paginate --slurp "repos/$REPO/pulls/$pr/files" |
+                  jq -e --arg catalog "$catalog" 'add | map([.filename, .status]) == [[$catalog, "modified"]]' \
+                  > /dev/null || continue
+              gh api "repos/$REPO/commits/$head" |
+                  jq -e '.author.login == "dependabot[bot]" and .commit.verification.verified and
+                      (now - (.commit.committer.date | fromdateiso8601) >= 7 * 86400)' > /dev/null || continue
+              base=$(gh api "repos/$REPO/branches/main" --jq .commit.sha)
+              gh api "repos/$REPO/compare/$base...$head" |
+                  jq -e '.status == "ahead" and .ahead_by == 1' > /dev/null || continue
+              for ref in "$base" "$head"; do
+                  gh api -H 'Accept: application/vnd.github.raw+json' \
+                      "repos/$REPO/contents/$catalog?ref=$ref" > "$RUNNER_TEMP/$ref.toml"
+              done
+              python3 .github/dependabot_patch.py "$RUNNER_TEMP/$base.toml" "$RUNNER_TEMP/$head.toml" || continue
+              # No persistent merge request: a replacement head must qualify on its own.
+              gh api --method PUT "repos/$REPO/pulls/$pr/merge" -f sha="$head" -f merge_method=squash \
+                  --jq '{merged, sha, message}'
+          done <<< "$candidates"

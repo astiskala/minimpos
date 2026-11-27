@@ -377,6 +377,11 @@ languages at 320/390/1280 px, reject broken images and horizontal overflow, and 
   when upstream catches up. Dependency submission sends the resolved graph to GitHub.
 - Dependabot leaves the Adyen Java library ungrouped so each upgrade is reviewed alone: check its model changes
   against [API model ownership](#adyen-api-model-ownership), then run the gate and release build.
+- Dependabot automerges only signed, version-catalog-only Gradle library patches. Every changed version in a group
+  must qualify. GitHub Actions, Gradle plugins, Adyen, OkHttp, Xerces and Android Mail always need manual review.
+  Major, minor, pre-release and unclassified changes stay manual, including security updates in those categories.
+  Automerge waits until the signed bump commit is at least seven days old, so even security bumps that skip
+  Dependabot's cooldown cannot merge automatically before the project's minimum release age.
 - Adyen's library ships no R8 rules. Keep its model/serialization rules in `app/proguard-rules.pro`. The
   `TrustAllX509TrustManager` lint exception depends on stripping the TEST-only API; `verifyReleaseShrunkClasses`
   (run by every `assembleRelease`) fails when R8 keeps it, any trust manager in the library or Apache HttpClient 5.
@@ -406,6 +411,16 @@ CI retains every quality check and the R8 build. Release runs that same policy d
 both use the tested `scripts/ci` script. Current actionlint and zizmor releases disagree on same-repository reusable
 workflow syntax, so no reusable-workflow call or linter exception is needed.
 
+- Install a private release GitHub App on this repository only, with Contents read and write. In the
+  `release-version-push` environment, allow only the branch `main`. Set `RELEASE_APP_CLIENT_ID` as an environment
+  variable and `RELEASE_APP_PRIVATE_KEY` as an environment secret. Keep them separate from the signing environment.
+  Run Release with `verify-app` and placeholder notes to test token issuance without changing or publishing anything.
+- Protect `main` with a pull-request rule and strict required GitHub Actions checks: `quality-gate`,
+  `analyze (actions, none)` and `analyze (java-kotlin, manual)`. Give only the release app a bypass for its
+  version-only push. After confirming the effective rules, set the repository variable `DEPENDABOT_AUTOMERGE` to
+  `true`. Remove it to pause automated merges. The workflow checks twice an hour and uses no release credentials.
+  It does not leave pending merge requests on PRs whose heads might change. Merges made with the workflow token do
+  not trigger push workflows; dependency submission still runs on its weekly schedule or on demand.
 - Set the repository Actions secret `GRADLE_ENCRYPTION_KEY` to a base64-encoded random 16-byte AES key. The pinned
   `setup-gradle` action needs it to persist encrypted configuration-cache entries. Do not print or commit the key.
   Ordinary build-cache reuse still works without it; forks receive no secrets. Gradle caches remain read-only outside
@@ -457,7 +472,8 @@ Forks must maintain their own release process, credentials and signing history.
 
 `version.properties` is managed by **Actions › Release › Run workflow** on `main`. Choose patch/minor/major and supply
 the release notes following [the style below](#release-note-style);
-the workflow commits the new version first. It reuses a successful main push/manual CI run for that exact commit
+the workflow commits the new version first using the release app. The version-only push skips the duplicate main CI
+build, not CodeQL. Release reuses a successful main push/manual CI run for that exact commit
 only when its retained artifact passes current commit, version, run-attempt and SHA-256 verification. Missing or
 expired artifacts require fresh CI; changed or invalid artifacts block release. Pending, failed, cancelled and PR
 runs are never reused. Otherwise, a direct CI job runs the full quality gate and R8

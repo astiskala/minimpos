@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+    # Release runs the same gate on its version-only commit before signing.
+    paths-ignore: [version.properties]
   pull_request:
   workflow_dispatch:
 
@@ -35,6 +37,7 @@ jobs:
 
       - name: Quality gate and release build
         run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .github
           # Use the runner image's browser; helper pages themselves make no network requests.
           MINIMPOS_CHROME="$(command -v google-chrome)"
           export MINIMPOS_CHROME

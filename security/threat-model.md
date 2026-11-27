@@ -1,6 +1,6 @@
 # Mini mPOS threat model
 
-Version: 1.3.0. Updated: 2026-10-29. Method: STRIDE. Local pre-deployment audit context, not a certification.
+Version: 1.4.0. Updated: 2026-11-27. Method: STRIDE. Local pre-deployment audit context, not a certification.
 
 ## 1. System Overview
 
@@ -27,6 +27,10 @@ GitHub CI verifies source and builds unsigned APKs. Only the separate release en
 - Build jobs may execute repository code, plugins and dependencies. They must not receive signing secrets.
   Main-only artifact production, exact-checkout checks and successful job dependencies protect promotion.
 - The signing job accepts a trusted CI artifact, verifies commit/version/run/hash facts and signs without Gradle.
+- Release's version push uses a short-lived release GitHub App token from a main-only environment kept apart from
+  signing. Only that app bypasses main's pull-request and required-check rules; its push may change only
+  `version.properties`. Dependabot automerge runs main's policy, reads pull-request contents as data, merges only
+  qualifying aged patch bumps whose required checks passed, and receives no release or signing credentials.
   Pages deployment accepts only artifacts from a successful website-verification job on main.
 
 ## 3. Attack Surface Inventory
@@ -42,9 +46,9 @@ Repository interfaces include GitHub events, workflow inputs, API run metadata, 
 ## 4. Critical Assets and Data Classification
 
 - Credentials: Adyen API keys, terminal shared keys, SMTP passwords, PIN verifiers, Android Keystore keys,
-  APK signing keys and GitHub cache-encryption keys. Never commit or log their values. Settings may show only the
-  last four characters of a saved Adyen API key of at least 32 characters, stored beside it in plain text so the UI
-  never decrypts the key; other secrets show no part of themselves.
+  APK signing keys, the release GitHub App private key and GitHub cache-encryption keys. Never commit or log their
+  values. Settings may show only the last four characters of a saved Adyen API key of at least 32 characters, stored
+  beside it in plain text so the UI never decrypts the key; other secrets show no part of themselves.
 - Personal data: shopper email/reference and receipt details, including masked card information.
   They remain in private device storage or deliberately delivered receipts, not telemetry or public CI fixtures.
 - Financial state: operation identities, request facts, transaction history and encrypted recovery journals.
@@ -135,3 +139,5 @@ controls remain trusted. Cache writes stay scoped to trusted main builds; forks 
   freshness between request stages, mutation recovery and running-operation protection.
 - 1.3.0: Accepted showing a saved Adyen API key's last four characters in Settings, kept as a plain-text hint written
   and cleared with the key; passphrases, passwords and PIN verifiers keep no hint.
+- 1.4.0: Added the release GitHub App's version-only push, the only bypass of main's rules, and the Dependabot
+  automerge workflow's patch-only, check-gated merges without release credentials.

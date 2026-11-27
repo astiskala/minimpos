@@ -429,7 +429,9 @@ workflow syntax, so no reusable-workflow call or linter exception is needed.
 - After deploying `codeql.yml`, switch CodeQL from default setup to advanced setup. Keep the default query suite,
   `actions` and `java-kotlin` analyses, PR/main scans and the weekly scan. The manual Kotlin build compiles every
   production module without APK packaging, D8 or R8. It disables compilation and configuration-cache reuse and
-  forces compiler execution for extraction. Check the first analysis's source coverage before retiring default setup.
+  forces compiler execution for extraction. It compiles Kotlin in process without a Gradle daemon: analysis sizes
+  itself to nearly all runner memory, and leftover daemons got it killed. Check the first analysis's source coverage
+  before retiring default setup.
 - After deploying `pages.yml`, set Settings › Pages › Build and deployment › Source to **GitHub Actions**, then run
   Pages manually for the first verified deployment. Keep the `github-pages` environment restricted to main.
 - For the custom domain, verify ownership in the GitHub account settings, then set **Settings › Pages › Custom domain**
@@ -481,6 +483,8 @@ repository settings in [GitHub workflow setup](#github-workflow-setup).
    `minor` or `major`, or `resume` for an unpublished version commit (below). `verify-app` only checks that the
    release app can issue a token; it changes and publishes nothing.
 3. Follow the run with `scripts/release-check watch` (below). After publication, read back the GitHub release body.
+   Merge nothing while it runs: tagging requires main to still point to the released commit. If a Dependabot
+   automerge is due, remove `DEPENDABOT_AUTOMERGE` until publication. A run blocked this way finishes with `resume`.
 
 The prepare job stops if main moved after dispatch and refuses a new bump while a version commit is unpublished. It
 commits only `version.properties` as `Release X.Y.Z` and pushes it to main with a short-lived token from the release

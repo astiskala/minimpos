@@ -1,6 +1,8 @@
 package app.minimpos.app.ui
 
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollTo
 import app.minimpos.app.MiniMposApp
@@ -11,6 +13,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
+@OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 class StorageUnavailableTest {
     @get:Rule(order = 0)
@@ -22,6 +25,7 @@ class StorageUnavailableTest {
     @Test
     fun `unreadable secrets show recovery guidance instead of an unprotected home screen`() {
         compose.setContent { MiniMposApp(env.container) }
+        compose.waitUntilAtLeastOneExists(hasTestTag("storageUnavailable"), 15_000)
         compose.onNodeWithTag("storageUnavailable").assertIsDisplayed()
         compose.onNodeWithTag("storageTroubleshooting").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("storageReportIssue").performScrollTo().assertIsDisplayed()

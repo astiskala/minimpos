@@ -481,6 +481,8 @@ repository settings in [GitHub workflow setup](#github-workflow-setup).
    `minor` or `major`, or `resume` for an unpublished version commit (below). `verify-app` only checks that the
    release app can issue a token; it changes and publishes nothing.
 3. Follow the run with `scripts/release-check watch` (below). After publication, read back the GitHub release body.
+   Merge nothing while it runs: tagging requires main to still point to the released commit. If a Dependabot
+   automerge is due, remove `DEPENDABOT_AUTOMERGE` until publication. A run blocked this way finishes with `resume`.
 
 The prepare job stops if main moved after dispatch and refuses a new bump while a version commit is unpublished. It
 commits only `version.properties` as `Release X.Y.Z` and pushes it to main with a short-lived token from the release

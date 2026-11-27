@@ -711,11 +711,7 @@ class TestEnvironment(
                     ),
             )
         }
-        runBlocking {
-            withTimeout(5_000) {
-                container.terminalStatus.state.first { it.mode == TerminalMode.TERMINAL && it.paymentLinks && !it.needsSetup }
-            }
-        }
+        await { container.terminalStatus.state.first { it.mode == TerminalMode.TERMINAL && it.paymentLinks && !it.needsSetup } }
     }
 
     /** Simulator with no delay, and settings loaded into the container's state. */

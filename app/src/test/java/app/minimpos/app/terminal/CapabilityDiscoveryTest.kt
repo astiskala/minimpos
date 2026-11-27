@@ -48,6 +48,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -341,7 +342,10 @@ class CapabilityDiscoveryTest {
             assertThat(lookups).isEqualTo(1)
 
             first.refresh()
-            await { first.state.first { lookups == 2 && !it.checking } }
+            // Poll: a finished refresh can publish a state equal to the one before it, which StateFlow skips.
+            await {
+                while (lookups < 2 || first.state.value.checking) delay(10)
+            }
         } finally {
             closeViewModels(listOf(first, second))
             Dispatchers.resetMain()

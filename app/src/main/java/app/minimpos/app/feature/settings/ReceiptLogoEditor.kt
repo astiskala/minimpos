@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -234,15 +235,16 @@ private fun ColumnScope.LogoControls(
     Column(Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding)) {
         // The thumb follows the finger locally; the preview converts once, when the drag ends.
         var dragged by remember { mutableStateOf<Float?>(null) }
+        val darkness = rememberSliderState(trackRange = 0f..255f)
+        darkness.value = dragged ?: (options.threshold ?: 127).toFloat()
         Text(stringResource(R.string.receipt_logo_darkness))
         Slider(
-            dragged ?: (options.threshold ?: 127).toFloat(),
+            darkness,
             { dragged = it },
             onValueChangeFinished = {
                 dragged?.let { onUpdate(options.copy(threshold = it.toInt())) }
                 dragged = null
             },
-            valueRange = 0f..255f,
             modifier = Modifier.testTag("receiptLogoDarkness"),
         )
     }

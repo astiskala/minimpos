@@ -98,7 +98,7 @@ class DevRunnerTest {
     }
 
     @Test
-    fun `preflight accepts SDK minor-directory spelling paths with spaces and local SDK precedence`() {
+    fun `preflight requires the compile SDK's minor platform with spaces and local SDK precedence`() {
         val root = fixture()
         val sdk = temporary.newFolder("SDK with spaces").toPath()
         Files.createDirectories(sdk.resolve("platforms/android-37.0"))
@@ -110,20 +110,22 @@ class DevRunnerTest {
             Files.writeString(bin.resolve(name), "#!/bin/sh\n$body\n").toFile().setExecutable(true)
         }
         Files.writeString(root.resolve("local.properties"), "sdk.dir=${sdk.toString().replace(" ", "\\ ")}\n")
-        val result =
-            run(
-                root,
-                "preflight",
-                environment =
-                    mapOf(
-                        "PATH" to "$bin:${System.getenv("PATH")}",
-                        "JAVA_HOME" to root.toString(),
-                        "ANDROID_HOME" to "/missing",
-                        "MINIMPOS_CHROME" to bin.resolve("chrome").toString(),
-                    ),
+        val environment =
+            mapOf(
+                "PATH" to "$bin:${System.getenv("PATH")}",
+                "JAVA_HOME" to root.toString(),
+                "ANDROID_HOME" to "/missing",
+                "MINIMPOS_CHROME" to bin.resolve("chrome").toString(),
             )
+        // Compose needs platform 37.1 (app/build.gradle.kts); the 37.0 platform alone is not enough.
+        val older = run(root, "preflight", environment = environment)
+        assertThat(older.code).isEqualTo(1)
+        assertThat(older.output).contains("SDK: install platform 37.1")
+        Files.createDirectories(sdk.resolve("platforms/android-37.1"))
+        Files.writeString(sdk.resolve("platforms/android-37.1/android.jar"), "fixture")
+        val result = run(root, "preflight", environment = environment)
         assertThat(result.code).isEqualTo(0)
-        assertThat(result.output).contains("SDK 37: OK")
+        assertThat(result.output).contains("SDK 37.1: OK")
         assertThat(result.output).contains("not cached")
         assertThat(Files.exists(root.resolve("build"))).isFalse()
     }
@@ -134,7 +136,7 @@ class DevRunnerTest {
         Files.writeString(root.resolve("local.properties"), "sdk.dir=/missing\n")
         val result = run(root, "preflight", environment = mapOf("MINIMPOS_CHROME" to "/missing"))
         assertThat(result.code).isEqualTo(1)
-        assertThat(result.output).contains("SDK: install platform 37")
+        assertThat(result.output).contains("SDK: install platform 37.1")
         assertThat(result.output).contains("Chrome: install")
         assertThat(result.output).doesNotContain("<")
     }

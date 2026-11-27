@@ -2,8 +2,15 @@ package app.minimpos.app.ui
 
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
@@ -18,7 +25,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextInputSelection
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import app.minimpos.app.GST_RATES
@@ -34,6 +44,8 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.transfer.TransferredSettings
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.feature.transfer.ImportUiState
+import app.minimpos.app.feature.transfer.TransferCodeGroups
+import app.minimpos.app.feature.transfer.TransferCodeInput
 import app.minimpos.app.feature.transfer.TransferImportScreen
 import app.minimpos.app.feature.transfer.TransferImportViewModel
 import app.minimpos.app.ui.components.LocalAppContainer
@@ -218,6 +230,9 @@ class TransferScreensTest {
         compose.onNodeWithTag("merge").assertDoesNotExist()
         compose.onNodeWithTag("import").assertIsDisplayed()
         compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput("AAAA AAAA AAAA")
+        // The screen holds the code as typed into the other device; the field only shows it in groups.
+        compose.awaitCondition("Taking the code") { (vm.state.value as? ImportUiState.Ready)?.code == "AAAAAAAAAAAA" }
+        compose.onNodeWithTag("transferCodeInput").assertTextContains("AAAA-AAAA-AAAA")
         compose.onNodeWithTag("import").performClick()
         compose.waitUntilAtLeastOneExists(hasText("That transfer code is wrong", substring = true), 15_000)
         compose.onNodeWithText("Scan again").assertDoesNotExist()
@@ -332,6 +347,32 @@ class TransferScreensTest {
     @Test
     fun `omitted QR environment stays unchanged without guessing TEST or LIVE`() =
         reviewLiveDestination(destinationName = "thisTerminal", environmentName = null)
+
+    @Test
+    fun `the transfer code is normalized where it is typed and shown in groups of four`() {
+        val code = TextFieldState()
+        compose.setContent {
+            BasicTextField(
+                code,
+                Modifier.testTag("code"),
+                inputTransformation = TransferCodeInput,
+                outputTransformation = TransferCodeGroups,
+            )
+        }
+        compose.onNodeWithTag("code").performTextInput("abcd efgh-ij")
+        compose.runOnIdle { assertThat(code.text.toString()).isEqualTo("ABCDEFGHIJ") }
+        compose
+            .onNodeWithTag(
+                "code",
+            ).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("ABCD-EFGH-IJ")))
+        // A character typed in the middle is normalized in place, leaving the cursor after it.
+        compose.onNodeWithTag("code").performTextInputSelection(TextRange(2))
+        compose.onNodeWithTag("code").performTextInput("x")
+        compose.runOnIdle {
+            assertThat(code.text.toString()).isEqualTo("ABXCDEFGHIJ")
+            assertThat(code.selection).isEqualTo(TextRange(3))
+        }
+    }
 
     private fun assertImportSummary() {
         compose.onNodeWithTag("transferCodeInput").performScrollTo()

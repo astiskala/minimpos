@@ -2,7 +2,6 @@ package app.minimpos.app.feature.sale
 
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -43,6 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -510,6 +511,7 @@ private fun TokenChoice(
     onChoose: (StoredCard) -> Unit,
 ) {
     if (!visible) return
+    val dimens = LocalDimens.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.checkout_choose_token)) },
@@ -522,14 +524,15 @@ private fun TokenChoice(
             LazyColumn(Modifier.heightIn(max = 360.dp)) {
                 items(tokens, key = { it.id }) { card ->
                     ListItem(
-                        headlineContent = { Text(cardLabel(card.id, card.brand, card.lastFour)) },
+                        onClick = { onChoose(card) },
+                        modifier = Modifier.semantics { role = Role.Button }.testTag("token_${card.id}"),
+                        contentPadding = PaddingValues(horizontal = dimens.rowHorizontalPadding, vertical = dimens.rowPadding),
+                        leadingContent = { Icon(Icons.Default.CreditCard, contentDescription = null) },
                         supportingContent =
                             card.expiryMonth?.let { month ->
                                 card.expiryYear?.let { year -> { Text(stringResource(R.string.saved_card_expires, month, year)) } }
                             },
-                        leadingContent = { Icon(Icons.Default.CreditCard, contentDescription = null) },
-                        modifier = Modifier.clickable(role = Role.Button) { onChoose(card) }.testTag("token_${card.id}"),
-                    )
+                    ) { Text(cardLabel(card.id, card.brand, card.lastFour)) }
                 }
             }
         },

@@ -510,8 +510,10 @@ cart counts and row layouts while sharing shape and touch sizing.
 
 `OutlinedTextField` with the default Material 3 outline in the `outline` colour. A field that can be invalid passes
 `trailingIcon = fieldErrorIcon(isError)`, unless its trailing slot holds an action such as the SKU scanner. Settings
-fields follow [Screen flows](#screen-flows). No custom field component exists. **Decision needed:** whether
-to extract `AppTextField`.
+fields follow [Screen flows](#screen-flows). Secrets use `OutlinedSecureTextField`: fully hidden until shown with the
+eye button, never copied, and a saved secret's masked text appears as the empty field's placeholder in `on-surface`. The
+transfer code shows in hyphenated groups of four that are never typed. No custom field component exists. **Decision
+needed:** whether to extract `AppTextField`.
 
 Invalid product prices show localized supporting text: positive values and the currency's precision, whole numbers for
 zero-decimal currencies, or a smaller-price instruction on minor-unit overflow. Accepted price syntax is unchanged.
@@ -539,12 +541,12 @@ detail panes show a semantic heading in `Dimens.titleStyle`. Back and transition
 
 ### Lists and rows
 
-`SwitchRow` (min 48 dp, toggleable as one target), `LabeledValue`, `TransactionRow`, `SettingActions`, `ListItem`.
-Rows use `rowPadding` vertical and `rowHorizontalPadding` horizontal. Section titles are `SectionHeader`. A disabled
-`SwitchRow` fades its title and description together (`on-surface` at 38 %, `Opacity.DISABLED`). A `TransactionRow`
-shows its status as a 16 dp glyph and the word in the status colour. A choice setting shows its current value in
-`on-surface-variant`, like a navigation row. A saved secret's "Set" and "Not set" stay green and red because they are
-states.
+`SwitchRow` (min 48 dp, toggleable as one target), `LabeledValue`, `TransactionRow`, `SettingActions`, `ListItem`. Rows
+use `rowPadding` vertical and `rowHorizontalPadding` horizontal; a `ListItem` takes them as its `contentPadding` rather
+than Material's taller default. Section titles are `SectionHeader`. A disabled `SwitchRow` fades its title and
+description together (`on-surface` at 38 %, `Opacity.DISABLED`). A `TransactionRow` shows its status as a 16 dp glyph
+and the word in the status colour. A choice setting shows its current value in `on-surface-variant`, like a navigation
+row. A saved secret's "Set" and "Not set" stay green and red because they are states.
 
 ### Keypad and amounts
 

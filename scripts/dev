@@ -13,7 +13,7 @@ usage() {
         '  check AREA                      core, adyen, app, tooling, website, workflows, markdown,' \
         '                                  architecture, localization, ui, qr, db, payment' \
         '  finish                          Format, then full qualityGate --continue' \
-        '  preflight                       Check local JDK, SDK 37, Chrome; no downloads or writes' \
+        '  preflight                       Check local JDK, SDK 37.1, Chrome; no downloads or writes' \
         '  warm                            Warm compiler, Robolectric, browser and pinned tool caches' \
         '  report                          Build tooling, summarize existing JUnit failures and timings' \
         '  profile WORKERS [PATTERN]        Rerun app tests only; workers 1-4, default pattern *ui.*' \
@@ -52,10 +52,10 @@ preflight() {
         configured=$(awk '/^sdk.dir[[:space:]]*=/ { sub(/^sdk.dir[[:space:]]*=[[:space:]]*/, ""); gsub(/\\ /, " "); sub(/\r$/, ""); print; exit }' "$root/local.properties")
         [[ -z "$configured" ]] || sdk=$configured
     fi
-    if [[ -n "$sdk" ]] && { [[ -f "$sdk/platforms/android-37/android.jar" ]] || [[ -f "$sdk/platforms/android-37.0/android.jar" ]]; }; then
-        printf 'SDK 37: OK\n'
+    if [[ -n "$sdk" ]] && [[ -f "$sdk/platforms/android-37.1/android.jar" ]]; then
+        printf 'SDK 37.1: OK\n'
     else
-        printf 'SDK: install platform 37; set sdk.dir or ANDROID_HOME\n' >&2
+        printf 'SDK: install platform 37.1; set sdk.dir or ANDROID_HOME\n' >&2
         status=1
     fi
     found=0

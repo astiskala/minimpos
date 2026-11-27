@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.TextObfuscationMode
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -28,6 +30,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -41,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -53,8 +57,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
@@ -382,21 +384,35 @@ private fun PasswordField(
     val container = LocalAppContainer.current
     var visible by remember { mutableStateOf(false) }
     var focused by remember { mutableStateOf(false) }
+    val change: (String) -> Unit = {
+        container.userActivity()
+        onValueChange(it)
+    }
+    val secret = rememberSecretText(value, change)
     // A saved secret shows its masked [saved] text (empty when none is saved) until focused to type a replacement.
     val showsSaved = saved.isNotEmpty() && !focused && value.isEmpty()
     Column(modifier.fillMaxWidth()) {
         SettingFieldHeading(label, description = description)
         content()
-        OutlinedTextField(
-            value = if (showsSaved) saved else value,
-            onValueChange = {
-                container.userActivity()
-                if (!showsSaved) onValueChange(it)
-            },
-            // On one line, so a long hint cannot make the field grow when it gets the focus.
-            placeholder = placeholder?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
-            singleLine = true,
-            visualTransformation = if (visible || showsSaved) VisualTransformation.None else PasswordVisualTransformation(),
+        OutlinedSecureTextField(
+            state = secret.state,
+            // The field is empty whenever this shows: the saved text in the input's colour, or the hint for typing,
+            // on one line so a long hint cannot make the field grow when it gets the focus.
+            placeholder =
+                when {
+                    showsSaved -> {
+                        { Text(saved, color = MaterialTheme.colorScheme.onSurface, maxLines = 1) }
+                    }
+
+                    placeholder != null -> {
+                        { Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    }
+
+                    else -> {
+                        null
+                    }
+                },
+            textObfuscationMode = if (visible) TextObfuscationMode.Visible else TextObfuscationMode.Hidden,
             trailingIcon = {
                 if (showsSaved) {
                     Icon(
@@ -404,7 +420,7 @@ private fun PasswordField(
                         contentDescription = stringResource(R.string.settings_secret_saved),
                         tint = LocalStatusColors.current.success,
                     )
-                    return@OutlinedTextField
+                    return@OutlinedSecureTextField
                 }
                 IconButton(onClick = { visible = !visible }, modifier = Modifier.testTag("secretVisibility")) {
                     Icon(
@@ -414,13 +430,57 @@ private fun PasswordField(
                 }
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onDone() }),
+            // Typing reaches the caller a frame later; Done hands over the latest text before submitting it.
+            onKeyboardAction = {
+                secret.give(change)
+                onDone()
+            },
             modifier =
                 Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused }.semantics { contentDescription = label }.tagged(
                     tag,
                 ),
         )
     }
+}
+
+/** A secret field's text, and what its caller was last given: [give] hands over a change the caller has yet to have. */
+private class SecretText(
+    initial: String,
+) {
+    val state = TextFieldState(initial)
+
+    // State, so a caller's change that undoes an edit before the next frame still differs from what it was given.
+    var given by mutableStateOf(initial)
+
+    fun give(onValueChange: (String) -> Unit) {
+        val text = state.text.toString()
+        if (text != given) {
+            given = text
+            onValueChange(text)
+        }
+    }
+}
+
+/**
+ * The text of a secret field whose caller keeps [value] in snapshot state set by [onValueChange], as
+ * `remember { mutableStateOf("") }` does: each edit reaches [onValueChange], and a value the caller sets itself, such as
+ * clearing a secret once it is saved, replaces the text. Only remembered, so a secret never reaches saved instance state.
+ */
+@Composable
+private fun rememberSecretText(
+    value: String,
+    onValueChange: (String) -> Unit,
+): SecretText {
+    val secret = remember { SecretText(value) }
+    val latestOnValueChange by rememberUpdatedState(onValueChange)
+    LaunchedEffect(value, secret.given) {
+        if (value != secret.given) {
+            secret.given = value
+            secret.state.setTextAndPlaceCursorAtEnd(value)
+        }
+    }
+    LaunchedEffect(secret) { snapshotFlow { secret.state.text.toString() }.collect { secret.give(latestOnValueChange) } }
+    return secret
 }
 
 /**

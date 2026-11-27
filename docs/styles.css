@@ -315,6 +315,10 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green); outlin
 
 .section-dark a:focus-visible { outline-color: #7fe0b1; }
 
+.section-dark .button-ghost { color: #fff; }
+
+.section-dark .button-ghost:hover { color: var(--navy); }
+
 .section-lead { font-size: 1.1rem; color: var(--grey); max-width: 44em; margin-bottom: 40px; }
 
 .features {
@@ -963,7 +967,7 @@ button.button { font: inherit; font-weight: 700; cursor: pointer; }
   .section-dark { color: #000; background: none; }
   .section-dark p, .section-dark li { color: #000; }
   a, .section-dark a:not(.button) { color: #000; text-decoration: underline; }
-  a.button { color: #000; background: none; border-color: #777; }
+  a.button, .section-dark a.button-ghost { color: #000; background: none; border-color: #777; }
   pre, code { color: #000; background: none; white-space: pre-wrap; overflow-wrap: anywhere; }
   h1, h2, h3, dt, summary { break-after: avoid; }
   figure, .callout, .note { break-inside: avoid; }

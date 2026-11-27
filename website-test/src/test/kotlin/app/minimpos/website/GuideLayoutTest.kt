@@ -45,6 +45,9 @@ class GuideLayoutTest {
                         browser.screenshot(reports.resolve("$prefix.png"))
                         assertWithMessage("$prefix initial scroll").that(browser.executeScript("return window.scrollY")).isEqualTo(0L)
                         assertWithMessage("$prefix broken images").that(broken).isEqualTo(emptyList<String>())
+                        assertWithMessage("$prefix buttons below 4.5:1 contrast")
+                            .that(browser.executeScript(LOW_CONTRAST_BUTTONS))
+                            .isEqualTo(emptyList<String>())
                         assertWithMessage(
                             "$prefix viewport",
                         ).that(browser.executeScript("return window.innerWidth")).isEqualTo(width.toLong())
@@ -57,5 +60,31 @@ class GuideLayoutTest {
                 }
             }
         }
+    }
+
+    private companion object {
+        // Compares each visible button's text with the nearest opaque background behind it (WCAG relative luminance).
+        val LOW_CONTRAST_BUTTONS =
+            """
+            const channels = colour => colour.match(/[\d.]+/g).map(Number);
+            const luminance = rgb => rgb.slice(0, 3)
+              .map(v => v / 255)
+              .map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+              .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+            const background = element => {
+              for (let node = element; node; node = node.parentElement) {
+                const rgb = channels(getComputedStyle(node).backgroundColor);
+                if (rgb.length < 4 || rgb[3] > 0) return rgb;
+              }
+              return [255, 255, 255];
+            };
+            return [...document.querySelectorAll('.button')]
+              .filter(button => button.getClientRects().length)
+              .filter(button => {
+                const [a, b] = [luminance(channels(getComputedStyle(button).color)), luminance(background(button))];
+                return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) < 4.5;
+              })
+              .map(button => button.textContent.trim());
+            """.trimIndent()
     }
 }

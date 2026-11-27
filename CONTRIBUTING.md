@@ -361,8 +361,9 @@ folder; processing selects dimensions and bar heights from the terminal-specific
 Chrome/Chromium or `chrome-headless-shell` executable. `review` validates language parity, frame dimensions and indexed
 palettes, then writes labeled contact sheets to `build/docs-assets` (`DOCS_WORK` overrides it). Inspect them: valid
 dimensions do not prove the correct screen or transaction. Website checks also render every page in all seven
-languages at 320/390/1280 px, reject broken images and horizontal overflow, and save the screenshots in
-`website-test/build/reports/guide-layout`. Run `scripts/dev finish` before committing.
+languages at 320/390/1280 px, reject broken images, horizontal overflow and buttons whose text contrast is below
+4.5:1, and save the screenshots in `website-test/build/reports/guide-layout`. Run `scripts/dev finish` before
+committing.
 
 ## Dependency and build maintenance
 
@@ -470,16 +471,27 @@ Forks must maintain their own release process, credentials and signing history.
 
 ## Release the app
 
-`version.properties` is managed by **Actions › Release › Run workflow** on `main`. Choose patch/minor/major and supply
-the release notes following [the style below](#release-note-style);
-the workflow commits the new version first using the release app. The version-only push skips the duplicate main CI
-build, not CodeQL. Release reuses a successful main push/manual CI run for that exact commit
-only when its retained artifact passes current commit, version, run-attempt and SHA-256 verification. Missing or
-expired artifacts require fresh CI; changed or invalid artifacts block release. Pending, failed, cancelled and PR
-runs are never reused. Otherwise, a direct CI job runs the full quality gate and R8
+Releases run only from **Actions › Release** on `main`, which alone changes `version.properties`. It needs the
+repository settings in [GitHub workflow setup](#github-workflow-setup).
+
+1. Merge everything the release should contain. Write the notes in a UTF-8 Markdown file following
+   [the release-note style](#release-note-style), covering everything since the latest published tag.
+2. Dispatch Release from `main`, for example
+   `gh workflow run release.yml --ref main -f bump=minor -F notes=@/absolute/path/release-notes.md`. Choose `patch`,
+   `minor` or `major`, or `resume` for an unpublished version commit (below). `verify-app` only checks that the
+   release app can issue a token; it changes and publishes nothing.
+3. Follow the run with `scripts/release-check watch` (below). After publication, read back the GitHub release body.
+
+The prepare job stops if main moved after dispatch and refuses a new bump while a version commit is unpublished. It
+commits only `version.properties` as `Release X.Y.Z` and pushes it to main with a short-lived token from the release
+app in the `release-version-push` environment; that app is the only bypass of main's pull-request and required-check
+rules. The version-only push skips the duplicate main CI build, not CodeQL. Release reuses a successful main
+push/manual CI run for that exact commit only when its retained artifact passes current commit, version, run-attempt
+and SHA-256 verification. Missing or expired artifacts require fresh CI; changed or invalid artifacts block release.
+Pending, failed, cancelled and PR runs are never reused. Otherwise, a direct CI job runs the full quality gate and R8
 build, then saves the unsigned APK and tested executable tooling JAR with their SHA-256 hashes, commit, version and
-run attempt. There is no dispatched duplicate CI or runner waiting for another workflow.
-Failed or cancelled verification blocks publication.
+run attempt. There is no dispatched duplicate CI or runner waiting for another workflow. Failed or cancelled
+verification blocks publication.
 
 Only successful CI allows the release job to access the signing environment. It runs CI's tooling JAR with Java,
 without rebuilding tooling, Gradle plugins or dependency resolution. It verifies the artifact's provenance,
@@ -490,10 +502,11 @@ plugins execute with signing secrets. Main must still point to the verified comm
 
 A failed attempt can leave an unpublished version commit on main. Choose **resume** to reuse valid exact-commit CI
 or run fresh CI and publish it without another bump; the version must come from a version-only `Release X.Y.Z`
-commit without an existing tag.
-Later fixes can follow that commit before resuming. If tagging
-succeeded but publication failed, finish publication for that existing tag rather than bumping again. CI artifacts
-expire after 14 days; resume produces a fresh one. Only the latest release is maintained.
+commit without an existing tag. Resume pushes nothing and needs no release-app token. It releases main's current head,
+so fixes merged after the version commit (through ordinary pull requests) ship in that version and belong in its
+notes. If tagging succeeded but publication failed, finish publication for that existing tag rather than bumping
+again. CI artifacts expire after 14 days; resume produces a fresh one. Dependabot automerges use the workflow token,
+which starts no push CI, so releasing straight after one runs fresh CI. Only the latest release is maintained.
 
 The repository's `release` environment is restricted to `main`. Its secrets are `RELEASE_KEYSTORE` (base64 keystore)
 and `RELEASE_SIGNING_PROPERTIES` (`storePassword`, `keyAlias`, `keyPassword`). Never commit them or local SDK/signing
@@ -536,7 +549,5 @@ never imply that simulator tests establish real-Adyen support.
 Omit routine dependency bumps, refactoring, test/CI results, signing details, contributor lists and internal identifiers.
 If a release contains only internal maintenance, use one specific plain-English maintenance bullet without inventing
 merchant benefits. Do not use GitHub's generated notes as the final body. The workflow requires nonblank authored notes
-before changing the version and appends a **Full Changelog** comparison link automatically. With the CLI, pass a UTF-8
-Markdown file using `gh workflow run release.yml -f bump=patch -F notes=@/absolute/path/release-notes.md`.
-Supply notes again when resuming; review the full range from the previous published release, including any later fixes.
-After publication, read back the GitHub release body along with the usual artifact verification.
+before changing the version and appends a **Full Changelog** comparison link automatically. Supply notes again when
+resuming; review the full range from the previous published release, including any later fixes.

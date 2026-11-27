@@ -147,6 +147,14 @@ class DocsCaptureTest {
     }
 
     @Test
+    fun `the clone check reads the whole emulator console reply without breaking its pipe`() {
+        val root = fixture()
+        // Under pipefail, a reader that stops after the first line made the writer fail with SIGPIPE (exit 141).
+        Files.writeString(root.resolve("console-noise"), "")
+        assertThat(run(root, "restore", "docs-1017-zh-CN.tar", reset = true).code).isEqualTo(0)
+    }
+
+    @Test
     fun `missing archives invalid names or missing app UIDs fail before clearing data`() {
         val root = fixture()
         assertThat(run(root, "restore", "../unsafe.tar", reset = true).code).isEqualTo(2)
@@ -250,7 +258,10 @@ class DocsCaptureTest {
             |  'shell getprop')
             |    if [ "${'$'}3" = ro.kernel.qemu ]; then cat "${'$'}FIXTURE/qemu"; else echo 1; fi ;;
             |  'shell cat') cat "${'$'}FIXTURE/settings.json" ;;
-            |  'emu avd') echo "${'$'}AVD_NAME"; echo OK ;;
+            |  'emu avd')
+            |    echo "${'$'}AVD_NAME"
+            |    if [ -f "${'$'}FIXTURE/console-noise" ]; then seq 200000; fi
+            |    echo OK ;;
             |  'shell stat') cat "${'$'}FIXTURE/uid" ;;
             |  'shell wm')
             |    if [ "${'$'}#" = 3 ]; then cat "${'$'}FIXTURE/wm-${'$'}3"; fi ;;
